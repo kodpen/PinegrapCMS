@@ -780,264 +780,338 @@ if (!$_POST) {
         $number_of_summarize_bys = 0;
     }
     
-    // get all visitors
+    // ── Aggregate in the database, not in PHP ────────────────────────────
+    //
+    // This block used to select every matching visitor row with no limit,
+    // walk the result set in PHP and add the totals up by hand. On a site
+    // taking 100,000-200,000 visits a day a few weeks of that is millions of
+    // rows, and the page stopped opening at all: the result set was pulled
+    // into memory row by row, and each row was also appended to a per-group
+    // 'visitors' array — which was built even when the detail checkbox was
+    // off and then never read. Add an ORDER BY over FROM_UNIXTIME()
+    // expressions, which no index can serve, and MySQL was sorting the whole
+    // history on disk before PHP saw the first row.
+    //
+    // MySQL does the counting now. What comes back is one row per group, so
+    // a report over ten million visits transfers a few dozen rows.
+    //
+    // Nothing about filtering changes. $where, prepare_sql_operation() and
+    // every summarize-by option are untouched, and the totals are still
+    // computed across every matching row rather than a sample.
+    $detail_on = ($liveform->get_field_value('detail') == 1);
+
+    // Detail rows are read separately and a page at a time. The totals above
+    // them always describe the whole result set; this only limits how many
+    // individual rows are listed, because a browser cannot usefully render
+    // millions of table rows anyway. The full set is available through the
+    // CSV export, which streams instead of buffering.
+    $detail_page_size = 500;
+    $detail_page      = isset($_GET['detail_page']) ? max(1, (int) $_GET['detail_page']) : 1;
+    $detail_offset    = ($detail_page - 1) * $detail_page_size;
+    $detail_total     = 0;
+
+    // Build the grouping list once; the same expressions are used for the
+    // SELECT, the GROUP BY and the ORDER BY.
+    $group_expressions = array();
+    if ($number_of_summarize_bys >= 1) $group_expressions[] = rtrim($sql_summarize_by_1, ',');
+    if ($number_of_summarize_bys >= 2) $group_expressions[] = rtrim($sql_summarize_by_2, ',');
+    if ($number_of_summarize_bys >= 3) $group_expressions[] = rtrim($sql_summarize_by_3, ',');
+
+    $sql_group_select = '';
+    foreach ($group_expressions as $i => $expression) {
+        $sql_group_select .= $expression . ' AS sb' . ($i + 1) . ', ';
+    }
+
+    // Totals are summed, not counted row by row. custom_form_submitted and
+    // the order_* columns are 0/1 flags, so SUM() over them reproduces
+    // exactly what the old ++ accumulation produced.
+    $sql_totals =
+        "COUNT(*) AS row_count,
+         COALESCE(SUM(visitors.page_views), 0) AS page_views,
+         COALESCE(SUM(visitors.custom_form_submitted), 0) AS custom_form_submitted,
+         COALESCE(SUM(visitors.order_created), 0) AS order_created,
+         COALESCE(SUM(visitors.order_retrieved), 0) AS order_retrieved,
+         COALESCE(SUM(visitors.order_checked_out), 0) AS order_checked_out,
+         COALESCE(SUM(visitors.order_completed), 0) AS order_completed,
+         COALESCE(SUM(visitors.order_total), 0) AS order_total";
+
+    $sql_group_by = '';
+    $sql_order_by = '';
+    if (!empty($group_expressions)) {
+        $aliases      = array();
+        foreach ($group_expressions as $i => $expression) $aliases[] = 'sb' . ($i + 1);
+        $sql_group_by = 'GROUP BY ' . implode(', ', $aliases);
+        $sql_order_by = 'ORDER BY ' . implode(', ', $aliases);
+    }
+
     $query =
         "SELECT
-            $sql_summarize_by_1
-            $sql_summarize_by_2
-            $sql_summarize_by_3
-            visitors.id,
-            visitors.start_timestamp,
-            visitors.page_views,
-            visitors.custom_form_submitted,
-            visitors.order_created,
-            visitors.order_retrieved,
-            visitors.order_checked_out,
-            visitors.order_completed,
-            visitors.order_total
+            $sql_group_select
+            $sql_totals
         FROM visitors
         $where
-        ORDER BY
-            $sql_summarize_by_1
-            $sql_summarize_by_2
-            $sql_summarize_by_3
-            visitors.id";
+        $sql_group_by
+        $sql_order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
+
     $results = array();
-    
-    switch ($number_of_summarize_bys) {
-        case 0:
-            $visitors = array();
-            
-            while ($row = mysqli_fetch_array($result)) {
-                // store data for visitor in array
-                $visitors[] = array(
-                    'id' => $row['id'],
-                    'timestamp' => $row['start_timestamp'],
-                    'page_views' => $row['page_views'],
-                    'custom_form_submitted' => $row['custom_form_submitted'],                
-                    'order_created' => $row['order_created'],
-                    'order_retrieved' => $row['order_retrieved'],
-                    'order_checked_out' => $row['order_checked_out'],
-                    'order_completed' => $row['order_completed'],
-                    'order_total' => $row['order_total']);
-                
-                // update grand totals
-                $grand_count++;
-                $grand_page_views += $row['page_views'];
-                $grand_custom_form_submitted += $row['custom_form_submitted'];
-                $grand_order_created += $row['order_created'];
-                $grand_order_retrieved += $row['order_retrieved'];
-                $grand_order_checked_out += $row['order_checked_out'];
-                $grand_order_completed += $row['order_completed'];
-                $grand_order_total += $row['order_total'];
-            }
-            break;
-        
-        case 1:
-            while ($row = mysqli_fetch_array($result)) {
 
-                $summarize_by_1_name = trim($row[0]);
-                
-                // if we have a new summarize by in summarize by 1, increment key and store name
-                if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
-                    $summarize_by_1_key++;
-                    $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
-                }
-                
-                // store data for visitor in array
-                $results[$summarize_by_1_key]['visitors'][] = array(
-                    'id' => $row['id'],
-                    'timestamp' => $row['start_timestamp'],
-                    'page_views' => $row['page_views'],
-                    'custom_form_submitted' => $row['custom_form_submitted'],                
-                    'order_created' => $row['order_created'],
-                    'order_retrieved' => $row['order_retrieved'],
-                    'order_checked_out' => $row['order_checked_out'],
-                    'order_completed' => $row['order_completed'],
-                    'order_total' => $row['order_total']);
-                
-                // update totals for summarize by 1
-                $results[$summarize_by_1_key]['count']++;
-                $results[$summarize_by_1_key]['page_views'] += $row['page_views'];
-                $results[$summarize_by_1_key]['custom_form_submitted'] += $row['custom_form_submitted'];
-                $results[$summarize_by_1_key]['order_created'] += $row['order_created'];
-                $results[$summarize_by_1_key]['order_retrieved'] += $row['order_retrieved'];
-                $results[$summarize_by_1_key]['order_checked_out'] += $row['order_checked_out'];
-                $results[$summarize_by_1_key]['order_completed'] += $row['order_completed'];
-                $results[$summarize_by_1_key]['order_total'] += $row['order_total'];
-                
-                // update grand totals
-                $grand_count++;
-                $grand_page_views += $row['page_views'];
-                $grand_custom_form_submitted += $row['custom_form_submitted'];
-                $grand_order_created += $row['order_created'];
-                $grand_order_retrieved += $row['order_retrieved'];
-                $grand_order_checked_out += $row['order_checked_out'];
-                $grand_order_completed += $row['order_completed'];
-                $grand_order_total += $row['order_total'];
-                
-                $previous_summarize_by_1_name = $summarize_by_1_name;
-            }
-            break;
-        
-        case 2:
-            while ($row = mysqli_fetch_array($result)) {
+    // Grand totals accumulate over the group rows, so they stay correct
+    // however many groups there are.
+    $grand_count = 0;
+    $grand_page_views = 0;
+    $grand_custom_form_submitted = 0;
+    $grand_order_created = 0;
+    $grand_order_retrieved = 0;
+    $grand_order_checked_out = 0;
+    $grand_order_completed = 0;
+    $grand_order_total = 0;
 
-                $summarize_by_1_name = trim($row[0]);
-                $summarize_by_2_name = trim($row[1]);
-                
-                // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2
-                if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
-                    $summarize_by_1_key++;
-                    $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
-                    
-                    $summarize_by_2_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    
-                // else if we have a new summarize by in summarize by 2, increment key and store name
-                } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
-                    $summarize_by_2_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                }
-                
-                // store data for visitor in array
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['visitors'][] = array(
-                    'id' => $row['id'],
-                    'timestamp' => $row['start_timestamp'],
-                    'page_views' => $row['page_views'],
-                    'custom_form_submitted' => $row['custom_form_submitted'],                
-                    'order_created' => $row['order_created'],
-                    'order_retrieved' => $row['order_retrieved'],
-                    'order_checked_out' => $row['order_checked_out'],
-                    'order_completed' => $row['order_completed'],
-                    'order_total' => $row['order_total']);
-                
-                // update totals for summarize by 1
-                $results[$summarize_by_1_key]['count']++;
-                $results[$summarize_by_1_key]['page_views'] += $row['page_views'];
-                $results[$summarize_by_1_key]['custom_form_submitted'] += $row['custom_form_submitted'];
-                $results[$summarize_by_1_key]['order_created'] += $row['order_created'];
-                $results[$summarize_by_1_key]['order_retrieved'] += $row['order_retrieved'];
-                $results[$summarize_by_1_key]['order_checked_out'] += $row['order_checked_out'];
-                $results[$summarize_by_1_key]['order_completed'] += $row['order_completed'];
-                $results[$summarize_by_1_key]['order_total'] += $row['order_total'];
-                
-                // update totals for summarize by 2
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count']++;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['page_views'] += $row['page_views'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['custom_form_submitted'] += $row['custom_form_submitted'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_created'] += $row['order_created'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_retrieved'] += $row['order_retrieved'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_checked_out'] += $row['order_checked_out'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_completed'] += $row['order_completed'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_total'] += $row['order_total'];
-                
-                // update grand totals
-                $grand_count++;
-                $grand_page_views += $row['page_views'];
-                $grand_custom_form_submitted += $row['custom_form_submitted'];
-                $grand_order_created += $row['order_created'];
-                $grand_order_retrieved += $row['order_retrieved'];
-                $grand_order_checked_out += $row['order_checked_out'];
-                $grand_order_completed += $row['order_completed'];
-                $grand_order_total += $row['order_total'];
-                
-                $previous_summarize_by_1_name = $summarize_by_1_name;
-                $previous_summarize_by_2_name = $summarize_by_2_name;
-            }
-            break;
-            
-        case 3:
-            while ($row = mysqli_fetch_array($result)) {
+    // Maps a group's name path to its position in $results, so the detail
+    // rows fetched below can be filed under the right heading.
+    $group_index = array();
 
-                $summarize_by_1_name = trim($row[0]);
-                $summarize_by_2_name = trim($row[1]);
-                $summarize_by_3_name = trim($row[2]);
-                
-                // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2 and summarize by 3
-                if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
-                    $summarize_by_1_key++;
-                    $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
-                    
-                    $summarize_by_2_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    
-                    $summarize_by_3_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
-                    
-                // else if we have a new summarize by in summarize by 2, increment key and store name and reset key and store name for summarize by 3
-                } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
-                    $summarize_by_2_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    
-                    $summarize_by_3_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
-                    
-                // else if we have a new summarize by in summarize by 3, increment key and store name
-                } elseif (mb_strtolower($summarize_by_3_name) !== mb_strtolower($previous_summarize_by_3_name)) {
-                    $summarize_by_3_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
-                }
-                
-                // store data for visitor in array
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['visitors'][] = array(
-                    'id' => $row['id'],
-                    'timestamp' => $row['start_timestamp'],
-                    'page_views' => $row['page_views'],
-                    'custom_form_submitted' => $row['custom_form_submitted'],                
-                    'order_created' => $row['order_created'],
-                    'order_retrieved' => $row['order_retrieved'],
-                    'order_checked_out' => $row['order_checked_out'],
-                    'order_completed' => $row['order_completed'],
-                    'order_total' => $row['order_total']);
-                
-                // update totals for summarize by 1
-                $results[$summarize_by_1_key]['count']++;
-                $results[$summarize_by_1_key]['page_views'] += $row['page_views'];
-                $results[$summarize_by_1_key]['custom_form_submitted'] += $row['custom_form_submitted'];
-                $results[$summarize_by_1_key]['order_created'] += $row['order_created'];
-                $results[$summarize_by_1_key]['order_retrieved'] += $row['order_retrieved'];
-                $results[$summarize_by_1_key]['order_checked_out'] += $row['order_checked_out'];
-                $results[$summarize_by_1_key]['order_completed'] += $row['order_completed'];
-                $results[$summarize_by_1_key]['order_total'] += $row['order_total'];
-                
-                // update totals for summarize by 2
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count']++;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['page_views'] += $row['page_views'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['custom_form_submitted'] += $row['custom_form_submitted'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_created'] += $row['order_created'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_retrieved'] += $row['order_retrieved'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_checked_out'] += $row['order_checked_out'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_completed'] += $row['order_completed'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['order_total'] += $row['order_total'];
-                
-                // update totals for summarize by 3
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count']++;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['page_views'] += $row['page_views'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['custom_form_submitted'] += $row['custom_form_submitted'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['order_created'] += $row['order_created'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['order_retrieved'] += $row['order_retrieved'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['order_checked_out'] += $row['order_checked_out'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['order_completed'] += $row['order_completed'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['order_total'] += $row['order_total'];
-                
-                // update grand totals
-                $grand_count++;
-                $grand_page_views += $row['page_views'];
-                $grand_custom_form_submitted += $row['custom_form_submitted'];
-                $grand_order_created += $row['order_created'];
-                $grand_order_retrieved += $row['order_retrieved'];
-                $grand_order_checked_out += $row['order_checked_out'];
-                $grand_order_completed += $row['order_completed'];
-                $grand_order_total += $row['order_total'];
-                
-                $previous_summarize_by_1_name = $summarize_by_1_name;
-                $previous_summarize_by_2_name = $summarize_by_2_name;
-                $previous_summarize_by_3_name = $summarize_by_3_name;
+    while ($row = mysqli_fetch_assoc($result)) {
+
+        $totals = array(
+            'count'                 => (int) $row['row_count'],
+            'page_views'            => (int) $row['page_views'],
+            'custom_form_submitted' => (int) $row['custom_form_submitted'],
+            'order_created'         => (int) $row['order_created'],
+            'order_retrieved'       => (int) $row['order_retrieved'],
+            'order_checked_out'     => (int) $row['order_checked_out'],
+            'order_completed'       => (int) $row['order_completed'],
+            'order_total'           => (int) $row['order_total'],
+        );
+
+        $grand_count                 += $totals['count'];
+        $grand_page_views            += $totals['page_views'];
+        $grand_custom_form_submitted += $totals['custom_form_submitted'];
+        $grand_order_created         += $totals['order_created'];
+        $grand_order_retrieved       += $totals['order_retrieved'];
+        $grand_order_checked_out     += $totals['order_checked_out'];
+        $grand_order_completed       += $totals['order_completed'];
+        $grand_order_total           += $totals['order_total'];
+
+        if ($number_of_summarize_bys == 0) {
+            continue;
+        }
+
+        $name_1 = trim((string) $row['sb1']);
+        $key_1  = mb_strtolower($name_1);
+
+        if (!isset($group_index[$key_1])) {
+            $group_index[$key_1] = count($results);
+            $results[$group_index[$key_1]] = array('name' => $name_1) + array_fill_keys(array_keys($totals), 0);
+        }
+        $k1 = $group_index[$key_1];
+
+        // Level 1 totals are the sum of the levels beneath it.
+        foreach ($totals as $field => $value) $results[$k1][$field] += $value;
+
+        if ($number_of_summarize_bys == 1) {
+            continue;
+        }
+
+        $name_2 = trim((string) $row['sb2']);
+        $key_2  = $key_1 . "\x00" . mb_strtolower($name_2);
+
+        if (!isset($group_index[$key_2])) {
+            $group_index[$key_2] = isset($results[$k1]['results']) ? count($results[$k1]['results']) : 0;
+            $results[$k1]['results'][$group_index[$key_2]] = array('name' => $name_2) + array_fill_keys(array_keys($totals), 0);
+        }
+        $k2 = $group_index[$key_2];
+
+        foreach ($totals as $field => $value) $results[$k1]['results'][$k2][$field] += $value;
+
+        if ($number_of_summarize_bys == 2) {
+            continue;
+        }
+
+        $name_3 = trim((string) $row['sb3']);
+        $key_3  = $key_2 . "\x00" . mb_strtolower($name_3);
+
+        if (!isset($group_index[$key_3])) {
+            $group_index[$key_3] = isset($results[$k1]['results'][$k2]['results']) ? count($results[$k1]['results'][$k2]['results']) : 0;
+            $results[$k1]['results'][$k2]['results'][$group_index[$key_3]] = array('name' => $name_3) + array_fill_keys(array_keys($totals), 0);
+        }
+        $k3 = $group_index[$key_3];
+
+        foreach ($totals as $field => $value) $results[$k1]['results'][$k2]['results'][$k3][$field] += $value;
+    }
+
+    // ── CSV export ───────────────────────────────────────────────────────
+    //
+    // The screen shows a page of detail rows at a time; this is how the whole
+    // set is obtained. Rows are written to the output stream as they arrive
+    // from MySQL and the buffer is flushed each time, so peak memory is one
+    // row regardless of whether the report covers a thousand visitors or ten
+    // million. Nothing is accumulated in an array — which is precisely the
+    // mistake that stopped this page loading.
+    //
+    // Uses the same $where the report does, so the export matches the report
+    // filter for filter.
+    if (isset($_GET['export']) && $_GET['export'] == 'csv') {
+
+        $export_name = trim((string) $liveform->get_field_value('name'));
+        if ($export_name == '') {
+            $export_name = 'visitor-report';
+        }
+        $export_name = preg_replace('/[^A-Za-z0-9_-]+/', '-', $export_name);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $export_name . '-' . date('Y-m-d') . '.csv"');
+        header('Cache-Control: no-store');
+
+        $out = fopen('php://output', 'w');
+
+        // Byte order mark, so Excel opens the file as UTF-8 rather than
+        // guessing an ANSI code page and mangling Turkish characters.
+        fwrite($out, "\xEF\xBB\xBF");
+
+        $export_headers = array();
+        for ($i = 1; $i <= $number_of_summarize_bys; $i++) {
+            $export_headers[] = $liveform->get_field_value('summarize_by_' . $i);
+        }
+        fputcsv($out, array_merge($export_headers, array(
+            lang('Visitor Number'),
+            lang('Date'),
+            lang('Page Views'),
+            lang('Custom Form Submitted'),
+            lang('Order Created'),
+            lang('Order Retrieved'),
+            lang('Order Checked Out'),
+            lang('Order Completed'),
+            lang('Order Total'),
+        )));
+
+        $query =
+            "SELECT
+                $sql_group_select
+                visitors.id,
+                visitors.start_timestamp,
+                visitors.page_views,
+                visitors.custom_form_submitted,
+                visitors.order_created,
+                visitors.order_retrieved,
+                visitors.order_checked_out,
+                visitors.order_completed,
+                visitors.order_total
+            FROM visitors
+            $where
+            ORDER BY " . (!empty($group_expressions) ? implode(', ', $group_expressions) . ', ' : '') . "visitors.id";
+
+        // Unbuffered: mysqli_query() would pull the entire result into PHP
+        // before the first row could be written, defeating the whole point.
+        $result = mysqli_query(db::$con, $query, MYSQLI_USE_RESULT) or output_error('Query failed.');
+
+        $written = 0;
+
+        while ($row = mysqli_fetch_assoc($result)) {
+
+            $line = array();
+            for ($i = 1; $i <= $number_of_summarize_bys; $i++) {
+                $line[] = isset($row['sb' . $i]) ? $row['sb' . $i] : '';
             }
-            break;
+
+            fputcsv($out, array_merge($line, array(
+                $row['id'],
+                get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site')),
+                $row['page_views'],
+                $row['custom_form_submitted'],
+                $row['order_created'],
+                $row['order_retrieved'],
+                $row['order_checked_out'],
+                $row['order_completed'],
+                number_format($row['order_total'] / 100, 2, '.', ''),
+            )));
+
+            // Push each batch down the wire rather than letting it pile up in
+            // PHP's output buffer, which would recreate the memory problem in
+            // a different place.
+            if ((++$written % 1000) === 0) {
+                if (ob_get_level() > 0) @ob_flush();
+                @flush();
+            }
+        }
+
+        mysqli_free_result($result);
+        fclose($out);
+        exit();
+    }
+
+    // ── Detail rows ──────────────────────────────────────────────────────
+    //
+    // Only read when the detail checkbox is on. Previously these were built
+    // unconditionally and discarded, which is what exhausted memory on a
+    // large report even for someone who only wanted the summary.
+    $visitors = array();
+
+    if ($detail_on) {
+
+        $detail_total = (int) db_value("SELECT COUNT(*) FROM visitors $where");
+
+        $query =
+            "SELECT
+                $sql_group_select
+                visitors.id,
+                visitors.start_timestamp,
+                visitors.page_views,
+                visitors.custom_form_submitted,
+                visitors.order_created,
+                visitors.order_retrieved,
+                visitors.order_checked_out,
+                visitors.order_completed,
+                visitors.order_total
+            FROM visitors
+            $where
+            ORDER BY " . (!empty($group_expressions) ? implode(', ', $group_expressions) . ', ' : '') . "visitors.id
+            LIMIT $detail_page_size OFFSET $detail_offset";
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        while ($row = mysqli_fetch_assoc($result)) {
+
+            $visitor = array(
+                'id'                    => $row['id'],
+                'timestamp'             => $row['start_timestamp'],
+                'page_views'            => $row['page_views'],
+                'custom_form_submitted' => $row['custom_form_submitted'],
+                'order_created'         => $row['order_created'],
+                'order_retrieved'       => $row['order_retrieved'],
+                'order_checked_out'     => $row['order_checked_out'],
+                'order_completed'       => $row['order_completed'],
+                'order_total'           => $row['order_total'],
+            );
+
+            if ($number_of_summarize_bys == 0) {
+                $visitors[] = $visitor;
+                continue;
+            }
+
+            $key_1 = mb_strtolower(trim((string) $row['sb1']));
+            if (!isset($group_index[$key_1])) continue;
+            $k1 = $group_index[$key_1];
+
+            if ($number_of_summarize_bys == 1) {
+                $results[$k1]['visitors'][] = $visitor;
+                continue;
+            }
+
+            $key_2 = $key_1 . "\x00" . mb_strtolower(trim((string) $row['sb2']));
+            if (!isset($group_index[$key_2])) continue;
+            $k2 = $group_index[$key_2];
+
+            if ($number_of_summarize_bys == 2) {
+                $results[$k1]['results'][$k2]['visitors'][] = $visitor;
+                continue;
+            }
+
+            $key_3 = $key_2 . "\x00" . mb_strtolower(trim((string) $row['sb3']));
+            if (!isset($group_index[$key_3])) continue;
+            $k3 = $group_index[$key_3];
+
+            $results[$k1]['results'][$k2]['results'][$k3]['visitors'][] = $visitor;
+        }
     }
     
     $output_report_detail_headers = '';
@@ -1518,6 +1592,64 @@ if (!$_POST) {
         }
     }
     
+    // ── Detail pager ─────────────────────────────────────────────────────
+    //
+    // Shown only when the detail listing is on and there is more than one
+    // page of it. The totals above are unaffected by paging — they are
+    // computed over every matching row — so this navigates the listing
+    // without changing any figure on the screen.
+    $output_detail_pager = '';
+
+    if ($detail_on && $detail_total > $detail_page_size) {
+
+        $detail_pages = (int) ceil($detail_total / $detail_page_size);
+        $detail_from  = $detail_offset + 1;
+        $detail_to    = min($detail_offset + $detail_page_size, $detail_total);
+
+        // Preserve everything already in the query string except the page
+        // number, so date-range and report id survive paging.
+        $pager_params = $_GET;
+        unset($pager_params['detail_page']);
+        $pager_base = 'view_visitor_report.php?' . (empty($pager_params) ? '' : http_build_query($pager_params) . '&') . 'detail_page=';
+
+        $pager_link = function ($page, $label, $disabled) use ($pager_base) {
+            if ($disabled) {
+                return '<li class="page-item disabled"><span class="page-link">' . $label . '</span></li>';
+            }
+            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '">' . $label . '</a></li>';
+        };
+
+        $csv_params = $_GET;
+        unset($csv_params['detail_page']);
+        $csv_params['export'] = 'csv';
+        $csv_url = 'view_visitor_report.php?' . http_build_query($csv_params);
+
+        $output_detail_pager =
+            '<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top">
+                <span class="text-muted small">'
+                . h(lang(array(
+                    'string' => 'Showing {var:1} to {var:2} of {var:3} visitor{suffix:3}',
+                    'vars'   => array(number_format($detail_from), number_format($detail_to), number_format($detail_total)),
+                    'suffix' => array('', '', ($detail_total == 1 ? '' : 's')),
+                )))
+                . '</span>
+                <div class="d-flex align-items-center gap-2">
+                    <a class="btn btn-sm btn-outline-secondary" href="' . h($csv_url) . '">
+                        <i class="bi bi-filetype-csv me-1"></i>' . lang('Export All to CSV') . '
+                    </a>
+                    <nav><ul class="pagination pagination-sm mb-0">'
+                        . $pager_link(1, '&laquo;', $detail_page <= 1)
+                        . $pager_link($detail_page - 1, '&lsaquo;', $detail_page <= 1)
+                        . '<li class="page-item disabled"><span class="page-link">'
+                        . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array(number_format($detail_page), number_format($detail_pages)))))
+                        . '</span></li>'
+                        . $pager_link($detail_page + 1, '&rsaquo;', $detail_page >= $detail_pages)
+                        . $pager_link($detail_pages, '&raquo;', $detail_page >= $detail_pages)
+                    . '</ul></nav>
+                </div>
+            </div>';
+    }
+
     $grand_custom_form_submitted_percentage = ($grand_count > 0) ? $grand_custom_form_submitted / $grand_count * 100 : 0;
     $grand_order_created_percentage = ($grand_count > 0) ? $grand_order_created / $grand_count * 100 : 0;
     $grand_order_retrieved_percentage = ($grand_count > 0) ? $grand_order_retrieved / $grand_count * 100 : 0;
@@ -1545,6 +1677,7 @@ if (!$_POST) {
                     </tbody>
                 </table>
             </div>
+            ' . $output_detail_pager . '
         </div>
     </div>
 </div>

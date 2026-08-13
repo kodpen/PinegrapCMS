@@ -58,7 +58,9 @@ function software_update_check()
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+    // Verify the certificate. See pg_curl_tls() for why this matters most
+    // on the update and licence channel.
+    pg_curl_tls($ch);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
@@ -86,7 +88,7 @@ function software_update_check()
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
         log_activity(
-            'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.'
+            'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.' . pg_curl_tls_hint($curl_errno)
         );
         return false;
     }

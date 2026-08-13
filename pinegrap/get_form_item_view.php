@@ -130,7 +130,15 @@ function get_form_item_view($properties) {
         }
         
         $submitted_form = mysqli_fetch_assoc($result);
-        
+
+        // Tell visitor tracking which submitted form (blog article, listing,
+        // directory entry) this request displayed. The page name reaching the
+        // tracker is the form item view page, which is the same for every
+        // article, so without this the hourly report cannot name the article.
+        if (!empty($submitted_form['id'])) {
+            pg_track_content('form', $submitted_form['id']);
+        }
+
         global $user;
         
         // if the user is logged in, then get user information

@@ -85,6 +85,7 @@ $output_widget_19 = '';
 $output_widget_20 = '';
 $output_widget_21 = '';
 $output_widget_22 = '';
+$output_widget_23 = '';
 
 
 
@@ -410,6 +411,12 @@ if(validate_calendars_access($user, $only_return = true) != false){
 if ($user['role'] < 3){
     $output_widget_21   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="21" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-shield-check me-2"></i>' . lang('Firewall')  . '</div>  ' . $placeholder . '  </div></div>';
     $output_widget_22   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="22" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-radar me-2"></i>' . lang('Threat Summary')  . '</div>  ' . $placeholder . '  </div></div>';
+    // Only when monitoring is on. With it off the tables are emptied, so the
+    // widget would sit on the dashboard showing zeroes as though the site had
+    // no traffic — which reads as a fault rather than as a setting.
+    if (!defined('PERF_MONITOR_ENABLED') || PERF_MONITOR_ENABLED) {
+        $output_widget_23   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="23" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-speedometer2 me-2"></i>' . lang('Performance')  . '</div>  ' . $placeholder . '  </div></div>';
+    }
 }
 
 
@@ -435,12 +442,13 @@ $widgets = array(
     19  => $output_widget_19,//Email Campaigns
     20  => $output_widget_20,//Calendars
     21  => $output_widget_21,//Firewall
-    22  => $output_widget_22//Threat Summary
+    22  => $output_widget_22,//Threat Summary
+    23  => $output_widget_23//Performance
 );
 
 $order_widgets = $dashboard['order_widgets'];
 if($order_widgets == 'default'){
-    $order_widgets = '5,1,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22';
+    $order_widgets = '5,1,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23';
 }
 $output_widgets = '';
 $order_widgets_array = explode(',', $order_widgets);

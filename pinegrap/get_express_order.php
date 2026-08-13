@@ -1616,6 +1616,7 @@ function get_express_order($properties) {
                                         FROM form_fields
                                         WHERE
                                             (product_id = '" . e($product_id) . "')
+                                            AND (form_type = 'product')
                                             AND (name = '" . e($field_name) . "')");
                                 }
                             }
@@ -4612,7 +4613,7 @@ function get_express_order($properties) {
                                 cols,
                                 information
                             FROM form_fields
-                            WHERE product_id = '" . e($item['product_id']) . "'
+                            WHERE (product_id = '" . e($item['product_id']) . "') AND (form_type = 'product')
                             ORDER BY sort_order");
 
                         // Loop through all fields to get options.
@@ -4677,6 +4678,7 @@ function get_express_order($properties) {
                                     FROM form_fields
                                     WHERE
                                         (product_id = '" . e($item['product_id']) . "')
+                                        AND (form_type = 'product')
                                         AND (name = '" . e($field_name) . "')");
                             }
                         }

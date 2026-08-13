@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+include_once('product_builder.php');
 
 $user = validate_user();
 
@@ -138,6 +139,54 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'Create a new field on this {var:1}.','vars'=>$form_type_name ) );
     
+// Else if there is a product_group_id, this is a variant set's form template
+// (2026.4). Placed before the product branch so a request carrying both is
+// unambiguous.
+} elseif ((isset($_REQUEST['product_group_id'])) && ($_REQUEST['product_group_id'] != '')) {
+
+    $form_type = 'product_group';
+    $form_type_name = lang('product form');
+    $form_type_identifier_id = 'product_group_id';
+
+    // form_type is pinned as well as the id: copies generated for each product
+    // carry the same product_group_id.
+    $form_type_filter =
+        "form_fields." . $form_type_identifier_id . " = '" . e($_REQUEST[$form_type_identifier_id]) . "'"
+        . " AND form_fields.form_type = 'product_group'";
+
+    validate_ecommerce_access($user);
+
+    $product_group = db_items(
+        "SELECT name, short_description, form_name
+        FROM product_groups
+        WHERE id = '" . e($_REQUEST['product_group_id']) . "'
+        LIMIT 1");
+
+    $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
+
+    $product_name      = $product_group['name'];
+    $short_description = $product_group['short_description'];
+    $form_name         = $product_group['form_name'];
+
+    if (($form_name == '') && ($short_description != '')) {
+        $form_name = $short_description;
+    } elseif (($form_name == '') && ($product_name != '')) {
+        $form_name = $product_name;
+    }
+
+    $output_form_designer_subnav_heading = h($short_description != '' ? $short_description : $product_name);
+    $output_form_designer_subnav_subheading = '
+    <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>';
+
+    $pg_breadcrumb_parent_items = array(
+        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php'),
+        array('label' => $product_name, 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . h(escape_javascript($_REQUEST['product_group_id']))),
+    );
+
+    $output_form_designer_content_heading = lang('Create Product Form Field');
+    $output_form_designer_content_subheading = lang('Create a new field on this product form.');
+    $output_cancel_onclick = 'window.location.href=\'view_fields.php?product_group_id=' . h(escape_javascript($_REQUEST['product_group_id'])) . '\'';
+
 // else if there is a product_id supplied in the query string, this is a product form
 } elseif ((isset($_REQUEST['product_id'])) && ($_REQUEST['product_id'] != '')) {
 
@@ -146,7 +195,7 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     $form_type_identifier_id = 'product_id';
     $form_type_filter =
         "form_fields." . $form_type_identifier_id . " = '" . e($_REQUEST[$form_type_identifier_id]) . "'";
-    
+
     validate_ecommerce_access($user);
     
     // get product name, short description and form name to determine what we will use for the form name
@@ -912,6 +961,13 @@ if (!$_POST) {
         }
     }
     
+
+// The template is written to every product in the set on every change, rather
+// than behind an "apply" button. A template drawn but never applied leaves a
+// set whose products have no form, and nothing on screen says so.
+if (isset($form_type) && ($form_type == 'product_group')) {
+    pg_pb_apply_form_template((int) $_POST['product_group_id']);
+}
     // forward user to view fields screen
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?' . $form_type_identifier_id . '=' . $_POST[$form_type_identifier_id] . $url_form_type . '&send_to=' . urlencode($_POST['send_to']));
 }

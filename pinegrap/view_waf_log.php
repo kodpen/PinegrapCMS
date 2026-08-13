@@ -9,8 +9,8 @@
  * own traffic that nothing legitimate is caught before switching the firewall
  * from Monitor to Block.
  *
- * Administrator-only. Firewall events expose raw attack payloads and visitor
- * addresses, which is not designer-tier material.
+ * Staff only (administrator, manager, designer). Contributors are excluded:
+ * firewall events expose raw attack payloads and visitor addresses.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,7 +20,17 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'administrator');
+// Administrator, manager and designer. Contributors are excluded.
+//
+// 'manager' maps to role number 2 in validate_area_access(), so the check is
+// role <= 2. The names in that function do not line up with the role table —
+// its 'designer' case is number 1, which is Manager — so read the number, not
+// the word.
+//
+// These screens were administrator-only, which was inconsistent: a manager can
+// open Settings and already sees this same data summarised in the dashboard
+// widgets, but was refused the screen that explains it.
+validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_waf_log');

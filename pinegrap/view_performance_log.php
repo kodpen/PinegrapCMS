@@ -5,8 +5,7 @@
  * Performance monitor report — backend admin view of perf_log table populated
  * by the shutdown handler in functions.php (perf_monitor_shutdown).
  *
- * Designer-tier users have no business with server-level diagnostics, so this
- * page is restricted to administrators (USER_ROLE = 0) only.
+ * Staff only (administrator, manager, designer). Contributors are excluded.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,7 +15,17 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'administrator');
+// Administrator, manager and designer. Contributors are excluded.
+//
+// 'manager' maps to role number 2 in validate_area_access(), so the check is
+// role <= 2. The names in that function do not line up with the role table —
+// its 'designer' case is number 1, which is Manager — so read the number, not
+// the word.
+//
+// These screens were administrator-only, which was inconsistent: a manager can
+// open Settings and already sees this same data summarised in the dashboard
+// widgets, but was refused the screen that explains it.
+validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_performance_log');
@@ -28,7 +37,8 @@ $liveform = new liveform('view_performance_log');
 // dependencies and TRUNCATE resets AUTO_INCREMENT in one step.
 if (isset($_POST['submit_clear'])) {
     validate_token_field();
-    if (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_log'")) > 0) {
+    if (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_stats'")) > 0) {
+        mysqli_query(db::$con, "TRUNCATE perf_stats") or output_error('Query failed.');
         mysqli_query(db::$con, "TRUNCATE perf_log") or output_error('Query failed.');
         log_activity(lang('cleared all performance log data'), $_SESSION['sessionusername']);
         $liveform->add_notice(lang('Performance log data has been cleared.'));
@@ -109,7 +119,36 @@ $mem_dir  = (isset($_GET['mem_dir']) && strtolower($_GET['mem_dir']) === 'asc') 
 
 // ---- Detect missing table (migration not yet run) --------------------------
 
-$table_exists = mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_log'")) > 0;
+// Reached directly by URL while monitoring is off: the tables were emptied
+// when it was switched off, so the screen would show an empty report with no
+// explanation. Say why, and offer the way back.
+if (defined('PERF_MONITOR_ENABLED') && !PERF_MONITOR_ENABLED) {
+    echo pg_page_shell(array(
+        'title'         => lang('Performance Log'),
+        'extra classes' => 'setting',
+        'icon'          => 'setting',
+        'heading'       => lang('Performance Log'),
+        'cancel'        => array(
+            'enable' => 'true',
+            'title'  => lang('Return to Settings'),
+            'url'    => 'settings.php',
+        ),
+        'auto_main' => false,
+    ));
+
+    echo '<main id="content" class="container">
+        <div class="alert alert-secondary d-flex align-items-center my-4">
+            <i class="bi bi-speedometer2 me-2"></i>
+            <div>' . lang('Performance monitoring is turned off, and the records were cleared when it was switched off.')
+            . ' <a href="settings.php">' . lang('Site Settings') . '</a></div>
+        </div>
+    </main>';
+
+    echo output_footer();
+    exit;
+}
+
+$table_exists = mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_stats'")) > 0;
 
 if (!$table_exists) {
     echo pg_page_shell(array(
@@ -127,7 +166,7 @@ if (!$table_exists) {
     echo '<main id="content" class="container">
         <div class="alert alert-warning my-4">
             <i class="bi bi-exclamation-triangle me-2"></i>'
-            . lang('The perf_log table does not exist yet. Please run the software upgrade to create it.')
+            . lang('The performance tables do not exist yet. Please run the software upgrade to create them.')
         . '</div>
     </main>';
     echo output_footer();
@@ -135,53 +174,52 @@ if (!$table_exists) {
 }
 
 // ---- Summary KPIs ----------------------------------------------------------
+//
+// Read from the hourly summary, not from raw rows. This is the change that
+// took the report from forty seconds to instant: perf_stats holds one row per
+// page per hour instead of one row per request, so the same window is a few
+// hundred rows rather than a million and a half.
+
+$stats_where = "WHERE hour_start >= " . (int) $start_timestamp;
+
+if ($area !== '') {
+    $stats_where .= " AND area = '" . escape($area) . "'";
+}
+
+if ($search !== '') {
+    $like = '%' . escape_like($search) . '%';
+    $stats_where .= " AND label LIKE '" . escape($like) . "'";
+}
 
 $summary = mysqli_fetch_assoc(mysqli_query(db::$con,
     "SELECT
-        COUNT(*) AS total,
-        COALESCE(AVG(duration_ms), 0) AS avg_duration,
-        COALESCE(MAX(duration_ms), 0) AS max_duration,
-        COALESCE(AVG(peak_memory_kb), 0) AS avg_memory,
-        COALESCE(MAX(peak_memory_kb), 0) AS max_memory,
-        COALESCE(AVG(cpu_user_ms + cpu_system_ms), 0) AS avg_cpu
-    FROM perf_log $where"));
+        COALESCE(SUM(hits), 0)         AS total,
+        COALESCE(SUM(slow_hits), 0)    AS slow_total,
+        COALESCE(SUM(total_ms), 0)     AS sum_ms,
+        COALESCE(MAX(max_ms), 0)       AS max_duration,
+        COALESCE(SUM(total_kb), 0)     AS sum_kb,
+        COALESCE(MAX(max_kb), 0)       AS max_memory,
+        COALESCE(SUM(total_cpu_ms), 0) AS sum_cpu
+    FROM perf_stats $stats_where"));
 
-// p95 — MySQL has no native percentile, so for small windows we fetch the row
-// at the right offset. For very large windows we cap the sample to keep the
-// report itself fast (defeats the purpose otherwise).
 $total = (int) $summary['total'];
-$p95_duration = 0;
-if ($total > 0) {
-    // A large OFFSET is the wrong tool here: MySQL has to walk every row it
-    // skips, so on a table with millions of rows the report page becomes the
-    // heaviest query on the server — a performance monitor that hurts
-    // performance whenever you look at it.
-    //
-    // Above the sample threshold the percentile is computed from the slowest
-    // slice instead. The 95th percentile lies inside the top 5% by
-    // definition, so reading that slice and taking its last value gives the
-    // same answer while touching a bounded number of rows.
-    $p95_sample_limit = 20000;
 
-    if ($total <= $p95_sample_limit) {
-        $offset = (int) max(0, floor($total * 0.95) - 1);
-        $row = mysqli_fetch_assoc(mysqli_query(db::$con,
-            "SELECT duration_ms FROM perf_log $where ORDER BY duration_ms ASC LIMIT 1 OFFSET $offset"));
-        if ($row) {
-            $p95_duration = (int) $row['duration_ms'];
-        }
-    } else {
-        $slice = (int) max(1, min($p95_sample_limit, ceil($total * 0.05)));
-        $row = mysqli_fetch_assoc(mysqli_query(db::$con,
-            "SELECT MIN(duration_ms) AS p95 FROM (
-                SELECT duration_ms FROM perf_log $where
-                ORDER BY duration_ms DESC LIMIT $slice
-             ) AS slowest"));
-        if ($row) {
-            $p95_duration = (int) $row['p95'];
-        }
-    }
-}
+// Averages come out of the sums; a summary table cannot hold an average
+// directly, because averaging averages is wrong once the buckets have
+// different hit counts.
+$summary['avg_duration'] = $total > 0 ? ($summary['sum_ms'] / $total) : 0;
+$summary['avg_memory']   = $total > 0 ? ($summary['sum_kb'] / $total) : 0;
+$summary['avg_cpu']      = $total > 0 ? ($summary['sum_cpu'] / $total) : 0;
+
+// The percentile is gone on purpose. Computing it needs every individual
+// duration, which is exactly the million rows this change stops keeping — and
+// the old query walked 1.5 million of them every time this page was opened,
+// making the report the slowest thing on the site.
+//
+// The slow-request count replaces it and is more useful: a percentile tells
+// you a number moved, this tells you how many requests crossed the line and
+// lets you click through to each one.
+$slow_total = (int) $summary['slow_total'];
 
 // ---- Top slowest pages (grouped) ------------------------------------------
 
@@ -192,20 +230,19 @@ if ($total > 0) {
 $slowest_order = $slow_sort_columns[$slow_sort] . ' ' . strtoupper($slow_dir);
 $slowest_query =
     "SELECT
-        IF(area = 'frontend',
-           IF(request_url = '' OR request_url = '/', '[home]', request_url),
-           script_name) AS label,
+        label,
         area,
-        COUNT(*) AS hits,
-        AVG(duration_ms) AS avg_ms,
-        MAX(duration_ms) AS max_ms,
-        AVG(peak_memory_kb) AS avg_kb,
-        MAX(peak_memory_kb) AS max_kb,
-        AVG(cpu_user_ms + cpu_system_ms) AS avg_cpu
-    FROM perf_log
-    $where
+        SUM(hits)                                  AS hits,
+        SUM(slow_hits)                             AS slow_hits,
+        SUM(total_ms) / GREATEST(SUM(hits), 1)     AS avg_ms,
+        MAX(max_ms)                                AS max_ms,
+        MIN(min_ms)                                AS min_ms,
+        SUM(total_kb) / GREATEST(SUM(hits), 1)     AS avg_kb,
+        MAX(max_kb)                                AS max_kb,
+        SUM(total_cpu_ms) / GREATEST(SUM(hits), 1) AS avg_cpu
+    FROM perf_stats
+    $stats_where
     GROUP BY label, area
-    HAVING hits >= 1
     ORDER BY $slowest_order
     LIMIT 25";
 
@@ -216,16 +253,14 @@ $slowest_result = mysqli_query(db::$con, $slowest_query);
 $memory_order = $mem_sort_columns[$mem_sort] . ' ' . strtoupper($mem_dir);
 $memory_query =
     "SELECT
-        IF(area = 'frontend',
-           IF(request_url = '' OR request_url = '/', '[home]', request_url),
-           script_name) AS label,
+        label,
         area,
-        COUNT(*) AS hits,
-        AVG(peak_memory_kb) AS avg_kb,
-        MAX(peak_memory_kb) AS max_kb,
-        AVG(duration_ms) AS avg_ms
-    FROM perf_log
-    $where
+        SUM(hits)                              AS hits,
+        SUM(total_kb) / GREATEST(SUM(hits), 1) AS avg_kb,
+        MAX(max_kb)                            AS max_kb,
+        SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
+    FROM perf_stats
+    $stats_where
     GROUP BY label, area
     ORDER BY $memory_order
     LIMIT 25";
@@ -235,9 +270,13 @@ $memory_result = mysqli_query(db::$con, $memory_query);
 // ---- Recent slowest individual requests -----------------------------------
 
 $recent_slow_query =
-    "SELECT id, request_url, script_name, area, method, http_status,
+    // perf_log now holds ONLY requests that crossed the slow threshold, so
+    // this is the outlier list by construction rather than by sorting a
+    // million ordinary rows. The address, user agent and query string are what
+    // turn "something took 101 seconds" into something answerable.
+    "SELECT id, request_url, query_string, script_name, area, method, http_status,
             duration_ms, peak_memory_kb, cpu_user_ms, cpu_system_ms,
-            user_id, log_timestamp
+            ip_address, user_agent, user_id, log_timestamp
     FROM perf_log
     $where
     ORDER BY duration_ms DESC
@@ -362,7 +401,16 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
             <tr>
                 <td><small class="text-muted">' . h($when) . '</small></td>
                 <td>' . pmon_area_badge($r['area']) . '</td>
-                <td><code>' . h($label) . '</code></td>
+                <td><code>' . h($label) . '</code>'
+                    . ($r['query_string'] !== ''
+                        ? '<div class="text-muted text-break" style="font-size:.72rem;">?' . h(mb_substr($r['query_string'], 0, 160)) . '</div>'
+                        : '')
+                    . ($r['ip_address'] !== '' || $r['user_agent'] !== ''
+                        ? '<div class="text-muted text-break" style="font-size:.72rem;">'
+                            . ($r['ip_address'] !== '' ? '<span class="font-monospace">' . h($r['ip_address']) . '</span> ' : '')
+                            . h(mb_substr($r['user_agent'], 0, 80))
+                          . '</div>'
+                        : '') . '</td>
                 <td><span class="badge bg-secondary">' . h($r['method']) . '</span></td>
                 <td class="text-end"><span class="badge ' . ((int) $r['http_status'] >= 400 ? 'bg-danger' : 'bg-success-subtle text-dark') . '">' . (int) $r['http_status'] . '</span></td>
                 <td class="text-end ' . pmon_duration_class((int) $r['duration_ms']) . '">' . number_format((int) $r['duration_ms']) . ' ms</td>
@@ -371,7 +419,7 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
             </tr>';
     }
 } else {
-    $recent_rows = '<tr><td colspan="8" class="text-center text-muted py-4">' . lang('No data yet for the selected period.') . '</td></tr>';
+    $recent_rows = '<tr><td colspan="8" class="text-center text-muted py-4">' . lang('No slow requests were recorded in this period.') . '</td></tr>';
 }
 
 // ---- Sortable column headers ----------------------------------------------
@@ -516,7 +564,11 @@ echo '
                         <div class="card-body py-3">
                             <div class="small text-body-secondary">' . lang('Average Duration') . '</div>
                             <div class="h4 mb-0 text-body-emphasis">' . number_format((int) $summary['avg_duration']) . ' <small>ms</small></div>
-                            <div class="small text-body-secondary">p95: ' . number_format($p95_duration) . ' ms · max: ' . number_format((int) $summary['max_duration']) . ' ms</div>
+                            <div class="small text-body-secondary">' . lang(array(
+                                'string' => '{var:1} slow request{suffix:1}',
+                                'vars'   => number_format($slow_total),
+                                'suffix' => ($slow_total == 1 ? '' : 's'),
+                            )) . ' · ' . lang('max') . ': ' . number_format((int) $summary['max_duration']) . ' ms</div>
                         </div>
                     </div>
                 </div>

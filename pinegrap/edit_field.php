@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+include_once('product_builder.php');
 
 $user = validate_user();
 
@@ -26,6 +27,7 @@ $query =
         form_type,
         page_id,
         product_id,
+        " . (pg_pb_form_template_ready() ? 'product_group_id' : '0 AS product_group_id') . ",
         name as field_name,
         rss_field
     FROM form_fields
@@ -42,6 +44,7 @@ $row = mysqli_fetch_assoc($result);
 $field_form_type = $row['form_type'];
 $page_id = $row['page_id'];
 $product_id = $row['product_id'];
+$product_group_id = isset($row['product_group_id']) ? (int) $row['product_group_id'] : 0;
 $field_name = $row['field_name'];
 
 // Set the old rss field so later we can determine if field has been set as the title field,
@@ -168,6 +171,54 @@ if ($page_id != 0) {
     $output_form_designer_content_heading = lang(array('string'=>'Edit {var:1} Field','vars'=>array(ucwords($form_type_name)) ));      ' ' . ucwords($form_type_name) . ' Field';
     $output_form_designer_content_subheading = lang(array('string'=>'View or update this {var:1} field.','vars'=>$form_type_name ) ); 
     
+// Else if this row is a variant set's form template (2026.4). Checked before
+// the product branch because a template's product_id is 0 and would otherwise
+// fall out of the chain entirely.
+} elseif (($field_form_type == 'product_group') && ($product_group_id != 0)) {
+
+    validate_ecommerce_access($user);
+
+    $form_type = 'product_group';
+    $form_type_name = 'product form';
+    $form_type_identifier_id = 'product_group_id';
+
+    // form_type is pinned as well as the id: the copies generated for each
+    // product carry the same product_group_id.
+    $form_type_filter =
+        "form_fields." . $form_type_identifier_id . " = '" . e(${$form_type_identifier_id}) . "'"
+        . " AND form_fields.form_type = 'product_group'";
+
+    $product_group = db_items(
+        "SELECT name, short_description, form_name
+        FROM product_groups
+        WHERE id = '" . (int) $product_group_id . "'
+        LIMIT 1");
+
+    $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
+
+    $product_name      = $product_group['name'];
+    $short_description = $product_group['short_description'];
+    $form_name         = $product_group['form_name'];
+
+    if (($form_name == '') && ($short_description != '')) {
+        $form_name = $short_description;
+    } elseif (($form_name == '') && ($product_name != '')) {
+        $form_name = $product_name;
+    }
+
+    $output_form_designer_subnav_heading = h($short_description != '' ? $short_description : $product_name);
+    $output_form_designer_subnav_subheading = '
+    <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>';
+
+    $pg_breadcrumb_parent_items = array(
+        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php'),
+        array('label' => $product_name, 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . (int) $product_group_id),
+    );
+
+    $output_form_designer_content_heading = lang('Edit Product Form Field');
+    $output_form_designer_content_subheading = lang('View or update this product form field.');
+    $output_cancel_onclick = 'window.location.href=\'view_fields.php?product_group_id=' . (int) $product_group_id . '\'';
+
 // else if there is a product_id, this is a product form
 } elseif ($product_id != 0) {
 
@@ -830,6 +881,11 @@ if (!$_POST) {
         }
 
         // forward user to view fields screen
+        // The template is written to every product in the set on every change, rather
+        // than behind an "apply" button. See pg_pb_apply_form_template().
+        if (isset($form_type) && ($form_type == 'product_group')) {
+            pg_pb_apply_form_template((int) $_POST['product_group_id']);
+        }
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?' . $form_type_identifier_id . '=' . $_POST[$form_type_identifier_id] . $url_form_type . '&send_to=' . urlencode($_POST['send_to']));
         
     // else field was not selected for deletion
@@ -1229,6 +1285,11 @@ if (!$_POST) {
         }
         
         // forward user to view fields screen
+        // The template is written to every product in the set on every change, rather
+        // than behind an "apply" button. See pg_pb_apply_form_template().
+        if (isset($form_type) && ($form_type == 'product_group')) {
+            pg_pb_apply_form_template((int) $_POST['product_group_id']);
+        }
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?' . $form_type_identifier_id . '=' . $_POST[$form_type_identifier_id] . $url_form_type . '&send_to=' . urlencode($_POST['send_to']));
     }
 }

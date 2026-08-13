@@ -63,6 +63,32 @@ function da_user_agent()
  *
  * Returns true on success.
  */
+/**
+ * Apply TLS verification to a cURL handle.
+ *
+ * Standalone twin of pg_curl_tls() in functions.php, because this file has to
+ * work before the software exists. Same reasoning: this is the channel that
+ * carries executable code, so an unverified certificate here means anyone able
+ * to intercept the connection can choose what gets written into the web root.
+ *
+ * Never falls back to unverified on failure — a silent downgrade only has to
+ * be provoked once to be defeated. Opting out is an explicit setting.
+ */
+function da_curl_tls($ch)
+{
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+
+    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
+        curl_setopt($ch, CURLOPT_CAINFO, CURL_CA_BUNDLE);
+    }
+
+    if (defined('ALLOW_INSECURE_UPDATE_TLS') && ALLOW_INSECURE_UPDATE_TLS === true) {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    }
+}
+
 function da_download($url, $destination)
 {
     $bytes = false;
@@ -71,6 +97,7 @@ function da_download($url, $destination)
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_USERAGENT, da_user_agent());
+        da_curl_tls($ch);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
@@ -99,7 +126,10 @@ function da_download($url, $destination)
                 'header'  => 'User-Agent: ' . da_user_agent() . "\r\n",
                 'timeout' => 300,
             ),
-            'ssl' => array('verify_peer' => false, 'verify_peer_name' => false),
+            'ssl' => array(
+                'verify_peer'      => !(defined('ALLOW_INSECURE_UPDATE_TLS') && ALLOW_INSECURE_UPDATE_TLS === true),
+                'verify_peer_name' => !(defined('ALLOW_INSECURE_UPDATE_TLS') && ALLOW_INSECURE_UPDATE_TLS === true),
+            ),
         ));
 
         $bytes = @file_get_contents($url, false, $context);
@@ -227,8 +257,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         if (!da_download("https://kodpen.com/" . $software_file, $software_file)) {
             $_SESSION['software']['download_assistant']['message'] =
                 'Could not download ' . $software_file . ' from the software server. '
-                . 'Check that this server can reach kodpen.com, and that a firewall in '
-                . 'front of it is not rejecting the request.';
+                . 'Check that this server can reach kodpen.com, that a firewall in '
+                . 'front of it is not rejecting the request, and that the certificate '
+                . 'verifies — if this server has no up-to-date CA bundle, point '
+                . 'CURL_CA_BUNDLE at a cacert.pem in pinegrap/data/config.php.';
 
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
@@ -368,8 +400,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        da_curl_tls($ch);
         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, (function_exists('encode_json') ? encode_json($request) : json_encode($request)));

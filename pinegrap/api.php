@@ -887,26 +887,66 @@ switch ($action) {
                     $vs5_no_data = '<p class="position-absolute top-50 start-50 translate-middle text-center text-muted px-3" style="font-size:11px;width:90%">'
                         . lang('There is not enough data yet.') . '</p>';
 
-                    // ── PANEL 1 : Hourly peaks — today vs yesterday ────────────────────────
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT HOUR(FROM_UNIXTIME(start_timestamp)) AS h, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $today_start AND start_timestamp < $now
-                         GROUP BY h"
-                    ) or output_error(lang('Query failed.'));
-                    $h_today = array_fill(0, 24, 0);
-                    while ($r = mysqli_fetch_assoc($res))
-                        $h_today[(int) $r['h']] = (int) $r['cnt'];
+                    // Every figure below is read from the hourly rollups
+                    // rather than counted out of the raw visitors table.
+                    //
+                    // The old version ran eleven aggregates over `visitors`,
+                    // grouping on HOUR(FROM_UNIXTIME(start_timestamp)) — an
+                    // expression, so no index applied and each one built a
+                    // temporary table. One of them covered twelve months. At
+                    // 100,000-200,000 visits a day that is tens of millions of
+                    // rows scanned to draw three small charts, which is where
+                    // the twenty to thirty second load came from. Worse, on
+                    // MyISAM those scans hold a read lock, so every visitor
+                    // arriving on the site queued behind an open dashboard.
+                    //
+                    // The rollups hold 24 rows per day whatever the traffic.
+                    $today_date     = date('Y-m-d');
+                    $yesterday_date = date('Y-m-d', $yesterday_start);
 
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT HOUR(FROM_UNIXTIME(start_timestamp)) AS h, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $yesterday_start AND start_timestamp < $today_start
-                         GROUP BY h"
-                    ) or output_error(lang('Query failed.'));
-                    $h_yest = array_fill(0, 24, 0);
-                    while ($r = mysqli_fetch_assoc($res))
-                        $h_yest[(int) $r['h']] = (int) $r['cnt'];
+                    // Carry the backfill forward a slice at a time. This is
+                    // the one screen that wants the historical summaries, it
+                    // is reached by administrators only, and the budget is
+                    // small enough not to be felt. On a fresh upgrade whose
+                    // backfill was cut short by a server request timeout, the
+                    // history fills in over the next few dashboard loads
+                    // instead of needing anyone to restart anything.
+                    $vs5_backfill = false;
+                    if (function_exists('pg_visitor_backfill_step')) {
+                        $vs5_backfill = pg_visitor_backfill_step(3);
+                    }
+
+                    // ── PANEL 1 : Hourly peaks — today vs yesterday ────────────────────────
+                    $stats_2d = pg_visitor_stats_range($yesterday_date, $today_date);
+
+                    $h_today = array_fill(0, 24, 0);
+                    $h_yest  = array_fill(0, 24, 0);
+
+                    // Page views are carried alongside the visitor counts.
+                    //
+                    // The plotted line counts sessions that STARTED in an
+                    // hour, which is not the same as activity during that
+                    // hour: someone who arrives at 14:00 and reads ten pages
+                    // at 15:00 leaves 15:00 with no new session but ten views.
+                    // The tooltip names the busiest content of the hour, so
+                    // without this figure the reader sees a named article
+                    // with ten views sitting above a chart value of zero and
+                    // reasonably concludes something is broken.
+                    $h_today_views = array_fill(0, 24, 0);
+                    $h_yest_views  = array_fill(0, 24, 0);
+
+                    if (isset($stats_2d[$today_date])) {
+                        foreach ($stats_2d[$today_date] as $hh => $vals) {
+                            $h_today[(int) $hh]       = $vals['visitors'];
+                            $h_today_views[(int) $hh] = $vals['page_views'];
+                        }
+                    }
+                    if (isset($stats_2d[$yesterday_date])) {
+                        foreach ($stats_2d[$yesterday_date] as $hh => $vals) {
+                            $h_yest[(int) $hh]       = $vals['visitors'];
+                            $h_yest_views[(int) $hh] = $vals['page_views'];
+                        }
+                    }
 
                     $kpi_today = array_sum($h_today);
                     $kpi_yesterday = array_sum($h_yest);
@@ -914,104 +954,72 @@ switch ($action) {
                     // Separate labels for today (limited to current hour) and yesterday (full 24 hours)
                     $h_today_labels_js = '';
                     $h_today_js = '';
+                    $h_today_views_js = '';
                     for ($h = 0; $h <= $current_hour; $h++) {
                         $h_today_labels_js .= '"' . str_pad($h, 2, '0', STR_PAD_LEFT) . ':00",';
                         $h_today_js .= $h_today[$h] . ',';
+                        $h_today_views_js .= $h_today_views[$h] . ',';
                     }
 
                     $h_yest_labels_js = '';
                     $h_yest_js = '';
+                    $h_yest_views_js = '';
                     for ($h = 0; $h < 24; $h++) {
                         $h_yest_labels_js .= '"' . str_pad($h, 2, '0', STR_PAD_LEFT) . ':00",';
                         $h_yest_js .= $h_yest[$h] . ',';
+                        $h_yest_views_js .= $h_yest_views[$h] . ',';
                     }
 
-                    // Top page per hour — today (for tooltip)
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT HOUR(FROM_UNIXTIME(start_timestamp)) AS h, landing_page_name, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $today_start AND start_timestamp < $now
-                         GROUP BY h, landing_page_name ORDER BY h ASC, cnt DESC"
-                    ) or output_error(lang('Query failed.'));
-                    $h_today_pages = array_fill(0, 24, null);
-                    $seen_h = array();
-                    while ($r = mysqli_fetch_assoc($res)) {
-                        $hh = (int) $r['h'];
-                        if (!isset($seen_h[$hh])) {
-                            $raw = trim($r['landing_page_name']);
-                            $h_today_pages[$hh] = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $r['cnt']);
-                            $seen_h[$hh] = true;
-                        }
-                    }
+                    // Busiest content per hour, for the chart tooltip.
+                    //
+                    // This is what the widget was asked to show and could not:
+                    // the tooltip now names the article or product, not the
+                    // page template that displayed it. Rows recorded before
+                    // this change still show the page name, because the item
+                    // identity was never written down and cannot be recovered.
+                    $vs5_hour_label = function ($row) {
+                        if (!$row) return null;
+                        return array('name' => h($row['name']), 'cnt' => (int) $row['cnt']);
+                    };
+
+                    $h_today_pages = array_map($vs5_hour_label, pg_visitor_top_content_by_hour($today_date));
+                    $h_yest_pages  = array_map($vs5_hour_label, pg_visitor_top_content_by_hour($yesterday_date));
+
                     // Slice today pages to match current hour
                     $h_today_pages = array_slice($h_today_pages, 0, $current_hour + 1);
 
-                    // Top page per hour — yesterday (for tooltip)
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT HOUR(FROM_UNIXTIME(start_timestamp)) AS h, landing_page_name, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $yesterday_start AND start_timestamp < $today_start
-                         GROUP BY h, landing_page_name ORDER BY h ASC, cnt DESC"
-                    ) or output_error(lang('Query failed.'));
-                    $h_yest_pages = array_fill(0, 24, null);
-                    $seen_h = array();
-                    while ($r = mysqli_fetch_assoc($res)) {
-                        $hh = (int) $r['h'];
-                        if (!isset($seen_h[$hh])) {
-                            $raw = trim($r['landing_page_name']);
-                            $h_yest_pages[$hh] = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $r['cnt']);
-                            $seen_h[$hh] = true;
-                        }
-                    }
+                    // Top content rows under each chart.
+                    $vs5_top = function ($from, $to) {
+                        $rows = pg_visitor_top_content($from, $to, 1);
+                        if (empty($rows)) return null;
+                        return array('name' => h($rows[0]['label']), 'cnt' => (int) $rows[0]['views']);
+                    };
 
-                    // Top page — today (bottom trend row)
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT landing_page_name, COUNT(*) AS cnt FROM visitors
-                         WHERE start_timestamp >= $today_start AND start_timestamp < $now
-                         GROUP BY landing_page_name ORDER BY cnt DESC LIMIT 1"
-                    );
-                    $row = mysqli_fetch_assoc($res);
-                    $tp_today = null;
-                    if ($row) {
-                        $raw = trim($row['landing_page_name']);
-                        $tp_today = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $row['cnt']);
-                    }
-
-                    // Top page — yesterday (bottom trend row)
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT landing_page_name, COUNT(*) AS cnt FROM visitors
-                         WHERE start_timestamp >= $yesterday_start AND start_timestamp < $today_start
-                         GROUP BY landing_page_name ORDER BY cnt DESC LIMIT 1"
-                    );
-                    $row = mysqli_fetch_assoc($res);
-                    $tp_yest = null;
-                    if ($row) {
-                        $raw = trim($row['landing_page_name']);
-                        $tp_yest = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $row['cnt']);
-                    }
+                    $tp_today = $vs5_top($today_date, $today_date);
+                    $tp_yest  = $vs5_top($yesterday_date, $yesterday_date);
 
                     // ── PANEL 2 : Daily peaks — this 7 days vs previous 7 days ───────────
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT DATE(FROM_UNIXTIME(start_timestamp)) AS d, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $week_ago AND start_timestamp < $now
-                         GROUP BY d"
-                    ) or output_error(lang('Query failed.'));
-                    $w_tw_map = array();
-                    while ($r = mysqli_fetch_assoc($res))
-                        $w_tw_map[$r['d']] = (int) $r['cnt'];
+                    // Daily totals folded up from the hourly rollup.
+                    $vs5_daily = function ($from_ts, $to_ts) {
+                        $out  = array();
+                        $rows = pg_visitor_stats_range(date('Y-m-d', $from_ts), date('Y-m-d', $to_ts));
+                        foreach ($rows as $d => $hours) {
+                            $sum = 0;
+                            foreach ($hours as $vals) $sum += $vals['visitors'];
+                            $out[$d] = $sum;
+                        }
+                        return $out;
+                    };
 
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT DATE(FROM_UNIXTIME(start_timestamp)) AS d, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $two_weeks_ago AND start_timestamp < $week_ago
-                         GROUP BY d"
-                    ) or output_error(lang('Query failed.'));
-                    $w_lw_map = array();
-                    while ($r = mysqli_fetch_assoc($res))
-                        $w_lw_map[$r['d']] = (int) $r['cnt'];
+                    // Bounded to exactly the seven dates each chart plots.
+                    //
+                    // The rollup is keyed by date where the old query filtered
+                    // on a timestamp, so a range expressed as "the last seven
+                    // times 86,400 seconds" would pull in part of an eighth
+                    // day and the headline figure would not match the bars
+                    // underneath it.
+                    $w_tw_map = $vs5_daily($now - 6 * 86400, $now);
+                    $w_lw_map = $vs5_daily($week_ago - 6 * 86400, $week_ago);
 
                     $w_tw_labels = $w_tw_data = $w_lw_labels = $w_lw_data = '';
                     $has_tw = $has_lw = false;
@@ -1034,44 +1042,12 @@ switch ($action) {
                     $kpi_tw = array_sum($w_tw_map);
                     $kpi_lw = array_sum($w_lw_map);
 
-                    // Top page — this week
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT landing_page_name, COUNT(*) AS cnt FROM visitors
-                         WHERE start_timestamp >= $week_ago AND start_timestamp < $now
-                         GROUP BY landing_page_name ORDER BY cnt DESC LIMIT 1"
-                    );
-                    $row = mysqli_fetch_assoc($res);
-                    $tp_tw = null;
-                    if ($row) {
-                        $raw = trim($row['landing_page_name']);
-                        $tp_tw = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $row['cnt']);
-                    }
-
-                    // Top page — last week
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT landing_page_name, COUNT(*) AS cnt FROM visitors
-                         WHERE start_timestamp >= $two_weeks_ago AND start_timestamp < $week_ago
-                         GROUP BY landing_page_name ORDER BY cnt DESC LIMIT 1"
-                    );
-                    $row = mysqli_fetch_assoc($res);
-                    $tp_lw = null;
-                    if ($row) {
-                        $raw = trim($row['landing_page_name']);
-                        $tp_lw = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $row['cnt']);
-                    }
+                    // Top content — this week / last week
+                    $tp_tw = $vs5_top(date('Y-m-d', $now - 6 * 86400), date('Y-m-d', $now));
+                    $tp_lw = $vs5_top(date('Y-m-d', $week_ago - 6 * 86400), date('Y-m-d', $week_ago));
 
                     // ── PANEL 3 : Monthly peaks — this month (daily) vs prev 12 months ───
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT DATE(FROM_UNIXTIME(start_timestamp)) AS d, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $month_start AND start_timestamp < $now
-                         GROUP BY d"
-                    ) or output_error(lang('Query failed.'));
-                    $m_tm_map = array();
-                    while ($r = mysqli_fetch_assoc($res))
-                        $m_tm_map[$r['d']] = (int) $r['cnt'];
+                    $m_tm_map = $vs5_daily($month_start, $now);
 
                     $days_in_month = (int) date('t');
                     $m_tm_labels = $m_tm_data = '';
@@ -1087,17 +1063,27 @@ switch ($action) {
                     }
                     $kpi_tm = array_sum($m_tm_map);
 
-                    // Previous 12 months — monthly totals
+                    // Previous 12 months — monthly totals.
+                    //
+                    // This was the single most expensive query on the screen:
+                    // a year of raw visitor rows read and grouped on a
+                    // formatted date. Against the rollup it reads at most
+                    // 8,760 rows.
                     $twelve_months_ago = mktime(0, 0, 0, (int) date('n') - 12, 1, (int) date('Y'));
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT DATE_FORMAT(FROM_UNIXTIME(start_timestamp),'%Y-%m') AS ym, COUNT(*) AS cnt
-                         FROM visitors WHERE start_timestamp >= $twelve_months_ago AND start_timestamp < $month_start
-                         GROUP BY ym"
-                    ) or output_error(lang('Query failed.'));
+
                     $pm_map = array();
-                    while ($r = mysqli_fetch_assoc($res))
-                        $pm_map[$r['ym']] = (int) $r['cnt'];
+                    $res    = @mysqli_query(
+                        db::$con,
+                        "SELECT DATE_FORMAT(stat_date, '%Y-%m') AS ym, SUM(new_visitors) AS cnt
+                         FROM visitor_stats_hourly
+                         WHERE stat_date >= '" . e(date('Y-m-d', $twelve_months_ago)) . "'
+                           AND stat_date <  '" . e(date('Y-m-d', $month_start)) . "'
+                         GROUP BY ym"
+                    );
+                    if ($res) {
+                        while ($r = @mysqli_fetch_assoc($res))
+                            $pm_map[$r['ym']] = (int) $r['cnt'];
+                    }
 
                     $m_pm_labels = $m_pm_data = '';
                     $has_pm = false;
@@ -1112,34 +1098,49 @@ switch ($action) {
                     }
                     $kpi_pm = array_sum($pm_map);
 
-                    // Top page — this month
-                    $res = mysqli_query(
-                        db::$con,
-                        "SELECT landing_page_name, COUNT(*) AS cnt FROM visitors
-                         WHERE start_timestamp >= $month_start AND start_timestamp < $now
-                         GROUP BY landing_page_name ORDER BY cnt DESC LIMIT 1"
-                    );
-                    $row = mysqli_fetch_assoc($res);
-                    $tp_tm = null;
-                    if ($row) {
-                        $raw = trim($row['landing_page_name']);
-                        $tp_tm = array('name' => ($raw === '' || $raw === '/') ? lang('Homepage') : h($raw), 'cnt' => (int) $row['cnt']);
-                    }
+                    // Top content — this month
+                    $tp_tm = $vs5_top(date('Y-m-d', $month_start), date('Y-m-d', $now));
 
                     // ── Helper: inline top-page row HTML ─────────────────────────────────
-                    $vs5_tp = function ($tp, $rgb) {
+                    // The badge counts page views, while the figure above the
+                    // chart counts visitors. Two different units sitting one
+                    // above the other, so the badge says which it is — a top
+                    // item can honestly show more views than the panel shows
+                    // visitors, and unlabelled that reads as a bug.
+                    $vs5_views_label = lang('page views');
+
+                    $vs5_tp = function ($tp, $rgb) use ($vs5_views_label) {
                         if (!$tp)
                             return '';
                         return '<div class="d-flex align-items-center gap-1" style="font-size:11px">'
                             . '<i class="bi bi-window text-muted flex-shrink-0"></i>'
                             . '<span class="text-truncate flex-grow-1 text-muted" title="' . $tp['name'] . '">' . $tp['name'] . '</span>'
-                            . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:10px">' . number_format($tp['cnt']) . '</span>'
+                            . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:10px" title="' . h($vs5_views_label) . '">' . number_format($tp['cnt']) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
                             . '</div>';
                     };
+
+                    // While the historical summaries are still being built,
+                    // say so. Older periods legitimately read low until the
+                    // backfill finishes, and an unexplained dip in a traffic
+                    // chart is the kind of thing that gets investigated as a
+                    // real problem.
+                    $vs5_progress = '';
+                    if (is_array($vs5_backfill) && empty($vs5_backfill['done']) && $vs5_backfill['max_id'] > 0) {
+                        $vs5_pct = floor(($vs5_backfill['cursor'] / $vs5_backfill['max_id']) * 100);
+                        $vs5_progress = '
+                        <div class="px-3 pt-2">
+                          <div class="alert alert-info py-1 px-2 mb-0 d-flex align-items-center gap-2" style="font-size:11px">
+                            <i class="bi bi-hourglass-split flex-shrink-0"></i>
+                            <span class="flex-grow-1">' . lang('Historical visitor summaries are still being built. Figures for earlier periods will be incomplete until this finishes.') . '</span>
+                            <span class="badge bg-info-subtle text-info-emphasis flex-shrink-0">' . (int) $vs5_pct . '%</span>
+                          </div>
+                        </div>';
+                    }
 
                     // ── Assemble output ───────────────────────────────────────────────────
                     $output_data = '
                     <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
+                      ' . $vs5_progress . '
                       <div class="row g-0">
 
                         <!-- ══ PANEL 1 : Daily — Hourly peaks ══════════════════════════════ -->
@@ -1211,12 +1212,16 @@ switch ($action) {
                     <script>(function(){
                       var tc = getPreferredThemeColor();
                       var fmtN = function(n){ return Number(n).toLocaleString(); };
+                      // Twin of the PHP $vs5_views_label. The badge is page
+                      // views, the headline above it is visitors; keep both
+                      // renderers saying so or the two paths disagree.
+                      var VIEWS_LABEL = ' . json_encode($vs5_views_label) . ';
 
                         // ── Dataset registry ─────────────────────────────────────────────────
                         var DS = {
                           d: {
-                            t: { labels:[' . $h_today_labels_js . '], data:[' . $h_today_js . '], kpi:' . $kpi_today . ', tp:' . json_encode($tp_today) . ', pages:' . json_encode(array_values($h_today_pages)) . ' },
-                            y: { labels:[' . $h_yest_labels_js . '], data:[' . $h_yest_js . '], kpi:' . $kpi_yesterday . ', tp:' . json_encode($tp_yest) . ', pages:' . json_encode(array_values($h_yest_pages)) . ' }
+                            t: { labels:[' . $h_today_labels_js . '], data:[' . $h_today_js . '], views:[' . $h_today_views_js . '], kpi:' . $kpi_today . ', tp:' . json_encode($tp_today) . ', pages:' . json_encode(array_values($h_today_pages)) . ' },
+                            y: { labels:[' . $h_yest_labels_js . '], data:[' . $h_yest_js . '], views:[' . $h_yest_views_js . '], kpi:' . $kpi_yesterday . ', tp:' . json_encode($tp_yest) . ', pages:' . json_encode(array_values($h_yest_pages)) . ' }
                           },
                           w: {
                             t: { labels:[' . $w_tw_labels . '], data:[' . $w_tw_data . '], kpi:' . $kpi_tw . ', tp:' . json_encode($tp_tw) . ' },
@@ -1265,7 +1270,7 @@ switch ($action) {
                         el.innerHTML = `<div class="d-flex align-items-center gap-1" style="font-size:11px">`
                           + `<i class="bi bi-window text-muted flex-shrink-0"></i>`
                           + `<span class="text-truncate flex-grow-1 text-muted" title="${tp.name}">${tp.name}</span>`
-                          + `<span class="badge rounded-pill flex-shrink-0" style="background:rgba(${rgb},.12);color:rgb(${rgb});font-size:10px">${fmtN(tp.cnt)}</span>`
+                          + `<span class="badge rounded-pill flex-shrink-0" style="background:rgba(${rgb},.12);color:rgb(${rgb});font-size:10px" title="${VIEWS_LABEL}">${fmtN(tp.cnt)} <span style="opacity:.75;font-weight:400">${VIEWS_LABEL}</span></span>`
                           + `</div>`;
                       }
 
@@ -1304,10 +1309,31 @@ switch ($action) {
                               legend: { display:false },
                               tooltip: {
                                 callbacks: {
+                                  // Name the plotted number. Unlabelled, a
+                                  // bare "0" reads as a contradiction of the
+                                  // content line below it.
+                                  label: function(ctx) {
+                                    return ' . json_encode(lang('New Visitors')) . ' + ": " + fmtN(ctx.parsed.y);
+                                  },
                                   afterLabel: function(ctx) {
-                                    var pg = DS.d[vs5_d_mode].pages[ctx.dataIndex];
-                                    if (!pg) return "";
-                                    return "\u21b3 " + pg.name + "  \u00b7  " + fmtN(pg.cnt);
+                                    var ds = DS.d[vs5_d_mode];
+                                    var out = [];
+
+                                    // Views during the hour, as opposed to
+                                    // sessions that began in it. These differ
+                                    // whenever a visit spans the hour, which
+                                    // is most of the time.
+                                    var vw = ds.views ? ds.views[ctx.dataIndex] : null;
+                                    if (vw !== null && vw !== undefined) {
+                                      out.push(' . json_encode(lang('Page Views')) . ' + ": " + fmtN(vw));
+                                    }
+
+                                    var pg = ds.pages[ctx.dataIndex];
+                                    if (pg) {
+                                      out.push("\u21b3 " + pg.name + "  \u00b7  " + fmtN(pg.cnt));
+                                    }
+
+                                    return out.join("\n");
                                   }
                                 }
                               }
@@ -1374,40 +1400,32 @@ switch ($action) {
 
                     $output_rows = '';
 
+                    // Read from the hourly rollup rather than counting raw
+                    // visitor rows. Beyond the cost, this is what makes the
+                    // list useful: entries now name the article or product
+                    // that was read, where before every blog post in the site
+                    // collapsed into a single row called 'blog-gorunum'.
+                    //
+                    // Grouping by page_id and item also removes the need for
+                    // pg_home_page_group_expression() here — the home page's
+                    // several recorded spellings share one page_id, so they no
+                    // longer split their own traffic between two rows.
+
                     // --- Get Top Pages (last 7 days)
-                    // Purpose: Most visited pages in the last 7 days
-                    $query = "
-                        SELECT landing_page_name, COUNT(*) AS visits
-                        FROM visitors
-                        WHERE start_timestamp >= $timestamp_7_days_ago
-                        GROUP BY landing_page_name
-                        ORDER BY visits DESC
-                        LIMIT 5";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $top_pages = [];
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $raw = trim($row['landing_page_name']);
-                        $name = ($raw == '' || $raw == '/' || $raw == 'example.com/') ? lang('Homepage') : $raw;
-                        $page_url = URL_SCHEME . HOSTNAME_SETTING . PATH . $raw;
-                        $top_pages[] = ['name' => $name, 'url' => $page_url, 'visits' => (int) $row['visits']];
+                    foreach (pg_visitor_top_content(date('Y-m-d', $timestamp_7_days_ago), date('Y-m-d'), 5) as $row) {
+                        $top_pages[] = ['name' => $row['label'], 'url' => $row['url'], 'visits' => (int) $row['views']];
                     }
 
                     // --- Get Trend Page (last 1 day)
-                    // Purpose: Most visited page in the last 24 hours
-                    $query = "
-                        SELECT landing_page_name, COUNT(*) AS visits
-                        FROM visitors
-                        WHERE start_timestamp >= $timestamp_1_day_ago
-                        GROUP BY landing_page_name
-                        ORDER BY visits DESC
-                        LIMIT 1";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $trend_page = mysqli_fetch_assoc($result);
-                    if ($trend_page) {
-                        $raw = trim($trend_page['landing_page_name']);
-                        $name = ($raw == '' || $raw == '/' || $raw == 'example.com/') ? lang('Homepage') : $raw;
-                        $page_url = URL_SCHEME . HOSTNAME_SETTING . PATH . $raw;
-                        $trend_page = ['name' => $name, 'url' => $page_url, 'visits' => (int) $trend_page['visits']];
+                    $trend_page = null;
+                    $trend_rows = pg_visitor_top_content(date('Y-m-d', $timestamp_1_day_ago), date('Y-m-d'), 1);
+                    if (!empty($trend_rows)) {
+                        $trend_page = [
+                            'name'   => $trend_rows[0]['label'],
+                            'url'    => $trend_rows[0]['url'],
+                            'visits' => (int) $trend_rows[0]['views'],
+                        ];
                     }
 
                     // --- Mark/merge trend page
@@ -3194,7 +3212,9 @@ switch ($action) {
                         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        // Verify the certificate. See pg_curl_tls() for why this matters most
+                        // on the update and licence channel.
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
                         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
@@ -4123,7 +4143,8 @@ switch ($action) {
                     // not shown a link into a screen that would reject them.
                     $waf_footer = '';
 
-                    if ($user['role'] < 1) {
+                    // The log screen now admits staff roles, so the link does too.
+                    if ($user['role'] < 3) {
                         $waf_footer = '
                         <div class="card-footer border-0 bg-reset py-1 text-center">
                             <a href="view_waf_log.php" class="text-decoration-none" style="font-size:11px">'
@@ -4131,8 +4152,28 @@ switch ($action) {
                         </div>';
                     }
 
+                    // Reassurance, but only when it is true.
+                    //
+                    // The claim is made ONLY in blocking mode. In Monitor the
+                    // firewall watches and lets everything through, and telling
+                    // an operator they are protected while nothing is being
+                    // stopped is the kind of false comfort that stops them
+                    // finishing the setup. Off says nothing at all.
+                    $waf_shield = '';
+
+                    if ($waf_current_mode === 'block') {
+                        $waf_shield = '
+                        <div class="d-flex align-items-center px-2 py-2 border-bottom" style="gap:8px">
+                            <i class="bi bi-shield-fill-check text-success" style="font-size:20px"></i>
+                            <div class="text-success" style="font-size:12px;line-height:1.25">'
+                                . lang('Your website is protected against threats.')
+                            . '</div>
+                        </div>';
+                    }
+
                     $output_data = '
                         <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
+                            ' . $waf_shield . '
                             <div class="d-flex align-items-center justify-content-between px-2 py-2 border-bottom">
                                 <span class="badge rounded-pill bg-' . h($waf_mode_class) . '-subtle text-' . h($waf_mode_class) . '-emphasis border border-' . h($waf_mode_class) . '-subtle" style="font-size:10px">
                                     <i class="bi ' . h($waf_mode_icon) . ' me-1"></i>' . h($waf_mode_label) . '
@@ -4340,7 +4381,7 @@ switch ($action) {
 
                     $td_footer = '';
 
-                    if ($user['role'] < 1) {
+                    if ($user['role'] < 3) {
                         $td_footer = '
                         <div class="card-footer border-0 bg-reset py-1 text-center">
                             <a href="view_waf_log.php" class="text-decoration-none" style="font-size:11px">'
@@ -4348,6 +4389,11 @@ switch ($action) {
                         </div>';
                     }
 
+                    // No protection banner here. Widget 21 already carries it,
+                    // and the same reassurance twice on one dashboard reads as
+                    // filler rather than information. This widget answers a
+                    // different question — who is generating the load — and
+                    // the ranked list is the answer.
                     $output_data = '
                         <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
                             <div class="d-flex border-bottom">
@@ -4363,6 +4409,411 @@ switch ($action) {
                             <div class="px-3 pt-2 pb-1 text-muted" style="font-size:11px">' . lang('Top sources') . '</div>
                             <div class="px-3 pb-2">' . $td_rows . '</div>
                         </div>' . $td_footer;
+
+                    $response = array(
+                        'status' => 'success',
+                        'message' => 'Action Success',
+                        'data' => $output_data,
+                    );
+                    echo encode_json($response);
+                    exit();
+                    break;
+                } else {
+                    $response = array(
+                        'status' => 'error',
+                        'message' => 'Access denied'
+                    );
+                    echo encode_json($response);
+                    exit();
+                    break;
+                }
+
+            case '23':
+                // ── Performance ─────────────────────────────────────────
+                //
+                // Reads the hourly summary, never the raw rows: the point of
+                // this widget is to be cheap enough to sit on a dashboard that
+                // refreshes every minute. The old per-request table would have
+                // made it the second most expensive thing on the page.
+                //
+                // FRONT END ONLY. Back-end screens are still measured and are
+                // in the full report, where the operator can filter by area —
+                // but they do not belong on this widget. A settings page that
+                // one administrator opens twice a day would otherwise sit in
+                // the same average as the product page thousands of customers
+                // load, and could set the health grade on its own. The number
+                // a shop owner needs at a glance is what their visitors are
+                // waiting for.
+                if ($user['role'] < 3) {
+
+                    // Monitoring off: nothing is being recorded and the tables
+                    // were emptied when it was switched off, so say that rather
+                    // than render zeroes that look like a broken site.
+                    if (defined('PERF_MONITOR_ENABLED') && !PERF_MONITOR_ENABLED) {
+                        $output_data = '
+                        <div class="card-body d-flex align-items-center justify-content-center text-center">
+                            <div>
+                                <i class="bi bi-speedometer2 d-block mb-2" style="font-size:22px;opacity:.35"></i>
+                                <p class="text-muted mb-0" style="font-size:12px">' . lang('Performance monitoring is turned off.') . '</p>
+                            </div>
+                        </div>';
+
+                        $response = array('status' => 'success', 'message' => 'Action Success', 'data' => $output_data);
+                        echo encode_json($response);
+                        exit();
+                        break;
+                    }
+
+                    $pf_available = (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_stats'")) > 0);
+
+                    if (!$pf_available) {
+                        $output_data = '
+                        <div class="card-body d-flex align-items-center justify-content-center text-center">
+                            <div>
+                                <i class="bi bi-database-exclamation d-block mb-2" style="font-size:22px;opacity:.4"></i>
+                                <p class="text-muted mb-0" style="font-size:12px">' . lang('The performance tables do not exist yet. Please run the software upgrade to create them.') . '</p>
+                            </div>
+                        </div>';
+
+                        $response = array('status' => 'success', 'message' => 'Action Success', 'data' => $output_data);
+                        echo encode_json($response);
+                        exit();
+                        break;
+                    }
+
+                    $pf_day_ago = time() - 86400;
+                    $pf_slow_ms = defined('PERF_MONITOR_SLOW_MS') ? (int) PERF_MONITOR_SLOW_MS : 1000;
+
+                    // Averages are computed from the sums. Averaging the
+                    // per-bucket averages would weight a quiet hour the same
+                    // as a busy one and quietly give the wrong number.
+                    $pf_totals = mysqli_fetch_assoc(mysqli_query(
+                        db::$con,
+                        "SELECT
+                            COALESCE(SUM(hits), 0)      AS hits,
+                            COALESCE(SUM(slow_hits), 0) AS slow_hits,
+                            COALESCE(SUM(total_ms), 0)  AS total_ms,
+                            COALESCE(MAX(max_ms), 0)    AS max_ms,
+                            COALESCE(SUM(total_kb), 0)  AS total_kb
+                         FROM perf_stats
+                         WHERE hour_start >= " . (int) $pf_day_ago . "
+                           AND area = 'frontend'"
+                    ));
+
+                    $pf_hits = (int) $pf_totals['hits'];
+                    $pf_slow = (int) $pf_totals['slow_hits'];
+                    $pf_avg  = $pf_hits > 0 ? (int) round($pf_totals['total_ms'] / $pf_hits) : 0;
+                    $pf_max  = (int) $pf_totals['max_ms'];
+
+                    // Colour the average against what a page should feel like,
+                    // not against its own history: 200 ms is fine, 500 ms is
+                    // noticeable, beyond that a visitor is waiting.
+                    if ($pf_avg >= 500) {
+                        $pf_avg_color = 'danger';
+                    } elseif ($pf_avg >= 200) {
+                        $pf_avg_color = 'warning';
+                    } else {
+                        $pf_avg_color = 'success';
+                    }
+
+                    $pf_slow_color = ($pf_slow > 0) ? 'warning' : 'success';
+
+                    // ── Health ───────────────────────────────────────────
+                    //
+                    // Graded on the slowest page that gets real traffic, NOT
+                    // on the site average.
+                    //
+                    // The average is the wrong number for a verdict because it
+                    // is dominated by whatever is cheapest and most frequent.
+                    // A site whose pages are all fast except an eight-second
+                    // checkout averages well under 100 ms and would be shown a
+                    // green badge while losing sales on the one page that
+                    // pays for everything. A visitor never experiences the
+                    // average; they experience the page they opened.
+                    //
+                    // Graded on the page's FASTEST run, not its average.
+                    //
+                    // An outlier inflates an average but cannot touch a
+                    // minimum — that is what a minimum is. So a product page
+                    // that normally answers in 200 ms and once took 101
+                    // seconds because a crawler caught a lock still reads as
+                    // 200 ms, while a checkout that takes eight seconds every
+                    // single time reads as eight seconds. The first is not a
+                    // broken page; the second is.
+                    //
+                    // The alternative suggested itself — ignore anything over a
+                    // second as probably bogus — would have hidden exactly the
+                    // page worth finding, because a consistently slow checkout
+                    // is over that line on every request.
+                    //
+                    // The trade-off, stated plainly: a page that is slow only
+                    // half the time grades on its good half. Understating is
+                    // the safer error for a badge that has to be trusted, and
+                    // the average is still visible in the list underneath.
+                    $pf_worst = mysqli_fetch_assoc(mysqli_query(
+                        db::$con,
+                        "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
+                                SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
+                         FROM perf_stats
+                         WHERE hour_start >= " . (int) $pf_day_ago . "
+                           AND area = 'frontend'
+                         GROUP BY label
+                         HAVING SUM(hits) >= 3
+                         ORDER BY floor_ms DESC
+                         LIMIT 1"
+                    ));
+
+                    // Quiet site: nothing opened three times yet.
+                    if (!$pf_worst) {
+                        $pf_worst = mysqli_fetch_assoc(mysqli_query(
+                            db::$con,
+                            "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
+                                    SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
+                             FROM perf_stats
+                             WHERE hour_start >= " . (int) $pf_day_ago . "
+                               AND area = 'frontend'
+                             GROUP BY label
+                             ORDER BY floor_ms DESC
+                             LIMIT 1"
+                        ));
+                    }
+
+                    $pf_worst_ms = $pf_worst ? (int) round($pf_worst['floor_ms']) : 0;
+                    $pf_worst_label = $pf_worst ? $pf_worst['label'] : '';
+
+                    // Below this there is not enough traffic to judge anything,
+                    // and a confident verdict from four requests is worse than
+                    // admitting the sample is too small.
+                    $pf_enough = ($pf_hits >= 10);
+
+                    if (!$pf_enough) {
+                        $pf_grade = lang('Not enough data');
+                        $pf_grade_class = 'secondary';
+                    } elseif ($pf_worst_ms < 300) {
+                        $pf_grade = lang('Very good');
+                        $pf_grade_class = 'success';
+                    } elseif ($pf_worst_ms < 800) {
+                        $pf_grade = lang('Good');
+                        $pf_grade_class = 'success';
+                    } elseif ($pf_worst_ms < 2000) {
+                        $pf_grade = lang('Weak');
+                        $pf_grade_class = 'warning';
+                    } else {
+                        $pf_grade = lang('Poor');
+                        $pf_grade_class = 'danger';
+                    }
+
+                    // Needle position. Duration has no upper bound, so a linear
+                    // scale would leave every healthy site pinned at zero and
+                    // every unhealthy one pinned at maximum. The scale is
+                    // piecewise instead, stretched across the range where the
+                    // difference actually changes what a visitor feels.
+                    $pf_points = array(
+                        array(0, 0.0), array(300, 0.25), array(800, 0.5),
+                        array(2000, 0.75), array(5000, 1.0),
+                    );
+
+                    $pf_fraction = 1.0;
+
+                    for ($i = 1; $i < count($pf_points); $i++) {
+                        if ($pf_worst_ms <= $pf_points[$i][0]) {
+                            $pf_span = $pf_points[$i][0] - $pf_points[$i - 1][0];
+                            $pf_into = $pf_worst_ms - $pf_points[$i - 1][0];
+                            $pf_fraction = $pf_points[$i - 1][1]
+                                + (($pf_span > 0 ? $pf_into / $pf_span : 0)
+                                   * ($pf_points[$i][1] - $pf_points[$i - 1][1]));
+                            break;
+                        }
+                    }
+
+                    if (!$pf_enough) {
+                        $pf_fraction = 0;
+                    }
+
+                    // Semicircle: 180° on the left through to 0° on the right.
+                    $pf_angle = 180 - ($pf_fraction * 180);
+                    $pf_rad = $pf_angle * M_PI / 180;
+                    $pf_nx = 70 + (44 * cos($pf_rad));
+                    $pf_ny = 70 - (44 * sin($pf_rad));
+
+                    // Band arcs, drawn once. Kept as flat strokes with no
+                    // gradient so they render identically in both themes.
+                    $pf_arc = '';
+                    $pf_bands = array(
+                        array(0.00, 0.25, 'var(--bs-success)'),
+                        array(0.25, 0.50, 'var(--bs-success)'),
+                        array(0.50, 0.75, 'var(--bs-warning)'),
+                        array(0.75, 1.00, 'var(--bs-danger)'),
+                    );
+
+                    foreach ($pf_bands as $pf_band) {
+                        $a1 = (180 - ($pf_band[0] * 180)) * M_PI / 180;
+                        $a2 = (180 - ($pf_band[1] * 180)) * M_PI / 180;
+                        $x1 = 70 + (52 * cos($a1));
+                        $y1 = 70 - (52 * sin($a1));
+                        $x2 = 70 + (52 * cos($a2));
+                        $y2 = 70 - (52 * sin($a2));
+
+                        $pf_arc .= '<path d="M ' . round($x1, 2) . ' ' . round($y1, 2)
+                            . ' A 52 52 0 0 1 ' . round($x2, 2) . ' ' . round($y2, 2) . '"'
+                            . ' fill="none" stroke="' . $pf_band[2] . '" stroke-width="9"'
+                            . ' stroke-linecap="butt" opacity="' . ($pf_enough ? '0.85' : '0.25') . '"/>';
+                    }
+
+                    $pf_worst_display = $pf_worst_label;
+
+                    if (mb_strlen($pf_worst_display) > 26) {
+                        $pf_worst_display = '…' . mb_substr($pf_worst_display, -25);
+                    }
+
+                    $pf_gauge = '
+                    <div class="d-flex align-items-center border-bottom px-2 py-2" style="gap:8px">
+                        <svg viewBox="0 0 140 84" style="width:104px;height:62px;flex-shrink:0" role="img" aria-label="' . h($pf_grade) . '">
+                            <path d="M 18 70 A 52 52 0 0 1 122 70" fill="none" stroke="rgba(128,128,128,.15)" stroke-width="9"/>
+                            ' . $pf_arc . '
+                            <line x1="70" y1="70" x2="' . round($pf_nx, 2) . '" y2="' . round($pf_ny, 2) . '"
+                                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                            <circle cx="70" cy="70" r="4" fill="currentColor"/>
+                        </svg>
+                        <div class="flex-fill overflow-hidden">
+                            <div class="fw-semibold text-' . h($pf_grade_class) . '" style="font-size:15px;line-height:1.1">' . h($pf_grade) . '</div>'
+                            . ($pf_enough && $pf_worst_label !== ''
+                                ? '<div class="text-truncate text-muted" style="font-size:11px" title="' . h($pf_worst_label) . '">' . h($pf_worst_display) . '</div>
+                                   <div class="text-muted" style="font-size:11px">' . lang(array(
+                                        'string' => '{var:1} ms at its fastest',
+                                        'vars'   => number_format($pf_worst_ms),
+                                    )) . '</div>'
+                                : '<div class="text-muted" style="font-size:11px">' . lang(array(
+                                        'string' => '{var:1} request{suffix:1} recorded',
+                                        'vars'   => number_format($pf_hits),
+                                        'suffix' => ($pf_hits == 1 ? '' : 's'),
+                                    )) . '</div>')
+                        . '</div>
+                    </div>';
+
+                    // Slowest pages by average. Ordered by average rather than
+                    // by worst case, because one freak request says less than a
+                    // page that is consistently slow for everyone who opens it.
+                    //
+                    // No minimum hit count. An earlier version required three
+                    // hits to keep one-off flukes out, and on a quiet site that
+                    // silently hid the entire front end: product and blog pages
+                    // get a visit or two a day, while the admin screens the
+                    // operator keeps refreshing sail past the threshold. The
+                    // widget then disagreed with the report next to it, which
+                    // is worse than showing an occasional outlier. The hit
+                    // count is in the bar's tooltip for context.
+                    $pf_rows = '';
+
+                    $pf_result = mysqli_query(
+                        db::$con,
+                        "SELECT
+                            label,
+                            area,
+                            SUM(hits)                              AS hits,
+                            SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms,
+                            MAX(max_ms)                            AS max_ms
+                         FROM perf_stats
+                         WHERE hour_start >= " . (int) $pf_day_ago . "
+                           AND area = 'frontend'
+                         GROUP BY label, area
+                         ORDER BY avg_ms DESC
+                         LIMIT 5"
+                    );
+
+                    $pf_pages = $pf_result ? mysqli_fetch_items($pf_result) : array();
+
+                    // Scale the bars against the slowest entry on the list, not
+                    // against some absolute ceiling: with one page at 40 seconds
+                    // every other bar would round to nothing.
+                    $pf_peak = 0;
+
+                    foreach ($pf_pages as $pf_page) {
+                        if ((int) $pf_page['avg_ms'] > $pf_peak) {
+                            $pf_peak = (int) $pf_page['avg_ms'];
+                        }
+                    }
+
+                    foreach ($pf_pages as $pf_page) {
+                        $pf_page_avg = (int) $pf_page['avg_ms'];
+                        $pf_width = ($pf_peak > 0) ? (int) round(100 * $pf_page_avg / $pf_peak) : 0;
+
+                        if ($pf_width < 3) {
+                            $pf_width = 3;
+                        }
+
+                        if ($pf_page_avg >= $pf_slow_ms) {
+                            $pf_bar = 'bg-danger';
+                        } elseif ($pf_page_avg >= 500) {
+                            $pf_bar = 'bg-warning';
+                        } else {
+                            $pf_bar = 'bg-secondary';
+                        }
+
+                        // Front-end labels are URLs and can be very long; show
+                        // the tail, which is the part that identifies the page.
+                        $pf_label = $pf_page['label'];
+
+                        if (mb_strlen($pf_label) > 34) {
+                            $pf_label = '…' . mb_substr($pf_label, -33);
+                        }
+
+                        $pf_rows .= '
+                        <div class="mb-2">
+                            <div class="d-flex align-items-center justify-content-between" style="gap:6px">
+                                <span class="text-truncate" style="font-size:12px" title="' . h($pf_page['label']) . '">' . h($pf_label) . '</span>
+                                <span class="text-muted flex-shrink-0" style="font-size:11px">' . number_format($pf_page_avg) . ' ms</span>
+                            </div>
+                            <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang(array(
+                                'string' => '{var:1} request{suffix:1} · peak {var:2} ms',
+                                'vars'   => array(number_format((int) $pf_page['hits']), number_format((int) $pf_page['max_ms'])),
+                                'suffix' => ((int) $pf_page['hits'] == 1 ? '' : 's'),
+                            )) . '">
+                                <div class="progress-bar ' . $pf_bar . '" style="width:' . $pf_width . '%"></div>
+                            </div>
+                        </div>';
+                    }
+
+                    if ($pf_rows === '') {
+                        $pf_rows = '
+                        <div class="text-center py-4">
+                            <i class="bi bi-speedometer2 d-block mb-2" style="font-size:22px;opacity:.35"></i>
+                            <p class="text-muted mb-0" style="font-size:12px">' . lang('No data yet for the selected period.') . '</p>
+                        </div>';
+                    }
+
+                    $pf_footer = '';
+
+                    if ($user['role'] < 3) {
+                        $pf_footer = '
+                        <div class="card-footer border-0 bg-reset py-1 text-center">
+                            <a href="view_performance_log.php" class="text-decoration-none" style="font-size:11px">'
+                            . lang('Performance Log') . ' <i class="bi bi-arrow-right-short"></i></a>
+                        </div>';
+                    }
+
+                    $output_data = '
+                        <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
+                            ' . $pf_gauge . '
+                            <div class="d-flex border-bottom">
+                                <div class="flex-fill px-3 py-2">
+                                    <div class="fw-semibold text-' . h($pf_avg_color) . '" style="font-size:17px;line-height:1">' . number_format($pf_avg) . ' <span style="font-size:11px">ms</span></div>
+                                    <div class="text-muted text-truncate" style="font-size:11px">' . lang('Average') . '</div>
+                                </div>
+                                <div class="flex-fill px-3 py-2 border-start">
+                                    <div class="fw-semibold text-' . h($pf_slow_color) . '" style="font-size:17px;line-height:1">' . number_format($pf_slow) . '</div>
+                                    <div class="text-muted text-truncate" style="font-size:11px">' . lang(array(
+                                        'string' => 'Slower than {var:1} ms',
+                                        'vars'   => number_format($pf_slow_ms),
+                                    )) . '</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
+                                <span class="text-muted" style="font-size:11px">' . lang('Slowest pages') . '</span>
+                                <span class="text-muted" style="font-size:10px">' . lang('Front end') . ' · ' . lang('Last 24 hours') . '</span>
+                            </div>
+                            <div class="px-3 pb-2">' . $pf_rows . '</div>
+                        </div>' . $pf_footer;
 
                     $response = array(
                         'status' => 'success',
@@ -5242,7 +5693,9 @@ switch ($action) {
                 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                // Verify the certificate. See pg_curl_tls() for why this matters most
+                // on the update and licence channel.
+                pg_curl_tls($ch);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
@@ -5435,7 +5888,7 @@ switch ($action) {
                     //return error json output
                     $response = array(
                         'status' => 'error',
-                        'message' => 'Error while get files from the update server.'
+                        'message' => 'Error while get files from the update server.' . pg_curl_tls_hint($curl_errno)
                     );
                     echo encode_json($response);
                     exit();

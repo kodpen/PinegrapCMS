@@ -487,7 +487,7 @@ foreach ($order_items as $order_item) {
                     required,
                     wysiwyg
                 FROM form_fields
-                WHERE (product_id = '" . $order_item['product_id'] . "') AND (type != 'information')
+                WHERE (product_id = '" . $order_item['product_id'] . "') AND (form_type = 'product') AND (type != 'information')
                 ORDER BY sort_order";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             

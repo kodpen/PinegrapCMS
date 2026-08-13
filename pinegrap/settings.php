@@ -77,6 +77,7 @@ if (!$_POST) {
     // ── Firewall settings ────────────────────────────────────────────────
     // Every read is guarded: an install that has not run the 2026.2.4 upgrade
     // still renders this screen, it just shows the defaults.
+    $perf_monitor             = isset($row['perf_monitor']) ? (int)$row['perf_monitor'] : 1;
     $waf_enabled              = isset($row['waf_enabled']) ? (int)$row['waf_enabled'] : 0;
     $waf_mode                 = isset($row['waf_mode']) ? $row['waf_mode'] : 'monitor';
     $waf_sensitivity          = isset($row['waf_sensitivity']) ? $row['waf_sensitivity'] : 'medium';
@@ -1131,6 +1132,20 @@ if (!$_POST) {
     $block_unknown_bots_checked = ($block_unknown_bots == 1) ? ' checked="checked"' : '';
 
     // ── Firewall switches ────────────────────────────────────────────────
+    $perf_monitor_checked           = ($perf_monitor == 1) ? ' checked="checked"' : '';
+
+    // With monitoring off there is nothing recorded and nothing kept, so the
+    // link would open an empty screen. Hiding it is the same rule the rest of
+    // the panel follows: a control that leads nowhere is worse than no
+    // control, because the operator has to click it to find that out.
+    $output_performance_log_button = '';
+
+    if ($perf_monitor == 1) {
+        $output_performance_log_button =
+            '<a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Performance Log') . '" href="'
+            . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_performance_log.php"><span class="material-icons me-1">speed</span>'
+            . lang('Performance Log') . '</a>';
+    }
     $waf_enabled_checked            = ($waf_enabled == 1) ? ' checked="checked"' : '';
     $waf_signature_scan_checked     = ($waf_signature_scan == 1) ? ' checked="checked"' : '';
     $waf_rate_limit_checked         = ($waf_rate_limit == 1) ? ' checked="checked"' : '';
@@ -1371,7 +1386,7 @@ if (!$_POST) {
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Clearing Cache') . '" data-confirm-content="' . lang('All server-side caches will be cleared.') . '" href="'. OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY.'/purge_cache.php?token=' . $_SESSION['software']['token'] . '"><span class="material-icons me-1">cached</span>' . lang('Purge Cache') . '</a>
                                 <a class="btn btn-link link-secondary py-0 mb-2 " href="'. OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY.'/si.php" onclick="window.open(this.href, \'SoftwareInformations\', \'resizable=no,status=no,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=no,dependent=no\'); return false;"><span class="material-icons me-1">info</span>' . lang('System Informations') . '</a>
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Site Log') . '" href="'. OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY.'/view_log.php"><span class="material-icons me-1">timeline</span>' . lang('Site Log') . '</a>
-                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Performance Log') . '" href="'. OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY.'/view_performance_log.php"><span class="material-icons me-1">speed</span>' . lang('Performance Log') . '</a>
+                                ' . $output_performance_log_button . '
                             </div>
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <button type="button" class="btn btn-link link-secondary py-0 mb-2 " data-bs-toggle="modal" data-bs-target="#cron_jobs"><span class="material-icons me-1">schedule</span>' . lang('Cron Jobs') . '</button>
@@ -1832,7 +1847,7 @@ if (!$_POST) {
                                                                     tagin(document.querySelector("#waf_exclusions"));
                                                                 }
                                                             </script>
-                                                            <div class="form-text">' . lang('Script names or URL fragments that skip inspection entirely, before any other rule. Intended for payment gateway callbacks, where losing a request loses a paid order, and for your own licence or update endpoint if this site serves other Pinegrap installations.') . '</div>
+                                                            <div class="form-text">' . lang('Script names or URL paths that skip inspection entirely, before any other rule. Matched against the path only — never the query string, which anyone could append to steal the exemption. Intended for payment gateway callbacks, where losing a request loses a paid order, and for your own licence or update endpoint if this site serves other Pinegrap installations.') . '</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2103,6 +2118,13 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                         <div class="col-12 my-1"><hr/></div>
+                                        <div class="col-12 my-1">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $perf_monitor_checked . ' class="form-check-input" type="checkbox" id="perf_monitor" name="perf_monitor"/>
+                                                <label class="form-check-label" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
+                                                <div class="form-text">' . lang('Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.') . '</div>
+                                            </div>
+                                        </div>
                                         <div class="col-12 my-1">
                                             <div class="form-check form-switch">
                                                 <input value="1"' . $mobile_checked . ' class="form-check-input" type="checkbox" id="mobile" name="mobile"/>
@@ -3366,6 +3388,30 @@ if (!$_POST) {
         return array_key_exists($key, $_POST) ? $_POST[$key] : NULL;
     }
 
+    // ── Performance monitoring ───────────────────────────────────────────
+    //
+    // Switching it off discards what was collected. Keeping the rows would
+    // leave a report that silently ages: the screen still opens, the numbers
+    // still look current, and nothing says they stopped being updated weeks
+    // ago. Stale data presented as live is worse than no data.
+    //
+    // Only on the transition, so re-saving the screen while it is already off
+    // does not fire the queries again.
+    $perf_monitor_new = post_value('perf_monitor') ? 1 : 0;
+    $perf_monitor_old = (int) db_value("SELECT perf_monitor FROM config");
+
+    if ($perf_monitor_old === 1 && $perf_monitor_new === 0) {
+        if (db_item("SHOW TABLES LIKE 'perf_stats'")) {
+            db("TRUNCATE perf_stats");
+        }
+
+        if (db_item("SHOW TABLES LIKE 'perf_log'")) {
+            db("TRUNCATE perf_log");
+        }
+
+        log_activity(lang('performance monitoring was turned off and its records were cleared'), $_SESSION['sessionusername']);
+    }
+
     // ── Firewall settings ────────────────────────────────────────────────
     // Built as a fragment rather than inlined, so an install that has not run
     // the 2026.2.4 upgrade simply saves nothing here instead of failing the
@@ -3457,6 +3503,7 @@ if (!$_POST) {
             plain_text_email_campaign_footer = '" . escape(trim(post_value('plain_text_email_campaign_footer'))) . "',
             debug = '" . escape(post_value('debug')) . "',
             visitor_tracking = '" . escape(post_value('visitor_tracking')) . "',
+            perf_monitor = '" . escape($perf_monitor_new) . "',
             allowed_bots = '" . escape(trim(post_value('allowed_bots'))) . "',
             block_unknown_bots = '" . escape(post_value('block_unknown_bots')) . "',
             " . $sql_waf_settings . "

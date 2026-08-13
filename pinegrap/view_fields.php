@@ -230,6 +230,72 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     
     // Send the product id through the browser url.
     $output_product_id_to_url = '&product_id=' . h(escape_javascript(urlencode($_GET['product_id'])));
+
+// Else if there is a product_group_id, this is a variant set's form template
+// (2026.4). One form drawn here, written to every product in the set.
+} elseif ((isset($_GET['product_group_id'])) && ($_GET['product_group_id'] != '')) {
+    validate_ecommerce_access($user);
+
+    $form_type = 'product_group';
+    $form_type_name = 'product form';
+    $form_type_identifier_id = 'product_group_id';
+
+    // form_type is pinned as well as the id. The copies generated for each
+    // product carry the same product_group_id, so filtering on that column
+    // alone would list the template plus one copy per variant.
+    $form_type_filter =
+        "form_fields." . $form_type_identifier_id . " = '" . e($_GET[$form_type_identifier_id]) . "'"
+        . " AND form_fields.form_type = 'product_group'";
+
+    $product_group = db_items(
+        "SELECT name, short_description, form_name
+        FROM product_groups
+        WHERE id = '" . e($_GET['product_group_id']) . "'
+        LIMIT 1");
+
+    $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
+
+    $form_name = $product_group['form_name'];
+
+    if (($form_name == '') && ($product_group['short_description'] != '')) {
+        $form_name = $product_group['short_description'];
+    } elseif ($form_name == '') {
+        $form_name = $product_group['name'];
+    }
+
+    $variant_count = (int) db_value(
+        "SELECT COUNT(*)
+        FROM products_groups_xref
+        WHERE product_group = '" . e($_GET['product_group_id']) . "'");
+
+    $output_form_designer_subnav_heading = h($product_group['name']);
+
+    // The count is the point of this screen: what you draw here lands on every
+    // one of those products.
+    $output_form_designer_subnav_subheading = '
+    <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>
+    <p class="p-0 m-0">' . lang(array(
+        'string' => 'Applied to {var:1} variant{suffix:1}',
+        'vars'   => array($variant_count),
+        'suffix' => ($variant_count === 1) ? '' : 's')) . '</p>';
+
+    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php">' . lang('Variant Sets') . '</a></li>';
+    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
+
+    $pg_breadcrumb_parent_items = array(
+        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php'),
+        array('label' => $product_group['name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . h(escape_javascript($_GET['product_group_id']))),
+    );
+
+    $output_form_designer_content_heading = lang('Edit Product Form');
+    $output_form_designer_content_subheading = lang('Add fields to this product form.');
+    $output_cancel_onclick = 'window.location.href=\'edit_product2.php?group_id=' . h(escape_javascript($_GET['product_group_id'])) . '\'';
+
+    // No preview button: a template belongs to no single product, and
+    // preview_form.php renders one product's form.
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-2"></span>' . lang('Delete Selected') . '</button>';
+
+    $output_product_id_to_url = '&product_group_id=' . h(escape_javascript(urlencode($_GET['product_group_id'])));
 }
 
 // get fields

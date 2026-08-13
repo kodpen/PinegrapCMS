@@ -1621,12 +1621,11 @@ if (!$_POST) {
     log_activity( lang(array('string'=>'product ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
 
     if ($_POST['current_form_state'] == 1) {
-        
-        $query = "SELECT id FROM products WHERE name = '" . $_POST['name'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        // forward user to view products page
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?product_id=' . $row['id'] . '');
+        // Use the insert id captured right after the INSERT. The previous code
+        // re-queried by unescaped product name: an injection vector, and wrong
+        // whenever two products share a name (it returned the older row).
+        // forward user to the product form fields page
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?product_id=' . (int) $product_id);
     } else {
         // forward user to view products page
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_products.php');

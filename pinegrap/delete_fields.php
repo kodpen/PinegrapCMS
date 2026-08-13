@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+include_once('product_builder.php');
 
 $user = validate_user();
 
@@ -115,8 +116,37 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
     }
 }
 
-// if there is a product_id supplied in the query string, this is a product form
-if ((isset($_POST['product_id'])) && ($_POST['product_id'] != '')) {
+// If there is a product_group_id, this is a variant set's form template (2026.4).
+// Checked first: a template row's product_id is 0, so the product branch below
+// would not claim it.
+if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
+
+    validate_ecommerce_access($user);
+
+    $form_type = 'product_group';
+    $form_type_name = 'product form';
+    $form_type_identifier_id = 'product_group_id';
+
+    $product_group = db_items(
+        "SELECT name, short_description, form_name
+        FROM product_groups
+        WHERE id = '" . e($_POST['product_group_id']) . "'
+        LIMIT 1");
+
+    $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
+
+    $product_name      = $product_group['name'];
+    $short_description = $product_group['short_description'];
+    $form_name         = $product_group['form_name'];
+
+    if (($form_name == '') && ($short_description != '')) {
+        $form_name = $short_description;
+    } elseif (($form_name == '') && ($product_name != '')) {
+        $form_name = $product_name;
+    }
+
+// else if there is a product_id supplied in the query string, this is a product form
+} elseif ((isset($_POST['product_id'])) && ($_POST['product_id'] != '')) {
 
     validate_ecommerce_access($user);
     
@@ -162,6 +192,7 @@ if ($_POST['fields']) {
         $query = "SELECT 
                      form_fields.page_id,
                      form_fields.product_id,
+                     " . (pg_pb_form_template_ready() ? 'form_fields.product_group_id' : '0 AS product_group_id') . ",
                      page.page_folder
                  FROM form_fields
                  LEFT JOIN page ON form_fields.page_id = page.page_id
@@ -171,6 +202,7 @@ if ($_POST['fields']) {
         $row = mysqli_fetch_assoc($result);
         $page_id = $row['page_id'];
         $product_id = $row['product_id'];
+        $field_product_group_id = isset($row['product_group_id']) ? (int) $row['product_group_id'] : 0;
         $folder_id = $row['page_folder'];
         
         // if there is a page id, folder id and the user has access to the folder, allow the user access to delete field
@@ -182,6 +214,11 @@ if ($_POST['fields']) {
             $access_granted = true;
         // else, if there is a product id and the user has eCommerce access, allow the user access to delete the field
         } else if (($product_id != '0') && (validate_ecommerce_access($user))) {
+            $access_granted = true;
+        // Else, if this is a variant set's form template (2026.4). Its page_id
+        // and product_id are both 0, so without this branch the two checks
+        // above both fail and the delete is silently refused.
+        } else if (($field_product_group_id != 0) && (validate_ecommerce_access($user))) {
             $access_granted = true;
         } else {
             $access_granted = false;
@@ -314,5 +351,12 @@ if ($page_type == 'express order') {
     }
 }
 
+
+// The template is written to every product in the set on every change, rather
+// than behind an "apply" button. A template drawn but never applied leaves a
+// set whose products have no form, and nothing on screen says so.
+if (isset($form_type) && ($form_type == 'product_group')) {
+    pg_pb_apply_form_template((int) $_POST['product_group_id']);
+}
 // forward user to view fields screen
 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?' . $form_type_identifier_id . '=' . $_POST[$form_type_identifier_id] . $url_form_type . '&send_to=' . urlencode($_POST['send_to']));

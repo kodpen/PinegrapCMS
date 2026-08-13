@@ -163,7 +163,9 @@ curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pin
 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+// Verify the certificate. See pg_curl_tls() for why this matters most
+// on the update and licence channel.
+pg_curl_tls($ch);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);

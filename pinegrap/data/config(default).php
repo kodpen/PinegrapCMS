@@ -165,11 +165,61 @@ define('PERF_MONITOR_SAMPLE_RATE', 100);
 // Only record requests slower than this many milliseconds. 0 records all.
 define('PERF_MONITOR_MIN_DURATION_MS', 0);
 
+// A request at or above this many milliseconds is kept in full detail in
+// perf_log — with its query string, address and user agent — so an outlier can
+// actually be investigated. Everything else is only counted in the hourly
+// summary. On a healthy site (48 ms average) almost nothing crosses this, so
+// the detail table stays small while still catching every real problem.
+define('PERF_MONITOR_SLOW_MS', 1000);
+
+// Scripts to leave out of measurement entirely, comma separated.
+//
+// api.php is excluded by default. It is the internal AJAX endpoint, so every
+// dashboard widget and every autocomplete keystroke is one of its requests;
+// grouped under one name it dominated the report while saying nothing about
+// which page is actually slow.
+define('PERF_MONITOR_IGNORE_SCRIPTS', 'api.php');
+
 // Days of history to keep.
 define('PERF_MONITOR_RETENTION_DAYS', 30);
 
 // Hard ceiling on stored rows. Retention by age alone cannot bound the table
 // on a busy site; this can. Oldest rows are dropped beyond it.
 define('PERF_MONITOR_MAX_ROWS', 200000);
+
+// ── Update channel TLS ───────────────────────────────────────────────────
+//
+// Licence checks, update checks and the update package itself are verified
+// against the server's certificate. This is the one channel that carries
+// executable code, so an unverified certificate means whoever can intercept
+// the connection chooses what gets written into the web root.
+//
+// If verification fails, the error says so — it never downgrades silently,
+// because an attacker only has to break the first attempt to be handed an
+// insecure retry.
+
+// Path to a CA bundle (cacert.pem), for servers whose certificate store is
+// not on the default search path. Leave empty to use the system store.
+define('CURL_CA_BUNDLE', '');
+
+// Last resort for a host with no usable CA store at all. Leaving this true
+// means update packages are accepted without proof of where they came from.
+define('ALLOW_INSECURE_UPDATE_TLS', false);
+
+// ── Google product taxonomy ──────────────────────────────────────────
+//
+// Which category list the product category picker searches. Google publishes
+// one per language and the feed has to carry the category in the feed's own
+// language, so this normally matches the site's language.
+//
+// Leave empty to follow the software language. The list is read from
+// assets/google_taxonomy/google_taxonomy_<language>.json, a file shipped with
+// the software: Google last revised the taxonomy in 2021, so there is nothing
+// to keep in sync and no reason to depend on an outbound connection.
+//
+// The picker stores the numeric id. Google accepts either that or the full
+// path in the feed, but the id is language-independent and survives a category
+// being renamed.
+define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 
 ?>

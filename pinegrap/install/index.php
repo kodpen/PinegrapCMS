@@ -487,6 +487,14 @@ $versions = array(
   array('number' => '2026.2.7'	),
   array('number' => '2026.3'	),
   array('number' => '2026.3.1'	),
+  array('number' => '2026.3.2'	),
+  array('number' => '2026.3.3'	),
+  array('number' => '2026.3.4'	),
+  array('number' => '2026.3.5'	),
+  array('number' => '2026.3.6'	),
+  array('number' => '2026.3.7'	),
+  array('number' => '2026.3.8'	),
+  array('number' => '2026.4'	),
 );
 
 $software_version = $versions[count($versions) - 1]['number'];
@@ -5247,6 +5255,448 @@ function upgrade_to_2026_3_1() {
 
         if (db_item("SHOW INDEX FROM perf_log WHERE Key_name = 'idx_duration'")) {
             db("ALTER TABLE perf_log DROP INDEX idx_duration");
+        }
+    }
+}
+
+function upgrade_to_2026_3_2() {
+    // ── Performance monitor: summarise instead of hoarding ───────────────
+    //
+    // One site reached 1,612,330 rows in perf_log. At that size the report
+    // page became the slowest thing on the whole site — 40 seconds to open —
+    // because the percentile query walked 1.5 million rows every time it was
+    // viewed. Meanwhile every visitor request was inserting into that same
+    // table, and the retention sweep was locking rows in it.
+    //
+    // The fix follows what the numbers actually showed: average 48 ms, p95
+    // 241 ms, worst case 101 seconds. The middle of that distribution is
+    // healthy and carries no information. Only the tail is worth storing at
+    // full detail.
+    //
+    //   perf_stats  every request, folded into an hourly bucket per page.
+    //               One INSERT ... ON DUPLICATE KEY UPDATE, and the table
+    //               stops growing with traffic.
+    //   perf_log    only requests slower than the threshold, now carrying the
+    //               address, user agent and query string so a 101-second
+    //               request can actually be investigated.
+    db("CREATE TABLE IF NOT EXISTS perf_stats (
+        bucket_key   CHAR(40) NOT NULL,
+        hour_start   INT UNSIGNED NOT NULL,
+        label        VARCHAR(255) NOT NULL DEFAULT '',
+        area         VARCHAR(16) NOT NULL DEFAULT 'frontend',
+        hits         INT UNSIGNED NOT NULL DEFAULT 0,
+        slow_hits    INT UNSIGNED NOT NULL DEFAULT 0,
+        total_ms     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        min_ms       INT UNSIGNED NOT NULL DEFAULT 0,
+        max_ms       INT UNSIGNED NOT NULL DEFAULT 0,
+        total_kb     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        max_kb       INT UNSIGNED NOT NULL DEFAULT 0,
+        total_cpu_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (bucket_key, hour_start),
+        INDEX idx_hour (hour_start),
+        INDEX idx_area_hour (area, hour_start)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Context for the slow rows. Without these a 101-second entry says only
+    // that something was slow, not whether it was a scraper hammering a
+    // filtered catalogue or a real customer on a product page.
+    $perf_exists = db_item("SHOW TABLES LIKE 'perf_log'");
+
+    if ($perf_exists) {
+        if (!db_item("SHOW COLUMNS FROM perf_log LIKE 'ip_address'")) {
+            db("ALTER TABLE perf_log ADD ip_address VARCHAR(45) NOT NULL DEFAULT ''");
+        }
+
+        if (!db_item("SHOW COLUMNS FROM perf_log LIKE 'user_agent'")) {
+            db("ALTER TABLE perf_log ADD user_agent VARCHAR(255) NOT NULL DEFAULT ''");
+        }
+
+        // The query string was deliberately stripped before, to keep grouping
+        // cardinality down. That reasoning no longer applies: grouping happens
+        // in perf_stats now, and on a slow row the parameters are usually the
+        // whole explanation.
+        if (!db_item("SHOW COLUMNS FROM perf_log LIKE 'query_string'")) {
+            db("ALTER TABLE perf_log ADD query_string VARCHAR(512) NOT NULL DEFAULT ''");
+        }
+
+        // The existing rows are one-per-request records of ordinary traffic —
+        // the exact data this change stops collecting. Keeping them would
+        // leave the table huge and the new slow-request list meaningless,
+        // since every fast request would still be in it.
+        db("TRUNCATE perf_log");
+    }
+}
+
+function upgrade_to_2026_3_3() {
+    // Performance monitor on/off, in Site Settings rather than config.php.
+    //
+    // Defaults to on: the monitor is how a slow page gets noticed at all, and
+    // after the summary rewrite it costs a fraction of a millisecond per
+    // request — on PHP-FPM, after the response has already been sent, so the
+    // visitor waits for none of it.
+    db("ALTER TABLE config ADD perf_monitor TINYINT(1) NOT NULL DEFAULT 1");
+
+    // Discard whatever the summary already holds.
+    //
+    // Before the sanity gate was added, a request whose start time came back
+    // as zero produced a duration of roughly 1.7 trillion milliseconds. MySQL
+    // clamped it to the unsigned ceiling without complaint, and because a
+    // summary row accumulates rather than replaces, that one measurement made
+    // its bucket's average permanently meaningless — one install reported an
+    // average of 595,400,352,033 ms.
+    //
+    // There is no way to tell a poisoned bucket from a healthy one after the
+    // fact, and the table refills within the hour, so the honest move is to
+    // start again.
+    if (db_item("SHOW TABLES LIKE 'perf_stats'")) {
+        db("TRUNCATE perf_stats");
+    }
+}
+
+function upgrade_to_2026_3_4() {
+    // ── Visitor reporting: aggregate at write time ───────────────────────
+    //
+    // Two separate faults, one root cause.
+    //
+    // 1. update_visitor_page_data() only ever wrote landing_page_name, and
+    //    only on a visitor's first page. Everything after that incremented a
+    //    counter and was otherwise discarded. Worse, the name reaching it had
+    //    already had its slug stripped (get_page.php:92 for catalog detail,
+    //    :122 for form item view), so every product recorded as 'urun-detay'
+    //    and every article as 'blog-gorunum'. The question "which article was
+    //    read at 3pm" had no answer anywhere in the database.
+    //
+    // 2. Every report counted raw visitor rows with HOUR(FROM_UNIXTIME(...))
+    //    groupings. At 100,000-200,000 visits a day that is millions of rows
+    //    per month, scanned and sorted into a temporary table on each load.
+    //
+    // Both are fixed by counting when the view happens rather than
+    // reconstructing it later. This is the shape waf_log took in 2026.2.6: a
+    // bucket key plus INSERT ... ON DUPLICATE KEY UPDATE, so a repeated event
+    // increments a counter instead of adding a row.
+    //
+    // No visitor data is removed or altered. The `visitors` table keeps every
+    // column and every row, and view_visitor_report.php's advanced filters
+    // continue to read it directly.
+
+    // Read the ceiling BEFORE the tables exist.
+    //
+    // pg_visitor_rollup_ready() starts returning true the moment
+    // visitor_content_hourly appears, and live counting begins from that
+    // instant. Rows at or below this id were therefore written while nothing
+    // was counting, and are the backfill's job; rows above it are counted
+    // live. Reading the ceiling first means the two ranges cannot overlap.
+    // The handful of page views that land between this read and the CREATE
+    // are missed rather than double-counted, which is the right way round to
+    // be wrong.
+    $max_visitor_id = (int) db_value("SELECT MAX(id) FROM visitors");
+
+    // Site-wide totals: 24 rows per day, 8,760 a year. This is what the
+    // dashboard's three traffic panels read instead of the visitors table.
+    db("CREATE TABLE IF NOT EXISTS visitor_stats_hourly (
+            stat_date    DATE NOT NULL,
+            stat_hour    TINYINT UNSIGNED NOT NULL,
+            new_visitors INT UNSIGNED NOT NULL DEFAULT 0,
+            page_views   INT UNSIGNED NOT NULL DEFAULT 0,
+            PRIMARY KEY (stat_date, stat_hour)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Per-content totals: one row per (hour, page, item).
+    //
+    // item_type/item_id hold the primary key of what was actually shown, not
+    // its title. A renamed product then renames throughout the report history
+    // instead of leaving stale copies of the old title in old rows.
+    //
+    // The unique key is a sha1 of the bucket rather than the columns
+    // themselves. A composite key over page_name would run to roughly 780
+    // bytes in utf8mb4, past the 767-byte per-column index limit on MySQL 5.6
+    // with COMPACT row format. waf_log's event_key solves the same problem
+    // the same way.
+    db("CREATE TABLE IF NOT EXISTS visitor_content_hourly (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            bucket_key CHAR(40) NOT NULL,
+            stat_date  DATE NOT NULL,
+            stat_hour  TINYINT UNSIGNED NOT NULL,
+            page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            page_name  VARCHAR(100) NOT NULL DEFAULT '',
+            item_type  VARCHAR(20) NOT NULL DEFAULT '',
+            item_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            views      INT UNSIGNED NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            UNIQUE KEY uniq_bucket (bucket_key),
+            KEY idx_date_hour (stat_date, stat_hour),
+            KEY idx_date_views (stat_date, views),
+            KEY idx_item (item_type, item_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Backfill bookkeeping. Kept in config so the work survives a killed
+    // request: this software runs on dozens of server types and the ones with
+    // a hard FastCGI or proxy timeout will cut a long upgrade off mid-flight
+    // no matter what ini_set('max_execution_time') says.
+    if (!db_item("SHOW COLUMNS FROM config LIKE 'visitor_rollup_max_id'")) {
+        db("ALTER TABLE config ADD visitor_rollup_max_id INT UNSIGNED NOT NULL DEFAULT 0");
+    }
+    if (!db_item("SHOW COLUMNS FROM config LIKE 'visitor_rollup_cursor'")) {
+        db("ALTER TABLE config ADD visitor_rollup_cursor INT UNSIGNED NOT NULL DEFAULT 0");
+    }
+    if (!db_item("SHOW COLUMNS FROM config LIKE 'visitor_rollup_done'")) {
+        db("ALTER TABLE config ADD visitor_rollup_done TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    db("UPDATE config SET
+            visitor_rollup_max_id = '" . $max_visitor_id . "',
+            visitor_rollup_cursor = 0,
+            visitor_rollup_done   = '" . ($max_visitor_id > 0 ? 0 : 1) . "'");
+}
+
+function upgrade_to_2026_3_5() {
+    // ── Backfill the rollups from existing visitor rows ──────────────────
+    //
+    // Read-only with respect to `visitors`: this reads rows and writes
+    // summaries elsewhere. Nothing in the source table is modified.
+    //
+    // Runs against a time budget and stores its position, because it cannot
+    // assume it will be allowed to finish. Whatever is left over is picked up
+    // a slice at a time when an administrator opens the dashboard, so the
+    // work completes without anyone having to babysit a long-running page.
+    // Third argument forces the table probe to run again: 2026.3.4 created
+    // these tables a moment ago, in this same request.
+    if (function_exists('pg_visitor_backfill_step')) {
+        pg_visitor_backfill_step(20, 20000, true);
+    }
+}
+
+function upgrade_to_2026_3_6() {
+    // ── visitors: MyISAM to InnoDB ───────────────────────────────────────
+    //
+    // MyISAM locks whole tables. update_visitor_page_data() runs an UPDATE on
+    // this table for every page view, and an UPDATE takes an exclusive table
+    // lock, so at this traffic level page views already serialise against one
+    // another. Add a reporting query holding a read lock and every visitor on
+    // the site queues behind it — which is why the dashboard being open made
+    // the site slow.
+    //
+    // MyISAM's concurrent-insert optimisation does not rescue this: it only
+    // applies while the table has no gaps, and a table under constant UPDATE
+    // always has gaps.
+    //
+    // The other reason is recovery. An unclean shutdown leaves a MyISAM table
+    // of this size needing REPAIR TABLE, which can run for hours with the
+    // table unwritable throughout. InnoDB recovers from its log on startup.
+    //
+    // Safe to re-run: if the engine is already InnoDB this does nothing, so a
+    // request killed part-way through simply repeats the ALTER next time.
+    // Checked rather than assumed because ALTER TABLE ... ENGINE cannot be
+    // resumed and is expensive to start over.
+    //
+    // Only `visitors` is converted. search_items carries the FULLTEXT indexes
+    // that get_search_results.php queries with MATCH ... AGAINST, and older
+    // MySQL supports FULLTEXT on MyISAM only.
+    $status = db_item("SHOW TABLE STATUS LIKE 'visitors'");
+
+    if (is_array($status) && isset($status['Engine']) && strtolower($status['Engine']) !== 'innodb') {
+        db("ALTER TABLE visitors ENGINE=InnoDB");
+    }
+}
+
+function upgrade_to_2026_3_7() {
+    // ── Repair: the home page counted as two pages ───────────────────────
+    //
+    // Data repair only, no schema change. Same class of problem as 2026.1.29.
+    //
+    // A site's root is one page recorded under several names — '', '/',
+    // 'index.php', and a legacy 'example.com/'. 2026.3.5's backfill grouped
+    // by whatever string it found, so those became separate rows from the
+    // ones carrying the home page's real name. The dashboard then listed the
+    // home page twice, once under its own name and once as "Homepage", with
+    // its traffic divided between the two entries.
+    //
+    // Rows recorded live were never affected: get_page.php resolves the home
+    // page before tracking runs, so it always writes the real page name.
+    //
+    // Merges rather than deletes, so no view is lost. Counts fold into the
+    // correct bucket and only the stray rows go.
+    if (!db_item("SHOW TABLES LIKE 'visitor_content_hourly'")) {
+        return;
+    }
+
+    $home = db_item("SELECT page_id, page_name FROM page WHERE page_home = 'yes' ORDER BY page_id LIMIT 1");
+
+    if (!is_array($home) || empty($home['page_id'])) {
+        return;
+    }
+
+    $home_id   = (int) $home['page_id'];
+    $home_name = trim($home['page_name']);
+    $aliases   = "'', '/', 'index.php', 'example.com/'";
+
+    // One row per hour at most, so this is a small set even on a busy site
+    // with years of history. Done in PHP rather than as a self-referencing
+    // INSERT ... SELECT with ON DUPLICATE KEY UPDATE, which behaves
+    // differently across MySQL versions when the source and target are the
+    // same table.
+    $strays = db_items(
+        "SELECT id, stat_date, stat_hour, item_type, item_id, views
+         FROM visitor_content_hourly
+         WHERE page_name IN ($aliases) AND page_id <> '$home_id'"
+    );
+
+    if (!is_array($strays)) {
+        return;
+    }
+
+    foreach ($strays as $stray) {
+
+        $bucket_key = sha1(
+            $stray['stat_date'] . '|' . (int) $stray['stat_hour'] . '|' . $home_id
+            . '|' . $stray['item_type'] . '|' . (int) $stray['item_id']
+        );
+
+        db("INSERT INTO visitor_content_hourly
+                (bucket_key, stat_date, stat_hour, page_id, page_name, item_type, item_id, views)
+            VALUES
+                ('" . e($bucket_key) . "', '" . e($stray['stat_date']) . "', " . (int) $stray['stat_hour'] . ",
+                 $home_id, '" . e($home_name) . "', '" . e($stray['item_type']) . "', " . (int) $stray['item_id'] . ",
+                 " . (int) $stray['views'] . ")
+            ON DUPLICATE KEY UPDATE views = views + VALUES(views)");
+
+        db("DELETE FROM visitor_content_hourly WHERE id = '" . (int) $stray['id'] . "'");
+    }
+}
+
+function upgrade_to_2026_3_8() {
+    // ── Rebuild the visitor rollups from `visitors` ──────────────────────
+    //
+    // The first cut of the backfill had two faults that only show up once
+    // real traffic runs through it.
+    //
+    // 1. The two summary tables counted different things. Site totals summed
+    //    visitors.page_views while the per-content table used COUNT(*), which
+    //    counts sessions. The dashboard reads the hour's total from one and
+    //    the busiest item from the other, so it printed "29 page views" with
+    //    "home-1 · 1" underneath.
+    //
+    // 2. visitors.page_views keeps climbing after the rollup starts counting
+    //    live. A session already open at the cutover had its views recorded
+    //    live AND summed again when the backfill reached its row, inflating
+    //    every hour that straddled the upgrade.
+    //
+    // Both are fixed in the writer, but the numbers already stored were
+    // produced by the old one and cannot be corrected in place — a bucket
+    // holds a single total with no record of which half came from where. So
+    // the derived tables are dropped and rebuilt from `visitors`, which has
+    // been the authority all along and is not touched here.
+    //
+    // Cost of the rebuild: item-level detail collected since the upgrade is
+    // re-derived from landing_page_name, so it returns to page level. Only
+    // the summaries lose that; the raw table never had it to begin with, and
+    // page views recorded from now on carry their item as normal.
+    if (!db_item("SHOW TABLES LIKE 'visitor_content_hourly'")) {
+        return;
+    }
+
+    db("TRUNCATE visitor_stats_hourly");
+    db("TRUNCATE visitor_content_hourly");
+
+    // Re-read the ceiling. Everything up to this id now comes from `visitors`
+    // in one consistent pass, so there is no boundary for the two counting
+    // methods to disagree across.
+    $max_visitor_id = (int) db_value("SELECT MAX(id) FROM visitors");
+
+    db("UPDATE config SET
+            visitor_rollup_max_id = '" . $max_visitor_id . "',
+            visitor_rollup_cursor = 0,
+            visitor_rollup_done   = '" . ($max_visitor_id > 0 ? 0 : 1) . "'");
+
+    if (function_exists('pg_visitor_backfill_step')) {
+        pg_visitor_backfill_step(20, 20000, true);
+    }
+}
+
+function upgrade_to_2026_4() {
+    // ── Variant sets can own a product form ──────────────────────────────
+    //
+    // A product form is a set of form_fields rows keyed by product_id. That
+    // model assumes one product per form, which breaks down the moment a
+    // product comes in nine colour/size combinations: the operator would have
+    // to draw the same form nine times.
+    //
+    // The v2 screens keep the runtime model exactly as it is — every product
+    // still owns its own rows, so the catalog, the cart and submit_order.php
+    // are untouched — and add a template above it:
+    //
+    //   form_type = 'product_group', product_group_id = <group>, product_id = 0
+    //       the template, edited once
+    //   form_type = 'product', product_id = <product>, template_field_id > 0
+    //       a copy generated from that template
+    //   form_type = 'product', product_id = <product>, template_field_id = 0
+    //       a field added to one variant by hand, and left alone when the
+    //       template is re-applied
+    //
+    // Existing rows all fall in the last category, which is why both new
+    // columns default to 0 and nothing needs backfilling.
+    $columns = array(
+        'product_group_id'  => "ALTER TABLE form_fields ADD COLUMN product_group_id INT UNSIGNED NOT NULL DEFAULT 0",
+        'template_field_id' => "ALTER TABLE form_fields ADD COLUMN template_field_id INT UNSIGNED NOT NULL DEFAULT 0",
+    );
+
+    foreach ($columns as $column => $sql) {
+        $exists = db_item("SHOW COLUMNS FROM form_fields LIKE '" . $column . "'");
+        if (!$exists) {
+            db($sql);
+        }
+    }
+
+    // Both indexes serve a query that runs on every template edit: "the
+    // template rows of this group" and "the copies made from this template
+    // row". Without them each apply is a full scan of a table that grows with
+    // every product in the catalog.
+    $indexes = db_items("SHOW INDEX FROM form_fields");
+    $existing_indexes = array();
+
+    foreach ($indexes as $index) {
+        $existing_indexes[$index['Key_name']] = TRUE;
+    }
+
+    if (!isset($existing_indexes['idx_product_group'])) {
+        db("ALTER TABLE form_fields ADD INDEX idx_product_group (product_group_id)");
+    }
+
+    if (!isset($existing_indexes['idx_template_field'])) {
+        db("ALTER TABLE form_fields ADD INDEX idx_template_field (template_field_id)");
+    }
+
+    // form_field_options and target_options carry a denormalised owner column
+    // so bulk deletes can find their rows without a join, and add_field.php /
+    // edit_field.php write it generically from $form_type_identifier_id. Both
+    // tables need the new column or a template field with options cannot be
+    // saved at all.
+    $xref_columns = array(
+        'form_field_options' => "ALTER TABLE form_field_options ADD COLUMN product_group_id INT UNSIGNED NOT NULL DEFAULT 0",
+        'target_options'     => "ALTER TABLE target_options ADD COLUMN product_group_id INT UNSIGNED NOT NULL DEFAULT 0",
+    );
+
+    foreach ($xref_columns as $table => $sql) {
+        $exists = db_item("SHOW COLUMNS FROM " . $table . " LIKE 'product_group_id'");
+        if (!$exists) {
+            db($sql);
+        }
+    }
+
+    // The form's own settings live on the group, mirroring the four columns a
+    // product carries. Storing them on one "owner" variant instead would lose
+    // them the day that variant is deleted.
+    $group_columns = array(
+        'form'                    => "ALTER TABLE product_groups ADD COLUMN form TINYINT(1) NOT NULL DEFAULT 0",
+        'form_name'               => "ALTER TABLE product_groups ADD COLUMN form_name VARCHAR(100) NOT NULL DEFAULT ''",
+        'form_label_column_width' => "ALTER TABLE product_groups ADD COLUMN form_label_column_width VARCHAR(3) NOT NULL DEFAULT ''",
+        'form_quantity_type'      => "ALTER TABLE product_groups ADD COLUMN form_quantity_type VARCHAR(30) NOT NULL DEFAULT ''",
+    );
+
+    foreach ($group_columns as $column => $sql) {
+        $exists = db_item("SHOW COLUMNS FROM product_groups LIKE '" . $column . "'");
+        if (!$exists) {
+            db($sql);
         }
     }
 }

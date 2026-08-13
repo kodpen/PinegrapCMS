@@ -3144,6 +3144,9 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
 {
     if ($form_type == 'product') {
         $form_fields_identifier_column = 'product_id';
+    } elseif ($form_type == 'product_group') {
+        // 2026.4: a variant set's form template.
+        $form_fields_identifier_column = 'product_group_id';
     } else {
         $form_fields_identifier_column = 'page_id';
     }
@@ -3152,6 +3155,13 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
     // If the page type is express order then we need to add an extra filter for the form type
     if ($page_type == 'express order') {
         $form_type_filter .= " AND form_fields.form_type = '" . e($form_type) . "'";
+    }
+    // Pinning form_type is mandatory for a template, not optional as it is
+    // elsewhere: the copies generated from a template carry the same
+    // product_group_id, so filtering on that column alone returns the template
+    // AND every product's copy of it.
+    if ($form_type == 'product_group') {
+        $form_type_filter .= " AND form_fields.form_type = 'product_group'";
     }
     if ($position == 'top') {
         $top_selected = ' selected="selected"';
@@ -3594,6 +3604,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     FROM form_fields
                     WHERE
                         (product_id = '" . $product['id'] . "')
+                        AND (form_type = 'product')
                         AND (name = '" . e($field['name']) . "')
                     LIMIT 1");
                 // If a field was found, then continue to prefill field.
@@ -6569,8 +6580,758 @@ function initialize_order()
         }
     }
 }
-function update_visitor_page_data($page_name)
+/**
+ * Register (or read back) the content item that this request displayed.
+ *
+ * Visitor tracking records the host page name, and by the time it runs the
+ * item slug has already been stripped off the request (get_page.php:92 for
+ * catalog detail, :122 for form item view). Every product therefore recorded
+ * as 'urun-detay' and every article as 'blog-gorunum', so the hourly figures
+ * could not name what was actually read.
+ *
+ * Render code that has already resolved an item calls this to register it;
+ * the rollup writer calls it with no arguments to read it back. Only the
+ * type and the primary key are kept — titles are resolved when a report is
+ * read so a renamed product renames everywhere, rather than leaving old
+ * copies of the title scattered across historical rows.
+ *
+ * @param string $type '', 'product', 'product_group' or 'form'
+ * @param int    $id   Primary key in the matching table
+ */
+function pg_track_content($type = null, $id = null)
 {
+    static $item = array('type' => '', 'id' => 0);
+
+    // Reader: called with no arguments.
+    if ($type === null) {
+        return $item;
+    }
+
+    $id = (int) $id;
+
+    if ($id <= 0 || $type === '') {
+        return $item;
+    }
+
+    // First registration wins. A page may embed several system widgets, and
+    // the first one to resolve an item is the one the URL addressed; a
+    // related-products widget further down must not overwrite it.
+    if ($item['id'] === 0) {
+        $item = array('type' => (string) $type, 'id' => $id);
+    }
+
+    return $item;
+}
+
+/**
+ * Make MySQL agree with PHP about what time it is.
+ *
+ * A timestamp column is absolute, but the moment a query asks
+ * HOUR(FROM_UNIXTIME(...)) the answer depends on the connection's time_zone.
+ * If that disagrees with PHP, every hourly figure is skewed by the difference.
+ *
+ * init.php sets this on every normal request, so pages served through it are
+ * already consistent. install/index.php is the exception: it loads config.php
+ * and functions.php directly and never touches init.php, so an upgrade runs
+ * with whatever time zone the MySQL server defaults to. The backfill buckets
+ * history with SQL date functions while live traffic is bucketed with PHP's
+ * date(), and without this call those two would land in different hours —
+ * leaving a seam at the offset between them, exactly where old and new data
+ * meet.
+ *
+ * Offsets rather than zone names on purpose: named zones need the MySQL
+ * timezone tables populated, which many shared hosts leave empty.
+ *
+ * Cheap and idempotent; safe to call before anything that buckets by time.
+ */
+function pg_sync_mysql_timezone()
+{
+    static $done = false;
+
+    if ($done || !isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    $done = true;
+
+    @mysqli_query(db::$con, "SET time_zone = '" . e(date('P')) . "'");
+}
+
+/**
+ * True when the visitor rollup tables exist.
+ *
+ * Installs that take a code update without running the database upgrade must
+ * keep serving pages, so every rollup write is gated on this. Probed once per
+ * request; mirrors waf_table_has_column() and _orders_has_refund_columns().
+ */
+function pg_visitor_rollup_ready($recheck = false)
+{
+    static $cached = null;
+
+    // The installer creates these tables part-way through a request that has
+    // already loaded this file. Without a way to re-probe, a "no" cached from
+    // earlier in the same request would make the backfill skip itself and
+    // report success, which is the sort of failure nobody finds for months.
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'visitor_content_hourly'");
+    $cached = ($result && @mysqli_num_rows($result) > 0);
+
+    return $cached;
+}
+
+/**
+ * Add one page view to the hourly rollups.
+ *
+ * Written as INSERT ... ON DUPLICATE KEY UPDATE against a bucket key, the same
+ * shape waf_log uses since 2026.2.6: a repeated view does not add a row, it
+ * increments a counter. A site serving 200,000 views a day adds one row per
+ * (hour, page, item) rather than 200,000 rows, so the reporting queries read
+ * thousands of rows where they used to read tens of millions.
+ *
+ * Failures are swallowed on purpose. Counting a visit must never be the reason
+ * a visitor cannot see the page.
+ */
+function pg_record_visitor_page_view($page_id, $page_name)
+{
+    if (!pg_visitor_rollup_ready()) {
+        return;
+    }
+
+    // Leave sessions the backfill has not reached yet alone.
+    //
+    // visitors.page_views is a running total that keeps climbing after the
+    // rollup goes live, and the backfill reads whatever it says when it gets
+    // there. A session that started before the cutover and is still browsing
+    // would therefore have the same views counted twice: once here, and again
+    // when the backfill sums its final page_views. That is what made an hour
+    // report 29 views when 25 had happened.
+    //
+    // Once the cursor is past this session's row the backfill will never look
+    // at it again, so counting live from that point is correct and nothing is
+    // lost.
+    if (pg_visitor_view_awaits_backfill()) {
+        return;
+    }
+
+    $item      = pg_track_content();
+    $item_type = $item['type'];
+    $item_id   = (int) $item['id'];
+
+    // Prefer the address the visitor actually used.
+    //
+    // For a pretty form URL, get_page.php:122 swaps the page name for the form
+    // item view page that renders it — a template such as
+    // 'blog-cards-no-sidebar'. Recording that would name a page which shows
+    // nothing on its own, and would merge every list page sharing the template
+    // into one entry. PRETTY_URL_PATH still holds '/blog/<slug>', the address
+    // that was requested, so that is what gets recorded.
+    if (defined('PRETTY_URL_PATH') && PRETTY_URL_PATH !== '') {
+        $page_name = PRETTY_URL_PATH;
+    }
+
+    // Bucket with PHP's clock. The backfill synchronises MySQL to the same
+    // offset before it runs, so historical and live rows agree on which hour
+    // a view belongs to.
+    $date = date('Y-m-d');
+    $hour = (int) date('G');
+
+    // The path is deliberately not part of the key. Query strings and
+    // pagination produce endless variants of the same content, and keying on
+    // them would defeat the aggregation exactly when it matters most.
+    $bucket_key = sha1($date . '|' . $hour . '|' . (int) $page_id . '|' . $item_type . '|' . $item_id);
+
+    @mysqli_query(
+        db::$con,
+        "INSERT INTO visitor_content_hourly
+            (bucket_key, stat_date, stat_hour, page_id, page_name, item_type, item_id, views)
+         VALUES
+            ('" . e($bucket_key) . "', '" . e($date) . "', $hour, " . (int) $page_id . ",
+             '" . e(mb_substr((string) $page_name, 0, 100)) . "', '" . e($item_type) . "', $item_id, 1)
+         ON DUPLICATE KEY UPDATE views = views + 1"
+    );
+
+    @mysqli_query(
+        db::$con,
+        "INSERT INTO visitor_stats_hourly (stat_date, stat_hour, new_visitors, page_views)
+         VALUES ('" . e($date) . "', $hour, 0, 1)
+         ON DUPLICATE KEY UPDATE page_views = page_views + 1"
+    );
+}
+
+/**
+ * Add one new visitor session to the hourly rollup.
+ *
+ * Called where a row is inserted into `visitors`, so the counter reproduces
+ * exactly what the old widget query measured: rows whose start_timestamp falls
+ * in this hour.
+ */
+function pg_record_visitor_session()
+{
+    if (!pg_visitor_rollup_ready()) {
+        return;
+    }
+
+    @mysqli_query(
+        db::$con,
+        "INSERT INTO visitor_stats_hourly (stat_date, stat_hour, new_visitors, page_views)
+         VALUES ('" . e(date('Y-m-d')) . "', " . (int) date('G') . ", 1, 0)
+         ON DUPLICATE KEY UPDATE new_visitors = new_visitors + 1"
+    );
+}
+
+/**
+ * True when this visitor's row is still waiting to be backfilled.
+ *
+ * The backfill walks `visitors` by id and reads each session's page_views
+ * total. Any view counted live for a session the cursor has not passed yet
+ * would be counted a second time when the backfill arrives, because it reads
+ * the column's value at that moment, not its value at the cutover.
+ *
+ * Costs one row read from a single-row table, and only while a backfill is in
+ * progress — the usual state is 'done', which returns immediately.
+ */
+function pg_visitor_view_awaits_backfill()
+{
+    static $state = null;
+
+    if (empty($_SESSION['software']['visitor_id'])) {
+        return false;
+    }
+
+    if ($state === null) {
+        $state = pg_visitor_backfill_state();
+    }
+
+    if ($state === false || !empty($state['done']) || $state['max_id'] <= 0) {
+        return false;
+    }
+
+    $visitor_id = (int) $_SESSION['software']['visitor_id'];
+
+    return ($visitor_id > (int) $state['cursor'] && $visitor_id <= (int) $state['max_id']);
+}
+
+/**
+ * Read the backfill's bookkeeping, or an empty state when unavailable.
+ */
+function pg_visitor_backfill_state($recheck = false)
+{
+    if (!pg_visitor_rollup_ready($recheck)) {
+        return false;
+    }
+
+    $row = db_item("SELECT visitor_rollup_max_id, visitor_rollup_cursor, visitor_rollup_done FROM config");
+
+    if (!is_array($row)) {
+        return false;
+    }
+
+    return array(
+        'max_id' => (int) $row['visitor_rollup_max_id'],
+        'cursor' => (int) $row['visitor_rollup_cursor'],
+        'done'   => ((int) $row['visitor_rollup_done'] === 1),
+    );
+}
+
+/**
+ * Summarise a slice of historical visitor rows into the rollup tables.
+ *
+ * Reads from `visitors` and writes only to the rollups. Not one row or column
+ * of the source table is touched, so every advanced filter in
+ * view_visitor_report.php keeps working against the full raw history.
+ *
+ * Written to be interrupted. This software runs on many server types, and the
+ * ones sitting behind IIS FastCGI or an nginx proxy will terminate a long
+ * request on their own schedule regardless of PHP's max_execution_time. The
+ * position is stored in config after each chunk, so a killed request costs at
+ * most one chunk and the next call resumes where this one stopped.
+ *
+ * Two limits, whichever is reached first:
+ *   $budget_seconds  wall clock, so the caller can bound the delay it adds
+ *   $chunk           rows per statement, so no single statement runs long
+ *
+ * @param  int $budget_seconds Time to spend before returning
+ * @param  int $chunk          Visitor rows to summarise per statement
+ * @return array|false         Progress state, or false when unavailable
+ */
+function pg_visitor_backfill_step($budget_seconds = 5, $chunk = 20000, $recheck = false)
+{
+    $state = pg_visitor_backfill_state($recheck);
+
+    if ($state === false || $state['done'] || $state['max_id'] <= 0) {
+        return $state;
+    }
+
+    // The live writer buckets with PHP's date(); these statements bucket with
+    // MySQL's FROM_UNIXTIME(). Both clocks have to read the same, or history
+    // and new traffic land in different hours and the join between them shows
+    // a seam at the offset between the two.
+    pg_sync_mysql_timezone();
+
+    $budget_seconds = max(1, (int) $budget_seconds);
+    $chunk          = max(1000, (int) $chunk);
+    $deadline       = microtime(true) + $budget_seconds;
+
+    $cursor = $state['cursor'];
+    $max_id = $state['max_id'];
+
+    // The site root and the page that serves it are one page recorded under
+    // several names: '', '/', 'index.php', and a legacy 'example.com/'. Left
+    // alone they become separate rows that split the home page's traffic
+    // between them, and one of them renders as "Homepage" while the other
+    // shows the real page name — the same page listed twice.
+    //
+    // Live tracking is not affected: get_page.php resolves the home page
+    // before tracking runs, so it always records the actual page name. This
+    // is only needed for history.
+    $home = db_item("SELECT page_id, page_name FROM page WHERE page_home = 'yes' ORDER BY page_id LIMIT 1");
+
+    $home_aliases    = "'', '/', 'index.php', 'example.com/'";
+    $sql_home_page_id   = '0';
+    $sql_home_page_name = "''";
+
+    if (is_array($home) && !empty($home['page_id'])) {
+        $home_aliases      .= ", '" . e(trim($home['page_name'])) . "'";
+        $sql_home_page_id   = (int) $home['page_id'];
+        $sql_home_page_name = "'" . e(trim($home['page_name'])) . "'";
+    }
+
+    // Resolved once, used by both the id and the name so a bucket's key and
+    // its label can never disagree.
+    $sql_page_id   = "CASE WHEN v.landing_page_name IN ($home_aliases) THEN $sql_home_page_id ELSE COALESCE(p.page_id, 0) END";
+    $sql_page_name = "CASE WHEN v.landing_page_name IN ($home_aliases) THEN $sql_home_page_name ELSE LEFT(v.landing_page_name, 100) END";
+
+    while ($cursor < $max_id && microtime(true) < $deadline) {
+
+        $upper = min($max_id, $cursor + $chunk);
+
+        // Site-wide hourly totals.
+        //
+        // page_views is attributed to the hour the session started, because
+        // that is the only timestamp a historical row carries — the per-view
+        // times were never recorded. Sessions from here on are counted view
+        // by view at the moment each view happens, so this approximation
+        // applies to history only.
+        @mysqli_query(
+            db::$con,
+            "INSERT INTO visitor_stats_hourly (stat_date, stat_hour, new_visitors, page_views)
+             SELECT
+                 DATE(FROM_UNIXTIME(start_timestamp)) AS d,
+                 HOUR(FROM_UNIXTIME(start_timestamp)) AS h,
+                 COUNT(*),
+                 COALESCE(SUM(page_views), 0)
+             FROM visitors
+             WHERE id > " . (int) $cursor . " AND id <= " . (int) $upper . "
+               AND start_timestamp > 0
+             GROUP BY d, h
+             ON DUPLICATE KEY UPDATE
+                 new_visitors = new_visitors + VALUES(new_visitors),
+                 page_views   = page_views   + VALUES(page_views)"
+        );
+
+        // Per-content hourly totals.
+        //
+        // Historical rows resolve to page granularity only. landing_page_name
+        // is all that was ever stored, and it holds the host page's name with
+        // the item slug already removed, so which product or article was seen
+        // is not recoverable from it — that information was never written
+        // down. item_type stays empty for these rows and reports fall back to
+        // the page name. Rows recorded from now on carry the item.
+        //
+        // SUM(page_views), not COUNT(*). Both rollup tables have to count the
+        // same thing or the dashboard contradicts itself: the tooltip reads
+        // the hour's page views from visitor_stats_hourly and the busiest item
+        // from this table, and when one counted views while the other counted
+        // sessions it printed "29 page views" directly above "home-1 · 1".
+        //
+        // The whole session's views land on the page it entered through. That
+        // over-credits landing pages, but a historical row records no other
+        // page, so the alternative is to discard the views entirely. Sessions
+        // recorded from here on are counted view by view against the page
+        // actually being viewed.
+        //
+        // The join to `page` is a LEFT JOIN so a landing page that has since
+        // been deleted still contributes its traffic, under page_id 0.
+        // Grouped in a derived table, then keyed on the outside.
+        //
+        // Building the bucket key in the same SELECT as the GROUP BY would
+        // ask MySQL to prove a SHA1 over four expressions is functionally
+        // dependent on those same expressions. Whether it manages that varies
+        // by version and by whether ONLY_FULL_GROUP_BY is set. Grouping first
+        // and hashing after removes the question: the outer query has no
+        // GROUP BY at all.
+        @mysqli_query(
+            db::$con,
+            "INSERT INTO visitor_content_hourly
+                 (bucket_key, stat_date, stat_hour, page_id, page_name, item_type, item_id, views)
+             SELECT
+                 SHA1(CONCAT_WS('|', x.d, x.h, x.pid, '', 0)),
+                 x.d, x.h, x.pid, x.pname, '', 0, x.cnt
+             FROM (
+                 SELECT
+                     DATE(FROM_UNIXTIME(v.start_timestamp)) AS d,
+                     HOUR(FROM_UNIXTIME(v.start_timestamp)) AS h,
+                     $sql_page_id AS pid,
+                     $sql_page_name AS pname,
+                     COALESCE(SUM(v.page_views), 0) AS cnt
+                 FROM visitors v
+                 LEFT JOIN page p ON p.page_name = v.landing_page_name
+                 WHERE v.id > " . (int) $cursor . " AND v.id <= " . (int) $upper . "
+                   AND v.start_timestamp > 0
+                 GROUP BY d, h, pid, pname
+             ) x
+             ON DUPLICATE KEY UPDATE views = views + VALUES(views)"
+        );
+
+        $cursor = $upper;
+
+        // Record the position after every chunk, not at the end. If this
+        // request dies on the next statement the work already done stands.
+        db("UPDATE config SET visitor_rollup_cursor = '" . (int) $cursor . "'");
+    }
+
+    if ($cursor >= $max_id) {
+        db("UPDATE config SET visitor_rollup_done = 1");
+    }
+
+    return array(
+        'max_id' => $max_id,
+        'cursor' => $cursor,
+        'done'   => ($cursor >= $max_id),
+    );
+}
+
+/**
+ * Turn rollup rows into display labels and links.
+ *
+ * Rows store what was viewed as a type and a primary key, so the title is
+ * looked up here rather than copied into every historical row. Resolution is
+ * batched: one query per item type for the whole result set, not one per row.
+ *
+ * A row whose item no longer exists keeps its page name, so deleting a product
+ * does not erase the traffic it once had.
+ *
+ * @param  array $rows Rows carrying item_type, item_id and page_name
+ * @return array       Same rows with 'label' and 'url' filled in
+ */
+function pg_visitor_label_content_rows($rows)
+{
+    if (empty($rows) || !is_array($rows)) {
+        return array();
+    }
+
+    // Collect the ids to look up, grouped by type.
+    $wanted = array();
+    foreach ($rows as $row) {
+        $type = isset($row['item_type']) ? (string) $row['item_type'] : '';
+        $id   = isset($row['item_id']) ? (int) $row['item_id'] : 0;
+        if ($type !== '' && $id > 0) {
+            $wanted[$type][$id] = $id;
+        }
+    }
+
+    // One query per type. `name` is a product's primary label and
+    // short_description is its fallback, matching how add_product.php derives
+    // an address name when one is not given.
+    //
+    // address_name / reference_code come along because the link needs them:
+    // the recorded page name is the template that displayed the item, so on
+    // its own it points at a page that cannot show anything without the
+    // item's own segment.
+    $sources = array(
+        'product'       => "SELECT id, CASE WHEN name <> '' THEN name ELSE short_description END AS label, address_name, '' AS reference_code, 0 AS form_page_id FROM products WHERE id IN (%s)",
+        'product_group' => "SELECT id, CASE WHEN name <> '' THEN name ELSE short_description END AS label, address_name, '' AS reference_code, 0 AS form_page_id FROM product_groups WHERE id IN (%s)",
+        'form'          => "SELECT id, address_name AS label, address_name, reference_code, page_id AS form_page_id FROM forms WHERE id IN (%s)",
+    );
+
+    $items          = array();
+    $form_page_ids  = array();
+
+    foreach ($wanted as $type => $ids) {
+        if (!isset($sources[$type]) || empty($ids)) {
+            continue;
+        }
+
+        $id_list = implode(',', array_map('intval', $ids));
+        $result  = @mysqli_query(db::$con, sprintf($sources[$type], $id_list));
+
+        if (!$result) {
+            continue;
+        }
+
+        while ($r = @mysqli_fetch_assoc($result)) {
+            $items[$type . ':' . (int) $r['id']] = array(
+                'label'          => trim((string) $r['label']),
+                'address_name'   => trim((string) $r['address_name']),
+                'reference_code' => trim((string) $r['reference_code']),
+                'form_page_id'   => (int) $r['form_page_id'],
+            );
+
+            if ($type === 'form' && (int) $r['form_page_id'] > 0) {
+                $form_page_ids[(int) $r['form_page_id']] = (int) $r['form_page_id'];
+            }
+        }
+    }
+
+    // A submitted form has two possible addresses and the custom form's own
+    // settings decide which one works. With pretty URLs on it is reached
+    // through the LIST view page plus its address name (/blog/some-article);
+    // with them off, through the ITEM view page plus a reference code
+    // (/blog-post?r=P8TDKZMZGV). Building only the second shape, or neither,
+    // produces a link to a bare item view page that has no article to show.
+    //
+    // Both branches mirror get_form_list_view.php:1406-1411.
+    $form_routes = array();
+
+    if (!empty($form_page_ids)) {
+
+        $page_list = implode(',', array_map('intval', $form_page_ids));
+
+        // Pretty URLs need the setting AND a title field, because the address
+        // name is derived from that field. Same two conditions
+        // check_if_pretty_urls_are_enabled() applies, asked once for all
+        // forms in the result rather than once per row.
+        $result = @mysqli_query(
+            db::$con,
+            "SELECT
+                 cfp.page_id,
+                 cfp.pretty_urls,
+                 (SELECT COUNT(*) FROM form_fields ff
+                   WHERE ff.page_id = cfp.page_id AND ff.rss_field = 'title') AS title_fields
+             FROM custom_form_pages cfp
+             WHERE cfp.page_id IN ($page_list)"
+        );
+
+        if ($result) {
+            while ($r = @mysqli_fetch_assoc($result)) {
+                $form_routes[(int) $r['page_id']] = array(
+                    'pretty'    => ((int) $r['pretty_urls'] === 1 && (int) $r['title_fields'] > 0),
+                    'list_page' => '',
+                );
+            }
+        }
+
+        // The list view page that publishes this custom form. Collection 'a'
+        // is the default the router itself assumes (get_page.php:114).
+        $result = @mysqli_query(
+            db::$con,
+            "SELECT flv.custom_form_page_id, p.page_name
+             FROM form_list_view_pages flv
+             LEFT JOIN page p ON p.page_id = flv.page_id
+             WHERE flv.custom_form_page_id IN ($page_list)
+               AND flv.collection = 'a'"
+        );
+
+        if ($result) {
+            while ($r = @mysqli_fetch_assoc($result)) {
+                $pid = (int) $r['custom_form_page_id'];
+                if (!isset($form_routes[$pid])) {
+                    $form_routes[$pid] = array('pretty' => false, 'list_page' => '');
+                }
+                $form_routes[$pid]['list_page'] = trim((string) $r['page_name']);
+            }
+        }
+    }
+
+    $base = (defined('URL_SCHEME') ? URL_SCHEME : '')
+        . (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '')
+        . (defined('PATH') ? PATH : '/');
+
+    foreach ($rows as $key => $row) {
+        $type      = isset($row['item_type']) ? (string) $row['item_type'] : '';
+        $id        = isset($row['item_id']) ? (int) $row['item_id'] : 0;
+        $page_name = isset($row['page_name']) ? trim((string) $row['page_name']) : '';
+        $item      = ($type !== '' && $id > 0 && isset($items[$type . ':' . $id])) ? $items[$type . ':' . $id] : null;
+
+        $label = ($item && $item['label'] !== '') ? $item['label'] : '';
+
+        // Fall back to the page. Historical rows have no item because the item
+        // was never recorded, and a deleted product leaves the same gap.
+        if ($label === '') {
+            $label = ($page_name === '' || $page_name === '/') ? lang('Homepage') : $page_name;
+        }
+
+        // Default: the page itself. Correct for anything that is not an item
+        // — listings, the home page, ordinary content pages.
+        $url = $base . encode_url_path($page_name);
+
+        if ($item) {
+            if ($type === 'form') {
+                $route = isset($form_routes[$item['form_page_id']]) ? $form_routes[$item['form_page_id']] : null;
+
+                if ($route && $route['pretty'] && $route['list_page'] !== '' && $item['address_name'] !== '') {
+                    $url = $base . encode_url_path($route['list_page']) . '/' . encode_url_path($item['address_name']);
+                } elseif ($item['reference_code'] !== '') {
+                    // The recorded page name is already the item view page,
+                    // which is exactly what this form of the link needs.
+                    $url = $base . encode_url_path($page_name) . '?r=' . rawurlencode($item['reference_code']);
+                }
+
+            } elseif ($item['address_name'] !== '') {
+                // Catalog items hang off whichever page displayed them, and
+                // that is the page recorded on the row.
+                $url = $base . encode_url_path($page_name) . '/' . encode_url_path($item['address_name']);
+            }
+        }
+
+        $rows[$key]['label'] = $label;
+        $rows[$key]['url']   = $url;
+    }
+
+    return $rows;
+}
+
+/**
+ * Most viewed content over a date range.
+ *
+ * Reads the hourly rollup, so the cost is set by how much distinct content the
+ * range covers, not by how many people visited. This is the query that used to
+ * group several million raw visitor rows on a computed expression.
+ */
+function pg_visitor_top_content($start_date, $end_date, $limit = 5)
+{
+    if (!pg_visitor_rollup_ready()) {
+        return array();
+    }
+
+    $limit  = max(1, (int) $limit);
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT page_id, page_name, item_type, item_id, SUM(views) AS views
+         FROM visitor_content_hourly
+         WHERE stat_date >= '" . e($start_date) . "' AND stat_date <= '" . e($end_date) . "'
+         GROUP BY page_id, item_type, item_id, page_name
+         ORDER BY views DESC
+         LIMIT " . $limit
+    );
+
+    $rows = array();
+
+    if ($result) {
+        while ($r = @mysqli_fetch_assoc($result)) {
+            $r['views'] = (int) $r['views'];
+            $rows[]     = $r;
+        }
+    }
+
+    return pg_visitor_label_content_rows($rows);
+}
+
+/**
+ * Busiest content in each hour of a single day, indexed 0-23.
+ *
+ * Written as a join against a grouped maximum rather than a window function,
+ * which MySQL only gained in 8.0 and this software still supports 5.5 upward.
+ * The inner aggregate is answered from idx_date_hour; the outer select returns
+ * at most 24 rows.
+ */
+function pg_visitor_top_content_by_hour($date)
+{
+    $hours = array_fill(0, 24, null);
+
+    if (!pg_visitor_rollup_ready()) {
+        return $hours;
+    }
+
+    $date = e($date);
+
+    // Ties are broken in PHP rather than with a GROUP BY on the outer query.
+    // Selecting ungrouped columns alongside a GROUP BY is rejected outright
+    // under ONLY_FULL_GROUP_BY, which MySQL 5.7 turned on by default, and the
+    // widget would fail on any reasonably current server. The inner aggregate
+    // is unaffected: it groups and aggregates nothing else.
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT c.stat_hour, c.page_id, c.page_name, c.item_type, c.item_id, c.views
+         FROM visitor_content_hourly c
+         INNER JOIN (
+             SELECT stat_hour, MAX(views) AS top_views
+             FROM visitor_content_hourly
+             WHERE stat_date = '$date'
+             GROUP BY stat_hour
+         ) m ON m.stat_hour = c.stat_hour AND m.top_views = c.views
+         WHERE c.stat_date = '$date'
+         ORDER BY c.stat_hour, c.id"
+    );
+
+    if (!$result) {
+        return $hours;
+    }
+
+    $rows = array();
+
+    while ($r = @mysqli_fetch_assoc($result)) {
+        $hour = (int) $r['stat_hour'];
+
+        // First row wins; the rest of a tied hour is discarded.
+        if (isset($rows[$hour])) {
+            continue;
+        }
+
+        $rows[$hour] = array(
+            'page_id'   => $r['page_id'],
+            'page_name' => $r['page_name'],
+            'item_type' => $r['item_type'],
+            'item_id'   => $r['item_id'],
+            'views'     => (int) $r['views'],
+        );
+    }
+
+    foreach (pg_visitor_label_content_rows($rows) as $hour => $row) {
+        $hours[(int) $hour] = array('name' => $row['label'], 'cnt' => $row['views']);
+    }
+
+    return $hours;
+}
+
+/**
+ * Visitor and page-view totals for a date range, keyed by date then hour.
+ *
+ * Replaces GROUP BY HOUR(FROM_UNIXTIME(start_timestamp)) over the raw table.
+ * A year of traffic is 8,760 rows here whatever the traffic was.
+ */
+function pg_visitor_stats_range($start_date, $end_date)
+{
+    $out = array();
+
+    if (!pg_visitor_rollup_ready()) {
+        return $out;
+    }
+
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT stat_date, stat_hour, new_visitors, page_views
+         FROM visitor_stats_hourly
+         WHERE stat_date >= '" . e($start_date) . "' AND stat_date <= '" . e($end_date) . "'"
+    );
+
+    if (!$result) {
+        return $out;
+    }
+
+    while ($r = @mysqli_fetch_assoc($result)) {
+        $out[$r['stat_date']][(int) $r['stat_hour']] = array(
+            'visitors'   => (int) $r['new_visitors'],
+            'page_views' => (int) $r['page_views'],
+        );
+    }
+
+    return $out;
+}
+
+function update_visitor_page_data($page_name, $page_id = 0)
+{
+    pg_record_visitor_page_view($page_id, $page_name);
+
     // check to see if landing page name has already been set
     $query = "SELECT landing_page_name
 
@@ -11001,7 +11762,10 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     if ($office_use_only == false) {
         // if this is a product form, then prepare SQL
         if ($form_type == 'product') {
-            $sql_where = "(product_id = '" . e($product_id) . "')";
+            // form_type is pinned as well as product_id: since 2026.4 the table
+            // also holds product_group_id rows (a variant set's form template)
+            // whose product_id is 0. They must never reach a rendered form.
+            $sql_where = "(product_id = '" . e($product_id) . "') AND (form_fields.form_type = 'product')";
             // else this is a form for a page, so prepare SQL in a different way
         } else {
             $sql_where = "(page_id = '" . e($page_id) . "')";
@@ -11071,7 +11835,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     $sql_where_office_use_only = '';
     // if this is a product form, then prepare SQL
     if ($form_type == 'product') {
-        $sql_where = "product_id = '" . e($product_id) . "'";
+        // See the note above: template rows carry product_id 0 and are excluded
+        // by pinning form_type.
+        $sql_where = "product_id = '" . e($product_id) . "' AND form_type = 'product'";
         // else this is a form for a page, so prepare SQL in a different way
     } else {
         $sql_where = "(page_id = '" . e($page_id) . "')";
@@ -11639,6 +12405,15 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
     $row = mysqli_fetch_assoc($result);
     $product_id = $row['id'];
     $label_column_width = $row['form_label_column_width'];
+    // The join above is a LEFT JOIN, so a product that has since been deleted
+    // comes back as NULL. Falling through with an empty $product_id turns the
+    // next query into "product_id = ''", which MySQL reads as 0 and which
+    // matches every row that belongs to no product — page forms, and since
+    // 2026.4 variant set form templates as well. An order line whose product is
+    // gone has no product form to print.
+    if ($product_id === NULL || $product_id === '' || (int) $product_id <= 0) {
+        return '';
+    }
     // get all fields for this form
     $query = "SELECT
 
@@ -11658,7 +12433,7 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
 
         FROM form_fields
 
-        WHERE product_id = '$product_id'
+        WHERE (product_id = '$product_id') AND (form_type = 'product')
 
         ORDER BY sort_order";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -12178,7 +12953,7 @@ function get_form_review_info($properties)
             }
             break;
         case 'product_form':
-            $sql_field_where = "product_id = '" . e($product_id) . "'";
+            $sql_field_where = "product_id = '" . e($product_id) . "' AND form_type = 'product'";
             break;
     }
     // Get all fields for this form.
@@ -13546,6 +14321,15 @@ function prepare_catalog_item_address_name($address_name, $item_id = '')
 }
 function get_catalog_item_from_url()
 {
+    // Memoised per request. The render path calls this between two and five
+    // times for a single catalog detail page (get_page_content.php lines 2172,
+    // 3074, 3409, 3431, 5043), and every call re-ran the same two lookups.
+    // Visitor tracking calls it once more at the end of the request, so
+    // caching also keeps the new tracking free rather than adding a query.
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
 
     // get the address name
     $address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
@@ -13633,7 +14417,14 @@ function get_catalog_item_from_url()
             $item_backorder = $row['backorder'];
         }
     }
-    return array(
+    // Tell visitor tracking which catalog item this request actually showed.
+    // Without this the hourly report only ever sees the host page name, which
+    // is the same string ('urun-detay') for every product on the site.
+    if ($item_id !== '') {
+        pg_track_content(($item_type == 'product group') ? 'product_group' : 'product', $item_id);
+    }
+
+    $cached = array(
         'id' => $item_id,
         'image_name' => $item_image_name,
         'type' => $item_type,
@@ -13651,6 +14442,8 @@ function get_catalog_item_from_url()
         'inventory_quantity' => $item_inventory_quantity,
         'backorder' => $item_backorder
     );
+
+    return $cached;
 }
 function get_catalog_item_address_name_from_id($item_id, $item_type)
 {
@@ -21322,7 +22115,7 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
         "SELECT id, label, type, required, default_value, `rows` AS rows_, `cols` AS cols_,
                 size, maxlength, multiple, information, wysiwyg, contact_field
          FROM form_fields
-         WHERE product_id = '" . (int)$product_id . "'
+         WHERE (product_id = '" . (int)$product_id . "') AND (form_type = 'product')
          ORDER BY sort_order ASC, id ASC"
     );
     if (!$fields) return '';
@@ -21593,7 +22386,7 @@ function _pg_render_order_item_form_data_readonly($order_item_id, $product_id, $
     $fields = db_items(
         "SELECT id, label, type, information, wysiwyg
          FROM form_fields
-         WHERE product_id = '" . $product_id . "'
+         WHERE (product_id = '" . $product_id . "') AND (form_type = 'product')
          ORDER BY sort_order ASC, id ASC"
     );
     if (!$fields) return '';
@@ -22791,6 +23584,15 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                $group_filter
              LIMIT 1"
         );
+    }
+
+    // Tell visitor tracking which product this system widget resolved. The
+    // three branches above all land here, so a slug hit, a select-group
+    // default variant and a direct ?pid= are all recorded the same way.
+    // Pages built with the visual designer are page_type 'standard', so the
+    // legacy catalog detail hook never fires for them.
+    if (is_array($p) && !empty($p['id'])) {
+        pg_track_content('product', $p['id']);
     }
 
     $base_path       = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
@@ -24488,6 +25290,14 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                AND reference_code = '" . e($reference_code) . "'
              LIMIT 1"
         );
+
+        // Register the article/record for visitor tracking. Registered before
+        // the access check below on purpose: a denied view is still a view of
+        // this record, and treating it as an unnamed hit on the host page
+        // would put it back in the bucket this change exists to empty.
+        if (is_array($form_row) && !empty($form_row['id'])) {
+            pg_track_content('form', $form_row['id']);
+        }
     }
 
     // ── Access control ───────────────────────────────────────────────────
@@ -39925,7 +40735,12 @@ function duplicate_product($id)
         $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
     // get form fields for this product and duplicate them
-    $query = "SELECT * FROM form_fields WHERE product_id = '" . escape($id) . "'";
+    //
+    // form_type is pinned so template rows (product_id 0 since 2026.4) can
+    // never be picked up, and the copy is written by the explicit column list
+    // below, which deliberately omits template_field_id: a duplicate is a
+    // standalone product, not a variant generated from somebody's template.
+    $query = "SELECT * FROM form_fields WHERE (product_id = '" . escape($id) . "') AND (form_type = 'product')";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         // insert row for field for new product
@@ -47776,6 +48591,115 @@ function update_sitemap_and_ping()
  * Checks the local file header signature. Empty archives use PK\x05\x06 and
  * spanned ones PK\x07\x08; all three are accepted.
  */
+/**
+ * Apply TLS verification to a cURL handle used for code or licence traffic.
+ *
+ * These paths were pinned to CURLOPT_SSL_VERIFYPEER = 0, which disables
+ * certificate validation entirely. CURLOPT_SSL_VERIFYHOST = 2 sat next to it
+ * and did nothing useful: with no chain validation there is no verified
+ * certificate whose hostname could be checked.
+ *
+ * On an update channel that matters more than anywhere else. Anyone able to
+ * sit between this server and the update server — poisoned DNS, a hostile
+ * network, a compromised upstream — could serve their own archive, and it
+ * would be unpacked straight into the web root and executed. The update
+ * mechanism becomes the delivery mechanism.
+ *
+ * Deliberately does NOT retry without verification when it fails. A silent
+ * downgrade is worse than no verification at all, because an attacker only has
+ * to break the first attempt to get the insecure second one. Turning it off is
+ * an explicit, documented decision the operator makes in config.php.
+ */
+function pg_curl_tls($ch)
+{
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+
+    // Servers whose CA bundle is not on the default search path can point at
+    // one instead of giving up verification.
+    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
+        curl_setopt($ch, CURLOPT_CAINFO, CURL_CA_BUNDLE);
+    }
+
+    // Last resort for a host with no usable CA store at all.
+    if (defined('ALLOW_INSECURE_UPDATE_TLS') && ALLOW_INSECURE_UPDATE_TLS === true) {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    }
+}
+
+/**
+ * Turn a certificate-related cURL error number into an actionable sentence.
+ *
+ * Without this the operator sees "cURL error 60" and has no idea that the
+ * cause is a stale CA bundle on their own server rather than a fault at the
+ * other end.
+ */
+function pg_curl_tls_hint($errno)
+{
+    $errno = (int) $errno;
+
+    // 60 CURLE_PEER_FAILED_VERIFICATION, 77 CURLE_SSL_CACERT_BADFILE,
+    // 35 CURLE_SSL_CONNECT_ERROR.
+    if ($errno !== 60 && $errno !== 77 && $errno !== 35) {
+        return '';
+    }
+
+    return ' The certificate could not be verified. This server is most likely'
+        . ' missing an up-to-date CA bundle. Point CURL_CA_BUNDLE at a cacert.pem'
+        . ' in data/config.php, or as a last resort set'
+        . ' ALLOW_INSECURE_UPDATE_TLS to true there.';
+}
+
+/**
+ * SQL expression that folds every name for the home page into one group.
+ *
+ * The home page is not a fixed page. Any page can carry page_home = 'yes',
+ * more than one can carry it at a time, and get_page.php picks between them
+ * with ORDER BY RAND() — so the site root can serve a different page on each
+ * request, by design.
+ *
+ * Visitor tracking stores whatever the visitor asked for, so the same page is
+ * recorded under two different names: an empty landing_page_name when someone
+ * opened the site root, and its own name when someone opened it directly or
+ * followed a link to it. Reports then showed the same page twice, splitting
+ * its traffic and pushing it down the ranking.
+ *
+ * Read from the database on every call rather than cached in config, because
+ * the operator can change which page is home at any time and a stale answer
+ * would merge the wrong rows — a subtler wrong than not merging at all.
+ *
+ * Returns an expression to GROUP BY, mapping every home alias to ''.
+ */
+function pg_home_page_group_expression($column = 'landing_page_name')
+{
+    static $expression = null;
+
+    if ($expression !== null) {
+        return str_replace('landing_page_name', $column, $expression);
+    }
+
+    $names = array();
+    $result = @mysqli_query(db::$con, "SELECT page_name FROM page WHERE page_home = 'yes'");
+
+    if ($result) {
+        while ($row = @mysqli_fetch_assoc($result)) {
+            if (trim($row['page_name']) !== '') {
+                $names[] = "'" . escape(trim($row['page_name'])) . "'";
+            }
+        }
+    }
+
+    // Always-present aliases for the root, whatever the home page happens to
+    // be. 'example.com/' is a legacy value some installs recorded.
+    $aliases = array("''", "'/'", "'index.php'", "'example.com/'");
+    $all = array_merge($aliases, $names);
+
+    $expression = "CASE WHEN landing_page_name IN (" . implode(', ', $all) . ") THEN '' ELSE landing_page_name END";
+
+    return str_replace('landing_page_name', $column, $expression);
+}
+
 function pg_looks_like_zip($bytes)
 {
     if (!is_string($bytes) || strlen($bytes) < 4) {
@@ -47907,7 +48831,13 @@ function perf_monitor_init()
 
     // Prefer REQUEST_TIME_FLOAT — PHP populates it before our code runs, so it captures
     // the true entry timestamp rather than "now, after init has already partially executed".
-    $start_time = isset($_SERVER['REQUEST_TIME_FLOAT'])
+    // The value has to be positive to be usable. Some SAPIs expose the key
+    // with a zero or empty value rather than omitting it, and isset() happily
+    // returns true for that — the duration then comes out as the current unix
+    // time in milliseconds, roughly 1.7 trillion, which MySQL silently clamps
+    // to the column ceiling and which then poisons the hourly average for
+    // good, because a summary row keeps what it was given.
+    $start_time = (isset($_SERVER['REQUEST_TIME_FLOAT']) && (float) $_SERVER['REQUEST_TIME_FLOAT'] > 0)
         ? (float) $_SERVER['REQUEST_TIME_FLOAT']
         : microtime(true);
 
@@ -47941,9 +48871,14 @@ function perf_monitor_shutdown()
         $flushed = (bool) @fastcgi_finish_request();
     }
 
-    // The DB connection might already be gone (config error before db_connect, or another
-    // shutdown handler closed it). Skip silently rather than crash the shutdown phase.
     if (!isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    // Site Settings switch. Checked here rather than in perf_monitor_init(),
+    // which runs before the config row is read. Everything expensive is below
+    // this line, so turning it off leaves only a few microseconds of timers.
+    if (defined('PERF_MONITOR_ENABLED') && !PERF_MONITOR_ENABLED) {
         return;
     }
 
@@ -47951,12 +48886,53 @@ function perf_monitor_shutdown()
     $now = microtime(true);
     $duration_ms = (int) round(($now - $state['start_time']) * 1000);
 
-    $min_duration = defined('PERF_MONITOR_MIN_DURATION_MS') ? (int) PERF_MONITOR_MIN_DURATION_MS : 0;
-    if ($min_duration > 0 && $duration_ms < $min_duration) {
+    // Sanity gate.
+    //
+    // A summary table cannot forget. One nonsensical duration is added into
+    // total_ms and pushed into max_ms, and every average computed from that
+    // bucket is wrong until the bucket ages out — which is exactly what
+    // happened on a live install: a single bad measurement produced an
+    // average of 595,400,352,033 ms and a peak of 4,294,967,295 ms, the
+    // unsigned 32-bit ceiling.
+    //
+    // MySQL will not object. Strict mode is deliberately off in this codebase,
+    // so an out-of-range value is clamped and a negative one is reinterpreted
+    // as huge, both without an error. The check therefore has to happen here.
+    //
+    // An hour is far beyond any real request: PHP's own max_execution_time is
+    // measured in seconds. Anything past it is a broken clock or a broken
+    // start time, and the right answer is to record nothing rather than
+    // something false.
+    if ($duration_ms < 0 || $duration_ms > 3600000) {
         return;
     }
 
+    $script_name = isset($_SERVER['SCRIPT_NAME']) ? basename($_SERVER['SCRIPT_NAME']) : '';
+
+    // Scripts the operator does not want measured. api.php is excluded by
+    // default: it is the internal AJAX endpoint, so every dashboard widget and
+    // every autocomplete keystroke is one of its requests. Grouped under a
+    // single name it sat at the top of every report while telling nobody
+    // anything about which page is slow.
+    $ignored = defined('PERF_MONITOR_IGNORE_SCRIPTS')
+        ? PERF_MONITOR_IGNORE_SCRIPTS
+        : 'api.php';
+
+    if ($ignored !== '' && $script_name !== '') {
+        foreach (preg_split('/[\s,;]+/', $ignored) as $ignored_script) {
+            if ($ignored_script !== '' && strcasecmp($ignored_script, $script_name) === 0) {
+                return;
+            }
+        }
+    }
+
+    // Same reasoning, cheaper to state: clamp rather than discard, because a
+    // memory reading being odd is no reason to lose a good duration.
     $peak_memory_kb = (int) round(memory_get_peak_usage(true) / 1024);
+
+    if ($peak_memory_kb < 0 || $peak_memory_kb > 16777216) {
+        $peak_memory_kb = 0;
+    }
 
     $cpu_user_ms = 0;
     $cpu_system_ms = 0;
@@ -47967,8 +48943,8 @@ function perf_monitor_shutdown()
                + (($end_rusage['ru_utime.tv_usec'] - $state['start_rusage']['ru_utime.tv_usec']) / 1000);
             $s = (($end_rusage['ru_stime.tv_sec'] - $state['start_rusage']['ru_stime.tv_sec']) * 1000)
                + (($end_rusage['ru_stime.tv_usec'] - $state['start_rusage']['ru_stime.tv_usec']) / 1000);
-            if ($u >= 0) { $cpu_user_ms = (int) round($u); }
-            if ($s >= 0) { $cpu_system_ms = (int) round($s); }
+            if ($u >= 0 && $u <= 3600000) { $cpu_user_ms = (int) round($u); }
+            if ($s >= 0 && $s <= 3600000) { $cpu_system_ms = (int) round($s); }
         }
     }
 
@@ -47976,17 +48952,17 @@ function perf_monitor_shutdown()
     // so its presence means the request was routed (i.e. a public-facing page or asset).
     $area = defined('PHP_SETTINGS_UPDATED') ? 'frontend' : 'backend';
 
-    $script_name = isset($_SERVER['SCRIPT_NAME']) ? basename($_SERVER['SCRIPT_NAME']) : '';
-
-    // Path only — query strings explode group cardinality without adding much value.
     $request_url = '';
     if (defined('REQUEST_URL')) {
         $request_url = REQUEST_URL;
     } elseif (isset($_SERVER['REQUEST_URI'])) {
         $request_url = $_SERVER['REQUEST_URI'];
     }
+
+    $query_string = '';
     $qpos = strpos($request_url, '?');
     if ($qpos !== false) {
+        $query_string = substr($request_url, $qpos + 1, 500);
         $request_url = substr($request_url, 0, $qpos);
     }
     if (strlen($request_url) > 510) {
@@ -47994,79 +48970,155 @@ function perf_monitor_shutdown()
     }
 
     $http_status = function_exists('http_response_code') ? (int) http_response_code() : 200;
-    $method = isset($_SERVER['REQUEST_METHOD']) ? substr($_SERVER['REQUEST_METHOD'], 0, 8) : 'GET';
-    $is_ajax = (isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ? 1 : 0;
-    $user_id = (defined('USER_ID') && USER_ID !== '') ? (int) USER_ID : 0;
 
-    $query = "INSERT INTO perf_log
-        (request_url, script_name, area, method, http_status,
-         duration_ms, peak_memory_kb, cpu_user_ms, cpu_system_ms,
-         user_id, is_ajax, log_timestamp)
-        VALUES (
-            '" . escape($request_url) . "',
-            '" . escape($script_name) . "',
-            '" . escape($area) . "',
-            '" . escape($method) . "',
-            " . (int) $http_status . ",
-            " . (int) $duration_ms . ",
-            " . (int) $peak_memory_kb . ",
-            " . (int) $cpu_user_ms . ",
-            " . (int) $cpu_system_ms . ",
-            " . (int) $user_id . ",
-            " . (int) $is_ajax . ",
-            UNIX_TIMESTAMP()
-        )";
-    @mysqli_query(db::$con, $query);
+    // Grouping label: the URL identifies a front-end page, the script name a
+    // back-end screen.
+    $label = ($area === 'frontend')
+        ? ($request_url === '' || $request_url === '/' ? '[home]' : $request_url)
+        : $script_name;
+
+    // Anything that failed is grouped under its status code instead of its URL.
+    //
+    // Two reasons, and the second is the important one.
+    //
+    // A missing file is not a page. The rewrite rule sends any request whose
+    // file does not exist to the router, so a stale asset reference or a
+    // scanner probing /install/api.php runs the whole PHP stack and lands in
+    // the report next to real pages, where it means nothing.
+    //
+    // More seriously, those URLs are chosen by whoever is making the request.
+    // perf_stats keeps one row per label per hour, so a scanner walking a
+    // hundred thousand paths would create a hundred thousand buckets an hour —
+    // letting a stranger decide how large this table gets, which is precisely
+    // what the summary design exists to prevent. Folding them into one label
+    // keeps the signal (how many failures, and how slow they are to produce)
+    // and caps the cost at a single row.
+    //
+    // The individual slow rows below still record the real URL, so a 404 that
+    // is somehow taking seconds can still be traced.
+    if ($http_status >= 400) {
+        $label = '[' . $http_status . ']';
+    }
+
+    if (strlen($label) > 250) {
+        $label = substr($label, 0, 250);
+    }
+
+    $slow_ms = defined('PERF_MONITOR_SLOW_MS') ? (int) PERF_MONITOR_SLOW_MS : 1000;
+    $is_slow = ($slow_ms > 0 && $duration_ms >= $slow_ms) ? 1 : 0;
+
+    // ── Every request: fold into an hourly bucket ────────────────────────
+    //
+    // One statement, and the table stops growing with traffic — the same
+    // request an hour from now updates a different row, the same request a
+    // minute from now updates this one. This is what replaces a million rows
+    // of ordinary traffic that nobody was ever going to read individually.
+    $hour_start = $now - ((int) $now % 3600);
+    $bucket_key = sha1($area . '|' . $label);
+
+    @mysqli_query(
+        db::$con,
+        "INSERT INTO perf_stats
+            (bucket_key, hour_start, label, area, hits, slow_hits,
+             total_ms, min_ms, max_ms, total_kb, max_kb, total_cpu_ms)
+         VALUES
+            ('" . escape($bucket_key) . "', " . (int) $hour_start . ",
+             '" . escape($label) . "', '" . escape($area) . "', 1, " . $is_slow . ",
+             " . $duration_ms . ", " . $duration_ms . ", " . $duration_ms . ",
+             " . $peak_memory_kb . ", " . $peak_memory_kb . ",
+             " . ($cpu_user_ms + $cpu_system_ms) . ")
+         ON DUPLICATE KEY UPDATE
+            hits         = hits + 1,
+            slow_hits    = slow_hits + " . $is_slow . ",
+            total_ms     = total_ms + " . $duration_ms . ",
+            min_ms       = LEAST(min_ms, " . $duration_ms . "),
+            max_ms       = GREATEST(max_ms, " . $duration_ms . "),
+            total_kb     = total_kb + " . $peak_memory_kb . ",
+            max_kb       = GREATEST(max_kb, " . $peak_memory_kb . "),
+            total_cpu_ms = total_cpu_ms + " . ($cpu_user_ms + $cpu_system_ms)
+    );
+
+    // ── Slow requests only: keep the full detail ─────────────────────────
+    //
+    // A summary tells you a page is slow; it cannot tell you which request
+    // took 101 seconds or who made it. These rows are rare by construction —
+    // on a site averaging 48 ms, almost nothing crosses the threshold — so
+    // they cost little and carry the parameters, address and client that make
+    // the outlier investigable.
+    if ($is_slow) {
+        $method = isset($_SERVER['REQUEST_METHOD']) ? substr($_SERVER['REQUEST_METHOD'], 0, 8) : 'GET';
+        $is_ajax = (isset($_SERVER['HTTP_X_REQUESTED_WITH'])
+            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ? 1 : 0;
+        $user_id = (defined('USER_ID') && USER_ID !== '') ? (int) USER_ID : 0;
+
+        $ip_address = function_exists('waf_client_ip')
+            ? waf_client_ip()
+            : (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '');
+
+        $user_agent = isset($_SERVER['HTTP_USER_AGENT'])
+            ? substr($_SERVER['HTTP_USER_AGENT'], 0, 250)
+            : '';
+
+        @mysqli_query(
+            db::$con,
+            "INSERT INTO perf_log
+                (request_url, query_string, script_name, area, method, http_status,
+                 duration_ms, peak_memory_kb, cpu_user_ms, cpu_system_ms,
+                 ip_address, user_agent, user_id, is_ajax, log_timestamp)
+             VALUES (
+                '" . escape($request_url) . "',
+                '" . escape($query_string) . "',
+                '" . escape($script_name) . "',
+                '" . escape($area) . "',
+                '" . escape($method) . "',
+                " . (int) $http_status . ",
+                " . (int) $duration_ms . ",
+                " . (int) $peak_memory_kb . ",
+                " . (int) $cpu_user_ms . ",
+                " . (int) $cpu_system_ms . ",
+                '" . escape($ip_address) . "',
+                '" . escape($user_agent) . "',
+                " . (int) $user_id . ",
+                " . (int) $is_ajax . ",
+                UNIX_TIMESTAMP()
+            )"
+        );
+    }
 
     // ── Housekeeping ─────────────────────────────────────────────────────
     //
-    // Only when the response has already been flushed. A DELETE of several
-    // hundred rows is the most expensive thing this function can do, and on a
-    // server where we could not flush first it would land squarely on the
-    // visitor's wait. Skipping it there costs nothing: some other request on
-    // a busy site will get the chance, and the row cap below is what actually
-    // bounds the table.
+    // Only when the response has already been flushed. A DELETE is the most
+    // expensive thing this function can do, and on a server where we could not
+    // flush first it would land squarely on the visitor's wait.
     if (!$flushed) {
         return;
     }
 
-    // Hard row cap. Retention by age cannot bound this table — thirty days of
-    // a busy site is millions of rows, and every one of them slows the report
-    // that reads them. The cap makes the worst case a known number.
-    //
-    // MAX(id) rather than COUNT(*): the primary key is auto-increment, so the
-    // distance to the cap comes out of the index in constant time, whereas
-    // COUNT(*) on InnoDB is a full scan of exactly the table we are trying to
-    // keep cheap.
-    if (mt_rand(1, 50) === 1) {
-        $max_rows = defined('PERF_MONITOR_MAX_ROWS') ? (int) PERF_MONITOR_MAX_ROWS : 200000;
-
-        if ($max_rows > 0) {
-            $max_id_row = @mysqli_query(db::$con, "SELECT MAX(id) AS max_id FROM perf_log");
-
-            if ($max_id_row) {
-                $max_id = @mysqli_fetch_assoc($max_id_row);
-
-                if ($max_id && $max_id['max_id']) {
-                    $cut_off = (int) $max_id['max_id'] - $max_rows;
-
-                    if ($cut_off > 0) {
-                        @mysqli_query(db::$con,
-                            "DELETE FROM perf_log WHERE id <= " . $cut_off . " LIMIT 2000");
-                    }
-                }
-            }
-        }
+    if (mt_rand(1, 200) !== 1) {
+        return;
     }
 
-    // Age-based retention, much rarer: the cap does the heavy lifting.
-    if (mt_rand(1, 500) === 1) {
-        $retention = defined('PERF_MONITOR_RETENTION_DAYS') ? (int) PERF_MONITOR_RETENTION_DAYS : 30;
-        if ($retention > 0) {
-            $cutoff = time() - ($retention * 86400);
+    $retention = defined('PERF_MONITOR_RETENTION_DAYS') ? (int) PERF_MONITOR_RETENTION_DAYS : 30;
+
+    if ($retention > 0) {
+        $cutoff = time() - ($retention * 86400);
+        @mysqli_query(db::$con, "DELETE FROM perf_stats WHERE hour_start < " . (int) $cutoff . " LIMIT 2000");
+        @mysqli_query(db::$con, "DELETE FROM perf_log WHERE log_timestamp < " . (int) $cutoff . " LIMIT 1000");
+    }
+
+    // Row cap as a backstop. Both tables are bounded by design now, but a site
+    // with very high URL cardinality can still accumulate buckets faster than
+    // retention removes them.
+    $max_rows = defined('PERF_MONITOR_MAX_ROWS') ? (int) PERF_MONITOR_MAX_ROWS : 200000;
+
+    if ($max_rows > 0) {
+        $oldest = @mysqli_query(db::$con,
+            "SELECT hour_start FROM perf_stats ORDER BY hour_start DESC LIMIT 1 OFFSET " . (int) $max_rows);
+
+        if ($oldest && @mysqli_num_rows($oldest)) {
+            $row = @mysqli_fetch_assoc($oldest);
             @mysqli_query(db::$con,
-                "DELETE FROM perf_log WHERE log_timestamp < " . (int) $cutoff . " LIMIT 1000");
+                "DELETE FROM perf_stats WHERE hour_start <= " . (int) $row['hour_start'] . " LIMIT 5000");
         }
     }
 }

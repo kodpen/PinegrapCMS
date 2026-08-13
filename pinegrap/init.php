@@ -364,6 +364,12 @@ define('VISITOR_TRACKING', $row['visitor_tracking']);
 // to know whether the firewall is armed reads this constant rather than
 // querying, so the answer is identical everywhere in the request.
 define('WAF_ENABLED', isset($row['waf_enabled']) ? (int) $row['waf_enabled'] : 0);
+// Performance monitor switch, same pattern. Read here rather than acted on in
+// perf_monitor_init(): that runs before this config row is loaded, so the
+// shutdown handler is where the setting can actually be consulted. What it
+// gates is all of the cost — one upsert — while the init half is a few
+// microseconds of timers that are not worth a second config read to avoid.
+define('PERF_MONITOR_ENABLED', isset($row['perf_monitor']) ? (int) $row['perf_monitor'] : 1);
 define('ALLOWED_BOTS', $row['allowed_bots']);
 define('BLOCK_UNKNOWN_BOTS', (int) $row['block_unknown_bots']);
 define('PAY_PER_CLICK_FLAG', $row['pay_per_click_flag']);

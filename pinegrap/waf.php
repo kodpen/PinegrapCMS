@@ -850,6 +850,19 @@ function waf_good_bots()
         'pinterest'            => array('name' => 'Pinterest',  'verify' => array()),
         'redditbot'            => array('name' => 'Redditbot',  'verify' => array()),
         'embedly'              => array('name' => 'Embedly',    'verify' => array()),
+
+        // Feed readers. Each request here stands for a real person who
+        // subscribed; blocking them silently empties the feed for readers who
+        // asked for it, and nobody reports a feed that simply stopped.
+        'feedly'               => array('name' => 'Feedly',     'verify' => array()),
+        'inoreader'            => array('name' => 'Inoreader',  'verify' => array()),
+        'feedbin'              => array('name' => 'Feedbin',    'verify' => array()),
+        'newsblur'             => array('name' => 'NewsBlur',   'verify' => array()),
+        'theoldreader'         => array('name' => 'The Old Reader', 'verify' => array()),
+        'feedfetcher'          => array('name' => 'FeedFetcher','verify' => array()),
+        'netvibes'             => array('name' => 'Netvibes',   'verify' => array()),
+        'tiny tiny rss'        => array('name' => 'Tiny Tiny RSS', 'verify' => array()),
+        'miniflux'             => array('name' => 'Miniflux',   'verify' => array()),
         'skypeuripreview'      => array('name' => 'Skype',      'verify' => array()),
         'vkshare'              => array('name' => 'VK',         'verify' => array()),
 
@@ -1764,6 +1777,43 @@ function pinegrap_user_agent()
 }
 
 /**
+ * Paths that are served to everyone, whatever the bot policy says.
+ *
+ * robots.txt is the file that tells a crawler what it may not crawl. Refusing
+ * to hand it over is self-defeating: the crawler cannot learn the rule it was
+ * about to break, so it carries on guessing. The log for one site showed
+ * exactly this — AhrefsBot, SemrushBot and DotBot being turned away from
+ * /robots.txt over and over, each time losing the chance to be told to leave.
+ *
+ * .well-known/ carries ACME certificate renewal. Blocking it does not fail
+ * loudly; it fails in ninety days, when the certificate expires and the whole
+ * site goes down with it.
+ *
+ * Rate limiting and the IP block list still apply. This exempts a path from
+ * BOT POLICY, not from abuse protection.
+ */
+function waf_path_is_always_served()
+{
+    $url = isset($_SERVER['REQUEST_URI']) ? strtolower($_SERVER['REQUEST_URI']) : '';
+
+    if ($url === '') {
+        return false;
+    }
+
+    $question = strpos($url, '?');
+
+    if ($question !== false) {
+        $url = substr($url, 0, $question);
+    }
+
+    if (substr($url, -11) === '/robots.txt' || $url === 'robots.txt') {
+        return true;
+    }
+
+    return (strpos($url, '/.well-known/') !== false);
+}
+
+/**
  * Is this request another Pinegrap installation calling in?
  *
  * Used for visitor tracking, NOT for access control. The distinction matters:
@@ -1869,7 +1919,28 @@ function waf_is_excluded()
         return false;
     }
 
+    // Match against the PATH only, never the query string.
+    //
+    // Matching the whole request URI was a bypass of the entire firewall:
+    // the pattern can be put in a query parameter by anyone. With "api2"
+    // excluded, a request for
+    //
+    //     /hesabim?x=1&foo=api2&q=' OR 1=1--
+    //
+    // matched the exclusion and skipped every check — signature scanning,
+    // rate limiting, the IP block list, all of it. An exclusion has to name
+    // something the caller cannot append at will, and the path is that.
+    //
+    // A consequence worth knowing: a feed cannot be excluded by its query
+    // parameter (?rss=true), because that is exactly the string an attacker
+    // would append. Excluding a feed means excluding its path.
     $url = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+    $question = strpos($url, '?');
+
+    if ($question !== false) {
+        $url = substr($url, 0, $question);
+    }
+
     $script = waf_script_name();
 
     foreach ($patterns as $pattern) {
@@ -2108,6 +2179,13 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
             }
         }
 
+        return;
+    }
+
+    // robots.txt and ACME challenges are served to anyone. See
+    // waf_path_is_always_served() — turning a crawler away from the file that
+    // would have told it to go away achieves nothing.
+    if (waf_path_is_always_served()) {
         return;
     }
 

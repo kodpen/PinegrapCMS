@@ -1716,7 +1716,7 @@ html[data-bs-theme="dark"] .doka-image-editor {
 }
 
 div#software_image_picker_container {
-  min-height: 200px;
+  min-height: 40px;
 }
 
 .dt-paging ul.pagination {

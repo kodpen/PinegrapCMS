@@ -3067,7 +3067,7 @@ echo $content;
 // if visitor tracking is on
 if (VISITOR_TRACKING == true)
 {
-	update_visitor_page_data($page_name);
+	update_visitor_page_data($page_name, $page_id);
 }
 // If this is a private page, then log access so admins can keep track of users accessing private
 // content.  We wait until now to log, for performance reasons, so that the page content will
@@ -3452,6 +3452,11 @@ function init_tracking()
                         UNIX_TIMESTAMP())";
 			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 			$_SESSION['software']['visitor_id'] = mysqli_insert_id(db::$con);
+
+			// Count the new session in the hourly rollup. Placed here rather
+			// than derived later so the counter measures exactly what the old
+			// reports measured: a visitors row whose start_timestamp is now.
+			pg_record_visitor_session();
 		}
 	}
 	// Assume that we don't need to update visitor or order utm tags, until we find out otherwise.

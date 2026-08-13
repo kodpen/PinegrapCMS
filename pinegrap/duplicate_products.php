@@ -2199,7 +2199,10 @@ if (!$_POST) {
             $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         }
         // get form fields for this product and duplicate them
-        $query = "SELECT * FROM form_fields WHERE product_id = '" . escape($id) . "'";
+        // form_type pinned: template rows (product_id 0 since 2026.4) must not
+        // be copied onto a duplicate, and a duplicate is a standalone product
+        // rather than a variant generated from somebody's template.
+        $query = "SELECT * FROM form_fields WHERE (product_id = '" . escape($id) . "') AND (form_type = 'product')";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             // insert row for field for new product
