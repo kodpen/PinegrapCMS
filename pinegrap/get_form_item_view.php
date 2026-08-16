@@ -813,29 +813,43 @@ function get_form_item_view($properties) {
         // else user has not chosen to edit submitted form, so just output layout with values
         } else {
 
-            // record the view in the database so that the form view directory feature will know about it
-            $query =
-                "INSERT INTO submitted_form_views (
-                    submitted_form_id,
-                    page_id,
-                    timestamp)
-                VALUES (
-                    '" . $submitted_form['id'] . "',
-                    '" . $page_id . "',
-                    UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            // Record the view so that the form view directory feature will know about it.
+            //
+            // pg_sfv_record_view() folds this into one row per article, page and
+            // day. It returns false on an install that took the code without
+            // running the database upgrade, and the legacy per-view insert below
+            // keeps that install working until it does.
+            if (!pg_sfv_record_view($submitted_form['id'], $page_id)) {
+                $query =
+                    "INSERT INTO submitted_form_views (
+                        submitted_form_id,
+                        page_id,
+                        timestamp)
+                    VALUES (
+                        '" . $submitted_form['id'] . "',
+                        '" . $page_id . "',
+                        UNIX_TIMESTAMP())";
+                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            }
 
-            // Get a random number between 1 and 100 in order to determine if we should delete
-            // old submitted form view records.  There is a 1 in 100 chance that we will delete
-            // old records each time a form item view is viewed.
-            $random_number = rand(1, 100);
-            
-            // if the random number is 1, then delete old log entries
-            // all log entries before 6 months ago are deleted
-            if ($random_number == 1) {
-                $six_months_ago_timestamp = time() - 15552000;
+            // Sampled retention sweep, still six months.
+            //
+            // One in 500 rather than the old one in 100: the rollup holds a few
+            // thousand rows where the legacy table held millions, so far fewer
+            // passes keep it bounded.
+            //
+            // The legacy table is swept only while it is still the one being
+            // written. Once the rollup is live it is left alone -- the backfill
+            // is reading it, and deleting rows out from under a cursor that has
+            // not reached them yet would silently lose that history.
+            if (rand(1, 500) == 1) {
+                if (pg_sfv_stats_ready()) {
+                    db("DELETE FROM submitted_form_view_stats WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 6 MONTH)");
+                } else {
+                    $six_months_ago_timestamp = time() - 15552000;
 
-                db("DELETE FROM submitted_form_views WHERE timestamp < $six_months_ago_timestamp");
+                    db("DELETE FROM submitted_form_views WHERE timestamp < $six_months_ago_timestamp");
+                }
             }
 
             // Also record the view in the submitted form info table which stores totals for performance reasons.

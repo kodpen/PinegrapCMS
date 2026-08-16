@@ -628,8 +628,7 @@ if (!$_POST) {
                         }
                         
                         // delete views for this page that the form view directory feature uses
-                        $query = "DELETE FROM submitted_form_views WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        pg_sfv_delete_views('page_id', $page_id);
                         
                         // delete calendar_views_calendars_xref records
                         $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($page_id) . "'";

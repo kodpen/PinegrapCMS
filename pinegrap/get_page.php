@@ -3063,6 +3063,17 @@ else
 		$content = preg_replace('/(<\/head>)/i', '<style type="text/css">' . h($code) . '</style>' . '$1', $content);
 	}
 }
+// Stamp local assets with their last-modified time on the way out.
+//
+// Done here, at the single point where the assembled page leaves, rather than
+// in the markup: the stored content keeps saying src="{path}avatar-1.png" and
+// the version is a property of the response, not of the page. Nothing to
+// maintain, and no stale version left behind in the database when a file is
+// replaced.
+if (function_exists('pg_version_assets')) {
+	$content = pg_version_assets($content);
+}
+
 echo $content;
 // if visitor tracking is on
 if (VISITOR_TRACKING == true)

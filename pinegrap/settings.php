@@ -35,7 +35,6 @@ if (!$_POST) {
     $email_address = $row['email_address'];
     $title = $row['title'];
     $meta_description = $row['meta_description'];
-    $meta_keywords = $row['meta_keywords'];
     $mobile = $row['mobile'];
     $search_type = $row['search_type'];
     $social_networking = $row['social_networking'];
@@ -1563,20 +1562,13 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4 my-2">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" value="' . h($title) . '"/>
+                                            <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($title) . '"/>
+                                            <div id="seo_c_title"></div>
                                         </div>
                                         <div class="col-12 mt-1 mb-2">
                                             <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
                                             <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
-                                        </div>
-                                        <div class="col-12 mt-1 mb-2">
-                                            <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                            <input type="text" value="' . h($meta_keywords) . '" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"/>
-                                            <script>
-                                                if(document.body.contains(document.querySelector("input#meta_keywords"))){
-                                                    tagin(document.querySelector("#meta_keywords"));
-                                                }
-                                            </script>
+                                            <div id="seo_c_meta_description"></div>
                                         </div>
                                         <div class="col-12 col-md-6 my-2">
                                             <label for="additional_sitemap_content" class="form-label">' . lang('Additional sitemap.xml Content') . '</label>
@@ -1587,6 +1579,10 @@ if (!$_POST) {
                                             <label for="additional_robots_content" class="form-label">' . lang('Additional robots.txt Content') . '</label>
                                             <textarea name="additional_robots_content" id="additional_robots_content" class="form-control" >' . h($additional_robots_content) . '</textarea>
                                             ' . get_codemirror_javascript(array('id' => 'additional_robots_content', 'code_type' => 'plain')) . '
+                                            <div class="mt-2">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary bi bi-slash-circle bi-me-2" onclick="pgRobotsNoIndex()" title="' . lang('Adds the rule that closes the entire site to search engines.') . '">' . lang('Block All Search Engines') . '</button>
+                                                <div class="form-text text-warning d-none" id="robots_noindex_hint"></div>
+                                            </div>
                                         </div>
 
                                         <div class="col-12 col-md-6 my-2">
@@ -3114,6 +3110,62 @@ if (!$_POST) {
         </div>
     </main>
     <script>
+        // SEO character counters — logic in assets/backend.src.js
+        initSeoCounters([
+            { sel: "#title",            counterId: "seo_c_title",            min: 50,  max: 60  },
+            { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
+        ]);
+
+        // Fills the additional robots.txt field with the rule that blocks every crawler.
+        // The field is managed by CodeMirror, which hides the original textarea and keeps
+        // its own document, so writing to textarea.value alone would not show up on screen
+        // and would be overwritten on submit.
+        function pgRobotsNoIndex() {
+            var snippet = "User-agent: *\\nDisallow: /";
+            var textarea = document.getElementById("additional_robots_content");
+            var hint = document.getElementById("robots_noindex_hint");
+            if (!textarea) {
+                return;
+            }
+
+            // CodeMirror.fromTextArea() inserts its wrapper right after the textarea and
+            // exposes the instance on that element. The walk is bounded and stays inside
+            // this column, so it can never pick up the sitemap editor next door.
+            var cm = null;
+            var sibling = textarea.nextElementSibling;
+            var hops = 0;
+            while (sibling && hops < 3) {
+                if (sibling.CodeMirror) {
+                    cm = sibling.CodeMirror;
+                    break;
+                }
+                sibling = sibling.nextElementSibling;
+                hops++;
+            }
+            var current = cm ? cm.getValue() : textarea.value;
+
+            var already = /^\\s*User-agent:\\s*\\*\\s*$[\\s\\S]*?^\\s*Disallow:\\s*\\/\\s*$/mi.test(current);
+            if (already) {
+                if (hint) {
+                    hint.textContent = ' . json_encode(lang('This rule has already been added.')) . ';
+                    hint.classList.remove("d-none");
+                }
+                return;
+            }
+
+            // Keep whatever the operator already wrote, append below it.
+            var updated = (current.replace(/\\s+$/, "") === "") ? snippet : current.replace(/\\s+$/, "") + "\\n\\n" + snippet;
+            if (cm) {
+                cm.setValue(updated);
+            } else {
+                textarea.value = updated;
+            }
+            if (hint) {
+                hint.textContent = ' . json_encode(lang('The entire site will be closed to search engines. It takes effect once you save.')) . ';
+                hint.classList.remove("d-none");
+            }
+        }
+
         $(function() {
             $.ajax({
                 contentType: "application/json",
@@ -3466,7 +3518,6 @@ if (!$_POST) {
             email_address = '" . escape(post_value('email_address')) . "',
             title = '" . escape(post_value('title')) . "',
             meta_description = '" . escape(post_value('meta_description')) . "',
-            meta_keywords = '" . escape(post_value('meta_keywords')) . "',
             mobile = '" . escape(post_value('mobile')) . "',
             search_type = '" . escape(post_value('search_type')) . "',
             social_networking = '" . escape(post_value('social_networking')) . "',

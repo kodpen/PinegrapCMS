@@ -179,8 +179,8 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>';
 
     $pg_breadcrumb_parent_items = array(
-        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php'),
-        array('label' => $product_name, 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . h(escape_javascript($_REQUEST['product_group_id']))),
+        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets'),
+        array('label' => $product_name, 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_REQUEST['product_group_id']))),
     );
 
     $output_form_designer_content_heading = lang('Create Product Form Field');

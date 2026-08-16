@@ -280,16 +280,16 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         'suffix' => ($variant_count === 1) ? '' : 's')) . '</p>';
 
     $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php">' . lang('Variant Sets') . '</a></li>';
-    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
+    $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
 
     $pg_breadcrumb_parent_items = array(
-        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php'),
-        array('label' => $product_group['name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product2.php?group_id=' . h(escape_javascript($_GET['product_group_id']))),
+        array('label' => lang('Variant Sets'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets'),
+        array('label' => $product_group['name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id']))),
     );
 
     $output_form_designer_content_heading = lang('Edit Product Form');
     $output_form_designer_content_subheading = lang('Add fields to this product form.');
-    $output_cancel_onclick = 'window.location.href=\'edit_product2.php?group_id=' . h(escape_javascript($_GET['product_group_id'])) . '\'';
+    $output_cancel_onclick = 'window.location.href=\'edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id'])) . '\'';
 
     // No preview button: a template belongs to no single product, and
     // preview_form.php renders one product's form.

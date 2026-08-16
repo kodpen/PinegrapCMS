@@ -1,0 +1,495 @@
+
+   ____   ___  _   _  _____   ____  ____      _     ____
+  |  _ \ |_ _|| \ | || ____| / ___||  _ \    / \   |  _ \
+  | |_) | | | |  \| ||  _|  | |  _ | |_) |  / _ \  | |_) |
+  |  __/  | | | |\  || |___ | |_| ||  _ <  / ___ \ |  __/
+  |_|    |___||_| \_||_____| \____||_| \_\/_/   \_\|_|
+
+  S Ü R Ü M   N O T L A R I
+  ----------------------------------------------------------
+
+  Her güncellemede sitenize ne geldiğini burada bulursunuz.
+  En yeni sürüm en üsttedir.
+
+    [YENİ]       yeni özellik
+    [DÜZELTME]   giderilen sorun
+    [HIZ]        hız iyileştirmesi
+    [GÜVENLİK]   güvenlik
+    [ŞEMA]       bu sürüm veritabanınıza dokunur
+
+
+
+  2026.4.1
+  ==========================================================
+
+  [YENİ] Ürün ekleme ekranı yenilendi. Tek ürün de varyantlı
+         ürün de artık aynı sayfadan oluşturuluyor: özellikleri
+         seçtiğinizde kombinasyonlar tablo hâlinde çıkıyor,
+         hiçbiri seçilmezse tek ürün oluşuyor. Sağ tarafta
+         ürünün katalogda, ürün sayfasında ve arama
+         sonuçlarında nasıl görüneceğini gösteren canlı bir
+         önizleme ve eksik kalan alanların listesi var.
+
+  NOT    Varyantlı ürün sihirbazı (add_product_variants.php)
+         kaldırıldı; işini yeni ürün ekleme sayfası yapıyor.
+         Güncelleme sırasında eski dosya sitenizden silinir.
+
+  [DÜZELTME]
+         Adında Türkçe karakter bulunan dosyalar yüklendikten
+         sonra açılmıyor, sitede kırık görsel olarak kalıyordu.
+         Yükleme sırasında dosya adı artık Türkçe karakterleri
+         koruyarak sadeleştiriliyor ("Ürün Görüntüsü.png" →
+         "Urun_Goruntusu.png"). Daha önce yüklenmiş dosyaların
+         adı değişmez; kırık olanlar yeniden yüklenmelidir.
+
+  Not    Sebep sunucu tarafındadır: IIS, adresteki Türkçe
+         karakterleri yazılıma farklı bir kodlamayla iletiyor
+         ve dosya veritabanında bulunamıyor. Aynı durum Türkçe
+         karakter içeren ürün adreslerinde de görülebilir.
+
+  [HIZ]  Blog ve makale okunma kayıtları artık günlük olarak
+         özetleniyor. Çok okunan sitelerde bu kayıtlar zamanla
+         veritabanının büyük bölümünü kaplıyor ve tüm sayfaları
+         yavaşlatıyordu. Yoğun sitelerde belirgin hızlanma
+         beklenir.
+
+  [ŞEMA] Yeni bir özet tablosu oluşturulur.
+
+  [GÜVENLİK]
+         IIS sunucularda data/ klasörü tarayıcıdan doğrudan
+         okunabiliyordu. Ayar dosyanız, veritabanı yedekleriniz
+         ve yüklediğiniz tüm dosyalar adresi bilen herkese
+         açıktı. Yeni kurulumlarda bu klasör artık kapalı
+         geliyor.
+
+  Not    Bu koruma Apache'de .htaccess ile zaten vardı; IIS o
+         dosyayı hiç okumadığı için orada eksikti.
+
+  Not    IIS'te ÇALIŞAN MEVCUT KURULUMLAR bu korumayı
+         kendiliğinden almaz, çünkü web.config dosyanız zaten
+         var ve güncelleme onu değiştirmez. Sitenizin kök
+         dizinindeki web.config dosyasında <rules> satırının
+         hemen altına şunu ekleyin:
+
+           <rule name="Block direct access to data"
+                 stopProcessing="true">
+             <match url="^data/" ignoreCase="true" />
+             <action type="CustomResponse" statusCode="403"
+                     statusDescription="Forbidden" />
+           </rule>
+
+         Pinegrap bir alt klasörde kuruluysa desene o klasörü de
+         yazın: ^altklasor/data/
+
+  Not    Yazılarınızın okunma sayıları değişmez, olduğu gibi
+         kalır.
+
+  Not    Eski kayıtlar bu güncellemede silinmez. Geçmiş veri,
+         yönetim paneline girdikçe arka planda azar azar
+         aktarılır. Sitenizi bekletmez.
+
+
+  2026.4
+  ==========================================================
+
+  [YENİ] Varyantlı ürünlerde ürün formu artık bir kez
+         çiziliyor. Renk ve beden gibi seçenekleri olan bir
+         üründe aynı formu her varyant için tekrar hazırlamanız
+         gerekmiyor; grup üzerinde bir kez tanımlıyorsunuz, tüm
+         varyantlara uygulanıyor.
+
+  [DÜZELTME]
+         Silinmiş bir ürün içeren siparişin fişinde, o siparişle
+         ilgisi olmayan form alanları görünüyordu.
+
+  [ŞEMA] Ürün formu şablonu için yeni alanlar eklenir.
+
+  Not    Varyanta elle eklediğiniz alanlar korunur; yalnızca
+         şablondan gelenler güncellenir.
+
+
+  2026.3.8
+  ==========================================================
+
+  [DÜZELTME]
+         Ziyaretçi raporlarında çelişkili sayılar görünüyordu;
+         ipucu kutusunda "29 sayfa görünümü" yazarken hemen
+         altında tek bir sayfa için "1" çıkıyordu.
+
+  [DÜZELTME]
+         Sitede o an gezinmekte olan ziyaretçilerin bazı sayfa
+         görüntülemeleri iki kez sayılabiliyordu.
+
+  Not    Ziyaretçi özetleri yeniden hesaplanır. Ham ziyaretçi
+         kayıtlarınıza dokunulmaz.
+
+
+  2026.3.7
+  ==========================================================
+
+  [DÜZELTME]
+         Ana sayfanız raporlarda iki ayrı satır olarak
+         görünüyor, trafiği ikiye bölünüyordu.
+
+
+  2026.3.6
+  ==========================================================
+
+  [HIZ]  Ziyaretçi kayıtları daha dayanıklı bir tablo türüne
+         taşındı. Önceki yapıda yönetim panelinde rapor açıkken
+         sitedeki ziyaretçiler yavaşlıyordu.
+
+  [ŞEMA] Ziyaretçi tablosu dönüştürülür. Büyük sitelerde bu
+         işlem biraz sürebilir.
+
+
+  2026.3.5
+  ==========================================================
+
+  [HIZ]  Geçmiş ziyaretçi verisi özet tablolarına aktarılır.
+         Aktarım parça parça yapılır; yarıda kalırsa kaldığı
+         yerden devam eder.
+
+
+  2026.3.4
+  ==========================================================
+
+  [HIZ]  Ziyaretçi raporları çok daha hızlı açılıyor. Yoğun
+         sitelerde panel 20-30 saniyede yükleniyor, rapor
+         sayfası hiç açılmıyordu.
+
+  [DÜZELTME]
+         Hangi ürünün veya makalenin görüntülendiği
+         kaydedilmiyordu. Tüm ürünler "ürün detay", tüm
+         makaleler "blog görünüm" olarak görünüyordu. Artık
+         raporda gerçek ürün ve makale adlarını görürsünüz.
+
+  [DÜZELTME]
+         Rapordaki bağlantılar boş sayfalara gidiyordu.
+
+  [ŞEMA] İki yeni özet tablosu oluşturulur.
+
+
+  2026.3.3
+  ==========================================================
+
+  [YENİ] Performans kaydı artık site ayarlarından açılıp
+         kapatılabiliyor (Özellik Seçenekleri). Varsayılan
+         açık. Kapattığınızda kayıtlar silinir, ilgili buton ve
+         panel kutusu gizlenir.
+
+  [DÜZELTME]
+         Bazı sunucularda ölçüm hatalı çalışıp raporda anlamsız
+         büyük süreler gösteriyordu (56 milyar ms gibi). Bozuk
+         kayıtlar temizlenir.
+
+  [ŞEMA] Yeni bir ayar alanı eklenir.
+
+
+  2026.3.2
+  ==========================================================
+
+  [HIZ]  Performans raporu ekranı hızlandı. Kayıtlar 1,6 milyon
+         satıra ulaşmış, raporun kendisi sitenin en yavaş
+         sayfası olmuştu (40 saniye).
+
+  [ŞEMA] Yeni bir özet tablosu oluşturulur, eski ham kayıtlar
+         temizlenir.
+
+
+  2026.3.1
+  ==========================================================
+
+  [DÜZELTME]
+         Güncelleme bazen sessizce yarım kalıyordu. Bir dosya
+         yazılamadığında işlem duruyor, geri kalan dosyalar hiç
+         oluşmuyor, ekranda ise "tamamlandı" yazıyordu.
+         "Güncellemeden sonra eksik dosya" sorununun sebebi
+         buydu. Artık paketin her dosyası tek tek doğrulanır.
+
+  [GÜVENLİK]
+         Güncelleme indirilirken sunucu sertifikası doğrulanır.
+
+  [DÜZELTME]
+         Güvenlik duvarını kapattığınızda bot engellemesi
+         çalışmaya devam ediyordu.
+
+  [DÜZELTME]
+         İzleme modunda bazı istekler yine engelleniyordu.
+
+  [DÜZELTME]
+         Engellenen ziyaretçiye gösterilen referans numarası
+         hiçbir yere kaydedilmiyordu; artık kayıtlarda
+         aranabilir.
+
+
+  2026.3
+  ==========================================================
+
+         Ara sürüm. Veritabanı değişikliği yok.
+
+
+  2026.2.7
+  ==========================================================
+
+  [DÜZELTME]
+         IPv6 adresleri için verilen engellemeler hiç
+         çalışmıyordu. Adres kaydedilirken kesiliyor, aynı
+         ziyaretçi için defalarca engel kaydı açılıyor ama
+         ziyaretçi hiç engellenmiyordu.
+
+  [ŞEMA] IP adresi alanı genişletilir, mükerrer kayıtlar
+         temizlenir.
+
+
+  2026.2.6
+  ==========================================================
+
+  [HIZ]  Güvenlik duvarı kayıtları artık gruplanıyor. Tek bir
+         saldırıda binlerce kayıt satırı oluşuyor, kaydın
+         kendisi sunucuya yük bindiriyordu. Aynı olay artık
+         yeni satır açmıyor, sayacı artırıyor.
+
+  [YENİ] Kayıt satır sınırı. Yoğun bir saldırıda tablonun ne
+         kadar büyüyebileceği artık bellidir.
+
+  [ŞEMA] Güvenlik duvarı kayıt tablosu yeniden oluşturulur.
+         Saklama süresi 30 günden 14 güne iner.
+
+
+  2026.2.5
+  ==========================================================
+
+  [DÜZELTME]
+         Ziyaretçi sayacı gerçekte olduğundan çok daha yüksek
+         gösteriyordu. Çerez kabul etmeyen istemciler
+         (neredeyse tamamı bot) her istekte yeni ziyaretçi
+         olarak sayılıyordu. Sitenizi tarayan tek bir bot on
+         binlerce "ziyaretçi" üretebiliyordu.
+
+         Site sayacınızın Google Analytics'ten çok yüksek
+         çıkmasının sebebi buydu.
+
+  [DÜZELTME]
+         Cloudflare gibi bir servis kullanan sitelerde tüm
+         ziyaretçiler aynı birkaç IP adresine düşüyordu.
+
+  [ŞEMA] Ziyaretçi tablosuna tarayıcı bilgisi alanı eklenir.
+
+
+  2026.2.4
+  ==========================================================
+
+  [YENİ] Web Uygulama Güvenlik Duvarı (WAF).
+         Üç mod: Kapalı / İzle / Engelle.
+         Saldırı imzası taraması, istek hız sınırı, bot
+         sınıflandırma ve IP itibar takibi içerir. Sitenizin
+         önünde Cloudflare gibi bağımsız bir güvenlik duvarı
+         varsa ayar ekranında belirtilir.
+
+  [YENİ] Gelişmiş IP listeleri. İzin verilen ve yasaklanan
+         adresler, IP aralığı desteği, otomatik yasaklar ve
+         süreli kayıtlar.
+
+  [YENİ] Yeni ekranlar: Güvenlik Duvarı Kaydı, Performans
+         Raporu. Panele üç yeni kutu: Güvenlik Duvarı, Tehdit
+         Özeti, Performans.
+
+  [DÜZELTME]
+         Bot filtresi ters çalışıyordu. Bazı gerçek müşteriler
+         (telefon modeli adında "bot" geçenler) engelleniyor,
+         Twitter ve Apple'ın arama botları dışlanıyor; buna
+         karşılık bilinen saldırı araçları normal ziyaretçi
+         sayılıyordu.
+
+  [GÜVENLİK]
+         Yazılım kendi kendini engelliyordu. Lisans ve
+         güncelleme istekleri kimliksiz gittiği için karşı
+         taraf bunları bot sayıp reddediyordu. "Ana sunucuya
+         erişilemedi" hatasının sebebi buydu.
+
+  [ŞEMA] Güvenlik duvarı için üç yeni tablo ve ayar alanları
+         eklenir.
+
+
+  2026.2.3
+  ==========================================================
+
+  [DÜZELTME]
+         İptal edilmiş siparişlerin durumu boş görünüyordu.
+         Önceki bir güncellemede iki farklı yazım kullanılmıştı;
+         etkilenen siparişler onarılır.
+
+
+  2026.2  /  2026.2.1  /  2026.2.2
+  ==========================================================
+
+         Ara sürümler. Veritabanı değişikliği yok.
+
+
+  2026.1.29
+  ==========================================================
+
+  [DÜZELTME]
+         Sipariş listesindeki "İptal" butonu hiçbir şey
+         yapmıyordu.
+
+  [DÜZELTME]
+         Sipariş detay ekranından yapılan iptal siparişi
+         gerçekte iptal etmiyordu.
+
+  [DÜZELTME]
+         Havale veya kapıda ödeme siparişlerinde iptal butonu
+         hiç görünmüyordu.
+
+  [DÜZELTME]
+         Yönetici artık kargolanmış siparişi de iptal
+         edebiliyor. Müşteri yalnızca kargo takip numarası
+         girilmişse engellenir.
+
+
+  2026.1.28
+  ==========================================================
+
+  [YENİ] Sipariş formuna müşteri notu alanı eklenebiliyor.
+
+  [YENİ] Adres defteri. Üye, daha önce kullandığı fatura
+         adreslerinden birini seçerek formu otomatik
+         doldurabiliyor.
+
+  [YENİ] Sepette düşük stok uyarısı ("Son 3 adet kaldı").
+         Ayarlardan eşik değeri belirlenir.
+
+  [ŞEMA] Sepette "sonra al" özelliği için altyapı eklenir.
+
+
+  2026.1.27
+  ==========================================================
+
+  [YENİ] Yönetim panelinden sipariş iptali. Tek tek veya toplu.
+
+  [YENİ] İptal edilen siparişte müşteriye otomatik
+         bilgilendirme e-postası.
+
+  [YENİ] Iyzico ile ödenen siparişlerde otomatik iade
+         (isteğe bağlı, varsayılan kapalı).
+
+  [YENİ] Sipariş görünümünde kargo takip bağlantısı ve sipariş
+         zaman çizelgesi.
+
+  [YENİ] Müşteriye yazdırılabilir fatura.
+
+  [ŞEMA] İade durumu için yeni alanlar eklenir.
+
+
+  2026.1.26
+  ==========================================================
+
+  [YENİ] Müşteri kendi siparişini iptal edebiliyor. Ayarlardan
+         açılır; isterseniz yalnızca kargolanmadan önce izin
+         verecek şekilde sınırlanır.
+
+  [ŞEMA] Sipariş tablosuna iptal alanları eklenir.
+
+
+  2026.1.25
+  ==========================================================
+
+  [HIZ]  Dosya yönetimi ekranı hızlandı. Görsel boyutu ve
+         optimizasyon oranı her açılışta yeniden hesaplanmak
+         yerine saklanıyor.
+
+
+  2026.1.24
+  ==========================================================
+
+  [YENİ] Sayfa başına özel CSS, JavaScript ve yazı tipi ekleme
+         (Görsel Tasarımcı sayfaları için).
+
+
+  2026.1.23
+  ==========================================================
+
+  [YENİ] Performans izleyici. Hangi sayfaların yavaş olduğunu
+         görebileceğiniz rapor ekranı.
+
+
+  2026.1.21  /  2026.1.22
+  ==========================================================
+
+  [YENİ] Görsel Tasarımcı altyapısı ve paylaşılan bileşenler.
+
+
+  2026.1.18
+  ==========================================================
+
+  [YENİ] Paraşüt entegrasyonunda ürün eşleştirme. Her fatura
+         kaleminde ürün yeniden oluşturulmuyor.
+
+
+  2026.1.16  /  2026.1.17
+  ==========================================================
+
+  [YENİ] Barkod desteği. Ürün başına barkod saklama ve etiket
+         tasarımcısı. Bir ürüne birden fazla barkod
+         tanımlanabilir.
+
+
+  2026.1.13  /  2026.1.14  /  2026.1.15
+  ==========================================================
+
+  [YENİ] "İyzico ile Öde" hızlı ödeme butonu.
+
+  [YENİ] Sipariş iptali ve iade tutarı takibi.
+
+  [DÜZELTME]
+         3D Secure ödemeden dönüşte sipariş toplamı vergi ve
+         kargo tutarını kaybediyordu.
+
+
+  2026.1.11  /  2026.1.12
+  ==========================================================
+
+  [YENİ] Menü öğelerine özel CSS sınıfı verilebiliyor.
+
+  [YENİ] Sosyal paylaşım servisleri yenilendi. Kapanan AddThis
+         (2023) ve Google+1 (2019) yerine güncel servisler
+         geldi.
+
+
+  2026.1.4  /  2026.1.5  /  2026.1.6
+  ==========================================================
+
+  [YENİ] Online ve mağaza içi (yerel) siparişler ayrı ayrı
+         izlenebiliyor.
+
+  [DÜZELTME]
+         Kayıtlarda IPv6 adresleri kesiliyordu.
+
+
+  2026.1.1  /  2026.1.2  /  2026.1.3
+  ==========================================================
+
+  [YENİ] Bot filtresi ayarları: izin verilen botlar listesi ve
+         bilinmeyen botları engelleme seçeneği.
+
+  [HIZ]  Ziyaretçi kaydı ve API kimlik doğrulaması hızlandı.
+
+
+  2026.1
+  ==========================================================
+
+  [YENİ] Kısa bağlantılarda dosya desteği.
+
+  [YENİ] IndexNow. İçerik değişikliklerinizi arama motorlarına
+         anında bildirir.
+
+  [YENİ] Iyzipay 3D Secure ödeme akışı.
+
+  [YENİ] Özel uygulamalar için ayrıntılı izin yönetimi.
+
+
+  ----------------------------------------------------------
+
+  2017 - 2023 arasındaki sürümler bu dosyadan önceye aittir.
+  Ayrıntı için Pinegrap destek ekibine başvurun.

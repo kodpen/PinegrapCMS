@@ -7011,6 +7011,250 @@ function pg_visitor_backfill_step($budget_seconds = 5, $chunk = 20000, $recheck 
 }
 
 /**
+ * True when the article view rollup table exists.
+ *
+ * Installs that take a code update without running the database upgrade keep
+ * writing to the legacy per-view table, so the feature works either way.
+ * Mirrors pg_visitor_rollup_ready() and waf_table_has_column().
+ */
+function pg_sfv_stats_ready($recheck = false)
+{
+    static $cached = null;
+
+    // The installer creates the table part-way through a request that has
+    // already loaded this file. Without a way to re-probe, a "no" cached
+    // earlier in the same request would make the backfill skip itself and
+    // report success.
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'submitted_form_view_stats'");
+    $cached = ($result && @mysqli_num_rows($result) > 0);
+
+    return $cached;
+}
+
+/**
+ * True while the legacy per-view table is still present.
+ *
+ * It is renamed rather than dropped when the backfill finishes, so this stays
+ * false-safe on installs that have already retired it.
+ */
+function pg_sfv_legacy_table_exists($recheck = false)
+{
+    static $cached = null;
+
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'submitted_form_views'");
+    $cached = ($result && @mysqli_num_rows($result) > 0);
+
+    return $cached;
+}
+
+/**
+ * Add one article view to the daily rollup.
+ *
+ * The table this replaces held one row per view. On a site serving 200,000
+ * views a day it had reached eight million rows and 1.1 GB -- 73% of the entire
+ * database, 946 MB of it index. It was MyISAM, so every article view took an
+ * exclusive lock on the whole table while four B-trees were updated, none of
+ * which fit in key_buffer_size, and every other request touching the table
+ * queued behind it.
+ *
+ * Rows here are keyed by (article, page, day), so a piece read 50,000 times in
+ * a day adds one row and increments a counter. The table grows with the
+ * calendar, not with traffic.
+ *
+ * This is not the counter readers see. submitted_form_info.number_of_views is a
+ * running total maintained separately by the caller and is left alone.
+ *
+ * @return bool True when the rollup handled it, false to fall back to legacy
+ */
+function pg_sfv_record_view($submitted_form_id, $page_id)
+{
+    if (!pg_sfv_stats_ready()) {
+        return false;
+    }
+
+    // CURDATE() reads MySQL's clock. init.php sets the session time zone from
+    // PHP on every request, so the live writer and the backfill -- which
+    // buckets with DATE(FROM_UNIXTIME(...)) -- agree on where a day starts.
+    @mysqli_query(
+        db::$con,
+        "INSERT INTO submitted_form_view_stats (submitted_form_id, page_id, view_date, views)
+         VALUES (" . (int) $submitted_form_id . ", " . (int) $page_id . ", CURDATE(), 1)
+         ON DUPLICATE KEY UPDATE views = views + 1"
+    );
+
+    return true;
+}
+
+/**
+ * Remove view history for a deleted article or page.
+ *
+ * Clears both tables while the legacy one is still around. Clearing only the
+ * rollup would let the backfill resurrect a deleted article's counts the next
+ * time it passed over those days.
+ *
+ * @param string $column Either 'submitted_form_id' or 'page_id'
+ * @param int    $id     Row to clear
+ */
+function pg_sfv_delete_views($column, $id)
+{
+    $column = ($column === 'page_id') ? 'page_id' : 'submitted_form_id';
+    $id     = (int) $id;
+
+    if (pg_sfv_stats_ready()) {
+        db("DELETE FROM submitted_form_view_stats WHERE $column = '$id'");
+    }
+
+    if (pg_sfv_legacy_table_exists()) {
+        db("DELETE FROM submitted_form_views WHERE $column = '$id'");
+    }
+}
+
+/**
+ * Read the article view backfill's bookkeeping, or false when unavailable.
+ */
+function pg_sfv_backfill_state($recheck = false)
+{
+    if (!pg_sfv_stats_ready($recheck)) {
+        return false;
+    }
+
+    $row = db_item("SELECT sfv_rollup_cutover, sfv_rollup_cursor, sfv_rollup_done FROM config");
+
+    if (!is_array($row)) {
+        return false;
+    }
+
+    return array(
+        'cutover' => (int) $row['sfv_rollup_cutover'],
+        'cursor'  => (int) $row['sfv_rollup_cursor'],
+        'done'    => ((int) $row['sfv_rollup_done'] === 1),
+    );
+}
+
+/**
+ * Summarise a slice of legacy per-view rows into the daily rollup.
+ *
+ * Reads from submitted_form_views and writes only to the rollup. The source is
+ * left untouched so it can be inspected, and renamed rather than dropped, until
+ * the results have been trusted for a release.
+ *
+ * Written to be interrupted, for the same reason pg_visitor_backfill_step() is:
+ * servers behind IIS FastCGI or an nginx proxy end a long request on their own
+ * schedule regardless of PHP's max_execution_time, and install/index.php writes
+ * the version number only after the upgrade function returns.
+ *
+ * @param  int  $budget_seconds Wall clock to spend before returning
+ * @return array|false          Progress state, or false when unavailable
+ */
+function pg_sfv_backfill_step($budget_seconds = 3, $recheck = false)
+{
+    $state = pg_sfv_backfill_state($recheck);
+
+    if ($state === false || $state['done'] || $state['cutover'] <= 0) {
+        return $state;
+    }
+
+    // Nothing left to read once the legacy table has been retired.
+    if (!pg_sfv_legacy_table_exists($recheck)) {
+        db("UPDATE config SET sfv_rollup_done = 1");
+        $state['done'] = true;
+
+        return $state;
+    }
+
+    // The live writer buckets with CURDATE(), this one with
+    // DATE(FROM_UNIXTIME(...)). Both clocks have to read the same, or history
+    // and new traffic land on different days and the two meet at a seam.
+    pg_sync_mysql_timezone();
+
+    $budget_seconds = max(1, (int) $budget_seconds);
+    $deadline       = microtime(true) + $budget_seconds;
+
+    $cursor  = $state['cursor'];
+    $cutover = $state['cutover'];
+
+    while ($cursor < $cutover && microtime(true) < $deadline) {
+
+        // One calendar day per statement.
+        //
+        // The legacy table has no primary key -- all four of its indexes are
+        // non-unique -- so there is no id to walk the way the visitor backfill
+        // does. `timestamp` is indexed, and a day is both a natural bound and
+        // exactly the bucket being written, so a chunk maps to one row per
+        // (article, page).
+        //
+        // strtotime() rather than +86400: a day is not always 86,400 seconds
+        // long, and a DST boundary would otherwise split one date across two
+        // chunks.
+        $upper = min($cutover, strtotime('+1 day', $cursor));
+
+        if ($upper <= $cursor) {
+            break;
+        }
+
+        // Grouped in a derived table, then inserted. Computing DATE() in a
+        // GROUP BY SELECT asks MySQL to prove the expression is functionally
+        // dependent on its own inputs, which it does inconsistently across
+        // versions under ONLY_FULL_GROUP_BY.
+        //
+        // += rather than = because the final chunk is a partial day that the
+        // live writer has already written rows for. Adding is correct there and
+        // harmless everywhere else: the cursor guarantees no chunk runs twice.
+        @mysqli_query(
+            db::$con,
+            "INSERT INTO submitted_form_view_stats (submitted_form_id, page_id, view_date, views)
+             SELECT sid, pid, d, c FROM (
+                 SELECT
+                     submitted_form_id              AS sid,
+                     page_id                        AS pid,
+                     DATE(FROM_UNIXTIME(timestamp)) AS d,
+                     COUNT(*)                       AS c
+                 FROM submitted_form_views
+                 WHERE timestamp >= " . (int) $cursor . " AND timestamp < " . (int) $upper . "
+                 GROUP BY sid, pid, d
+             ) x
+             ON DUPLICATE KEY UPDATE views = views + VALUES(views)"
+        );
+
+        $cursor = $upper;
+
+        // Recorded after every chunk, not at the end. A request killed by a
+        // server timeout costs one day of work, not the whole run.
+        db("UPDATE config SET sfv_rollup_cursor = '" . (int) $cursor . "'");
+    }
+
+    if ($cursor >= $cutover) {
+        db("UPDATE config SET sfv_rollup_done = 1");
+    }
+
+    return array(
+        'cutover' => $cutover,
+        'cursor'  => $cursor,
+        'done'    => ($cursor >= $cutover),
+    );
+}
+
+/**
  * Turn rollup rows into display labels and links.
  *
  * Rows store what was viewed as a type and a primary key, so the title is
@@ -39474,6 +39718,243 @@ function get_unique_name($properties)
         'type' => $type
     ));
 }
+// Reduce a string to characters that survive a round trip through a URL.
+//
+// A file whose name is not ASCII cannot be opened on an IIS install. Measured
+// on one: the browser requests the percent-encoded UTF-8 path correctly, but
+// PHP is handed REQUEST_URI already decoded and re-encoded in the server's ANSI
+// code page, so "görüntüsü" arrives as the single bytes f6/fc rather than the
+// UTF-8 pairs c3b6/c3bc that were stored. router.php looks the file up with
+// WHERE name = <those bytes> and finds nothing, and the visitor gets the site's
+// 404 page. rawurldecode() cannot help — there is nothing left to decode.
+//
+// Nothing in the request path can be fixed from here, so the name is kept
+// inside the character set that has no such problem. Turkish is mapped first:
+// a generic accent-stripper turns ı into i but also turns İ into I and leaves
+// ş and ğ to be replaced wholesale, which produces names nobody recognises.
+//
+// Files stored before this are untouched and keep working if they already did.
+function pg_ascii_file_name($value)
+{
+    $map = array(
+        // Turkish
+        'ı' => 'i', 'İ' => 'I', 'ş' => 's', 'Ş' => 'S', 'ğ' => 'g', 'Ğ' => 'G',
+        'ü' => 'u', 'Ü' => 'U', 'ö' => 'o', 'Ö' => 'O', 'ç' => 'c', 'Ç' => 'C',
+        // Latin-1 and common Latin Extended
+        'à' => 'a', 'á' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'å' => 'a', 'ā' => 'a', 'ă' => 'a', 'ą' => 'a',
+        'À' => 'A', 'Á' => 'A', 'Â' => 'A', 'Ã' => 'A', 'Ä' => 'A', 'Å' => 'A', 'Ā' => 'A', 'Ă' => 'A', 'Ą' => 'A',
+        'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e', 'ē' => 'e', 'ė' => 'e', 'ę' => 'e', 'ě' => 'e',
+        'È' => 'E', 'É' => 'E', 'Ê' => 'E', 'Ë' => 'E', 'Ē' => 'E', 'Ė' => 'E', 'Ę' => 'E', 'Ě' => 'E',
+        'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i', 'ī' => 'i', 'į' => 'i',
+        'Ì' => 'I', 'Í' => 'I', 'Î' => 'I', 'Ï' => 'I', 'Ī' => 'I', 'Į' => 'I',
+        'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ō' => 'o', 'ø' => 'o', 'ő' => 'o',
+        'Ò' => 'O', 'Ó' => 'O', 'Ô' => 'O', 'Õ' => 'O', 'Ō' => 'O', 'Ø' => 'O', 'Ő' => 'O',
+        'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ū' => 'u', 'ů' => 'u', 'ű' => 'u',
+        'Ù' => 'U', 'Ú' => 'U', 'Û' => 'U', 'Ū' => 'U', 'Ů' => 'U', 'Ű' => 'U',
+        'ñ' => 'n', 'Ñ' => 'N', 'ń' => 'n', 'Ń' => 'N', 'ň' => 'n', 'Ň' => 'N',
+        'ý' => 'y', 'Ý' => 'Y', 'ÿ' => 'y', 'ž' => 'z', 'Ž' => 'Z', 'ź' => 'z', 'Ź' => 'Z', 'ż' => 'z', 'Ż' => 'Z',
+        'š' => 's', 'Š' => 'S', 'ś' => 's', 'Ś' => 'S', 'ř' => 'r', 'Ř' => 'R',
+        'ď' => 'd', 'Ď' => 'D', 'ť' => 't', 'Ť' => 'T', 'ł' => 'l', 'Ł' => 'L',
+        'ć' => 'c', 'Ć' => 'C', 'č' => 'c', 'Č' => 'C',
+        'æ' => 'ae', 'Æ' => 'AE', 'œ' => 'oe', 'Œ' => 'OE', 'ß' => 'ss',
+        'å' => 'a', 'ð' => 'd', 'Ð' => 'D', 'þ' => 'th', 'Þ' => 'TH');
+
+    $value = strtr($value, $map);
+
+    // Whatever is left outside the set — other alphabets, emoji, punctuation
+    // that means something in a URL — becomes an underscore. A run of them
+    // collapses, so a name written entirely in another script does not turn
+    // into forty underscores.
+    $value = preg_replace('/[^A-Za-z0-9._-]+/', '_', $value);
+    $value = preg_replace('/_{2,}/', '_', $value);
+    $value = trim($value, '_');
+
+    return $value;
+}
+/**
+ * What a barcode of a given type has to look like.
+ *
+ * One description of the shape, used by the input that collects the code, by
+ * the generator that makes one up, and by the check that runs before it is
+ * stored. A box that accepts thirteen letters for an EAN13 produces a label
+ * that will not scan, and the operator finds out at the till.
+ *
+ * EAN13 is twelve digits plus a check digit; UPC-A is eleven plus one. CODE128
+ * encodes the whole printable ASCII range at any length, so it has no shape to
+ * enforce beyond the column width.
+ *
+ * @return array type, digits_only, length (0 = free), pattern (HTML5), hint
+ */
+function pg_barcode_format($type = '')
+{
+    $type = ($type !== '') ? $type : (defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128');
+
+    switch ($type) {
+
+        case 'EAN13':
+            return array(
+                'type'        => 'EAN13',
+                'digits_only' => TRUE,
+                'length'      => 13,
+                'pattern'     => '[0-9]{13}',
+                'hint'        => lang(array('string' => '{var:1} digits', 'vars' => array(13))));
+
+        case 'UPC':
+            return array(
+                'type'        => 'UPC',
+                'digits_only' => TRUE,
+                'length'      => 12,
+                'pattern'     => '[0-9]{12}',
+                'hint'        => lang(array('string' => '{var:1} digits', 'vars' => array(12))));
+
+        default:
+            return array(
+                'type'        => $type,
+                'digits_only' => FALSE,
+                'length'      => 0,
+                'pattern'     => '',
+                'hint'        => '');
+    }
+}
+/**
+ * Does this code fit the type it is being stored as?
+ *
+ * A blank code is not invalid — it means "generate one" everywhere this is
+ * called from, and that decision belongs to the caller.
+ */
+function pg_barcode_matches_format($barcode, $type = '')
+{
+    $barcode = trim((string) $barcode);
+
+    if ($barcode === '') {
+        return TRUE;
+    }
+
+    $format = pg_barcode_format($type);
+
+    if ($format['digits_only'] && !preg_match('/^[0-9]+$/', $barcode)) {
+        return FALSE;
+    }
+
+    if ($format['length'] && (mb_strlen($barcode) !== $format['length'])) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+/**
+ * Produce one barcode that is not already in use.
+ *
+ * The same generator was written out three times — the bulk action in
+ * edit_products.php, the assign_barcodes endpoint in api.php, and now the
+ * product screen. Three copies of a check-digit calculation is three chances
+ * for one of them to drift, and a barcode that fails validation at the till is
+ * not something the operator can debug.
+ *
+ * Returns '' when no free code turned up. The caller decides what that means;
+ * for a bulk assign it is "skip this one", which is why this does not write
+ * anything itself.
+ *
+ * @param string $type CODE128 (default), EAN13 or UPC
+ * @param int    $product_id seeds the CODE128 form so two products made in the
+ *               same second do not collide on the random half alone
+ * @return string
+ */
+function pg_generate_unique_barcode($type = '', $product_id = 0)
+{
+    $type       = ($type !== '') ? $type : (defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128');
+    $product_id = (int) $product_id;
+    $attempts   = 0;
+
+    do {
+        if ($type === 'EAN13') {
+            // 12 digits plus a modulo 10 check digit weighted 1,3,1,3...
+            $digits = '';
+            for ($i = 0; $i < 12; $i++) {
+                $digits .= rand(0, 9);
+            }
+            $sum = 0;
+            for ($i = 0; $i < 12; $i++) {
+                $sum += (($i % 2 === 0) ? 1 : 3) * (int) $digits[$i];
+            }
+            $barcode = $digits . ((10 - ($sum % 10)) % 10);
+
+        } elseif ($type === 'UPC') {
+            // 11 digits, same idea, weights the other way round.
+            $digits = '';
+            for ($i = 0; $i < 11; $i++) {
+                $digits .= rand(0, 9);
+            }
+            $sum = 0;
+            for ($i = 0; $i < 11; $i++) {
+                $sum += (($i % 2 === 0) ? 3 : 1) * (int) $digits[$i];
+            }
+            $barcode = $digits . ((10 - ($sum % 10)) % 10);
+
+        } else {
+            $barcode = str_pad($product_id, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
+        }
+
+        $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
+        $attempts++;
+
+    } while ($exists && ($attempts < 30));
+
+    return $exists ? '' : $barcode;
+}
+/**
+ * Attach a barcode to a product.
+ *
+ * A blank $barcode means "generate one". A product that already has a barcode
+ * is left alone — this is called from the create path, but the same rule is
+ * what the bulk assign uses, and re-running it must not pile up codes.
+ *
+ * Returns the stored code, or '' if nothing was written.
+ */
+function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
+{
+    $product_id = (int) $product_id;
+
+    if (!$product_id or !defined('BARCODE_ENABLED') or !BARCODE_ENABLED) {
+        return '';
+    }
+
+    if (db_value("SELECT COUNT(*) FROM product_barcodes WHERE product_id = '" . e($product_id) . "'")) {
+        return '';
+    }
+
+    $type    = ($type !== '') ? $type : (defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128');
+    $barcode = trim($barcode);
+
+    if ($barcode !== '') {
+        // Checked here and not only in the browser. The input carries the
+        // pattern, but a pattern is a hint to whoever is typing, not a rule
+        // about what may be stored.
+        if (!pg_barcode_matches_format($barcode, $type)) {
+            return '';
+        }
+
+        // A code the operator typed is refused rather than replaced if it is
+        // taken: silently generating a different one would leave them holding a
+        // label that scans as another product.
+        if (db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'")) {
+            return '';
+        }
+    } else {
+        $barcode = pg_generate_unique_barcode($type, $product_id);
+    }
+
+    if ($barcode === '') {
+        return '';
+    }
+
+    $now = date('Y-m-d H:i:s');
+
+    db("INSERT INTO product_barcodes (product_id, barcode, barcode_type, created_at, updated_at)
+        VALUES ('" . e($product_id) . "', '" . e($barcode) . "', '" . e($type) . "', '" . e($now) . "', '" . e($now) . "')");
+
+    return $barcode;
+}
 // Create a function that is used in various areas where files are added,
 // in order to reduce the file name length (if necessary) and replace special characters.
 function prepare_file_name($file_name)
@@ -39483,6 +39964,15 @@ function prepare_file_name($file_name)
     // file, because that file is used to sign emails for DKIM.
     if ($file_name == '.htaccess' or ($file_name == 'dkim.key' and (!USER_LOGGED_IN or USER_ROLE == 3))) {
         $file_name = 'file';
+    }
+    // Done before the length check below so that the 100 character limit is
+    // measured against the name that actually gets stored.
+    $file_name = pg_ascii_file_name($file_name);
+    // A name written entirely in another script leaves nothing in front of the
+    // extension. ".png" is not a file called png — it is a hidden file with no
+    // name, and every such upload would be asking for the same one.
+    if (($file_name === '') or ($file_name === '.') or (mb_substr($file_name, 0, 1) === '.')) {
+        $file_name = 'file' . $file_name;
     }
     // If the file name is longer than 100 characters, then reduce the length of the file name.
     // We have to do this because the database limits the file name to 100 characters,
@@ -46519,10 +47009,35 @@ function get_system_status_icons()
         'php_version' => 15,
         'database' => 20,
         'extensions' => 5,
-        'directives' => 20
+        'directives' => 20,
+        'waf' => 10,
+        'bot_filter' => 10
     );
 
-    // Helper funct. $makeIcon
+    // Icon rule for this bar — keep it when adding a check.
+    //
+    // The glyph identifies WHICH check it is, the colour identifies its STATE.
+    // One glyph family per check, never shared: the bar is a row of ~12 icons at
+    // 1.25rem, and two checks drawn from the same family (a shield for CAPTCHA and
+    // a shield for the firewall, a padlock for SSL and a padlock for the password
+    // hint) are indistinguishable at that size — the operator has to hover every
+    // one of them to find out what they are looking at.
+    //
+    //   file      → file integrity        person   → CAPTCHA
+    //   padlock   → SSL / TLS             key      → strong password
+    //   eye       → password hint         shield   → web application firewall
+    //   robot     → unknown bot filter    broadcast→ IndexNow
+    //   terminal  → PHP version           database → database health
+    //   puzzle    → PHP extensions        sliders  → php.ini directives
+    //
+    // Where the family offers a natural negative form (unlock, shield-slash,
+    // database-x) use it for the failing state: it reinforces the colour instead
+    // of competing with it. Otherwise the same glyph in a different colour is fine.
+    //
+    // The icons are printed in three groups — security, SEO, server — divided by
+    // this rule. Same markup as the divider in front of the score.
+    $group_separator = '<span class="vh pe-1 me-2 border-end"></span>';
+
     $makeIcon = function ($icon, $color, $title, $content) {
         return '<span class="fs-5 bi ' . $icon . ' ' . $color . ' px-1 status-popover" 
             title="' . lang($title) . '" 
@@ -46601,10 +47116,10 @@ function get_system_status_icons()
         $score -= $weights['ssl'];
     }
 
-    // 🔑 Password hint
+    // 👁 Password hint — an eye, because the risk is that the hint reveals something.
     if (defined('PASSWORD_HINT') && PASSWORD_HINT) {
         $output .= $makeIcon(
-            'bi-unlock-fill',
+            'bi-eye-fill',
             'text-danger',
             'Password Management',
             'Password hint is enabled. This may reduce security.'
@@ -46612,18 +47127,18 @@ function get_system_status_icons()
         $score -= $weights['password'];
     }
 
-    // CAPTCHA
+    // 🧍 CAPTCHA — a person, because the question it answers is "is this a human".
     if (defined('CAPTCHA')) {
         if (CAPTCHA) {
             $output .= $makeIcon(
-                'bi-shield-lock-fill',
+                'bi-person-check-fill',
                 'text-success',
                 'CAPTCHA Protection',
                 'CAPTCHA protection is enabled.'
             );
         } else {
             $output .= $makeIcon(
-                'bi-shield-x',
+                'bi-person-x-fill',
                 'text-danger',
                 'CAPTCHA Protection',
                 'CAPTCHA protection is disabled.'
@@ -46632,18 +47147,18 @@ function get_system_status_icons()
         }
     }
 
-    // Strong password
+    // 🔑 Strong password — the key family belongs to passwords, filled when enforced.
     if (defined('STRONG_PASSWORD')) {
         if (STRONG_PASSWORD) {
             $output .= $makeIcon(
-                'bi-shield-check',
+                'bi-key-fill',
                 'text-success',
                 'Password Management',
                 'Strong password enforcement is enabled.'
             );
         } else {
             $output .= $makeIcon(
-                'bi-shield-exclamation',
+                'bi-key',
                 'text-danger',
                 'Password Management',
                 'Strong password enforcement is disabled.'
@@ -46652,19 +47167,86 @@ function get_system_status_icons()
         }
     }
 
-    // ⚡ IndexNow
+    // 🛡️ Web application firewall
+    // waf_mode() is the single source of truth: it already folds in the Enable
+    // Firewall checkbox, the schema check and the monitor/block setting.
+    $waf_current_mode = function_exists('waf_mode') ? waf_mode() : 'off';
+    if ($waf_current_mode === 'block') {
+        $output .= $makeIcon(
+            'bi-shield-fill-check',
+            'text-success',
+            'Web Application Firewall',
+            'The firewall is enabled and blocking malicious requests.'
+        );
+    } elseif ($waf_current_mode === 'monitor') {
+        // Monitor mode records what would have been blocked but stops nothing,
+        // so it must not be scored as full protection.
+        $output .= $makeIcon(
+            'bi-shield-fill-exclamation',
+            'text-warning',
+            'Web Application Firewall',
+            'The firewall is in monitor mode: it records attacks but does not block them.'
+        );
+        $score -= $weights['waf'] * 0.5;
+    } else {
+        $output .= $makeIcon(
+            'bi-shield-slash-fill',
+            'text-danger',
+            'Web Application Firewall',
+            'The firewall is disabled. No requests are being filtered.'
+        );
+        $score -= $weights['waf'];
+    }
+
+    // 🤖 Unknown bot filtering
+    // The Enable Firewall checkbox is an absolute off switch (waf_run()), so this
+    // option does nothing while the firewall is off. Reporting it as enabled in
+    // that state would be a false all clear.
+    if ($waf_current_mode === 'off') {
+        $output .= $makeIcon(
+            'bi-robot',
+            'text-danger',
+            'Unknown Bot Filtering',
+            'Unknown bots are not being blocked, because the firewall is disabled.'
+        );
+        $score -= $weights['bot_filter'];
+    } elseif (defined('BLOCK_UNKNOWN_BOTS') && BLOCK_UNKNOWN_BOTS) {
+        $output .= $makeIcon(
+            'bi-robot',
+            'text-success',
+            'Unknown Bot Filtering',
+            'Unknown bots are being blocked.'
+        );
+    } else {
+        $output .= $makeIcon(
+            'bi-robot',
+            'text-warning',
+            'Unknown Bot Filtering',
+            'Unknown bots are not being blocked.'
+        );
+        $score -= $weights['bot_filter'];
+    }
+
+    // Security checks end here. A thin rule separates the three groups — twelve
+    // icons in an unbroken row read as one block, and the operator has no way to
+    // tell where "is my site secure" stops and "is my server healthy" begins.
+    $output .= $group_separator;
+
+    // 📡 IndexNow — a broadcast, because the feature announces changes to search
+    // engines. It used to borrow the key glyph, which collided with the password
+    // check next to it.
     if (defined('INDEXNOW_KEY') && INDEXNOW_KEY !== '') {
         $key_file_path = FILE_DIRECTORY_PATH . '/' . INDEXNOW_KEY . '.txt';
         if (file_exists($key_file_path)) {
             $output .= $makeIcon(
-                'bi-key-fill',
+                'bi-broadcast-pin',
                 'text-success',
                 'IndexNow',
                 'IndexNow configuration is successful.'
             );
         } else {
             $output .= $makeIcon(
-                'bi-key-fill',
+                'bi-broadcast',
                 'text-warning',
                 'IndexNow',
                 'Warning: IndexNow key is set but the verification file is missing.'
@@ -46673,13 +47255,15 @@ function get_system_status_icons()
         }
     } else {
         $output .= $makeIcon(
-            'bi-key-fill',
+            'bi-broadcast',
             'text-warning',
             'IndexNow',
             'Warning: IndexNow has not been configured yet.'
         );
         $score -= $weights['indexnow'];
     }
+
+    $output .= $group_separator;
 
     // 🐘 PHP version
     $php_version = PHP_VERSION;
@@ -46745,50 +47329,86 @@ function get_system_status_icons()
         );
     }
     // 📦 PHP extensions check with alias support for IIS and Apache
-    // This block checks whether required PHP extensions are loaded.
-    // Some extensions may have different names depending on the environment (e.g. 'Zend OPcache' vs 'opcache').
-    $extensions = array(
-        'memcache' => array('memcache'),
-        'imagick' => array('imagick'),
-        'opcache' => array('opcache', 'Zend OPcache'),
-        'zip' => array('zip')
+    // Some extensions report a different name depending on the build
+    // (e.g. 'Zend OPcache' vs 'opcache'), hence the alias lists.
+    //
+    // Two tiers on purpose. Only extensions the software actually calls cost
+    // score. 'memcache' used to sit in the scoring list although Pinegrap never
+    // calls it anywhere — practically nobody has it installed, so it deducted the
+    // full extension weight on every install forever, with nothing the operator
+    // could do about it. A penalty that can never be cleared teaches the operator
+    // to ignore the score.
+    $required_extensions = array(
+        'mysqli'   => array('mysqli'),                    // every database query
+        'curl'     => array('curl'),                      // licence, updates, gateways, IndexNow
+        'openssl'  => array('openssl'),                   // encrypt_string_with_iv(), API secret keys
+        'mbstring' => array('mbstring'),                  // lang() case conversion, Turkish İ/ı
+        'zip'      => array('zip'),                       // update packages, backups, import / export
+        'fileinfo' => array('fileinfo'),                  // upload MIME detection
+        'opcache'  => array('opcache', 'Zend OPcache')    // bytecode cache
     );
 
-    $missing_ext = array();
+    // Reported but never deducted: nothing breaks without them. imagick falls back
+    // to GD in optimize_image() and edit_file.php, and memcached is not used at all
+    // — it is listed so the operator can see whether it is available.
+    $optional_extensions = array(
+        'imagick'   => array('imagick'),
+        'memcached' => array('memcached', 'memcache')
+    );
 
-    foreach ($extensions as $label => $aliases) {
-        $found = false;
-
-        // Check all possible aliases for each extension
+    $extension_is_loaded = function ($aliases) {
         foreach ($aliases as $ext_name) {
             if (extension_loaded($ext_name)) {
-                $found = true;
-                break;
+                return true;
             }
         }
+        return false;
+    };
 
-        // If none of the aliases are loaded, mark as missing
-        if (!$found) {
+    $missing_ext = array();
+    foreach ($required_extensions as $label => $aliases) {
+        if (!$extension_is_loaded($aliases)) {
             $missing_ext[] = $label;
         }
     }
 
-    // Output result based on missing extensions
-    if (empty($missing_ext)) {
+    $missing_optional_ext = array();
+    foreach ($optional_extensions as $label => $aliases) {
+        if (!$extension_is_loaded($aliases)) {
+            $missing_optional_ext[] = $label;
+        }
+    }
+
+    // The prefix is translated on its own. Composing the sentence first and handing
+    // the whole thing to lang() never matched a key, so the Turkish translation
+    // already sitting in tr.json was never actually used.
+    if (!empty($missing_ext)) {
+        $output .= $makeIcon(
+            'bi-puzzle-fill',
+            'text-danger',
+            'PHP Extensions',
+            rtrim(lang('Missing extension(s): ')) . ' ' . implode(', ', $missing_ext)
+        );
+        $score -= $weights['extensions'];
+    } elseif (!empty($missing_optional_ext)) {
+        // Grey, not yellow: nothing is wrong here. memcached is almost never
+        // installed, so a warning colour would sit on this icon permanently and
+        // become background noise — the same trap as the old memcache penalty.
+        $output .= $makeIcon(
+            'bi-puzzle-fill',
+            'text-secondary',
+            'PHP Extensions',
+            rtrim(lang('All required PHP extensions are loaded.')) . ' '
+                . rtrim(lang('Optional extension(s) not installed:')) . ' '
+                . implode(', ', $missing_optional_ext)
+        );
+    } else {
         $output .= $makeIcon(
             'bi-puzzle-fill',
             'text-success',
             'PHP Extensions',
             'All required PHP extensions are loaded.'
         );
-    } else {
-        $output .= $makeIcon(
-            'bi-puzzle-fill',
-            'text-danger',
-            'PHP Extensions',
-            'Missing extension(s): ' . implode(', ', $missing_ext)
-        );
-        $score -= $weights['extensions'];
     }
 
 
@@ -46997,6 +47617,7 @@ function check_and_repair_database_tables()
         'states',
         'style',
         'submitted_form_info',
+        'submitted_form_view_stats',
         'submitted_form_views',
         'system_style_cells',
         'system_theme_css_rules',
@@ -48698,6 +49319,110 @@ function pg_home_page_group_expression($column = 'landing_page_name')
     $expression = "CASE WHEN landing_page_name IN (" . implode(', ', $all) . ") THEN '' ELSE landing_page_name END";
 
     return str_replace('landing_page_name', $column, $expression);
+}
+
+/**
+ * Resolve a site URL to a file on disk, or '' if it is not one of ours.
+ *
+ * Two roots, because a Pinegrap URL can mean two different places:
+ * uploaded files are served from the site root but physically live in
+ * data/files, while software assets sit where their URL says they do.
+ */
+function pg_asset_path($url)
+{
+    // Anything with a host is somebody else's server.
+    if (preg_match('#^(?:[a-z][a-z0-9+.-]*:)?//#i', $url) || strpos($url, 'data:') === 0) {
+        return '';
+    }
+
+    $path = $url;
+
+    // Strip the install path so "/sub/styles.css" becomes "styles.css".
+    if (defined('PATH') && PATH !== '' && PATH !== '/' && strpos($path, PATH) === 0) {
+        $path = substr($path, strlen(PATH));
+    }
+
+    $path = ltrim($path, '/');
+
+    if ($path === '' || strpos($path, '..') !== false) {
+        return '';
+    }
+
+    $path = rawurldecode($path);
+
+    // Uploaded files first: that is where a designer's own assets live.
+    $candidate = FILE_DIRECTORY_PATH . '/' . $path;
+
+    if (is_file($candidate)) {
+        return $candidate;
+    }
+
+    // Then the web root, for software assets and anything dropped in by hand.
+    $candidate = dirname(dirname(__FILE__)) . '/' . $path;
+
+    if (is_file($candidate)) {
+        return $candidate;
+    }
+
+    return '';
+}
+
+/**
+ * Append ?v=<last modified> to local asset URLs, at output time.
+ *
+ * The version never enters the stored markup. A designer writes
+ * src="{path}avatar-1.png" and that is what stays in the database; the query
+ * string is added to the response on its way out, so editing the file changes
+ * the URL the browser sees without anyone editing the page.
+ *
+ * This is the only thing that reliably invalidates a CDN. A browser can be
+ * told to reload, but Cloudflare caches .css, .js and images by default and
+ * neither Ctrl+F5 nor DevTools "disable cache" reaches it — those bypass the
+ * browser and the request still lands on the edge, which answers from its own
+ * copy. Changing the URL changes the cache key, so there is nothing to purge.
+ *
+ * Matching is by FILE EXTENSION, not by tag. Rewriting every href would
+ * rewrite page links too, and appending a version to /urun/xyz would be a
+ * visible bug on every link in the site. An extension list cannot do that:
+ * ordinary page URLs do not end in .css or .png.
+ *
+ * URLs that already carry a query string are left alone — an explicit ?v= is
+ * someone's deliberate choice and overriding it would be rude.
+ */
+function pg_version_assets($html)
+{
+    if (!is_string($html) || $html === '') {
+        return $html;
+    }
+
+    return preg_replace_callback(
+        '#\b(src|href)(\s*=\s*)(["\'])([^"\'>]+?\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|avif|ico|bmp|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3))(\3)#i',
+        'pg_version_assets_callback',
+        $html
+    );
+}
+
+function pg_version_assets_callback($match)
+{
+    static $versions = array();
+
+    $url = $match[4];
+
+    // Already versioned, or carrying its own parameters.
+    if (strpos($url, '?') !== false) {
+        return $match[0];
+    }
+
+    if (!array_key_exists($url, $versions)) {
+        $file = pg_asset_path($url);
+        $versions[$url] = $file !== '' ? @filemtime($file) : false;
+    }
+
+    if (!$versions[$url]) {
+        return $match[0];
+    }
+
+    return $match[1] . $match[2] . $match[3] . $url . '?v=' . $versions[$url] . $match[5];
 }
 
 function pg_looks_like_zip($bytes)

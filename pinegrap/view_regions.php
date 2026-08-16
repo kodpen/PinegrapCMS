@@ -479,6 +479,8 @@ switch ($filter) {
             
             while ($row = mysqli_fetch_array($result)){
 
+                $user_username = '';
+
                 if (isset($row['user_username']) == TRUE) {
                     $user_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user_username']) ) ) );
                 }
@@ -588,12 +590,15 @@ switch ($filter) {
                 last_modified_user.user_username as user_username
             FROM cregion
             LEFT JOIN user as last_modified_user ON cregion.cregion_user = last_modified_user.user_id
+            WHERE cregion_designer_type = 'yes'
             ORDER BY $sort_column $asc_desc";
 
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        
+
         while ($row = mysqli_fetch_array($result)){
-            
+
+            $user_username = '';
+
             if (isset($row['user_username']) == TRUE) {
                 $user_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user_username']) ) ) );
             }
@@ -701,10 +706,13 @@ switch ($filter) {
                 last_modified_user.user_username as user_username
             FROM cregion
             LEFT JOIN user as last_modified_user ON cregion.cregion_user = last_modified_user.user_id
+            WHERE cregion_designer_type = 'no'
             ORDER BY $sort_column $asc_desc";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        
+
         while ($row = mysqli_fetch_array($result)){
+
+            $user_username = '';
 
             if (isset($row['user_username']) == TRUE) {
                 $user_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user_username']) ) ) );

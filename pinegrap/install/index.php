@@ -495,6 +495,7 @@ $versions = array(
   array('number' => '2026.3.7'	),
   array('number' => '2026.3.8'	),
   array('number' => '2026.4'	),
+  array('number' => '2026.4.1'	),
 );
 
 $software_version = $versions[count($versions) - 1]['number'];
@@ -2422,8 +2423,34 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 		            </files>
 		        </defaultDocument>
 		        <rewrite>
-		            <rules> 
-		                <rule name="Pinegrap Rule" stopProcessing="true"> 
+		            <rules>
+		                <!--
+		                    Blocks every direct request under data/, the same way the
+		                    nginx sample below does.
+
+		                    data/.htaccess says "deny from all", but that is an Apache
+		                    file and IIS ignores it, so without this rule the folder is
+		                    readable over HTTP: config.php, the database backups, and
+		                    every uploaded file in data/files. Uploads take their
+		                    filename from the browser, so a .php file landing there
+		                    would be executed.
+
+		                    Parts of it look protected by accident. A .sql answers 404
+		                    only because IIS has no MIME mapping for that extension,
+		                    which is not a security control; anything with a mapping
+		                    (.json, .txt, .xml, .zip) is served.
+
+		                    Written as a rewrite rule rather than <security>, because
+		                    <security><authorization> is locked at server level on many
+		                    hosts and a web.config using it makes every request under
+		                    that path fail with 500.19. The rewrite module is already a
+		                    hard requirement here — the rule below depends on it.
+		                -->
+		                <rule name="Block direct access to data" stopProcessing="true">
+		                    <match url="^' . ltrim(PATH, '/') . 'data/" ignoreCase="true" />
+		                    <action type="CustomResponse" statusCode="403" statusDescription="Forbidden" />
+		                </rule>
+		                <rule name="Pinegrap Rule" stopProcessing="true">
 		                    <match url=".*" /> 
 		                    <conditions> 
 		                        <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" /> 
@@ -3495,6 +3522,7 @@ function get_tables() {
 		'states',
 		'style',
 		'submitted_form_info',
+		'submitted_form_view_stats',
 		'submitted_form_views',
 		'system_style_cells',
 		'system_theme_css_rules',
@@ -5698,5 +5726,102 @@ function upgrade_to_2026_4() {
         if (!$exists) {
             db($sql);
         }
+    }
+}
+
+function upgrade_to_2026_4_1() {
+
+    // Daily rollup for article views.
+    //
+    // submitted_form_views held one row per view. On a site serving 200,000
+    // views a day it had reached eight million rows and 1.1 GB -- 73% of the
+    // whole database, 946 MB of it index. Being MyISAM, every article view took
+    // an exclusive lock on the entire table while four B-trees were updated,
+    // and every other request touching it queued behind that lock. Measured on
+    // the affected site, requests spent 84% of their wall clock waiting rather
+    // than computing, at every hour of the day.
+    //
+    // Two of those four indexes could never be used at all: `submitted_form_id`
+    // repeated the leading column of the composite index, and `page_id` had a
+    // cardinality of six across eight million rows.
+    //
+    // All of it existed to answer one question on one administrator screen --
+    // how many views each article drew in the last N days. The counter readers
+    // see comes from submitted_form_info.number_of_views and is untouched.
+    //
+    // No secondary index here, deliberately. The retention sweep and the
+    // delete-by-page paths scan, but they scan a few thousand rows; paying for
+    // an index on every write to save that is the trade that produced the table
+    // this one replaces.
+    db("CREATE TABLE IF NOT EXISTS submitted_form_view_stats (
+        submitted_form_id INT UNSIGNED NOT NULL DEFAULT 0,
+        page_id           INT UNSIGNED NOT NULL DEFAULT 0,
+        view_date         DATE         NOT NULL DEFAULT '0000-00-00',
+        views             INT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (submitted_form_id, page_id, view_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Bookkeeping for an interruptible backfill.
+    $config_columns = array(
+        'sfv_rollup_cutover' => "ALTER TABLE config ADD sfv_rollup_cutover INT UNSIGNED NOT NULL DEFAULT 0",
+        'sfv_rollup_cursor'  => "ALTER TABLE config ADD sfv_rollup_cursor INT UNSIGNED NOT NULL DEFAULT 0",
+        'sfv_rollup_done'    => "ALTER TABLE config ADD sfv_rollup_done TINYINT(1) NOT NULL DEFAULT 0",
+    );
+
+    foreach ($config_columns as $column => $sql) {
+        if (!db_item("SHOW COLUMNS FROM config LIKE '" . $column . "'")) {
+            db($sql);
+        }
+    }
+
+    // install/index.php never loads init.php, so the session time zone MySQL
+    // would otherwise use is the server default. The live writer buckets with
+    // CURDATE() and the backfill with DATE(FROM_UNIXTIME(...)); if the two
+    // clocks disagree, history and new traffic land on different days and meet
+    // at a seam the width of the offset.
+    if (function_exists('pg_sync_mysql_timezone')) {
+        pg_sync_mysql_timezone();
+    }
+
+    // The ceiling is fixed before anything is written, so the live writer and
+    // the backfill can never cover the same second twice. Views recorded from
+    // this moment go to the rollup; the backfill owns everything before it.
+    $cutover = time();
+
+    $oldest = 0;
+    if (db_item("SHOW TABLES LIKE 'submitted_form_views'")) {
+        // Served by the `timestamp` index, so this is a lookup, not a scan of
+        // eight million rows.
+        $oldest = (int) db_value("SELECT MIN(timestamp) FROM submitted_form_views WHERE timestamp > 0");
+    }
+
+    if ($oldest > 0) {
+        // Start on a day boundary so every chunk maps to exactly one bucket.
+        $cursor = strtotime(date('Y-m-d', $oldest));
+
+        db("UPDATE config SET
+                sfv_rollup_cutover = '" . (int) $cutover . "',
+                sfv_rollup_cursor  = '" . (int) $cursor . "',
+                sfv_rollup_done    = 0");
+    } else {
+        // Nothing to summarise: a fresh install, or a site whose legacy table
+        // was already retired.
+        db("UPDATE config SET
+                sfv_rollup_cutover = '" . (int) $cutover . "',
+                sfv_rollup_cursor  = '" . (int) $cutover . "',
+                sfv_rollup_done    = 1");
+    }
+
+    // Spend a bounded slice here; the form view directory screen carries the
+    // rest a few seconds at a time. Split across page loads rather than run to
+    // completion because IIS FastCGI and nginx end a long request on their own
+    // schedule, and the version number is written only after this returns -- an
+    // upgrade killed midway starts over.
+    //
+    // $recheck bypasses the readiness probe's static cache: the table was
+    // created moments ago in this same request, and a "no" cached before that
+    // would make the backfill skip itself and report success.
+    if (function_exists('pg_sfv_backfill_step')) {
+        pg_sfv_backfill_step(20, true);
     }
 }

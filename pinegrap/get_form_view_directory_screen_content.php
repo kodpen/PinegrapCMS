@@ -593,8 +593,50 @@ function get_form_view_directory_screen_content($properties) {
 
                 $most_viewed_submitted_forms = array();
                 
+                // Carry the rollup backfill forward a slice at a time. This is
+                // the only screen that reads this history, it is reached by
+                // administrators only, and the budget is small enough not to be
+                // felt. An upgrade whose backfill was cut short by a server
+                // request timeout finishes over the next few visits here.
+                if (function_exists('pg_sfv_backfill_step')) {
+                    pg_sfv_backfill_step(3);
+                }
+
                 // loop through the form list views in order to get the most viewed submitted forms
                 foreach ($form_list_views as $form_list_view) {
+
+                    // Views inside the reporting window.
+                    //
+                    // The rollup keeps one row per article, page and day, so the
+                    // window's edge moves from "exactly N x 86400 seconds ago" to
+                    // "the start of that day". For a ranking of the most read
+                    // articles that costs a partial day's count on one boundary;
+                    // hourly buckets would remove it and multiply the table by 24.
+                    //
+                    // The legacy branch is what an install that has taken the code
+                    // but not the database upgrade still runs.
+                    if (pg_sfv_stats_ready()) {
+                        $sql_views_in_range =
+                            "(
+                                SELECT IFNULL(SUM(submitted_form_view_stats.views), 0)
+                                FROM submitted_form_view_stats
+                                WHERE
+                                    (submitted_form_view_stats.submitted_form_id = forms.id)
+                                    AND (submitted_form_view_stats.page_id = '" . escape($form_list_view['form_item_view_page_id']) . "')
+                                    AND (submitted_form_view_stats.view_date >= DATE(FROM_UNIXTIME($summary_timestamp)))
+                            )";
+                    } else {
+                        $sql_views_in_range =
+                            "(
+                                SELECT COUNT(*)
+                                FROM submitted_form_views
+                                WHERE
+                                    (submitted_form_views.submitted_form_id = forms.id)
+                                    AND (submitted_form_views.page_id = '" . escape($form_list_view['form_item_view_page_id']) . "')
+                                    AND (submitted_form_views.timestamp > $summary_timestamp)
+                            )";
+                    }
+
                     $submitted_forms = db_items(
                         "SELECT
                             forms.id,
@@ -604,14 +646,7 @@ function get_form_view_directory_screen_content($properties) {
                             submitted_form_info.number_of_comments,
                             submitted_form_info.number_of_views,
                             GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, '')) AS newest_activity_timestamp,
-                            (
-                                SELECT COUNT(*)
-                                FROM submitted_form_views
-                                WHERE
-                                    (submitted_form_views.submitted_form_id = forms.id)
-                                    AND (submitted_form_views.page_id = '" . $form_list_view['form_item_view_page_id'] . "')
-                                    AND (submitted_form_views.timestamp > $summary_timestamp)
-                            ) AS number_of_views_for_date_range
+                            $sql_views_in_range AS number_of_views_for_date_range
                         FROM forms
                         LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = '" . $form_list_view['form_item_view_page_id'] . "'))
                         LEFT JOIN comments AS newest_comment ON submitted_form_info.newest_comment_id = newest_comment.id

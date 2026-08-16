@@ -655,8 +655,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete views for this submitted form that the form view directory feature uses
-        $query = "DELETE FROM submitted_form_views WHERE submitted_form_id = '" . $form['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        pg_sfv_delete_views('submitted_form_id', $form['id']);
 
         $custom_forms_for_log[$form['page_id']] = $form['form_name'];
 

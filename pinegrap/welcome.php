@@ -106,6 +106,56 @@ $output_header_includes = '';
 
 
 $output_widget_control_buttons = '';
+
+// Release notes.
+//
+// Read here and embedded in the modal rather than linked, so the browser never
+// requests changelog.txt over the network. The file sits in the software
+// directory, which is served directly, and a public release list tells anyone
+// which version a site runs and which security fixes it is missing.
+//
+// Costs one small file read on a screen that already assembles a dozen widgets.
+$output_changelog_button = '';
+$changelog_path = dirname(__FILE__) . '/changelog.txt';
+
+if (is_file($changelog_path)) {
+
+    $changelog_text = @file_get_contents($changelog_path);
+
+    if ($changelog_text !== false && $changelog_text !== '') {
+
+        $output_changelog_button = '
+        <button title="' . lang('Release Notes') . '" class="btn panel-title-row border-0 me-1 my-1 no-popover" type="button" data-bs-toggle="modal" data-bs-target="#changelog_modal"><span class="bi bi-card-list"></span></button>
+
+        <div class="modal fade" id="changelog_modal" tabindex="-1" aria-labelledby="changelog_modal_label" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="changelog_modal_label">
+                            <span class="bi bi-card-list me-2"></span>' . lang('Release Notes') . '
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!--
+                            text-align is forced left: the dashboard centres this
+                            column, and inherited centring turns a column-aligned
+                            text file into ragged nonsense.
+
+                            white-space is "pre", not "pre-wrap". Wrapping breaks
+                            the banner and the aligned tag column; a horizontal
+                            scrollbar on a narrow screen is the lesser cost.
+                        -->
+                        <pre class="mb-0 text-body" style="text-align: left; white-space: pre; overflow-x: auto; font-size: .78rem; line-height: 1.45; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, &quot;Courier New&quot;, monospace;">' . h($changelog_text) . '</pre>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    }
+}
 $output_widget_controls = '';
 
 
@@ -562,7 +612,8 @@ $output_header_includes .
                 <div class="col-auto col-md-auto order-1 order-md-0">
                     ' . $output_system_status_widget . '
                 </div>
-                <div class="col-12 col-md-auto order-0 order-md-1 text-center">
+                <div class="col-12 col-md-auto order-0 order-md-1 text-center d-flex justify-content-center align-items-center">
+                    ' . $output_changelog_button . '
                     ' . $output_widget_control_buttons . '
                 </div>
             </div>

@@ -223,6 +223,9 @@ if (!$_POST) {
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
+    // Names of everything written, for the JSON caller further down.
+    $uploaded_files = array();
+
     foreach ($_FILES['file']['name'] as $index => $file_name) {
         $file_name = prepare_file_name($file_name);
 
@@ -266,6 +269,28 @@ if (!$_POST) {
                 UNIX_TIMESTAMP())");
 
         log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$file_name )), $_SESSION['sessionusername']);
+
+        $uploaded_files[] = array(
+            'id'   => mysqli_insert_id(db::$con),
+            'name' => $file_name,
+            'type' => $file_extension,
+            'size' => $_FILES['file']['size'][$index]);
+    }
+
+    // Screens that upload in the background and then have to show the file
+    // straight away ask for JSON. They need the stored name back, which is not
+    // the name the browser sent: prepare_file_name() replaces spaces and a few
+    // other characters that break the file's URL, and get_unique_name() adds a
+    // suffix when the name is taken.
+    //
+    // Opt-in, so nothing that posts to this script today changes: the file
+    // manager form and the picker's dropzone never send this field.
+    if (isset($_POST['jsonreturn']) && $_POST['jsonreturn'] == 'true') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo encode_json(array(
+            'status' => 'success',
+            'files'  => $uploaded_files));
+        exit();
     }
 
     include_once('liveform.class.php');

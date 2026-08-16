@@ -20,6 +20,26 @@ include('init.php');
 $liveform = new liveform('view_products');
 $user = validate_user();
 validate_ecommerce_access($user);
+
+include_once('product_builder.php');
+
+// Two views of the same catalog: every product, or the variant sets that group
+// them. Remembered per session like the filter below it, so returning from an
+// edit lands on the list the operator was working in rather than resetting to
+// the other one.
+//
+// Handled before anything else on this screen runs: the product query, the
+// filters and the export all belong to the product view and none of it is
+// needed to draw the other one.
+if (isset($_GET['mode'])) {
+    $_SESSION['software']['view_products']['mode'] = ($_GET['mode'] === 'variant_sets') ? 'variant_sets' : 'products';
+}
+
+if (isset($_SESSION['software']['view_products']['mode'])
+    && ($_SESSION['software']['view_products']['mode'] === 'variant_sets')) {
+    pg_pb_variant_sets_screen();
+    exit();
+}
 //   $liveform->mark_error("error yitle","error descrition");
 //   $liveform->add_warning("warning title");
 //   $liveform->add_notice("notice title");
@@ -1698,7 +1718,7 @@ if ($_GET['submit_data'] == 'Export Products') {
                         <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_product.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <a class="btn btn-sm btn-outline-primary m-1" href="add_product_variants.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-grid me-2"></span>' . lang('Variant Products') . '</a>
+                            <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=variant_sets" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-grid me-2"></span>' . lang('Variant Sets') . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_products.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>

@@ -48,6 +48,11 @@ if (!$_POST) {
     $result = mysqli_query(db::$con, $query) or output_error("Query failed.");
     $row = mysqli_fetch_row($result);
     $oldest_timestamp = $row[0];
+    // When the log table is empty MIN() returns NULL, which makes date() emit a
+    // deprecation notice on PHP 8.1+ and pollutes the error log we are displaying here.
+    if (!$oldest_timestamp) {
+        $oldest_timestamp = time();
+    }
 
 
     // if advanced filters value was passed in the query string
@@ -77,7 +82,7 @@ if (!$_POST) {
         if (defined('USER_ROLE') && (USER_ROLE < 1)) {
 
             if(
-                $_SESSION['software']['settings']['view_log']['error_log'] 
+                !empty($_SESSION['software']['settings']['view_log']['error_log'])
                 && (
                     file_exists($candidates['software_directory'])
                     || file_exists($candidates['main_directory'])
@@ -183,6 +188,50 @@ if (!$_POST) {
     $output_rows = '';
     $number_of_results = 0;
 
+    // Renders the description cell.  error_log entries are frequently multi line stack
+    // traces that push every other row off the screen, so long messages are clipped to a
+    // few lines and can be expanded on demand.  Error messages also get a copy button so
+    // the trace can be pasted somewhere else without selecting it by hand.
+    $description_index = 0;
+    $render_description = function ($text, $is_error) use (&$description_index) {
+        // convert_text_to_html() already runs nl2br() internally, so it must not be wrapped again.
+        $message_html = convert_text_to_html($text);
+        $is_long = ((substr_count($text, "\n") > 2) || (strlen($text) > 300));
+
+        $description_index++;
+        $message_id = 'pg_log_msg_' . $description_index;
+
+        $tools = '';
+        if ($is_long) {
+            $tools .= '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none pg-log-toggle"'
+                . ' data-target="' . $message_id . '"'
+                . ' data-more="' . h(lang('Show More')) . '"'
+                . ' data-less="' . h(lang('Show Less')) . '">'
+                . '<i class="bi bi-chevron-down me-1"></i><span class="pg-log-toggle-label">' . lang('Show More') . '</span></button>';
+        }
+        if ($is_error) {
+            $tools .= '<button type="button" class="btn btn-link btn-sm p-0 ms-3 text-decoration-none pg-log-copy"'
+                . ' data-target="' . $message_id . '"'
+                . ' data-copy="' . h(lang('Copy')) . '"'
+                . ' data-copied="' . h(lang('Copied')) . '">'
+                . '<i class="bi bi-clipboard me-1"></i><span class="pg-log-copy-label">' . lang('Copy') . '</span></button>';
+        }
+
+        $classes = 'pg-log-msg text-break';
+        if ($is_error) {
+            $classes .= ' pg-log-msg-code';
+        }
+        if ($is_long) {
+            $classes .= ' pg-log-clip';
+        }
+
+        $output = '<div id="' . $message_id . '" class="' . $classes . '">' . $message_html . '</div>';
+        if ($tools != '') {
+            $output .= '<div class="pg-log-tools">' . $tools . '</div>';
+        }
+        return $output;
+    };
+
     if (!$include_error_logs) {
         // Fast path: only DB logs are needed — stream results directly without building intermediate arrays
         $query = "SELECT log_id, log_description, log_ip, log_user, log_timestamp "
@@ -203,10 +252,10 @@ if (!$_POST) {
             $output_rows .= '
             <tr id="' . h($log_id) . '" class="unselectable ">
                 <td>'. get_relative_time(array('timestamp' => $log_timestamp)). '</td>
-                <td><span title="' . h($log_location) . '" class="badge bg-success me-1">' . lang('Site Log') . '</span></td>
+                <td><span title="' . h($log_location) . '" class="badge bg-success me-1">' . lang('Site Log') . '</span><span class="d-none">pglogsite</span></td>
                 <td>' . h($log_user) . '</td>
-                <td>' . nl2br(convert_text_to_html($log_description)) . '</td>
-                <td>' . h($log_ip) . '</td>
+                <td>' . $render_description($log_description, false) . '</td>
+                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="text-muted">&mdash;</span>') . '</td>
             </tr>';
         }
     } else {
@@ -362,19 +411,29 @@ if (!$_POST) {
             $log_type = isset($row['log_type']) ? $row['log_type'] : 'Site Log';
 
 
+            // Hidden tokens let the type filter buttons search this column without
+            // depending on the translated badge text.
             $output_log_type = '';
+            $row_class = '';
+            $is_error_entry = false;
             if($log_type == 'Site Log') {
-            $output_log_type = '<span title="' . $log_location . '" class="badge bg-success me-1">' . h(lang($log_type)) . '</span>';
+            $output_log_type = '<span title="' . $log_location . '" class="badge bg-success me-1">' . h(lang($log_type)) . '</span><span class="d-none">pglogsite</span>';
             } else {
+            $is_error_entry = true;
             // Determine badge color based on message severity
             // warning -> bg-warning, fatal/error/uncaught/exception -> bg-danger (default for non-warning)
             $badge_class = 'bg-danger';
+            $type_token = 'pglogerror';
+            $row_class = ' pg-log-row-error';
             if (preg_match('/\bwarning\b/i', $log_description)) {
-                $badge_class = 'bg-warning';
+                // bg-warning needs dark text, the default white is unreadable on yellow.
+                $badge_class = 'bg-warning text-dark';
+                $type_token = 'pglogwarn';
+                $row_class = ' pg-log-row-warn';
             } elseif (preg_match('/\b(fatal|fatal error|uncaught|uncaught exception|exception|error)\b/i', $log_description)) {
                 $badge_class = 'bg-danger';
             }
-            $output_log_type = '<span title="' . $log_location . '" class="badge ' . $badge_class . ' me-1">' . h(lang($log_type)) . '</span>';
+            $output_log_type = '<span title="' . $log_location . '" class="badge ' . $badge_class . ' me-1">' . h(lang($log_type)) . '</span><span class="d-none">' . $type_token . '</span>';
             }
 
 
@@ -383,16 +442,94 @@ if (!$_POST) {
             $number_of_results++;
 
             $output_rows .= '
-            <tr id="' . h($log_id) . '" class="unselectable ">
+            <tr id="' . h($log_id) . '" class="unselectable' . $row_class . '">
                 <td>'. get_relative_time(array('timestamp' => $log_timestamp)). '</td>
                 <td>' . $output_log_type  . '</td>
                 <td>' . h($log_user) . '</td>
-                <td>' . nl2br(convert_text_to_html($log_description)) . '</td>
-                <td>' . h($log_ip) . '</td>
+                <td>' . $render_description($log_description, $is_error_entry) . '</td>
+                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="text-muted">&mdash;</span>') . '</td>
             </tr>
             ';
         }
     }
+
+
+    // Quick date range shortcuts.  The advanced filter panel needs six dropdowns for the
+    // most common ranges, so the ranges people actually use are exposed as one click links.
+    $today_timestamp = mktime(0, 0, 0, date('m'), date('d'), date('Y'));
+    // Carry the active sort over so switching the range does not silently reset the order.
+    $output_sort_query = '';
+    if (isset($_REQUEST['sort']) && ($_REQUEST['sort'] != '')) {
+        $output_sort_query .= '&amp;sort=' . h(urlencode($_REQUEST['sort']));
+    }
+    if (isset($_REQUEST['order']) && ($_REQUEST['order'] != '')) {
+        $output_sort_query .= '&amp;order=' . h(urlencode($_REQUEST['order']));
+    }
+    $quick_ranges = array(
+        array('label' => lang('Today'),        'from' => $today_timestamp),
+        array('label' => lang('Last 7 Days'),  'from' => $today_timestamp - (6 * 86400)),
+        array('label' => lang('Last 30 Days'), 'from' => $today_timestamp - (29 * 86400)),
+    );
+    $output_quick_ranges = '';
+    foreach ($quick_ranges as $quick_range) {
+        $range_start = $quick_range['from'];
+        $range_url = 'view_log.php?start_month=' . date('m', $range_start)
+            . '&amp;start_day=' . date('d', $range_start)
+            . '&amp;start_year=' . date('Y', $range_start)
+            . '&amp;stop_month=' . date('m')
+            . '&amp;stop_day=' . date('d')
+            . '&amp;stop_year=' . date('Y')
+            . $output_sort_query;
+        // A range is active when both ends match what is currently being displayed.
+        $range_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $range_start))
+            && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
+        $output_quick_ranges .= '<a class="btn ' . ($range_is_active ? 'btn-primary' : 'btn-outline-secondary') . '" href="' . $range_url . '">' . $quick_range['label'] . '</a>';
+    }
+    // "View All" reaches back to the oldest entry.  The deletion warning already tells the
+    // user about this button, so it has to be reachable from the screen.
+    $view_all_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $oldest_timestamp))
+        && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
+    $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-primary' : 'btn-outline-secondary') . '" href="view_log.php?view=all' . $output_sort_query . '">' . lang('View All') . '</a>';
+
+    // Type filter buttons.  They only make sense when error_log entries are mixed in,
+    // otherwise every row is a site log.  Filtering happens client side on the already
+    // rendered table, so no page reload is needed.
+    $output_type_filters = '';
+    if ($include_error_logs) {
+        $output_type_filters = '
+                        <div class="btn-group btn-group-sm my-1 ms-sm-2" role="group" aria-label="' . h(lang('Type')) . '">
+                            <button type="button" class="btn btn-outline-secondary active pg-log-type-filter" data-token="">' . lang('All') . '</button>
+                            <button type="button" class="btn btn-outline-secondary pg-log-type-filter" data-token="pglogsite">' . lang('Site Log') . '</button>
+                            <button type="button" class="btn btn-outline-secondary pg-log-type-filter" data-token="pglogerror">' . lang('Error Log') . '</button>
+                            <button type="button" class="btn btn-outline-secondary pg-log-type-filter" data-token="pglogwarn">' . lang('Warning') . '</button>
+                        </div>';
+    }
+
+    // Summary of what is currently on screen: how many entries and for which range.
+    $output_range_label = get_absolute_time(array('timestamp' => $start_timestamp, 'type' => 'date', 'format' => 'plain_text'))
+        . ' &ndash; '
+        . get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date', 'format' => 'plain_text'));
+    $output_result_summary = '
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis border fw-normal">
+                            <i class="bi bi-list-ul me-1"></i>' . lang(array(
+                                'string' => '{var:1} record{suffix:1}',
+                                'vars'   => array(number_format($number_of_results)),
+                                'suffix' => array(($number_of_results == 1) ? '' : 's')
+                            )) . '
+                        </span>
+                        <span class="text-muted small ms-2"><i class="bi bi-calendar3 me-1"></i>' . $output_range_label . '</span>';
+
+    $output_toolbar = '
+                <div class="row align-items-center mb-2 g-2">
+                    <div class="col-12 col-lg-8 text-center text-lg-start">
+                        <div class="btn-group btn-group-sm my-1" role="group" aria-label="' . h(lang('Date Range')) . '">
+                            ' . $output_quick_ranges . '
+                        </div>' . $output_type_filters . '
+                    </div>
+                    <div class="col-12 col-lg-4 text-center text-lg-end">
+                        ' . $output_result_summary . '
+                    </div>
+                </div>';
 
 
     // if the advanced filters are off
@@ -411,6 +548,14 @@ if (!$_POST) {
         $advanced_filters_icon = 'filter_list_off';
         $output_advanced_filters_class = 'btn-danger';
 
+        // The selects below are re-synced by the script at the bottom of the form, but the
+        // session keys do not exist on a first visit, which would raise undefined index notices.
+        $saved_filters = isset($_SESSION['software']['settings']['view_log']) ? $_SESSION['software']['settings']['view_log'] : array();
+        $saved_start_month = isset($saved_filters['start_month']) ? $saved_filters['start_month'] : $start_month;
+        $saved_start_day   = isset($saved_filters['start_day'])   ? $saved_filters['start_day']   : $start_day;
+        $saved_stop_month  = isset($saved_filters['stop_month'])  ? $saved_filters['stop_month']  : $stop_month;
+        $saved_stop_day    = isset($saved_filters['stop_day'])    ? $saved_filters['stop_day']    : $stop_day;
+
         $output_advanced_filters = '
         <div class="advanced_filters advanced-filter-bar position-fixed-md" id="advanced_filters">
             <div class="p-2 border justify-content-between d-flex flex-wrap header">
@@ -424,17 +569,17 @@ if (!$_POST) {
                     </div>
                     <div class="col-12">
                         <label class="form-label">' . lang('From') . '</label>
-                        <select class="form-select my-1" name="start_month">' . select_month($_SESSION['software']['settings']['view_log']['start_month']) . '</select>
+                        <select class="form-select my-1" name="start_month">' . select_month($saved_start_month) . '</select>
                         <div class="input-group input-group-sm">
-                            <select class="form-select my-1" name="start_day">' . select_day($_SESSION['software']['settings']['view_log']['start_day']) . '</select>
+                            <select class="form-select my-1" name="start_day">' . select_day($saved_start_day) . '</select>
                             <select class="form-select my-1" name="start_year">' . $year_options . '</select>
                         </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">' . lang('To') . '</label>
-                        <select class="form-select my-1" name="stop_month">' . select_month($_SESSION['software']['settings']['view_log']['stop_month']) . '</select>
+                        <select class="form-select my-1" name="stop_month">' . select_month($saved_stop_month) . '</select>
                         <div class="input-group input-group-sm">
-                            <select class="form-select my-1" name="stop_day">' . select_day($_SESSION['software']['settings']['view_log']['stop_day']) . '</select>
+                            <select class="form-select my-1" name="stop_day">' . select_day($saved_stop_day) . '</select>
                             <select class="form-select my-1" name="stop_year">' . $year_options . '</select>
                         </div>
                     </div>
@@ -501,13 +646,13 @@ if (!$_POST) {
                         <div class="row justify-content-center justify-content-md-end">
                             <form action="view_log.php" method="get" name="form" class="search_form col-auto">
                                 <div class="input-group input-group-sm">   
-                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
+                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
-                
+                ' . $output_toolbar . '
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
@@ -526,7 +671,107 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
-    </main>' . output_footer();
+    </main>
+    <style>
+        /* Clipped log messages: show the first few lines and fade out the rest. */
+        .pg-log-msg { white-space: normal; }
+        .pg-log-msg-code { font-family: var(--bs-font-monospace); font-size: .8125rem; }
+        .pg-log-clip { position: relative; max-height: 4.8em; overflow: hidden; }
+        .pg-log-clip::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 1.6em;
+            background: linear-gradient(to bottom, transparent, var(--bs-body-bg, #fff));
+            pointer-events: none;
+        }
+        .pg-log-tools { margin-top: .25rem; }
+        /* Severity stripe on the first cell, subtler than tinting the whole row. */
+        tr.pg-log-row-error > td:first-child { box-shadow: inset 3px 0 0 var(--bs-danger); }
+        tr.pg-log-row-warn > td:first-child { box-shadow: inset 3px 0 0 var(--bs-warning); }
+    </style>
+    <script>
+        // Delegated handlers so they keep working after DataTables redraws the table.
+        // Registered without waiting for jQuery, which is resolved lazily on click.
+        document.addEventListener("click", function (event) {
+            var target = event.target;
+            if (!target || !target.closest) {
+                return;
+            }
+
+            // Expand / collapse a clipped log message.
+            var toggle = target.closest(".pg-log-toggle");
+            if (toggle) {
+                event.preventDefault();
+                var message = document.getElementById(toggle.getAttribute("data-target"));
+                if (!message) {
+                    return;
+                }
+                var collapsed = message.classList.toggle("pg-log-clip");
+                var label = toggle.querySelector(".pg-log-toggle-label");
+                var icon = toggle.querySelector("i");
+                if (label) {
+                    label.textContent = collapsed ? toggle.getAttribute("data-more") : toggle.getAttribute("data-less");
+                }
+                if (icon) {
+                    icon.className = collapsed ? "bi bi-chevron-down me-1" : "bi bi-chevron-up me-1";
+                }
+                return;
+            }
+
+            // Copy the full message text to the clipboard.
+            var copy = target.closest(".pg-log-copy");
+            if (copy) {
+                event.preventDefault();
+                var source = document.getElementById(copy.getAttribute("data-target"));
+                if (!source || !navigator.clipboard) {
+                    return;
+                }
+                navigator.clipboard.writeText(source.innerText).then(function () {
+                    var copy_label = copy.querySelector(".pg-log-copy-label");
+                    var copy_icon = copy.querySelector("i");
+                    if (copy_label) {
+                        copy_label.textContent = copy.getAttribute("data-copied");
+                    }
+                    if (copy_icon) {
+                        copy_icon.className = "bi bi-check2 me-1";
+                    }
+                    setTimeout(function () {
+                        if (copy_label) {
+                            copy_label.textContent = copy.getAttribute("data-copy");
+                        }
+                        if (copy_icon) {
+                            copy_icon.className = "bi bi-clipboard me-1";
+                        }
+                    }, 1500);
+                });
+                return;
+            }
+
+            // Filter the table by log type using the hidden token in the type column.
+            var type_filter = target.closest(".pg-log-type-filter");
+            if (type_filter) {
+                event.preventDefault();
+                var buttons = document.querySelectorAll(".pg-log-type-filter");
+                for (var i = 0; i < buttons.length; i++) {
+                    buttons[i].classList.remove("active");
+                }
+                type_filter.classList.add("active");
+
+                if (!window.jQuery || !window.jQuery.fn.dataTable) {
+                    return;
+                }
+                var table = window.jQuery("table.chart");
+                if (!table.length || !window.jQuery.fn.dataTable.isDataTable(table)) {
+                    return;
+                }
+                // Column 1 is the type column.
+                table.DataTable().column(1).search(type_filter.getAttribute("data-token")).draw();
+            }
+        });
+    </script>' . output_footer();
 
      $liveform->remove_form('settings');
 } else {

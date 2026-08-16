@@ -36,7 +36,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $page_home = $row['page_home'];
     $page_title = $row['page_title'];
     $page_meta_description = $row['page_meta_description'];
-    $page_meta_keywords = $row['page_meta_keywords'];
     $page_type = $row['page_type'];
     $comments = $row['comments'];
     $comments_label = $row['comments_label'];
@@ -5093,11 +5092,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $page_meta_description = $row['meta_description'];
             }
             
-            // if meta keywords was found then override pages meta keywords
-            if ($row['meta_keywords'] != '') {
-                $page_meta_keywords = $row['meta_keywords'];
-            }
-            
             // store image name for open graph code later
             $image_name = $row['image_name'];
         }
@@ -5210,11 +5204,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $page_meta_description = META_DESCRIPTION;
     }
 
-    // if page does not have a meta keywords, set meta keywords to account wide meta keywords
-    if ($page_meta_keywords == '') {
-        $page_meta_keywords = META_KEYWORDS;
-    }
-
     $open_graph = '';
     $open_graph_description = '';
 
@@ -5266,8 +5255,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // two tags with duplicate content.  The open graph description attribute has to appear before
     // the name attribute in the meta tag in order for the description to work with Twitter Cards.
 
-    $meta_tags ='<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" . 
-    '        <meta name="keywords" content="' . h($page_meta_keywords) . '">' . "\n" .
+    // The <meta name="keywords"> tag was removed: no search engine has used it for years.
+    // The keyword fields themselves stay in place, they feed site search and the tag cloud.
+    $meta_tags ='<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
         get_generator_meta_tag() . "\n" .

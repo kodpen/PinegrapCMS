@@ -40,6 +40,12 @@ $file_list = array(
     'backend.src.js',
     'clean_up_software_trashs.php',
     'clean_up_software_trash.php',
+    // Variant wizard, replaced by add_product.php. Listed here so that sites
+    // upgrading from an older release do not keep a reachable copy of a screen
+    // that no longer exists in the software.
+    'add_product_variants.php',
+    'assets/add_product_variants.js',
+    'pinegrap.php',
     '../terminal.php',
     '../terminal_data.php',
     'files',

@@ -6528,13 +6528,23 @@ function initSeoCounters(rules) {
                 }
             });
 
+            /* The date, the page title and the URL a browser prints around the
+               page live in the @page margin. body{margin:0} does not remove
+               them — only a zero @page margin does, and that is also what stops
+               a 40mm label being centred on a sheet of A4.
+
+               The title is left empty as well: a printer that has headers
+               forced on would otherwise put the word "Label" on every sticker. */
             return `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Label</title>
+<title></title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
+  @page { size: ${W}px ${H}px; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; }
-  @media print { body { margin:0; } }
+  html, body { background:#fff; margin:0; padding:0; }
+  @media print {
+    html, body { margin:0; padding:0; width:${W}px; height:${H}px; }
+  }
   .label { position:relative; width:${W}px; height:${H}px; background:${lbl.background || '#fff'}; overflow:hidden; }
 </style>
 </head><body>

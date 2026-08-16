@@ -78,8 +78,7 @@ if ($_POST['forms']) {
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete views for this submitted form that the form view directory feature uses
-            $query = "DELETE FROM submitted_form_views WHERE submitted_form_id = '" . escape($form_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            pg_sfv_delete_views('submitted_form_id', $form_id);
             
             $number_of_forms++;
         }
