@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -216,7 +216,7 @@ if (!$_POST) {
     validate_token_field();
     
     // update the private label value in the config table
-    $query = "UPDATE config SET private_label = '" . escape($_POST['private_label']) . "'";
+    $query = "UPDATE config SET private_label = '" . escape($_POST['private_label'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     $config_file_content = '';

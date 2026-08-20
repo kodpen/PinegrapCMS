@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -21,6 +21,11 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 if (!$_POST) {
+
+    // only ever appended to below, so they have to start out empty
+    $output_disallowed_countries = '';
+    $output_disallowed_states = '';
+
     // get all countries for countries selection
     $query = "SELECT id, name FROM countries ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -188,7 +193,7 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name']) . "',
+                '" . escape($_POST['name'] ?? '') . "',
                 '" . escape($base_rate) . "',
                 '" . escape($primary_weight_rate) . "',
                 '" . escape($secondary_weight_rate) . "',

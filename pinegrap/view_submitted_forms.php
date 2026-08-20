@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -22,6 +22,14 @@ $user = validate_user();
 validate_forms_access($user);
 
 $liveform = new liveform('view_submitted_forms');
+
+// These are only ever appended to further below, so they have to start out empty.
+$output = '';
+$output_rows = '';
+$sql_data_joins = '';
+
+// The filter is carried through the paging links and the advanced filters form.
+$filter = isset($_REQUEST['filter']) ? $_REQUEST['filter'] : '';
 
 // store all values collected in request to session
 foreach ($_REQUEST as $key => $value) {
@@ -75,17 +83,27 @@ if (isset($_SESSION['software']['forms']['view_submitted_forms']['custom_form'])
     $_SESSION['software']['forms']['view_submitted_forms']['custom_form'] = '[All]';
 }
 
+// if advanced filters are not set yet, then default them to off
+if (isset($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters']) == false) {
+    $_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] = false;
+}
+
+// if the search query is not set yet, then default it to empty
+if (isset($_SESSION['software']['forms']['view_submitted_forms']['query']) == false) {
+    $_SESSION['software']['forms']['view_submitted_forms']['query'] = '';
+}
+
 // if advanced filters are on and custom forms have not already been set in session, set default for custom forms in advanced filters
-if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == true) && (isset($_SESSION['software']['forms']['view_submitted_forms']['custom_forms']) == false)) {
+if ((($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) && (isset($_SESSION['software']['forms']['view_submitted_forms']['custom_forms']) == false)) {
     // if custom form is set to all, prepare custom forms so all will be checked
-    if ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] == '[All]') {
+    if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') == '[All]') {
         foreach ($custom_forms as $custom_form) {
             $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][] = $custom_form['id'];
         }
 
     // else custom form is not set to all
     } else {
-        $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][] = $_SESSION['software']['forms']['view_submitted_forms']['custom_form'];
+        $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][] = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
     }
 }
 
@@ -107,7 +125,7 @@ if (isset($_SESSION['software']['forms']['view_submitted_forms']['date_type']) =
 }
 
 // if date type is last modified
-if ($_SESSION['software']['forms']['view_submitted_forms']['date_type'] == 'last modified') {
+if (($_SESSION['software']['forms']['view_submitted_forms']['date_type'] ?? '') == 'last modified') {
     $date_type_column = 'last_modified_timestamp';
     $date_type_last_modified_selected = ' selected="selected"';
 
@@ -136,10 +154,10 @@ if (isset($_SESSION['software']['forms']['view_submitted_forms']['start_month'])
 
 $decrease_year['start_month'] = '01';
 $decrease_year['start_day'] = '01';
-$decrease_year['start_year'] = $_SESSION['software']['forms']['view_submitted_forms']['start_year'] - 1;
+$decrease_year['start_year'] = ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '') - 1;
 $decrease_year['stop_month'] = '12';
 $decrease_year['stop_day'] = '31';
-$decrease_year['stop_year'] = $_SESSION['software']['forms']['view_submitted_forms']['start_year'] - 1;
+$decrease_year['stop_year'] = ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '') - 1;
 
 $current_year['start_month'] = '01';
 $current_year['start_day'] = '01';
@@ -150,12 +168,12 @@ $current_year['stop_year'] = date('Y');
 
 $increase_year['start_month'] = '01';
 $increase_year['start_day'] = '01';
-$increase_year['start_year'] = $_SESSION['software']['forms']['view_submitted_forms']['start_year'] + 1;
+$increase_year['start_year'] = ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '') + 1;
 $increase_year['stop_month'] = '12';
 $increase_year['stop_day'] = '31';
-$increase_year['stop_year'] = $_SESSION['software']['forms']['view_submitted_forms']['start_year'] + 1;
+$increase_year['stop_year'] = ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '') + 1;
 
-$decrease_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'] - 1, 1, $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$decrease_month['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '') - 1, 1, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
 $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
 $decrease_month['start_month'] = $decrease_month['new_month'];
@@ -174,7 +192,7 @@ $current_month['stop_month'] = $current_month['new_month'];
 $current_month['stop_day'] = date('t');
 $current_month['stop_year'] = $current_month['new_year'];
 
-$increase_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'] + 1, 1, $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$increase_month['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '') + 1, 1, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $increase_month['new_month'] = date('m', $increase_month['new_time']);
 $increase_month['new_year'] = date('Y', $increase_month['new_time']);
 $increase_month['start_month'] = $increase_month['new_month'];
@@ -184,7 +202,7 @@ $increase_month['stop_month'] = $increase_month['new_month'];
 $increase_month['stop_day'] = date('t', $increase_month['new_time']);
 $increase_month['stop_year'] = $increase_month['new_year'];
 
-$decrease_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'], $_SESSION['software']['forms']['view_submitted_forms']['start_day'], $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$decrease_week['start_date_timestamp'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 // if start date is a Sunday, use last Sunday (add 12:00:00 to prevent a bug that results in Saturday being returned)
 if (date('l', $decrease_week['start_date_timestamp']) == 'Sunday') {
     $decrease_week['new_time_start'] = strtotime('last sunday 12:00:00', $decrease_week['start_date_timestamp']);
@@ -216,7 +234,7 @@ $current_week['stop_month'] = date('m', $current_week['new_time_stop']);
 $current_week['stop_day'] = date('d', $current_week['new_time_stop']);
 $current_week['stop_year'] = date('Y', $current_week['new_time_stop']);
 
-$increase_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'], $_SESSION['software']['forms']['view_submitted_forms']['start_day'], $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$increase_week['start_date_timestamp'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 // if start date is a Sunday
 if (date('l', $increase_week['start_date_timestamp']) == 'Sunday') {
     $increase_week['new_time_start'] = strtotime('2 Sunday', $increase_week['start_date_timestamp']);
@@ -231,7 +249,7 @@ $increase_week['stop_month'] = date('m', $increase_week['new_time_stop']);
 $increase_week['stop_day'] = date('d', $increase_week['new_time_stop']);
 $increase_week['stop_year'] = date('Y', $increase_week['new_time_stop']);
 
-$decrease_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'], $_SESSION['software']['forms']['view_submitted_forms']['start_day'] - 1, $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$decrease_day['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '') - 1, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $decrease_day['new_month'] = date('m', $decrease_day['new_time']);
 $decrease_day['new_day'] = date('d', $decrease_day['new_time']);
 $decrease_day['new_year'] = date('Y', $decrease_day['new_time']);
@@ -252,7 +270,7 @@ $current_day['stop_month'] = $current_day['new_month'];
 $current_day['stop_day'] = $current_day['new_day'];
 $current_day['stop_year'] = $current_day['new_year'];
 
-$increase_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'], $_SESSION['software']['forms']['view_submitted_forms']['start_day'] + 1, $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$increase_day['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '') + 1, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $increase_day['new_month'] = date('m', $increase_day['new_time']);
 $increase_day['new_day'] = date('d', $increase_day['new_time']);
 $increase_day['new_year'] = date('Y', $increase_day['new_time']);
@@ -264,23 +282,23 @@ $increase_day['stop_day'] = $increase_day['new_day'];
 $increase_day['stop_year'] = $increase_day['new_year'];
 
 // get timestamps for start and stop dates
-$start_timestamp = mktime(0, 0, 0, $_SESSION['software']['forms']['view_submitted_forms']['start_month'], $_SESSION['software']['forms']['view_submitted_forms']['start_day'], $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
-$stop_timestamp = mktime(23, 59, 59, $_SESSION['software']['forms']['view_submitted_forms']['stop_month'], $_SESSION['software']['forms']['view_submitted_forms']['stop_day'], $_SESSION['software']['forms']['view_submitted_forms']['stop_year']);
+$start_timestamp = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
+$stop_timestamp = mktime(23, 59, 59, ($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? ''));
 
 $where = "WHERE (forms.$date_type_column >= $start_timestamp) AND (forms.$date_type_column <= $stop_timestamp)";
 
 // Output start date range time
-$output_date_range_time = h(get_month_name_from_number($_SESSION['software']['forms']['view_submitted_forms']['start_month']) . ' ' . $_SESSION['software']['forms']['view_submitted_forms']['start_day'] . ', ' . $_SESSION['software']['forms']['view_submitted_forms']['start_year']);
+$output_date_range_time = h(get_month_name_from_number(($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '')) . ' ' . ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '') . ', ' . ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $output_date_range_time .= ' - ';
 
 // Output end date range time
-$output_date_range_time .= h(get_month_name_from_number($_SESSION['software']['forms']['view_submitted_forms']['stop_month']) . ' ' . $_SESSION['software']['forms']['view_submitted_forms']['stop_day'] . ', ' . $_SESSION['software']['forms']['view_submitted_forms']['stop_year']);
+$output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? ''));
 
 // if advanced filters are on, prepare SQL for checked custom forms
-if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == true) {
+if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
     // if at least one custom form is checked
-    if (is_array($_SESSION['software']['forms']['view_submitted_forms']['custom_forms']) == true) {
-        foreach ($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] as $custom_form) {
+    if (is_array(($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true) {
+        foreach (($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array()) as $custom_form) {
             // if this is not the first custom form, then add an OR before SQL
             if ($where_custom_forms) {
                 $where_custom_forms .= " OR";
@@ -340,12 +358,12 @@ if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] =
 // else advanced filters are off, so use custom form picklist
 } else {
     // if user has not choosen [All] filter by custom form selected
-    if ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] != '[All]') {
-        $where .= " AND (forms.page_id = '" . e($_SESSION['software']['forms']['view_submitted_forms']['custom_form']) . "')";
+    if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') != '[All]') {
+        $where .= " AND (forms.page_id = '" . e(($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '')) . "')";
     }
 }
 
-if ($_SESSION['software']['forms']['view_submitted_forms']['query']) {
+if (($_SESSION['software']['forms']['view_submitted_forms']['query'] ?? '')) {
     $where .=
         " AND (LOWER(CONCAT_WS(',',
         forms.reference_code,
@@ -357,32 +375,38 @@ if ($_SESSION['software']['forms']['view_submitted_forms']['query']) {
         custom_form_pages.form_name,
         CONCAT(contacts.first_name, ' ', contacts.last_name),
         submitted_user.user_username,
-        form_editor_user.user_username)) LIKE '%" . escape(mb_strtolower($_SESSION['software']['forms']['view_submitted_forms']['query'])) . "%')";
+        form_editor_user.user_username)) LIKE '%" . escape(mb_strtolower(($_SESSION['software']['forms']['view_submitted_forms']['query'] ?? ''))) . "%')";
 }
 
 // if advanced filters are on, prepare SQL
-if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == true) {
-    if ($_SESSION['software']['forms']['view_submitted_forms']['reference_code']) {$where .= " AND (forms.reference_code LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['reference_code']) . "%')";}
+if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
+    if (($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) {$where .= " AND (forms.reference_code LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) . "%')";}
 
-    if ($_SESSION['software']['forms']['view_submitted_forms']['status']) {
-        if ($_SESSION['software']['forms']['view_submitted_forms']['status'] == 'incomplete') {
+    if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '')) {
+        if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'incomplete') {
             $where .= " AND (forms.complete = '0')";
-        } else if ($_SESSION['software']['forms']['view_submitted_forms']['status'] == 'complete') {
+        } else if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'complete') {
             $where .= " AND (forms.complete = '1')";
         }
     }
 
-    if ($_SESSION['software']['forms']['view_submitted_forms']['tracking_code']) {$where .= " AND (forms.tracking_code LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['tracking_code']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code']) {$where .= " AND (forms.affiliate_code LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['http_referer']) {$where .= " AND (forms.http_referer LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['http_referer']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['ip_address']) {$where .= " AND (INET_NTOA(forms.ip_address) LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['ip_address']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['contact_name']) {$where .= " AND (CONCAT(contacts.first_name, ' ', contacts.last_name) LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['contact_name']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['username']) {$where .= " AND (submitted_user.user_username LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['username']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['form_editor']) {$where .= " AND (form_editor_user.user_username LIKE '%" . e($_SESSION['software']['forms']['view_submitted_forms']['form_editor']) . "%')";}
-    if ($_SESSION['software']['forms']['view_submitted_forms']['member_id']) {$where .= " AND (contacts.member_id LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['member_id']) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) {$where .= " AND (forms.tracking_code LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) {$where .= " AND (forms.affiliate_code LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) {$where .= " AND (forms.http_referer LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(forms.ip_address) LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) {$where .= " AND (CONCAT(contacts.first_name, ' ', contacts.last_name) LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) {$where .= " AND (submitted_user.user_username LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) {$where .= " AND (form_editor_user.user_username LIKE '%" . e(($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) . "%')";}
+    if (($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) {$where .= " AND (contacts.member_id LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . "%')";}
 }
 
-switch ($_SESSION['software']['forms']['view_submitted_forms']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['forms']['view_submitted_forms']['sort']) == false) {
+    $_SESSION['software']['forms']['view_submitted_forms']['sort'] = '';
+}
+
+switch (($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? '')) {
     case 'Custom Form':
         $sort_column = 'custom_form_pages.form_name';
         break;
@@ -396,7 +420,7 @@ switch ($_SESSION['software']['forms']['view_submitted_forms']['sort']) {
         break;
 
     case 'Contact':
-        $sort_column = 'contacts.last_name ' . escape($_SESSION['software']['forms']['view_submitted_forms']['order']) . ', contacts.first_name';
+        $sort_column = 'contacts.last_name ' . escape(($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . ', contacts.first_name';
         break;
 
     case 'User':
@@ -424,11 +448,11 @@ if (isset($_SESSION['software']['forms']['view_submitted_forms']['order']) == fa
 }
 
 // if user requested to export forms, export forms
-if ($_GET['submit_data'] == 'Export Forms') {
-    if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == true) {
+if (($_GET['submit_data'] ?? '') == 'Export Forms') {
+    if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
         $custom_form_page_id = $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][0];
     } else {
-        $custom_form_page_id = $_SESSION['software']['forms']['view_submitted_forms']['custom_form'];
+        $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
     }
 
     // force download dialog
@@ -493,7 +517,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
         LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
         $sql_data_joins
         $where
-        ORDER BY $sort_column " . escape($_SESSION['software']['forms']['view_submitted_forms']['order']);
+        ORDER BY $sort_column " . escape(($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? ''));
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $forms = array();
@@ -587,7 +611,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
     log_activity(lang(array('string'=>'{var:1} submitted form(s) were exported','vars'=>$number_of_forms)), $_SESSION['sessionusername']);
 
 // if mass deletion is allowed and user requested to delete forms, delete forms
-} elseif ((MASS_DELETION == true) && ($_GET['submit_data'] == 'Delete Forms')) {
+} elseif ((MASS_DELETION == true) && (($_GET['submit_data'] ?? '') == 'Delete Forms')) {
     // get all forms that match filters
     $query = "SELECT
                 forms.id,
@@ -692,13 +716,13 @@ if ($_GET['submit_data'] == 'Export Forms') {
 } else {
     // get minimum year from oldest timestamp
     $oldest_year = date('Y', $oldest_timestamp);
-    if ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] < $oldest_year) {
-        $oldest_year = $_SESSION['software']['forms']['view_submitted_forms']['start_year'];
+    if (($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '') < $oldest_year) {
+        $oldest_year = ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '');
     }
 
     $this_year = date('Y');
-    if ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] > $this_year) {
-        $this_year = $_SESSION['software']['forms']['view_submitted_forms']['stop_year'];
+    if (($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? '') > $this_year) {
+        $this_year = ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? '');
     }
 
     $years = array();
@@ -711,7 +735,8 @@ if ($_GET['submit_data'] == 'Export Forms') {
     // If a screen was passed and it is a positive integer, then use it.
     // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
     if (
-        $_REQUEST['screen']
+        isset($_REQUEST['screen'])
+        and $_REQUEST['screen']
         and is_numeric($_REQUEST['screen'])
         and $_REQUEST['screen'] > 0
         and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -742,7 +767,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
     // create custom form selection list
     foreach ($custom_forms as $custom_form) {
         // if the custom form is equal to selected custom form
-        if ($custom_form['id'] == $_SESSION['software']['forms']['view_submitted_forms']['custom_form']) {
+        if ($custom_form['id'] == ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '')) {
             $selected = ' selected="selected"';
         } else {
             $selected = '';
@@ -757,7 +782,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
         $number_of_forms = $row[0];
 
         // if the advanced filters are not on, then prepare custom form picklist
-        if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == false) {
+        if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
             $output_custom_form_options .= '<option value="' . $custom_form['id'] . '"' . $selected . '>' . h($custom_form['name']) . ' (' . $number_of_forms . ')</option>';
         }
 
@@ -765,10 +790,10 @@ if ($_GET['submit_data'] == 'Export Forms') {
     }
 
     // if the advanced filters are not on, then prepare custom form picklist
-    if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == false) {
+    if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
 
         // if all custom form is selected
-        if ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] == '[All]') {
+        if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') == '[All]') {
             $selected = ' selected="selected"';
         } else {
             $selected = '';
@@ -800,7 +825,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
              LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
              $sql_data_joins
              $where
-             ORDER BY $sort_column " . escape($_SESSION['software']['forms']['view_submitted_forms']['order']);
+             ORDER BY $sort_column " . escape(($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? ''));
 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -935,7 +960,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
     }
 
     // if the advanced filters are off
-    if ($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] == false) {
+    if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
         
         $output_custom_form_selection = '
             <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Custom Form') . '" for="custom_form">format_list_bulleted</label>
@@ -962,13 +987,13 @@ if ($_GET['submit_data'] == 'Export Forms') {
 
 
         // Prepare selection for status field.
-        if ($_SESSION['software']['forms']['view_submitted_forms']['status'] == 'any') {
+        if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'any') {
             $status_any_selected = ' selected="selected"';
 
-        } elseif ($_SESSION['software']['forms']['view_submitted_forms']['status'] == 'incomplete') {
+        } elseif (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'incomplete') {
             $status_incomplete_selected = ' selected="selected"';
 
-        } elseif ($_SESSION['software']['forms']['view_submitted_forms']['status'] == 'complete') {
+        } elseif (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'complete') {
             $status_complete_selected = ' selected="selected"';
         }
 
@@ -982,7 +1007,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
             $number_of_forms = $row[0];
 
             // if this custom form should be checked
-            if ((is_array($_SESSION['software']['forms']['view_submitted_forms']['custom_forms']) == true) && (in_array($custom_form['id'], $_SESSION['software']['forms']['view_submitted_forms']['custom_forms']) == true)) {
+            if ((is_array(($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true) && (in_array($custom_form['id'], ($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true)) {
                 $checked = ' checked="checked"';
 
                 // get fields for custom form, so user can enter a filter for fields
@@ -1022,7 +1047,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('General') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="reference_code" class="form-label">' . lang('Reference Code') . '</label>
-                            <input type="text" id="reference_code" name="reference_code" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['reference_code']) . '"/>
+                            <input type="text" id="reference_code" name="reference_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="status" class="form-label">' . lang('Status') . '</label>
@@ -1030,35 +1055,35 @@ if ($_GET['submit_data'] == 'Export Forms') {
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
-                            <input type="text" id="tracking_code" name="tracking_code" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['tracking_code']) . '"/>
+                            <input type="text" id="tracking_code" name="tracking_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
-                            <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code']) . '"/>
+                            <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="http_referer" class="form-label">' . lang('Referring URL') . '</label>
-                            <input type="text" id="http_referer" name="http_referer" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['http_referer']) . '"/>
+                            <input type="text" id="http_referer" name="http_referer" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="contact_name" class="form-label">' . lang('Contact Name') . '</label>
-                            <input type="text" id="contact_name" name="contact_name" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['contact_name']) . '"/>
+                            <input type="text" id="contact_name" name="contact_name" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
-                            <input type="text" id="member_id" name="member_id" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['member_id']) . '"/>
+                            <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="ip_address" class="form-label">' . lang('IP Address') . '</label>
-                            <input type="text" id="ip_address" name="ip_address" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['ip_address']) . '"/>
+                            <input type="text" id="ip_address" name="ip_address" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="username" class="form-label">' . lang('Username') . '</label>
-                            <input type="text" id="username" name="username" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['username']) . '"/>
+                            <input type="text" id="username" name="username" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="form_editor" class="form-label">' . lang('Form Editor') . '</label>
-                            <input type="text" id="form_editor" name="form_editor" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['form_editor']) . '"/>
+                            <input type="text" id="form_editor" name="form_editor" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) . '"/>
                         </div>
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Custom Forms') . '</h5></div>
                         <div class="col-12 col-md-12 my-1">
@@ -1088,18 +1113,18 @@ if ($_GET['submit_data'] == 'Export Forms') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">
                             <label class="form-label">' . lang('From') . '</label>
-                            <select class="form-select my-1" name="start_month">' . select_month($_SESSION['software']['forms']['view_submitted_forms']['start_month']) . '</select>
+                            <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="start_day">' . select_day($_SESSION['software']['forms']['view_submitted_forms']['start_day']) . '</select>
-                                <select class="form-select my-1" name="start_year">' . select_year($years, $_SESSION['software']['forms']['view_submitted_forms']['start_year']) . '</select>
+                                <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '')) . '</select>
+                                <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">' . lang('To') . '</label>
-                            <select class="form-select my-1" name="stop_month">' . select_month($_SESSION['software']['forms']['view_submitted_forms']['stop_month']) . '</select>
+                            <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="stop_day">' . select_day($_SESSION['software']['forms']['view_submitted_forms']['stop_day']) . '</select>
-                                <select class="form-select my-1" name="stop_year">' . select_year($years, $_SESSION['software']['forms']['view_submitted_forms']['stop_year']) . '</select>
+                                <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '')) . '</select>
+                                <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
@@ -1108,6 +1133,35 @@ if ($_GET['submit_data'] == 'Export Forms') {
                     </div>
                 </form>
             </div>';
+    }
+
+    // Prepare URL for the create submitted form button.  If the list is currently
+    // filtered down to a single custom form, then pass that custom form along, so
+    // that the user does not have to select the custom form again.
+    $output_add_submitted_form_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php';
+
+    $selected_custom_form_page_id = '';
+
+    // If advanced filters are on, then the custom form selection lives in custom_forms.
+    if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
+        // Only pass the custom form along if exactly one custom form is selected.
+        if (
+            (is_array(($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true)
+            && (count(($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == 1)
+        ) {
+            $selected_custom_form_page_id = $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][0];
+        }
+
+    // Otherwise the custom form selection lives in custom_form.
+    } else {
+        if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') != '[All]') {
+            $selected_custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
+        }
+    }
+
+    // If a single custom form is selected, then deep link straight to its fields.
+    if ($selected_custom_form_page_id != '') {
+        $output_add_submitted_form_url .= '?page_id=' . urlencode($selected_custom_form_page_id);
     }
 
     $output_delete_forms_button = '';
@@ -1173,6 +1227,7 @@ if ($_GET['submit_data'] == 'Export Forms') {
                     <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
                         <h2 class="d-inline-block " data-bs-content="' . lang('All submitted form data that I can view, edit, or export.') . '" title="' . lang('My Submitted Forms') . '">' . lang('My Submitted Forms') . '</h2>
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                            <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_submitted_forms.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
@@ -1232,13 +1287,13 @@ if ($_GET['submit_data'] == 'Export Forms') {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('Custom Form'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Reference Code'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Status'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Contact'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('User'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Submitted'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['forms']['view_submitted_forms']['sort'], $_SESSION['software']['forms']['view_submitted_forms']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Custom Form'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Reference Code'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Contact'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('User'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Submitted'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>

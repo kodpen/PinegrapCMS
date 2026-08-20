@@ -12,11 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -474,20 +477,20 @@ $liveform->remove_form();
             user, 
             timestamp)
         VALUES (
-            '" . e($_POST['name']) . "',
-            '" . e($_POST['enabled']) . "',
-            '" . e($_POST['parent_id']) . "', 
-            '" . e($_POST['short_description']) . "', 
+            '" . e($_POST['name'] ?? '') . "',
+            '" . e($_POST['enabled'] ?? '') . "',
+            '" . e($_POST['parent_id'] ?? '') . "', 
+            '" . e($_POST['short_description'] ?? '') . "', 
             '" . e(prepare_rich_text_editor_content_for_input($_POST['full_description'])) . "', 
             '" . e(prepare_rich_text_editor_content_for_input($_POST['details'])) . "', 
-            '" . e($_POST['code']) . "', 
-            '" . e($_POST['keywords']) . "', 
+            '" . e($_POST['code'] ?? '') . "', 
+            '" . e($_POST['keywords'] ?? '') . "', 
            	$sql_imagename
-            '" . e($_POST['display_type']) . "', 
+            '" . e($_POST['display_type'] ?? '') . "', 
             '" . e($address_name) . "',
-            '" . e($_POST['title']) . "',
-            '" . e($_POST['meta_description']) . "',
-            '" . e($_POST['meta_keywords']) . "',
+            '" . e($_POST['title'] ?? '') . "',
+            '" . e($_POST['meta_description'] ?? '') . "',
+            '" . e($_POST['meta_keywords'] ?? '') . "',
             '1',
             '$user[id]', 
             UNIX_TIMESTAMP())");
@@ -553,7 +556,7 @@ $liveform->remove_form();
         //check if config_code is not equal to POSTED code
         if($config_code != $_POST['code']){
             //update config_code with new code
-            $query = "UPDATE config SET product_image_code_template = '" . escape($_POST['code']) . "'";
+            $query = "UPDATE config SET product_image_code_template = '" . escape($_POST['code'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
     }       

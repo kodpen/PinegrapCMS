@@ -113,7 +113,7 @@ if (!$_POST) {
 
     validate_token_field();
 
-    if ($_POST['submit_duplicate'] == 'Duplicate') {
+    if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
 
         $new_file_name = prepare_file_name($_POST['name']);
         $new_file_name = get_unique_name(array('name' => $new_file_name, 'type' => 'file'));
@@ -123,7 +123,7 @@ if (!$_POST) {
         fwrite($handle, $_POST['code']);
         fclose($handle);
 
-        $query = "SELECT folder, description FROM files WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT folder, description FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
@@ -163,12 +163,12 @@ if (!$_POST) {
             SET size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $_POST['name'])) . "',
                 timestamp = UNIX_TIMESTAMP(),
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'the file ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
 
-        if ($_POST['submit_save'] == 'Save') {
+        if (($_POST['submit_save'] ?? '') == 'Save') {
             $liveform = new liveform('editor_edit_file');
             $liveform->add_notice(lang('The file was edited successfully.'));
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/editor_edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));

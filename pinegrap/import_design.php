@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -74,7 +74,7 @@ if ($command_line) {
     $_SESSION['software']['design']['import_design']['scanned_items'] = $scanned_items;
 }
 
-if ($_REQUEST['submit_button']) {
+if (!empty($_REQUEST['submit_button'])) {
     $liveform->add_fields_to_session();
     $action = mb_strtolower($liveform->get_field_value('submit_button'));
 }
@@ -299,7 +299,7 @@ if ($action != 'import') {
         validate_token_field();
     }
 
-    $scanned_items = $_SESSION['software']['design']['import_design']['scanned_items'];
+    $scanned_items = ($_SESSION['software']['design']['import_design']['scanned_items'] ?? '');
 
     unset($_SESSION['software']['design']['import_design']['scanned_items']);
 
@@ -528,7 +528,8 @@ if ($action != 'import') {
 
             $style_id = mysqli_insert_id(db::$con);
 
-            // Create the page.
+            // Create the page. The keywords scraped out of the imported markup go into
+            // the promote on keyword field, because that is the one a page still reads.
             db(
                 "INSERT INTO page (
                     page_name,
@@ -536,7 +537,7 @@ if ($action != 'import') {
                     page_style,
                     page_title,
                     page_meta_description,
-                    page_meta_keywords,
+                    page_search_keywords,
                     page_user,
                     page_timestamp,
                     comments_disallow_new_comment_message)
@@ -546,7 +547,7 @@ if ($action != 'import') {
                     '$style_id',
                     '" . escape($title) . "',
                     '" . escape($meta_description) . "',
-                    '" . escape($meta_keywords) . "',
+                    '" . escape(merge_keyword_lists($meta_keywords, '')) . "',
                     '" . USER_ID . "',
                     UNIX_TIMESTAMP(),
                     'We\'re sorry. New comments are no longer being accepted.')");
@@ -1424,7 +1425,12 @@ function get_http_stream_context()
 function check_if_url_exists($url)
 {
     if (!function_exists('curl_init')) {
-        $headers = @get_headers($url, 1, get_http_stream_context());
+        // The third parameter (context) was only added in PHP 7.1.
+        if (version_compare(PHP_VERSION, '7.1.0', '>=')) {
+            $headers = @get_headers($url, 1, get_http_stream_context());
+        } else {
+            $headers = @get_headers($url, 1);
+        }
         if ($headers == false) {
             return false;
         }

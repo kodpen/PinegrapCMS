@@ -12,14 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 
 // If kiosk mode is enabled, then do a special kiosk logout.
-if ($_SESSION['software']['kiosk']['enabled'] == true) {
+if (($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
     go(PATH . SOFTWARE_DIRECTORY . '/kiosk.php?action=logout');
 }
 

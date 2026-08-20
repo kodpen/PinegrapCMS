@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -462,7 +462,7 @@ if (!$_POST) {
         // loop through all contact groups
         foreach ($contact_groups as $contact_group) {
             // if contact group was selected for contact to be added to and user has access to contact group, take note
-            if (($_POST['contact_group_' . $contact_group['id']] == 1) && (validate_contact_group_access($user, $contact_group['id']) == true)) {
+            if ((($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) && (validate_contact_group_access($user, $contact_group['id']) == true)) {
                 $contact_group_selected = true;
                 break;
             }
@@ -477,13 +477,13 @@ if (!$_POST) {
     $sql_file_id ='';
 
     if(isset($_POST['file_id']) && $_POST['file_id'] != ''){
-        $sql_file_id = "'" . escape($_POST['file_id']) . "',";
+        $sql_file_id = "'" . escape($_POST['file_id'] ?? '') . "',";
     }else{
         $sql_file_id = "'',";
     }
 
     if(isset($_POST['image_url']) && $_POST['image_url'] != ''){
-        $sql_image = "'" . escape($_POST['image_url']) . "',";
+        $sql_image = "'" . escape($_POST['image_url'] ?? '') . "',";
     }else{
         $sql_image = "'',";
     }
@@ -535,47 +535,47 @@ if (!$_POST) {
             tax_number,
             tax_office)
         VALUES (
-            '" . escape($_POST['salutation']) . "',
-            '" . escape($_POST['first_name']) . "',
-            '" . escape($_POST['last_name']) . "',
-            '" . escape($_POST['suffix']) . "',
-            '" . escape($_POST['nickname']) . "',
-            '" . escape($_POST['company']) . "',
-            '" . escape($_POST['title']) . "',
-            '" . escape($_POST['department']) . "',
-            '" . escape($_POST['office_location']) . "',
-            '" . escape($_POST['business_address_1']) . "',
-            '" . escape($_POST['business_address_2']) . "',
-            '" . escape($_POST['business_city']) . "',
-            '" . escape($_POST['business_state']) . "',
-            '" . escape($_POST['business_country']) . "',
-            '" . escape($_POST['business_zip_code']) . "',
-            '" . escape($_POST['business_phone']) . "',
-            '" . escape($_POST['business_fax']) . "',
-            '" . escape($_POST['home_address_1']) . "',
-            '" . escape($_POST['home_address_2']) . "',
-            '" . escape($_POST['home_city']) . "',
-            '" . escape($_POST['home_state']) . "',
-            '" . escape($_POST['home_country']) . "',
-            '" . escape($_POST['home_zip_code']) . "',
-            '" . escape($_POST['home_phone']) . "',
-            '" . escape($_POST['home_fax']) . "',
-            '" . escape($_POST['mobile_phone']) . "',
-            '" . escape($_POST['email_address']) . "',
-            '" . escape($_POST['website']) . "',
-            '" . escape($_POST['lead_source']) . "',
-            '" . escape($_POST['opt_in']) . "',
-            '" . escape($_POST['description']) . "',
+            '" . escape($_POST['salutation'] ?? '') . "',
+            '" . escape($_POST['first_name'] ?? '') . "',
+            '" . escape($_POST['last_name'] ?? '') . "',
+            '" . escape($_POST['suffix'] ?? '') . "',
+            '" . escape($_POST['nickname'] ?? '') . "',
+            '" . escape($_POST['company'] ?? '') . "',
+            '" . escape($_POST['title'] ?? '') . "',
+            '" . escape($_POST['department'] ?? '') . "',
+            '" . escape($_POST['office_location'] ?? '') . "',
+            '" . escape($_POST['business_address_1'] ?? '') . "',
+            '" . escape($_POST['business_address_2'] ?? '') . "',
+            '" . escape($_POST['business_city'] ?? '') . "',
+            '" . escape($_POST['business_state'] ?? '') . "',
+            '" . escape($_POST['business_country'] ?? '') . "',
+            '" . escape($_POST['business_zip_code'] ?? '') . "',
+            '" . escape($_POST['business_phone'] ?? '') . "',
+            '" . escape($_POST['business_fax'] ?? '') . "',
+            '" . escape($_POST['home_address_1'] ?? '') . "',
+            '" . escape($_POST['home_address_2'] ?? '') . "',
+            '" . escape($_POST['home_city'] ?? '') . "',
+            '" . escape($_POST['home_state'] ?? '') . "',
+            '" . escape($_POST['home_country'] ?? '') . "',
+            '" . escape($_POST['home_zip_code'] ?? '') . "',
+            '" . escape($_POST['home_phone'] ?? '') . "',
+            '" . escape($_POST['home_fax'] ?? '') . "',
+            '" . escape($_POST['mobile_phone'] ?? '') . "',
+            '" . escape($_POST['email_address'] ?? '') . "',
+            '" . escape($_POST['website'] ?? '') . "',
+            '" . escape($_POST['lead_source'] ?? '') . "',
+            '" . escape($_POST['opt_in'] ?? '') . "',
+            '" . escape($_POST['description'] ?? '') . "',
             '" . $user['id'] . "',
             UNIX_TIMESTAMP(),
             $sql_image
             $sql_file_id
-            '" . escape($_POST['member_id']) . "',
+            '" . escape($_POST['member_id'] ?? '') . "',
             '" . escape(prepare_form_data_for_input($_POST['expiration_date'], 'date')) . "',
-            '" . escape($_POST['affiliate_approved']) . "',
-            '" . escape($_POST['affiliate_name']) . "',
+            '" . escape($_POST['affiliate_approved'] ?? '') . "',
+            '" . escape($_POST['affiliate_name'] ?? '') . "',
             '" . escape($affiliate_code) . "',
-            '" . escape($_POST['affiliate_commission_rate']) . "',
+            '" . escape($_POST['affiliate_commission_rate'] ?? '') . "',
             '" . escape(trim($_POST['tax_number'] ?? '')) . "',
             '" . escape(trim($_POST['tax_office'] ?? '')) . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
@@ -586,14 +586,14 @@ if (!$_POST) {
     // with this same email address, so the opt-in status is the same for all.
     if ($_POST['email_address']) {
         db(
-            "UPDATE contacts SET opt_in = '" . e($_POST['opt_in']) . "'
-            WHERE email_address = '" . e($_POST['email_address']) . "'");
+            "UPDATE contacts SET opt_in = '" . e($_POST['opt_in'] ?? '') . "'
+            WHERE email_address = '" . e($_POST['email_address'] ?? '') . "'");
     }
     
     // loop through all contact groups
     foreach ($contact_groups as $contact_group) {
         // if contact group was selected for contact to be added to and user has access to contact group, add contact to contact group
-        if (($_POST['contact_group_' . $contact_group['id']] == 1) && (validate_contact_group_access($user, $contact_group['id']) == true)) {
+        if ((($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) && (validate_contact_group_access($user, $contact_group['id']) == true)) {
             $query =
                 "INSERT INTO contacts_contact_groups_xref (
                     contact_id,

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,7 +39,7 @@ $query =
         user_manage_calendars,
         user_manage_visitors
     FROM user
-    WHERE user_id = '" . escape($_POST['user_id']) . "'";
+    WHERE user_id = '" . escape($_POST['user_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if a user could not be found, then output error
@@ -79,7 +79,7 @@ $query =
     SET 
         user_password = '" . md5($random_password) . "', 
         user_password_hint = '' 
-    WHERE user_id = '" . escape($_POST['user_id']) . "'";
+    WHERE user_id = '" . escape($_POST['user_id'] ?? '') . "'";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 

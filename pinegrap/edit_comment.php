@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -142,7 +142,7 @@ if (!$_POST) {
 
     // if edit comment screen has not been submitted already, pre-populate fields with data
     if (isset($_SESSION['software']['liveforms']['edit_comment'][$_GET['id']]) == false) {
-        $liveform->assign_field_value('send_to', $_GET['send_to']);
+        $liveform->assign_field_value('send_to', ($_GET['send_to'] ?? ''));
         $liveform->assign_field_value('id', $_GET['id']);
         $liveform->assign_field_value('name', $name);
         $liveform->assign_field_value('message', $message);

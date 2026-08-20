@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 //required for software backup mysql dumb
@@ -24,6 +24,16 @@ include('init.php');
 // so increase the allowed execution time for the PHP script.
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
+
+// Scheduled-task health: recorded here rather than at the end, because the
+// backup routine returns from inside its own success branch and the end of
+// this script is not reached on a successful run. It is also the honest
+// place: what the maintenance panel reports is whether the scheduled task
+// fires at all. Whether the extension needed to write a backup is installed
+// is a different question, and the settings screen answers that one next to
+// this job's command.
+pg_cron_ran('auto_backup');
+
 if (!extension_loaded('pdo_mysql') ) {
     echo lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.');
     exit();
@@ -77,7 +87,7 @@ function software_auto_backup(){
             rmdir($backup_location.$backup_folder_name);
         }
         log_activity(lang('Software Auto Backup error:') . $backups_error_message, $_SESSION['sessionusername']);
-        exit();   
+        return;
     }
     
     //Prepare for files and layouts**
@@ -138,7 +148,7 @@ function software_auto_backup(){
                     $query ="UPDATE config SET last_software_auto_backup = UNIX_TIMESTAMP()";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     log_activity(lang('Software Auto Backup Success'), $_SESSION['sessionusername']);
-                    exit();   
+                    return;
                 }
             }
         }

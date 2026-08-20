@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -56,7 +56,7 @@ function retrieve_order($request) {
 
     // If the order is already active for the customer, then return success.  It is important that
     // we not continue below and clear billing info if the customer is already using this order.
-    if ($_SESSION['ecommerce']['order_id'] == $order['id']) {
+    if (($_SESSION['ecommerce']['order_id'] ?? '') == $order['id']) {
         return success_response();
     }
 
@@ -111,7 +111,7 @@ function retrieve_order($request) {
             $sql_tracking_code
             $sql_utm
             ip_address = IFNULL(INET_ATON('" . e($_SERVER['REMOTE_ADDR']) . "'), 0)
-        WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+        WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
 
     // If visitor tracking is on, update visitor record with order information, if visitor has not
     // already created order or retrieved an order.
@@ -120,7 +120,7 @@ function retrieve_order($request) {
 
         db("
             UPDATE visitors SET
-                order_id = '" . e($_SESSION['ecommerce']['order_id']) . "',
+                order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "',
                 order_retrieved = '1',
                 stop_timestamp = UNIX_TIMESTAMP()
             WHERE

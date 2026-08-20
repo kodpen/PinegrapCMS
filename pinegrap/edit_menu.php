@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -82,15 +82,15 @@ if (!$_POST) {
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode($_GET['from'])) . '&send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
                         </nav>
                     </div>
                 </div>
                 <form name="form" action="edit_menu.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="from" value="' . h($_GET['from']) . '" />
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <div class="row">
                         <div class="col-12">
@@ -210,23 +210,23 @@ if (!$_POST) {
     validate_token_field();
     
     // if menu was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // get menu name for the log
-        $query = "SELECT name FROM menus WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT name FROM menus WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $menu_name = $row['name'];
         
         // delete menu
-        $query = "DELETE FROM menus WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM menus WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete menu items
-        $query = "DELETE FROM menu_items WHERE menu_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM menu_items WHERE menu_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete users_menus_xref records
-        $query = "DELETE FROM users_menus_xref WHERE menu_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM users_menus_xref WHERE menu_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'menu ({var:1}) was deleted','vars'=>$menu_name)), $_SESSION['sessionusername']);
@@ -259,7 +259,7 @@ if (!$_POST) {
             // because the theme designer does not support underscores in names.  We are going to allow
             // underscores as long as it was set in the past in order to prevent their styles or themes
             // from being messed up.
-            $query = "SELECT name FROM menus WHERE id = '" . escape($_POST['id']) . "'";
+            $query = "SELECT name FROM menus WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $previous_name = $row['name'];
@@ -289,7 +289,7 @@ if (!$_POST) {
                 FROM menus
                 WHERE
                     (name = '" . escape($liveform->get_field_value('name')) . "')
-                    AND (id != '" . escape($_POST['id']) . "')";
+                    AND (id != '" . escape($_POST['id'] ?? '') . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if name is already in use, prepare error
@@ -316,7 +316,7 @@ if (!$_POST) {
                 active_item_class = '" . e($liveform->get('active_item_class')) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . e($_POST['id']) . "'";
+            WHERE id = '" . e($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'menu ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);

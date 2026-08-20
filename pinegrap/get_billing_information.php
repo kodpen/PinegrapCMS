@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -38,12 +38,12 @@ function get_billing_information($properties) {
 
     $layout_type = get_layout_type($page_id);
     
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
     
     // store page id for billing information page in case we need to come back to this page later in the order process
     $_SESSION['ecommerce']['billing_information_page_id'] = $page_id;
 
-    $ghost = $_SESSION['software']['ghost'];
+    $ghost = $_SESSION['software']['ghost'] ?? false;
 
     $contact = array();
     
@@ -72,7 +72,43 @@ function get_billing_information($properties) {
             FROM contacts
             WHERE id = '" . USER_CONTACT_ID . "'");
     }
-    
+
+    // A user does not have to be linked to a contact, in which case db_item() returns null.
+    // Fall back to an empty value for every column that is read below.
+    if (is_array($contact) == false) {
+        $contact = array();
+    }
+
+    foreach (array(
+        'id',
+        'salutation',
+        'first_name',
+        'last_name',
+        'company',
+        'business_address_1',
+        'business_address_2',
+        'business_city',
+        'business_state',
+        'business_zip_code',
+        'business_country',
+        'business_phone',
+        'business_fax',
+        'email_address',
+        'lead_source',
+        'opt_in',
+        'tax_number',
+        'tax_office') as $contact_field) {
+        if (isset($contact[$contact_field]) == false) {
+            $contact[$contact_field] = '';
+        }
+    }
+
+    // These are only filled in when the page has a custom billing form, but they are read
+    // unconditionally when the system content is prepared further below.
+    $wysiwyg_fields = array();
+    $date_fields = array();
+    $date_and_time_fields = array();
+
     $form = new liveform('billing_information');
 
     // if form was not just filled out, get data from order in order to populate fields
@@ -225,7 +261,7 @@ function get_billing_information($properties) {
         // If the visitor is logged in and not ghosting and the visitor has selected
         // that he/she does not want his/her contact info updated with the billing info
         // previously in this session, then uncheck the update contact check box.
-        if (USER_LOGGED_IN and !$ghost and ($_SESSION['software']['update_contact'] === false)) {
+        if (USER_LOGGED_IN and !$ghost and ((isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null) === false)) {
             $form->assign_field_value('update_contact', '');
         } else {
             $form->assign_field_value('update_contact', '1');

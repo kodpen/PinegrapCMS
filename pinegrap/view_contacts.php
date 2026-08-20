@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,8 +23,32 @@ validate_contacts_access($user);
 
 $liveform = new liveform('view_contacts');
 
+// These are only ever appended to (or conditionally set) further below, so they have to start
+// out empty.
+$where = '';
+$join_table = '';
+$sql_columns = '';
+$output_rows = '';
+$output = '';
+$show_hide_contact_group_select = '';
+$output_merge_contacts_button = '';
+
+// NOTE: $number_of_screens is never calculated anywhere in this script, so the paging links
+// below never render.  Starting it at zero keeps that behaviour and stops the warning.
+$number_of_screens = 0;
+
+// if show contact groups is not set yet, then default it to off
+if (isset($_SESSION['software']['view_contacts']['show_contact_groups']) == false) {
+    $_SESSION['software']['view_contacts']['show_contact_groups'] = false;
+}
+
+// if advanced filters are not set yet, then default them to off
+if (isset($_SESSION['software']['view_contacts']['advanced_filters']) == false) {
+    $_SESSION['software']['view_contacts']['advanced_filters'] = false;
+}
+
 // if user has a user role and if the all duplicate contacts filter is on, then user does not have access to this filter so output error
-if (($user['role'] == 3) && ($_GET['filter'] == 'all_duplicate_contacts')) {
+if (($user['role'] == 3) && (($_GET['filter'] ?? '') == 'all_duplicate_contacts')) {
     log_activity(lang('access denied to all duplicate contacts view'), $_SESSION['sessionusername']);
     output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
@@ -50,17 +74,17 @@ foreach ($_REQUEST as $key => $value) {
 // if user has a user role, verify that user has access to contact groups that user has selected
 if ($user['role'] == 3) {
     // if contact group has been selected and selected contact group is not [All]
-    if (($_SESSION['software']['view_contacts']['contact_group']) && ($_SESSION['software']['view_contacts']['contact_group'] != '[' . lang('All') . ']')) {
+    if ((($_SESSION['software']['view_contacts']['contact_group'] ?? '')) && (($_SESSION['software']['view_contacts']['contact_group'] ?? '') != '[' . lang('All') . ']')) {
         // if user does not have access to contact group, then unset contact group selection
-        if (validate_contact_group_access($user, $_SESSION['software']['view_contacts']['contact_group']) == false) {
+        if (validate_contact_group_access($user, ($_SESSION['software']['view_contacts']['contact_group'] ?? '')) == false) {
             unset($_SESSION['software']['view_contacts']['contact_group']);
         }
     }
 
     // if contact groups have been selected in advanced filters
-    if ($_SESSION['software']['view_contacts']['contact_groups']) {
+    if (($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) {
         // loop through all selected contact groups in order to check if user has access to contact groups
-        foreach ($_SESSION['software']['view_contacts']['contact_groups'] as $key => $value) {
+        foreach (($_SESSION['software']['view_contacts']['contact_groups'] ?? array()) as $key => $value) {
             // if user does not have access to contact group, then unset contact group selection
             if (validate_contact_group_access($user, $value) == false) {
                 unset($_SESSION['software']['view_contacts']['contact_groups'][$key]);
@@ -104,18 +128,18 @@ if ($user['role'] < 3) {
 
 
 // if show contact groups is true then set the session to show the groups
-if ($_GET['show_contact_groups'] == 'true') {
+if (($_GET['show_contact_groups'] ?? '') == 'true') {
     $_SESSION['software']['view_contacts']['show_contact_groups'] = true;
 
 // else if show contact groups is false, then update the session to hide the groups
-} elseif (($_GET['show_contact_groups'] == 'false') && ($_GET['show_contact_groups'] != '')) {
+} elseif ((($_GET['show_contact_groups'] ?? '') == 'false') && (($_GET['show_contact_groups'] ?? '') != '')) {
     $_SESSION['software']['view_contacts']['show_contact_groups'] = false;
 }
 
 $output_organize_selected_button = '';
 
 // if this is not the all duplicates view and if the user has selected to show contact groups, then output the organize selected button
-if (($filter != 'all_duplicate_contacts') && ($_SESSION['software']['view_contacts']['show_contact_groups'] == true)) {
+if (($filter != 'all_duplicate_contacts') && (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true)) {
     $output_organize_selected_button = '<button type="button" value="Organize Selected" class=" btn mb-1 mt-1 btn-primary disabled" onclick="window.open(\'organize_contacts.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'organize\',\'contact\')"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Organize Selected') ) . '</button>';
 }
 
@@ -540,8 +564,8 @@ if ($filter == 'all_duplicate_contacts') {
     
 // else use the session values
 } else {
-    $advanced_filters = $_SESSION['software']['view_contacts']['advanced_filters'];
-    $contact_groups_filter = $_SESSION['software']['view_contacts']['contact_group'];
+    $advanced_filters = ($_SESSION['software']['view_contacts']['advanced_filters'] ?? '');
+    $contact_groups_filter = ($_SESSION['software']['view_contacts']['contact_group'] ?? '');
 }
 
 // if advanced filters are on and contact groups have not already been set in session, set default for contact groups in advanced filters
@@ -596,10 +620,10 @@ if ($filter != 'all_duplicate_contacts') {
 
     $decrease_year['start_month'] = '01';
     $decrease_year['start_day'] = '01';
-   $decrease_year['start_year'] = (int)$_SESSION['software']['view_contacts']['start_year'] - 1;
+   $decrease_year['start_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') - 1;
     $decrease_year['stop_month'] = '12';
     $decrease_year['stop_day'] = '31';
-    $decrease_year['stop_year'] = (int)$_SESSION['software']['view_contacts']['start_year'] - 1;
+    $decrease_year['stop_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') - 1;
 
     $current_year['start_month'] = '01';
     $current_year['start_day'] = '01';
@@ -610,12 +634,12 @@ if ($filter != 'all_duplicate_contacts') {
 
     $increase_year['start_month'] = '01';
     $increase_year['start_day'] = '01';
-    $increase_year['start_year'] = (int)$_SESSION['software']['view_contacts']['start_year'] + 1;
+    $increase_year['start_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') + 1;
     $increase_year['stop_month'] = '12';
     $increase_year['stop_day'] = '31';
-    $increase_year['stop_year'] = (int)$_SESSION['software']['view_contacts']['start_year'] + 1;
+    $increase_year['stop_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') + 1;
 
-    $decrease_month['new_time'] = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'] - 1, 1, (int)$_SESSION['software']['view_contacts']['start_year']);
+    $decrease_month['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? '') - 1, 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
     $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
     $decrease_month['start_month'] = $decrease_month['new_month'];
@@ -634,7 +658,7 @@ if ($filter != 'all_duplicate_contacts') {
     $current_month['stop_day'] = date('t');
     $current_month['stop_year'] = $current_month['new_year'];
 
-    $increase_month['new_time'] = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'] + 1, 1, (int)$_SESSION['software']['view_contacts']['start_year']);
+    $increase_month['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? '') + 1, 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     $increase_month['new_month'] = date('m', $increase_month['new_time']);
     $increase_month['new_year'] = date('Y', $increase_month['new_time']);
     $increase_month['start_month'] = $increase_month['new_month'];
@@ -644,7 +668,7 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_month['stop_day'] = date('t', $increase_month['new_time']);
     $increase_month['stop_year'] = $increase_month['new_year'];
 
-    $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'], (int)$_SESSION['software']['view_contacts']['start_day'], (int)$_SESSION['software']['view_contacts']['start_year']);
+    $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     // if start date is a Sunday, use last Sunday (add 12:00:00 to prevent a bug that results in Saturday being returned)
     if (date('l', $decrease_week['start_date_timestamp']) == 'Sunday') {
         $decrease_week['new_time_start'] = strtotime('last sunday 12:00:00', $decrease_week['start_date_timestamp']);
@@ -676,7 +700,7 @@ if ($filter != 'all_duplicate_contacts') {
     $current_week['stop_day'] = date('d', $current_week['new_time_stop']);
     $current_week['stop_year'] = date('Y', $current_week['new_time_stop']);
 
-    $increase_week['start_date_timestamp'] = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'], (int)$_SESSION['software']['view_contacts']['start_day'], (int)$_SESSION['software']['view_contacts']['start_year']);
+    $increase_week['start_date_timestamp'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     // if start date is a Sunday
     if (date('l', $increase_week['start_date_timestamp']) == 'Sunday') {
         $increase_week['new_time_start'] = strtotime('2 Sunday', $increase_week['start_date_timestamp']);
@@ -691,7 +715,7 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_week['stop_day'] = date('d', $increase_week['new_time_stop']);
     $increase_week['stop_year'] = date('Y', $increase_week['new_time_stop']);
 
-    $decrease_day['new_time'] = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'], (int)$_SESSION['software']['view_contacts']['start_day'] - 1, (int)$_SESSION['software']['view_contacts']['start_year']);
+    $decrease_day['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? '') - 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     $decrease_day['new_month'] = date('m', $decrease_day['new_time']);
     $decrease_day['new_day'] = date('d', $decrease_day['new_time']);
     $decrease_day['new_year'] = date('Y', $decrease_day['new_time']);
@@ -712,7 +736,7 @@ if ($filter != 'all_duplicate_contacts') {
     $current_day['stop_day'] = $current_day['new_day'];
     $current_day['stop_year'] = $current_day['new_year'];
 
-    $increase_day['new_time'] = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'], (int)$_SESSION['software']['view_contacts']['start_day'] + 1, (int)$_SESSION['software']['view_contacts']['start_year']);
+    $increase_day['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? '') + 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     $increase_day['new_month'] = date('m', $increase_day['new_time']);
     $increase_day['new_day'] = date('d', $increase_day['new_time']);
     $increase_day['new_year'] = date('Y', $increase_day['new_time']);
@@ -724,8 +748,8 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_day['stop_year'] = $increase_day['new_year'];
 
     // get timestamps for start and stop dates
-    $start_timestamp = mktime(0, 0, 0, (int)$_SESSION['software']['view_contacts']['start_month'], (int)$_SESSION['software']['view_contacts']['start_day'], (int)$_SESSION['software']['view_contacts']['start_year']);
-    $stop_timestamp = mktime(23, 59, 59, (int)$_SESSION['software']['view_contacts']['stop_month'], (int)$_SESSION['software']['view_contacts']['stop_day'], (int)$_SESSION['software']['view_contacts']['stop_year']);
+    $start_timestamp = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
+    $stop_timestamp = mktime(23, 59, 59, (int)($_SESSION['software']['view_contacts']['stop_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['stop_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['stop_year'] ?? ''));
 
     // If where is blank
     if ($where == '') {
@@ -739,11 +763,11 @@ if ($filter != 'all_duplicate_contacts') {
     $where .= "(contacts.timestamp >= $start_timestamp) AND (contacts.timestamp <= $stop_timestamp)";
     
     // Output start date range time
-    $output_date_range_time = h(get_month_name_from_number($_SESSION['software']['view_contacts']['start_month']) . ' ' . $_SESSION['software']['view_contacts']['start_day'] . ', ' . $_SESSION['software']['view_contacts']['start_year']);
+    $output_date_range_time = h(get_month_name_from_number(($_SESSION['software']['view_contacts']['start_month'] ?? '')) . ' ' . ($_SESSION['software']['view_contacts']['start_day'] ?? '') . ', ' . ($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     $output_date_range_time .= ' - ';
 
     // Output end date range time
-    $output_date_range_time .= h(get_month_name_from_number($_SESSION['software']['view_contacts']['stop_month']) . ' ' . $_SESSION['software']['view_contacts']['stop_day'] . ', ' . $_SESSION['software']['view_contacts']['stop_year']);
+    $output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['view_contacts']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['view_contacts']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['view_contacts']['stop_year'] ?? ''));
 
 // else this is the all duplicate contacts filter so hide the date range
 } else {
@@ -753,10 +777,10 @@ if ($filter != 'all_duplicate_contacts') {
 // if advanced filters are on, prepare SQL for checked contact groups
 if ($advanced_filters == true) {
     // if at least one contact group is checked
-    if (is_array($_SESSION['software']['view_contacts']['contact_groups']) == true) {
+    if (is_array(($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true) {
         $where_contact_groups = '';
 
-        foreach ($_SESSION['software']['view_contacts']['contact_groups'] as $contact_group) {
+        foreach (($_SESSION['software']['view_contacts']['contact_groups'] ?? array()) as $contact_group) {
             // if this is not the first contact group, then add an OR before SQL
             if ($where_contact_groups) {
                 $where_contact_groups .= " OR";
@@ -821,56 +845,56 @@ if ($advanced_filters == true) {
 
 // if advanced filters are on, prepare SQL
 if ($advanced_filters == true) {
-    if ($_SESSION['software']['view_contacts']['salutation']) {$where .= " AND (contacts.salutation LIKE '%" . escape($_SESSION['software']['view_contacts']['salutation']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['first_name']) {$where .= " AND (contacts.first_name LIKE '%" . escape($_SESSION['software']['view_contacts']['first_name']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['last_name']) {$where .= " AND (contacts.last_name LIKE '%" . escape($_SESSION['software']['view_contacts']['last_name']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['suffix']) {$where .= " AND (contacts.suffix LIKE '%" . escape($_SESSION['software']['view_contacts']['suffix']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['nickname']) {$where .= " AND (contacts.nickname LIKE '%" . escape($_SESSION['software']['view_contacts']['nickname']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['company']) {$where .= " AND (contacts.company LIKE '%" . escape($_SESSION['software']['view_contacts']['company']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['title']) {$where .= " AND (contacts.title LIKE '%" . escape($_SESSION['software']['view_contacts']['title']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['department']) {$where .= " AND (contacts.department LIKE '%" . escape($_SESSION['software']['view_contacts']['department']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['office_location']) {$where .= " AND (contacts.office_location LIKE '%" . escape($_SESSION['software']['view_contacts']['office_location']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_address_1']) {$where .= " AND (contacts.business_address_1 LIKE '%" . escape($_SESSION['software']['view_contacts']['business_address_1']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_address_2']) {$where .= " AND (contacts.business_address_2 LIKE '%" . escape($_SESSION['software']['view_contacts']['business_address_2']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_city']) {$where .= " AND (contacts.business_city LIKE '%" . escape($_SESSION['software']['view_contacts']['business_city']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_state']) {$where .= " AND (contacts.business_state LIKE '%" . escape($_SESSION['software']['view_contacts']['business_state']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_country']) {$where .= " AND (contacts.business_country LIKE '%" . escape($_SESSION['software']['view_contacts']['business_country']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_zip_code']) {$where .= " AND (contacts.business_zip_code LIKE '%" . escape($_SESSION['software']['view_contacts']['business_zip_code']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_phone']) {$where .= " AND (contacts.business_phone LIKE '%" . escape($_SESSION['software']['view_contacts']['business_phone']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['business_fax']) {$where .= " AND (contacts.business_fax LIKE '%" . escape($_SESSION['software']['view_contacts']['business_fax']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_address_1']) {$where .= " AND (contacts.home_address_1 LIKE '%" . escape($_SESSION['software']['view_contacts']['home_address_1']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_address_2']) {$where .= " AND (contacts.home_address_2 LIKE '%" . escape($_SESSION['software']['view_contacts']['home_address_2']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_city']) {$where .= " AND (contacts.home_city LIKE '%" . escape($_SESSION['software']['view_contacts']['home_city']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_state']) {$where .= " AND (contacts.home_state LIKE '%" . escape($_SESSION['software']['view_contacts']['home_state']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_country']) {$where .= " AND (contacts.home_country LIKE '%" . escape($_SESSION['software']['view_contacts']['home_country']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_zip_code']) {$where .= " AND (contacts.home_zip_code LIKE '%" . escape($_SESSION['software']['view_contacts']['home_zip_code']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_phone']) {$where .= " AND (contacts.home_phone LIKE '%" . escape($_SESSION['software']['view_contacts']['home_phone']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['home_fax']) {$where .= " AND (contacts.home_fax LIKE '%" . escape($_SESSION['software']['view_contacts']['home_fax']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['mobile_phone']) {$where .= " AND (contacts.mobile_phone LIKE '%" . escape($_SESSION['software']['view_contacts']['mobile_phone']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['email_address']) {$where .= " AND (contacts.email_address LIKE '%" . escape($_SESSION['software']['view_contacts']['email_address']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['website']) {$where .= " AND (contacts.website LIKE '%" . escape($_SESSION['software']['view_contacts']['website']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['lead_source']) {$where .= " AND (contacts.lead_source LIKE '%" . escape($_SESSION['software']['view_contacts']['lead_source']) . "%')";}
+    if (($_SESSION['software']['view_contacts']['salutation'] ?? '')) {$where .= " AND (contacts.salutation LIKE '%" . escape(($_SESSION['software']['view_contacts']['salutation'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['first_name'] ?? '')) {$where .= " AND (contacts.first_name LIKE '%" . escape(($_SESSION['software']['view_contacts']['first_name'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['last_name'] ?? '')) {$where .= " AND (contacts.last_name LIKE '%" . escape(($_SESSION['software']['view_contacts']['last_name'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['suffix'] ?? '')) {$where .= " AND (contacts.suffix LIKE '%" . escape(($_SESSION['software']['view_contacts']['suffix'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['nickname'] ?? '')) {$where .= " AND (contacts.nickname LIKE '%" . escape(($_SESSION['software']['view_contacts']['nickname'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['company'] ?? '')) {$where .= " AND (contacts.company LIKE '%" . escape(($_SESSION['software']['view_contacts']['company'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['title'] ?? '')) {$where .= " AND (contacts.title LIKE '%" . escape(($_SESSION['software']['view_contacts']['title'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['department'] ?? '')) {$where .= " AND (contacts.department LIKE '%" . escape(($_SESSION['software']['view_contacts']['department'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['office_location'] ?? '')) {$where .= " AND (contacts.office_location LIKE '%" . escape(($_SESSION['software']['view_contacts']['office_location'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) {$where .= " AND (contacts.business_address_1 LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) {$where .= " AND (contacts.business_address_2 LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_city'] ?? '')) {$where .= " AND (contacts.business_city LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_city'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_state'] ?? '')) {$where .= " AND (contacts.business_state LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_state'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_country'] ?? '')) {$where .= " AND (contacts.business_country LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_country'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) {$where .= " AND (contacts.business_zip_code LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_phone'] ?? '')) {$where .= " AND (contacts.business_phone LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_phone'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['business_fax'] ?? '')) {$where .= " AND (contacts.business_fax LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_fax'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) {$where .= " AND (contacts.home_address_1 LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) {$where .= " AND (contacts.home_address_2 LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_city'] ?? '')) {$where .= " AND (contacts.home_city LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_city'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_state'] ?? '')) {$where .= " AND (contacts.home_state LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_state'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_country'] ?? '')) {$where .= " AND (contacts.home_country LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_country'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) {$where .= " AND (contacts.home_zip_code LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_phone'] ?? '')) {$where .= " AND (contacts.home_phone LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_phone'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['home_fax'] ?? '')) {$where .= " AND (contacts.home_fax LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_fax'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) {$where .= " AND (contacts.mobile_phone LIKE '%" . escape(($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['email_address'] ?? '')) {$where .= " AND (contacts.email_address LIKE '%" . escape(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['website'] ?? '')) {$where .= " AND (contacts.website LIKE '%" . escape(($_SESSION['software']['view_contacts']['website'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['lead_source'] ?? '')) {$where .= " AND (contacts.lead_source LIKE '%" . escape(($_SESSION['software']['view_contacts']['lead_source'] ?? '')) . "%')";}
 
     // If the subscribers filter is not on.
         if ($filter != 'my_subscribers') {
-            if ($_SESSION['software']['view_contacts']['opt_in_status'] == 'opt_in') {
+            if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_in') {
                 $where .= " AND (contacts.opt_in = '1')";
-            } else if ($_SESSION['software']['view_contacts']['opt_in_status'] == 'opt_out') {
+            } else if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_out') {
                 $where .= " AND (contacts.opt_in = '0')";
             }
 
-            if ($_SESSION['software']['view_contacts']['description']) {$where .= " AND (contacts.description LIKE '%" . escape($_SESSION['software']['view_contacts']['description']) . "%')";}
+            if (($_SESSION['software']['view_contacts']['description'] ?? '')) {$where .= " AND (contacts.description LIKE '%" . escape(($_SESSION['software']['view_contacts']['description'] ?? '')) . "%')";}
 
-            if ($_SESSION['software']['view_contacts']['opt_in_status'] == 'opt_in') {
+            if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_in') {
                 $where .= " AND (contacts.opt_in = '1')";
-            } else if ($_SESSION['software']['view_contacts']['opt_in_status'] == 'opt_out') {
+            } else if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_out') {
                 $where .= " AND (contacts.opt_in = '0')";
             }
         }
      // If any of the Membership filters are not on.
         if (isset($membership_filter) == false) {
             // prepare SQL for membership status
-            switch ($_SESSION['software']['view_contacts']['membership_status']) {
+            switch (($_SESSION['software']['view_contacts']['membership_status'] ?? '')) {
 
                 case 'member':
                     $where .=
@@ -918,17 +942,17 @@ if ($advanced_filters == true) {
                     break;
             }
         }
-    if ($_SESSION['software']['view_contacts']['member_id']) {$where .= " AND (contacts.member_id LIKE '%" . escape($_SESSION['software']['view_contacts']['member_id']) . "%')";}
-    if ($_SESSION['software']['view_contacts']['expiration_date']) {$where .= " AND (contacts.expiration_date = '" . escape(prepare_form_data_for_input($_SESSION['software']['view_contacts']['expiration_date'], 'date')) . "')";}
+    if (($_SESSION['software']['view_contacts']['member_id'] ?? '')) {$where .= " AND (contacts.member_id LIKE '%" . escape(($_SESSION['software']['view_contacts']['member_id'] ?? '')) . "%')";}
+    if (($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) {$where .= " AND (contacts.expiration_date = '" . escape(prepare_form_data_for_input(($_SESSION['software']['view_contacts']['expiration_date'] ?? ''), 'date')) . "')";}
 
     if (AFFILIATE_PROGRAM == true) {
-        if ($_SESSION['software']['view_contacts']['affiliate_name']) {$where .= " AND (contacts.affiliate_name LIKE '%" . escape($_SESSION['software']['view_contacts']['affiliate_name']) . "%')";}
-        if ($_SESSION['software']['view_contacts']['affiliate_code']) {$where .= " AND (contacts.affiliate_code LIKE '%" . escape($_SESSION['software']['view_contacts']['affiliate_code']) . "%')";}
+        if (($_SESSION['software']['view_contacts']['affiliate_name'] ?? '')) {$where .= " AND (contacts.affiliate_name LIKE '%" . escape(($_SESSION['software']['view_contacts']['affiliate_name'] ?? '')) . "%')";}
+        if (($_SESSION['software']['view_contacts']['affiliate_code'] ?? '')) {$where .= " AND (contacts.affiliate_code LIKE '%" . escape(($_SESSION['software']['view_contacts']['affiliate_code'] ?? '')) . "%')";}
     }
 }
 
 // if user requested to export contacts, export contacts
-if ($_GET['submit_data'] == 'Export Contacts') {
+if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     // force download dialog
     header("Content-type: text/csv");
     header("Content-disposition: attachment; filename=contacts.csv");
@@ -1010,7 +1034,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
     log_activity(lang(array('string'=>'{var:1} contacts were exported','vars'=>$number_of_contacts)), $_SESSION['sessionusername']);
      
 // if mass deletion is allowed and user requested to delete contacts, delete contacts
-} elseif ((MASS_DELETION == true) && ($_GET['submit_data'] == 'Delete Contacts')) {
+} elseif ((MASS_DELETION == true) && (($_GET['submit_data'] ?? '') == 'Delete Contacts')) {
     // get all contacts that need to be deleted
     $query =
         "SELECT contacts.id
@@ -1052,8 +1076,8 @@ if ($_GET['submit_data'] == 'Export Contacts') {
 
     // if advanced filters are on
     if ($advanced_filters == true) {
-        if (is_array($_SESSION['software']['view_contacts']['contact_groups']) == true) {
-            foreach ($_SESSION['software']['view_contacts']['contact_groups'] as $contact_group) {
+        if (is_array(($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true) {
+            foreach (($_SESSION['software']['view_contacts']['contact_groups'] ?? array()) as $contact_group) {
                 if ($contact_group_list) {
                     $contact_group_list .= ', ';
                 }
@@ -1106,7 +1130,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_contacts.php');
 
 // else, if the user selected to merge contacts, then merge them
-} elseif ($_GET['submit_data'] == 'Merge Contacts') {
+} elseif (($_GET['submit_data'] ?? '') == 'Merge Contacts') {
     $contacts_to_merge = array();
     
     // get contacts to be merged information
@@ -1194,13 +1218,13 @@ if ($_GET['submit_data'] == 'Export Contacts') {
 } else {
     // get minimum year from oldest timestamp
     $oldest_year = date('Y', $oldest_timestamp);
-    if ($_SESSION['software']['view_contacts']['start_year'] < $oldest_year) {
-        $oldest_year = $_SESSION['software']['view_contacts']['start_year'];
+    if (($_SESSION['software']['view_contacts']['start_year'] ?? '') < $oldest_year) {
+        $oldest_year = ($_SESSION['software']['view_contacts']['start_year'] ?? '');
     }
 
     $this_year = date('Y');
-    if ($_SESSION['software']['view_contacts']['stop_year'] > $this_year) {
-        $this_year = $_SESSION['software']['view_contacts']['stop_year'];
+    if (($_SESSION['software']['view_contacts']['stop_year'] ?? '') > $this_year) {
+        $this_year = ($_SESSION['software']['view_contacts']['stop_year'] ?? '');
     }
 
     $years = array();
@@ -1227,7 +1251,8 @@ if ($_GET['submit_data'] == 'Export Contacts') {
     // If a screen was passed and it is a positive integer, then use it.
     // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
     if (
-        $_REQUEST['screen']
+        isset($_REQUEST['screen'])
+        and $_REQUEST['screen']
         and is_numeric($_REQUEST['screen'])
         and $_REQUEST['screen'] > 0
         and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -1291,7 +1316,13 @@ if ($_GET['submit_data'] == 'Export Contacts') {
         
     // else sort the view based on what the user selected
     } else {
-        switch ($_SESSION['software']['view_contacts']['sort']) {
+        // if the sort is not set yet, then default it to empty so that the switch below falls
+        // through to its default case
+        if (isset($_SESSION['software']['view_contacts']['sort']) == false) {
+            $_SESSION['software']['view_contacts']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['view_contacts']['sort'] ?? '')) {
             case lang('First Name'):
                 $sort_column = 'first_name';
                 break;
@@ -1395,13 +1426,13 @@ if ($_GET['submit_data'] == 'Export Contacts') {
                 break;
         }
 
-        if (!$_SESSION['software']['view_contacts']['order']) {
+        if (!($_SESSION['software']['view_contacts']['order'] ?? '')) {
             $_SESSION['software']['view_contacts']['order'] = 'asc';
         }
         
         // if the sort order is blank then set it to the order in the session
         if ($sort_order == '') {
-            $sort_order = $_SESSION['software']['view_contacts']['order'];
+            $sort_order = ($_SESSION['software']['view_contacts']['order'] ?? '');
         }
     }
     
@@ -1633,7 +1664,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
         $output_contact_groups = '';
         
         // If show groups is on, or the filter is set to all duplicate contacts then get contact groups.
-        if (($_SESSION['software']['view_contacts']['show_contact_groups'] == true) || ($filter == 'all_duplicate_contacts')) {
+        if ((($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true) || ($filter == 'all_duplicate_contacts')) {
             // get contact groups that this contact is in
             $query = "SELECT contact_group_id FROM contacts_contact_groups_xref WHERE contact_id = '" . $contact['id'] . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1888,7 +1919,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
         // if user has a role that is greater than user role, then prepare to output [None] option
         if ($user['role'] < 3) {
             // if none contact group is selected
-            if ((is_array($_SESSION['software']['view_contacts']['contact_groups']) == true) && (in_array('[' . lang('None') . ']', $_SESSION['software']['view_contacts']['contact_groups']) == true)) {
+            if ((is_array(($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true) && (in_array('[' . lang('None') . ']', ($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true)) {
                 $checked = ' checked="checked"';
             } else {
                 $checked = '';
@@ -1902,7 +1933,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
             $number_of_contacts = get_number_of_contacts($contact_group['id'], $require_email = false);
 
             // if this contact group should be checked
-            if ((is_array($_SESSION['software']['view_contacts']['contact_groups']) == true) && (in_array($contact_group['id'], $_SESSION['software']['view_contacts']['contact_groups']) == true)) {
+            if ((is_array(($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true) && (in_array($contact_group['id'], ($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true)) {
                 $checked = ' checked="checked"';
             } else {
                 $checked = '';
@@ -1914,7 +1945,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
         // If the Opt in status is not on display the opt in select box.
         if ($filter != 'my_subscribers') {
 
-            switch ($_SESSION['software']['view_contacts']['opt_in_status']) {
+            switch (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '')) {
                 case 'any':
                         $opt_in_status_any_selected = ' selected="selected"';
                     break;
@@ -1936,7 +1967,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
         // If any of the Membership filters are not on.
         if (isset($membership_filter) == false) {
             // prepare selection for membership status pick list
-            switch ($_SESSION['software']['view_contacts']['membership_status']) {
+            switch (($_SESSION['software']['view_contacts']['membership_status'] ?? '')) {
                 case 'any':
                     $membership_status_any_selected = ' selected="selected"';
                     break;
@@ -1987,11 +2018,11 @@ if ($_GET['submit_data'] == 'Export Contacts') {
                 '<div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Affiliate') . '</h5></div>
                 <div class="col-12 col-sm-6 col-md-12 my-1">
                     <label for="affiliate_name" class="form-label">' . lang('Affiliate Name') . '</label>
-                    <input type="text" id="affiliate_name" name="affiliate_name" class="form-control" value="' . h($_SESSION['software']['view_contacts']['affiliate_name']) . '"/>
+                    <input type="text" id="affiliate_name" name="affiliate_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['affiliate_name'] ?? '')) . '"/>
                 </div>
                 <div class="col-12 col-sm-6 col-md-12 my-1">
                     <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
-                    <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h($_SESSION['software']['view_contacts']['affiliate_code']) . '"/>
+                    <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['affiliate_code'] ?? '')) . '"/>
                 </div>';
         }
 
@@ -2025,63 +2056,63 @@ if ($_GET['submit_data'] == 'Export Contacts') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('General') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="salutation" class="form-label">' . lang('Salutation') . '</label>
-                            <input type="text" id="salutation" name="salutation" class="form-control" value="' . h($_SESSION['software']['view_contacts']['salutation']) . '" />
+                            <input type="text" id="salutation" name="salutation" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['salutation'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="first_name" class="form-label">' . lang('First Name') . '</label>
-                            <input type="text" id="first_name" name="first_name" class="form-control" value="' . h($_SESSION['software']['view_contacts']['first_name']) . '" />
+                            <input type="text" id="first_name" name="first_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['first_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="last_name" class="form-label">' . lang('Last Name') . '</label>
-                            <input type="text" id="last_name" name="last_name" class="form-control" value="' . h($_SESSION['software']['view_contacts']['last_name']) . '" />
+                            <input type="text" id="last_name" name="last_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['last_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="suffix" class="form-label">' . lang('Suffix') . '</label>
-                            <input type="text" id="suffix" name="suffix" class="form-control" value="' . h($_SESSION['software']['view_contacts']['suffix']) . '" />
+                            <input type="text" id="suffix" name="suffix" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['suffix'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="nickname" class="form-label">' . lang('Nickname') . '</label>
-                            <input type="text" id="nickname" name="nickname" class="form-control" value="' . h($_SESSION['software']['view_contacts']['nickname']) . '" />
+                            <input type="text" id="nickname" name="nickname" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['nickname'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="company" class="form-label">' . lang('Company') . '</label>
-                            <input type="text" id="company" name="company" class="form-control" value="' . h($_SESSION['software']['view_contacts']['company']) . '" />
+                            <input type="text" id="company" name="company" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['company'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="title" class="form-label">' . lang('Title') . '</label>
-                            <input type="text" id="title" name="title" class="form-control" value="' . h($_SESSION['software']['view_contacts']['title']) . '" />
+                            <input type="text" id="title" name="title" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['title'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="department" class="form-label">' . lang('Department') . '</label>
-                            <input type="text" id="department" name="department" class="form-control" value="' . h($_SESSION['software']['view_contacts']['department']) . '" />
+                            <input type="text" id="department" name="department" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['department'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="office_location" class="form-label">' . lang('Office Location') . '</label>
-                            <input type="text" id="office_location" name="office_location" class="form-control" value="' . h($_SESSION['software']['view_contacts']['office_location']) . '" />
+                            <input type="text" id="office_location" name="office_location" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['office_location'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_phone" class="form-label">' . lang('Business Phone') . '</label>
-                            <input type="text" id="business_phone" name="business_phone" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_phone']) . '" />
+                            <input type="text" id="business_phone" name="business_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_phone'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_phone" class="form-label">' . lang('Home Phone') . '</label>
-                            <input type="text" id="home_phone" name="home_phone" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_phone']) . '" />
+                            <input type="text" id="home_phone" name="home_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_phone'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="mobile_phone" class="form-label">' . lang('Mobile Phone') . '</label>
-                            <input type="text" id="mobile_phone" name="mobile_phone" class="form-control" value="' . h($_SESSION['software']['view_contacts']['mobile_phone']) . '" />
+                            <input type="text" id="mobile_phone" name="mobile_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_fax" class="form-label">' . lang('Business Fax') . '</label>
-                            <input type="text" id="business_fax" name="business_fax" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_fax']) . '" />
+                            <input type="text" id="business_fax" name="business_fax" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_fax'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_fax" class="form-label">' . lang('Home Fax') . '</label>
-                            <input type="text" id="home_fax" name="home_fax" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_fax']) . '" />
+                            <input type="text" id="home_fax" name="home_fax" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_fax'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
-                            <input type="text" id="email_address" name="email_address" class="form-control" value="' . h($_SESSION['software']['view_contacts']['email_address']) . '" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                            <input type="text" id="email_address" name="email_address" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . '" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="opt_in_status" class="form-label">' . lang('Opt-In Status') . '</label>
@@ -2089,82 +2120,82 @@ if ($_GET['submit_data'] == 'Export Contacts') {
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="website" class="form-label">' . lang('Website') . '</label>
-                            <input type="text" id="website" name="website" class="form-control" value="' . h($_SESSION['software']['view_contacts']['website']) . '"/>
+                            <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="website" class="form-label">' . lang('Website') . '</label>
-                            <input type="text" id="website" name="website" class="form-control" value="' . h($_SESSION['software']['view_contacts']['website']) . '"/>
+                            <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
-                            <input type="text" id="lead_source" name="lead_source" class="form-control" value="' . h($_SESSION['software']['view_contacts']['lead_source']) . '"/>
+                            <input type="text" id="lead_source" name="lead_source" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['lead_source'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="description" class="form-label">' . lang('Description') . '</label>
-                            <input type="text" id="description" name="description" class="form-control" value="' . h($_SESSION['software']['view_contacts']['description']) . '"/>
+                            <input type="text" id="description" name="description" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['description'] ?? '')) . '"/>
                         </div>
 
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Business') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_address_1" class="form-label">' . lang('Address') . ' 1</label>
-                            <input type="text" id="business_address_1" name="business_address_1" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_address_1']) . '"/>
+                            <input type="text" id="business_address_1" name="business_address_1" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_address_2" class="form-label">' . lang('Address') . ' 2</label>
-                            <input type="text" id="business_address_2" name="business_address_2" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_address_2']) . '"/>
+                            <input type="text" id="business_address_2" name="business_address_2" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_city" class="form-label">' . lang('City') . '</label>
-                            <input type="text" id="business_city" name="business_city" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_city']) . '"/>
+                            <input type="text" id="business_city" name="business_city" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_city'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_state" class="form-label">' . lang('State') . '</label>
-                            <input type="text" id="business_state" name="business_state" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_state']) . '"/>
+                            <input type="text" id="business_state" name="business_state" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_state'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_zip_code" class="form-label">' . lang('Zip Code') . '</label>
-                            <input type="text" id="business_zip_code" name="business_zip_code" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_zip_code']) . '"/>
+                            <input type="text" id="business_zip_code" name="business_zip_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="business_country" class="form-label">' . lang('Country') . '</label>
-                            <input type="text" id="business_country" name="business_country" class="form-control" value="' . h($_SESSION['software']['view_contacts']['business_country']) . '"/>
+                            <input type="text" id="business_country" name="business_country" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_country'] ?? '')) . '"/>
                         </div>
 
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Home') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_address_1" class="form-label">' . lang('Address') . ' 1</label>
-                            <input type="text" id="home_address_1" name="home_address_1" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_address_1']) . '"/>
+                            <input type="text" id="home_address_1" name="home_address_1" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_address_2" class="form-label">' . lang('Address') . ' 2</label>
-                            <input type="text" id="home_address_2" name="home_address_2" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_address_2']) . '"/>
+                            <input type="text" id="home_address_2" name="home_address_2" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_city" class="form-label">' . lang('City') . '</label>
-                            <input type="text" id="home_city" name="home_city" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_city']) . '"/>
+                            <input type="text" id="home_city" name="home_city" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_city'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_state" class="form-label">' . lang('State') . '</label>
-                            <input type="text" id="home_state" name="home_state" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_state']) . '"/>
+                            <input type="text" id="home_state" name="home_state" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_state'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_zip_code" class="form-label">' . lang('Zip Code') . '</label>
-                            <input type="text" id="home_zip_code" name="home_zip_code" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_zip_code']) . '"/>
+                            <input type="text" id="home_zip_code" name="home_zip_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="home_country" class="form-label">' . lang('Country') . '</label>
-                            <input type="text" id="home_country" name="home_country" class="form-control" value="' . h($_SESSION['software']['view_contacts']['home_country']) . '"/>
+                            <input type="text" id="home_country" name="home_country" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_country'] ?? '')) . '"/>
                         </div>
 
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Membership') . '</h5></div>
                         ' . $output_membership_status . '
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
-                            <input type="text" id="member_id" name="member_id" class="form-control" value="' . h($_SESSION['software']['view_contacts']['member_id']) . '"/>
+                            <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['member_id'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="member_id" class="form-label">' . lang('Expiration Date') . '</label>
-                            <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h($_SESSION['software']['view_contacts']['expiration_date']) . '" />
+                            <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" />
                             ' . get_date_picker_format() . '
                             <script>
                                 $("#expiration_date").datepicker(datetimepicker_options);
@@ -2176,18 +2207,18 @@ if ($_GET['submit_data'] == 'Export Contacts') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">
                             <label class="form-label">' . lang('From') . '</label>
-                            <select class="form-select my-1" name="start_month">' . select_month($_SESSION['software']['view_contacts']['start_month']) . '</select>
+                            <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['view_contacts']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="start_day">' . select_day($_SESSION['software']['view_contacts']['start_day']) . '</select>
-                                <select class="form-select my-1" name="start_year">' . select_year($years, $_SESSION['software']['view_contacts']['start_year']) . '</select>
+                                <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['view_contacts']['start_day'] ?? '')) . '</select>
+                                <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['view_contacts']['start_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">' . lang('To') . '</label>
-                            <select class="form-select my-1" name="stop_month">' . select_month($_SESSION['software']['view_contacts']['stop_month']) . '</select>
+                            <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['view_contacts']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="stop_day">' . select_day($_SESSION['software']['view_contacts']['stop_day']) . '</select>
-                                <select class="form-select my-1" name="stop_year">' . select_year($years, $_SESSION['software']['view_contacts']['stop_year']) . '</select>
+                                <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['view_contacts']['stop_day'] ?? '')) . '</select>
+                                <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['view_contacts']['stop_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
@@ -2220,23 +2251,23 @@ if ($_GET['submit_data'] == 'Export Contacts') {
     
     // If the contacts by user filter, my_contacts by business address, and my contacts by home address is not on, then output the user label
     if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-        $output_user_label = '<th>' . get_column_heading(lang('User'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
+        $output_user_label = '<th>' . get_column_heading(lang('User'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
 
     }
 
     // if the filter is not set to either my contacts by business address or my contacts by home address then output the op_in, phone and email address labels
     if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-        $output_opt_in_label = '<th class="text-center">' . get_column_heading(lang('Opt-In'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
+        $output_opt_in_label = '<th class="text-center">' . get_column_heading(lang('Opt-In'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
         $output_phone_label = '<th>' . lang('Phone') . '</th>';
-        $output_email_address_label = '<th>' . get_column_heading(lang('Email'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
+        $output_email_address_label = '<th>' . get_column_heading(lang('Email'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
     
     // else one of the above filters has been selected so output the address table headings
     } else {
         $output_address_labels = '<th>' . lang('Address') . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('City'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('State'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('Zip Code'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
-        $output_address_labels .= '<th>' . get_column_heading(lang('Country'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('City'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('State'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('Zip Code'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
+        $output_address_labels .= '<th>' . get_column_heading(lang('Country'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
     }
     
     $output_table_headings = '';
@@ -2247,7 +2278,7 @@ if ($_GET['submit_data'] == 'Export Contacts') {
     // if this is not the all duplicates view, then output the contact groups toggle
     if ($filter != 'all_duplicate_contacts') {
         // if the user has selected to show contact groups, then prepare toggle to hide contact groups
-        if ($_SESSION['software']['view_contacts']['show_contact_groups'] == true) {
+        if (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true) {
             $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=false" title="Hide Contact Groups">' . lang('Hide Groups') . '</a>';
         
         // else set the show groups toggle link's value and label
@@ -2294,16 +2325,16 @@ if ($_GET['submit_data'] == 'Export Contacts') {
             </th>
             <th class="noVis">' . lang('Action') . '</th> 
             ' . $output_image_header . '
-            <th>' . get_column_heading(lang('First Name'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Name'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Company'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('First Name'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Last Name'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Company'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>
             ' . $output_phone_label . '
             ' . $output_email_address_label . '
             ' . $output_user_label . '
             ' . $output_opt_in_label . '
             ' . $output_address_labels . '
             <th>' . $output_contact_groups_toggle . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['view_contacts']['sort'], $sort_order, $output_filter_for_links) . '</th>';
+            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_contacts']['sort'] ?? ''), $sort_order, $output_filter_for_links) . '</th>';
         
         // output the opt in and opt out buttons
         $output_modify_selected_buttons = '

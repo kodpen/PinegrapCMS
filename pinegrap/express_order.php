@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -32,9 +32,9 @@ include('init.php');
 // HTTPS — browsers reject SameSite=None without Secure. On HTTP localhost
 // the cookie falls back to default (Lax/Strict) and cross-site return
 // will lose the session.
-if ($_GET['mode'] != 'paypal_express_checkout_return'
-    and $_GET['mode'] != 'iyzipay_threedsecure_return'
-    and $_GET['mode'] != 'pay_with_iyzico_return') {
+if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return'
+    and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return'
+    and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
     if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
         if (URL_SCHEME == 'https://') {
             setcookie(session_name(), session_id(), ['samesite' => 'None', 'secure' => true]);
@@ -54,9 +54,9 @@ if ($_GET['mode'] != 'paypal_express_checkout_return'
 // because the cross-site POST from iyzipay/paypal can\'t echo our
 // session-bound CSRF token. The cookie re-stamp above already ensures
 // the session itself is intact for those returns.
-if ($_GET['mode'] != 'paypal_express_checkout_return'
-    and $_GET['mode'] != 'iyzipay_threedsecure_return'
-    and $_GET['mode'] != 'pay_with_iyzico_return') {
+if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return'
+    and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return'
+    and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
     validate_token_field();
 }
 
@@ -65,16 +65,16 @@ initialize_order();
 
 $liveform = new liveform('express_order');
 
-$ghost = $_SESSION['software']['ghost'];
+$ghost = $_SESSION['software']['ghost'] ?? false;
 
 // if the mode is not paypal_express_checkout_return, then add fields to session
-if ($_GET['mode'] != 'paypal_express_checkout_return' and $_GET['mode'] != 'iyzipay_threedsecure_return') {
+if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
     $liveform->add_fields_to_session();
 }
 
 $liveform->clear_notices();
 
-$order_id = $_SESSION['ecommerce']['order_id'];
+$order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 
 // Get properties for the express order page.
 $query =
@@ -84,7 +84,7 @@ $query =
         special_offer_code_label,
         form
     FROM express_order_pages
-    WHERE page_id = '" . escape($_POST['page_id']) . "'";
+    WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
@@ -96,7 +96,7 @@ $custom_billing_form = $row['form'];
 add_pending_offers($liveform);
 
 // if quick add form was submitted
-if ($_POST['quick_add']) {
+if (!empty($_POST['quick_add'])) {
     // if a quick add product was selected, continue
     if ($_POST['quick_add_product_id']) {
         // get data for product
@@ -113,7 +113,7 @@ if ($_POST['quick_add']) {
                 inventory_quantity,
                 backorder
             FROM products
-            WHERE id = '" . escape($_POST['quick_add_product_id']) . "'";
+            WHERE id = '" . escape($_POST['quick_add_product_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if quick add product was found, continue
@@ -266,7 +266,7 @@ $query =
         products.submit_form_quantity_type
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
-    WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $order_items = array();
@@ -286,9 +286,9 @@ $order_submitted = false;
 // is empty during the iyzico callback — page_id only comes via GET there).
 if (
     (isset($_POST['submit_purchase_now']) == true)
-    || ($_GET['mode'] == 'paypal_express_checkout_return')
-    || ($_GET['mode'] == 'iyzipay_threedsecure_return')
-    || ($_GET['mode'] == 'pay_with_iyzico_return')
+    || (($_GET['mode'] ?? '') == 'paypal_express_checkout_return')
+    || (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return')
+    || (($_GET['mode'] ?? '') == 'pay_with_iyzico_return')
 ) {
     $order_submitted = true;
 }
@@ -422,7 +422,7 @@ if ($order_submitted == false) {
                             } else {
                                 // if the ship tos have not been retrieved yet, then get them
                                 if ($ship_tos_retrieved == FALSE) {
-                                    $query = "SELECT id FROM ship_tos WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                                    $query = "SELECT id FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                                     $ship_tos = mysqli_fetch_items($result);
                                     $ship_tos_retrieved = TRUE;
@@ -517,7 +517,7 @@ if ($order_submitted == false) {
             SET
                 special_offer_code = '" . escape($special_offer_code) . "'
                 $sql_affiliate_code
-            WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+            WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     }
     
@@ -533,7 +533,7 @@ if ($order_submitted == false) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                         AND products.gift_card = '0'") == 0
             ) {
                 $liveform->assign_field_value('gift_card_code', '');
@@ -546,7 +546,7 @@ if ($order_submitted == false) {
             $gift_card_code = preg_replace('/[^A-Za-z0-9]/', '', $liveform->get_field_value('gift_card_code'));
 
             // check if the gift card has already been added to the order
-            $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (code = '" . escape($gift_card_code) . "')";
+            $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (code = '" . escape($gift_card_code) . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             
@@ -650,7 +650,7 @@ if ($order_submitted == false) {
                         givex)
                     VALUES (
                         '" . $gift_card_id . "',
-                        '" . $_SESSION['ecommerce']['order_id'] . "',
+                        '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                         '" . escape($gift_card_code) . "',
                         '" . escape($old_balance) . "',
                         '" . $givex . "')";
@@ -717,7 +717,7 @@ if ($order_submitted == false) {
             $sql_offline_payment_allowed
             referral_source_code = '" . escape($liveform->get_field_value('referral_source')) . "',
             billing_complete = '0'
-        WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // If a custom billing form is enabled, then add custom billing form data to database,
@@ -797,7 +797,7 @@ if ($order_submitted == false) {
         if (!$contact_id) {
 
             // get contact id for this order
-            $query = "SELECT contact_id FROM orders WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'";
+            $query = "SELECT contact_id FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $contact_id = $row['contact_id'];
@@ -889,7 +889,7 @@ if ($order_submitted == false) {
                     user_id = '$user_id',
                     contact_id = '$contact_id',
                     billing_complete = '1'
-                 WHERE id = " . $_SESSION['ecommerce']['order_id'];
+                 WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // If the user is logged in and not ghosting and the user selected that he/she
@@ -1136,7 +1136,7 @@ foreach ($order_items as $order_item) {
                     message,
                     delivery_date)
                 VALUES (
-                    '" . $_SESSION['ecommerce']['order_id'] . "',
+                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                     '" . $order_item['id'] . "',
                     '" . $quantity_number . "',
                     '" . escape($liveform->get_field_value('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_from_name')) . "',
@@ -1305,7 +1305,7 @@ foreach ($order_items as $order_item) {
                                     name,
                                     type)
                                 VALUES (
-                                    '" . $_SESSION['ecommerce']['order_id'] . "',
+                                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                                     '" . $order_item['id'] . "',
                                     '$quantity_number',
                                     '" . $form_field['id'] . "',
@@ -1328,7 +1328,7 @@ foreach ($order_items as $order_item) {
                                 name,
                                 type)
                             VALUES (
-                                '" . $_SESSION['ecommerce']['order_id'] . "',
+                                '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                                 '" . $order_item['id'] . "',
                                 '$quantity_number',
                                 '" . $form_field['id'] . "',
@@ -1691,9 +1691,9 @@ if (ECOMMERCE_SHIPPING) {
                 arrival_date_id = '" . e($arrival_date['id']) . "',
                 arrival_date_code = '" . e($arrival_date['code']) . "',
                 arrival_date = '" . e($arrival_date['arrival_date']) . "',
-                shipping_method_id = '" . e($shipping_method['id']) . "',
-                shipping_method_code = '" . e($shipping_method['code']) . "',
-                zone_id = '" . e($zone['id']) . "',
+                shipping_method_id = '" . e($shipping_method['id'] ?? '') . "',
+                shipping_method_code = '" . e($shipping_method['code'] ?? '') . "',
+                zone_id = '" . e($zone['id'] ?? '') . "',
                 complete = '$complete'
             WHERE id = '" . e($recipient['id']) . "'");
 

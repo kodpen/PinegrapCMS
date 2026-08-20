@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -37,7 +37,7 @@ function get_calendar_event_view_screen_content($properties)
     $liveform = new liveform('reserve_calendar_event', $calendar_event_id);
     
     // if the user did not come from the control panel, then prepare to output calendar event
-    if ((isset($_GET['from']) == false) || ($_GET['from'] != 'control_panel')) {
+    if ((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) {
         // get calendar event data
         $calendar_event = get_calendar_event($calendar_event_id, $_REQUEST['recurrence_number']);
         

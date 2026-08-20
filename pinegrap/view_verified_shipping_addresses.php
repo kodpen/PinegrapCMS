@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -56,7 +56,7 @@ $states = db_items(
 $output_state_options = '';
 
 foreach ($states as $state) {
-    $selected = ($state['id'] == $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id']) ? ' selected="selected"' : '';
+    $selected = ($state['id'] == ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) ? ' selected="selected"' : '';
 
     $output_state_label = $foreign_states
         ? h($state['country_name']) . ': ' . h($state['name'])
@@ -67,7 +67,13 @@ foreach ($states as $state) {
     $output_state_options .= '<option value="' . $state['id'] . '"' . $selected . '>' . $output_state_label . ' (' . number_format($count) . ')</option>';
 }
 
-switch ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? '')) {
     case lang('Company'):
         $sort_column = 'verified_shipping_addresses.company';
         break;
@@ -121,8 +127,8 @@ $all_verified_shipping_addresses = (int) db_value("SELECT COUNT(*) FROM verified
 $where = '';
 
 // if user has selected a state, then prepare where clause
-if ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] != '[All]') {
-    $where = "WHERE verified_shipping_addresses.state_id = '" . escape($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id']) . "'";
+if (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') != '[All]') {
+    $where = "WHERE verified_shipping_addresses.state_id = '" . escape(($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . "'";
 }
 
 $verified_shipping_addresses = db_items(
@@ -145,7 +151,7 @@ $verified_shipping_addresses = db_items(
     LEFT JOIN user AS created_user ON verified_shipping_addresses.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON verified_shipping_addresses.last_modified_user_id = last_modified_user.user_id
     $where
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']));
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')));
 
 $output_rows = '';
 
@@ -198,7 +204,7 @@ echo
                     <div class="col-12 text-center text-md-start">
                         <h2 class="d-inline-block" data-bs-content="' . lang('All optional shipping addresses that can be selected on Shipping Address & Arrival Pages.') . '" title="' . lang('All Verified Shipping Addresses') . '">' . lang('All Verified Shipping Addresses') . '</h2>
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_verified_shipping_address.php?state_id=' . escape($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id']) . '" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-primary m-1" href="add_verified_shipping_address.php?state_id=' . escape(($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
                         </nav>
                     </div>
                 </div>
@@ -208,7 +214,7 @@ echo
                             <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-2 flex-wrap">
                                 <label class="fw-semibold">' . lang('State') . ':</label>
                                 <select name="state_id" class="form-select form-select-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
-                                    <option value="[All]"' . ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . number_format($all_verified_shipping_addresses) . ')</option>
+                                    <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . number_format($all_verified_shipping_addresses) . ')</option>
                                     ' . $output_state_options . '
                                 </select>
                             </form>
@@ -218,15 +224,15 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Company'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Address 1'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Address 2'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('City'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('State'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Zip Code'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Country'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'], $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Company'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Address 1'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Address 2'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('City'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('State'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Zip Code'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Country'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

@@ -12,13 +12,13 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 
-$user_id = ($_GET['send_to']) ? validate_user()['id'] : 0;
+$user_id = (($_GET['send_to'] ?? '')) ? validate_user()['id'] : 0;
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_currencies');
@@ -107,10 +107,15 @@ while ($row = mysqli_fetch_assoc($results)) {
     }
 }
 
+// Scheduled-task health: record that this job finished. See pg_cron_ran().
+// Placed before the redirect so a run started from the settings screen counts
+// too — the rates got refreshed either way, which is what the record means.
+pg_cron_ran('update_exchange_rates');
+
 // Redirect if needed
-if ($_GET['send_to']) {
+if (($_GET['send_to'] ?? '')) {
     $liveform->add_notice(lang('The exchange rates have been updated.'));
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . $_GET['send_to']);
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . ($_GET['send_to'] ?? ''));
     exit();
 }
 ?>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,18 +34,18 @@ function submit_order($type) {
 
     $liveform = new liveform($type_value);
 
-    $ghost = $_SESSION['software']['ghost'];
+    $ghost = $_SESSION['software']['ghost'] ?? false;
     
     // if the mode is paypal_express_checkout_return, then set payment method value, because it might no longer exist in the session
     // for example, if the customer was taken to PayPal, clicked the back button to go back to the website, and then clicked the forward button to go to PayPal again
     // if we don't do this, then the order will be allowed to be submitted without a payment method
-    if ($_GET['mode'] == 'paypal_express_checkout_return') {
+    if (($_GET['mode'] ?? '') == 'paypal_express_checkout_return') {
         $liveform->assign_field_value('payment_method', 'PayPal Express Checkout');
     }
-    if($_GET['mode'] == 'iyzipay_threedsecure_return'){
+    if(($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return'){
         $liveform->assign_field_value('payment_method', 'Credit/Debit Card');
     }
-    if ($_GET['mode'] == 'pay_with_iyzico_return') {
+    if (($_GET['mode'] ?? '') == 'pay_with_iyzico_return') {
         $liveform->assign_field_value('payment_method', 'Pay With Iyzico');
     }
 
@@ -59,13 +59,13 @@ function submit_order($type) {
     // example, a customer might open an additional browser window and submit blank shipping
     // or billing info and then come back to the original window and try to complete the order.
 
-    if (($_GET['mode'] == 'iyzipay_threedsecure_return') or ($_GET['mode'] == 'paypal_express_checkout_return') or ($_GET['mode'] == 'pay_with_iyzico_return')) {
+    if ((($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') or (($_GET['mode'] ?? '') == 'paypal_express_checkout_return') or (($_GET['mode'] ?? '') == 'pay_with_iyzico_return')) {
 
         // Check for an incomplete recipient.
         $incomplete_recipient_id = db("
             SELECT id FROM ship_tos
             WHERE
-                (order_id = '" . e($_SESSION['ecommerce']['order_id']) . "')
+                (order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "')
                 AND (complete = '0')
             ORDER BY id LIMIT 1");
 
@@ -96,7 +96,7 @@ function submit_order($type) {
         // Check if billing info is complete.
         $billing_complete = db("
             SELECT billing_complete FROM orders
-            WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+            WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
         
         // If billing info is not complete, show error.
         if (!$billing_complete) {
@@ -138,7 +138,7 @@ function submit_order($type) {
     if (!$contact_id) {
 
         // get contact id for this order
-        $query = "SELECT contact_id FROM orders WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'";
+        $query = "SELECT contact_id FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $contact_id = $row['contact_id'];
@@ -228,7 +228,7 @@ function submit_order($type) {
              SET
                 user_id = '$user_id',
                 contact_id = '$contact_id'
-             WHERE id = " . $_SESSION['ecommerce']['order_id'];
+             WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // initialize a variable for storing the total balance of all gift cards
@@ -245,7 +245,7 @@ function submit_order($type) {
                 old_balance,
                 givex
             FROM applied_gift_cards
-            WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+            WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
             ORDER BY id ASC";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -266,10 +266,10 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                         AND products.gift_card = '0'") == 0
             ) {
-                db("DELETE FROM applied_gift_cards WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'");
+                db("DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'");
                 $liveform->mark_error('gift_card', lang('Sorry, we do not allow gift cards to be applied to an order that only contains gift cards.  We have removed the previously applied gift card(s).  Please add a different type of item to your order in order to apply a gift card.'));
                 go(PATH . encode_url_path(get_page_name($page_id)));
             }
@@ -397,12 +397,12 @@ function submit_order($type) {
     // else gift cards are disabled, so delete any applied gift cards that might exist for this order
     // this is used to delete any gift cards that might have been applied right before gift cards were disabled
     } else {
-        $query = "DELETE FROM applied_gift_cards WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        $query = "DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     }
     
     // if the mode is not paypal_express_checkout_return, then add field values to session and validate data
-    if ($_GET['mode'] != 'paypal_express_checkout_return' and $_GET['mode'] != 'iyzipay_threedsecure_return' and $_GET['mode'] != 'pay_with_iyzico_return') {
+    if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         $liveform->add_fields_to_session();
 
         // Clear stale field errors from a PREVIOUS submit before re-validating.
@@ -517,10 +517,12 @@ function submit_order($type) {
             }
             
             // get old address verified value from the database
-            $query = "SELECT billing_address_verified FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+            $query = "SELECT billing_address_verified FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
-            $address_verified = $row['address_verified'];
+
+            // The query above selects billing_address_verified, so that is the key to read.
+            $address_verified = isset($row['billing_address_verified']) ? $row['billing_address_verified'] : '';
 
             // Verify address if address verification is enabled and it is a US address
 
@@ -566,7 +568,7 @@ function submit_order($type) {
                     referral_source_code = '" . escape($liveform->get_field_value('referral_source')) . "',
                     billing_complete = '$billing_complete',
                     ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-                WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // Visitor-supplied order note (EO widget: `_bindings.eo_field='notes'`).
@@ -583,7 +585,7 @@ function submit_order($type) {
                 if ($_submit_order_has_notes_col) {
                     db("UPDATE orders SET notes = '"
                         . escape($liveform->get_field_value('notes'))
-                        . "' WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'");
+                        . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'");
                 }
             }
 
@@ -599,7 +601,7 @@ function submit_order($type) {
 
             // If the user is not logged in or is ghosting or if the user is logged in and wants
             // his/her contact info updated with billing info, then update contact.
-            if (!USER_LOGGED_IN or $ghost or ($_SESSION['software']['update_contact'] !== false)) {
+            if (!USER_LOGGED_IN or $ghost or ((isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null) !== false)) {
 
                 $sql_fax = '';
 
@@ -662,7 +664,7 @@ function submit_order($type) {
             reference_code,
             special_offer_code
         FROM orders
-        WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
@@ -753,7 +755,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
-        WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
         ORDER BY order_items.id ASC";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -802,6 +804,18 @@ function submit_order($type) {
         }
     }
 
+    // These are only added to in the loop below, so they have to start at zero.
+    $subtotal = 0;
+    $tax = 0;
+
+    // Only the payment gateway branches further below set these; an offline or zero-total
+    // order never touches them, but they are always written to the order record.
+    $transaction_id = '';
+    $authorization_code = '';
+    $payment_installment = '';
+    $installment_charge = '';
+    $commission = '';
+
     // loop through all nonrecurring products in order to get totals for order
     foreach ($nonrecurring_products as $product) {
 
@@ -824,7 +838,7 @@ function submit_order($type) {
     }
     
     // set the discount for the order if there is one
-    $discount = $_SESSION['ecommerce']['order_discount'];
+    $discount = $_SESSION['ecommerce']['order_discount'] ?? 0;
     
     // store the orginal tax in case there is a discount
     // and we need to add a discount line item for PayPal Express Checkout
@@ -843,7 +857,7 @@ function submit_order($type) {
     }
     
     // get shipping total for all ship tos
-    $query = "SELECT SUM(shipping_cost) as shipping FROM ship_tos WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    $query = "SELECT SUM(shipping_cost) as shipping FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $shipping = $row['shipping'];
@@ -930,7 +944,7 @@ function submit_order($type) {
     $next_page_id = $row['next_page_id'];
     
     // if the mode is not paypal_express_checkout_return, then validate the rest of the fields
-    if ($_GET['mode'] != 'paypal_express_checkout_return' and $_GET['mode'] != 'iyzipay_threedsecure_return' and $_GET['mode'] != 'pay_with_iyzico_return') {
+    if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         // if a nonrecurring transaction or recurring transaction is required, then require a payment method
         if (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE)) {
             $liveform->validate_required_field('payment_method', lang('A payment method is required.'));
@@ -1248,7 +1262,7 @@ function submit_order($type) {
                 "SELECT id
                 FROM order_items
                 WHERE
-                    (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                     AND (product_id = '" . $product['required_product'] . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1279,7 +1293,7 @@ function submit_order($type) {
             product_name
         FROM order_items
         WHERE
-            (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
             AND (ship_to_id > 0)
             AND (price <= 0)";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1297,7 +1311,7 @@ function submit_order($type) {
             "SELECT id
             FROM order_items
             WHERE
-                (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                 AND (ship_to_id = '" . $free_order_item['ship_to_id'] . "')
                 AND (price > 0)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1339,7 +1353,7 @@ function submit_order($type) {
         && $_pg_inst_method === 'Credit/Debit Card'
         && defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
 
-    if( ($_GET['mode'] != 'paypal_express_checkout_return' and $_GET['mode'] != 'iyzipay_threedsecure_return' and $_GET['mode'] != 'pay_with_iyzico_return')
+    if( (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return')
         and ($liveform->check_form_errors() == FALSE)
         and ($liveform->check_form_notices() == FALSE)
         and !$_pg_skip_total_check
@@ -1365,7 +1379,7 @@ function submit_order($type) {
         }
         log_activity(lang(array(
             'string' => 'Order (id: {var:1}, reference code: {var:2}) was not accepted because the new total ({var:3}) was greater than the old total ({var:4}) that the customer saw. The customer was asked to review the new total and submit the order again. This might be normal, if, for example, the customer stayed on the page for a long time before submitting the order, because a cost might have changed during that time period. Or, it might be normal if you are using an express order page with tax enabled, because the customer\'s tax is not known until an address is supplied. However, if this issue happens often, then it might indicate an issue that needs to be addressed.',
-            'vars' => array($_SESSION['ecommerce']['order_id'], $reference_code, prepare_amount($total / 100), prepare_amount($old_total))
+            'vars' => array(($_SESSION['ecommerce']['order_id'] ?? ''), $reference_code, prepare_amount($total / 100), prepare_amount($old_total))
         )));
 
     }
@@ -2242,7 +2256,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2250,7 +2264,7 @@ function submit_order($type) {
                         // if there are shippable items in order, then prepare to send information to PayPal
                         if ($row[0] > 0) {
                             // check how many recipients there are for order
-                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_row($result);
                             
@@ -2270,7 +2284,7 @@ function submit_order($type) {
                                         zip_code,
                                         phone_number
                                     FROM ship_tos
-                                    WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
                                 
@@ -2432,7 +2446,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2440,7 +2454,7 @@ function submit_order($type) {
                         // if there are shippable items in order, then determine if there is only one recipient
                         if ($row[0] > 0) {
                             // check how many recipients there are for order
-                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_row($result);
                             
@@ -2460,7 +2474,7 @@ function submit_order($type) {
                                         zip_code,
                                         country
                                     FROM ship_tos
-                                    WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
                                 
@@ -2727,12 +2741,12 @@ function submit_order($type) {
                         $Iyzipay_ship_zip = '';
                         $Iyzipay_ship_country = '';
 
-                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (products.shippable = '1')";
+                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
                         if ((int)$row[0] > 0) {
-                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_row($result);
 
@@ -2740,7 +2754,7 @@ function submit_order($type) {
                                 $query = "
                                     SELECT first_name,last_name,address_1,address_2,city,state,zip_code,country
                                     FROM ship_tos
-                                    WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+                                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
                                 ";
                                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
@@ -2808,7 +2822,7 @@ function submit_order($type) {
                         $request->setPaymentChannel(\Iyzipay\Model\PaymentChannel::WEB);
                         $request->setPaymentGroup(\Iyzipay\Model\PaymentGroup::PRODUCT);
                     
-                        if ($threedsEnabled == 1 && $_GET['mode'] != 'iyzipay_threedsecure_return') {
+                        if ($threedsEnabled == 1 && ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
                             // Persist 3DS state in DB (avoid GET/session manipulation).
                             // base_total_cents = full total with tax/shipping/surcharge but before installment charge.
                             $query = "
@@ -2816,7 +2830,7 @@ function submit_order($type) {
                                     (conversation_id, order_id, subtotal_cents, discount_cents, installment_charge_cents, base_total_cents)
                                 VALUES (
                                     '" . mysqli_real_escape_string(db::$con, $conversationid) . "',
-                                    '" . (int)$_SESSION['ecommerce']['order_id'] . "',
+                                    '" . (int)($_SESSION['ecommerce']['order_id'] ?? '') . "',
                                     '" . (int)$subtotal . "',
                                     '" . (int)$discount . "',
                                     '" . (int)$installment_charge . "',
@@ -2898,7 +2912,7 @@ function submit_order($type) {
                         $request->setBasketItems($basketItems);
                     
                         // Flow: 3DS init / return / direct
-                        if ($threedsEnabled == 1 && $_GET['mode'] != 'iyzipay_threedsecure_return') {
+                        if ($threedsEnabled == 1 && ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
                             // 3DS init
                             $threedsInitialize = \Iyzipay\Model\ThreedsInitialize::create($request, $options);
                         
@@ -2939,7 +2953,7 @@ function submit_order($type) {
                                 exit();
                             }
                         
-                        } elseif ($_GET['mode'] == 'iyzipay_threedsecure_return') {
+                        } elseif (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') {
                             // 3DS return: confirm payment (state from DB)
                             $conversationId = $_POST["conversationId"];
                             $paymentId = $_POST["paymentId"];
@@ -3113,7 +3127,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON products.id = order_items.product_id
                     WHERE
-                        (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                         AND (products.shippable = '1')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
@@ -3121,7 +3135,7 @@ function submit_order($type) {
                 // if there are shippable order items in order, then prepare to send information to PayPal
                 if ($row[0] > 0) {
                     // check how many recipients there are for order
-                    $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                    $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_row($result);
                     
@@ -3141,7 +3155,7 @@ function submit_order($type) {
                                 zip_code,
                                 phone_number
                             FROM ship_tos
-                            WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                            WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
@@ -3236,7 +3250,7 @@ function submit_order($type) {
                 }
                 
                 // if mode is not paypal_express_checkout_return, then prepare to send SetExpressCheckout request to PayPal
-                if ($_GET['mode'] != 'paypal_express_checkout_return') {
+                if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
                     $paypal_express_checkout_returnurl = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
                     $paypal_express_checkout_cancelurl = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id);
                     
@@ -3332,7 +3346,7 @@ function submit_order($type) {
                 }
                 
                 // if mode is not paypal_express_checkout_return, then send user to PayPal
-                if ($_GET['mode'] != 'paypal_express_checkout_return') {
+                if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
                     if (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_MODE == 'sandbox') {
                         $paypal_express_checkout_url = 'https://www.sandbox.paypal.com/webscr&cmd=_express-checkout&useraction=commit&token=';
                     } else {
@@ -3370,7 +3384,7 @@ function submit_order($type) {
                 $options->setSecretKey(ECOMMERCE_IYZIPAY_SECRET_KEY);
                 $options->setBaseUrl($payment_gateway_host);
 
-                if ($_GET['mode'] != 'pay_with_iyzico_return') {
+                if (($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
 
                     // Build initialize request
                     $conversationid = rand(100000000, 999999999);
@@ -3928,7 +3942,7 @@ function submit_order($type) {
                     VALUES (
                         '" . generate_commission_reference_code() . "',
                         '" . escape($affiliate_code) . "',
-                        '" . $_SESSION['ecommerce']['order_id'] . "',
+                        '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                         '" . $commission . "',
                         'pending',
                         '" . $user_id . "',
@@ -4001,7 +4015,7 @@ function submit_order($type) {
                             last_modified_timestamp)
                         VALUES (
                             '" . escape($affiliate_code) . "',
-                            '" . $_SESSION['ecommerce']['order_id'] . "',
+                            '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                             '" . $product['order_item_id'] . "',
                             '" . $product_commission . "',
                             '1',
@@ -4074,12 +4088,12 @@ function submit_order($type) {
 
     $sql_utm = "";
 
-    if ($_SESSION['software']['utm_source']) {
+    if (!empty($_SESSION['software']['utm_source'])) {
         $sql_utm =
-            "utm_source = '" . e($_SESSION['software']['utm_source']) . "',
-            utm_medium = '" . e($_SESSION['software']['utm_medium']) . "',
-            utm_campaign = '" . e($_SESSION['software']['utm_campaign']) . "',
-            utm_term = '" . e($_SESSION['software']['utm_term']) . "',
+            "utm_source = '" . e($_SESSION['software']['utm_source'] ?? '') . "',
+            utm_medium = '" . e($_SESSION['software']['utm_medium'] ?? '') . "',
+            utm_campaign = '" . e($_SESSION['software']['utm_campaign'] ?? '') . "',
+            utm_term = '" . e($_SESSION['software']['utm_term'] ?? '') . "',
             utm_content = '" . e($_SESSION['software']['utm_content']) . "',";
     }
 
@@ -4112,7 +4126,7 @@ function submit_order($type) {
                 $sql_utm
                 affiliate_code = '" . escape($affiliate_code) . "',
                 ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-            WHERE id = " . $_SESSION['ecommerce']['order_id'];
+            WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // lock table, so no one can read table, so we can get the order number
@@ -4147,7 +4161,7 @@ function submit_order($type) {
     // update order number for order
     $query = "UPDATE orders
              SET order_number = '$order_number'
-             WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // we know the order number now, so if gift cards are enabled and there was a gift card error, then e-mail administrator and log activity
@@ -5480,7 +5494,7 @@ function submit_order($type) {
     }
 
     // store order id as completed order id so it can be found by order receipt screen
-    $_SESSION['ecommerce']['completed_order_id'] = $_SESSION['ecommerce']['order_id'];
+    $_SESSION['ecommerce']['completed_order_id'] = ($_SESSION['ecommerce']['order_id'] ?? '');
 
     // Add values to session for order number and total so they can be easily accessed
     // for outputting to conversion tracking JavaScript services and etc.
@@ -5525,7 +5539,7 @@ function submit_order($type) {
             
             include_once('get_order_receipt_in_plain_text.php');
 
-            $body .= get_order_receipt_in_plain_text($_SESSION['ecommerce']['order_id']);
+            $body .= get_order_receipt_in_plain_text(($_SESSION['ecommerce']['order_id'] ?? ''));
 
             // if there is a footer, then end body with a blank line for spacing and then the footer
             if ($order_receipt_email_footer != '') {
@@ -5609,7 +5623,7 @@ function submit_order($type) {
             FROM ship_tos
             LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
             LEFT JOIN countries ON ship_tos.country = countries.code
-            WHERE ship_tos.order_id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+            WHERE ship_tos.order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
 
         // Loop through the ship tos in order to update address book and dates for each recipient
         foreach ($ship_tos as $ship_to) {
@@ -6164,7 +6178,7 @@ function submit_order($type) {
                         '" . $product['price'] . "',
                         '" . $product['price'] . "',
                         '" . $expiration_date . "',
-                        '" . $_SESSION['ecommerce']['order_id'] . "',
+                        '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                         '" . $product['order_item_id'] . "',
                         '" . $quantity_number . "',
                         '" . escape($order_item_gift_card['from_name']) . "',
@@ -6751,7 +6765,7 @@ function submit_order($type) {
                                 '" . generate_form_reference_code() . "',
                                 '" . escape(get_tracking_code()) . "',
                                 '" . escape(get_affiliate_code()) . "',
-                                '" . escape($_SESSION['software']['http_referer']) . "',
+                                '" . escape($_SESSION['software']['http_referer'] ?? '') . "',
                                 IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
                                 UNIX_TIMESTAMP(),
                                 '" . $user_id . "',
@@ -6862,7 +6876,7 @@ function submit_order($type) {
 
                             // If the add watcher feature was used and a user was found for the watcher,
                             // then add watcher's email address to array.
-                            if ($add_watcher_user['id'] != '') {
+                            if (!empty($add_watcher_user['id'])) {
                                 $submitter_and_watcher_email_addresses[] = $add_watcher_user['email_address'];
                             }
 
@@ -6968,7 +6982,7 @@ function submit_order($type) {
                 // If the add watcher feature has been used, and there is a page selected
                 // for the add comment feature, and the page exists, then add watcher for that page.
                 if (
-                    ($add_watcher_user['id'])
+                    (!empty($add_watcher_user['id']))
                     && ($product['add_comment_page_id'])
                 ) {
                     // Check if form item view page exists for the add comment page.
@@ -7434,8 +7448,9 @@ function submit_order($type) {
                 (aclfolder_user = '$user_id')
                 AND (aclfolder_folder = '" . ECOMMERCE_PRIVATE_FOLDER_ID . "')");
 
-        $rights = $row['rights'];
-        $expiration_date = $row['expiration_date'];
+        // $row is null when the user has no row for this folder yet.
+        $rights = isset($row['rights']) ? $row['rights'] : '';
+        $expiration_date = isset($row['expiration_date']) ? $row['expiration_date'] : '';
 
         // If the user does not have edit rights and does not have infinite private rights already,
         // then continue to give user infinite private access.
@@ -7622,7 +7637,7 @@ function submit_order($type) {
             )
             AND
             (
-                (email_campaigns.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                (email_campaigns.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                 OR
                 (
                     (email_recipients.contact_id = '$contact_id')
@@ -7647,7 +7662,7 @@ function submit_order($type) {
 
     log_activity(lang('Order was completed') . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $billing_first_name . ' ' . $billing_last_name . ', ' . $billing_email_address . ').');
 
-    create_notification(array('action'=>'new_order', 'type'=>'success', 'title'=>$order_number, 'order_id'=>$_SESSION['ecommerce']['order_id'],'order_total'=>prepare_amount($total / 100), 'user'=>' '. $billing_first_name . ' ' . $billing_last_name . ', ' . $billing_email_address . ' '));
+    create_notification(array('action'=>'new_order', 'type'=>'success', 'title'=>$order_number, 'order_id'=>($_SESSION['ecommerce']['order_id'] ?? ''),'order_total'=>prepare_amount($total / 100), 'user'=>' '. $billing_first_name . ' ' . $billing_last_name . ', ' . $billing_email_address . ' '));
 
     // If hooks are enabled and there is post-save hook code, then run it.
     if ((defined('PHP_REGIONS') and PHP_REGIONS) && ($post_save_hook_code != '')) {

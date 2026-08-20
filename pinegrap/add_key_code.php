@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,7 +26,7 @@ if (!$_POST) {
 
     // If the form has not been submitted yet, then pre-populate fields with data.
     if (!$liveform->field_in_session('quantity')) {
-        $liveform->set('limit', $_GET['limit']);
+        $liveform->set('limit', isset($_GET['limit']) ? $_GET['limit'] : '');
         $liveform->set('enabled', 1);
         $liveform->set('report', 'key_code');
     }

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -43,7 +43,7 @@ if (isset($_SESSION['software']['theme_reloaded']) == FALSE) {
         '<script>
             function init()
             {
-                window.parent.location = "' . escape_javascript(URL_SCHEME . HOSTNAME . $_GET['send_to']) . '";
+                window.parent.location = "' . escape_javascript(URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? '')) . '";
             }
             
             window.onload = init;

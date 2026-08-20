@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -49,7 +49,7 @@ if ($_REQUEST['currency_id']) {
             
             // if visitor has an order, update order with currency code
             if (isset($_SESSION['ecommerce']['order_id']) == true) {
-                $query = "UPDATE orders SET currency_code = '" . escape($currency_code) . "' WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                $query = "UPDATE orders SET currency_code = '" . escape($currency_code) . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }

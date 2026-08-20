@@ -6,9 +6,9 @@
 				<div class="col-12 col-sm-12 text-center text-md-start">
 					<nav class="navigation" aria-label="breadcrumb">
 						<ol class="breadcrumb justify-content-center justify-content-md-start ">
-							<?php if(isset($_GET['send_to']) && $_GET['send_to'] != ''): ?>
+							<?php if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''): ?>
 								<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="<?=lang('Loading')?>" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/explorer.php"><?=lang('Explorer')?></a></li>
-								<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="<?=lang('Loading')?>" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h(escape_javascript($_GET['id']))?>&send_to=<?=$_GET['send_to']?>"><?=lang('Edit Folder')?></a></li>
+								<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="<?=lang('Loading')?>" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h(escape_javascript($_GET['id']))?>&send_to=<?=($_GET['send_to'] ?? '')?>"><?=lang('Edit Folder')?></a></li>
 							<?php else:?>
 								<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="<?=lang('Loading')?>" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_folders.php"><?=lang('All Folders')?></a></li>
 								<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="<?=lang('Loading')?>" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h(escape_javascript($_GET['id']))?>"><?=lang('Edit Folder')?></a></li>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -60,11 +60,11 @@ function get_express_order($properties) {
     
     $form = new liveform('express_order');
 
-    $ghost = $_SESSION['software']['ghost'];
+    $ghost = $_SESSION['software']['ghost'] ?? false;
     
     // If a reference code was passed in the query string, then retrieve order.
 
-    if ($_GET['r'] || $_GET['reference_code']) {
+    if (!empty($_GET['r']) || !empty($_GET['reference_code'])) {
 
         require_once(dirname(__FILE__) . '/retrieve_order.php');
 
@@ -78,13 +78,13 @@ function get_express_order($properties) {
     }
     
     // if there is a special offer code in the session and an order has been created, prepare to add special offer code to order
-    if ($_SESSION['ecommerce']['special_offer_code'] && $_SESSION['ecommerce']['order_id']) {
+    if (!empty($_SESSION['ecommerce']['special_offer_code']) && ($_SESSION['ecommerce']['order_id'] ?? '')) {
         // if an offer exists for special offer code, then add special offer code to order
         if (get_offer_code_for_special_offer_code($_SESSION['ecommerce']['special_offer_code'])) {
             $query =
                 "UPDATE orders
                 SET special_offer_code = '" . escape($_SESSION['ecommerce']['special_offer_code']) . "'
-                WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
         
@@ -120,16 +120,17 @@ function get_express_order($properties) {
                 discount_offer_id,
                 offline_payment_allowed
              FROM orders
-             WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
-    $special_offer_code = $row['special_offer_code'];
-    $reference_code = $row['reference_code'];
-    $discount_offer_id = $row['discount_offer_id'];
-    $offline_payment_allowed = $row['offline_payment_allowed'];
+    // $row is null when there is no order in the session yet.
+    $special_offer_code = isset($row['special_offer_code']) ? $row['special_offer_code'] : '';
+    $reference_code = isset($row['reference_code']) ? $row['reference_code'] : '';
+    $discount_offer_id = isset($row['discount_offer_id']) ? $row['discount_offer_id'] : '';
+    $offline_payment_allowed = isset($row['offline_payment_allowed']) ? $row['offline_payment_allowed'] : '';
 
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 
     $system = '';
     $shippable_items = false;
@@ -535,7 +536,7 @@ function get_express_order($properties) {
         $grand_shipping = 0;
         
         // get all ship tos
-        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . escape($_SESSION['ecommerce']['order_id']) . "' ORDER BY ship_to_id";
+        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "' ORDER BY ship_to_id";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         $ship_tos = array();
@@ -1138,7 +1139,7 @@ function get_express_order($properties) {
                         products.submit_form_quantity_type
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
-                    WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "' AND order_items.ship_to_id = '$ship_to_id'
+                    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '$ship_to_id'
                     ORDER BY order_items.id";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -2280,8 +2281,8 @@ function get_express_order($properties) {
             $grand_total = $subtotal;
             
             // if there is an order discount from an offer, prepare order discount
-            if ($_SESSION['ecommerce']['order_discount']) {
-                $order_discount = $_SESSION['ecommerce']['order_discount'] / 100;
+            if (!empty($_SESSION['ecommerce']['order_discount'])) {
+                $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
                 
                 $grand_total = $subtotal - $order_discount;
                 
@@ -2354,7 +2355,7 @@ function get_express_order($properties) {
                         old_balance,
                         givex
                     FROM applied_gift_cards
-                    WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
                     ORDER BY id ASC";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -2622,7 +2623,7 @@ function get_express_order($properties) {
             
             // if form was not just filled out, get data from order in order to populate fields
             if ($form->field_in_session('billing_first_name') == false) {
-                $query = "SELECT * FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                $query = "SELECT * FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $order = mysqli_fetch_assoc($result);
 
@@ -2741,7 +2742,7 @@ function get_express_order($properties) {
                 // If the visitor is logged in and not ghosting and the visitor has selected
                 // that he/she does not want his/her contact info updated with the billing info
                 // previously in this session, then uncheck the update contact check box.
-                if (USER_LOGGED_IN and !$ghost and ($_SESSION['software']['update_contact'] === false)) {
+                if (USER_LOGGED_IN and !$ghost and ((isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null) === false)) {
                     $form->assign_field_value('update_contact', '');
                 } else {
                     $form->assign_field_value('update_contact', '1');
@@ -4070,6 +4071,18 @@ function get_express_order($properties) {
         $threedsecure = false;
         $threedsecure_required = '';
 
+        // These are only set inside the "if ($recipients)" block below, which does not run when
+        // the cart is empty (for example right after an order is completed), but they are read
+        // unconditionally when the screen data is assembled further down.
+        $custom_field_1 = false;
+        $custom_field_2 = false;
+        $opt_in = false;
+        $opt_in_label = '';
+        $referral_source = false;
+        $update_contact = false;
+        $tax_exempt = false;
+        $tax_exempt_label = '';
+
         // If there are recipients, then there are products in the cart, so output cart.
         if ($recipients) {
 
@@ -4482,6 +4495,9 @@ function get_express_order($properties) {
 
                     // If calendars is enabled and this order item is for a calendar event,
                     // then get calendar event info like the name and date & time.
+                    // The layout templates always read this key, so it has to exist on every item.
+                    $item['calendar_event'] = false;
+
                     if (CALENDARS and $item['calendar_event_id']) {
                         $item['calendar_event'] = get_calendar_event($item['calendar_event_id'], $item['recurrence_number']);
                     }
@@ -4970,7 +4986,7 @@ function get_express_order($properties) {
 
             $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 
-            $discount = $_SESSION['ecommerce']['order_discount'] / 100;
+            $discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
 
             // If there is a discount, then prepare discount info and total.
             if ($discount) {
@@ -5016,7 +5032,7 @@ function get_express_order($properties) {
                         (old_balance / 100) AS old_balance,
                         givex
                     FROM applied_gift_cards
-                    WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
                     ORDER BY id ASC";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
@@ -5228,6 +5244,34 @@ function get_express_order($properties) {
                     WHERE id = '" . USER_CONTACT_ID . "'");
             }
 
+            // A user does not have to be linked to a contact, in which case db_item() returns null.
+            // Fall back to an empty value for every column that is read below.
+            if (is_array($contact) == false) {
+                $contact = array();
+            }
+
+            foreach (array(
+                    'id',
+                    'salutation',
+                    'first_name',
+                    'last_name',
+                    'company',
+                    'business_address_1',
+                    'business_address_2',
+                    'business_city',
+                    'business_state',
+                    'business_zip_code',
+                    'business_country',
+                    'business_phone',
+                    'business_fax',
+                    'email_address',
+                    'lead_source',
+                    'opt_in') as $contact_field) {
+                if (isset($contact[$contact_field]) == false) {
+                    $contact[$contact_field] = '';
+                }
+            }
+
             // If the billing fields were not just submitted, then prefill them.
             if (!$form->field_in_session('billing_first_name')) {
                 $order = db_item(
@@ -5369,7 +5413,7 @@ function get_express_order($properties) {
                 // If the visitor is logged in and the visitor has selected
                 // that he/she does not want his/her contact info updated with the billing info
                 // previously in this session, then uncheck the update contact check box.
-                if (USER_LOGGED_IN and !$ghost and ($_SESSION['software']['update_contact'] === false)) {
+                if (USER_LOGGED_IN and !$ghost and ((isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null) === false)) {
                     $form->set('update_contact', '');
                 } else {
                     $form->set('update_contact', '1');

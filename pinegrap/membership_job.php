@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -138,4 +138,8 @@ if (mysqli_num_rows($result) > 0) {
         log_activity('membership job removed ' . count($contacts) . ' member(s) from membership contact group because membership was no longer valid (e.g. membership expired)', 'UNKNOWN');
     }
 }
+
+// Scheduled-task health: record that this job finished. See pg_cron_ran().
+pg_cron_ran('membership_job');
+
 ?>

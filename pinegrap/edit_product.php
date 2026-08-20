@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -71,7 +71,7 @@ if ($_POST) {
     // Delete first: the rest of this block writes the product, and doing that
     // on the way to deleting it is work nobody sees and one more chance to
     // fail halfway.
-    if (isset($_POST['submit_delete']) && ($_POST['submit_delete'] === 'Delete')) {
+    if (isset($_POST['submit_delete']) && (($_POST['submit_delete'] ?? '') === 'Delete')) {
 
         $deleted_name = $product['name'];
 

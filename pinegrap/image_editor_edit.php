@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -29,7 +29,7 @@ if(isset($_GET['file_name'])){
     $file_name = $_GET['file_name'];
 }
 if(isset($_GET['send_to'])){
-    $send_to = $_GET['send_to'];
+    $send_to = ($_GET['send_to'] ?? '');
 }
 if(isset($_GET['object_type'])){
     $object_type = $_GET['object_type'];

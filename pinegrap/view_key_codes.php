@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -32,7 +32,13 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-switch ($_SESSION['software']['ecommerce']['view_key_codes']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_key_codes']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_key_codes']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? '')) {
     case lang('Key Code'):
         $sort_column = 'key_codes.code';
         break;
@@ -84,7 +90,7 @@ if (isset($_SESSION['software']['ecommerce']['view_key_codes']['order']) == fals
 $all_key_codes = db_value("SELECT COUNT(*) FROM key_codes");
 
 // If user requested to export, then export them.
-if ($_GET['submit_data'] == 'Export Key Codes') {
+if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
 
     header("Content-type: text/csv");
     header("Content-disposition: attachment; filename=key_codes.csv");
@@ -115,7 +121,7 @@ if ($_GET['submit_data'] == 'Export Key Codes') {
             last_modified_user.user_username AS last_modified_username
         FROM key_codes
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-        ORDER BY $sort_column " . e($_SESSION['software']['ecommerce']['view_key_codes']['order']));
+        ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? '')));
 
     // If the date format is month and then day, then use that format.
     if (DATE_FORMAT == 'month_day') {
@@ -173,7 +179,7 @@ if ($_GET['submit_data'] == 'Export Key Codes') {
         FROM key_codes
         LEFT JOIN offers ON key_codes.offer_code = offers.code
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-        ORDER BY $sort_column " . e($_SESSION['software']['ecommerce']['view_key_codes']['order']) . "");
+        ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? '')) . "");
 
     // Get the current date so that later we can figure out if key codes have expired.
     $current_date = date('Y-m-d');
@@ -181,6 +187,10 @@ if ($_GET['submit_data'] == 'Export Key Codes') {
     // Loop through the key codes in order to set the status for each one,
     // based on enabled and expiration date fields.
     foreach ($key_codes as $key => $key_code) {
+
+        // Default to not active, so that the template can always read this key.
+        $key_codes[$key]['status_enabled'] = false;
+
         // If this key code is active, then store that, so a color can be used to indicate that.
         if (
             $key_code['enabled']

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -360,13 +360,13 @@ if (!$_POST) {
     validate_token_field();
     
     // delete records for selected offer actions (we do this regardless of whether we are deleting the offer or updating it)
-    $query = "DELETE FROM offers_offer_actions_xref WHERE offer_id = '" . escape($_POST['id']) . "'";
+    $query = "DELETE FROM offers_offer_actions_xref WHERE offer_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // if offer was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete offer
-        $query = "DELETE FROM offers WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM offers WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'offer ({var:1}) was deleted','vars'=>$_POST['code'])), $_SESSION['sessionusername']);
@@ -395,37 +395,37 @@ if (!$_POST) {
 
         // update offer
         $query = "UPDATE offers SET
-                    code = '" . escape($_POST['code']) . "',
-                    description = '" . escape($_POST['description']) . "',
-                    require_code = '" . escape($_POST['require_code']) . "',
+                    code = '" . escape($_POST['code'] ?? '') . "',
+                    description = '" . escape($_POST['description'] ?? '') . "',
+                    require_code = '" . escape($_POST['require_code'] ?? '') . "',
                     status = '" . escape($status) . "',
                     start_date = '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
                     end_date = '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-                    offer_rule_id = '" . escape($_POST['offer_rule_id']) . "',
-                    upsell = '" . escape($_POST['upsell']) . "',
-                    upsell_message = '" . escape($_POST['upsell_message']) . "',
+                    offer_rule_id = '" . escape($_POST['offer_rule_id'] ?? '') . "',
+                    upsell = '" . escape($_POST['upsell'] ?? '') . "',
+                    upsell_message = '" . escape($_POST['upsell_message'] ?? '') . "',
                     upsell_trigger_subtotal = '" . escape($upsell_trigger_subtotal) . "',
-                    upsell_trigger_quantity = '" . escape($_POST['upsell_trigger_quantity']) . "',
-                    upsell_action_button_label = '" . escape($_POST['upsell_action_button_label']) . "',
-                    upsell_action_page_id = '" . escape($_POST['upsell_action_page_id']) . "',
-                    scope = '" . escape($_POST['scope']) . "',
-                    multiple_recipients = '" . escape($_POST['multiple_recipients']) . "',
-                    only_apply_best_offer = '" . escape($_POST['only_apply_best_offer']) . "',
+                    upsell_trigger_quantity = '" . escape($_POST['upsell_trigger_quantity'] ?? '') . "',
+                    upsell_action_button_label = '" . escape($_POST['upsell_action_button_label'] ?? '') . "',
+                    upsell_action_page_id = '" . escape($_POST['upsell_action_page_id'] ?? '') . "',
+                    scope = '" . escape($_POST['scope'] ?? '') . "',
+                    multiple_recipients = '" . escape($_POST['multiple_recipients'] ?? '') . "',
+                    only_apply_best_offer = '" . escape($_POST['only_apply_best_offer'] ?? '') . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // loop through actions in order to add records to database for selected actions
         foreach ($offer_actions as $offer_action) {
             // if the action was checked, then insert record
-            if ($_POST['offer_action_' . $offer_action['id']] == 1) {
+            if (($_POST['offer_action_' . $offer_action['id']] ?? '') == 1) {
                 $query =
                     "INSERT INTO offers_offer_actions_xref (
                         offer_id,
                         offer_action_id)
                     VALUES (
-                        '" . escape($_POST['id']) . "',
+                        '" . escape($_POST['id'] ?? '') . "',
                         '" . $offer_action['id'] . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }

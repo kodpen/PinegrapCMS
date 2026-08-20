@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  * 
  */
@@ -299,12 +299,15 @@ if (!$_POST) {
               FROM user
               WHERE user_username='".escape($_SESSION['sessionusername'])."'";
     $result = mysqli_query(db::$con,$query) or output_error('Query failed.');
-    $user = mysqli_fetch_assoc($result);
 
-    $user_id = $user['user_id'];
-    $user_username = $user['user_username'];
-    $secret_key = $user['secret_key'];
-    $secret_key_iv = $user['secret_key_iv'];
+    // Do NOT assign this to $user: that is the logged in user array which output_header() reads
+    // from the global scope further down, and overwriting it dropped role/id/home from it.
+    $current_user_row = mysqli_fetch_assoc($result);
+
+    $user_id = $current_user_row['user_id'];
+    $user_username = $current_user_row['user_username'];
+    $secret_key = $current_user_row['secret_key'];
+    $secret_key_iv = $current_user_row['secret_key_iv'];
 
     $generate_text = empty($secret_key) ? 'Generate' : 'Regenerate';
     $generate_icon = empty($secret_key) ? 'bi-plus-circle' : 'bi-arrow-clockwise';
@@ -364,7 +367,7 @@ if (!$_POST) {
                   array('name'=>'name',                  'label'=>lang('Page Slug'),        'type'=>'text',   'req'=>false),
                   array('name'=>'page_title',            'label'=>lang('Page Title'),       'type'=>'text',   'req'=>false),
                   array('name'=>'page_meta_description', 'label'=>lang('Meta Description'),'type'=>'text',   'req'=>false),
-                  array('name'=>'page_meta_keywords',    'label'=>lang('Meta Keywords'),   'type'=>'text',   'req'=>false),
+                  array('name'=>'page_search_keywords',  'label'=>lang('Promote on Keyword'),'type'=>'text',  'req'=>false),
                   array('name'=>'page_name',             'label'=>lang('New Slug'),         'type'=>'text',   'req'=>false),
               )),
         array('action'=>'users',         'label'=>lang('Users'),           'method'=>'POST/GET',
@@ -399,7 +402,7 @@ if (!$_POST) {
         if (is_array($decoded_permissions)) {
             $grouped = [];
         
-            // Gruplandır: action => [read/edit]
+            // Group by action => [read/edit]
             foreach ($decoded_permissions as $perm) {
                 $action = $perm['action'];
                 $type   = strtolower($perm['type']);
@@ -586,7 +589,7 @@ if (!$_POST) {
                             <td><code>pages</code></td>
                             <td>' . lang('List all pages or read/update a specific page') . '</td>
                             <td>' . lang('None (lists all) or') . ' <code>id</code> / <code>name</code></td>
-                            <td><code>page_title</code>, <code>page_meta_description</code>, <code>page_meta_keywords</code>, <code>page_name</code></td>
+                            <td><code>page_title</code>, <code>page_meta_description</code>, <code>page_search_keywords</code>, <code>page_name</code></td>
                             <td><span class="badge bg-primary">pages</span></td>
                           </tr>
                           <tr>
@@ -903,8 +906,8 @@ if (!$_POST) {
 
     // Secret key generation/regeneration
     if (
-        (isset($_POST['submit_generate_secret']) && $_POST['submit_generate_secret'] === 'Generate') ||
-        (isset($_POST['submit_generate_secret']) && $_POST['submit_generate_secret'] === 'Regenerate')
+        (isset($_POST['submit_generate_secret']) && ($_POST['submit_generate_secret'] ?? '') === 'Generate') ||
+        (isset($_POST['submit_generate_secret']) && ($_POST['submit_generate_secret'] ?? '') === 'Regenerate')
     ) {
         // Generate a fresh secret key (different from the API key)
         $secret_random_key = get_random_string(array(
@@ -929,7 +932,7 @@ if (!$_POST) {
                       SET secret_key      = '" . escape($encrypted_secret) . "',
                           secret_key_iv   = '" . escape($secret_iv_base64) . "',
                           secret_key_hash = '" . escape($secret_key_hash) . "'
-                      WHERE user_id = '" . escape($_POST['user_id']) . "'";
+                      WHERE user_id = '" . escape($_POST['user_id'] ?? '') . "'";
             mysqli_query(db::$con, $query) or output_error('Query failed.');
             $liveform->add_notice(lang(array('string'=>'Success to generate secret key for {var:1}.','vars'=>$_SESSION['sessionusername'])));
             log_activity(lang(array('string'=>'Success to generate secret key for {var:1}.','vars'=>$_SESSION['sessionusername'])), $_SESSION['sessionusername']);
@@ -941,7 +944,7 @@ if (!$_POST) {
 
     } else {
         // Delete app
-        if (isset($_POST['submit_delete_app']) && $_POST['submit_delete_app'] === 'Delete') {
+        if (isset($_POST['submit_delete_app']) && ($_POST['submit_delete_app'] ?? '') === 'Delete') {
             $selected_app_id = $_POST['application_to_delete'];
             $query = "DELETE FROM custom_apps WHERE id = '" . escape($selected_app_id) . "'";
             mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -996,7 +999,7 @@ if (!$_POST) {
                             timestamp
                           )
                           VALUES (
-                            '" . escape($user['user_id']) . "',
+                            '" . escape($user['id']) . "',
                             '" . escape($liveform->get_field_value('app_name')) . "',
                             '" . escape($liveform->get_field_value('app_access_method')) . "',
                             '" . escape($encrypted_random_key) . "',

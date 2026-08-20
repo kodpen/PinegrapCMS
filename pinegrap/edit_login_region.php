@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -142,9 +142,9 @@ if (!$_POST) {
     validate_token_field();
     
     // if login region was selected for deletion
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete login region
-        $query = "DELETE FROM login_regions WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM login_regions WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);
         
@@ -173,7 +173,7 @@ if (!$_POST) {
             "SELECT id
             FROM login_regions
             WHERE (name = '" . escape($liveform->get_field_value('name')) . "')
-            AND (id != '" . escape($_POST['id']) . "')";
+            AND (id != '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if name is already in use, prepare error and forward user back to login region screen
@@ -196,7 +196,7 @@ if (!$_POST) {
                 logged_in_footer = '" . escape($liveform->get_field_value('logged_in_footer')) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -62,7 +62,7 @@ function get_help_url($properties) {
 
         case 'view_pages':
 
-            switch($_GET['filter']) {
+            switch($_GET['filter'] ?? '') {
 
                 case 'all_my_pages': $url = 'pages'; break;
                 case 'all_my_archived_pages': $url = 'pages-cont#archived-pages'; break;
@@ -130,7 +130,7 @@ function get_help_url($properties) {
 
         case 'view_files':
 
-            switch($_GET['filter']) {
+            switch($_GET['filter'] ?? '') {
 
                 case 'all_my_files': $url = 'files'; break;
                 case 'all_my_archived_files': $url = 'files' . '#archived-files'; break;
@@ -183,7 +183,7 @@ function get_help_url($properties) {
 
         case 'view_contacts':
 
-            switch($_GET['filter']) {
+            switch($_GET['filter'] ?? '') {
 
                 case 'all_my_contacts': $url = 'contacts'; break;
                 case 'my_subscribers': $url = 'contacts' . '#subscribers'; break;
@@ -220,7 +220,7 @@ function get_help_url($properties) {
 
         case 'view_users':
 
-            switch($_GET['filter']) {
+            switch($_GET['filter'] ?? '') {
 
                 case 'all_my_users': $url = 'users'; break;
                 case 'my_registered_users': $url = 'users' . '#registered-users'; break;
@@ -451,7 +451,7 @@ function get_help_url($properties) {
 
         case 'view_regions':
 
-            switch($_GET['filter']) {
+            switch($_GET['filter'] ?? '') {
 
                 case 'all_common_regions': $url = 'design' . '#common-regions'; break;
                 case 'all_designer_regions': $url = 'design' . '#designer-regions'; break;

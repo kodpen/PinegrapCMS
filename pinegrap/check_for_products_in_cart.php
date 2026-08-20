@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -38,7 +38,7 @@ function check_for_products_in_cart($request) {
     $recipient = $request['recipient'];
 
     // If there is no active order then return false.
-    if (!$_SESSION['ecommerce']['order_id']) {
+    if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
         return false;
     }
 
@@ -52,7 +52,7 @@ function check_for_products_in_cart($request) {
     $items = db_items("
         SELECT product_id, SUM(quantity) AS quantity FROM order_items
         WHERE
-            order_id = '" . e($_SESSION['ecommerce']['order_id']) . "'
+            order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'
             $sql_recipient
         GROUP BY product_id");
 

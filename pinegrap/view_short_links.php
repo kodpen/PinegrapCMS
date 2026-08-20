@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,7 +39,7 @@ foreach ($_REQUEST as $key => $value) {
 }
 
 // avoid undefined index warning
-$sort = isset($_SESSION['software']['view_short_links']['sort']) ? $_SESSION['software']['view_short_links']['sort'] : null;
+$sort = isset($_SESSION['software']['view_short_links']['sort']) ? ($_SESSION['software']['view_short_links']['sort'] ?? '') : null;
 
 switch ($sort) {
     case lang('Name'):
@@ -102,7 +102,7 @@ $query =
     LEFT JOIN products ON short_links.product_id = products.id
     LEFT JOIN user AS created_user ON short_links.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON short_links.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['view_short_links']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['view_short_links']['order'] ?? ''));
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);
 
@@ -250,11 +250,11 @@ pg_page_shell(
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['view_short_links']['sort'], $_SESSION['software']['view_short_links']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Destination Type'), $_SESSION['software']['view_short_links']['sort'], $_SESSION['software']['view_short_links']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Destination Type'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
                                 <th>' . lang('Destination') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['view_short_links']['sort'], $_SESSION['software']['view_short_links']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['view_short_links']['sort'], $_SESSION['software']['view_short_links']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_short_links']['sort'] ?? ''), ($_SESSION['software']['view_short_links']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>

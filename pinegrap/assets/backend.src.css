@@ -714,7 +714,7 @@ body:not(.toolbar) .software-content {
   justify-content: center;
   text-align: center;
   border-radius: 50%;
-  height: auto; /* Fallback yükseklik */
+  height: auto; /* fallback height */
 }
 .bi-ms-1:before {
   margin-left: 0.25rem !important;
@@ -970,6 +970,14 @@ table.chart thead th {
   position: relative;
   overflow: hidden;
   cursor: text;
+  /* One unbreakable tag (a pasted URL, a blob of code) must not leak its
+     intrinsic width into the surrounding grid: the percentage max-width on
+     .tagin-tag_text clips it visually but is ignored during min-content
+     sizing, so without this a single long tag pushes the whole column onto
+     its own flex line. inline-size containment makes the wrapper's
+     intrinsic width independent of its contents; its real width still
+     comes from the column, so nothing else changes. */
+  contain: inline-size;
 }
 
 .tagin-wrapper.focus {
@@ -1792,6 +1800,7 @@ div#software_image_picker_container {
   border-top-right-radius: 1rem !important;
 }
 
+
 .card.widget #editor {
   color: inherit;
   height: inherit;
@@ -1881,8 +1890,12 @@ div#software_image_picker_container {
 }
 
 /* Widget specific */
+/* Taller than the three-panel version it replaced: that one kept its top-page
+   line inside each panel, this one has a strip of period cells below a
+   full-width chart, which is a row the old layout did not have. Measured
+   against the content rather than guessed -- at 350px the strip was clipped. */
 .widget[widget-id="5"] {
-  height: 350px;
+  height: 400px; --pg-accent: #3b82f6; --pg-accent-ink: #18181b;
 }
 .widget[widget-id="5"] .card-body {
   margin: 0 !important;
@@ -1905,6 +1918,611 @@ div#software_image_picker_container {
 }
 .card.widget .card-body .row.pointer:last-child {
   margin-bottom: 1rem !important;
+}
+
+/* Dashboard list row ────────────────────────────────────────────────────────
+   One row shape for every widget that renders a list, so the cards read as one
+   surface instead of a dozen dialects. The tile takes its colour from
+   --pg-accent, which each widget already declares for its header icon, so
+   api.php never has to know a colour. Geometry lives here rather than in the
+   markup api.php returns, so the loading skeletons in welcome.php can reuse
+   the same boxes and the content does not slide into place when data lands. */
+.pg-list {
+  padding: 0.25rem 0.5rem 0;
+}
+.pg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  text-decoration: none;
+}
+.pg-row:hover,
+.pg-row:focus-visible {
+  background: rgba(128, 128, 128, 0.18);
+  color: inherit;
+}
+.pg-row-badge {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 34px;
+  height: 34px;
+  border-radius: 0.5rem;
+  background: var(--pg-accent, #64748b);
+  /* The glyph is white on a dark tile and near-black on a light one. Several
+     accents (amber, emerald, sky) are far too light to carry white: the tile
+     content is sometimes a person's initials or a currency symbol, which is
+     text and wants 4.5:1, and white on #f59e0b is 2.15:1. Each widget declares
+     whichever of the two reads better against its own accent. */
+  color: var(--pg-accent-ink, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+/* Product thumbnails fill the tile instead of sitting on the accent. */
+.pg-row-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pg-row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* min-width:0 on the name is what lets it ellipsis instead of shoving the
+   trailing value out of the card -- a flex item defaults to min-width:auto. */
+.pg-row-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.pg-row-name {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pg-row-meta {
+  font-size: 11px;
+}
+.pg-row-name,
+.pg-row-meta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pg-row-aside {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+.pg-row-go {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+/* Compact variant. Widgets 6, 15 and 3 list one line per entry and fit ten of
+   them in a card; giving those the full row would show four. Same shape --
+   rounded, tinted, accent tile, arrow -- at half the height. */
+.pg-row-sm {
+  gap: 8px;
+  margin-bottom: 0.125rem;
+  padding: 0.25rem 0.375rem;
+}
+.pg-row-sm .pg-row-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 0.375rem;
+  font-size: 11px;
+}
+.pg-row-sm .pg-row-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+.pg-row-sm .pg-row-go {
+  font-size: 12px;
+}
+/* Section heading inside a list -- "Top Pages", "Expiring Soon". */
+.pg-row-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.25rem 0.375rem;
+  font-size: 11px;
+  font-weight: 600;
+}
+.pg-row-heading .pg-row-aside {
+  margin-left: auto;
+  font-weight: 400;
+}
+.pg-row-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+}
+.pg-row-empty .bi {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 24px;
+}
+/* The grey tint reads as almost nothing on the dark card backgrounds. */
+html[data-bs-theme="dark"] .pg-row {
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-bs-theme="dark"] .pg-row:hover,
+html[data-bs-theme="dark"] .pg-row:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* List widget headline ──────────────────────────────────────────────────────
+   Today's count, which way it moved, the seven day total and a sparkline, on
+   one line above a list. One line and not a block: the widgets that carry this
+   have lists of 52px rows, and the taller headline the shipments card uses
+   would cost two of them. */
+.pg-head {
+  /* A rule under it, because what follows is a list or a tab bar and without
+     one the sparkline's tail and the first row below it read as the same
+     block. */
+  margin-bottom: 4px;
+  padding: 6px 12px 5px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.16);
+}
+.pg-head-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.pg-head-num {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pg-head-unit {
+  font-size: 10px;
+}
+.pg-head-dir {
+  font-size: 9px;
+}
+/* Pushed to the far end rather than following the unit, so the eye finds the
+   period total in the same place on every widget. */
+.pg-head-total {
+  margin-left: auto;
+  font-size: 10px;
+}
+/* The box owns the height and the canvas fills it. Sizing the canvas itself
+   let Chart.js measure the padded parent instead and the line spilled out
+   under the tabs of the widget below it. */
+.pg-head-spark {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin-top: 2px;
+}
+.pg-head-spark canvas {
+  display: block;
+}
+
+/* Visitor summaries widget (widget-id 5) ────────────────────────────────────
+   One chart with the current period drawn over the previous one, and a strip
+   of periods underneath that promote themselves into it when clicked. */
+.pg-vs {
+  padding: 10px 16px 8px;
+}
+.pg-vs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pg-vs-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.pg-vs-big {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #3b82f6;
+}
+.pg-vs-unit {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+.pg-vs-compare {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  min-height: 18px;
+}
+/* The badge carries the direction, the sentence beside it says what the
+   comparison is against. "dün 119" on its own never said which 119. */
+.pg-vs-pill {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.pg-vs-pill.up {
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+}
+.pg-vs-pill.down {
+  background: rgba(248, 113, 113, 0.16);
+  color: #f87171;
+}
+.pg-vs-cmp {
+  font-size: 11.5px;
+}
+.pg-vs-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: 0.7;
+  min-height: 14px;
+}
+.pg-vs-legend {
+  display: flex;
+  gap: 14px;
+  padding-top: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.pg-vs-legend.no-prev .pg-vs-key:last-child {
+  display: none;
+}
+.pg-vs-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pg-vs-sw {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 2px solid #3b82f6;
+}
+.pg-vs-sw.prev {
+  border-top: 2px dashed #94a3b8;
+}
+.pg-vs-chart {
+  position: relative;
+  height: 140px;
+  margin-top: 2px;
+}
+.pg-vs-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 1.45fr;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+}
+.pg-vs-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  overflow: hidden;
+  padding: 6px 9px;
+  line-height: 1.35;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.pg-vs-cell {
+  cursor: pointer;
+}
+button.pg-vs-cell:hover,
+button.pg-vs-cell:focus-visible {
+  background: rgba(128, 128, 128, 0.16);
+}
+/* The cell whose period is currently in the big chart. */
+button.pg-vs-cell.is-active {
+  border-color: rgba(59, 130, 246, 0.55);
+  background: rgba(59, 130, 246, 0.1);
+}
+.pg-vs-cell-label {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.pg-vs-cell-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.pg-vs-spark {
+  position: absolute;
+  right: 9px;
+  bottom: 7px;
+  display: block;
+  width: 72px;
+  height: 22px;
+  opacity: 0.85;
+}
+.pg-vs-spark canvas {
+  display: block;
+}
+.pg-vs-top {
+  gap: 1px;
+}
+.pg-vs-page {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b82f6;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pg-vs-views {
+  font-size: 10px;
+  opacity: 0.7;
+}
+/* Today's busiest page under the period's. Two different questions, so a rule
+   between them rather than a fourth line of the same block. */
+.pg-vs-today {
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 3px;
+  border-top: 1px dashed rgba(128, 128, 128, 0.35);
+  overflow: hidden;
+  font-size: 10px;
+  opacity: 0.75;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+html[data-bs-theme="dark"] .pg-vs-cell {
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-bs-theme="dark"] button.pg-vs-cell:hover,
+html[data-bs-theme="dark"] button.pg-vs-cell:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+}
+html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
+  background: rgba(59, 130, 246, 0.16);
+}
+
+/* System status widget (widget-id 24) ───────────────────────────────────────
+   A gauge over a grid of one tile per check. The arc is a stroked circle with
+   a dash gap rather than a path: the filled length is then just a dasharray,
+   so api.php sets one number instead of computing arc endpoints in PHP. */
+.pg-health {
+  position: relative;
+  padding: 0 1rem;
+  text-align: center;
+}
+.pg-health-gauge circle,
+.pg-health-gauge {
+  overflow: visible;
+}
+.pg-health-gauge {
+  display: block;
+  width: 100%;
+  max-width: 178px;
+  margin: 0 auto;
+}
+.pg-health-gauge circle {
+  fill: none;
+  stroke-linecap: round;
+  /* A circle path starts at 3 o'clock and runs clockwise, so half a turn puts
+     the start of the dash at 9 o'clock and the drawn half over the top. The
+     undrawn half is the opening the score sits in. */
+  transform: rotate(180deg);
+  transform-origin: 70px 70px;
+}
+.pg-health-track {
+  stroke: currentColor;
+  opacity: 0.12;
+}
+/* Sits under the sharp arc and bleeds past it. Kept below 1 so the glow reads
+   as light coming off the arc rather than as a second, fatter arc. */
+.pg-health-glow {
+  opacity: 0.75;
+}
+/* The readout sits over the middle of the arc rather than after it, so the
+   number and the fill are read as one object. */
+.pg-health-readout {
+  position: absolute;
+  top: 62%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.pg-health-score {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pg-health-score span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pg-health-label {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pg-health-grid {
+  display: grid;
+  /* auto-fill rather than a fixed count: four tiles across in a quarter-width
+     dashboard column, more on the settings screen where the card is wider,
+     without a second rule. 66px is the narrowest a tile can be and still show
+     an icon plus a readable label. */
+  grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  gap: 4px;
+  padding: 0.125rem 0.5rem 0.25rem;
+}
+/* The three that lead: three across instead of four, so they are wider than
+   everything under them, and a stronger tint so the eye lands there first.
+   Same height as an ordinary tile -- the emphasis is width and position, not
+   size, because size would push a row off the bottom of the card. */
+.pg-health-grid-lead {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-bottom: 0;
+}
+.pg-health-grid-lead .pg-health-tile {
+  background: rgba(128, 128, 128, 0.16);
+}
+html[data-bs-theme="dark"] .pg-health-grid-lead .pg-health-tile {
+  background: rgba(255, 255, 255, 0.1);
+}
+.pg-health-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 4px 5px;
+  border-radius: 0.375rem;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  text-decoration: none;
+}
+a.pg-health-tile:hover,
+a.pg-health-tile:focus-visible {
+  background: rgba(128, 128, 128, 0.18);
+  color: inherit;
+}
+.pg-health-tile-name {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  /* 9px rather than 10: at four tiles across a quarter-width dashboard column,
+     10px clipped "Veritabanı" and "Güncelleme", and a label that ends in an
+     ellipsis is a label the operator has to hover to read. */
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.pg-health-tile-name i {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+.pg-health-tile-name span,
+.pg-health-tile-value > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pg-health-tile-value {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  line-height: 1.3;
+}
+/* Corner marker: an arrow when the tile navigates, a chevron when it opens a
+   panel in place. Pushed to the far end of the name line so it never competes
+   with the label for width. */
+.pg-health-tile-go {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-size: 9px;
+  opacity: 0.55;
+}
+/* Only the tiles that carry a marker give up the width for it, and they give
+   it up on the name line, where their labels are short enough to spare it. */
+.pg-health-tile-marked .pg-health-tile-name {
+  padding-right: 10px;
+}
+a.pg-health-tile:hover .pg-health-tile-go {
+  opacity: 1;
+}
+a.pg-health-tile[aria-expanded="true"] .pg-health-tile-go {
+  transform: rotate(180deg);
+}
+/* Per-job run times. They exist nowhere else in the panel, which is why the
+   tile expands instead of linking somewhere. */
+.pg-health-detail {
+  padding: 0 0.5rem 0.5rem;
+}
+.pg-health-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 0.25rem;
+  font-size: 10px;
+}
+.pg-health-detail-row:nth-child(odd) {
+  background: rgba(128, 128, 128, 0.06);
+}
+.pg-health-dot {
+  margin-right: 5px;
+  font-size: 6px;
+  vertical-align: middle;
+}
+html[data-bs-theme="dark"] .pg-health-detail-row:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.04);
+}
+html[data-bs-theme="dark"] .pg-health-tile {
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-bs-theme="dark"] a.pg-health-tile:hover,
+html[data-bs-theme="dark"] a.pg-health-tile:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Pending shipments widget (widget-id 9) keeps a headline block above its
+   list: the package count, the value beside it, and a twelve-slot meter. Its
+   rows are plain .pg-row, except that the tile colour comes from the carrier
+   rather than the card, so two carriers stay tellable apart at a glance. */
+.pg-ship-head {
+  padding: 0.5rem 1rem 0;
+}
+.pg-ship-count {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pg-ship-summary {
+  font-size: 12px;
+}
+.pg-ship-meter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.5rem 0 0.25rem;
+}
+.pg-ship-meter span {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.18;
+}
+.pg-ship-meter span.is-on {
+  background: #f59e0b;
+  opacity: 1;
+}
+.pg-ship-more {
+  padding: 0.25rem 0 0.5rem;
+  text-align: center;
 }
 
 /* Scrollbars */
@@ -1940,8 +2558,11 @@ html[data-bs-theme="dark"] .card.widget p.bg-light {
   color: #f2f2f2;
 }
 html[data-bs-theme="dark"] .card.widget .card-header {
-  color: #a6a6a6a1;
+    color: #a6a6a6a1;
+
 }
+
+
 html[data-bs-theme="dark"] .card.widget .btn-group .btn.btn-outline-light {
   color: #fff;
 }
@@ -1971,53 +2592,55 @@ html[data-bs-theme="dark"] .card.widget .card-body ::-webkit-scrollbar-thumb {
 /* Widget accent colors — border + icon + solid background (no opacity) */
 
 /* ── Light theme ─────────────────────────────────────────────────── */
-.widget[widget-id="2"]  { --bs-card-border-color: rgba(245,158,11,.30); background: #fffbeb; }
-.widget[widget-id="2"]  .card-header i { color: #f59e0b; }
-.widget[widget-id="3"]  { --bs-card-border-color: rgba(16,185,129,.30);  background: #ecfdf5; }
+
+.widget[widget-id="3"]  { --bs-card-border-color: rgba(16,185,129,.30);  background: #ecfdf5; --pg-accent: #10b981; --pg-accent-ink: #18181b; }
 .widget[widget-id="3"]  .card-header i { color: #10b981; }
-.widget[widget-id="4"]  { --bs-card-border-color: rgba(6,182,212,.30);   background: #ecfeff; }
+.widget[widget-id="4"]  { --bs-card-border-color: rgba(6,182,212,.30);   background: #ecfeff; --pg-accent: #06b6d4; --pg-accent-ink: #18181b; }
 .widget[widget-id="4"]  .card-header i { color: #06b6d4; }
-.widget[widget-id="5"]  { --bs-card-border-color: rgba(59,130,246,.30);  background: #eff6ff; }
+/* Visitor summaries was left transparent and borderless while it was three
+   panels sharing the page background. It is one card with one chart now, and a
+   card that stops at the page colour has no edge to sit inside -- it reads as
+   loose furniture above the grid. Same blue family as the chart line. */
+.widget[widget-id="5"]  { --bs-card-border-color: rgba(59, 130, 246, 0.30);  background: #f2f7ff; }
 .widget[widget-id="5"]  .card-header i { color: #3b82f6; }
-.widget[widget-id="6"]  { --bs-card-border-color: rgba(239,68,68,.30);   background: #fef2f2; }
+.widget[widget-id="6"]  { --bs-card-border-color: rgba(239,68,68,.30);   background: #fef2f2; --pg-accent: #ef4444; --pg-accent-ink: #18181b; }
 .widget[widget-id="6"]  .card-header i { color: #ef4444; }
-.widget[widget-id="7"]  { --bs-card-border-color: rgba(139,92,246,.30);  background: #f5f3ff; }
+.widget[widget-id="7"]  { --bs-card-border-color: rgba(139,92,246,.30);  background: #f5f3ff; --pg-accent: #8b5cf6; --pg-accent-ink: #fff; }
 .widget[widget-id="7"]  .card-header i { color: #8b5cf6; }
-.widget[widget-id="8"]  { --bs-card-border-color: rgba(5,150,105,.30);   background: #f0fdf4; }
+.widget[widget-id="8"]  { --bs-card-border-color: rgba(5,150,105,.30);   background: #f0fdf4; --pg-accent: #059669; --pg-accent-ink: #18181b; }
 .widget[widget-id="8"]  .card-header i { color: #059669; }
-.widget[widget-id="9"]  { --bs-card-border-color: rgba(217,119,6,.30);   background: #fffbeb; }
+.widget[widget-id="9"]  { --bs-card-border-color: rgba(217,119,6,.30);   background: #fffbeb; --pg-accent: #d97706; --pg-accent-ink: #18181b; }
 .widget[widget-id="9"]  .card-header i { color: #d97706; }
-.widget[widget-id="10"] { --bs-card-border-color: rgba(99,102,241,.30);  background: #eef2ff; }
+.widget[widget-id="10"] { --bs-card-border-color: rgba(99,102,241,.30);  background: #eef2ff; --pg-accent: #6366f1; --pg-accent-ink: #fff; }
 .widget[widget-id="10"] .card-header i { color: #6366f1; }
-.widget[widget-id="11"] { --bs-card-border-color: rgba(139,92,246,.30);  background: #faf5ff; }
+.widget[widget-id="11"] { --bs-card-border-color: rgba(139,92,246,.30);  background: #faf5ff; --pg-accent: #a855f7; --pg-accent-ink: #18181b; }
 .widget[widget-id="11"] .card-header i { color: #a855f7; }
-.widget[widget-id="12"] { --bs-card-border-color: rgba(239,68,68,.30);   background: #fef2f2; }
+.widget[widget-id="12"] { --bs-card-border-color: rgba(239,68,68,.30);   background: #fef2f2; --pg-accent: #ef4444; --pg-accent-ink: #18181b; }
 .widget[widget-id="12"] .card-header i { color: #ef4444; }
-.widget[widget-id="13"] { --bs-card-border-color: rgba(14,165,233,.30);  background: #f0f9ff; }
+.widget[widget-id="13"] { --bs-card-border-color: rgba(14,165,233,.30);  background: #f0f9ff; --pg-accent: #0ea5e9; --pg-accent-ink: #18181b; }
 .widget[widget-id="13"] .card-header i { color: #0ea5e9; }
-.widget[widget-id="14"] { --bs-card-border-color: rgba(124,58,237,.30);  background: #f5f3ff; }
+.widget[widget-id="14"] { --bs-card-border-color: rgba(124,58,237,.30);  background: #f5f3ff; --pg-accent: #7c3aed; --pg-accent-ink: #fff; }
 .widget[widget-id="14"] .card-header i { color: #7c3aed; }
-.widget[widget-id="15"] { --bs-card-border-color: rgba(217,119,6,.30);   background: #fefce8; }
+.widget[widget-id="15"] { --bs-card-border-color: rgba(217,119,6,.30);   background: #fefce8; --pg-accent: #d97706; --pg-accent-ink: #18181b; }
 .widget[widget-id="15"] .card-header i { color: #d97706; }
-.widget[widget-id="16"] { --bs-card-border-color: rgba(13,148,136,.30);  background: #f0fdfa; }
+.widget[widget-id="16"] { --bs-card-border-color: rgba(13,148,136,.30);  background: #f0fdfa; --pg-accent: #0d9488; --pg-accent-ink: #18181b; }
 .widget[widget-id="16"] .card-header i { color: #0d9488; }
-.widget[widget-id="17"] { --bs-card-border-color: rgba(100,116,139,.30); background: #f8fafc; }
+.widget[widget-id="17"] { --bs-card-border-color: rgba(100,116,139,.30); background: #f8fafc; --pg-accent: #64748b; --pg-accent-ink: #fff; }
 .widget[widget-id="17"] .card-header i { color: #64748b; }
-.widget[widget-id="18"] { --bs-card-border-color: rgba(202,138,4,.30);   background: #fefce8; }
+.widget[widget-id="18"] { --bs-card-border-color: rgba(202,138,4,.30);   background: #fefce8; --pg-accent: #ca8a04; --pg-accent-ink: #18181b; }
 .widget[widget-id="18"] .card-header i { color: #ca8a04; }
-.widget[widget-id="19"] { --bs-card-border-color: rgba(225,29,72,.30);   background: #fff1f2; }
+.widget[widget-id="19"] { --bs-card-border-color: rgba(225,29,72,.30);   background: #fff1f2; --pg-accent: #e11d48; --pg-accent-ink: #fff; }
 .widget[widget-id="19"] .card-header i { color: #e11d48; }
-.widget[widget-id="20"] { --bs-card-border-color: rgba(37,99,235,.30);   background: #eff6ff; }
+.widget[widget-id="20"] { --bs-card-border-color: rgba(37,99,235,.30);   background: #eff6ff; --pg-accent: #2563eb; --pg-accent-ink: #fff; }
 .widget[widget-id="20"] .card-header i { color: #2563eb; }
 
 /* ── Dark theme ──────────────────────────────────────────────────── */
-html[data-bs-theme="dark"] .widget[widget-id="2"]  { --bs-card-border-color: rgba(245,158,11,.28); background: #181510; }
-html[data-bs-theme="dark"] .widget[widget-id="2"]  .card-header i { color: #fbbf24; }
+
 html[data-bs-theme="dark"] .widget[widget-id="3"]  { --bs-card-border-color: rgba(16,185,129,.28); background: #0c1410; }
 html[data-bs-theme="dark"] .widget[widget-id="3"]  .card-header i { color: #34d399; }
 html[data-bs-theme="dark"] .widget[widget-id="4"]  { --bs-card-border-color: rgba(6,182,212,.28);  background: #0c1416; }
 html[data-bs-theme="dark"] .widget[widget-id="4"]  .card-header i { color: #22d3ee; }
-html[data-bs-theme="dark"] .widget[widget-id="5"]  { --bs-card-border-color: rgba(59,130,246,.28); background: #0e141e; }
+html[data-bs-theme="dark"] .widget[widget-id="5"]  { --bs-card-border-color: rgba(59, 130, 246, 0.26); background: #0d1119; }
 html[data-bs-theme="dark"] .widget[widget-id="5"]  .card-header i { color: #60a5fa; }
 html[data-bs-theme="dark"] .widget[widget-id="6"]  { --bs-card-border-color: rgba(239,68,68,.28);  background: #161010; }
 html[data-bs-theme="dark"] .widget[widget-id="6"]  .card-header i { color: #f87171; }
@@ -2050,6 +2673,42 @@ html[data-bs-theme="dark"] .widget[widget-id="19"] .card-header i { color: #fb71
 html[data-bs-theme="dark"] .widget[widget-id="20"] { --bs-card-border-color: rgba(37,99,235,.28);  background: #0e101e; }
 html[data-bs-theme="dark"] .widget[widget-id="20"] .card-header i { color: #60a5fa; }
 
+
+/* Widgets 21-26 never got a card accent. They only need the variable, so the
+   row tiles have a colour to take -- card background and border stay neutral. */
+.widget[widget-id="21"] { --pg-accent: #10b981; --pg-accent-ink: #18181b; }
+.widget[widget-id="22"] { --pg-accent: #f97316; --pg-accent-ink: #18181b; }
+.widget[widget-id="23"] { --pg-accent: #8b5cf6; --pg-accent-ink: #fff; }
+.widget[widget-id="25"] { --pg-accent: #0ea5e9; --pg-accent-ink: #18181b; }
+.widget[widget-id="26"] { --pg-accent: #ec4899; --pg-accent-ink: #18181b; }
+
+/* System status card. Darker and cooler than the rest of the dashboard,
+   because the gauge inside it is a glow and a glow needs something to glow
+   against -- on the default card background the blurred arc washes out. The
+   settings screen renders the same widget without a widget-id, so it is named
+   here rather than given a rule of its own.
+   The light theme cannot go dark, so it takes the palest tint of the same
+   violet and lets the grey track carry the contrast instead. */
+.widget[widget-id="2"],
+#system_status_card {
+  --bs-card-border-color: rgba(168, 85, 247, 0.28);
+  --pg-accent: #8b5cf6;
+  --pg-accent-ink: #fff;
+  background: #faf9ff;
+}
+.widget[widget-id="2"] .card-header i,
+#system_status_card .card-header i {
+  color: #8b5cf6;
+}
+html[data-bs-theme="dark"] .widget[widget-id="2"],
+html[data-bs-theme="dark"] #system_status_card {
+  --bs-card-border-color: rgba(168, 85, 247, 0.26);
+  background: #101017;
+}
+html[data-bs-theme="dark"] .widget[widget-id="2"] .card-header i,
+html[data-bs-theme="dark"] #system_status_card .card-header i {
+  color: #c084fc;
+}
 
 /* Base: provide readable fallback color first */
 .clock-color {
@@ -2128,7 +2787,7 @@ html[data-bs-theme="dark"] .widget[widget-id="20"] .card-header i { color: #60a5
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   Faz 3d — WCAG 2.1 AA baseline
+   WCAG 2.1 AA baseline
    ──────────────────────────────────────────────────────────────────── */
 
 /* Skip-to-content link: visually hidden until focused. */

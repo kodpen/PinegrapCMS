@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -46,7 +46,10 @@ function duplicate_page($request) {
     $page_search = $row['page_search'];
     $page_meta_description = $row['page_meta_description'];
     $page_meta_keywords = $row['page_meta_keywords'];
+    $page_search_keywords = $row['page_search_keywords'];
     $sitemap = $row['sitemap'];
+    $noindex = $row['noindex'] ?? 0;
+    $nofollow = $row['nofollow'] ?? 0;
     $comments = $row['comments'];
     $comments_label = $row['comments_label'];
     $comments_message = $row['comments_message'];
@@ -148,6 +151,10 @@ function duplicate_page($request) {
         $page_meta_keywords = find_replace(array(
             'content' => $page_meta_keywords,
             'keywords' => $request['find_replace_keywords']));
+
+        $page_search_keywords = find_replace(array(
+            'content' => $page_search_keywords,
+            'keywords' => $request['find_replace_keywords']));
     }
 
     $page_name = get_unique_name(array(
@@ -174,7 +181,10 @@ function duplicate_page($request) {
                 page_search,
                 page_meta_description,
                 page_meta_keywords,
+                page_search_keywords,
                 sitemap,
+                " . (pg_page_noindex_ready() ? "noindex,
+                nofollow," : "") . "
                 page_type,
                 layout_type,
                 layout_modified,
@@ -210,7 +220,10 @@ function duplicate_page($request) {
                 '" . escape($page_search) . "',
                 '" . escape($page_meta_description) . "',
                 '" . escape($page_meta_keywords) . "',
+                '" . escape($page_search_keywords) . "',
                 '" . escape($sitemap) . "',
+                " . (pg_page_noindex_ready() ? "'" . (int) $noindex . "',
+                '" . (int) $nofollow . "'," : "") . "
                 '" . escape($page_type) . "',
                 '" . e($layout_type) . "',
                 '" . e($layout_modified) . "',
@@ -243,7 +256,7 @@ function duplicate_page($request) {
     $new_page['name'] = $page_name;
 
     // call the function that updates the tag cloud table
-    update_tag_cloud_keywords_for_page($new_page['id'], $page_search, $page_meta_keywords, 0, '');
+    update_tag_cloud_keywords_for_page($new_page['id'], $page_search, $page_search_keywords, 0, '');
 
     // get region info
     $result=mysqli_query(db::$con, "SELECT pregion_content, pregion_order, collection FROM pregion WHERE pregion_page = '" . e($page_id) . "' ORDER BY pregion_order") or die ('Query failed');

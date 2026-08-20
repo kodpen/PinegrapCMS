@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -46,14 +46,14 @@ function get_order_preview($properties) {
                 discount_offer_id,
                 offline_payment_allowed
              FROM orders
-             WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $discount_offer_id = $row['discount_offer_id'];
     $offline_payment_allowed = $row['offline_payment_allowed'];
     
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 
     // if order id is empty, set to 0
     if ($order_id == '') {
@@ -1006,8 +1006,8 @@ function get_order_preview($properties) {
         $grand_total = $subtotal;
 
         // if there is an order discount from an offer, prepare order discount
-        if ($_SESSION['ecommerce']['order_discount']) {
-            $order_discount = $_SESSION['ecommerce']['order_discount'] / 100;
+        if (!empty($_SESSION['ecommerce']['order_discount'])) {
+            $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
             
             $grand_total = $subtotal - $order_discount;
             
@@ -2078,6 +2078,11 @@ function get_order_preview($properties) {
 
             foreach ($recipients as $key => $recipient) {
 
+                // The layout templates always read these, and 'name' is also read while it is being
+                // built below, so they have to exist on every recipient.
+                $recipient['name'] = '';
+                $recipient['form_data'] = false;
+
                 $recipient['shipping'] = false;
 
                 if ($recipient['id']) {
@@ -2349,6 +2354,9 @@ function get_order_preview($properties) {
 
                     // If calendars is enabled and this order item is for a calendar event,
                     // then get calendar event info like the name and date & time.
+                    // The layout templates always read this key, so it has to exist on every item.
+                    $item['calendar_event'] = false;
+
                     if (CALENDARS and $item['calendar_event_id']) {
                         $item['calendar_event'] = get_calendar_event($item['calendar_event_id'], $item['recurrence_number']);
                     }
@@ -2498,7 +2506,7 @@ function get_order_preview($properties) {
                 // If there is an offer applied to this ship to
                 // and offer has not already been added to applied offers array,
                 // then store this offer as an applied offer
-                if ($recipient['offer_id'] and !in_array($recipient['offer_id'], $applied_offers)) {
+                if (!empty($recipient['offer_id']) and !in_array($recipient['offer_id'], $applied_offers)) {
                     $applied_offers[] = $recipient['offer_id'];
                 }
 
@@ -2509,7 +2517,7 @@ function get_order_preview($properties) {
 
             $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 
-            $discount = $_SESSION['ecommerce']['order_discount'] / 100;
+            $discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
 
             // If there is a discount, then prepare discount info and total.
             if ($discount) {
@@ -2555,7 +2563,7 @@ function get_order_preview($properties) {
                         (old_balance / 100) AS old_balance,
                         givex
                     FROM applied_gift_cards
-                    WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
                     ORDER BY id ASC";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 

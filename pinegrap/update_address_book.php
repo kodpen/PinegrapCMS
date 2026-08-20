@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,7 +34,7 @@ if (!$_POST) {
     validate_token_field();
     
     // get address type value for page, so we know if it was enabled or not
-    $query = "SELECT address_type FROM update_address_book_pages WHERE page_id = '" . escape($_POST['page_id']) . "'";
+    $query = "SELECT address_type FROM update_address_book_pages WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $address_type = $row['address_type'];
@@ -85,7 +85,7 @@ if (!$_POST) {
     $user_id = $row['user_id'];
 
     // check to see if ship to name is already in use
-    $query = "SELECT id FROM address_book WHERE (user = $user_id) AND (id != '" . escape($_POST['id']) . "') AND (ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "')";
+    $query = "SELECT id FROM address_book WHERE (user = $user_id) AND (id != '" . escape($_POST['id'] ?? '') . "') AND (ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     if (mysqli_num_rows($result) > 0) {
         $liveform->mark_error('ship_to_name', 'That ship to name is already in use. Please enter a different ship to name.');
@@ -131,7 +131,7 @@ if (!$_POST) {
                         country = '" . escape($liveform->get_field_value('country')) . "',
                         $sql_address_type
                         phone_number = '" . escape($liveform->get_field_value('phone_number')) . "'
-                     WHERE id = " . escape($_POST['id']) . " AND user = '$user_id'";
+                     WHERE id = " . escape($_POST['id'] ?? '') . " AND user = '$user_id'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // else an id was not supplied, so create new recipient in address book

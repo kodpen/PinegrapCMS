@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -293,22 +293,22 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['code']) . "',
-                '" . escape($_POST['description']) . "',
-                '" . escape($_POST['require_code']) . "',
+                '" . escape($_POST['code'] ?? '') . "',
+                '" . escape($_POST['description'] ?? '') . "',
+                '" . escape($_POST['require_code'] ?? '') . "',
                 '" . escape($status) . "',
                 '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
                 '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-                '" . escape($_POST['offer_rule_id']) . "',
-                '" . escape($_POST['upsell']) . "',
-                '" . escape($_POST['upsell_message']) . "',
+                '" . escape($_POST['offer_rule_id'] ?? '') . "',
+                '" . escape($_POST['upsell'] ?? '') . "',
+                '" . escape($_POST['upsell_message'] ?? '') . "',
                 '" . escape($upsell_trigger_subtotal) . "',
-                '" . escape($_POST['upsell_trigger_quantity']) . "',
-                '" . escape($_POST['upsell_action_button_label']) . "',
-                '" . escape($_POST['upsell_action_page_id']) . "',
-                '" . escape($_POST['scope']) . "',
-                '" . escape($_POST['multiple_recipients']) . "',
-                '" . escape($_POST['only_apply_best_offer']) . "',
+                '" . escape($_POST['upsell_trigger_quantity'] ?? '') . "',
+                '" . escape($_POST['upsell_action_button_label'] ?? '') . "',
+                '" . escape($_POST['upsell_action_page_id'] ?? '') . "',
+                '" . escape($_POST['scope'] ?? '') . "',
+                '" . escape($_POST['multiple_recipients'] ?? '') . "',
+                '" . escape($_POST['only_apply_best_offer'] ?? '') . "',
                 " . $user['id'] . ",
                 UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -318,7 +318,7 @@ if (!$_POST) {
     // loop through actions in order to add records to database for selected actions
     foreach ($offer_actions as $offer_action) {
         // if the action was checked, then insert record
-        if ($_POST['offer_action_' . $offer_action['id']] == 1) {
+        if (($_POST['offer_action_' . $offer_action['id']] ?? '') == 1) {
             $query =
                 "INSERT INTO offers_offer_actions_xref (
                     offer_id,

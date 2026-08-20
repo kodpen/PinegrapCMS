@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -47,10 +47,21 @@ if ($user['role'] < 3) {
 
 $keys_and_values = '';
 
+// these are only ever incremented further below, so they have to start out at zero
+$all_contact_groups = 0;
+$my_contact_groups = 0;
+
+// if the sort is not set yet, then default it to empty so that the switch below falls through
+// to its default case
+if (isset($_SESSION['software']['view_contacts']['view_contact_groups']['sort']) == false) {
+    $_SESSION['software']['view_contacts']['view_contact_groups']['sort'] = '';
+}
+
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -62,7 +73,13 @@ if (
     $screen = 1;
 }
 
-switch ($_SESSION['software']['view_contacts']['view_contact_groups']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['view_contacts']['view_contact_groups']['sort']) == false) {
+    $_SESSION['software']['view_contacts']['view_contact_groups']['sort'] = '';
+}
+
+switch (($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'contact_groups.name';
         break;
@@ -114,7 +131,7 @@ $query =
     FROM contact_groups
     LEFT JOIN user AS created_user ON contact_groups.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON contact_groups.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['view_contacts']['view_contact_groups']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -215,12 +232,12 @@ print
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['view_contacts']['view_contact_groups']['sort'], $_SESSION['software']['view_contacts']['view_contact_groups']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Subscription'), $_SESSION['software']['view_contacts']['view_contact_groups']['sort'], $_SESSION['software']['view_contacts']['view_contact_groups']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Type'), $_SESSION['software']['view_contacts']['view_contact_groups']['sort'], $_SESSION['software']['view_contacts']['view_contact_groups']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Description'), $_SESSION['software']['view_contacts']['view_contact_groups']['sort'], $_SESSION['software']['view_contacts']['view_contact_groups']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['view_contacts']['view_contact_groups']['sort'], $_SESSION['software']['view_contacts']['view_contact_groups']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['view_contacts']['view_contact_groups']['sort'], $_SESSION['software']['view_contacts']['view_contact_groups']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Subscription'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_contacts']['view_contact_groups']['sort'] ?? ''), ($_SESSION['software']['view_contacts']['view_contact_groups']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

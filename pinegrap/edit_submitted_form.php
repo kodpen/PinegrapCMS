@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -60,7 +60,7 @@ if ($_POST['form_item_view_page_id']) {
             hook_code
         FROM form_item_view_pages
         WHERE
-            (page_id = '" . escape($_POST['form_item_view_page_id']) . "')
+            (page_id = '" . escape($_POST['form_item_view_page_id'] ?? '') . "')
             AND (collection = 'a')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
@@ -197,6 +197,8 @@ if (!$_POST) {
         $output_address_name = h($old_address_name);
     }
     
+    $output_affiliate_code = '';
+
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate_code =
             '<div class="col-12 col-md-6 col-lg-4 my-2">
@@ -317,6 +319,8 @@ if (!$_POST) {
     
     $wysiwyg_fields = array();
 
+    $output_fields = '';
+
     // Prepare to keep track if whether there are file upload fields or not,
     // in order to know later if we need to output enctype for form.
     $file_upload_exists = false;
@@ -380,7 +384,7 @@ if (!$_POST) {
             }
             
             // if field should have spacing above, add spacing
-            if ($field['space_above']) {
+            if ($field['spacing_above']) {
                 $output_fields .=
                     '<div class="py-2 ' . $row_class . '"></div>';
             }
@@ -480,16 +484,19 @@ if (!$_POST) {
                 case 'check box':
                     $output_options = '';
                     
-                    foreach ($options as $option) {
-                        // if there is more than one option for this check box group
-                        if (count($options) > 1) {
-                            $name = $field['id'] . '[]';
-                            
-                        // else there is just one option for this check box group
-                        } else {
-                            $name = $field['id'];
-                        }
+                    // If there is more than one option in this check box group, then the field
+                    // name has to be an array, otherwise only the last option that is checked
+                    // would be submitted.  This matches the canonical form rendering that
+                    // get_form_info() uses in functions.php.
+                    if (count($options) > 1) {
+                        $name = $field['id'] . '[]';
                         
+                    // else there is just one option for this check box group
+                    } else {
+                        $name = $field['id'];
+                    }
+                    
+                    foreach ($options as $option) {
                         // if this checkbox should be selected by default, prepare to select by default
                         if (($option['default_selected'] == 1) || ($option['value'] == $field['default_value'])) {
                             $checked = 'checked';
@@ -499,14 +506,20 @@ if (!$_POST) {
                         
                         $output_options .= '
                         <div class="form-check">
-                            ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$field['id'], 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'form-check-input')) . '
+                            ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$name, 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'form-check-input')) . '
                             <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
                         </div>';
                         
                     }
                     
-                    // the hidden field is outputted so even if a check box is not checked, a field will be included in the post data
-                    // this is important because we use the fields in the post data to determine which fields should be updated
+                    // The hidden field is outputted so even if a check box is not checked, a field
+                    // will be included in the post data.  This is important because we use the
+                    // fields in the post data to determine which fields should be updated.
+                    //
+                    // The hidden field has to stay BEFORE the check boxes.  When the group's name
+                    // is an array, PHP replaces this empty scalar value with the array of checked
+                    // values.  If the hidden field came after the check boxes, it would replace the
+                    // array with an empty string instead, and every checked value would be lost.
                     
                     $output_fields .=
                         '<div class="col-12 my-2 ' . $row_class . '">
@@ -824,7 +837,7 @@ if (!$_POST) {
                     files.name
                  FROM form_data
                  LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = '" . escape($_POST['id']) . "') AND (form_data.file_id > 0)";
+                 WHERE (form_data.form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_data.file_id > 0)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         $files = array();
@@ -848,11 +861,11 @@ if (!$_POST) {
         }
         
         // delete form
-        $query = "DELETE FROM forms WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM forms WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = '" . escape($_POST['id']) . "') AND (form_id != '0')";
+        $query = "DELETE FROM form_data WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete views for this submitted form that the form view directory feature uses
@@ -863,7 +876,7 @@ if (!$_POST) {
         // if the there is a form list view send to, then forward user there
         if ((isset($_POST['form_list_view_send_to']) == TRUE) && ($_POST['form_list_view_send_to'] != '')) {
             // Get the form list view page id for this form item view in order to setup liveform correctly.
-            $query = "SELECT page_id FROM form_list_view_pages WHERE form_item_view_page_id = '" . escape($_POST['form_item_view_page_id'])  . "'";
+            $query = "SELECT page_id FROM form_list_view_pages WHERE form_item_view_page_id = '" . escape($_POST['form_item_view_page_id'] ?? '')  . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $form_list_view_page_id = $row['page_id'];
@@ -931,7 +944,7 @@ if (!$_POST) {
         // get page id
         $query = "SELECT page_id
                  FROM forms
-                 WHERE forms.id = '" . escape($_POST['id']) . "'";
+                 WHERE forms.id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
@@ -981,7 +994,7 @@ if (!$_POST) {
                             FROM form_data
                             LEFT JOIN files on form_data.file_id = files.id
                             WHERE
-                                (form_data.form_id = '" . escape($_POST['id']) . "')
+                                (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
                                 AND (form_data.form_field_id = '" . $field['id'] . "')");
 
                         // If there is not an existing file, then add error.
@@ -1043,8 +1056,8 @@ if (!$_POST) {
                 $address_name = create_address_name($liveform->get_field_value($field['id']));
 
                 // If that address name is already in use, then output error.
-                if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($page_id) . "') AND (id != '" . escape($_POST['id']) . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
-                    $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>$field['label'])) );
+                if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($page_id) . "') AND (id != '" . escape($_POST['id'] ?? '') . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
+                    $liveform->mark_error($field['id'], lang(array('string'=>'That {var:1} is already in use. Please enter a different one.','vars'=>$field['label'])) );
                 }
             }
         }
@@ -1082,7 +1095,7 @@ if (!$_POST) {
                         $sql_form_editor
                         last_modified_user_id = '" . $user['id'] . "',
                         last_modified_timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . escape($_POST['id']) . "'";
+                     WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // Loop through all fields in order to save data for each one.
@@ -1108,7 +1121,7 @@ if (!$_POST) {
                                     FROM form_data
                                     LEFT JOIN files on form_data.file_id = files.id
                                     WHERE
-                                        (form_data.form_id = '" . escape($_POST['id']) . "')
+                                        (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (form_data.form_field_id = '" . $field['id'] . "')");
 
                                 // If there is an existing file, then delete it.
@@ -1125,7 +1138,7 @@ if (!$_POST) {
                                 db(
                                     "DELETE FROM form_data
                                     WHERE
-                                        (form_id = '" . escape($_POST['id']) . "')
+                                        (form_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (form_id != '0')
                                         AND (form_field_id = '" . $field['id'] . "')");
 
@@ -1189,7 +1202,7 @@ if (!$_POST) {
                                         file_id,
                                         name)
                                     VALUES (
-                                        '" . escape($_POST['id']) . "',
+                                        '" . escape($_POST['id'] ?? '') . "',
                                         '" . $field['id'] . "',
                                         '" . $file_id . "',
                                         '" . escape($field['name']) . "')");
@@ -1207,7 +1220,7 @@ if (!$_POST) {
                                     FROM form_data
                                     LEFT JOIN files on form_data.file_id = files.id
                                     WHERE
-                                        (form_data.form_id = '" . escape($_POST['id']) . "')
+                                        (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (form_data.form_field_id = '" . $field['id'] . "')");
 
                                 // If there is an existing file, then delete it.
@@ -1224,7 +1237,7 @@ if (!$_POST) {
                                 db(
                                     "DELETE FROM form_data
                                     WHERE
-                                        (form_id = '" . escape($_POST['id']) . "')
+                                        (form_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (form_id != '0')
                                         AND (form_field_id = '" . $field['id'] . "')");
 
@@ -1237,7 +1250,7 @@ if (!$_POST) {
                                         form_field_id,
                                         name)
                                     VALUES (
-                                        '" . escape($_POST['id']) . "',
+                                        '" . escape($_POST['id'] ?? '') . "',
                                         '" . $field['id'] . "',
                                         '" . escape($field['name']) . "')");
                             }
@@ -1249,7 +1262,7 @@ if (!$_POST) {
                         if (isset($_POST[$field['id']]) == true) {
                             // delete existing values for this field
                             $query = "DELETE FROM form_data
-                                     WHERE (form_id = '" . escape($_POST['id']) . "') AND (form_id != '0') AND (form_field_id = '" . $field['id'] . "')";
+                                     WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0') AND (form_field_id = '" . $field['id'] . "')";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             
                             // assume that the form data type is standard until we find out otherwise
@@ -1281,7 +1294,7 @@ if (!$_POST) {
                                                 name,
                                                 type)
                                              VALUES (
-                                                '" . escape($_POST['id']) . "',
+                                                '" . escape($_POST['id'] ?? '') . "',
                                                 '" . $field['id'] . "',
                                                 '" . escape(prepare_form_data_for_input($value, $field['type'])) . "',
                                                 '" . escape($field['name']) . "',
@@ -1299,7 +1312,7 @@ if (!$_POST) {
                                             name,
                                             type)
                                          VALUES (
-                                            '" . escape($_POST['id']) . "',
+                                            '" . escape($_POST['id'] ?? '') . "',
                                             '" . $field['id'] . "',
                                             '" . escape(prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type'])) . "',
                                             '" . escape($field['name']) . "',
@@ -1319,165 +1332,11 @@ if (!$_POST) {
             // If the form was incomplete before and has now been completed,
             // then check if custom form actions should be completed (e.g. email alerts).
             if (!$complete and $new_complete) {
-                $custom_form = db_item(
-                    "SELECT
-                        page.page_id,
-                        custom_form_pages.enabled,
-                        custom_form_pages.save,
-                        custom_form_pages.submitter_email,
-                        custom_form_pages.submitter_email_from_email_address,
-                        custom_form_pages.submitter_email_subject,
-                        custom_form_pages.submitter_email_format,
-                        custom_form_pages.submitter_email_body,
-                        custom_form_pages.submitter_email_page_id,
-                        custom_form_pages.administrator_email,
-                        custom_form_pages.administrator_email_to_email_address,
-                        custom_form_pages.administrator_email_bcc_email_address,
-                        custom_form_pages.administrator_email_subject,
-                        custom_form_pages.administrator_email_format,
-                        custom_form_pages.administrator_email_body,
-                        custom_form_pages.administrator_email_page_id
-                    FROM page
-                    LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-                    WHERE
-                        (page.page_id = '$custom_form_page_id')
-                        AND (page.page_type = 'custom form')");
-
-                // If custom form is enabled and save-for-later is enabled,
-                // then complete actions.
-                if ($custom_form['enabled'] and $custom_form['save']) {
-                    $form_id = $_POST['id'];
-
-                    // If the submitter or admin email is enabled, then get
-                    // submitter email address for later.
-                    if ($custom_form['submitter_email'] or $custom_form['administrator_email']) {
-                        $submitter_email_address = get_submitter_email_address($form_id);
-                    }
-
-                    // If submitter email is enabled, and a submitter email address
-                    // was found, then determine if there is a recipient to send email to.
-                    if ($custom_form['submitter_email'] and $submitter_email_address) {
-
-                        if ($custom_form['submitter_email_from_email_address']) {
-                            $from_email_address = $custom_form['submitter_email_from_email_address'];
-                        } else {
-                            $from_email_address = EMAIL_ADDRESS;
-                        }
-
-                        $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['submitter_email_subject'], $prepare_for_html = false);
-
-                        // If the format of the e-mail should be plain text,
-                        // then prepare that.
-                        if ($custom_form['submitter_email_format'] == 'plain_text') {
-
-                            // Check the body for variable data and replace
-                            // any variables with content from the submitted form.
-                            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['submitter_email_body'], $prepare_for_html = false);
-
-                        // Otherwise the format of the e-mail should be HTML, so prepare that.
-                        } else {
-
-                            require_once(dirname(__FILE__) . '/get_page_content.php');
-
-                            $body = get_page_content($custom_form['submitter_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
-
-                        }
-
-                        email(array(
-                            'to' => $submitter_email_address,
-                            'from_name' => ORGANIZATION_NAME,
-                            'from_email_address' => $from_email_address,
-                            'subject' => $subject,
-                            'format' => $custom_form['submitter_email_format'],
-                            'body' => $body
-                        ));
-
-                    }
-
-                    // If admin email is enabled, then determine if we should send it.
-                    if ($custom_form['administrator_email']) {
-
-                        $administrator_email_addresses = array();
-
-                        if ($custom_form['administrator_email_to_email_address']) {
-                            $administrator_email_addresses[] = $custom_form['administrator_email_to_email_address'];
-                        }
-
-                        // Get conditional administrators.
-                        $conditional_administrators = db_values(
-                            "SELECT form_field_options.email_address
-                            FROM form_field_options
-                            LEFT JOIN form_data ON form_field_options.form_field_id = form_data.form_field_id
-                            WHERE
-                                (form_field_options.page_id = '" . $custom_form['page_id'] . "')
-                                AND (form_data.form_id = '" . e($form_id) . "')
-                                AND (form_field_options.email_address != '')
-                                AND (form_data.data = form_field_options.value)");
-
-                        // Loop through the conditional administrators in order to add them.
-                        foreach ($conditional_administrators as $conditional_administrator) {
-                            // We support multiple conditional admin email addresses, separated by comma,
-                            // (e.g. ^^example1@example.com,example2@example.com^^), so deal with that.
-                            $conditional_email_addresses = explode(',', $conditional_administrator);
-
-                            foreach ($conditional_email_addresses as $conditional_email_address) {
-                                $conditional_email_address = trim($conditional_email_address);
-
-                                // If this e-mail address has not already been added, then add it.
-                                if (in_array($conditional_email_address, $administrator_email_addresses) == false) {
-                                    $administrator_email_addresses[] = $conditional_email_address;
-                                }
-                            }
-                        }
-
-                        // If there is an admin to email, then continue to send email.
-                        if (
-                            $administrator_email_addresses
-                            or $custom_form['administrator_email_bcc_email_address']
-                        ) {
-
-                            $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['administrator_email_subject'], $prepare_for_html = false);
-
-                            // If the format of the e-mail should be plain text,
-                            // then prepare that.
-                            if ($custom_form['administrator_email_format'] == 'plain_text') {
-
-                                // Check the body for variable data and replace
-                                // any variables with content from the submitted form.
-                                $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['administrator_email_body'], $prepare_for_html = false);
-
-                            // Otherwise the format of the e-mail should be HTML, so prepare that.
-                            } else {
-
-                                require_once(dirname(__FILE__) . '/get_page_content.php');
-
-                                $body = get_page_content($custom_form['administrator_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
-                                
-                            }
-
-                            email(array(
-                                'to' => $administrator_email_addresses,
-                                'bcc' => $custom_form['administrator_email_bcc_email_address'],
-                                'from_name' => ORGANIZATION_NAME,
-                                'from_email_address' => EMAIL_ADDRESS,
-                                'reply_to' => $submitter_email_address,
-                                'subject' => $subject,
-                                'format' => $custom_form['administrator_email_format'],
-                                'body' => $body
-                            ));
-
-                        }
-
-                    }
-
-                    // Check if there are auto e-mail campaigns that should be
-                    // created based on this custom form being submitted.
-                    create_auto_email_campaigns(array(
-                        'action' => 'custom_form_submitted',
-                        'action_item_id' => $custom_form['page_id'],
-                        'contact_id' => $contact_id));
-
-                }
+                // Send notification e-mails and create auto e-mail campaigns.
+                // This logic lives in functions.php so that add_submitted_form.php
+                // can reuse it.  The true argument preserves the original behavior
+                // of only acting on custom forms that have save-for-later enabled.
+                pg_send_custom_form_notifications($custom_form_page_id, $_POST['id'], $contact_id, true);
             }
             
             log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was modified','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);

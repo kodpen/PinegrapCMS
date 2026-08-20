@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,7 +26,7 @@ if (!$_POST) {
 
     // If the editing user came from the edit contact screen,
     // then get email address for contact in order to prefill email field.
-    if ($_GET['contact_id'] != '') {
+    if (isset($_GET['contact_id']) && ($_GET['contact_id'] != '')) {
         $email_address = db_value("SELECT email_address FROM contacts WHERE id = '" . escape($_GET['contact_id']) . "'");
     }
 
@@ -238,7 +238,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <input type="hidden" name="contact_id" value="' . h($_GET['contact_id']) . '" />
+                    <input type="hidden" name="contact_id" value="' . h(isset($_GET['contact_id']) ? $_GET['contact_id'] : '') . '" />
                     <div class="row">
                         <div class="col-12 col-md-4 col-lg-3 col-xl-2">
                             <div class="card my-4 position-sticky" style="top:56px;">
@@ -487,13 +487,13 @@ if (!$_POST) {
     }
 
     // determine if username is already in use
-    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_username = '" . escape($_POST['username']) . "') OR (user_email = '" . escape($_POST['username']) . "')") or output_error('Query failed');
+    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_username = '" . escape($_POST['username'] ?? '') . "') OR (user_email = '" . escape($_POST['username'] ?? '') . "')") or output_error('Query failed');
     if (mysqli_num_rows($result) > 0)
     {
         output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
     // determine if e-mail address is already in use
-    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_email = '" . escape($_POST['email']) . "') OR (user_username = '" . escape($_POST['email']) . "')") or output_error('Query failed');
+    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_email = '" . escape($_POST['email'] ?? '') . "') OR (user_username = '" . escape($_POST['email'] ?? '') . "')") or output_error('Query failed');
     if (mysqli_num_rows($result) > 0)
     {
         output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -516,11 +516,11 @@ if (!$_POST) {
             user_set_page_type_form_view_directory,";
         
         $sql_set_page_type_values .= 
-            " '" . escape($_POST['set_page_type_custom_form']) . "',
-            '" . escape($_POST['set_page_type_custom_form_confirmation']) . "',
-            '" . escape($_POST['set_page_type_form_list_view']) . "',
-            '" . escape($_POST['set_page_type_form_item_view']) . "',
-            '" . escape($_POST['set_page_type_form_view_directory']) . "',";
+            " '" . escape($_POST['set_page_type_custom_form'] ?? '') . "',
+            '" . escape($_POST['set_page_type_custom_form_confirmation'] ?? '') . "',
+            '" . escape($_POST['set_page_type_form_list_view'] ?? '') . "',
+            '" . escape($_POST['set_page_type_form_item_view'] ?? '') . "',
+            '" . escape($_POST['set_page_type_form_view_directory'] ?? '') . "',";
     }
     
     // if calendars are enabled, then set the sql to update the set page type columns that are associated with this feature
@@ -530,8 +530,8 @@ if (!$_POST) {
             user_set_page_type_calendar_event_view,";
         
         $sql_set_page_type_values .= 
-            " '" . escape($_POST['set_page_type_calendar_view']) . "',
-            '" . escape($_POST['set_page_type_calendar_event_view']) . "',";
+            " '" . escape($_POST['set_page_type_calendar_view'] ?? '') . "',
+            '" . escape($_POST['set_page_type_calendar_event_view'] ?? '') . "',";
     }
     
     // if ecommerce is enabled, then set the sql to update the set page type columns that are associated with this feature
@@ -549,16 +549,16 @@ if (!$_POST) {
             user_set_page_type_order_receipt,";
         
         $sql_set_page_type_values .= 
-            " '" . escape($_POST['set_page_type_catalog']) . "',
-            '" . escape($_POST['set_page_type_catalog_detail']) . "',
-            '" . escape($_POST['set_page_type_express_order']) . "',
-            '" . escape($_POST['set_page_type_order_form']) . "',
-            '" . escape($_POST['set_page_type_shopping_cart']) . "',
-            '" . escape($_POST['set_page_type_shipping_address_and_arrival']) . "',
-            '" . escape($_POST['set_page_type_shipping_method']) . "',
-            '" . escape($_POST['set_page_type_billing_information']) . "',
-            '" . escape($_POST['set_page_type_order_preview']) . "',
-            '" . escape($_POST['set_page_type_order_receipt']) . "',";
+            " '" . escape($_POST['set_page_type_catalog'] ?? '') . "',
+            '" . escape($_POST['set_page_type_catalog_detail'] ?? '') . "',
+            '" . escape($_POST['set_page_type_express_order'] ?? '') . "',
+            '" . escape($_POST['set_page_type_order_form'] ?? '') . "',
+            '" . escape($_POST['set_page_type_shopping_cart'] ?? '') . "',
+            '" . escape($_POST['set_page_type_shipping_address_and_arrival'] ?? '') . "',
+            '" . escape($_POST['set_page_type_shipping_method'] ?? '') . "',
+            '" . escape($_POST['set_page_type_billing_information'] ?? '') . "',
+            '" . escape($_POST['set_page_type_order_preview'] ?? '') . "',
+            '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
     }
     
     // insert row into user table
@@ -593,32 +593,32 @@ if (!$_POST) {
             user_timestamp,
             user_user)
         VALUES (
-            '" . escape($_POST['username']) . "',
-            '" . escape($_POST['email']) . "',
+            '" . escape($_POST['username'] ?? '') . "',
+            '" . escape($_POST['email'] ?? '') . "',
             '" . md5($random_password) . "',
-            '" . escape($_POST['role']) . "',
-            '" . escape($_POST['home_page']) . "',
-            '" . escape($_POST['badge']) . "',
-            '" . escape($_POST['badge_label']) . "',
-            '" . escape($_POST['reward_points']) . "',
-            '" . escape($_POST['manage_contacts']) . "',
-            '" . escape($_POST['manage_visitors']) . "',
-            '" . escape($_POST['create_pages']) . "',
-            '" . escape($_POST['delete_pages']) . "',
-            '" . escape($_POST['manage_forms']) . "',
-            '" . escape($_POST['manage_calendars']) . "',
-            '" . escape($_POST['manage_emails']) . "',
-            '" . escape($_POST['manage_ecommerce']) . "',
-            '" . escape($_POST['view_card_data']) . "',
-            '" . e($_POST['manage_ecommerce_reports']) . "',
-            '" . escape($_POST['set_offline_payment']) . "',
-            '" . escape($_POST['publish_calendar_events']) . "',
-            '" . escape($_POST['set_page_type_email_a_friend']) . "',
-            '" . escape($_POST['set_page_type_folder_view']) . "',
-            '" . escape($_POST['set_page_type_photo_gallery']) . "',
+            '" . escape($_POST['role'] ?? '') . "',
+            '" . escape($_POST['home_page'] ?? '') . "',
+            '" . escape($_POST['badge'] ?? '') . "',
+            '" . escape($_POST['badge_label'] ?? '') . "',
+            '" . escape($_POST['reward_points'] ?? '') . "',
+            '" . escape($_POST['manage_contacts'] ?? '') . "',
+            '" . escape($_POST['manage_visitors'] ?? '') . "',
+            '" . escape($_POST['create_pages'] ?? '') . "',
+            '" . escape($_POST['delete_pages'] ?? '') . "',
+            '" . escape($_POST['manage_forms'] ?? '') . "',
+            '" . escape($_POST['manage_calendars'] ?? '') . "',
+            '" . escape($_POST['manage_emails'] ?? '') . "',
+            '" . escape($_POST['manage_ecommerce'] ?? '') . "',
+            '" . escape($_POST['view_card_data'] ?? '') . "',
+            '" . e($_POST['manage_ecommerce_reports'] ?? '') . "',
+            '" . escape($_POST['set_offline_payment'] ?? '') . "',
+            '" . escape($_POST['publish_calendar_events'] ?? '') . "',
+            '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
+            '" . escape($_POST['set_page_type_folder_view'] ?? '') . "',
+            '" . escape($_POST['set_page_type_photo_gallery'] ?? '') . "',
             $sql_set_page_type_values
             'default',
-            '" . escape($_POST['contact_id']) . "',
+            '" . escape($_POST['contact_id'] ?? '') . "',
             UNIX_TIMESTAMP(),
             '$user[id]')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -632,11 +632,11 @@ if (!$_POST) {
         $sql_expiration_date = "";
         
         // if the user was given edit rights to this folder, then set rights value to 2
-        if ($_POST['edit_' . $folder_id] == 1) {
+        if (($_POST['edit_' . $folder_id] ?? '') == 1) {
             $rights = 2;
             
         // else if the user was given view rights to this folder, then deal with that.
-        } elseif ($_POST['view_' . $folder_id] == 1) {
+        } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
             // Remove spaces from beginning and end of date.
             $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date']);
 
@@ -689,7 +689,7 @@ if (!$_POST) {
         // loop through all common regions and input them if they were selected
         foreach ($common_regions as $common_region) {
             // if common region was selected for user to be given access to, give access to common region
-            if ($_POST['common_region_' . $common_region['cregion_id']] == 1) {
+            if (($_POST['common_region_' . $common_region['cregion_id']] ?? '') == 1) {
                 $query =
                     "INSERT INTO users_common_regions_xref (
                         user_id,
@@ -714,7 +714,7 @@ if (!$_POST) {
         // loop through all menus and input them if they were selected
         foreach ($menus as $menu) {
             // if menu was selected for user to be given access to, give access to menu
-            if ($_POST['menu_' . $menu['id']] == 1) {
+            if (($_POST['menu_' . $menu['id']] ?? '') == 1) {
                 $query =
                     "INSERT INTO users_menus_xref (
                         user_id,
@@ -741,7 +741,7 @@ if (!$_POST) {
             // loop through all contact groups
             foreach ($contact_groups as $contact_group) {
                 // if contact group was selected for user to be given access to, give access to user to contact group
-                if ($_POST['contact_group_' . $contact_group['id']] == 1) {
+                if (($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) {
                     $query =
                         "INSERT INTO users_contact_groups_xref (
                             user_id,
@@ -769,7 +769,7 @@ if (!$_POST) {
             // loop through all calendars
             foreach ($calendars as $calendar) {
                 // if calendar was selected for user to be given access to, give access to user to calendar
-                if ($_POST['calendar_' . $calendar['id']] == 1) {
+                if (($_POST['calendar_' . $calendar['id']] ?? '') == 1) {
                     $query =
                         "INSERT INTO users_calendars_xref (
                             user_id,
@@ -797,7 +797,7 @@ if (!$_POST) {
             // loop through all ad regions and input them if they were selected
             foreach ($ad_regions as $ad_region) {
                 // if ad region was selected for user to be given access to, give access to ad region
-                if ($_POST['ad_region_' . $ad_region['id']] == 1) {
+                if (($_POST['ad_region_' . $ad_region['id']] ?? '') == 1) {
                     $query =
                         "INSERT INTO users_ad_regions_xref (
                             user_id,

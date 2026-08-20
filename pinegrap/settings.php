@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -73,10 +73,31 @@ if (!$_POST) {
     $allowed_bots = isset($row['allowed_bots']) ? $row['allowed_bots'] : '';
     $block_unknown_bots = isset($row['block_unknown_bots']) ? (int)$row['block_unknown_bots'] : 1;
 
+    // ── Live chat settings ───────────────────────────────────────────────
+    // The columns arrive with the 2026.4.2/2026.4.3 upgrades; thanks to the
+    // isset guards the screen still opens fine on installs that have not
+    // upgraded.
+    $chat_enabled = isset($row['chat_enabled']) ? (int) $row['chat_enabled'] : 0;
+    $chat_site_enabled = isset($row['chat_site_enabled']) ? (int) $row['chat_site_enabled'] : 0;
+    $chat_operator_user_id = isset($row['chat_operator_user_id']) ? (int) $row['chat_operator_user_id'] : 0;
+    $chat_welcome_message = isset($row['chat_welcome_message']) ? $row['chat_welcome_message'] : '';
+    $chat_offline_email = isset($row['chat_offline_email']) ? (int) $row['chat_offline_email'] : 1;
+    $chat_captcha = isset($row['chat_captcha']) ? (int) $row['chat_captcha'] : 1;
+    $chat_retention_days = isset($row['chat_retention_days']) ? (int) $row['chat_retention_days'] : 60;
+    $chat_widget_theme = isset($row['chat_widget_theme']) ? $row['chat_widget_theme'] : 'auto';
+    $chat_widget_color = isset($row['chat_widget_color']) ? $row['chat_widget_color'] : '#0d6efd';
+    $chat_widget_icon = isset($row['chat_widget_icon']) ? $row['chat_widget_icon'] : 'chat';
+    $chat_widget_title = isset($row['chat_widget_title']) ? $row['chat_widget_title'] : '';
+    $chat_allow_files = isset($row['chat_allow_files']) ? (int) $row['chat_allow_files'] : 0;
+    $chat_allow_images = isset($row['chat_allow_images']) ? (int) $row['chat_allow_images'] : 0;
+    $chat_visitor_image_limit = isset($row['chat_visitor_image_limit']) ? (int) $row['chat_visitor_image_limit'] : 5;
+
     // ── Firewall settings ────────────────────────────────────────────────
     // Every read is guarded: an install that has not run the 2026.2.4 upgrade
     // still renders this screen, it just shows the defaults.
-    $perf_monitor             = isset($row['perf_monitor']) ? (int)$row['perf_monitor'] : 1;
+    $perf_monitor_setting             = isset($row['perf_monitor']) ? (int)$row['perf_monitor'] : 1;
+    $job_dispatch_enabled     = isset($row['job_dispatch_enabled']) ? (int)$row['job_dispatch_enabled'] : 0;
+    $job_dispatch             = isset($row['job_dispatch']) ? (string)$row['job_dispatch'] : '';
     $waf_enabled              = isset($row['waf_enabled']) ? (int)$row['waf_enabled'] : 0;
     $waf_mode                 = isset($row['waf_mode']) ? $row['waf_mode'] : 'monitor';
     $waf_sensitivity          = isset($row['waf_sensitivity']) ? $row['waf_sensitivity'] : 'medium';
@@ -1128,10 +1149,69 @@ if (!$_POST) {
         $visitor_tracking_checked = '';
     }
 
+    // ── Live chat: form fragments ────────────────────────────────────────
+    $chat_enabled_checked = ($chat_enabled == 1) ? ' checked="checked"' : '';
+    $chat_site_enabled_checked = ($chat_site_enabled == 1) ? ' checked="checked"' : '';
+    $chat_offline_email_checked = ($chat_offline_email == 1) ? ' checked="checked"' : '';
+    $chat_captcha_checked = ($chat_captcha == 1) ? ' checked="checked"' : '';
+    $chat_allow_files_checked = ($chat_allow_files == 1) ? ' checked="checked"' : '';
+    $chat_allow_images_checked = ($chat_allow_images == 1) ? ' checked="checked"' : '';
+
+    // Operator list: only staff (role <= 2) can be selected.
+    $output_chat_operator_options = '<option value="0">' . lang('Select') . '</option>';
+
+    $chat_operator_users = db_items("
+        SELECT user.user_id AS id, user.user_username AS username,
+            contacts.first_name AS first_name, contacts.last_name AS last_name
+        FROM user
+        LEFT JOIN contacts ON contacts.id = user.user_contact
+        WHERE user.user_role <= 2
+        ORDER BY user.user_username");
+
+    foreach ($chat_operator_users as $chat_operator_user) {
+        $chat_operator_name = trim($chat_operator_user['first_name'] . ' ' . $chat_operator_user['last_name']);
+
+        if ($chat_operator_name != '') {
+            $chat_operator_name .= ' (' . $chat_operator_user['username'] . ')';
+        } else {
+            $chat_operator_name = $chat_operator_user['username'];
+        }
+
+        $output_chat_operator_options .= '<option value="' . (int) $chat_operator_user['id'] . '"'
+            . (((int) $chat_operator_user['id'] === $chat_operator_user_id) ? ' selected="selected"' : '')
+            . '>' . h($chat_operator_name) . '</option>';
+    }
+
+    $output_chat_retention_options = '';
+
+    foreach (array(7, 15, 30, 60, 90, 180) as $chat_retention_option) {
+        $output_chat_retention_options .= '<option value="' . $chat_retention_option . '"'
+            . (($chat_retention_days == $chat_retention_option) ? ' selected="selected"' : '')
+            . '>' . $chat_retention_option . ' ' . lang('day(s)') . '</option>';
+    }
+
+    $chat_theme_options = array('auto' => lang('Auto'), 'light' => lang('Light'), 'dark' => lang('Dark'));
+    $output_chat_theme_options = '';
+
+    foreach ($chat_theme_options as $chat_theme_value => $chat_theme_label) {
+        $output_chat_theme_options .= '<option value="' . $chat_theme_value . '"'
+            . (($chat_widget_theme == $chat_theme_value) ? ' selected="selected"' : '')
+            . '>' . $chat_theme_label . '</option>';
+    }
+
+    $chat_icon_options = array('chat' => lang('Chat Bubble'), 'support' => lang('Headset'), 'help' => lang('Question Mark'));
+    $output_chat_icon_options = '';
+
+    foreach ($chat_icon_options as $chat_icon_value => $chat_icon_label) {
+        $output_chat_icon_options .= '<option value="' . $chat_icon_value . '"'
+            . (($chat_widget_icon == $chat_icon_value) ? ' selected="selected"' : '')
+            . '>' . $chat_icon_label . '</option>';
+    }
+
     $block_unknown_bots_checked = ($block_unknown_bots == 1) ? ' checked="checked"' : '';
 
     // ── Firewall switches ────────────────────────────────────────────────
-    $perf_monitor_checked           = ($perf_monitor == 1) ? ' checked="checked"' : '';
+    $perf_monitor_checked           = ($perf_monitor_setting == 1) ? ' checked="checked"' : '';
 
     // With monitoring off there is nothing recorded and nothing kept, so the
     // link would open an empty screen. Hiding it is the same rule the rest of
@@ -1139,12 +1219,47 @@ if (!$_POST) {
     // control, because the operator has to click it to find that out.
     $output_performance_log_button = '';
 
-    if ($perf_monitor == 1) {
+    if ($perf_monitor_setting == 1) {
         $output_performance_log_button =
             '<a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Performance Log') . '" href="'
             . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_performance_log.php"><span class="material-icons me-1">speed</span>'
             . lang('Performance Log') . '</a>';
     }
+    $job_dispatch_enabled_checked   = ($job_dispatch_enabled == 1) ? ' checked="checked"' : '';
+
+    // One row per dispatchable job, built from the same catalogue the general
+    // job dispatches from, so a job added there appears here without a second
+    // edit. The cadence in brackets is the interval the dispatcher enforces,
+    // not a suggestion: a job switched on here runs no more often than that
+    // however frequently the general job itself is scheduled.
+    $job_dispatch_selection = array();
+
+    foreach (explode(',', $job_dispatch) as $job_dispatch_name) {
+
+        $job_dispatch_name = trim($job_dispatch_name);
+
+        if ($job_dispatch_name !== '') {
+            $job_dispatch_selection[] = $job_dispatch_name;
+        }
+    }
+
+    $output_job_dispatch_switches = '';
+
+    foreach (pg_cron_jobs() as $job_dispatch_name => $job_dispatch_job) {
+
+        if (!$job_dispatch_job['dispatch']) {
+            continue;
+        }
+
+        $output_job_dispatch_switches .= '
+                                        <div class="col-12 col-md-6 my-1">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . (in_array($job_dispatch_name, $job_dispatch_selection, true) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="job_dispatch_job_' . h($job_dispatch_name) . '" name="job_dispatch_job[' . h($job_dispatch_name) . ']"/>
+                                                <label class="form-check-label" for="job_dispatch_job_' . h($job_dispatch_name) . '">' . h($job_dispatch_job['label']) . ' <span class="text-muted">(' . h(pg_cron_interval_label($job_dispatch_job['interval'])) . ')</span></label>
+                                            </div>
+                                        </div>';
+    }
+
     $waf_enabled_checked            = ($waf_enabled == 1) ? ' checked="checked"' : '';
     $waf_signature_scan_checked     = ($waf_signature_scan == 1) ? ' checked="checked"' : '';
     $waf_rate_limit_checked         = ($waf_rate_limit == 1) ? ' checked="checked"' : '';
@@ -1317,27 +1432,65 @@ if (!$_POST) {
         $advanced_visual_effects_checked = '';
     }
 
-    $output_os_family = PHP_OS_FAMILY;
-    if (PHP_OS_FAMILY === "Linux") {
-        $cron_job_general = '/usr/local/bin/php -q '.dirname(__FILE__) . '/job.php >/dev/null 2>&1';
-        $cron_job_exchange_rates = '/usr/local/bin/php -q '.dirname(__FILE__) . '/update_exchange_rates.php >/dev/null 2>&1';
-        $cron_job_email_campaign = '/usr/local/bin/php -q '.dirname(__FILE__) . '/email_campaign_job.php >/dev/null 2>&1';
-        $cron_job_search_index = '/usr/local/bin/php -q '.dirname(__FILE__) . '/update_search_index.php >/dev/null 2>&1';
-        $cron_job_requrring_payment = '/usr/local/bin/php -q '.dirname(__FILE__) . '/recurring_payment_job.php >/dev/null 2>&1';
-        $cron_job_membership = '/usr/local/bin/php -q '.dirname(__FILE__) . '/membership_job.php >/dev/null 2>&1';
-        $cron_job_auto_backup = '/usr/local/bin/php -q '.dirname(__FILE__) . '/auto_backup.php >/dev/null 2>&1';
-    } elseif (PHP_OS_FAMILY === "Windows") {
+    // PHP_OS_FAMILY only exists as of PHP 7.2, so derive the same value when it is missing.
+    if (defined('PHP_OS_FAMILY')) {
+        $php_os_family = PHP_OS_FAMILY;
+    } else {
+        $php_os_name = strtoupper(PHP_OS);
+
+        if (substr($php_os_name, 0, 3) === 'WIN') {
+            $php_os_family = 'Windows';
+        } elseif ($php_os_name === 'LINUX') {
+            $php_os_family = 'Linux';
+        } elseif ($php_os_name === 'DARWIN') {
+            $php_os_family = 'Darwin';
+        } elseif (strpos($php_os_name, 'BSD') !== false) {
+            $php_os_family = 'BSD';
+        } elseif (($php_os_name === 'SUNOS') || ($php_os_name === 'SOLARIS')) {
+            $php_os_family = 'Solaris';
+        } else {
+            $php_os_family = 'Unknown';
+        }
+    }
+
+    $output_os_family = $php_os_family;
+
+    // Windows takes the php.exe form; every other family - Linux, Darwin,
+    // BSD, Solaris - is unix-like and takes the same command. The earlier
+    // Linux/Windows pair left all of these variables undefined on those other
+    // families, which printed a PHP warning inside each command box.
+    if ($php_os_family === "Windows") {
         $cron_job_general = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\job.php';
         $cron_job_exchange_rates = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\update_exchange_rates.php';
         $cron_job_email_campaign = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\email_campaign_job.php';
         $cron_job_search_index = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\update_search_index.php';
+        $cron_job_seo_score = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\seo_score_job.php';
+        $cron_job_seo_analyze = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\seo_analyze_job.php';
         $cron_job_requrring_payment = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\recurring_payment_job.php';
         $cron_job_membership = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\membership_job.php';
         $cron_job_auto_backup = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\auto_backup.php';
+    } else {
+        $cron_job_general = '/usr/local/bin/php -q '.dirname(__FILE__) . '/job.php >/dev/null 2>&1';
+        $cron_job_exchange_rates = '/usr/local/bin/php -q '.dirname(__FILE__) . '/update_exchange_rates.php >/dev/null 2>&1';
+        $cron_job_email_campaign = '/usr/local/bin/php -q '.dirname(__FILE__) . '/email_campaign_job.php >/dev/null 2>&1';
+        $cron_job_search_index = '/usr/local/bin/php -q '.dirname(__FILE__) . '/update_search_index.php >/dev/null 2>&1';
+        $cron_job_seo_score = '/usr/local/bin/php -q '.dirname(__FILE__) . '/seo_score_job.php >/dev/null 2>&1';
+        $cron_job_seo_analyze = '/usr/local/bin/php -q '.dirname(__FILE__) . '/seo_analyze_job.php >/dev/null 2>&1';
+        $cron_job_requrring_payment = '/usr/local/bin/php -q '.dirname(__FILE__) . '/recurring_payment_job.php >/dev/null 2>&1';
+        $cron_job_membership = '/usr/local/bin/php -q '.dirname(__FILE__) . '/membership_job.php >/dev/null 2>&1';
+        $cron_job_auto_backup = '/usr/local/bin/php -q '.dirname(__FILE__) . '/auto_backup.php >/dev/null 2>&1';
     }
     $output_warnings_for_auto_backup = '';
     if (!extension_loaded('pdo_mysql') ) {
         $output_warnings_for_auto_backup = '<div class="alert alert-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.') . '</div>';
+    }
+
+    // The structure pass parses rendered markup with DOMDocument. Without the
+    // extension the job records its run and exits, so the operator would see
+    // a scheduled task that reports healthy and analyzes nothing.
+    $output_warnings_for_seo_analyze = '';
+    if (!class_exists('DOMDocument')) {
+        $output_warnings_for_seo_analyze = '<div class="alert alert-warning">' . lang('The PHP DOM extension is not enabled. Please enable it for the SEO structure analysis job.') . '</div>';
     }
     //localhost default ip.
     $server_addr = '127.0.0.1';
@@ -1394,18 +1547,13 @@ if (!$_POST) {
                         </nav>
                     </div>
                     <div class="col-auto text-center">
-                        <div id="system_status_bar" class="d-flex justify-content-center  border rounded-pill border-secondary bg-dark-subtle px-3 py-2 m-2">
-                            <span class="placeholder-glow d-flex align-items-center gap-2">
-                                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                                <span class="vr mx-1"></span>
-                                <span class="placeholder rounded" style="width:2.5rem;height:1rem;"></span>
-                            </span>
-                        </div>
+                        <!--
+                            The status pill that used to sit here is now the
+                            card beside General, below. The popover binding
+                            stays, because the tiles in that card use it, and it
+                            is delegated from document so it covers markup that
+                            arrives after this script runs.
+                        -->
                         <script>
                             var statuspopover = new bootstrap.Popover(document.body, {
                               selector: \'.status-popover\',
@@ -1426,6 +1574,9 @@ if (!$_POST) {
                                     <div class="col-12">
                                         <div class="alert alert-success form-text" role="alert">
                                             ' . lang('There are several optional Pinegrap programs or "jobs" which can be scheduled to run automatically on your web server. The setup of these jobs (commonly referred to as "scheduled tasks" or "cron jobs") is optional depending on which Pinegrap features that are going to be used.') . '
+                                        </div>
+                                        <div class="alert alert-secondary form-text" role="alert">
+                                            ' . lang('You do not have to schedule every one of them separately. Turn on "Run Cron Jobs Automatically" further down this page and the general job runs the ones you select, one per turn - then the general job is the only one that needs a scheduled task of its own.') . '
                                         </div>
                                     </div>
                                     <div class="col-12 my-3">
@@ -1455,6 +1606,22 @@ if (!$_POST) {
                                         <p>' . lang('The update search index job is an alternative to clicking the Update Search Index button on the Pages tab. It does the spidering of your website and updates the search index with any new or changed content it finds. Since this is an intensive script that may slow down your site while it runs, you should not run it more than once an hour at the most. Less frequently is even better.') . '</p>
                                         <textarea id="cron_job_search_index">' . $cron_job_search_index . '</textarea>
                                         ' . get_codemirror_javascript(array('id' => 'cron_job_search_index', 'code_type' => 'plain','readonly'=>true )) . '
+                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                    </div>
+                                    <div class="col-12 my-3">
+                                        <h5>' . lang('SEO Score Jobs') . '</h5>
+                                        <p>' . lang('The SEO score job recalculates the SEO score of every page, product and product group. It only reads database columns, so it is quick, but it has to cover the whole site because the duplicate title and duplicate description checks depend on every other record. Schedule it before the SEO structure analysis job.') . '</p>
+                                        <textarea id="cron_job_seo_score">' . $cron_job_seo_score . '</textarea>
+                                        ' . get_codemirror_javascript(array('id' => 'cron_job_seo_score', 'code_type' => 'plain','readonly'=>true )) . '
+                                        <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
+                                    </div>
+                                    <div class="col-12 my-3">
+                                        <h5>' . lang('SEO Structure Analysis Jobs') . '</h5>
+                                        ' . $output_warnings_for_seo_analyze . '
+                                        <p>' . lang('The SEO structure analysis job renders each page in the background and examines the resulting HTML: heading order, image alt text, internal links and orphan pages. This is the expensive half of the SEO score, so it works within a time budget and may need several runs to get through a large site for the first time.') . '</p>
+                                        <div class="alert alert-secondary">' . lang('NOTE: Schedule this job to run after the SEO score job, because a catalog page is scored from the products it lists.') . '</div>
+                                        <textarea id="cron_job_seo_analyze">' . $cron_job_seo_analyze . '</textarea>
+                                        ' . get_codemirror_javascript(array('id' => 'cron_job_seo_analyze', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
                                     </div>
                                     <div class="col-12 my-3">
@@ -1501,7 +1668,31 @@ if (!$_POST) {
                     <input id="fake_password" name="fake_password[name]" style="position:absolute; top:-100px;" type="password" value="No Autofill for Site Settings">
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12">
+                        <!--
+                            Widget 2 rendered as a plain card: no widget-id, so
+                            nothing here drags, sorts or polls it. The dashboard
+                            owns that behaviour; this screen only wants the
+                            output. It is filled once on load from the same
+                            endpoint the dashboard uses, so there is one
+                            renderer and one set of checks.
+                        -->
+                        <div class="col-12 col-lg-4 col-xxl-3">
+                            <div class="card my-4" id="system_status_card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <i class="bi bi-activity me-2"></i>' . lang('System Status') . '
+                                </div>
+                                <div class="card-body card-body-placeholder placeholder-glow">
+                                    <div class="pg-health">
+                                        <span class="placeholder rounded d-block mx-auto" style="width:170px;height:80px"></span>
+                                        <span class="placeholder rounded d-block mx-auto mt-2" style="width:70px;height:12px"></span>
+                                    </div>
+                                    <div class="pg-health-grid">
+                                        ' . str_repeat('<span class="placeholder rounded" style="height:32px"></span>', 15) . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-8 col-xxl-9">
                             <div class="card my-4">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                                     ' . lang('General') . '
@@ -2281,6 +2472,88 @@ if (!$_POST) {
                                                                     <div class="col-12 my-1">
                                                                         <label for="google_analytics_web_property_id" class="form-label">' . lang('Web Property ID') . '</label>
                                                                         <input type="text" name="google_analytics_web_property_id" id="google_analytics_web_property_id" class="form-control" value="' . $google_analytics_web_property_id. '" maxlength="50"/>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 my-1">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $chat_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="chat_enabled" name="chat_enabled" data-bs-target="#live_chat_row"/>
+                                                <label class="form-check-label" for="chat_enabled">' . lang('Enable Live Chat') . '</label>
+                                            </div>
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="live_chat_row">
+                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
+                                                <div class="popover-body">
+                                                    <div class="row">
+                                                        <div class="col-12 col-sm-6 my-1">
+                                                            <label for="chat_operator_user_id" class="form-label">' . lang('Site Chat Operator') . '</label>
+                                                            <select name="chat_operator_user_id" id="chat_operator_user_id" class="form-select">' . $output_chat_operator_options . '</select>
+                                                        </div>
+                                                        <div class="col-12 col-sm-6 my-1">
+                                                            <label for="chat_retention_days" class="form-label">' . lang('Chat Retention Period') . '</label>
+                                                            <select name="chat_retention_days" id="chat_retention_days" class="form-select">' . $output_chat_retention_options . '</select>
+                                                        </div>
+                                                        <div class="col-12 my-1">
+                                                            <div class="form-check form-switch">
+                                                                <input value="1"' . $chat_site_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="chat_site_enabled" name="chat_site_enabled" data-bs-target="#live_chat_site_row"/>
+                                                                <label class="form-check-label" for="chat_site_enabled">' . lang('Enable Site Chat Bubble') . '</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="live_chat_site_row">
+                                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
+                                                            <div class="popover-body">
+                                                                <div class="row">
+                                                                    <div class="col-12 my-1">
+                                                                        <label for="chat_widget_title" class="form-label">' . lang('Chat Widget Label') . '</label>
+                                                                        <input type="text" name="chat_widget_title" id="chat_widget_title" class="form-control" value="' . h($chat_widget_title) . '" maxlength="100" placeholder="' . h(lang('Live Support')) . '" />
+                                                                    </div>
+                                                                    <div class="col-12 my-1">
+                                                                        <label for="chat_welcome_message" class="form-label">' . lang('Chat Welcome Message') . '</label>
+                                                                        <input type="text" name="chat_welcome_message" id="chat_welcome_message" class="form-control" value="' . h($chat_welcome_message) . '" maxlength="500" />
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-4 my-1">
+                                                                        <label for="chat_widget_theme" class="form-label">' . lang('Widget Theme') . '</label>
+                                                                        <select name="chat_widget_theme" id="chat_widget_theme" class="form-select">' . $output_chat_theme_options . '</select>
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-4 my-1">
+                                                                        <label for="chat_widget_color" class="form-label">' . lang('Widget Color') . '</label>
+                                                                        <input type="color" name="chat_widget_color" id="chat_widget_color" class="form-control form-control-color w-100" value="' . h($chat_widget_color) . '" />
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-4 my-1">
+                                                                        <label for="chat_widget_icon" class="form-label">' . lang('Widget Icon') . '</label>
+                                                                        <select name="chat_widget_icon" id="chat_widget_icon" class="form-select">' . $output_chat_icon_options . '</select>
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-6 my-1">
+                                                                        <div class="form-check form-switch">
+                                                                            <input value="1"' . $chat_allow_images_checked . ' class="form-check-input" type="checkbox" id="chat_allow_images" name="chat_allow_images"/>
+                                                                            <label class="form-check-label" for="chat_allow_images">' . lang('Allow image attachments') . '</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-6 my-1">
+                                                                        <div class="form-check form-switch">
+                                                                            <input value="1"' . $chat_allow_files_checked . ' class="form-check-input" type="checkbox" id="chat_allow_files" name="chat_allow_files"/>
+                                                                            <label class="form-check-label" for="chat_allow_files">' . lang('Allow file attachments') . '</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-12 col-sm-6 my-1">
+                                                                        <label for="chat_visitor_image_limit" class="form-label">' . lang('Visitor Image Limit') . '</label>
+                                                                        <input type="number" name="chat_visitor_image_limit" id="chat_visitor_image_limit" class="form-control" value="' . (int) $chat_visitor_image_limit . '" min="1" max="20" />
+                                                                    </div>
+                                                                    <div class="col-12 my-1">
+                                                                        <div class="form-check form-switch">
+                                                                            <input value="1"' . $chat_captcha_checked . ' class="form-check-input" type="checkbox" id="chat_captcha" name="chat_captcha"/>
+                                                                            <label class="form-check-label" for="chat_captcha">' . lang('Require puzzle captcha for visitors') . '</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-12 my-1">
+                                                                        <div class="form-check form-switch">
+                                                                            <input value="1"' . $chat_offline_email_checked . ' class="form-check-input" type="checkbox" id="chat_offline_email" name="chat_offline_email"/>
+                                                                            <label class="form-check-label" for="chat_offline_email">' . lang('Email the operator when a message arrives while offline') . '</label>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -3073,6 +3346,52 @@ if (!$_POST) {
                         <div class="col-12">
                             <div class="card my-4">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('Cron Jobs') . ' (' . $output_os_family . ')
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12 my-2">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $job_dispatch_enabled_checked . ' class="form-check-input" type="checkbox" id="job_dispatch_enabled" name="job_dispatch_enabled"/>
+                                                <label class="form-check-label" for="job_dispatch_enabled">' . lang('Run Cron Jobs Automatically') . '<br/><span class="form-text">' . lang('The jobs selected below run together with the general job instead of needing a scheduled task of their own. One job per turn, the one waiting longest first, so a single turn never takes longer than one job. Leaving a job\'s own scheduled task in place is safe: every job records when it last finished, whoever started it, so one that is already running on its own schedule is never started a second time from here.') . '</span></label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12" id="job_dispatch_jobs">
+                                            <div class="row">
+                                                <div class="col-12 mb-2">
+                                                    <div class="alert alert-secondary mb-2">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
+                                                    <textarea id="cron_job_general_dispatch">' . $cron_job_general . '</textarea>
+                                                    ' . get_codemirror_javascript(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
+                                                    <div class="form-text text-end">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
+                                                </div>' . $output_job_dispatch_switches . '
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            (function () {
+                                var master = document.getElementById("job_dispatch_enabled");
+                                var list = document.getElementById("job_dispatch_jobs");
+
+                                if (!master || !list) {
+                                    return;
+                                }
+
+                                // The selection stays posted while hidden on purpose: switching
+                                // the master off and saving must not clear what was chosen.
+                                function sync() {
+                                    list.style.display = master.checked ? "" : "none";
+                                }
+
+                                master.addEventListener("change", sync);
+                                sync();
+                            })();
+                        </script>
+                        <div class="col-12">
+                            <div class="card my-4">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                                     ' . lang('Theme') . '
                                 </div>
                                 <div class="card-body">
@@ -3173,12 +3492,17 @@ if (!$_POST) {
                 data: JSON.stringify({
                     action: "get_widget_data",
                     token: software_token,
-                    widget_id: "system_status"
+                    widget_id: "2"
                 }),
                 type: "POST",
                 success: function(response) {
                     if(response.status == "success"){
-                        $("#system_status_bar").html(response.data);
+                        // Same swap the dashboard does: the endpoint returns a
+                        // whole card body, so the placeholder body is replaced
+                        // rather than filled.
+                        var $card = $("#system_status_card");
+                        $card.find(".card-body-placeholder,.card-body").remove();
+                        $card.append(response.data);
                     }
                 }
             });
@@ -3313,7 +3637,7 @@ if (!$_POST) {
 
     $software_language = $row['software_language'];
     if($software_language != NULL){
-        $sql_software_language ="software_language = '" . escape($_POST['software_language']) . "',";
+        $sql_software_language ="software_language = '" . escape($_POST['software_language'] ?? '') . "',";
     }
    
     //prepare subscription_key for write to db
@@ -3510,6 +3834,115 @@ if (!$_POST) {
              waf_log_max_rows = " . $waf_post_max_rows . ",";
     }
 
+    // ── Live chat settings ───────────────────────────────────────────────
+    // Same pattern as the WAF fragment: on installs that have not run the
+    // upgrade the fragment stays empty and saving does not crash on an
+    // unknown column. The appearance columns (2026.4.3) have their own
+    // guard.
+    // ── Scheduled job dispatch ───────────────────────────────────────────
+    // Same fragment pattern: an install that has not run the 2026.4.17 upgrade
+    // saves nothing here instead of failing the whole screen on an unknown
+    // column.
+    $sql_job_dispatch_settings = '';
+
+    if (function_exists('waf_table_has_column')
+        && waf_table_has_column('config', 'job_dispatch_enabled')
+    ) {
+        $job_dispatch_posted = post_value('job_dispatch_job');
+
+        if (!is_array($job_dispatch_posted)) {
+            $job_dispatch_posted = array();
+        }
+
+        // Filtered against the catalogue rather than stored as posted. The
+        // dispatcher turns these names into file paths, so nothing that is not
+        // a job this software ships may reach the column.
+        $job_dispatch_selected = array();
+
+        foreach (pg_cron_jobs() as $job_dispatch_name => $job_dispatch_job) {
+
+            if (!$job_dispatch_job['dispatch']) {
+                continue;
+            }
+
+            if (isset($job_dispatch_posted[$job_dispatch_name])) {
+                $job_dispatch_selected[] = $job_dispatch_name;
+            }
+        }
+
+        $sql_job_dispatch_settings =
+            "job_dispatch_enabled = '" . escape(post_value('job_dispatch_enabled') ? 1 : 0) . "',
+             job_dispatch = '" . escape(implode(',', $job_dispatch_selected)) . "',";
+    }
+
+    $sql_chat_settings = '';
+
+    if (function_exists('waf_table_has_column')
+        && waf_table_has_column('config', 'chat_enabled')
+    ) {
+        $chat_post_retention = (int) post_value('chat_retention_days');
+
+        if (!in_array($chat_post_retention, array(7, 15, 30, 60, 90, 180), true)) {
+            $chat_post_retention = 60;
+        }
+
+        $sql_chat_settings =
+            "chat_enabled = '" . escape(post_value('chat_enabled') ? 1 : 0) . "',
+             chat_site_enabled = '" . escape(post_value('chat_site_enabled') ? 1 : 0) . "',
+             chat_operator_user_id = '" . escape((int) post_value('chat_operator_user_id')) . "',
+             chat_welcome_message = '" . escape(mb_substr((string) post_value('chat_welcome_message'), 0, 500)) . "',
+             chat_offline_email = '" . escape(post_value('chat_offline_email') ? 1 : 0) . "',
+             chat_captcha = '" . escape(post_value('chat_captcha') ? 1 : 0) . "',
+             chat_retention_days = " . $chat_post_retention . ",";
+
+        if (waf_table_has_column('config', 'chat_widget_theme')) {
+            $chat_post_theme = post_value('chat_widget_theme');
+
+            if (!in_array($chat_post_theme, array('auto', 'light', 'dark'), true)) {
+                $chat_post_theme = 'auto';
+            }
+
+            $chat_post_color = (string) post_value('chat_widget_color');
+
+            if (!preg_match('/^#[0-9a-fA-F]{6}$/', $chat_post_color)) {
+                $chat_post_color = '#0d6efd';
+            }
+
+            $chat_post_icon = post_value('chat_widget_icon');
+
+            if (!in_array($chat_post_icon, array('chat', 'support', 'help'), true)) {
+                $chat_post_icon = 'chat';
+            }
+
+            $sql_chat_settings .=
+                "chat_widget_theme = '" . escape($chat_post_theme) . "',
+                 chat_widget_color = '" . escape($chat_post_color) . "',
+                 chat_widget_icon = '" . escape($chat_post_icon) . "',";
+        }
+
+        // Attachment permissions arrive with 2026.4.4; separate guard.
+        if (waf_table_has_column('config', 'chat_allow_files')) {
+            $sql_chat_settings .=
+                "chat_allow_files = '" . escape(post_value('chat_allow_files') ? 1 : 0) . "',
+                 chat_allow_images = '" . escape(post_value('chat_allow_images') ? 1 : 0) . "',";
+        }
+
+        // The visitor image limit arrives with 2026.4.5; clamped to 1-20.
+        if (waf_table_has_column('config', 'chat_visitor_image_limit')) {
+            $chat_post_image_limit = max(1, min(20, (int) post_value('chat_visitor_image_limit')));
+
+            $sql_chat_settings .=
+                "chat_visitor_image_limit = " . $chat_post_image_limit . ",";
+        }
+
+        // The widget label arrives with 2026.4.6; empty = language file
+        // default.
+        if (waf_table_has_column('config', 'chat_widget_title')) {
+            $sql_chat_settings .=
+                "chat_widget_title = '" . escape(mb_substr(trim((string) post_value('chat_widget_title')), 0, 100)) . "',";
+        }
+    }
+
     $query =
         "UPDATE config
         SET
@@ -3558,6 +3991,8 @@ if (!$_POST) {
             allowed_bots = '" . escape(trim(post_value('allowed_bots'))) . "',
             block_unknown_bots = '" . escape(post_value('block_unknown_bots')) . "',
             " . $sql_waf_settings . "
+            " . $sql_chat_settings . "
+            " . $sql_job_dispatch_settings . "
             tracking_code_duration = '" . e(post_value('tracking_code_duration')) . "',
             pay_per_click_flag = '" . escape(post_value('pay_per_click_flag')) . "',
             stats_url = '" . escape(post_value('stats_url')) . "',

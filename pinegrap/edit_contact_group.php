@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -161,33 +161,33 @@ if (!$_POST) {
     validate_token_field();
     
     // if contact group was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // if there are no contacts in this contact group, proceed with deleting contact group
         if ($number_of_contacts == 0) {
             // get contact group name for log
-            $query = "SELECT name FROM contact_groups WHERE id = '" . escape($_POST['id']) . "'";
+            $query = "SELECT name FROM contact_groups WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $contact_group_name = $row['name'];
             
             // delete contact group
-            $query = "DELETE FROM contact_groups WHERE id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM contact_groups WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete contact group references in contacts_contact_groups_xref
-            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete contact group references in users_contact_groups_xref
-            $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete contact group references in opt_in
-            $query = "DELETE FROM opt_in WHERE contact_group_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM opt_in WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete contact group references in contact_groups_email_campaigns_xref
-            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             log_activity(lang(array('string'=>'contact group ({var:1}) was deleted','vars'=>$contact_group_name)), $_SESSION['sessionusername']);
@@ -226,7 +226,7 @@ if (!$_POST) {
             FROM contact_groups
             WHERE
                 (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($_POST['id']) . "')";
+                AND (id != '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if name is already in use by a different contact group, prepare error and forward user back to screen
@@ -247,7 +247,7 @@ if (!$_POST) {
                 description = '" . escape($liveform->get_field_value('description')) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();

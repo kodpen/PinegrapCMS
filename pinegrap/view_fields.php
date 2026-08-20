@@ -12,11 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 
 $user = validate_user();
 
@@ -172,7 +175,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         $output_office_use_only_table_heading = '<th class="text-center">' . lang('Office Use Only') . '</th>';
         $delete_data_warning = lang(' and ALL SUBMITTED FORM DATA for the selected field(s)');
     }
-    $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript($_GET['send_to'])) . '\'';
+    $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(($_GET['send_to'] ?? ''))) . '\'';
     $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
 // else if there is a product_id supplied in the query string, this is a product form
@@ -296,6 +299,12 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-2"></span>' . lang('Delete Selected') . '</button>';
 
     $output_product_id_to_url = '&product_group_id=' . h(escape_javascript(urlencode($_GET['product_group_id'])));
+
+// else no form context (page_id, form_id, product_id or product_group_id) was supplied in the
+// query string, so there is nothing to list.  Without this branch $form_type_filter stayed
+// undefined and was interpolated into the WHERE clause, which produced a fatal SQL error.
+} else {
+    output_error(lang('Sorry, the page could not be found.'), 404);
 }
 
 // get fields
@@ -343,7 +352,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $username = $row['username'];
     $timestamp = $row['timestamp'];
     
-    $output_link_url = 'edit_field.php?id=' . $id . $output_product_id_to_url . '&send_to=' . h(escape_javascript(urlencode($_GET['send_to'])));
+    $output_link_url = 'edit_field.php?id=' . $id . $output_product_id_to_url . '&send_to=' . h(escape_javascript(urlencode(($_GET['send_to'] ?? ''))));
     
     // if this is a custom form
     if ($form_type == 'custom') {
@@ -394,7 +403,7 @@ pg_page_shell(array(
 <h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
                     ' . $output_form_designer_subnav_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode($_GET['send_to'])) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $output_layout_buttons . '
                         ' . $output_preview_button . '
                     </nav>
@@ -404,7 +413,7 @@ pg_page_shell(array(
                 <div class="card-body p-0 position-relative">
                     <form name="form"  action="delete_fields.php" method="post"  class="disable_shortcut"> 
                         ' . get_token_field() . '
-                        <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '">
+                        <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
                         <input type="hidden" name="' . h($form_type_identifier_id) . '" id="' . h($form_type_identifier_id) . '" value="' . h($_GET[$form_type_identifier_id]) . '">
                         <input type="hidden" name="form_type" value="' . $form_type . '">
                         <table class="chart table-hover table " style="width:100%;display:none">

@@ -12,11 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 
 $user = validate_user();
 validate_contacts_access($user);
@@ -33,7 +36,7 @@ if (isset($_GET['id'])) {
     $_SESSION['software']['ecommerce']['view_orders_for_contact']['id'] = $_GET['id'];
 }
 
-$id = $_SESSION['software']['ecommerce']['view_orders_for_contact']['id'];
+$id = ($_SESSION['software']['ecommerce']['view_orders_for_contact']['id'] ?? '');
 
 // if sort was set, update session
 if (isset($_REQUEST['sort'])) {
@@ -50,7 +53,8 @@ if (isset($_REQUEST['order'])) {
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -69,7 +73,13 @@ $row = mysqli_fetch_assoc($result);
 $first_name = $row['first_name'];
 $last_name = $row['last_name'];
 
-switch ($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_orders_for_contact']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort'] ?? '')) {
     case lang('Order Number'):
         $sort_column = 'order_number';
         break;
@@ -82,8 +92,8 @@ switch ($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort']) {
     default:
         $sort_column = 'order_date';
 }
-if ($_SESSION['software']['ecommerce']['view_orders_for_contact']['order']) {
-    $asc_desc = $_SESSION['software']['ecommerce']['view_orders_for_contact']['order'];
+if (!empty($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'])) {
+    $asc_desc = ($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] ?? '');
 } else {
     $asc_desc = 'desc';
 }

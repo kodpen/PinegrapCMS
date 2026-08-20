@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -104,12 +104,12 @@ switch ($_GET['action']) {
     case 'logout':
         // Remember kiosk properties before we clear session, so we can re-init session
         // with those values after we are done clearing the session.
-        $url = $_SESSION['software']['kiosk']['url'];
-        $inactivity_time = $_SESSION['software']['kiosk']['inactivity_time'];
-        $dialog_time = $_SESSION['software']['kiosk']['dialog_time'];
-        $dialog_message = $_SESSION['software']['kiosk']['dialog_message'];
-        $continue_button_label = $_SESSION['software']['kiosk']['continue_button_label'];
-        $logout_button_label = $_SESSION['software']['kiosk']['logout_button_label'];
+        $url = ($_SESSION['software']['kiosk']['url'] ?? '');
+        $inactivity_time = ($_SESSION['software']['kiosk']['inactivity_time'] ?? '');
+        $dialog_time = ($_SESSION['software']['kiosk']['dialog_time'] ?? '');
+        $dialog_message = ($_SESSION['software']['kiosk']['dialog_message'] ?? '');
+        $continue_button_label = ($_SESSION['software']['kiosk']['continue_button_label'] ?? '');
+        $logout_button_label = ($_SESSION['software']['kiosk']['logout_button_label'] ?? '');
 
         // If kiosk user is logged into a user account, then logout from that user account.
         if ($_SESSION['sessionusername'] != '') {

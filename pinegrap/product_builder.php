@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -43,6 +43,9 @@ if (defined('PG_PRODUCT_BUILDER')) {
     return;
 }
 define('PG_PRODUCT_BUILDER', TRUE);
+
+require_once(dirname(__FILE__) . '/seo.php');
+require_once(dirname(__FILE__) . '/seo_structure.php');
 
 
 /* ------------------------------------------------------------------ *
@@ -1747,6 +1750,19 @@ function pg_pb_delete_product($product_id)
     }
 
     db("DELETE FROM products WHERE id = '$product_id'");
+
+    // Stored SEO structure findings. Guarded on the table existing, because
+    // a product can be deleted on an installation that has not run the
+    // upgrade that creates it.
+    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+        db("DELETE FROM seo_issue WHERE (entity_type = 'product') AND (entity_id = '$product_id')");
+    }
+
+    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+        db("DELETE FROM seo_link WHERE (from_type = 'product') AND (from_id = '$product_id')");
+        db("DELETE FROM seo_link WHERE (to_type = 'product') AND (to_id = '$product_id')");
+    }
+
     db("DELETE FROM products_groups_xref WHERE product = '$product_id'");
     db("DELETE FROM products_zones_xref WHERE product_id = '$product_id'");
     db("DELETE FROM products_images_xref WHERE product = '$product_id'");
@@ -1839,6 +1855,18 @@ function pg_pb_delete_variant_set($group_id, $delete_products = TRUE)
     }
 
     db("DELETE FROM product_groups WHERE id = '$group_id'");
+
+    // Stored SEO structure findings, guarded the same way as the product
+    // path above.
+    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+        db("DELETE FROM seo_issue WHERE (entity_type = 'product_group') AND (entity_id = '$group_id')");
+    }
+
+    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+        db("DELETE FROM seo_link WHERE (from_type = 'product_group') AND (from_id = '$group_id')");
+        db("DELETE FROM seo_link WHERE (to_type = 'product_group') AND (to_id = '$group_id')");
+    }
+
     db("DELETE FROM products_groups_xref WHERE product_group = '$group_id'");
     db("DELETE FROM product_groups_images_xref WHERE product_group = '$group_id'");
     db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '$group_id'");
@@ -2166,7 +2194,7 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
  * pressing Enter in one of these inputs submits the product form, and if this
  * markup ever grows its own <form> the HTML parser drops the inner one
  * outright — which is exactly why the per-row cancel button in view_orders.php
- * did nothing for months (CLAUDE.md, "Sipariş İptal — Tek Akış + Onarım").
+ * did nothing for months.
  *
  * Every button here is type="button"; the save goes through fetch().
  *
@@ -2830,11 +2858,11 @@ function pg_pb_variant_sets_screen()
     }
 
     $filter_status = isset($_SESSION['software']['ecommerce']['view_products2']['status'])
-        ? $_SESSION['software']['ecommerce']['view_products2']['status']
+        ? ($_SESSION['software']['ecommerce']['view_products2']['status'] ?? '')
         : '';
 
     $filter_parent = isset($_SESSION['software']['ecommerce']['view_products2']['parent'])
-        ? (int) $_SESSION['software']['ecommerce']['view_products2']['parent']
+        ? (int) ($_SESSION['software']['ecommerce']['view_products2']['parent'] ?? '')
         : 0;
 
     $where = "product_groups.display_type = 'select'";
@@ -3053,7 +3081,6 @@ function pg_pb_variant_sets_screen()
         // through it. No row ever gets a form element of its own: HTML forbids
         // nested forms and the parser drops the inner one outright, which is how the
         // per-row cancel button in view_orders.php came to do nothing for months
-        // (CLAUDE.md, "Sipariş İptal — Tek Akış + Onarım").
         //
         // The bulk bar is rendered with the table rather than always: a permanently
         // disabled row of buttons under an empty screen is furniture.
@@ -3259,6 +3286,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 {
     global $user, $liveform;
 
+    // NOTE: $output_gift_card_variables is never assigned anywhere, so the gift card variable
+    // chips below render empty.  Starting it empty keeps that and stops the warning.
+    $output_gift_card_variables = '';
+
     $pg_mode       = isset($context['mode']) ? $context['mode'] : 'create';
     $pg_product_id = isset($context['product_id']) ? (int) $context['product_id'] : 0;
 
@@ -3284,6 +3315,34 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $v = function ($key, $default = '') use ($values) {
         return isset($values[$key]) ? $values[$key] : $default;
     };
+
+    // Saved-score panel for the SEO card. Edit mode only: a record that is
+    // still being created has nothing computed to show.
+    $output_seo_badge = '';
+    $output_seo_checklist = '';
+
+    if ($pg_mode === 'edit') {
+        // The caller passes the id explicitly; the loaded row carries it too,
+        // and either is enough to look the structure findings up.
+        $seo_record_id = (int) (isset($context['product_id']) ? $context['product_id'] : $v('id', 0));
+
+        // seo_checked_at as well: pg_seo_row_scored() asks it first, and this
+        // screen marks the record stale on every save, so without it the panel
+        // would claim the score had never been calculated each time.
+        $seo_row = array(
+            'seo_score' => $v('seo_score', 0),
+            'seo_flags' => $v('seo_flags', 0),
+            'seo_checked_at' => $v('seo_checked_at', 0),
+            'seo_analysis' => $v('seo_analysis'),
+            'seo_analysis_current' => $v('seo_analysis_current', 0),
+        );
+
+        $output_seo_badge = '<span class="ms-auto">' . pg_seo_render_badge($seo_row) . '</span>';
+        $output_seo_checklist = '
+                                    <div class="col-12">
+                                        ' . pg_seo_render_checklist($seo_row, 'product', $seo_record_id) . '
+                                    </div>';
+    }
 
     // The submit-form block, moved from edit_product.php (:1368-1453). It keeps
     // the ids the JavaScript in backend.src.js hooks — the field pickers, the
@@ -4355,6 +4414,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-search text-primary"></i>
                                 <span class="h5 mb-0 text-primary fw-bold">' . lang('Site Search & SEO') . '</span>
+                                ' . $output_seo_badge . '
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -4388,6 +4448,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255">' . h($v('meta_description')) . '</textarea>
                                         <div id="seo_c_meta_description"></div>
                                     </div>
+                                    ' . $output_seo_checklist . '
 
                                 </div>
                             </div>
@@ -5032,8 +5093,8 @@ function pg_pb_load_product($product_id)
         "SELECT COUNT(*) FROM form_fields
         WHERE product_id = '" . e($product_id) . "' AND form_type = 'product'");
 
-    // Which variant this product is, if it is one. Read-only on this screen —
-    // see CLAUDE.md, "Ürün Düzenleme ve Set Düzenleme Ayrı Ekranlardır".
+    // Which variant this product is, if it is one. Read-only on this screen:
+    // editing a product and editing a variant set are separate screens.
     $row['pg_pb_variant_of'] = pg_pb_variant_group_id($product_id);
 
     return $row;
@@ -5108,6 +5169,10 @@ function pg_pb_update_product($product_id)
     // Last modified. Reports and the "recently changed" ordering read it, so a
     // save that leaves it alone makes the product look untouched.
     $product['timestamp'] = time();
+
+    // Everything this screen manages feeds the SEO score, so the stored
+    // analysis is stale after any save from here.
+    $product['seo_analysis_current'] = 0;
 
     pg_pb_update_row('products', $product, 'id', $product_id);
 

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -40,9 +40,6 @@ $file_list = array(
     'backend.src.js',
     'clean_up_software_trashs.php',
     'clean_up_software_trash.php',
-    // Variant wizard, replaced by add_product.php. Listed here so that sites
-    // upgrading from an older release do not keep a reachable copy of a screen
-    // that no longer exists in the software.
     'add_product_variants.php',
     'assets/add_product_variants.js',
     'pinegrap.php',
@@ -56,6 +53,7 @@ $file_list = array(
     'data/temp/hash_reference.json',
     'assets/images/dashboard_bg_l.jpg',
     'assets/images/dashboard_bg_d.jpg',
+    'JSON.php',
 );
 
 

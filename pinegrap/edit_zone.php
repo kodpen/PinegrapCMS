@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -241,26 +241,26 @@ if (!$_POST) {
     
     // delete zone references in zones_countries_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
     $query = "DELETE FROM zones_countries_xref ".
-             "WHERE zone_id = '" . escape($_POST['id']) . "'";
+             "WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // delete zone references in zones_states_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
     $query = "DELETE FROM zones_states_xref ".
-             "WHERE zone_id = '" . escape($_POST['id']) . "'";
+             "WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // if zone was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete zone
-        $query = "DELETE FROM zones WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM zones WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // delete zone references in shipping_methods_zones_xref
-        $query = "DELETE FROM shipping_methods_zones_xref WHERE zone_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM shipping_methods_zones_xref WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete zone references in products_zones_xref
-        $query = "DELETE FROM products_zones_xref WHERE zone_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM products_zones_xref WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping zone ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
@@ -285,14 +285,14 @@ if (!$_POST) {
 
         // update zone
         $query = "UPDATE zones SET
-                    name = '" . escape($_POST['name']) . "',
+                    name = '" . escape($_POST['name'] ?? '') . "',
                     base_rate = '" . escape($base_rate) . "',
                     primary_weight_rate = '" . escape($primary_weight_rate) . "',
                     secondary_weight_rate = '" . escape($secondary_weight_rate) . "',
                     item_rate = '" . escape($item_rate) . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // load all allowed countries in array by exploding string that has allowed country ids separated by commas
@@ -302,7 +302,7 @@ if (!$_POST) {
         foreach ($allowed_countries as $country_id) {
             // if country id is not blank, insert row
             if ($country_id) {
-                $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES ('" . escape($_POST['id']) . "', '" . escape($country_id) . "')";
+                $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($country_id) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }
@@ -314,7 +314,7 @@ if (!$_POST) {
         foreach ($allowed_states as $state_id) {
             // if state id is not blank, insert row
             if ($state_id) {
-                $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES ('" . escape($_POST['id']) . "', '" . escape($state_id) . "')";
+                $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($state_id) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }

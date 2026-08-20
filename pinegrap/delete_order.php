@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -51,7 +51,7 @@ function delete_order($request) {
             AND (email_campaigns.order_id = '" . e($order['id']) . "')");
 
     // If the order that is being deleted is the active order then remove active order from session
-    if ($order['id'] == $_SESSION['ecommerce']['order_id']) {
+    if ($order['id'] == ($_SESSION['ecommerce']['order_id'] ?? '')) {
         unset($_SESSION['ecommerce']['order_id']);
     }
 

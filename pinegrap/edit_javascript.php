@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -99,7 +99,7 @@ if (!$_POST) {
     validate_token_field();
     
     // if save new copy was selected, then save a new copy of the file
-    if ($_POST['submit_duplicate'] == 'Duplicate') {
+    if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
         $new_file_name = prepare_file_name($_POST['name']);
 
         $new_file_name = get_unique_name(array(
@@ -127,7 +127,7 @@ if (!$_POST) {
                 folder,
                 description
             FROM files
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
@@ -181,13 +181,13 @@ if (!$_POST) {
                 size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $_POST['name'])) . "',
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // log the change that the file was modified
         log_activity(lang(array('string'=>'the JavaScript for theme file ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
 
-        if ($_POST['submit_save'] == 'Save') {
+        if (($_POST['submit_save'] ?? '') == 'Save') {
             // send the user back to reload this screen again
             
             $liveform = new liveform('edit_javascript');

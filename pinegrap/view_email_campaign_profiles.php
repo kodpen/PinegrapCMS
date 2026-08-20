@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,7 +34,13 @@ foreach ($_REQUEST as $key => $value) {
 }
 
 
-switch ($_SESSION['software']['view_email_campaign_profiles']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['view_email_campaign_profiles']['sort']) == false) {
+    $_SESSION['software']['view_email_campaign_profiles']['sort'] = '';
+}
+
+switch (($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'email_campaign_profiles.name';
         break;
@@ -164,7 +170,7 @@ if (isset($_GET['export'])) {
         LEFT JOIN user AS created_user ON email_campaign_profiles.created_user_id = created_user.user_id
         LEFT JOIN user AS last_modified_user ON email_campaign_profiles.last_modified_user_id = last_modified_user.user_id
         $where
-        ORDER BY $sort_column " . e($_SESSION['software']['view_email_campaign_profiles']['order']));
+        ORDER BY $sort_column " . e(($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')));
 
     $date_format_code = get_date_format_code();
 
@@ -285,7 +291,7 @@ if (isset($_GET['export'])) {
         LEFT JOIN user AS created_user ON email_campaign_profiles.created_user_id = created_user.user_id
         LEFT JOIN user AS last_modified_user ON email_campaign_profiles.last_modified_user_id = last_modified_user.user_id
         $where
-        ORDER BY $sort_column " . escape($_SESSION['software']['view_email_campaign_profiles']['order']);
+        ORDER BY $sort_column " . escape(($_SESSION['software']['view_email_campaign_profiles']['order'] ?? ''));
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $email_campaign_profiles = mysqli_fetch_items($result);
 
@@ -511,16 +517,16 @@ if (isset($_GET['export'])) {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                        <th>' . get_column_heading(lang('Name'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
-                                        <th class="text-center">' . get_column_heading(lang('Enabled'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Action'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
+                                        <th class="text-center">' . get_column_heading(lang('Enabled'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Action'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
                                         <th>' . lang('Action Item') . '</th>
-                                        <th>' . get_column_heading(lang('Subject'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Page to Send'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Subject'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Page to Send'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
                                         <th>' . lang('Schedule') . '</th>
-                                        <th>' . get_column_heading(lang('Purpose'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Created'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['view_email_campaign_profiles']['sort'], $_SESSION['software']['view_email_campaign_profiles']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Purpose'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_email_campaign_profiles']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_profiles']['order'] ?? '')) . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>

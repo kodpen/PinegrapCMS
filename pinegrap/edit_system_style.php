@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -64,8 +64,9 @@ $last_modified_username = $row['last_modified_username'];
 $page_row = false;
 $_style_id_esc = escape($liveform->get_field_value('id'));
 $_pr_cols = "page_id, page_name, page_folder, page_title,
-             page_meta_description, page_meta_keywords,
+             page_meta_description,
              page_search, page_search_keywords, sitemap, page_home,
+             " . (pg_page_noindex_ready() ? "noindex, nofollow," : "'0' AS noindex, '0' AS nofollow,") . "
              comments, comments_label, comments_allow_new_comments, comments_rating,
              page_custom_css, page_custom_js, page_custom_fonts";
 $_pr = mysqli_query(db::$con,
@@ -114,10 +115,11 @@ if (!$_POST) {
             $liveform->assign_field_value('pg_comments_rating',    isset($page_row['comments_rating'])           ? ($page_row['comments_rating']           ? '1' : '0') : '0');
             $liveform->assign_field_value('page_title',            $page_row['page_title']);
             $liveform->assign_field_value('page_meta_description', $page_row['page_meta_description']);
-            $liveform->assign_field_value('page_meta_keywords',    $page_row['page_meta_keywords']);
             $liveform->assign_field_value('page_search',           $page_row['page_search'] ? '1' : '0');
             $liveform->assign_field_value('page_search_keywords',  $page_row['page_search_keywords']);
             $liveform->assign_field_value('page_sitemap',          $page_row['sitemap'] ? '1' : '0');
+            $liveform->assign_field_value('page_noindex',          $page_row['noindex'] ? '1' : '0');
+            $liveform->assign_field_value('page_nofollow',         $page_row['nofollow'] ? '1' : '0');
             // page_home is a 'yes'/'' string in DB (legacy); we render it as a
             // 1/0 switch for consistency with the Search / Sitemap toggles.
             $liveform->assign_field_value('page_home',             ($page_row['page_home'] == 'yes') ? '1' : '0');
@@ -131,6 +133,8 @@ if (!$_POST) {
         } else {
             $liveform->assign_field_value('page_search',           '1');
             $liveform->assign_field_value('page_sitemap',          '1');
+            $liveform->assign_field_value('page_noindex',          '0');
+            $liveform->assign_field_value('page_nofollow',         '0');
             $liveform->assign_field_value('page_home',             '0');
             $liveform->assign_field_value('pg_comments',           '0');
             $liveform->assign_field_value('pg_comments_allow_new', '1');
@@ -230,6 +234,43 @@ if (!$_POST) {
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="sd-icon-btn sd-icon-btn-danger" title="' . lang('Delete') . '" data-loading-content="' . lang('Deleting') . '" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('page style')))) . '"><span class="bi bi-trash"></span></button>';
     }
     
+    // Search engine indexing. Only built where the columns behind it exist: a
+    // switch that saves nothing is worse than no switch at all.
+    //
+    // The Visual Editor gives a page no type of its own - everything it creates
+    // is 'standard' / 'system' - so unlike the site map switch on the page
+    // screen there is no page type to hide this block for.
+    $output_noindex_switches = '';
+    $output_noindex_hint = '';
+
+    if (pg_page_noindex_ready() == TRUE) {
+        $noindex_on = ($liveform->get_field_value('page_noindex') == '1');
+
+        // nofollow qualifies the noindex directive and is meaningless without
+        // it, so the master switch is what opens it.
+        $nofollow_disabled = ($noindex_on == TRUE) ? '' : ' disabled="disabled"';
+
+        $output_noindex_switches =
+            '<div class="form-check form-switch">
+                <input type="hidden" name="page_noindex" value="0">
+                <input class="form-check-input" type="checkbox" name="page_noindex" id="pg_page_noindex" value="1"
+                       ' . (($noindex_on == TRUE) ? 'checked' : '') . '>
+                <label class="form-check-label small" for="pg_page_noindex">' . lang('Close to Search Engines (noindex)') . '</label>
+            </div>
+            <div class="form-check form-switch">
+                <input type="hidden" name="page_nofollow" value="0">
+                <input class="form-check-input" type="checkbox" name="page_nofollow" id="pg_page_nofollow" value="1"
+                       ' . (($liveform->get_field_value('page_nofollow') == '1') ? 'checked' : '') . $nofollow_disabled . '>
+                <label class="form-check-label small" for="pg_page_nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
+            </div>';
+
+        $output_noindex_hint =
+            '<div class="form-text small mb-3" id="pg_noindex_hint" style="display: ' . (($noindex_on == TRUE) ? 'block' : 'none') . '">
+                ' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '
+                <span class="text-warning d-block">' . lang('A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.') . '</span>
+            </div>';
+    }
+
     print
         pg_page_shell([
             'title'        => lang('Visual Pinegrap Editor'),
@@ -260,8 +301,6 @@ if (!$_POST) {
                 <input type="hidden" name="page_custom_css" id="sd-custom-css-field" value="' . h($liveform->get_field_value('page_custom_css')) . '">
                 <input type="hidden" name="page_custom_js" id="sd-custom-js-field" value="' . h($liveform->get_field_value('page_custom_js')) . '">
                 <input type="hidden" name="page_custom_fonts" id="sd-custom-fonts-field" value="' . h($liveform->get_field_value('page_custom_fonts')) . '">
-                <!-- Meta keywords field removed from UI (unused) — preserve existing DB value via hidden field -->
-                <input type="hidden" name="page_meta_keywords" value="' . h($liveform->get_field_value('page_meta_keywords')) . '">
 
                 <div class="sd-wrapper">
                     <!-- Toolbar -->
@@ -391,10 +430,12 @@ if (!$_POST) {
                                                        ' . ($liveform->get_field_value('page_home') == '1' ? 'checked' : '') . '>
                                                 <label class="form-check-label small" for="pg_page_home">' . lang('Set As Homepage') . '</label>
                                             </div>' : '') . '
+                                            ' . $output_noindex_switches . '
                                         </div>
+                                        ' . $output_noindex_hint . '
                                         <div id="pg_search_kw_row" class="mb-0" style="display:' . ($liveform->get_field_value('page_search') == '1' ? 'block' : 'none') . ';">
                                             <label class="form-label small">' . lang('Search Keywords') . '</label>
-                                            <input type="text" value="' . h($liveform->get_field_value('page_search_keywords')) . '" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '" maxlength="500">
+                                            <input type="text" value="' . h($liveform->get_field_value('page_search_keywords')) . '" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '">
                                             <script>if(document.body.contains(document.querySelector("#pg_search_keywords"))){tagin(document.querySelector("#pg_search_keywords"));}</script>
                                             <small class="form-text">' . lang('Keywords used for site-wide search indexing.') . '</small>
                                         </div>
@@ -437,6 +478,14 @@ if (!$_POST) {
                             { sel: "#pg_page_title",            counterId: "seo_c_pg_page_title",            min: 30,  max: 60  },
                             { sel: "#pg_page_meta_description", counterId: "seo_c_pg_page_meta_description", min: 150, max: 160 }
                         ]);
+                    }
+                    if (typeof bindPageIndexingSwitches === "function") {
+                        bindPageIndexingSwitches({
+                            noindex:  "pg_page_noindex",
+                            nofollow: "pg_page_nofollow",
+                            sitemap:  "pg_page_sitemap",
+                            hint:     "pg_noindex_hint"
+                        });
                     }
                 });
 
@@ -601,6 +650,37 @@ if (!$_POST) {
         // through liveform's session for fields not registered via output_field().
         $pg_search  = (isset($_POST['page_search'])  ? $_POST['page_search']  : $liveform->get_field_value('page_search'))  == '1' ? 1 : 0;
         $pg_sitemap = (isset($_POST['page_sitemap']) ? $_POST['page_sitemap'] : $liveform->get_field_value('page_sitemap')) == '1' ? 1 : 0;
+
+        $pg_noindex = 0;
+        $pg_nofollow = 0;
+
+        // nofollow qualifies the noindex directive and is never emitted on its
+        // own, so it is only stored while the page is closed to search engines.
+        if (
+            ((isset($_POST['page_noindex']) ? $_POST['page_noindex'] : $liveform->get_field_value('page_noindex')) == '1')
+            && (pg_page_noindex_ready() == TRUE)
+        ) {
+            $pg_noindex = 1;
+
+            if ((isset($_POST['page_nofollow']) ? $_POST['page_nofollow'] : $liveform->get_field_value('page_nofollow')) == '1') {
+                $pg_nofollow = 1;
+            }
+
+            // A page that is closed to search engines has no business in the
+            // site map. The switch is disabled on screen while noindex is on,
+            // but a POST does not have to come from that screen.
+            $pg_sitemap = 0;
+        }
+
+        $sql_noindex_set = '';
+        $sql_noindex_columns = '';
+        $sql_noindex_values = '';
+
+        if (pg_page_noindex_ready() == TRUE) {
+            $sql_noindex_set = "noindex = '" . $pg_noindex . "', nofollow = '" . $pg_nofollow . "',";
+            $sql_noindex_columns = 'noindex, nofollow,';
+            $sql_noindex_values = "'" . $pg_noindex . "', '" . $pg_nofollow . "',";
+        }
         // page_home is gated to role < 3 (admin/manager/designer); contributors
         // never have the switch rendered, but we still cross-check role here so
         // a crafted POST cannot promote the page to home. DB column stores the
@@ -623,7 +703,6 @@ if (!$_POST) {
         // page_title / meta_description: read from POST directly as well (safe after remove_form() AJAX cycle)
         $edit_page_title     = isset($_POST['page_title'])            ? $_POST['page_title']            : $liveform->get_field_value('page_title');
         $edit_page_meta_desc = isset($_POST['page_meta_description']) ? $_POST['page_meta_description'] : $liveform->get_field_value('page_meta_description');
-        $edit_page_meta_kw   = isset($_POST['page_meta_keywords'])    ? $_POST['page_meta_keywords']    : $liveform->get_field_value('page_meta_keywords');
 
         if ($page_row) {
             // Update existing linked page. page_home only updated for users
@@ -640,10 +719,10 @@ if (!$_POST) {
                     page_folder                 = '" . $pg_folder . "',
                     page_title                  = '" . e($edit_page_title) . "',
                     page_meta_description       = '" . e($edit_page_meta_desc) . "',
-                    page_meta_keywords          = '" . e($edit_page_meta_kw) . "',
                     page_search                 = '" . $pg_search . "',
                     page_search_keywords        = '" . e($pg_search_keywords) . "',
                     sitemap                     = '" . $pg_sitemap . "',
+                    " . $sql_noindex_set . "
                     " . $pg_home_set . "
                     comments                    = '" . $edit_comments . "',
                     comments_label              = '" . e($edit_comments_label) . "',
@@ -652,15 +731,26 @@ if (!$_POST) {
                     page_custom_css             = '" . e($edit_custom_css) . "',
                     page_custom_js              = '" . e($edit_custom_js) . "',
                     page_custom_fonts           = '" . e($edit_custom_fonts) . "',
-                    page_timestamp              = NOW(),
+                    page_timestamp              = UNIX_TIMESTAMP(),
                     page_user                   = '" . (int)$user['id'] . "'
                 WHERE page_id = '" . (int)$page_row['page_id'] . "'");
+
+            // The tag cloud is built from the promote on keyword list of the pages that
+            // are in the site search, so it has to follow both of those.
+            update_tag_cloud_keywords_for_page(
+                $page_row['page_id'],
+                $pg_search,
+                $pg_search_keywords,
+                $page_row['page_search'],
+                $page_row['page_search_keywords']);
+
             log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($edit_page_name))), $_SESSION['sessionusername']);
         } else {
             // No linked page yet — create one automatically
             db("INSERT INTO page (page_name, page_folder, page_type, layout_type, page_home, page_search,
                     page_search_keywords, page_timestamp, page_user, page_style, page_title,
-                    page_meta_description, page_meta_keywords, comments_disallow_new_comment_message, sitemap,
+                    page_meta_description, comments_disallow_new_comment_message, sitemap,
+                    $sql_noindex_columns
                     comments, comments_label, comments_allow_new_comments, comments_rating,
                     page_custom_css, page_custom_js, page_custom_fonts)
                 VALUES (
@@ -669,14 +759,14 @@ if (!$_POST) {
                     'standard', 'system', '" . e($pg_home_str) . "',
                     '" . $pg_search . "',
                     '" . e($pg_search_keywords) . "',
-                    NOW(),
+                    UNIX_TIMESTAMP(),
                     '" . e($user['id']) . "',
                     '" . e($liveform->get_field_value('id')) . "',
                     '" . e($edit_page_title) . "',
                     '" . e($edit_page_meta_desc) . "',
-                    '" . e($edit_page_meta_kw) . "',
                     '',
                     '" . $pg_sitemap . "',
+                    $sql_noindex_values
                     '" . $edit_comments . "',
                     '" . e($edit_comments_label) . "',
                     '" . $edit_comments_allow . "',
@@ -685,6 +775,9 @@ if (!$_POST) {
                     '" . e($edit_custom_js) . "',
                     '" . e($edit_custom_fonts) . "'
                 )");
+
+            update_tag_cloud_keywords_for_page(mysqli_insert_id(db::$con), $pg_search, $pg_search_keywords, 0, '');
+
             log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($edit_page_name))), $_SESSION['sessionusername']);
         }
 

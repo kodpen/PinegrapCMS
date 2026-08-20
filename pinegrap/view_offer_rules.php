@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -33,7 +33,13 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-switch ($_SESSION['software']['ecommerce']['view_offer_rules']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_offer_rules']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_offer_rules']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_offer_rules']['sort'] ?? '')) {
 
     case lang('Name'):
         $sort_column = 'offer_rules.name';
@@ -72,7 +78,7 @@ $offer_rules = db_items(
         offer_rules.timestamp as last_modified_timestamp
     FROM offer_rules
     LEFT JOIN user AS last_modified_user ON offer_rules.user = last_modified_user.user_id
-    ORDER BY $sort_column " . e($_SESSION['software']['ecommerce']['view_offer_rules']['order']));
+    ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_offer_rules']['order'] ?? '')));
 
 foreach ($offer_rules as $key => $offer_rule) {
 

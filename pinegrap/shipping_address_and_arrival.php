@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -31,7 +31,7 @@ $query =
         first_name,
         address_verified
     FROM ship_tos
-    WHERE id = '" . escape($_POST['ship_to_id']) . "'";
+    WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if ship to is not found, output error
@@ -46,7 +46,7 @@ $ship_to_name = $row['ship_to_name'];
 $address_verified = $row['address_verified'];
 
 // if order id for ship to is not equal to order id in session, output error
-if ($row['order_id'] != $_SESSION['ecommerce']['order_id']) {
+if ($row['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
     output_error('You do not have access to this recipient. <a href="javascript:history.go(-1)">Go back</a>.');
 }
 
@@ -61,7 +61,7 @@ $query =
     LEFT JOIN shipping_address_and_arrival_pages ON page.page_id = shipping_address_and_arrival_pages.page_id
     LEFT JOIN page AS next_page ON shipping_address_and_arrival_pages.next_page_id = next_page.page_id
     WHERE
-        (page.page_id = '" . escape($_POST['page_id']) . "')
+        (page.page_id = '" . escape($_POST['page_id'] ?? '') . "')
         AND (page.page_type = 'shipping address and arrival')";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -79,7 +79,7 @@ $next_page_name = $row['next_page_name'];
 
 $liveform = new liveform('shipping_address_and_arrival');
 
-$ghost = $_SESSION['software']['ghost'];
+$ghost = $_SESSION['software']['ghost'] ?? false;
 
 $liveform->add_fields_to_session();
 
@@ -274,8 +274,8 @@ if (isset($_POST['arrival_date'])) {
                 "SELECT order_items.product_id
                 FROM order_items
                 WHERE
-                    order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
-                    AND order_items.ship_to_id = '" . e($_POST['ship_to_id']) . "'");
+                    order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+                    AND order_items.ship_to_id = '" . e($_POST['ship_to_id'] ?? '') . "'");
             
             $zones_for_destination = get_valid_zones_for_destination($liveform->get_field_value('country'), $liveform->get_field_value('state'));
             
@@ -445,7 +445,7 @@ $query = "UPDATE ship_tos SET
             arrival_date_code = '" . escape($arrival_date_code) . "',
             arrival_date = '" . escape($arrival_date) . "',
             complete = '0'
-         WHERE id = '" . escape($_POST['ship_to_id']) . "'";
+         WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // If the user is logged in and not ghosting, then update address book.
@@ -455,7 +455,9 @@ if (USER_LOGGED_IN and !$ghost) {
     $query = "SELECT id FROM address_book WHERE user = '" . e(USER_ID) . "' AND ship_to_name = '" . e($ship_to_name) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $address_book_id = $row['id'];
+
+    // $row is null when the recipient is not in the address book yet.
+    $address_book_id = isset($row['id']) ? $row['id'] : '';
 
     // if recipient is already in the address book, update recipient
     if ($address_book_id) {
@@ -536,7 +538,7 @@ if ($liveform->check_form_errors() == false) {
                 billing_zip_code = '" . escape($liveform->get_field_value('zip_code')) . "',
                 billing_country = '" . escape($liveform->get_field_value('country')) . "',
                 billing_phone_number = '" . escape($liveform->get_field_value('phone_number')) . "'
-             WHERE id = '" . escape($_SESSION['ecommerce']['order_id']) . "'";
+             WHERE id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     }
     

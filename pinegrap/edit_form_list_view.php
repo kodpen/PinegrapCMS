@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -742,7 +742,7 @@ if (!$_POST) {
                 <form action="edit_form_list_view.php" method="post">
                     ' . get_codemirror_includes() . '
                     ' . get_token_field() . '
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="page_id" value="' . h($_GET['page_id']) . '" />
                     <input type="hidden" id="last_filter_number" name="last_filter_number" value="0" />
                     ' . $output_mysql_version_new_hidden_field . '
@@ -1014,22 +1014,22 @@ if (!$_POST) {
             $sql_collection_a_fields
             order_by_1_standard_field = '" . e($order_by_1_standard_field) . "',
             order_by_1_form_field_id = '" . e($order_by_1_form_field_id) . "',
-            order_by_1_type = '" . e($_POST['order_by_1_type']) . "',
+            order_by_1_type = '" . e($_POST['order_by_1_type'] ?? '') . "',
             order_by_2_standard_field = '" . e($order_by_2_standard_field) . "',
             order_by_2_form_field_id = '" . e($order_by_2_form_field_id) . "',
-            order_by_2_type = '" . e($_POST['order_by_2_type']) . "',
+            order_by_2_type = '" . e($_POST['order_by_2_type'] ?? '') . "',
             order_by_3_standard_field = '" . e($order_by_3_standard_field) . "',
             order_by_3_form_field_id = '" . e($order_by_3_form_field_id) . "',
-            order_by_3_type = '" . e($_POST['order_by_3_type']) . "',
-            maximum_number_of_results = '" . e($_POST['maximum_number_of_results']) . "',
-            maximum_number_of_results_per_page = '" . e($_POST['maximum_number_of_results_per_page']) . "',
-            search = '" . e($_POST['search']) . "',
-            search_label = '" . e($_POST['search_label']) . "',
-            search_advanced = '" . e($_POST['search_advanced']) . "',
-            search_advanced_show_by_default = '" . e($_POST['search_advanced_show_by_default']) . "',
-            browse = '" . e($_POST['browse']) . "',
-            browse_show_by_default_form_field_id = '" . e($_POST['browse_show_by_default_form_field_id']) . "',
-            show_results_by_default = '" . e($_POST['show_results_by_default']) . "'
+            order_by_3_type = '" . e($_POST['order_by_3_type'] ?? '') . "',
+            maximum_number_of_results = '" . e($_POST['maximum_number_of_results'] ?? '') . "',
+            maximum_number_of_results_per_page = '" . e($_POST['maximum_number_of_results_per_page'] ?? '') . "',
+            search = '" . e($_POST['search'] ?? '') . "',
+            search_label = '" . e($_POST['search_label'] ?? '') . "',
+            search_advanced = '" . e($_POST['search_advanced'] ?? '') . "',
+            search_advanced_show_by_default = '" . e($_POST['search_advanced_show_by_default'] ?? '') . "',
+            browse = '" . e($_POST['browse'] ?? '') . "',
+            browse_show_by_default_form_field_id = '" . e($_POST['browse_show_by_default_form_field_id'] ?? '') . "',
+            show_results_by_default = '" . e($_POST['show_results_by_default'] ?? '') . "'
         WHERE
             (page_id = '" . e($page['id']) . "')
             AND (collection = 'a')");
@@ -1044,7 +1044,7 @@ if (!$_POST) {
         'search_advanced_layout' => $_POST['search_advanced_layout']));
 
     // delete old filters
-    $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($_POST['page_id']) . "'";
+    $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // get standard fields in order to determine field type
@@ -1069,7 +1069,7 @@ if (!$_POST) {
     // loop through all filters in order to insert filters into database
     for ($i = 1; $i <= $_POST['last_filter_number']; $i++) {
         // if filter exists and an operator was selected for this filter, then insert filter
-        if ($_POST['filter_' . $i . '_operator'] != '') {
+        if (($_POST['filter_' . $i . '_operator'] ?? '') != '') {
             // if field value is not numeric, then a standard field was selected
             if (is_numeric($_POST['filter_' . $i . '_field']) == false) {
                 $standard_field_value = $_POST['filter_' . $i . '_field'];
@@ -1104,7 +1104,7 @@ if (!$_POST) {
             }
 
             // if user entered a value, clear dynamic value, in order to prevent user from using two values
-            if ($_POST['filter_' . $i . '_value'] != '') {
+            if (($_POST['filter_' . $i . '_value'] ?? '') != '') {
                 $dynamic_value = '';
                 $dynamic_value_attribute = '';
             } else {
@@ -1129,7 +1129,7 @@ if (!$_POST) {
                     dynamic_value,
                     dynamic_value_attribute)
                 VALUES (
-                    '" . escape($_POST['page_id']) . "',
+                    '" . escape($_POST['page_id'] ?? '') . "',
                     '" . escape($standard_field_value) . "',
                     '" . escape($form_field_id) . "',
                     '" . escape($_POST['filter_' . $i . '_operator']) . "',
@@ -1141,13 +1141,13 @@ if (!$_POST) {
     }
 
     // Delete old browse fields.
-    $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($_POST['page_id']) . "'";
+    $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // Loop through the custom fields in order to add active browse fields to database.
     foreach ($custom_fields as $field) {
         // If this field was checked, then add record in database.
-        if ($_POST['browse_field_' . $field['id']] == 1) {
+        if (($_POST['browse_field_' . $field['id']] ?? '') == 1) {
             $number_of_columns = $_POST['browse_field_' . $field['id'] . '_number_of_columns'];
 
             // If the number of columns is not greater or equal to 1, then set it to the default.
@@ -1165,7 +1165,7 @@ if (!$_POST) {
                     shortcut,
                     date_format)
                 VALUES (
-                    '" . escape($_POST['page_id']) . "',
+                    '" . escape($_POST['page_id'] ?? '') . "',
                     '" . $field['id'] . "',
                     '" . escape($number_of_columns) . "',
                     '" . escape($_POST['browse_field_' . $field['id'] . '_sort_order']) . "',
@@ -1181,7 +1181,7 @@ if (!$_POST) {
         SET
             page_timestamp = UNIX_TIMESTAMP(),
             page_user = '" . $user['id'] . "'
-        WHERE page_id = '" . escape($_POST['page_id']) . "'";
+        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     log_activity(lang(array('string'=>'page ({var:1}) was modified','vars'=>$page['name'])), $_SESSION['sessionusername']);
     

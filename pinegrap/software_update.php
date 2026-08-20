@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -98,7 +98,7 @@ if (defined('VERSION') && VERSION === '2026') {
 // --- END PRE-UPGRADE PREPARATION ---
 
 
-$mode = isset($_GET['mode']) ? $_GET['mode'] : null;
+$mode = isset($_GET['mode']) ? ($_GET['mode'] ?? '') : null;
 // User redirect automatically after software update success
 if ($mode === 'autoupgrade') {
     $liveform_welcome = new liveform('welcome');

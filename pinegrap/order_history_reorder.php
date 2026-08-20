@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -112,7 +112,7 @@ $new_order_id = mysqli_insert_id(db::$con);
 $order_switched = false;
 
 // if there is already an active order in this user's session, then take note of that
-if ($_SESSION['ecommerce']['order_id']) {
+if (($_SESSION['ecommerce']['order_id'] ?? '')) {
     $order_switched = true;
 }
 

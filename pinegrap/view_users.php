@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,6 +24,20 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 $output_clear_button = '';
+
+// These are only ever appended to, or are set only for some of the filters below, so they have
+// to start out empty.
+$where = '';
+$sql_select_column = '';
+$output_rows = '';
+$output_email_address_column = '';
+$output_user_start_page_column = '';
+$output_user_contact_column = '';
+$output_last_modified_column = '';
+$output_email_address_column_header = '';
+$output_user_start_page_column_heading = '';
+$output_user_contact_column_header = '';
+$output_last_modified_column_header = '';
 
 // If there is a filter set.
 if (isset($_GET['filter']) == true) {
@@ -81,7 +95,13 @@ if (isset($_REQUEST['order'])) {
 if ($filter == 'default') {
     
     // If sort value is one of the following set sort value to default.
-    switch ($_SESSION['software']['view_users']['sort']) {
+    // if the sort is not set yet, then default it to empty so that the switch below falls
+    // through to its default case
+    if (isset($_SESSION['software']['view_users']['sort']) == false) {
+        $_SESSION['software']['view_users']['sort'] = '';
+    }
+
+    switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
         case 'E-mail Address':
         case 'Start Page':
         case 'Last Modified':
@@ -91,9 +111,9 @@ if ($filter == 'default') {
     }
     
     // Output column headers.
-    $output_user_role_column_heading = '<th>' . get_column_heading(lang('Role'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
+    $output_user_role_column_heading = '<th>' . get_column_heading(lang('Role'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
     $output_private_folder_access_column_heading = '<th style="text-align: center">' . lang('Private User') . '</th>';
-    $output_member_user_column_heading = '<th style="text-align: center">' . get_column_heading(lang('Member User'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
+    $output_member_user_column_heading = '<th style="text-align: center">' . get_column_heading(lang('Member User'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
     $output_manage_content_column_heading = '<th style="text-align: center">' . lang('Content Manager') . '</th>';
     $output_manage_calendars_column_heading = '<th style="text-align: center">' . lang('Calendar Manager') . '</th>';
    
@@ -111,14 +131,20 @@ if ($filter == 'default') {
         $output_manage_ecommerce_column_header = '<th style="text-align: center">' . lang('Commerce Manager') . '</th>';
     }
     
-    $output_manage_users_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Manager'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
-    $output_edit_design_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Designer'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
+    $output_manage_users_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Manager'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_edit_design_column_header = '<th style="text-align: center">' . get_column_heading(lang('Site Designer'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
     
 // Else if the user is not on the all users view.
 } else {
     
     // If sort value is one of the following set sort value to default.
-    switch ($_SESSION['software']['view_users']['sort']) {
+    // if the sort is not set yet, then default it to empty so that the switch below falls
+    // through to its default case
+    if (isset($_SESSION['software']['view_users']['sort']) == false) {
+        $_SESSION['software']['view_users']['sort'] = '';
+    }
+
+    switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
         case lang('Role'):
         case lang('Member User'):
         case lang('Site Manager'):
@@ -133,9 +159,9 @@ if ($filter == 'default') {
         user.user_home';
     
     // Output column headers
-    $output_email_address_column_header = '<th>' . get_column_heading(lang('E-mail Address'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
-    $output_user_start_page_column_heading = '<th>' . get_column_heading(lang('Start Page'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
-    $output_last_modified_column_header = '<th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>';
+    $output_email_address_column_header = '<th>' . get_column_heading(lang('E-mail Address'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_user_start_page_column_heading = '<th>' . get_column_heading(lang('Start Page'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
+    $output_last_modified_column_header = '<th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>';
 }
 
 // If the user is not viewing the my manager, administrators, designers or content managers
@@ -208,7 +234,13 @@ switch ($filter) {
         break;
 }
 
-switch ($_SESSION['software']['view_users']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['view_users']['sort']) == false) {
+    $_SESSION['software']['view_users']['sort'] = '';
+}
+
+switch (($_SESSION['software']['view_users']['sort'] ?? '')) {
     case lang('Username'):
         $sort_column = 'user.user_username';
         break;
@@ -631,7 +663,7 @@ $query =
     LEFT JOIN user as user_2 ON user.user_user = user_2.user_id
     $sql_join_contacts_table
     $where
-    ORDER BY $sort_column " . escape($_SESSION['software']['view_users']['order']) . " ";
+    ORDER BY $sort_column " . escape(($_SESSION['software']['view_users']['order'] ?? '')) . " ";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
     $id = $row['id'];
@@ -653,7 +685,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         
         // Set database variables
         $user_member_id = $row['user_member_id'];
-        $aclfolder_rights = $row['aclfolder_rights'];
+        $aclfolder_rights = isset($row['aclfolder_rights']) ? $row['aclfolder_rights'] : '';
     
     // else the user in not on the all my users view.
     } else {
@@ -667,12 +699,15 @@ while ($row = mysqli_fetch_assoc($result)) {
     if (($filter != 'default') || ($filter != 'all_site_administrators') || ($filter != 'all_site_designers') || ($filter != 'all_site_managers')) {
         
         // Set database variables
-        $contact_id = $row['contact_id'];
-        $contact_salutation = $row['contact_salutation'];
-        $contact_first_name = $row['contact_first_name'];
-        $contact_last_name = $row['contact_last_name'];
-        $contact_nickname = $row['contact_nickname'];
-        $contact_suffix = $row['contact_suffix'];
+        // NOTE: the condition above is always true (a value cannot differ from every one of those
+        // filters at once), so these columns are read even for the filters whose query does not
+        // select them.  Left as-is on purpose; only the missing-key warnings are silenced here.
+        $contact_id = isset($row['contact_id']) ? $row['contact_id'] : '';
+        $contact_salutation = isset($row['contact_salutation']) ? $row['contact_salutation'] : '';
+        $contact_first_name = isset($row['contact_first_name']) ? $row['contact_first_name'] : '';
+        $contact_last_name = isset($row['contact_last_name']) ? $row['contact_last_name'] : '';
+        $contact_nickname = isset($row['contact_nickname']) ? $row['contact_nickname'] : '';
+        $contact_suffix = isset($row['contact_suffix']) ? $row['contact_suffix'] : '';
     }
     
     // If the user is viewing the my registered users or my member users view
@@ -729,7 +764,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         $row2 = mysqli_fetch_assoc($result2);
         
         // if user is a manager or above, or if the basic user has a aclfolder_user value
-        if (($role < 3) || ($row2['aclfolder_user'] != '')) {
+        if (($role < 3) || (isset($row2['aclfolder_user']) && ($row2['aclfolder_user'] != ''))) {
             $output_private_folder_access_column = '<td class="align-middle text-center">' . $output_checkmark . '</td>';
         
         // Else output the checkmark
@@ -1252,7 +1287,7 @@ echo
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                        <th>' . get_column_heading(lang('Username'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Username'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>
                                         ' . $output_email_address_column_header . '
                                         ' . $output_user_role_column_heading . '
                                         ' . $output_user_start_page_column_heading . '
@@ -1269,7 +1304,7 @@ echo
                                         ' . $output_edit_design_column_header . '
                                         ' . $output_user_contact_column_header . '
                                         ' . $output_last_modified_column_header . '
-                                        <th>' . get_column_heading(lang('Last Online'), $_SESSION['software']['view_users']['sort'], $_SESSION['software']['view_users']['order'], $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Last Online'), ($_SESSION['software']['view_users']['sort'] ?? ''), ($_SESSION['software']['view_users']['order'] ?? ''), $output_filter_for_links) . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -63,8 +63,8 @@ if (check_view_access($folder_id) == false) {
 if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_session('submit_skip') == false)) {
     // process products differently depending on page layout
     switch ($product_layout) {
-        case '';
-        case 'list';
+        case '':
+        case 'list':
             // get all products that are in product group
             $query =
                 "SELECT

@@ -16,16 +16,16 @@
                         <thead>
                             <tr>
 								<th class="noVis"><?=lang('Action')?></th>
-								<th><?=get_column_heading(lang('Name'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th class="text-center"><?=get_column_heading(lang('Enabled'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('URL'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Width'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Height'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Delay'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Frequency'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Only on Page'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Created'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
-								<th><?=get_column_heading(lang('Last Modified'), $_SESSION['software']['view_auto_dialogs']['sort'], $_SESSION['software']['view_auto_dialogs']['order'])?></th>
+								<th><?=get_column_heading(lang('Name'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th class="text-center"><?=get_column_heading(lang('Enabled'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('URL'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Width'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Height'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Delay'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Frequency'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Only on Page'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Created'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_auto_dialogs']['sort'] ?? ''), ($_SESSION['software']['view_auto_dialogs']['order'] ?? ''))?></th>
 							</tr>
                         </thead>
                         <tbody>

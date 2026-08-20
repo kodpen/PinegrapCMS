@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -118,21 +118,21 @@ if (!$_POST) {
     validate_token_field();
 
     // if referral source was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete referral source
-        $query = "DELETE FROM referral_sources WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM referral_sources WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         log_activity(lang(array('string'=>'referral source ({var:1}) was deleted','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
     // else referral source was not selected for delete
     } else {
         // update referral source
         $query = "UPDATE referral_sources SET
-                    name = '" . escape($_POST['name']) . "',
-                    code = '" . escape($_POST['code']) . "',
-                    sort_order = '" . escape($_POST['sort_order']) . "',
+                    name = '" . escape($_POST['name'] ?? '') . "',
+                    code = '" . escape($_POST['code'] ?? '') . "',
+                    sort_order = '" . escape($_POST['sort_order'] ?? '') . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);

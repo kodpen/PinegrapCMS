@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -633,7 +633,7 @@ if (!isset($_SESSION['software']['cloudflare']['analytics']['period'])) {
 if (isset($_REQUEST['period'])) {
     $_SESSION['software']['cloudflare']['analytics']['period'] = $_REQUEST['period'];
 }
-$period = $_SESSION['software']['cloudflare']['analytics']['period'];
+$period = ($_SESSION['software']['cloudflare']['analytics']['period'] ?? '');
 
 $start_date = null;
 $end_date   = null;

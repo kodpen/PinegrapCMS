@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -483,3 +483,6 @@ foreach ($email_campaigns as $email_campaign_id) {
 if ($count > 0) {
     log_activity('e-mail campaign job sent e-mail(s) to ' . $count . ' recipient(s)', $_SESSION['sessionusername']);
 }
+
+// Scheduled-task health: record that this job finished. See pg_cron_ran().
+pg_cron_ran('email_campaign_job');

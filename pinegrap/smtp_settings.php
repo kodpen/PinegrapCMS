@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -384,7 +384,7 @@ if (!$_POST) {
     }
 
     // Ayarları kaydet
-    if (isset($_POST['submit_save']) && $_POST['submit_save'] === 'Save') {
+    if (isset($_POST['submit_save']) && ($_POST['submit_save'] ?? '') === 'Save') {
         $config_file_content = '';
         $fd = fopen(CONFIG_FILE_PATH, "r");
         if ($fd) {

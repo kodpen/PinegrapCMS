@@ -12,12 +12,22 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 // create function that is responsible for generating sitemap content for the sitemap.xml file
 function get_sitemap_info() {
+
+    // An installation that has taken the code without running the database
+    // upgrade has no indexing columns. Every page there is indexable, which is
+    // what these conditions collapse to when the columns are missing.
+    $noindex_ready = pg_page_noindex_ready();
+
+    $sql_page_noindex = ($noindex_ready == TRUE) ? "AND (noindex = '0')" : "";
+    $sql_catalog_detail_noindex = ($noindex_ready == TRUE) ? "catalog_detail_page.noindex" : "'0'";
+    $sql_form_item_view_noindex = ($noindex_ready == TRUE) ? "form_item_view_page.noindex" : "'0'";
+    $sql_calendar_event_view_noindex = ($noindex_ready == TRUE) ? "calendar_event_view_page.noindex" : "'0'";
 
     // get all non-archived folders in order to determine which are public
     $query = "SELECT folder_id AS id FROM folder WHERE folder_archived = '0'";
@@ -55,6 +65,7 @@ function get_sitemap_info() {
         FROM page
         WHERE
             (sitemap = '1')
+            $sql_page_noindex
             AND
             (
                 (page_type = 'standard')
@@ -140,7 +151,8 @@ function get_sitemap_info() {
                 catalog_pages.product_group_id,
                 catalog_detail_page.page_folder as catalog_detail_folder_id,
                 catalog_detail_page.page_name as catalog_detail_page_name,
-                catalog_detail_page.sitemap as catalog_detail_sitemap
+                catalog_detail_page.sitemap as catalog_detail_sitemap,
+                $sql_catalog_detail_noindex as catalog_detail_noindex
             FROM catalog_pages
             LEFT JOIN page AS catalog_detail_page ON catalog_pages.catalog_detail_page_id = catalog_detail_page.page_id
             WHERE catalog_pages.page_id = '" . $catalog_page['id'] . "'";
@@ -151,6 +163,7 @@ function get_sitemap_info() {
         $catalog_detail_folder_id = $row['catalog_detail_folder_id'];
         $catalog_detail_page_name = $row['catalog_detail_page_name'];
         $catalog_detail_sitemap = $row['catalog_detail_sitemap'];
+        $catalog_detail_noindex = $row['catalog_detail_noindex'];
         
         // if there is no product group selected for this catalog page, then get top-level product group
         if ($product_group_id == 0) {
@@ -167,8 +180,8 @@ function get_sitemap_info() {
         
         $get_catalog_detail_items = FALSE;
         
-        // if the catalog detail page is public and sitemap is enabled, then remember that we should add URL's for it to the sitemap
-        if ((in_array($catalog_detail_folder_id, $public_folder_ids) == TRUE) && ($catalog_detail_sitemap == 1)) {
+        // if the catalog detail page is public, sitemap is enabled and it is not marked noindex, then remember that we should add URL's for it to the sitemap
+        if ((in_array($catalog_detail_folder_id, $public_folder_ids) == TRUE) && ($catalog_detail_sitemap == 1) && ($catalog_detail_noindex == 0)) {
             $get_catalog_detail_items = TRUE;
         }
         
@@ -245,7 +258,8 @@ function get_sitemap_info() {
                         form_item_view_page.page_id as form_item_view_page_id,
                         form_item_view_page.page_folder as form_item_view_folder_id,
                         form_item_view_page.page_name as form_item_view_page_name,
-                        form_item_view_page.sitemap as form_item_view_sitemap
+                        form_item_view_page.sitemap as form_item_view_sitemap,
+                        $sql_form_item_view_noindex as form_item_view_noindex
                     FROM form_list_view_pages
                     LEFT JOIN page AS form_item_view_page ON form_list_view_pages.form_item_view_page_id = form_item_view_page.page_id
                     WHERE
@@ -260,6 +274,7 @@ function get_sitemap_info() {
                 $form_item_view_folder_id = $row['form_item_view_folder_id'];
                 $form_item_view_page_name = $row['form_item_view_page_name'];
                 $form_item_view_sitemap = $row['form_item_view_sitemap'];
+                $form_item_view_noindex = $row['form_item_view_noindex'];
                 
                 // If the viewer filter for the form list view is disabled,
                 // and the form item view page is public and sitemap is enabled,
@@ -268,6 +283,7 @@ function get_sitemap_info() {
                     ($viewer_filter == 0)
                     && (in_array($form_item_view_folder_id, $public_folder_ids) == TRUE)
                     && ($form_item_view_sitemap == 1)
+                    && ($form_item_view_noindex == 0)
                 ) {
                     $standard_fields = get_standard_fields_for_view();
 
@@ -533,7 +549,8 @@ function get_sitemap_info() {
                     calendar_event_view_page.page_id as calendar_event_view_page_id,
                     calendar_event_view_page.page_folder as calendar_event_view_folder_id,
                     calendar_event_view_page.page_name as calendar_event_view_page_name,
-                    calendar_event_view_page.sitemap as calendar_event_view_sitemap
+                    calendar_event_view_page.sitemap as calendar_event_view_sitemap,
+                    $sql_calendar_event_view_noindex as calendar_event_view_noindex
                 FROM calendar_view_pages
                 LEFT JOIN page AS calendar_event_view_page ON calendar_view_pages.calendar_event_view_page_id = calendar_event_view_page.page_id
                 WHERE calendar_view_pages.page_id = '" . $calendar_view_page['id'] . "'";
@@ -544,9 +561,10 @@ function get_sitemap_info() {
             $calendar_event_view_folder_id = $row['calendar_event_view_folder_id'];
             $calendar_event_view_page_name = $row['calendar_event_view_page_name'];
             $calendar_event_view_sitemap = $row['calendar_event_view_sitemap'];
+            $calendar_event_view_noindex = $row['calendar_event_view_noindex'];
             
-            // if the calendar event view page is public and sitemap is enabled, then continue to add URL's for it to the sitemap
-            if ((in_array($calendar_event_view_folder_id, $public_folder_ids) == TRUE) && ($calendar_event_view_sitemap == 1)) {
+            // if the calendar event view page is public, sitemap is enabled and it is not marked noindex, then continue to add URL's for it to the sitemap
+            if ((in_array($calendar_event_view_folder_id, $public_folder_ids) == TRUE) && ($calendar_event_view_sitemap == 1) && ($calendar_event_view_noindex == 0)) {
                 $sql_calendar_condition = "";
                 
                 // loop through the calendar ID's in order to prepare SQL condition

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -134,8 +134,8 @@ if (!$_POST) {
                         <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                         <div class="card-body p-0 position-relative">
                             ' . get_token_field() . '
-                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>$_GET['from'])) . '
-                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>$_GET['send_to'])) . '
+                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>($_GET['from'] ?? ''))) . '
+                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
                             <table class="chart table-hover table " style="width:100%;display:none">
                                 <thead>
                                     <tr>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
@@ -158,7 +158,7 @@ if (!$_POST) {
                                 }
                             }
 
-                            $sql_enabled = "enabled = '" . e($_POST['edit_enabled']) . "',";
+                            $sql_enabled = "enabled = '" . e($_POST['edit_enabled'] ?? '') . "',";
                         }
 
 						// Price Update
@@ -210,7 +210,7 @@ if (!$_POST) {
                             $inventory_quantity = $row['inventory_quantity'];
                             // its value, item inventory_quantity update with new value
                             if($_POST['edit_inventory_quantity_process'] == 'value'){
-                                $sql_inventory_quantity = "inventory_quantity = '" . e($_POST['edit_inventory_quantity']) . "',";
+                                $sql_inventory_quantity = "inventory_quantity = '" . e($_POST['edit_inventory_quantity'] ?? '') . "',";
                                 $new_inventory_quantity = $_POST['edit_inventory_quantity'];
                             // else its not value we check old value and process
                             }else if($_POST['edit_inventory_quantity_process'] == 'increase'){
@@ -231,7 +231,7 @@ if (!$_POST) {
                         // if user select inventroy option value, we set value to sql inventory.
                         $sql_inventory = '';
                         if($_POST['edit_inventory'] != ''){
-                            $sql_inventory = "inventory = '" . e($_POST['edit_inventory']) . "',";
+                            $sql_inventory = "inventory = '" . e($_POST['edit_inventory'] ?? '') . "',";
                         }                        
                         // if inventroy tracking is (0/1) disabled or new quantity is bigger than 0 we remove out_of_stock status
                         $sql_out_of_stock = '';
@@ -439,9 +439,33 @@ if (!$_POST) {
                 $number_of_products = 0;
 
                 foreach ($_POST['products'] as $product_id) {
+                    // Cast once, up front. Everything below interpolates this
+                    // value into SQL and several of the statements did so raw,
+                    // straight out of $_POST.
+                    $product_id = (int) $product_id;
+
                     $query = "DELETE FROM products ".
                              "WHERE id = '$product_id'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                    // Stored SEO findings for this product. Guarded on the
+                    // tables existing, because a product can be deleted on an
+                    // installation that has not run the upgrades that create
+                    // them.
+                    //
+                    // The seo_link rows matter in both directions: a link from
+                    // a deleted product's description still counts as an
+                    // incoming link when the graph decides whether a page is
+                    // an orphan, so leaving it behind hides a real orphan
+                    // forever.
+                    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+                        db("DELETE FROM seo_issue WHERE (entity_type = 'product') AND (entity_id = '$product_id')");
+                    }
+
+                    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+                        db("DELETE FROM seo_link WHERE (from_type = 'product') AND (from_id = '$product_id')");
+                        db("DELETE FROM seo_link WHERE (to_type = 'product') AND (to_id = '$product_id')");
+                    }
                     
                     // delete product references in products_groups_xref
                     $query = "DELETE FROM products_groups_xref ".

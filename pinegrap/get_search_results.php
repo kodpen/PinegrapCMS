@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -81,10 +81,15 @@ function get_search_results($properties) {
     }
 
     // get current URL parts in order to deal with query string parameters
-    $url_parts = parse_url(REQUEST_URL);
-    
-    // put query string parameters into an array
-    parse_str($url_parts['query'], $query_string_parameters);
+    $url_parts = parse_url(defined('REQUEST_URL') ? REQUEST_URL : '');
+
+    // put query string parameters into an array.
+    //
+    // parse_url() omits the key entirely when the address carries no query
+    // string, which is what a visitor arriving at the search page for the
+    // first time looks like - so this is not an edge case, it is the first
+    // request every visitor makes.
+    parse_str($url_parts['query'] ?? '', $query_string_parameters);
 
     $output_hidden_fields = '';
     
@@ -127,6 +132,11 @@ function get_search_results($properties) {
         // If the search type is simple, then get results in that way.
         if (SEARCH_TYPE == 'simple') {
 
+            // Work out which pages list this query as one of their promote on keyword
+            // terms. This is the same list the tag cloud is built from, so a visitor
+            // clicking a tag lands on the pages that were tagged with it.
+            $promoted_page_id_list = get_page_id_list_for_sql(get_page_ids_promoted_on_keyword($query));
+
             // Get featured pages that we possibly need to include in results.
             // Featured pages are pages where the promote on keyword matches the search query.
             $featured_items = db_items(
@@ -141,7 +151,7 @@ function get_search_results($properties) {
                 WHERE
                     (page.page_search = '1')
                     AND (folder.folder_archived = '0')
-                    AND (page.page_search_keywords = '" . e($query) . "')
+                    AND (page.page_id IN (" . $promoted_page_id_list . "))
                 ORDER BY page.page_name ASC",
                 'id');
 
@@ -164,8 +174,15 @@ function get_search_results($properties) {
                 $featured_items[$key] = $item;
             }
 
-            // get all pages without a matching keyword
-            $result = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description, page_style FROM page WHERE page_search = 1 and page_search_keywords != '" . escape($query) . "'") or output_error('Query failed');
+            // The queries below skip the pages that ended up in the featured area, so that
+            // the same page is not listed twice. It has to be the pages actually shown and
+            // not every page that lists the keyword: a promoted page in an archived folder,
+            // or one the visitor cannot view, never reaches the featured area, and skipping
+            // it here as well would drop it out of the results altogether.
+            $featured_page_id_list = get_page_id_list_for_sql(array_keys($featured_items));
+
+            // get all pages that are not already featured
+            $result = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description, page_style FROM page WHERE page_search = 1 and page_id NOT IN (" . $featured_page_id_list . ")") or output_error('Query failed');
             while($row = mysqli_fetch_array($result))
             {
                 $this_page_id = $row['page_id'];
@@ -175,26 +192,12 @@ function get_search_results($properties) {
                 $page_meta_description = $row['page_meta_description'];
                 $style_id = $row['page_style'];
 
-                if (get_access_control_type($page_folder) == 'private') {
-                    $private = true;
-                } else {
-                    $private = false;
-                }
-
-                // if page is private and user is logged in
-                if (($private == TRUE) && $_SESSION['sessionusername']) {
-                    $access_check = check_private_access($row['page_folder']);
-
-                    // If the user has access to the page, then remember that.
-                    if ($access_check['access'] == true) {
-                        $access = TRUE;
-                    } else {
-                        $access = FALSE;
-                    }
-                }
-
-                // if the page is not private OR the user has access to page
-                if (($private == FALSE) || ($access == TRUE)) {
+                // This is the same check the featured area above makes, so that both halves
+                // of one set of results agree on who may see a page. The check this replaced
+                // only understood "private" folders, so the name, title and description of a
+                // page in a membership folder were published to a visitor who is not a
+                // member.
+                if (check_view_access($page_folder, true)) {
                     // store page name and title
                     $pages_info[$this_page_id]['name'] = $page_name;
                     $pages_info[$this_page_id]['title'] = $page_title;
@@ -230,19 +233,21 @@ function get_search_results($properties) {
                 }
             }
             
-            // get all pages that have a matching keyword in their meta keywords
-            $db_query = 
-                "SELECT 
-                    page_id, 
-                    page_name, 
-                    page_folder, 
-                    page_title, 
-                    page_meta_description 
-                FROM page 
-                WHERE 
-                    (page_search = 1) 
-                    AND (page_search_keywords != '" . escape($query) . "')
-                    AND (page_meta_keywords LIKE '%" . escape(escape_like($query)) . "%')";
+            // Get the pages that are not promoted on this query but still mention it inside
+            // one of their keywords, so that searching for "tasarim" also reaches a page
+            // tagged with "web tasarim".
+            $db_query =
+                "SELECT
+                    page_id,
+                    page_name,
+                    page_folder,
+                    page_title,
+                    page_meta_description
+                FROM page
+                WHERE
+                    (page_search = 1)
+                    AND (page_id NOT IN (" . $featured_page_id_list . "))
+                    AND (page_search_keywords LIKE '%" . escape(escape_like($query)) . "%')";
             $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
             while ($row = mysqli_fetch_array($result)) {
                 $this_page_id = $row['page_id'];
@@ -250,27 +255,9 @@ function get_search_results($properties) {
                 $page_folder = $row['page_folder'];
                 $page_title = $row['page_title'];
                 $page_meta_description = $row['page_meta_description'];
-                
-                if (get_access_control_type($page_folder) == 'private') {
-                    $private = true;
-                } else {
-                    $private = false;
-                }
-                
-                // if page is private and user is logged in
-                if (($private == TRUE) && $_SESSION['sessionusername']) {
-                    $access_check = check_private_access($row['page_folder']);
 
-                    // if user is an administrator, desiger, or manager OR the user has access to the page
-                    if ($access_check['access'] == true) {
-                        $access = TRUE;
-                    } else {
-                        $access = FALSE;
-                    }
-                }
-                
-                // if the page is not private OR the user has access to page
-                if (($private == FALSE) || ($access == TRUE)) {
+                // Same access check as the two result sets above.
+                if (check_view_access($page_folder, true)) {
                     // if this page is not already in the primary or pages arrays then add it
                     if ((array_key_exists($this_page_id, $featured_items) == FALSE) && (array_key_exists($this_page_id, $pages) == FALSE)) {
                         // store page name and title
@@ -302,7 +289,7 @@ function get_search_results($properties) {
                     (comments.item_id = '0')
                     AND (comments.published = '1')
                     AND (page.page_search = '1')
-                    AND (LOWER(CONCAT_WS(',', comments.name, comments.message)) LIKE '%" . escape($query) . "%')";
+                    AND (LOWER(CONCAT_WS(',', comments.name, comments.message)) LIKE '%" . escape(escape_like($query)) . "%')";
             $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
             while($row = mysqli_fetch_array($result)) {
                 // if the page for this comment is not already a search result, then add the comment to the comments array

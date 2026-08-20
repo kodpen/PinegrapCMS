@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -165,11 +165,11 @@ if (!$_POST) {
     // If social networking is enabled, then update position value.
     if (SOCIAL_NETWORKING == TRUE) {
         $sql_field_social_networking_position = "social_networking_position,";
-        $sql_value_social_networking_position = "'" . escape($_POST['social_networking_position']) . "',";
+        $sql_value_social_networking_position = "'" . escape($_POST['social_networking_position'] ?? '') . "',";
     }
     
     // insert row into style table
-    $result=mysqli_query(db::$con, "INSERT INTO style (style_name, style_code, " . $sql_field_social_networking_position . "collection, layout_type, style_timestamp, style_user) VALUES ('" . escape($name) . "', '" . escape($_POST['code']) . "', " . $sql_value_social_networking_position . "'" . escape($_POST['collection']) . "', '" . e($_POST['layout_type']) . "', UNIX_TIMESTAMP(), '$user[id]')") or output_error('Query failed');
+    $result=mysqli_query(db::$con, "INSERT INTO style (style_name, style_code, " . $sql_field_social_networking_position . "collection, layout_type, style_timestamp, style_user) VALUES ('" . escape($name) . "', '" . escape($_POST['code'] ?? '') . "', " . $sql_value_social_networking_position . "'" . escape($_POST['collection'] ?? '') . "', '" . e($_POST['layout_type'] ?? '') . "', UNIX_TIMESTAMP(), '$user[id]')") or output_error('Query failed');
 
     log_activity(lang(array('string'=>'style ({var:1}) was created','vars'=>$name)), $_SESSION['sessionusername']);
     include_once('liveform.class.php');

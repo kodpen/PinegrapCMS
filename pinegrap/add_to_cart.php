@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -60,7 +60,7 @@ function add_to_cart($request) {
     $items_total_info = '';
     $items_quantity = 0;    // total quantity of items in cart
     
-    if (isset($_SESSION['ecommerce']['order_id']) && $_SESSION['ecommerce']['order_id'] != '') {
+    if (isset($_SESSION['ecommerce']['order_id']) && ($_SESSION['ecommerce']['order_id'] ?? '') != '') {
 
         // Query to get all order items with product details
         $query =
@@ -87,7 +87,7 @@ function add_to_cart($request) {
                 products.submit_form_quantity_type
             FROM order_items
             LEFT JOIN products ON order_items.product_id = products.id
-            WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+            WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 
         // Execute query
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

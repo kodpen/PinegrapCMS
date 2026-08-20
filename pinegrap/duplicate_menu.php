@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -76,7 +76,7 @@ log_activity(lang(array('string'=>'menu was duplicated ({var:1} -> {var:2})','va
 $form = new liveform('edit_menu', $menu['id']);
 $form->add_notice(lang('The menu and all of its items have been duplicated. You are now editing the duplicate.'));
 
-go(PATH . SOFTWARE_DIRECTORY . '/edit_menu.php?id=' . $menu['id'] . '&from=' . urlencode($_GET['from']) . '&send_to=' . urlencode($_GET['send_to']));
+go(PATH . SOFTWARE_DIRECTORY . '/edit_menu.php?id=' . $menu['id'] . '&from=' . urlencode(($_GET['from'] ?? '')) . '&send_to=' . urlencode(($_GET['send_to'] ?? '')));
 
 // Use recursion to duplicate all menu items in a menu
 

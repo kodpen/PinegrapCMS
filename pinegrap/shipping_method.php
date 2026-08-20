@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -29,7 +29,7 @@ $query =
         state,
         country
     FROM ship_tos
-    WHERE id = '" . escape($_POST['ship_to_id']) . "'";
+    WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if ship to is not found, output error
@@ -40,7 +40,7 @@ if (mysqli_num_rows($result) == 0) {
 $row = mysqli_fetch_assoc($result);
 
 // if order id for ship to is not equal to order id in session, output error
-if ($row['order_id'] != $_SESSION['ecommerce']['order_id']) {
+if ($row['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
     output_error('You do not have access to this recipient. <a href="javascript:history.go(-1)">Go back</a>.');
 }
 
@@ -152,7 +152,7 @@ if ($liveform->check_form_errors() == false) {
             products.extra_shipping_cost
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
-        WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "' AND order_items.ship_to_id = '" . escape($_POST['ship_to_id']) . "'
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '" . escape($_POST['ship_to_id'] ?? '') . "'
         ORDER BY order_items.id ASC");
 
     $shipping_cost = 0;
@@ -278,16 +278,16 @@ if ($liveform->check_form_errors() == false) {
             zone_id = '$zone_id',
             shipping_cost = '$shipping_cost',
             original_shipping_cost = '$original_shipping_cost',
-            offer_id = '" . $offer['id'] . "',
+            offer_id = '" . ($offer['id'] ?? '') . "',
             complete = '1'
-        WHERE id = '" . escape($_POST['ship_to_id']) . "'";
+        WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // remove liveform because software does not need it anymore
     $liveform->remove_form('shipping_method');
 
     // check to see if there is another recipient that is not complete in this order that the user needs to fill out information for
-    $query = "SELECT id FROM ship_tos WHERE (order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (complete = 0) AND (id > '" . escape($_POST['ship_to_id']) . "') ORDER BY id";
+    $query = "SELECT id FROM ship_tos WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (complete = 0) AND (id > '" . escape($_POST['ship_to_id'] ?? '') . "') ORDER BY id";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
     // if there is another recipient, send user to shipping address & arrival screen for that recipient
@@ -301,14 +301,14 @@ if ($liveform->check_form_errors() == false) {
     // else there is not another recipient, so find out where we should send the user
     } else {
         // if user came from an express order page, then forward user to express order page
-        if ($_SESSION['ecommerce']['express_order_page_id']) {
+        if (!empty($_SESSION['ecommerce']['express_order_page_id'])) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_SESSION['ecommerce']['express_order_page_id']));
             exit();
             
         // else user did not come from an express order page, so figure out where user should be forwarded
         } else {
             // find out if billing information is complete
-            $query = "SELECT billing_complete FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+            $query = "SELECT billing_complete FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $billing_complete = $row['billing_complete'];

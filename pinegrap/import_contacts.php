@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -188,7 +188,7 @@ if (!$_POST) {
     // loop through all contact groups
     while ($row = mysqli_fetch_assoc($result)) {
         // if contact group was checked and user has access to contact group, add contact group to array
-        if (($_POST['contact_group_' . $row['id']] == 1) && (validate_contact_group_access($user, $row['id']) == true)) {
+        if ((($_POST['contact_group_' . $row['id']] ?? '') == 1) && (validate_contact_group_access($user, $row['id']) == true)) {
             $contact_groups[] = $row;
         }
     }

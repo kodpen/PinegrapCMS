@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -21,7 +21,7 @@ include('init.php');
 validate_token_field();
 initialize_order();
 
-if (!$_SESSION['ecommerce']['order_id']) {
+if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
     output_error('Sorry, we can\'t remove an item from your cart, because you do not have an active cart.');
 }
 
@@ -39,7 +39,7 @@ if (!$order_item) {
 }
 
 // If the order item is for a different order, then log and output error.
-if ($order_item['order_id'] != $_SESSION['ecommerce']['order_id']) {
+if ($order_item['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
     log_activity('Access denied to remove item from different cart.');
     output_error('Sorry, we can\'t allow you to remove that item, because it is not in your cart.');
 }
@@ -47,13 +47,13 @@ if ($order_item['order_id'] != $_SESSION['ecommerce']['order_id']) {
 $ship_to_id = $order_item['ship_to_id'];
 
 // delete order item
-$query = "DELETE FROM order_items WHERE (id = '" . escape($order_item_id) . "') AND (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')";
+$query = "DELETE FROM order_items WHERE (id = '" . escape($order_item_id) . "') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 db("DELETE FROM order_item_gift_cards WHERE order_item_id = '" . escape($order_item_id) . "'");
 
 // delete product form data for this order item
-$query = "DELETE FROM form_data WHERE (order_item_id = '" . escape($order_item_id) . "') AND (order_item_id != '0') AND (order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (order_id != '0')";
+$query = "DELETE FROM form_data WHERE (order_item_id = '" . escape($order_item_id) . "') AND (order_item_id != '0') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (order_id != '0')";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // the cart has changed, so offers might have changed, so we need to refresh prices
@@ -72,13 +72,13 @@ if (mysqli_num_rows($result) == 0) {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // delete custom shipping form data for ship to
-    $query = "DELETE FROM form_data WHERE (ship_to_id = '$ship_to_id') AND (ship_to_id != '0') AND (order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (order_id != '0')";
+    $query = "DELETE FROM form_data WHERE (ship_to_id = '$ship_to_id') AND (ship_to_id != '0') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (order_id != '0')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // if user removed item from a shipping method screen, check to see if there is another recipient to send user to
     if ($_GET['screen'] == 'shipping_method') {        
         // check to see if there is another recipient in this order that the user needs to fill out information for
-        $query = "SELECT id FROM ship_tos WHERE (order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (complete = 0) AND (id > '$ship_to_id')";
+        $query = "SELECT id FROM ship_tos WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (complete = 0) AND (id > '$ship_to_id')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
         // if there is another recipient, send user to shipping address & arrival screen for that recipient
@@ -99,13 +99,13 @@ if (mysqli_num_rows($result) == 0) {
             // else user did not come from an express order page, so figure out where user should be forwarded
             } else {
                 // check to see if there is at least one item in cart
-                $query = "SELECT id FROM order_items WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                $query = "SELECT id FROM order_items WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
                 // if there is at least one item in the cart
                 if (mysqli_num_rows($result) > 0) {
                     // find out if billing information is complete
-                    $query = "SELECT billing_complete FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                    $query = "SELECT billing_complete FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $billing_complete = $row['billing_complete'];
@@ -148,4 +148,4 @@ if (mysqli_num_rows($result) == 0) {
 }
 
 // send user back to where he/she came from
-header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . $_GET['send_to']);
+header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . ($_GET['send_to'] ?? ''));

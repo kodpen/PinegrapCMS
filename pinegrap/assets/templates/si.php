@@ -75,7 +75,7 @@
                                 <dd> <?=h(php_uname())?> </dd>
                                 <dt><?=lang('Operating System')?></dt>
                                 <dd> 
-                                    <?php if(PHP_OS_FAMILY):?> 
+                                    <?php if (defined('PHP_OS_FAMILY')): ?> 
                                         <?=h(PHP_OS_FAMILY)?> 
                                     <?php else:?> 
                                         <?=h(PHP_OS)?> 

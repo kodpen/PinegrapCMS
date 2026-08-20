@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -250,4 +250,8 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
         log_activity('recurring payment job expired membership for ' . $number_of_expired_memberships . ' user(s), revoked private access for ' . $number_of_revoked_private_access . ' user(s), and sent e-mail to ' . $number_of_emails_sent . ' user(s)', 'UNKNOWN');
     }
 }
+
+// Scheduled-task health: record that this job finished. See pg_cron_ran().
+pg_cron_ran('recurring_payment_job');
+
 ?>

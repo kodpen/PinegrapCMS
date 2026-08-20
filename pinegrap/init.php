@@ -12,9 +12,20 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
+
+// This file bootstraps every entry point and it is not idempotent: it requires
+// functions.php outright, so a second load would fatal on the first redeclared
+// function. The general job can run another scheduled job in the same process
+// and every one of those scripts starts by requiring this file, so loading it
+// twice has to be a no-op instead.
+if (defined('PG_INIT_LOADED')) {
+    return;
+}
+
+define('PG_INIT_LOADED', true);
 
 try {
     if (!@include_once(dirname(__FILE__) . '/data/config.php')) {
@@ -370,6 +381,36 @@ define('WAF_ENABLED', isset($row['waf_enabled']) ? (int) $row['waf_enabled'] : 0
 // gates is all of the cost — one upsert — while the init half is a few
 // microseconds of timers that are not worth a second config read to avoid.
 define('PERF_MONITOR_ENABLED', isset($row['perf_monitor']) ? (int) $row['perf_monitor'] : 1);
+// Live chat switches, following the WAF_ENABLED pattern: the code may be
+// newer than the database — when the column is missing the feature acts
+// disabled, the page does not break. CHAT_ENABLED is absolute: while off,
+// both the launcher and the actions are fully disabled (chat.php / api.php
+// read this constant).
+define('CHAT_ENABLED', isset($row['chat_enabled']) ? (int) $row['chat_enabled'] : 0);
+define('CHAT_SITE_ENABLED', isset($row['chat_site_enabled']) ? (int) $row['chat_site_enabled'] : 0);
+define('CHAT_OPERATOR_USER_ID', isset($row['chat_operator_user_id']) ? (int) $row['chat_operator_user_id'] : 0);
+define('CHAT_WELCOME_MESSAGE', isset($row['chat_welcome_message']) ? $row['chat_welcome_message'] : '');
+define('CHAT_OFFLINE_EMAIL', isset($row['chat_offline_email']) ? (int) $row['chat_offline_email'] : 1);
+define('CHAT_CAPTCHA', isset($row['chat_captcha']) ? (int) $row['chat_captcha'] : 1);
+define('CHAT_RETENTION_DAYS', isset($row['chat_retention_days']) ? (int) $row['chat_retention_days'] : 60);
+// Site widget appearance settings (2026.4.3): theme, accent color, icon.
+define('CHAT_WIDGET_THEME', isset($row['chat_widget_theme']) ? $row['chat_widget_theme'] : 'auto');
+define('CHAT_WIDGET_COLOR', isset($row['chat_widget_color']) ? $row['chat_widget_color'] : '#0d6efd');
+define('CHAT_WIDGET_ICON', isset($row['chat_widget_icon']) ? $row['chat_widget_icon'] : 'chat');
+// Widget label (2026.4.6): empty = "Live Support" from the language file.
+define('CHAT_WIDGET_TITLE', isset($row['chat_widget_title']) ? $row['chat_widget_title'] : '');
+// Chat attachments (2026.4.4): off by default — no upload endpoint works
+// until the operator enables them.
+define('CHAT_ALLOW_FILES', isset($row['chat_allow_files']) ? (int) $row['chat_allow_files'] : 0);
+define('CHAT_ALLOW_IMAGES', isset($row['chat_allow_images']) ? (int) $row['chat_allow_images'] : 0);
+define('CHAT_VISITOR_IMAGE_LIMIT', isset($row['chat_visitor_image_limit']) ? (int) $row['chat_visitor_image_limit'] : 5);
+// Scheduled-job dispatch (2026.4.17), same pattern: off when the columns are
+// not there yet, so the general job on an installation that has not run the
+// upgrade simply dispatches nothing. JOB_DISPATCH is a comma separated list of
+// job names; the master switch and the list are read separately so that
+// turning the switch off keeps the operator's selection for next time.
+define('JOB_DISPATCH_ENABLED', isset($row['job_dispatch_enabled']) ? (int) $row['job_dispatch_enabled'] : 0);
+define('JOB_DISPATCH', isset($row['job_dispatch']) ? $row['job_dispatch'] : '');
 define('ALLOWED_BOTS', $row['allowed_bots']);
 define('BLOCK_UNKNOWN_BOTS', (int) $row['block_unknown_bots']);
 define('PAY_PER_CLICK_FLAG', $row['pay_per_click_flag']);
@@ -693,10 +734,10 @@ if (ECOMMERCE == true) {
     // will prevent the cart region, cart, and etc. from showing the completed order for the
     // other user.
 
-    if (isset($_SESSION['ecommerce']['order_id']) && $_SESSION['ecommerce']['order_id']) {
+    if (isset($_SESSION['ecommerce']['order_id']) && ($_SESSION['ecommerce']['order_id'] ?? '')) {
 
         $order = db_item(
-            "SELECT status FROM orders WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'"
+            "SELECT status FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'"
         );
 
         // If order was not found (e.g. deleted), or has already been completed, then this order

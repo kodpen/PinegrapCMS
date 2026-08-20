@@ -12,21 +12,36 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 function get_view_order_screen_content($properties)
 {
-    $order_id = $_GET['id'];
+    $order_id = $_GET['id'] ?? '';
     $page_id = $properties['page_id'];
+
+    // These are only added to / set further below under some conditions, but they are always
+    // read when the totals and the layout are assembled.
+    $subtotal = 0;
+    $grand_tax = 0;
+    $order_discount = 0;
+    $output_shipping = '';
+    $output_discount = '';
+    $output_grand_shipping = '';
+    $output_delete_button = '';
+
+    // NOTE: $output_ship_tos is never assigned anywhere in this script, so that slot always
+    // renders empty.  Starting it empty keeps that behaviour and stops the warning.
+    $output_ship_tos = '';
     $device_type = $properties['device_type'];
 
 
 
+    // A page that is not set up as an order receipt has no properties row, so this can be null.
     $properties = get_page_type_properties($page_id, 'order receipt');
 
-    $product_description_type = $properties['product_description_type'];
+    $product_description_type = isset($properties['product_description_type']) ? $properties['product_description_type'] : '';
 
     $layout_type = get_layout_type($page_id);
 
@@ -77,7 +92,7 @@ function get_view_order_screen_content($properties)
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // if the user came from the control panel, then return placeholder content
-    if ((isset($_GET['from']) == true) && ($_GET['from'] == 'control_panel')) {
+    if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
         $form->add_notice(lang('Order information will be displayed here when this page is linked to from a My Account Page Type.'));
         
     }else{    
@@ -237,32 +252,32 @@ function get_view_order_screen_content($properties)
                 
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
-                $ship_to_name = $row['ship_to_name'];
-                $salutation = $row['salutation'];
-                $first_name = $row['first_name'];
-                $last_name = $row['last_name'];
-                $company = $row['company'];
-                $address_1 = $row['address_1'];
-                $address_2 = $row['address_2'];
-                $city = $row['city'];
-                $state = $row['state'];
-                $zip_code = $row['zip_code'];
-                $country = $row['country'];
-                $address_verified = $row['address_verified'];
-                $arrival_date = $row['arrival_date'];
-                $arrival_date_id = $row['arrival_date_id'];
-                $shipping_method_id = $row['shipping_method_id'];
-                $shipping_method_name = $row['shipping_method_name'];
-                $shipping_method_description = $row['shipping_method_description'];
-                $shipping_cost = $row['shipping_cost'] / 100;
-                $original_shipping_cost = $row['original_shipping_cost'] / 100;
-                $ship_to_offer_id = $row['offer_id'];
+                $ship_to_name = $row['ship_to_name'] ?? '';
+                $salutation = $row['salutation'] ?? '';
+                $first_name = $row['first_name'] ?? '';
+                $last_name = $row['last_name'] ?? '';
+                $company = $row['company'] ?? '';
+                $address_1 = $row['address_1'] ?? '';
+                $address_2 = $row['address_2'] ?? '';
+                $city = $row['city'] ?? '';
+                $state = $row['state'] ?? '';
+                $zip_code = $row['zip_code'] ?? '';
+                $country = $row['country'] ?? '';
+                $address_verified = $row['address_verified'] ?? '';
+                $arrival_date = $row['arrival_date'] ?? '';
+                $arrival_date_id = $row['arrival_date_id'] ?? '';
+                $shipping_method_id = $row['shipping_method_id'] ?? '';
+                $shipping_method_name = $row['shipping_method_name'] ?? '';
+                $shipping_method_description = $row['shipping_method_description'] ?? '';
+                $shipping_cost = ($row['shipping_cost'] ?? 0) / 100;
+                $original_shipping_cost = ($row['original_shipping_cost'] ?? 0) / 100;
+                $ship_to_offer_id = $row['offer_id'] ?? '';
                 
                 // get country name
                 $query = "SELECT name FROM countries WHERE code = '" . escape($country) . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
-                $country = $row['name'];
+                $country = $row['name'] ?? '';
                 
                 // if this shipping address is verified, then convert salutation and country to all uppercase
                 if ($address_verified == 1) {
@@ -345,8 +360,9 @@ function get_view_order_screen_content($properties)
                     $original_product_price = $order_item['product_price'] / 100;
                     $recurring = $order_item['recurring'];
                     $recurring_schedule_editable_by_customer = $order_item['recurring_schedule_editable_by_customer'];
-                    $start = $order_item['start'];
-                    $payment_period = $order_item['payment_period'];
+                    // Only selected for recurring products.
+                    $start = $order_item['start'] ?? '';
+                    $payment_period = $order_item['payment_period'] ?? '';
                     $selection_type = $order_item['selection_type'];
                     $gift_card = $order_item['gift_card'];
                     $form = $order_item['form'];
@@ -1152,8 +1168,8 @@ function get_view_order_screen_content($properties)
         $grand_total = $subtotal;
 
         // if there is an order discount from an offer, prepare order discount
-        if ($_SESSION['ecommerce']['order_discount']) {
-            $order_discount = $_SESSION['ecommerce']['order_discount'] / 100;
+        if (!empty($_SESSION['ecommerce']['order_discount'])) {
+            $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
             
             $grand_total = $subtotal - $order_discount;
             
@@ -1614,7 +1630,7 @@ function get_view_order_screen_content($properties)
             $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_reorder.php?id=' . $order_id . get_token_query_string_field() . '" class="software_button_primary">Reorder</a>&nbsp;&nbsp;&nbsp;';
         }else {
             // if this incomplete order is not the active order, then prepare to output retrieve button
-            if ($order_id != $_SESSION['ecommerce']['order_id']) {
+            if ($order_id != ($_SESSION['ecommerce']['order_id'] ?? '')) {
                 $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_retrieve_order.php?id=' . $order_id . get_token_query_string_field() . '" class="software_button_primary">Retrieve</a>&nbsp;&nbsp;&nbsp;';
             }
             // Example code desc.: Replaced custom confirm dialog with native browser confirm for link redirection
@@ -2038,6 +2054,9 @@ function get_view_order_screen_content($properties)
 
                 // If calendars is enabled and this order item is for a calendar event,
                 // then get calendar event info like the name and date & time.
+                // The layout templates always read this key, so it has to exist on every item.
+                $item['calendar_event'] = false;
+
                 if (CALENDARS and $item['calendar_event_id']) {
                     $item['calendar_event'] = get_calendar_event($item['calendar_event_id'], $item['recurrence_number']);
                 }
@@ -2189,7 +2208,7 @@ function get_view_order_screen_content($properties)
 
         $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 
-        $discount = $_SESSION['ecommerce']['order_discount'] / 100;
+        $discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
 
         // If there is a discount, then prepare discount info and total.
         if ($discount) {
@@ -2467,10 +2486,10 @@ function get_view_order_screen_content($properties)
 
         $auto_registration = false;
 
-        if ($_SESSION['software']['auto_registration']['email_address'] != '') {
+        if (($_SESSION['software']['auto_registration']['email_address'] ?? '') != '') {
             $auto_registration = true;
-            $auto_registration_email_address = $_SESSION['software']['auto_registration']['email_address'];
-            $auto_registration_password = $_SESSION['software']['auto_registration']['password'];
+            $auto_registration_email_address = ($_SESSION['software']['auto_registration']['email_address'] ?? '');
+            $auto_registration_password = ($_SESSION['software']['auto_registration']['password'] ?? '');
         }
 
         $currency = false;

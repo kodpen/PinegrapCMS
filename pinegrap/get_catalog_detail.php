@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -30,7 +30,7 @@ function get_catalog_detail($properties) {
 
     $layout_type = get_layout_type($page_id);
 
-    if ($_GET['from'] == 'control_panel') {
+    if ((isset($_GET['from'])) && (($_GET['from'] ?? '') == 'control_panel')) {
         return
             '<div class="software_catalog_detail">
                 <p class="software_notice">Product details will be displayed here when this page is linked to from a Catalog Page Type.</p>
@@ -100,7 +100,8 @@ function get_catalog_detail($properties) {
     
     $row = mysqli_fetch_assoc($result);
 
-    $item['parent_id'] = $row['parent_id'];
+    // Not every catalog item query selects these columns.
+    $item['parent_id'] = isset($row['parent_id']) ? $row['parent_id'] : '';
     $item['image_name'] = $row['image_name'];
     $item['short_description'] = $row['short_description'];
     $item['full_description'] = $row['full_description'];
@@ -178,7 +179,7 @@ function get_catalog_detail($properties) {
 
     
     $item['address_name'] = $row['address_name'];
-    $item['attributes'] = $row['attributes'];
+    $item['attributes'] = isset($row['attributes']) ? $row['attributes'] : '';
     
     // if item is a product, then set product properties
     if ($item['type'] == 'product') {
@@ -1417,6 +1418,10 @@ function get_catalog_detail($properties) {
 
             // Loop through the product groups in order to prepare additional info.
             foreach ($product_groups as $key => $product_group) {
+
+                // The layout templates always read this key, so it has to exist on every group.
+                $product_group['current'] = false;
+
                 $product_group['url'] = $catalog_url . encode_url_path(get_catalog_item_address_name_from_id($product_group['id'], 'product group')) . $query_string;
 
                 // If the product group that should be marked as current
@@ -1523,7 +1528,9 @@ function get_catalog_detail($properties) {
         // Loop through the products in order to prepare price in dollars.
         foreach ($products as $key => $product) {
             $product['price'] = $product['price'] / 100;
-            $product['discounted_price'] = $product['discounted_price'] / 100;
+
+            // Not every query above selects a discounted price.
+            $product['discounted_price'] = isset($product['discounted_price']) ? ($product['discounted_price'] / 100) : '';
 
             $products[$key] = $product;
         }

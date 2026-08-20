@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -264,16 +264,16 @@ if (!$_POST) {
             user,
             timestamp)
         VALUES (
-            '" . escape($_POST['name']) . "',
-            '" . escape($_POST['description']) . "',
-            '" . escape($_POST['code']) . "',
+            '" . escape($_POST['name'] ?? '') . "',
+            '" . escape($_POST['description'] ?? '') . "',
+            '" . escape($_POST['code'] ?? '') . "',
             '" . escape(prepare_form_data_for_input($_POST['arrival_date'], 'date')) . "',
             '" . escape($status) . "',
             '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
             '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-            '" . escape($_POST['default_selected']) . "',
-            '" . escape($_POST['sort_order']) . "',
-            '" . escape($_POST['custom']) . "',
+            '" . escape($_POST['default_selected'] ?? '') . "',
+            '" . escape($_POST['sort_order'] ?? '') . "',
+            '" . escape($_POST['custom'] ?? '') . "',
             '" . escape(prepare_form_data_for_input($_POST['custom_maximum_arrival_date'], 'date')) . "',
             '" . $user['id'] . "',
             UNIX_TIMESTAMP())";
@@ -282,7 +282,7 @@ if (!$_POST) {
     $arrival_date_id = mysqli_insert_id(db::$con);
 
     // if default selected was checked, then turn value off for all other arrival dates
-    if ($_POST['default_selected'] == 1) {
+    if (($_POST['default_selected'] ?? '') == 1) {
         // update arrival date
         $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != $arrival_date_id";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -303,9 +303,9 @@ if (!$_POST) {
         // and the cut-off date and time is between the start date and end date for the arrival date,
         // then insert shipping cut-off into database
         if (
-            ($_POST['shipping_cutoff_' . $i . '_shipping_method_id'] != '')
+            (($_POST['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '') != '')
             && (in_array($_POST['shipping_cutoff_' . $i . '_shipping_method_id'], $shipping_cutoff_shipping_methods) == FALSE)
-            && ($_POST['shipping_cutoff_' . $i . '_date_and_time'] != '')
+            && (($_POST['shipping_cutoff_' . $i . '_date_and_time'] ?? '') != '')
             && (validate_date_and_time($_POST['shipping_cutoff_' . $i . '_date_and_time']) == TRUE)
             && (prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time') >= prepare_form_data_for_input($_POST['start_date'], 'date') . ' 00:00:00')
             && (prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time') <= prepare_form_data_for_input($_POST['end_date'], 'date') . ' 23:59:59')

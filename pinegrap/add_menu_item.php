@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -79,8 +79,8 @@ if (!$_POST) {
                 </div>
                 <form name="form" action="add_menu_item.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="from" value="' . h($_GET['from']) . '" />
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" id="menu_id" name="menu_id" value="' . $menu_id . '" />
                     <div class="row">
                         <div class="col-12">
@@ -204,7 +204,7 @@ if (!$_POST) {
              FROM menu_items
              WHERE 
                  (menu_id = '" . escape($menu_id) . "')
-                 AND (parent_id = '" . escape($_POST['parent_id'])  . "')
+                 AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
              ORDER BY sort_order DESC
              LIMIT 1";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -229,15 +229,15 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES
-            ('" . escape($_POST['name']) . "',
+            ('" . escape($_POST['name'] ?? '') . "',
             '" . escape($menu_id) . "',
-            '" . escape($_POST['parent_id']) . "',
+            '" . escape($_POST['parent_id'] ?? '') . "',
             '" . $new_sort_order . "',
             '" . escape($link_page_id) . "',
             '" . escape($link_url) . "',
-            '" . escape($_POST['link_target']) . "',
-            '" . escape($_POST['security']) . "',
-            '" . escape($_POST['class']) . "',
+            '" . escape($_POST['link_target'] ?? '') . "',
+            '" . escape($_POST['security'] ?? '') . "',
+            '" . escape($_POST['class'] ?? '') . "',
             '" . $user['id'] . "',
             UNIX_TIMESTAMP(),
             '" . $user['id'] . "',

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,7 +23,7 @@ validate_area_access($user, 'manager');
 validate_token_field();
 
 // Do different things depending on mode.
-switch ($_GET['mode']) {
+switch (($_GET['mode'] ?? '')) {
     // If user has selected a style from the pick list, then update current style.
     case 'preview':
         $_SESSION['software']['preview_style']['theme_' . $_SESSION['software']['preview_theme_id'] . '_page_' . $_GET['page_id'] . '_' . $_SESSION['software']['device_type']] = $_GET['style_id'];
@@ -116,5 +116,5 @@ switch ($_GET['mode']) {
         break;
 }
 
-go($_GET['send_to']);
+go(($_GET['send_to'] ?? ''));
 ?>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -66,7 +66,7 @@ function get_custom_form_screen_content($properties) {
             ($return_type == 'message')
             && (USER_LOGGED_IN == true)
             && (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '$current_page_id') AND (user_id = '" . USER_ID . "')") > 0)
-            && ($_GET['from'] != 'control_panel')
+            && (($_GET['from'] ?? '') != 'control_panel')
         ) {
             $output = '<div class="return_message">' . $return_message . '</div>';
 
@@ -76,7 +76,7 @@ function get_custom_form_screen_content($properties) {
             ($return_type == 'page')
             && (USER_LOGGED_IN == true)
             && (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '$current_page_id') AND (user_id = '" . USER_ID . "')") > 0)
-            && ($_GET['from'] != 'control_panel')
+            && (($_GET['from'] ?? '') != 'control_panel')
         ) {
             // If an alternative return page is enabled,
             // and the user is in the alternative page contact group,

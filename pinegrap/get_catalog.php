@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -208,7 +208,7 @@ function get_catalog($properties) {
             $url_parts = parse_url(get_request_uri());
             
             // put query string parameters into an array
-            if($url_parts['query']){
+            if (!empty($url_parts['query'])) {
                 parse_str($url_parts['query'], $query_string_parameters);
             }
             $output_hidden_fields = '';
@@ -1421,7 +1421,7 @@ function get_catalog($properties) {
         $url_parts = parse_url(REQUEST_URL);
         
         // put query string parameters into an array
-        if($url_parts['query']){
+        if (!empty($url_parts['query'])) {
             parse_str($url_parts['query'], $query_string_parameters);
         }
         
@@ -1782,6 +1782,10 @@ function get_catalog($properties) {
 
         // Loop through the product groups in order to prepare additional info.
         foreach ($product_groups as $key => $product_group) {
+
+            // The layout templates always read this key, so it has to exist on every group.
+            $product_group['current'] = false;
+
             $product_group['url'] = $catalog_url . encode_url_path(get_catalog_item_address_name_from_id($product_group['id'], 'product group')) . $query_string;
 
             if ($product_group['id'] == $current_product_group_id) {

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -31,7 +31,13 @@ foreach ($_REQUEST as $key => $value) {
 }
 
 
-switch ($_SESSION['software']['ecommerce']['view_offers']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_offers']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_offers']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? '')) {
     case lang('Offer Code'):
         $sort_column = 'offers.code';
         break;
@@ -96,13 +102,16 @@ $offers = db_items(
     FROM offers
     LEFT JOIN offer_rules ON offers.offer_rule_id = offer_rules.id
     LEFT JOIN user AS last_modified_user ON offers.user = last_modified_user.user_id
-    ORDER BY $sort_column " . e($_SESSION['software']['ecommerce']['view_offers']['order']) . "");
+    ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_offers']['order'] ?? '')) . "");
 
 // Get the current date so that later we can figure out if offers are active.
 $current_date = date('Y-m-d');
 
 // Loop through the offers in order to prepare them.
 foreach ($offers as $key => $offer) {
+
+    // Default to not active, so that the template can always read this key.
+    $offer['status_enabled'] = false;
 
     // If this offer is active, then store that, so a color can be used to indicate that.
     if (

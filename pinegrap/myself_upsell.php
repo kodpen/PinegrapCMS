@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -25,7 +25,7 @@ function get_myself_products() {
     $products = array();
 
     // If there is no order then return empty array.
-    if (!$_SESSION['ecommerce']['order_id']) {
+    if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
         return $products;
     }
 
@@ -33,7 +33,7 @@ function get_myself_products() {
     $recipient = db_item(
         "SELECT id FROM ship_tos
         WHERE
-            order_id = '" . e($_SESSION['ecommerce']['order_id']) . "'
+            order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'
             AND ship_to_name = 'myself'");
 
     // If there is no myself recipient, then return empty array.

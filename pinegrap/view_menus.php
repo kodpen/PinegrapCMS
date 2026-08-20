@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,7 +34,13 @@ foreach ($_REQUEST as $key => $value) {
 }
 
 
-switch ($_SESSION['software']['design']['view_menus']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['design']['view_menus']['sort']) == false) {
+    $_SESSION['software']['design']['view_menus']['sort'] = '';
+}
+
+switch (($_SESSION['software']['design']['view_menus']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'menus.name';
         break;
@@ -83,7 +89,7 @@ $query =
     FROM menus
     LEFT JOIN user as created_user ON menus.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON menus.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['design']['view_menus']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['design']['view_menus']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -160,10 +166,10 @@ pg_page_shell([
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_menus']['sort'], $_SESSION['software']['design']['view_menus']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Effect'), $_SESSION['software']['design']['view_menus']['sort'], $_SESSION['software']['design']['view_menus']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['design']['view_menus']['sort'], $_SESSION['software']['design']['view_menus']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_menus']['sort'], $_SESSION['software']['design']['view_menus']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_menus']['sort'] ?? ''), ($_SESSION['software']['design']['view_menus']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Effect'), ($_SESSION['software']['design']['view_menus']['sort'] ?? ''), ($_SESSION['software']['design']['view_menus']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['design']['view_menus']['sort'] ?? ''), ($_SESSION['software']['design']['view_menus']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_menus']['sort'] ?? ''), ($_SESSION['software']['design']['view_menus']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

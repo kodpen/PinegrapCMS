@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -119,7 +119,7 @@ if (!$_POST) {
         $output_form_start =
             '<form name="form" action="edit_email_campaign.php" method="post">
                 ' . get_token_field() . '
-                <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                 <input type="hidden" name="id" value="' . h($_GET['id']) . '">';
         
         switch ($status) {
@@ -552,7 +552,7 @@ if (!$_POST) {
             subject,
             format
         FROM email_campaigns
-        WHERE id = '" . escape($_POST['id']) . "'";
+        WHERE id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
@@ -570,31 +570,31 @@ if (!$_POST) {
 
     // if the format is plain text, then allow the body to be updated
     if ($format == 'plain_text') {
-        $sql_body = "body = '" . escape($_POST['body']) . "',";
+        $sql_body = "body = '" . escape($_POST['body'] ?? '') . "',";
     }
 
     $sql_bcc_email_address = "";
 
     // If the campaign is an automatic campaign, then allow BCC email address to be updated.
     if ($type == 'automatic') {
-        $sql_bcc_email_address = "bcc_email_address = '" . escape($_POST['bcc_email_address']) . "',";
+        $sql_bcc_email_address = "bcc_email_address = '" . escape($_POST['bcc_email_address'] ?? '') . "',";
     }
     
     $query =
         "UPDATE email_campaigns
         SET
-            status = '" . escape($_POST['status']) . "',
-            subject = '" . escape($_POST['subject']) . "',
+            status = '" . escape($_POST['status'] ?? '') . "',
+            subject = '" . escape($_POST['subject'] ?? '') . "',
             " . $sql_body . "
-            from_name = '" . escape($_POST['from_name']) . "',
-            from_email_address = '" . escape($_POST['from_email_address']) . "',
-            reply_email_address = '" . escape($_POST['reply_email_address']) . "',
+            from_name = '" . escape($_POST['from_name'] ?? '') . "',
+            from_email_address = '" . escape($_POST['from_email_address'] ?? '') . "',
+            reply_email_address = '" . escape($_POST['reply_email_address'] ?? '') . "',
             " . $sql_bcc_email_address . "
             start_time = '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
-            purpose = '" . e($_POST['purpose']) . "',
+            purpose = '" . e($_POST['purpose'] ?? '') . "',
             last_modified_user_id = '" . $user['id'] . "',
             last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE id = '" . escape($_POST['id']) . "'";
+        WHERE id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'campaign (subject: {var:1}) was modified','vars'=>$subject)), $_SESSION['sessionusername']);

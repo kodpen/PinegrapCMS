@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,7 +34,7 @@ if(isset($_GET['id'])){
 }
 $page_designer_query = '';
 if(isset($_SESSION['software']['page_designer']['query'])){
-    $page_designer_query = escape_javascript($_SESSION['software']['page_designer']['query']);
+    $page_designer_query = escape_javascript(($_SESSION['software']['page_designer']['query'] ?? ''));
 }
 $dynamic_regions = 0;
 if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REGIONS == true))) {

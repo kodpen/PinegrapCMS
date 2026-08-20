@@ -935,7 +935,7 @@
 <div class="buttons">
 	<?php if ($status === 'incomplete'):?>  
 		<?php // if this incomplete order is not the active order, then prepare to output retrieve button
-			if ($order_id != $_SESSION['ecommerce']['order_id']):?>  
+			if ($order_id != ($_SESSION['ecommerce']['order_id'] ?? '')):?>  
            		<a href="<?=OUTPUT_PATH?><?=OUTPUT_SOFTWARE_DIRECTORY?>/order_history_retrieve_order.php?id=<?=$order_id?><?=get_token_query_string_field()?>" class="software_button_primary">Retrieve</a>&nbsp;&nbsp;&nbsp;
             <?php endif;?>
     <?php else:?>

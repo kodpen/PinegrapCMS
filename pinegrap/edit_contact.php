@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -701,19 +701,19 @@ if (!$_POST) {
     validate_token_field();
     
     // if contact was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete contact
         $query =
             "DELETE FROM contacts
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete contact references in contacts_contact_groups_xref
-        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete contact references in opt_in
-        $query = "DELETE FROM opt_in WHERE contact_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM opt_in WHERE contact_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity("contact ($_POST[first_name] $_POST[last_name]) was deleted", $_SESSION['sessionusername']);
@@ -735,7 +735,7 @@ if (!$_POST) {
         
         if (AFFILIATE_PROGRAM == true) {
             // determine if affiliate was approved already (we will use this later)
-            $query = "SELECT affiliate_approved FROM contacts WHERE id = '" . escape($_POST['id']) . "'";
+            $query = "SELECT affiliate_approved FROM contacts WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             $original_affiliate_approved = $row['affiliate_approved'];
@@ -744,7 +744,7 @@ if (!$_POST) {
             
             // if an affiliate code was entered check to see if affiliate code is already in use
             if ($affiliate_code) {
-                $query = "SELECT id FROM contacts WHERE affiliate_code = '" . escape($affiliate_code) . "' AND id != '" . escape($_POST['id']) . "'";
+                $query = "SELECT id FROM contacts WHERE affiliate_code = '" . escape($affiliate_code) . "' AND id != '" . escape($_POST['id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
                 if (mysqli_num_rows($result) > 0) {
@@ -758,59 +758,59 @@ if (!$_POST) {
             }
             
             $sql_affiliate =
-                "affiliate_approved = '" . escape($_POST['affiliate_approved']) . "',
-                affiliate_name = '" . escape($_POST['affiliate_name']) . "',
+                "affiliate_approved = '" . escape($_POST['affiliate_approved'] ?? '') . "',
+                affiliate_name = '" . escape($_POST['affiliate_name'] ?? '') . "',
                 affiliate_code = '" . escape($affiliate_code) . "',
-                affiliate_commission_rate = '" . escape($_POST['affiliate_commission_rate']) . "',";
+                affiliate_commission_rate = '" . escape($_POST['affiliate_commission_rate'] ?? '') . "',";
         }
       
 
         if(isset($_POST['file_id']) && $_POST['file_id'] != ''){
-            $sql_file_id = "file_id = '" . escape($_POST['file_id']) . "',";
+            $sql_file_id = "file_id = '" . escape($_POST['file_id'] ?? '') . "',";
         }else{
             $sql_file_id = "file_id = '',";
         }
     
         if(isset($_POST['image_url']) && $_POST['image_url'] != ''){
-            $sql_image = "image = '" . escape($_POST['image_url']) . "',";
+            $sql_image = "image = '" . escape($_POST['image_url'] ?? '') . "',";
         }else{
             $sql_image = "image = '',";
         }
         $query =
             "UPDATE contacts
             SET
-                salutation = '" . escape($_POST['salutation']) . "',
-                first_name = '" . escape($_POST['first_name']) . "',
-                last_name = '" . escape($_POST['last_name']) . "',
-                suffix = '" . escape($_POST['suffix']) . "',
-                nickname = '" . escape($_POST['nickname']) . "',
-                company = '" . escape($_POST['company']) . "',
-                title = '" . escape($_POST['title']) . "',
-                department = '" . escape($_POST['department']) . "',
-                office_location = '" . escape($_POST['office_location']) . "',
-                business_address_1 = '" . escape($_POST['business_address_1']) . "',
-                business_address_2 = '" . escape($_POST['business_address_2']) . "',
-                business_city = '" . escape($_POST['business_city']) . "',
-                business_state = '" . escape($_POST['business_state']) . "',
-                business_country = '" . escape($_POST['business_country']) . "',
-                business_zip_code = '" . escape($_POST['business_zip_code']) . "',
-                business_phone = '" . escape($_POST['business_phone']) . "',
-                business_fax = '" . escape($_POST['business_fax']) . "',
-                home_address_1 = '" . escape($_POST['home_address_1']) . "',
-                home_address_2 = '" . escape($_POST['home_address_2']) . "',
-                home_city = '" . escape($_POST['home_city']) . "',
-                home_state = '" . escape($_POST['home_state']) . "',
-                home_country = '" . escape($_POST['home_country']) . "',
-                home_zip_code = '" . escape($_POST['home_zip_code']) . "',
-                home_phone = '" . escape($_POST['home_phone']) . "',
-                home_fax = '" . escape($_POST['home_fax']) . "',
-                mobile_phone = '" . escape($_POST['mobile_phone']) . "',
-                email_address = '" . escape($_POST['email_address']) . "',
-                website = '" . escape($_POST['website']) . "',
-                lead_source = '" . escape($_POST['lead_source']) . "',
-                opt_in = '" . escape($_POST['opt_in']) . "',
-                description = '" . escape($_POST['description']) . "',
-                member_id = '" . escape($_POST['member_id']) . "',
+                salutation = '" . escape($_POST['salutation'] ?? '') . "',
+                first_name = '" . escape($_POST['first_name'] ?? '') . "',
+                last_name = '" . escape($_POST['last_name'] ?? '') . "',
+                suffix = '" . escape($_POST['suffix'] ?? '') . "',
+                nickname = '" . escape($_POST['nickname'] ?? '') . "',
+                company = '" . escape($_POST['company'] ?? '') . "',
+                title = '" . escape($_POST['title'] ?? '') . "',
+                department = '" . escape($_POST['department'] ?? '') . "',
+                office_location = '" . escape($_POST['office_location'] ?? '') . "',
+                business_address_1 = '" . escape($_POST['business_address_1'] ?? '') . "',
+                business_address_2 = '" . escape($_POST['business_address_2'] ?? '') . "',
+                business_city = '" . escape($_POST['business_city'] ?? '') . "',
+                business_state = '" . escape($_POST['business_state'] ?? '') . "',
+                business_country = '" . escape($_POST['business_country'] ?? '') . "',
+                business_zip_code = '" . escape($_POST['business_zip_code'] ?? '') . "',
+                business_phone = '" . escape($_POST['business_phone'] ?? '') . "',
+                business_fax = '" . escape($_POST['business_fax'] ?? '') . "',
+                home_address_1 = '" . escape($_POST['home_address_1'] ?? '') . "',
+                home_address_2 = '" . escape($_POST['home_address_2'] ?? '') . "',
+                home_city = '" . escape($_POST['home_city'] ?? '') . "',
+                home_state = '" . escape($_POST['home_state'] ?? '') . "',
+                home_country = '" . escape($_POST['home_country'] ?? '') . "',
+                home_zip_code = '" . escape($_POST['home_zip_code'] ?? '') . "',
+                home_phone = '" . escape($_POST['home_phone'] ?? '') . "',
+                home_fax = '" . escape($_POST['home_fax'] ?? '') . "',
+                mobile_phone = '" . escape($_POST['mobile_phone'] ?? '') . "',
+                email_address = '" . escape($_POST['email_address'] ?? '') . "',
+                website = '" . escape($_POST['website'] ?? '') . "',
+                lead_source = '" . escape($_POST['lead_source'] ?? '') . "',
+                opt_in = '" . escape($_POST['opt_in'] ?? '') . "',
+                description = '" . escape($_POST['description'] ?? '') . "',
+                member_id = '" . escape($_POST['member_id'] ?? '') . "',
                 expiration_date = '" . escape(prepare_form_data_for_input($_POST['expiration_date'], 'date')) . "',
                 tax_number = '" . escape(trim($_POST['tax_number'] ?? '')) . "',
                 tax_office = '" . escape(trim($_POST['tax_office'] ?? '')) . "',
@@ -820,15 +820,15 @@ if (!$_POST) {
                 $sql_file_id
                 $sql_image
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
         // If this contact has an email address, then update opt-in status for other contacts
         // with this same email address, so the opt-in status is the same for all.
         if ($_POST['email_address']) {
             db(
-                "UPDATE contacts SET opt_in = '" . e($_POST['opt_in']) . "'
-                WHERE email_address = '" . e($_POST['email_address']) . "'");
+                "UPDATE contacts SET opt_in = '" . e($_POST['opt_in'] ?? '') . "'
+                WHERE email_address = '" . e($_POST['email_address'] ?? '') . "'");
         }
         
         // get all contact groups, so that contact can be added to selected contact groups
@@ -850,13 +850,13 @@ if (!$_POST) {
             // if user has access to contact group, then continue
             if (validate_contact_group_access($user, $contact_group['id']) == true) {
                 // if contact group was selected for contact, add contact to contact group
-                if ($_POST['contact_group_' . $contact_group['id']] == 1) {
+                if (($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) {
                     // check to see if contact is already in contact group
                     $query =
                         "SELECT contact_id
                         FROM contacts_contact_groups_xref
                         WHERE
-                            (contact_id = '" . escape($_POST['id']) . "')
+                            (contact_id = '" . escape($_POST['id'] ?? '') . "')
                             AND (contact_group_id = '" . $contact_group['id'] . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     
@@ -867,7 +867,7 @@ if (!$_POST) {
                                 contact_id,
                                 contact_group_id)
                             VALUES (
-                                '" . escape($_POST['id']) . "',
+                                '" . escape($_POST['id'] ?? '') . "',
                                 '" . $contact_group['id'] . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
@@ -879,7 +879,7 @@ if (!$_POST) {
                             "SELECT contact_id
                             FROM opt_in
                             WHERE
-                                (contact_id = '" . escape($_POST['id']) . "')
+                                (contact_id = '" . escape($_POST['id'] ?? '') . "')
                                 AND (contact_group_id = '" . $contact_group['id'] . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         
@@ -891,7 +891,7 @@ if (!$_POST) {
                                     contact_group_id,
                                     opt_in)
                                 VALUES (
-                                    '" . escape($_POST['id']) . "',
+                                    '" . escape($_POST['id'] ?? '') . "',
                                     '" . $contact_group['id'] . "',
                                     '" . escape($_POST['contact_group_opt_in_' . $contact_group['id']]) . "')";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -902,7 +902,7 @@ if (!$_POST) {
                                 "UPDATE opt_in
                                 SET opt_in = '" . escape($_POST['contact_group_opt_in_' . $contact_group['id']]) . "'
                                 WHERE
-                                    (contact_id = '" . escape($_POST['id']) . "')
+                                    (contact_id = '" . escape($_POST['id'] ?? '') . "')
                                     AND (contact_group_id = '" . $contact_group['id'] . "')";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         }
@@ -913,7 +913,7 @@ if (!$_POST) {
                     $query =
                         "DELETE FROM contacts_contact_groups_xref
                         WHERE
-                            (contact_id = '" . escape($_POST['id']) . "')
+                            (contact_id = '" . escape($_POST['id'] ?? '') . "')
                             AND (contact_group_id = '" . $contact_group['id'] . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 }

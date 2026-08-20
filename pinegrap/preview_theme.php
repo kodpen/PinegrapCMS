@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,7 +23,7 @@ validate_area_access($user, 'manager');
 validate_token_field();
 
 // do different things depending on mode
-switch ($_GET['mode']) {
+switch (($_GET['mode'] ?? '')) {
     // if the user has selected to preview a theme, then do that
     case 'preview':    
         // if a theme ID was not passed, then set the user to preview the activated desktop theme
@@ -70,7 +70,7 @@ switch ($_GET['mode']) {
         }
         
         // send user back to where they came from, so the user can preview the theme
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_GET['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? ''));
         exit();
         
         break;
@@ -82,7 +82,7 @@ switch ($_GET['mode']) {
         unset($_SESSION['software']['preview_style']);
         
         // send user back to where they came from
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_GET['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? ''));
         exit();
         
         break;

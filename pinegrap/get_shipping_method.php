@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -36,7 +36,7 @@ function get_shipping_method($properties) {
     $_SESSION['ecommerce']['billing_information_page_id'] = $next_page_id;
 
     // if the user came from the control panel, clear ship_to_id, to prevent edit user from accessing ship to that user should not have access to
-    if ((isset($_GET['from']) == true) && ($_GET['from'] == 'control_panel')) {
+    if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
         unset($_GET['ship_to_id']);
 
     // else the user did not come from the control panel, so perform validation to make sure that this user has access to the ship to
@@ -86,17 +86,17 @@ function get_shipping_method($properties) {
             output_error(lang('Sorry, the order for that recipient has already been completed, so that recipient may not be updated.  This might happen if you already completed your order and then used the back button to go back to a recipient.  Since your order is complete, there is nothing further you need to do.'));
         }
 
-        if (!$_SESSION['ecommerce']['order_id']) {
+        if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
             output_error(lang('Sorry, we could not find your order, so we can\'t allow you to update that recipient.  This might happen if you were inactive for a while and your session expired.  You might try starting a new order or retrieving a past order.'));
         }
 
-        if ($recipient['order_id'] != $_SESSION['ecommerce']['order_id']) {
+        if ($recipient['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
             output_error(lang('Sorry, that recipient belongs to a different order, so we can\'t allow you to update that recipient.  This might happen if your session expired and you started a new order, and then you used the back button to go back to a recipient for an old order.'));
         }
 
     }
 
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 
     if ($layout_type == 'system') {
 
@@ -224,7 +224,7 @@ function get_shipping_method($properties) {
                     products.extra_shipping_cost
                  FROM order_items
                  LEFT JOIN products ON products.id = order_items.product_id
-                 WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "' AND order_items.ship_to_id = '" . escape($_GET['ship_to_id']) . "'
+                 WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '" . escape($_GET['ship_to_id']) . "'
                  ORDER BY order_items.id ASC";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1025,6 +1025,9 @@ function get_shipping_method($properties) {
 
             // If calendars is enabled and this order item is for a calendar event,
             // then get calendar event info like the name and date & time.
+            // The layout templates always read this key, so it has to exist on every item.
+            $item['calendar_event'] = false;
+
             if (CALENDARS and $item['calendar_event_id']) {
                 $item['calendar_event'] = get_calendar_event($item['calendar_event_id'], $item['recurrence_number']);
             }

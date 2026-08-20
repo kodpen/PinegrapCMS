@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -42,8 +42,8 @@ if (isset($_SESSION['software']['ecommerce']['view_shipping_report']['start_date
     $_SESSION['software']['ecommerce']['view_shipping_report']['status'] = 'unshipped';
 }
 
-$start_date = $_SESSION['software']['ecommerce']['view_shipping_report']['start_date'];
-$end_date = $_SESSION['software']['ecommerce']['view_shipping_report']['end_date'];
+$start_date = ($_SESSION['software']['ecommerce']['view_shipping_report']['start_date'] ?? '');
+$end_date = ($_SESSION['software']['ecommerce']['view_shipping_report']['end_date'] ?? '');
 
 if (validate_date(prepare_form_data_for_output($start_date, 'date')) == false) {
     output_error(lang('The start date is invalid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -93,7 +93,7 @@ $status_unshipped_selected = '';
 $status_shipped_selected = '';
 $sql_status_filter = "";
 
-switch ($_SESSION['software']['ecommerce']['view_shipping_report']['status']) {
+switch (($_SESSION['software']['ecommerce']['view_shipping_report']['status'] ?? '')) {
     case 'any':
         $status_any_selected = ' selected="selected"';
         break;
@@ -166,7 +166,7 @@ if (count($order_items) > 0) {
         }
 
         // Get the quantity differently based on the status.
-        switch ($_SESSION['software']['ecommerce']['view_shipping_report']['status']) {
+        switch (($_SESSION['software']['ecommerce']['view_shipping_report']['status'] ?? '')) {
             case 'any':
                 // If the ordered quantity is greater than the shipped quantity,
                 // then use ordered quantity for the quantity.
@@ -218,7 +218,7 @@ if (count($products) > 0) {
 
     // If the status is unshipped, then update shipping status on view orders screen,
     // for all links to view orders screen.
-    if ($_SESSION['software']['ecommerce']['view_shipping_report']['status'] == 'unshipped') {
+    if (($_SESSION['software']['ecommerce']['view_shipping_report']['status'] ?? '') == 'unshipped') {
         $output_view_orders_shipping_status = '&amp;shipping_status=unshipped';
     }
 

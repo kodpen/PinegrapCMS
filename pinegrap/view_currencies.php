@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -35,7 +35,13 @@ foreach ($_REQUEST as $key => $value) {
 
 
 
-switch ($_SESSION['software']['ecommerce']['view_currencies']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_currencies']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_currencies']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? '')) {
     case 'Name':
         $sort_column = 'name';
         break;
@@ -94,7 +100,7 @@ $query =
     FROM currencies
     LEFT JOIN user as created_user ON currencies.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_currencies']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -182,13 +188,13 @@ pg_page_shell(
                             <tr>
                                 <th class="noVis"></th>
                                 <th class="noVis text-start">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Base'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Code'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Symbol'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
-                                <th class="text-start">' . get_column_heading(lang('Exchange Rate'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_currencies']['sort'], $_SESSION['software']['ecommerce']['view_currencies']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Base'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Code'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Symbol'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th class="text-start">' . get_column_heading(lang('Exchange Rate'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_currencies']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

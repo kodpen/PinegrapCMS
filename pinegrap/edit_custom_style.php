@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -48,7 +48,7 @@ if (!$_POST) {
     
     // Faz 3c: same-host whitelisted cancel URL (avoids open-redirect via ?send_to=)
     $output_cancel_button_url = pg_safe_back_url(
-        isset($_GET['send_to']) ? $_GET['send_to'] : '',
+        isset($_GET['send_to']) ? ($_GET['send_to'] ?? '') : '',
         OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'
     );
 
@@ -262,7 +262,7 @@ else
     include_once('liveform.class.php');
     
     // if style was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         
         // Find if style is being used by a folder
         $query =
@@ -270,8 +270,8 @@ else
                 COUNT(folder_id)
             FROM folder
             WHERE
-                (folder_style = '" . escape($_POST['id']) . "')
-                OR (mobile_style_id = '" . escape($_POST['id']) . "')";
+                (folder_style = '" . escape($_POST['id'] ?? '') . "')
+                OR (mobile_style_id = '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $folders_using_style = $row[0];
@@ -282,8 +282,8 @@ else
                 COUNT(page_id)
             FROM page
             WHERE
-                (page_style = '" . escape($_POST['id']) . "')
-                OR (mobile_style_id = '" . escape($_POST['id']) . "')";
+                (page_style = '" . escape($_POST['id'] ?? '') . "')
+                OR (mobile_style_id = '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $pages_using_style = $row[0];
@@ -297,9 +297,9 @@ else
         // else delete the style
         } else {
             
-            $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+            $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
 
-            db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id']) . "'");
+            db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
             
             log_activity(lang(array('string'=>'style ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
             $notice = lang('The style was deleted successfully.');
@@ -313,17 +313,17 @@ else
 
         // If social networking is enabled, then update position value.
         if (SOCIAL_NETWORKING == TRUE) {
-            $sql_social_networking_position = "social_networking_position = '" . escape($_POST['social_networking_position']) . "',";
+            $sql_social_networking_position = "social_networking_position = '" . escape($_POST['social_networking_position'] ?? '') . "',";
         }
 
         // update style
-        $result = mysqli_query(db::$con, "UPDATE style SET style_name = '" . escape($name) . "', style_code = '" . escape($_POST['code']) . "', " . $sql_social_networking_position . "collection = '" . escape($_POST['collection']) . "', layout_type = '" . e($_POST['layout_type']) . "', style_timestamp = UNIX_TIMESTAMP(), style_user = '" . $user['id'] . "' WHERE style_id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+        $result = mysqli_query(db::$con, "UPDATE style SET style_name = '" . escape($name) . "', style_code = '" . escape($_POST['code'] ?? '') . "', " . $sql_social_networking_position . "collection = '" . escape($_POST['collection'] ?? '') . "', layout_type = '" . e($_POST['layout_type'] ?? '') . "', style_timestamp = UNIX_TIMESTAMP(), style_user = '" . $user['id'] . "' WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
         log_activity(lang(array('string'=>'style ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         $notice = lang('The style was edited successfully.');
     }
 
     // If user clicked save button, then forward user back to this screen again.
-    if ($_POST['submit_save'] == 'Save') {
+    if (($_POST['submit_save'] ?? '') == 'Save') {
         $send_to = '' ;
 
         if ($_POST['send_to'] != '') {

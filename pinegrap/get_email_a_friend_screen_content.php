@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -65,7 +65,7 @@ function get_email_a_friend_screen_content($properties)
                 // if the page type is shopping cart or express order
                 if (($page_type == 'shopping cart') || ($page_type == 'express order')) {
                     // get order reference code that we will use to build a query string
-                    $query = "SELECT reference_code FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                    $query = "SELECT reference_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $reference_code = $row['reference_code'];

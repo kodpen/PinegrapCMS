@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -69,7 +69,7 @@ $query =
         custom_form_pages.confirmation_alternative_page_id
     FROM page
     LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-    WHERE page.page_id = '" . escape($_POST['page_id']) . "'";
+    WHERE page.page_id = '" . escape($_POST['page_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 if (mysqli_num_rows($result) == 0) {
@@ -219,7 +219,7 @@ $query =
         quiz_question,
         quiz_answer
     FROM form_fields
-    WHERE (page_id = '" . escape($_POST['page_id']) . "') AND (type != 'information')
+    WHERE (page_id = '" . escape($_POST['page_id'] ?? '') . "') AND (type != 'information')
     ORDER BY sort_order";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -310,7 +310,7 @@ foreach ($fields as $field) {
             $address_name = create_address_name($liveform->get_field_value($field['id']));
 
             // If that address name is already in use, then output error.
-            if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($_POST['page_id']) . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
+            if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($_POST['page_id'] ?? '') . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
                 $liveform->mark_error($field['id'], lang(array('string'=>'Sorry, that {var:1} is already in use. Can you please enter a different {var:1}?','vars'=>$field['label'])) );
             }
         }
@@ -351,7 +351,7 @@ if ($liveform->check_form_errors() == false) {
                 last_modified_user_id,
                 last_modified_timestamp)
              VALUES (
-                '" . escape($_POST['page_id']) . "',
+                '" . escape($_POST['page_id'] ?? '') . "',
                 '$complete',
                 '" . $user_id . "',
                 '$reference_code',
@@ -1342,7 +1342,7 @@ if ($liveform->check_form_errors() == false) {
                     FROM form_field_options
                     LEFT JOIN form_data ON form_field_options.form_field_id = form_data.form_field_id
                     WHERE
-                        (form_field_options.page_id = '" . e($_POST['page_id']) . "')
+                        (form_field_options.page_id = '" . e($_POST['page_id'] ?? '') . "')
                         AND (form_data.form_id = '$form_id')
                         AND (form_field_options.email_address LIKE '%" . e(escape_like(USER_EMAIL_ADDRESS)) . "%')
                         AND (form_data.data = form_field_options.value)")

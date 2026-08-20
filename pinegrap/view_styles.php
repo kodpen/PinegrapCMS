@@ -12,11 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 
 $user = validate_user();
 validate_area_access($user, 'designer');
@@ -41,7 +44,13 @@ if (isset($_REQUEST['order'])) {
 $number_of_results = 0;
 $output_clear_button = '';
 
-switch($_SESSION['software']['design']['view_styles']['sort'])
+// if the sort is not set yet (first visit to this screen), then default it to empty so the
+// switch below falls through to its default case
+if (isset($_SESSION['software']['design']['view_styles']['sort']) == false) {
+    $_SESSION['software']['design']['view_styles']['sort'] = '';
+}
+
+switch (($_SESSION['software']['design']['view_styles']['sort'] ?? ''))
 {
     case lang('Name'):
         $sort_column = 'style_name';
@@ -65,8 +74,8 @@ switch($_SESSION['software']['design']['view_styles']['sort'])
         $_SESSION['software']['design']['view_styles']['sort'] = lang('Last Modified');
 }
 
-if ($_SESSION['software']['design']['view_styles']['order']) {
-    $asc_desc = $_SESSION['software']['design']['view_styles']['order'];
+if (!empty($_SESSION['software']['design']['view_styles']['order'])) {
+    $asc_desc = ($_SESSION['software']['design']['view_styles']['order'] ?? '');
 } elseif ($sort_column == 'style_timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['design']['view_styles']['order'] = 'desc';
@@ -173,13 +182,13 @@ pg_page_shell([
                                         </div>
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_styles']['sort'], $_SESSION['software']['design']['view_styles']['order']) . '</th>
+                                    <th nowrap>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
                                     <th class="text-center">' . lang('Folders Using Style') . '</th>
                                     <th class="text-center">' . lang('Pages Using Style') . '</th>
-                                    <th>' . get_column_heading(lang('Theme'), $_SESSION['software']['design']['view_styles']['sort'], $_SESSION['software']['design']['view_styles']['order']) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Collection'), $_SESSION['software']['design']['view_styles']['sort'], $_SESSION['software']['design']['view_styles']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Layout Type'), $_SESSION['software']['design']['view_styles']['sort'], $_SESSION['software']['design']['view_styles']['order']) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_styles']['sort'], $_SESSION['software']['design']['view_styles']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Theme'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Collection'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Layout Type'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
+                                    <th nowrap>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_styles']['sort'] ?? ''), ($_SESSION['software']['design']['view_styles']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

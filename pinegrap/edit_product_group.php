@@ -12,11 +12,16 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+require_once(dirname(__FILE__) . '/seo.php');
+require_once(dirname(__FILE__) . '/seo_structure.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -43,6 +48,9 @@ if (!$_POST) {
             meta_description,
             meta_keywords,
             seo_score,
+            " . (pg_seo_schema_ready() ? "seo_flags, seo_checked_at," : "'0' AS seo_flags, '0' AS seo_checked_at,") . "
+            seo_analysis,
+            seo_analysis_current,
             attributes
         FROM product_groups
         WHERE id = '" . e($_GET['id']) . "'";
@@ -64,6 +72,15 @@ if (!$_POST) {
     $meta_description = $row['meta_description'];
     $meta_keywords = $row['meta_keywords'];
     $seo_score = $row['seo_score'];
+    // seo_checked_at as well: pg_seo_row_scored() asks it first, and without
+    // it the panel reads "not calculated yet" after every save.
+    $seo_row = array(
+        'seo_score' => $row['seo_score'],
+        'seo_flags' => $row['seo_flags'],
+        'seo_checked_at' => $row['seo_checked_at'],
+        'seo_analysis' => $row['seo_analysis'],
+        'seo_analysis_current' => $row['seo_analysis_current'],
+    );
     $enable_attributes = $row['attributes'];
 
     $enabled_checked = '';
@@ -537,7 +554,7 @@ if (!$_POST) {
                 <form name="form" action="edit_product_group.php" method="post" class="product_group_form">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
 
                     <div class="row edit_product_group_container">
                         <div class="col-12">
@@ -675,7 +692,7 @@ if (!$_POST) {
                         <div class="col-12">
                             <div class="card my-4">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('SEO') . '
+                                    ' . lang('SEO') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
@@ -702,6 +719,9 @@ if (!$_POST) {
                                                     tagin(document.querySelector("#meta_keywords"));
                                                 }
                                             </script>
+                                        </div>
+                                        <div class="col-12">
+                                            ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
                                         </div>
                                     </div>
                                 </div>
@@ -869,16 +889,16 @@ if (!$_POST) {
         "SELECT 
             parent_id
         FROM product_groups
-        WHERE id = '" . escape($_POST['id']) . "'";
+        WHERE id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $parent_id = $row['parent_id'];
 
     // Delete product group images references (we do this for both delete and update).
-    db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id']) . "'");
+    db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
 
     // if product group was selected for delete
-    if ($_POST['submit_button'] == 'Delete') {
+    if (($_POST['submit_button'] ?? '') == 'Delete') {
         // if the parent_id is not set to 0, allow user to delete the product group because it is not the root product group
         if ($parent_id != '0') {
             $new_product_ids = array();
@@ -916,12 +936,12 @@ if (!$_POST) {
             
             // delete product group
             $query = "DELETE FROM product_groups ".
-                     "WHERE id = '" . escape($_POST['id']) . "'";
+                     "WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             
             // delete all entries in products_groups_xref table
             $query = "DELETE FROM products_groups_xref ".
-                     "WHERE product_group = '" . escape($_POST['id']) . "'";
+                     "WHERE product_group = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             
             // loop through the search result pages for this product group and re-build it's tag cloud
@@ -935,7 +955,7 @@ if (!$_POST) {
                 FROM short_links
                 WHERE
                     (destination_type = 'product_group')
-                    AND (product_group_id = '" . escape($_POST['id']) . "')";
+                    AND (product_group_id = '" . escape($_POST['id'] ?? '') . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
 
@@ -945,11 +965,11 @@ if (!$_POST) {
                     "DELETE FROM short_links
                     WHERE
                         (destination_type = 'product_group')
-                        AND (product_group_id = '" . escape($_POST['id']) . "')";
+                        AND (product_group_id = '" . escape($_POST['id'] ?? '') . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
 
-            db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id']) . "'");
+            db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
             
             log_activity("product group ($_POST[name]) was deleted", $_SESSION['sessionusername']);
 
@@ -987,7 +1007,7 @@ if (!$_POST) {
         
         // Update display type if the group is not (or will not be) root-level
         if ($_POST['parent_id'] != 0) {
-            $sql_display_type = "display_type = '" . escape($_POST['display_type']) . "',";
+            $sql_display_type = "display_type = '" . escape($_POST['display_type'] ?? '') . "',";
         }
         
         // if the address name is NOT blank then use that value for the address name
@@ -1019,18 +1039,22 @@ if (!$_POST) {
                 full_description,
                 details,
                 seo_analysis_current,
-                address_name
+                address_name,
+                keywords,
+                short_description
             FROM product_groups
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
+
         $title = $row['title'];
         $meta_description = $row['meta_description'];
         $full_description = $row['full_description'];
         $details = $row['details'];
         $seo_analysis_current = $row['seo_analysis_current'];
         $current_address_name = $row['address_name'];
+        $current_keywords = $row['keywords'];
+        $current_short_description = $row['short_description'];
         
         $search_results_pages = array();
         
@@ -1074,7 +1098,10 @@ if (!$_POST) {
         
         $sql_seo_analysis_current = "";
         
-        // if the seo analysis is current and the title, meta description, full description, or details has changed, the prepare to clear current status
+        // If the seo analysis is current and any field the SEO score reads
+        // has changed, then prepare to clear the current status. The promoted
+        // keywords feed the site search check and the short description has
+        // its own check.
         if (
             ($seo_analysis_current == 1)
             &&
@@ -1083,6 +1110,8 @@ if (!$_POST) {
                 || (trim($meta_description) != trim($_POST['meta_description']))
                 || (trim($full_description) != trim(prepare_rich_text_editor_content_for_input($_POST['full_description'])))
                 || (trim($details) != trim(prepare_rich_text_editor_content_for_input($_POST['details'])))
+                || (trim($current_keywords) != trim($_POST['keywords'] ?? ''))
+                || (trim($current_short_description) != trim($_POST['short_description'] ?? ''))
             )
         ) {
             $sql_seo_analysis_current = "seo_analysis_current = '0',";
@@ -1092,7 +1121,7 @@ if (!$_POST) {
 
         // If the enable attributes check box appeared on the form, then update value.
         if ($_POST['enable_attributes_exists'] == 'true') {
-            $sql_enable_attributes = "attributes = '" . escape($_POST['enable_attributes']) . "',";
+            $sql_enable_attributes = "attributes = '" . escape($_POST['enable_attributes'] ?? '') . "',";
         }
 
         // Before we update the product group, get the old status, so later
@@ -1100,7 +1129,7 @@ if (!$_POST) {
         $old_enabled = db_value(
             "SELECT enabled
             FROM product_groups
-            WHERE id = '" . e($_POST['id']) . "'");
+            WHERE id = '" . e($_POST['id'] ?? '') . "'");
 
         $selected_images = array();
         foreach ($_POST['selected_images'] as $selected_image ) {
@@ -1126,32 +1155,32 @@ if (!$_POST) {
         // update product group
         db(
             "UPDATE product_groups SET
-                name = '" . e($_POST['name']) . "',
-                enabled = '" . e($_POST['enabled']) . "',
-                parent_id = '" . e($_POST['parent_id']) . "',
-                short_description = '" . e($_POST['short_description']) . "',
+                name = '" . e($_POST['name'] ?? '') . "',
+                enabled = '" . e($_POST['enabled'] ?? '') . "',
+                parent_id = '" . e($_POST['parent_id'] ?? '') . "',
+                short_description = '" . e($_POST['short_description'] ?? '') . "',
                 full_description = '" . e(prepare_rich_text_editor_content_for_input($_POST['full_description'])) . "',
                 details = '" . e(prepare_rich_text_editor_content_for_input($_POST['details'])) . "',
-                code = '" . e($_POST['code']) . "',
-                keywords = '" . e($_POST['keywords']) . "',
+                code = '" . e($_POST['code'] ?? '') . "',
+                keywords = '" . e($_POST['keywords'] ?? '') . "',
                 $sql_imagename
                 $sql_display_type
                 address_name = '" . e($address_name) . "',
-                title = '" . e($_POST['title']) . "',
-                meta_description = '" . e($_POST['meta_description']) . "',
-                meta_keywords = '" . e($_POST['meta_keywords']) . "',
+                title = '" . e($_POST['title'] ?? '') . "',
+                meta_description = '" . e($_POST['meta_description'] ?? '') . "',
+                meta_keywords = '" . e($_POST['meta_keywords'] ?? '') . "',
                 $sql_seo_analysis_current
                 $sql_enable_attributes
                 user = '" . $user['id'] . "',
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . e($_POST['id']) . "'");
+            WHERE id = '" . e($_POST['id'] ?? '') . "'");
         
         // flush appropriate entries from products_groups_xref table
-        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
         if($selected_count > 1){
-            foreach ($selected_images as $value) {db("INSERT INTO product_groups_images_xref (product_group,file_name)VALUES ('" . escape($_POST['id']) . "','" . escape($value) . "')");}
+            foreach ($selected_images as $value) {db("INSERT INTO product_groups_images_xref (product_group,file_name)VALUES ('" . escape($_POST['id'] ?? '') . "','" . escape($value) . "')");}
         }
 
 
@@ -1160,7 +1189,7 @@ if (!$_POST) {
         if ($_POST['products']) {
             // foreach product that was selected
             foreach ($_POST['products'] as $product_id) {
-                $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . escape($_POST['id']) . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
+                $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . escape($_POST['id'] ?? '') . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             }
         }
@@ -1171,7 +1200,7 @@ if (!$_POST) {
                 id
             FROM product_groups
             WHERE
-                parent_id = '" . escape($_POST['id']) . "'";
+                parent_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         while ($row = mysqli_fetch_assoc($result)) {
             if (isset($_POST['sort_order_product_group_' . $row['id']])) {
@@ -1193,7 +1222,7 @@ if (!$_POST) {
             update_tag_cloud_keywords_for_search_results_page_product_group($search_results_page['page_id'], $search_results_page['product_group_id']);
         }
 
-        db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id']) . "'");
+        db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
 
         // If there are attributes to save, then save them.
         if ($_POST['attributes']) {
@@ -1211,7 +1240,7 @@ if (!$_POST) {
                         default_option_id,
                         sort_order)
                     VALUES (
-                        '" . e($_POST['id']) . "',
+                        '" . e($_POST['id'] ?? '') . "',
                         '" . e($attribute['id']) . "',
                         '" . e($attribute['default_option_id']) . "',
                         '$sort_order')");

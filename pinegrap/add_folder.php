@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -160,7 +160,7 @@ if (!$_POST) {
     }
     
     // find level of parent
-    $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['folder']) . "'") or output_error('Query failed');
+    $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['folder'] ?? '') . "'") or output_error('Query failed');
     $row=mysqli_fetch_array($result);
     $level = ++$row['folder_level'];
     $name = trim($_POST['name']);
@@ -190,8 +190,8 @@ if (!$_POST) {
             mobile_style_id,";
         
         $sql_style_values =
-            "'" . escape($_POST['style']) . "',
-            '" . escape($_POST['mobile_style_id']) . "',";
+            "'" . escape($_POST['style'] ?? '') . "',
+            '" . escape($_POST['mobile_style_id'] ?? '') . "',";
     }
     
     // insert row into folder table
@@ -208,11 +208,11 @@ if (!$_POST) {
             folder_user)
         VALUES (
             '" . escape($name) . "',
-            '" . escape($_POST['folder']) . "',
+            '" . escape($_POST['folder'] ?? '') . "',
             '" . escape($level) . "',
-            '" . escape($_POST['order']) . "',
-            '" . escape($_POST['access_control_type']) . "',
-            '" . escape($_POST['folder_archived']) . "',
+            '" . escape($_POST['order'] ?? '') . "',
+            '" . escape($_POST['access_control_type'] ?? '') . "',
+            '" . escape($_POST['folder_archived'] ?? '') . "',
             $sql_style_values
             UNIX_TIMESTAMP(),
             '$user[id]')";

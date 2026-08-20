@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -147,8 +147,8 @@ if (!$_POST) {
                 </div>
                 <form name="form" action="edit_menu_item.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="from" value="' . h($_GET['from']) . '" />
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <input type="hidden" id="menu_id" name="menu_id" value="' . h($menu_id) . '" />
                     <input type="hidden" id="parent_id_status" name="parent_id_status" value="" />
@@ -255,7 +255,7 @@ if (!$_POST) {
     validate_token_field();
     
     // if menu_item was selected for deletion
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // function for deleting menu items recursively
         function delete_menu_items($menu_item_id)
         {
@@ -336,7 +336,7 @@ if (!$_POST) {
                 FROM menu_items
                 WHERE 
                     (menu_id = '" . escape($menu_id) . "')
-                    AND (parent_id = '" . escape($_POST['parent_id'])  . "')
+                    AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
                 ORDER BY sort_order DESC
                 LIMIT 1";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -351,17 +351,17 @@ if (!$_POST) {
         $query =
             "UPDATE menu_items
             SET
-                name = '" . escape($_POST['name']) . "',
-                parent_id = '" . escape($_POST['parent_id']) . "',
+                name = '" . escape($_POST['name'] ?? '') . "',
+                parent_id = '" . escape($_POST['parent_id'] ?? '') . "',
                 sort_order = '" . escape($sort_order) . "',
                 link_page_id = '" . escape($link_page_id) . "',
                 link_url = '" . escape($link_url) . "',
-                link_target = '" . escape($_POST['link_target']) . "',
-                security = '" . escape($_POST['security']) . "',
-                class = '" . escape($_POST['class']) . "',
+                link_target = '" . escape($_POST['link_target'] ?? '') . "',
+                security = '" . escape($_POST['security'] ?? '') . "',
+                class = '" . escape($_POST['class'] ?? '') . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // update last modified for menu
@@ -387,8 +387,8 @@ if (!$_POST) {
             FROM menu_items
             WHERE 
                 (menu_id = '" . escape($menu_id) . "')
-                AND (parent_id = '" . escape($_POST['parent_id'])  . "')
-                AND (id != '" . escape($_POST['id'])  . "')
+                AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
+                AND (id != '" . escape($_POST['id'] ?? '')  . "')
             ORDER BY sort_order";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         

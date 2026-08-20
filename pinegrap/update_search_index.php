@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 // This feature can take a long time to run for a large site,
@@ -136,7 +136,6 @@ $pages = db_items(
         page.page_title AS title,
         page.page_meta_description AS meta_description,
         page.page_search_keywords AS search_keywords,
-        page.page_meta_keywords AS meta_keywords,
         page.page_type AS type
     FROM page
     LEFT JOIN folder ON page.page_folder = folder.folder_id
@@ -211,11 +210,11 @@ foreach ($pages as $page) {
         $title = $page['title'];
     }
 
-    // Add title, meta description, and meta keywords to content
+    // Add title, meta description, and the promote on keyword terms to content
     // so that there is more data included in index to get better results
     // and so that we can simply search the one content index instead of
     // searching the title, description, and content indexes.
-    $content = $title . ' ' . $page['meta_description'] . ' ' . $page['meta_keywords'] . ' ' . $content;
+    $content = $title . ' ' . $page['meta_description'] . ' ' . $page['search_keywords'] . ' ' . $content;
 
     // Check if a search item already exists for this URL.
     $number_of_items = db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . escape($url) . "'");
@@ -289,7 +288,6 @@ foreach ($pages as $page) {
                         calendar_event_view_page.page_title AS calendar_event_view_title,
                         calendar_event_view_page.page_meta_description AS calendar_event_view_meta_description,
                         calendar_event_view_page.page_search_keywords AS calendar_event_view_search_keywords,
-                        calendar_event_view_page.page_meta_keywords AS calendar_event_view_meta_keywords,
                         calendar_event_view_folder.folder_archived AS calendar_event_view_archived
                     FROM calendar_view_pages
                     LEFT JOIN page AS calendar_event_view_page ON calendar_view_pages.calendar_event_view_page_id = calendar_event_view_page.page_id
@@ -305,7 +303,6 @@ foreach ($pages as $page) {
                 $calendar_event_view_title = $row['calendar_event_view_title'];
                 $calendar_event_view_meta_description = $row['calendar_event_view_meta_description'];
                 $calendar_event_view_search_keywords = $row['calendar_event_view_search_keywords'];
-                $calendar_event_view_meta_keywords = $row['calendar_event_view_meta_keywords'];
                 $calendar_event_view_archived = $row['calendar_event_view_archived'];
 
                 // If the calendar event view, that this calendar view links to,
@@ -383,12 +380,13 @@ foreach ($pages as $page) {
                                 // Get plain text version of page.
                                 $content = convert_html_to_text($content);
 
-                                // Add title, meta description, calendar event short description, and meta keywords to content
+                                // Add title, meta description, calendar event short description, and the
+                                // promote on keyword terms to content
                                 // so that there is more data included in index to get better results
                                 // and so that we can simply search the one content index instead of
                                 // searching the title, description, and content indexes.
                                 // We don't have to include the calendar name because that should already exist in the content.
-                                $content = $calendar_event_view_title . ' ' . $calendar_event_view_meta_description . ' ' . $calendar_event['short_description'] . ' ' . $calendar_event_view_meta_keywords . ' ' . $content;
+                                $content = $calendar_event_view_title . ' ' . $calendar_event_view_meta_description . ' ' . $calendar_event['short_description'] . ' ' . $calendar_event_view_search_keywords . ' ' . $content;
 
                                 // Check if a search item already exists for this URL.
                                 $number_of_items = db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . escape($url) . "'");
@@ -469,7 +467,6 @@ foreach ($pages as $page) {
                     form_item_view_page.page_title AS form_item_view_title,
                     form_item_view_page.page_meta_description AS form_item_view_meta_description,
                     form_item_view_page.page_search_keywords AS form_item_view_search_keywords,
-                    form_item_view_page.page_meta_keywords AS form_item_view_meta_keywords,
                     form_item_view_folder.folder_archived AS form_item_view_archived,
                     form_item_view_page_properties.submitter_security AS form_item_view_submitter_security
                 FROM form_list_view_pages
@@ -493,7 +490,6 @@ foreach ($pages as $page) {
             $form_item_view_title = $row['form_item_view_title'];
             $form_item_view_meta_description = $row['form_item_view_meta_description'];
             $form_item_view_search_keywords = $row['form_item_view_search_keywords'];
-            $form_item_view_meta_keywords = $row['form_item_view_meta_keywords'];
             $form_item_view_archived = $row['form_item_view_archived'];
             $form_item_view_submitter_security = $row['form_item_view_submitter_security'];
 
@@ -831,13 +827,13 @@ foreach ($pages as $page) {
                             }
 
                             // Add page title, submitted form combined title, meta description,
-                            // submitted form description, and meta keywords to content
+                            // submitted form description, and the promote on keyword terms to content
                             // so that there is more data included in index to get better results
                             // and so that we can simply search the one content index instead of
                             // searching the title, description, and content indexes.
                             // We include the submitte form combined title and description, because
                             // those do not necessarily already appear in the content.
-                            $content = $form_item_view_title . ' ' . $combined_title . ' ' . $form_item_view_meta_description . ' ' . $description . ' ' . $form_item_view_meta_keywords . ' ' . $content;
+                            $content = $form_item_view_title . ' ' . $combined_title . ' ' . $form_item_view_meta_description . ' ' . $description . ' ' . $form_item_view_search_keywords . ' ' . $content;
 
                             // Check if a search item already exists for this URL.
                             $number_of_items = db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . escape($url) . "'");
@@ -1066,6 +1062,9 @@ db("DELETE FROM search_items WHERE timestamp != '" . $timestamp . "'");
 if ($current_timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
     update_sitemap_and_ping();
 }
+
+// Scheduled-task health: record that this job finished. See pg_cron_ran().
+pg_cron_ran('update_search_index');
 
 echo '
     </ul>

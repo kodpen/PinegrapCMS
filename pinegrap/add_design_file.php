@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -154,7 +154,7 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="col-12 my-2">
                                         <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-select" id="folder" name="folder">' . select_folder($_GET['id'], 0) . '</select>
+                                        <select class="form-select" id="folder" name="folder">' . select_folder(isset($_GET['id']) ? $_GET['id'] : '', 0) . '</select>
                                     </div>
                                    
                                 </div>
@@ -220,8 +220,8 @@ if (!$_POST) {
                 timestamp)
             VALUES (
                 '" . escape($file_name) . "',
-                '" . escape($_POST['folder']) . "',
-                '" . escape($_POST['description']) . "',
+                '" . escape($_POST['folder'] ?? '') . "',
+                '" . escape($_POST['description'] ?? '') . "',
                 '" . escape($file_extension) . "',
                 '" . escape($_FILES['file']['size'][$index]) . "',
                 '1',

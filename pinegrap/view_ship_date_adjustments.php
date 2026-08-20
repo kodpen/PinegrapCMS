@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,7 +24,13 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_ship_date_adjustments');
 
-switch ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? '')) {
     case lang('Zip Code Prefix'):
         $sort_column = 'ship_date_adjustments.zip_code_prefix';
         break;
@@ -72,7 +78,7 @@ $ship_date_adjustments = db_items(
     LEFT JOIN shipping_methods ON ship_date_adjustments.shipping_method_id = shipping_methods.id
     LEFT JOIN user AS created_user ON ship_date_adjustments.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON ship_date_adjustments.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']));
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')));
 
 $output_rows = '';
 
@@ -148,11 +154,11 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Zip Code Prefix'), $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'], $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Shipping Method'), $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'], $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Adjustment'), $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'], $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'], $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'], $_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Zip Code Prefix'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Shipping Method'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Adjustment'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_ship_date_adjustments']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

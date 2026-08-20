@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -560,7 +560,7 @@ if (!$_POST) {
                 </div>
                 <form name="form" action="edit_field.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <input type="hidden" id="' . h($form_type_identifier_id) . '" name="' . h($form_type_identifier_id) . '" value="' . h(${$form_type_identifier_id}) . '" />
                     <div class="row">
@@ -781,20 +781,20 @@ if (!$_POST) {
     validate_token_field();
     
     // if field was selected for deletion
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         
         // delete field
-        $query = "DELETE FROM form_fields WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM form_fields WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // delete field options
-        $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // Delete target options for this field.
-        db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($_POST['id'] ?? '') . "'");
 
-        db("DELETE FROM product_submit_form_fields WHERE form_field_id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM product_submit_form_fields WHERE form_field_id = '" . escape($_POST['id'] ?? '') . "'");
 
         // If this is a custom form, then delete submitted form data for this,
         // field also, because for custom forms, we don't have a way to show
@@ -809,7 +809,7 @@ if (!$_POST) {
                 FROM form_data
                 LEFT JOIN files ON form_data.file_id = files.id
                 WHERE
-                    (form_data.form_field_id = '" . e($_POST['id']) . "')
+                    (form_data.form_field_id = '" . e($_POST['id'] ?? '') . "')
                     AND (form_data.file_id != 0)
                     AND (files.id IS NOT NULL)");
 
@@ -821,7 +821,7 @@ if (!$_POST) {
             }
 
             // Delete all submitted form data for this field.
-            db("DELETE FROM form_data WHERE form_field_id = '" . e($_POST['id']) . "'");
+            db("DELETE FROM form_data WHERE form_field_id = '" . e($_POST['id'] ?? '') . "'");
 
         }
         
@@ -928,7 +928,7 @@ if (!$_POST) {
             $old_upload_folder_id = db_value(
                 "SELECT upload_folder_id
                 FROM form_fields
-                WHERE id = '" . e($_POST['id']) . "'");
+                WHERE id = '" . e($_POST['id'] ?? '') . "'");
 
             // If the upload folder that the user just selected is different
             // from the old upload folder, and the user does not have edit access
@@ -941,7 +941,7 @@ if (!$_POST) {
                 output_error(lang('Access denied.'));
             }
 
-            $sql_upload_folder_id = "upload_folder_id = '" . e($_POST['upload_folder_id']) . "',";
+            $sql_upload_folder_id = "upload_folder_id = '" . e($_POST['upload_folder_id'] ?? '') . "',";
         }
         
         // if field is an information field, then set field to be not required
@@ -955,29 +955,29 @@ if (!$_POST) {
         $query = "UPDATE form_fields
                  SET
                     name = '" . escape($name) . "',
-                    rss_field = '" . escape($_POST['rss_field']) . "',
-                    label = '" . escape($_POST['label']) . "',
-                    type = '" . escape($_POST['type']) . "',
+                    rss_field = '" . escape($_POST['rss_field'] ?? '') . "',
+                    label = '" . escape($_POST['label'] ?? '') . "',
+                    type = '" . escape($_POST['type'] ?? '') . "',
                     required = '" . escape($required) . "',
                     information = '" . escape(prepare_rich_text_editor_content_for_input($_POST['information'])) . "',
-                    default_value = '" . escape($_POST['default_value']) . "',
-                    use_folder_name_for_default_value = '" . escape($_POST['use_folder_name_for_default_value']) . "',
-                    size = '" . escape($_POST['size']) . "',
-                    maxlength = '" . escape($_POST['maxlength']) . "',
-                    wysiwyg = '" . escape($_POST['wysiwyg']) . "',
-                    `rows` = '" . escape($_POST['rows']) . "',  # Backticks for reserved word.
-                    cols = '" . escape($_POST['cols']) . "',
-                    multiple = '" . escape($_POST['multiple']) . "',
-                    spacing_above = '" . escape($_POST['spacing_above']) . "',
-                    spacing_below = '" . escape($_POST['spacing_below']) . "',
-                    contact_field = '" . escape($_POST['contact_field']) . "',
-                    office_use_only = '" . escape($_POST['office_use_only']) . "',
+                    default_value = '" . escape($_POST['default_value'] ?? '') . "',
+                    use_folder_name_for_default_value = '" . escape($_POST['use_folder_name_for_default_value'] ?? '') . "',
+                    size = '" . escape($_POST['size'] ?? '') . "',
+                    maxlength = '" . escape($_POST['maxlength'] ?? '') . "',
+                    wysiwyg = '" . escape($_POST['wysiwyg'] ?? '') . "',
+                    `rows` = '" . escape($_POST['rows'] ?? '') . "',  # Backticks for reserved word.
+                    cols = '" . escape($_POST['cols'] ?? '') . "',
+                    multiple = '" . escape($_POST['multiple'] ?? '') . "',
+                    spacing_above = '" . escape($_POST['spacing_above'] ?? '') . "',
+                    spacing_below = '" . escape($_POST['spacing_below'] ?? '') . "',
+                    contact_field = '" . escape($_POST['contact_field'] ?? '') . "',
+                    office_use_only = '" . escape($_POST['office_use_only'] ?? '') . "',
                     $sql_upload_folder_id
-                    quiz_question = '" . escape($_POST['quiz_question']) . "',
+                    quiz_question = '" . escape($_POST['quiz_question'] ?? '') . "',
                     quiz_answer = '" . escape(prepare_form_data_for_input($_POST['quiz_answer'], $_POST['type'])) . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // assume that there are not any invalid e-mail addresses in options until we find out otherwise
@@ -989,11 +989,11 @@ if (!$_POST) {
         // if field has options, deal with options
         if (($_POST['type'] == 'pick list') || ($_POST['type'] == 'radio button') || ($_POST['type'] == 'check box')) {
             // delete existing options
-            $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // Delete target options for this field.
-            db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($_POST['id']) . "'");
+            db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($_POST['id'] ?? '') . "'");
             
             $option_lines = array();
             $option_lines = explode("\n", $_POST['options']);
@@ -1129,7 +1129,7 @@ if (!$_POST) {
                         VALUES (
                             '" . escape($page_id) . "',
                             '" . escape($product_id) . "',
-                            '" . escape($_POST['id']) . "',
+                            '" . escape($_POST['id'] ?? '') . "',
                             '" . escape($label) . "',
                             '" . escape($value) . "',
                             '" . escape($email_address_list) . "',
@@ -1151,7 +1151,7 @@ if (!$_POST) {
                             value)
                         VALUES (
                             '" . e($_POST[$form_type_identifier_id]) . "',
-                            '" . e($_POST['id']) . "',
+                            '" . e($_POST['id'] ?? '') . "',
                             '$option_id',
                             '$target_option')");
                 }
@@ -1171,7 +1171,7 @@ if (!$_POST) {
         // get all fields other than the field that is currently being edited
         $query = "SELECT id
                  FROM form_fields
-                 WHERE ($form_type_filter) AND (id != '" . e($_POST['id'])  . "')
+                 WHERE ($form_type_filter) AND (id != '" . e($_POST['id'] ?? '')  . "')
                  ORDER BY sort_order";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         

@@ -12,11 +12,24 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
+$output = '';
+$where = '';
+
+// These joins are only added for some of the advanced filters, so they have to start out empty.
+$join_order_items = '';
+$join_ship_tos = '';
+$join_billing_states = '';
+$join_billing_countries = '';
+$join_shipping_states = '';
+$join_shipping_countries = '';
 
 $liveform = new liveform('view_orders');
 
@@ -27,7 +40,7 @@ validate_ecommerce_access($user);
 // then clear all session values for this screen.
 // The shipping report screen uses this feature in order to link to this screen
 // with a fresh view.
-if ($_GET['reset'] == 'true') {
+if ((isset($_GET['reset'])) && ($_GET['reset'] == 'true')) {
     unset($_SESSION['software']['ecommerce']['view_orders']);
 }
 
@@ -79,10 +92,16 @@ if (isset($_SESSION['software']['ecommerce']['view_orders']['type']) == false) {
     $_SESSION['software']['ecommerce']['view_orders']['type'] = 'online';
 }
 
+// The refund columns arrive with the 2026.1.27 upgrade. Probed once and reused
+// by both the filter below and its pick-list entry further down, so an
+// installation that has not been upgraded never offers an option that cannot
+// work.
+$refund_columns_exist = (bool) db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
+
 $sql_status = "";
 
 // Prepare SQL status filter differently based on the selected status.
-switch ($_SESSION['software']['ecommerce']['view_orders']['status']) {
+switch (($_SESSION['software']['ecommerce']['view_orders']['status'] ?? '')) {
     case 'any':
         $sql_status = "";
         break;
@@ -107,6 +126,22 @@ switch ($_SESSION['software']['ecommerce']['view_orders']['status']) {
         $sql_status = "AND (orders.status = 'cancelled')";
         break;
 
+    case 'refund_pending':
+        // Cancelled orders whose money has not gone back to the customer yet.
+        // Not a value of orders.status — the order's own status stays
+        // 'cancelled' — so this reads the refund column instead. 'pending' and
+        // 'failed' belong here with 'manual_required': all three mean the
+        // customer is still owed. Only 'refunded' and '' are settled.
+        if ($refund_columns_exist) {
+            $sql_status = "AND (orders.refund_status IN ('manual_required', 'failed', 'pending'))";
+            break;
+        }
+
+        // Column not present, which means a filter kept in the session from a
+        // newer build. Falls through to the default view rather than quietly
+        // listing something that means something else.
+        // no break
+
     case 'complete_or_exported':
     default:
         $sql_status = "AND ((orders.status = 'complete') OR (orders.status = 'exported'))";
@@ -115,7 +150,7 @@ switch ($_SESSION['software']['ecommerce']['view_orders']['status']) {
 
 // Prepare SQL type filter.
 $sql_type = "";
-switch ($_SESSION['software']['ecommerce']['view_orders']['type']) {
+switch (($_SESSION['software']['ecommerce']['view_orders']['type'] ?? '')) {
     case 'online':
         $sql_type = "AND (orders.type = 'online')";
         break;
@@ -132,10 +167,10 @@ switch ($_SESSION['software']['ecommerce']['view_orders']['type']) {
 
 $decrease_year['start_month'] = '01';
 $decrease_year['start_day'] = '01';
-$decrease_year['start_year'] = $_SESSION['software']['ecommerce']['view_orders']['start_year'] - 1;
+$decrease_year['start_year'] = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') - 1;
 $decrease_year['stop_month'] = '12';
 $decrease_year['stop_day'] = '31';
-$decrease_year['stop_year'] = $_SESSION['software']['ecommerce']['view_orders']['start_year'] - 1;
+$decrease_year['stop_year'] = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') - 1;
 
 $current_year['start_month'] = '01';
 $current_year['start_day'] = '01';
@@ -146,12 +181,12 @@ $current_year['stop_year'] = date('Y');
 
 $increase_year['start_month'] = '01';
 $increase_year['start_day'] = '01';
-$increase_year['start_year'] = $_SESSION['software']['ecommerce']['view_orders']['start_year'] + 1;
+$increase_year['start_year'] = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') + 1;
 $increase_year['stop_month'] = '12';
 $increase_year['stop_day'] = '31';
-$increase_year['stop_year'] = $_SESSION['software']['ecommerce']['view_orders']['start_year'] + 1;
+$increase_year['stop_year'] = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') + 1;
 
-$decrease_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'] - 1, 1, $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$decrease_month['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '') - 1, 1, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
 $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
 $decrease_month['start_month'] = $decrease_month['new_month'];
@@ -170,7 +205,7 @@ $current_month['stop_month'] = $current_month['new_month'];
 $current_month['stop_day'] = date('t');
 $current_month['stop_year'] = $current_month['new_year'];
 
-$increase_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'] + 1, 1, $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$increase_month['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '') + 1, 1, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $increase_month['new_month'] = date('m', $increase_month['new_time']);
 $increase_month['new_year'] = date('Y', $increase_month['new_time']);
 $increase_month['start_month'] = $increase_month['new_month'];
@@ -180,7 +215,7 @@ $increase_month['stop_month'] = $increase_month['new_month'];
 $increase_month['stop_day'] = date('t', $increase_month['new_time']);
 $increase_month['stop_year'] = $increase_month['new_year'];
 
-$decrease_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'], $_SESSION['software']['ecommerce']['view_orders']['start_day'], $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$decrease_week['start_date_timestamp'] = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 // if start date is a Sunday, use last Sunday (add 12:00:00 to prevent a bug that results in Saturday being returned)
 if (date('l', $decrease_week['start_date_timestamp']) == 'Sunday') {
     $decrease_week['new_time_start'] = strtotime('last sunday 12:00:00', $decrease_week['start_date_timestamp']);
@@ -212,7 +247,7 @@ $current_week['stop_month'] = date('m', $current_week['new_time_stop']);
 $current_week['stop_day'] = date('d', $current_week['new_time_stop']);
 $current_week['stop_year'] = date('Y', $current_week['new_time_stop']);
 
-$increase_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'], $_SESSION['software']['ecommerce']['view_orders']['start_day'], $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$increase_week['start_date_timestamp'] = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 // if start date is a Sunday
 if (date('l', $increase_week['start_date_timestamp']) == 'Sunday') {
     $increase_week['new_time_start'] = strtotime('2 Sunday', $increase_week['start_date_timestamp']);
@@ -227,7 +262,7 @@ $increase_week['stop_month'] = date('m', $increase_week['new_time_stop']);
 $increase_week['stop_day'] = date('d', $increase_week['new_time_stop']);
 $increase_week['stop_year'] = date('Y', $increase_week['new_time_stop']);
 
-$decrease_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'], $_SESSION['software']['ecommerce']['view_orders']['start_day'] - 1, $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$decrease_day['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '') - 1, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $decrease_day['new_month'] = date('m', $decrease_day['new_time']);
 $decrease_day['new_day'] = date('d', $decrease_day['new_time']);
 $decrease_day['new_year'] = date('Y', $decrease_day['new_time']);
@@ -248,7 +283,7 @@ $current_day['stop_month'] = $current_day['new_month'];
 $current_day['stop_day'] = $current_day['new_day'];
 $current_day['stop_year'] = $current_day['new_year'];
 
-$increase_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'], $_SESSION['software']['ecommerce']['view_orders']['start_day'] + 1, $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$increase_day['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '') + 1, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $increase_day['new_month'] = date('m', $increase_day['new_time']);
 $increase_day['new_day'] = date('d', $increase_day['new_time']);
 $increase_day['new_year'] = date('Y', $increase_day['new_time']);
@@ -260,21 +295,26 @@ $increase_day['stop_day'] = $increase_day['new_day'];
 $increase_day['stop_year'] = $increase_day['new_year'];
 
 // get timestamps for start and stop dates
-$start_timestamp = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_orders']['start_month'], $_SESSION['software']['ecommerce']['view_orders']['start_day'], $_SESSION['software']['ecommerce']['view_orders']['start_year']);
-$stop_timestamp = mktime(23, 59, 59, $_SESSION['software']['ecommerce']['view_orders']['stop_month'], $_SESSION['software']['ecommerce']['view_orders']['stop_day'], $_SESSION['software']['ecommerce']['view_orders']['stop_year']);
+$start_timestamp = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
+$stop_timestamp = mktime(23, 59, 59, ($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? ''));
 
 // Output start date range time
-$output_date_range_time = h(get_month_name_from_number($_SESSION['software']['ecommerce']['view_orders']['start_month']) . ' ' . $_SESSION['software']['ecommerce']['view_orders']['start_day'] . ', ' . $_SESSION['software']['ecommerce']['view_orders']['start_year']);
+$output_date_range_time = h(get_month_name_from_number(($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '')) . ' ' . ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '') . ', ' . ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $output_date_range_time .= ' - ';
 
 // Output end date range time
-$output_date_range_time .= h(get_month_name_from_number($_SESSION['software']['ecommerce']['view_orders']['stop_month']) . ' ' . $_SESSION['software']['ecommerce']['view_orders']['stop_day'] . ', ' . $_SESSION['software']['ecommerce']['view_orders']['stop_year']);
+$output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? ''));
+
+// if advanced filters are not set yet, then default them to off
+if (isset($_SESSION['software']['ecommerce']['view_orders']['advanced_filters']) == false) {
+    $_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] = false;
+}
 
 // If the advanced filters are disabled or the date type is set to order date,
 // then prepare SQL filter for order date.
 if (
-    ($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] == false)
-    || ($_SESSION['software']['ecommerce']['view_orders']['date_type'] == 'order_date')
+    (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? '') == false)
+    || (($_SESSION['software']['ecommerce']['view_orders']['date_type'] ?? '') == 'order_date')
 ) {
     $where = "WHERE (orders.order_date >= $start_timestamp) AND (orders.order_date <= $stop_timestamp)";
 
@@ -286,97 +326,97 @@ if (
 
 
 // if advanced filters are on, prepare SQL
-if ($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] == true) {
-    if ($_SESSION['software']['ecommerce']['view_orders']['order_number']) {$where .= " AND (orders.order_number LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['order_number']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['transaction_id']) {$where .= " AND (orders.transaction_id LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['transaction_id']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['authorization_code']) {$where .= " AND (orders.authorization_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['authorization_code']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['special_offer_code']) {$where .= " AND (orders.special_offer_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['special_offer_code']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['referral_source_code']) {$where .= " AND (orders.referral_source_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['referral_source_code']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['reference_code']) {$where .= " AND (orders.reference_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['reference_code']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['tracking_code']) {$where .= " AND (orders.tracking_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['tracking_code']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['http_referer']) {$where .= " AND (orders.http_referer LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['http_referer']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['ip_address']) {$where .= " AND (INET_NTOA(orders.ip_address) LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['ip_address']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['product_name']) {$where .= " AND (order_items.product_name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['product_name']) . "%')";}
+if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? '') == true) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) {$where .= " AND (orders.order_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) {$where .= " AND (orders.transaction_id LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) {$where .= " AND (orders.authorization_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) {$where .= " AND (orders.special_offer_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) {$where .= " AND (orders.referral_source_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) {$where .= " AND (orders.reference_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) {$where .= " AND (orders.tracking_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) {$where .= " AND (orders.http_referer LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(orders.ip_address) LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {$where .= " AND (order_items.product_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . "%')";}
 
     // If payment method has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['payment_method']) == false) {
         $_SESSION['software']['ecommerce']['view_orders']['payment_method'] = 'any';
     }
 
-    if (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == '') || ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'Credit/Debit Card') || ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'PayPal Express Checkout') || ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'Offline Payment')) {
-        $where .= " AND (orders.payment_method = '" . escape($_SESSION['software']['ecommerce']['view_orders']['payment_method']) . "')";
+    if ((($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == '') || (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'Credit/Debit Card') || (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'PayPal Express Checkout') || (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'Offline Payment')) {
+        $where .= " AND (orders.payment_method = '" . escape(($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '')) . "')";
     }
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['card_type']) {$where .= " AND (orders.card_type LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['card_type']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['cardholder']) {$where .= " AND (orders.cardholder LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['cardholder']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['card_number']) {$where .= " AND (orders.card_number LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['card_number']) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) {$where .= " AND (orders.card_type LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) {$where .= " AND (orders.cardholder LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) {$where .= " AND (orders.card_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . "%')";}
 
     if (AFFILIATE_PROGRAM == true) {
-        if ($_SESSION['software']['ecommerce']['view_orders']['affiliate_code']) {$where .= " AND (orders.affiliate_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['affiliate_code']) . "%')";}
+        if (($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) {$where .= " AND (orders.affiliate_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . "%')";}
     }
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['custom_field_1']) {$where .= " AND (orders.custom_field_1 LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['custom_field_1']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['custom_field_2']) {$where .= " AND (orders.custom_field_2 LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['custom_field_2']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_salutation']) {$where .= " AND (orders.billing_salutation LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_salutation']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_first_name']) {$where .= " AND (orders.billing_first_name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_first_name']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_last_name']) {$where .= " AND (orders.billing_last_name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_last_name']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_company']) {$where .= " AND (orders.billing_company LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_company']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_address_1']) {$where .= " AND (orders.billing_address_1 LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_address_1']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_address_2']) {$where .= " AND (orders.billing_address_2 LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_address_2']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_city']) {$where .= " AND (orders.billing_city LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_city']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_state']) {$where .= " AND ((orders.billing_state LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_state']) . "%') OR (billing_states.name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_state']) . "%'))";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code']) {$where .= " AND (orders.billing_zip_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_country']) {$where .= " AND ((orders.billing_country LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_country']) . "%') OR (billing_countries.name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_country']) . "%'))";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number']) {$where .= " AND (orders.billing_phone_number LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number']) {$where .= " AND (orders.billing_fax_number LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number']) . "%')";}
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_email_address']) {$where .= " AND (orders.billing_email_address LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['billing_email_address']) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) {$where .= " AND (orders.custom_field_1 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) {$where .= " AND (orders.custom_field_2 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) {$where .= " AND (orders.billing_salutation LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) {$where .= " AND (orders.billing_first_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) {$where .= " AND (orders.billing_last_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) {$where .= " AND (orders.billing_company LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) {$where .= " AND (orders.billing_address_1 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) {$where .= " AND (orders.billing_address_2 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) {$where .= " AND (orders.billing_city LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) {$where .= " AND ((orders.billing_state LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . "%') OR (billing_states.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . "%'))";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) {$where .= " AND (orders.billing_zip_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) {$where .= " AND ((orders.billing_country LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . "%') OR (billing_countries.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . "%'))";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) {$where .= " AND (orders.billing_phone_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) {$where .= " AND (orders.billing_fax_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) {$where .= " AND (orders.billing_email_address LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) . "%')";}
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] == 'opt_in') {
+    if (($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] ?? '') == 'opt_in') {
         $where .= " AND (orders.opt_in = '1')";
-    } else if ($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] == 'opt_out') {
+    } else if (($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] ?? '') == 'opt_out') {
         $where .= " AND (orders.opt_in = '0')";
     }
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['po_number']) {$where .= " AND (orders.po_number LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['po_number']) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) {$where .= " AND (orders.po_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) . "%')";}
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['tax_status'] == 'tax_exempt') {
+    if (($_SESSION['software']['ecommerce']['view_orders']['tax_status'] ?? '') == 'tax_exempt') {
         $where .= " AND (orders.tax_exempt = '1')";
-    } else if ($_SESSION['software']['ecommerce']['view_orders']['tax_status'] == 'not_tax_exempt') {
+    } else if (($_SESSION['software']['ecommerce']['view_orders']['tax_status'] ?? '') == 'not_tax_exempt') {
         $where .= " AND (orders.tax_exempt = '0')";
     }
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['ship_to_name']) {$where .= " AND (ship_tos.ship_to_name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['ship_to_name']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation']) {$where .= " AND (ship_tos.salutation LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name']) {$where .= " AND (ship_tos.first_name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name']) {$where .= " AND (ship_tos.last_name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_company']) {$where .= " AND (ship_tos.company LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_company']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1']) {$where .= " AND (ship_tos.address_1 LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2']) {$where .= " AND (ship_tos.address_2 LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_city']) {$where .= " AND (ship_tos.city LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_city']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_state']) {$where .= " AND ((ship_tos.state LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_state']) . "%') OR (shipping_states.name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_state']) . "%'))"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code']) {$where .= " AND (ship_tos.zip_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_country']) {$where .= " AND ((ship_tos.country LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_country']) . "%') OR (shipping_countries.name LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_country']) . "%'))"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) {$where .= " AND (ship_tos.ship_to_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) {$where .= " AND (ship_tos.salutation LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) {$where .= " AND (ship_tos.first_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) {$where .= " AND (ship_tos.last_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) {$where .= " AND (ship_tos.company LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) {$where .= " AND (ship_tos.address_1 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) {$where .= " AND (ship_tos.address_2 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) {$where .= " AND (ship_tos.city LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) {$where .= " AND ((ship_tos.state LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . "%') OR (shipping_states.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . "%'))"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) {$where .= " AND (ship_tos.zip_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) {$where .= " AND ((ship_tos.country LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . "%') OR (shipping_countries.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . "%'))"; $shipping = true;}
     
     // If address type has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['address_type']) == false) {
         $_SESSION['software']['ecommerce']['view_orders']['address_type'] = 'any';
     }
 
-    if (($_SESSION['software']['ecommerce']['view_orders']['address_type'] == '') || ($_SESSION['software']['ecommerce']['view_orders']['address_type'] == 'residential') || ($_SESSION['software']['ecommerce']['view_orders']['address_type'] == 'business')) {
-        $where .= " AND (ship_tos.address_type = '" . escape($_SESSION['software']['ecommerce']['view_orders']['address_type']) . "')";
+    if ((($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == '') || (($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == 'residential') || (($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == 'business')) {
+        $where .= " AND (ship_tos.address_type = '" . escape(($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '')) . "')";
         $shipping = true;
     }
     
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number']) {$where .= " AND (ship_tos.phone_number LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code']) {$where .= " AND (ship_tos.arrival_date_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code']) . "%')"; $shipping = true;}
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code']) {$where .= " AND (ship_tos.shipping_method_code LIKE '%" . escape($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code']) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) {$where .= " AND (ship_tos.phone_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) {$where .= " AND (ship_tos.arrival_date_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) {$where .= " AND (ship_tos.shipping_method_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) . "%')"; $shipping = true;}
 
     // If shipping status has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['shipping_status']) == false) {
         $_SESSION['software']['ecommerce']['view_orders']['shipping_status'] = 'any';
     }
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] == 'shipped') {
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] ?? '') == 'shipped') {
         $where .=
             " AND
             ((SELECT COUNT(*)
@@ -386,7 +426,7 @@ if ($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] == tru
                 AND (order_items.ship_to_id != '0')
                 AND (order_items.quantity > order_items.shipped_quantity)) = 0)";
 
-    } else if ($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] == 'unshipped') {
+    } else if (($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] ?? '') == 'unshipped') {
         $where .=
             " AND
             ((SELECT COUNT(*)
@@ -397,14 +437,14 @@ if ($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] == tru
                 AND (order_items.quantity > order_items.shipped_quantity)) > 0)";
     }
 
-    if ((ECOMMERCE_MULTICURRENCY === true) && ($_SESSION['software']['ecommerce']['view_orders']['currency_code'])) {$where .= " AND (orders.currency_code = '" . escape($_SESSION['software']['ecommerce']['view_orders']['currency_code']) . "')";}
+    if ((ECOMMERCE_MULTICURRENCY === true) && (($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? ''))) {$where .= " AND (orders.currency_code = '" . escape(($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? '')) . "')";}
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['date_type'] == 'ship_date') {
+    if (($_SESSION['software']['ecommerce']['view_orders']['date_type'] ?? '') == 'ship_date') {
         $shipping = true;
     }
 
     // if user is searching by product name, add a left join
-    if ($_SESSION['software']['ecommerce']['view_orders']['product_name']) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {
         $join_order_items = " LEFT JOIN order_items ON orders.id = order_items.order_id";
     }
 
@@ -414,22 +454,22 @@ if ($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] == tru
     }
 
     // if user is searching by billing state, add a left join
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_state']) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) {
         $join_billing_states = " LEFT JOIN states as billing_states ON orders.billing_state = billing_states.code";
     }
 
     // if user is searching by billing country, add a left join
-    if ($_SESSION['software']['ecommerce']['view_orders']['billing_country']) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) {
         $join_billing_countries = " LEFT JOIN countries as billing_countries ON orders.billing_country = billing_countries.code";
     }
 
     // if user is searching by shipping state, add a left join
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_state']) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) {
         $join_shipping_states = " LEFT JOIN states as shipping_states ON ship_tos.state = shipping_states.code";
     }
 
     // if user is searching by shipping country, add a left join
-    if ($_SESSION['software']['ecommerce']['view_orders']['shipping_country']) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) {
         $join_shipping_countries = " LEFT JOIN countries as shipping_countries ON ship_tos.country = shipping_countries.code";
     }
 }
@@ -479,7 +519,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
 }
 
 // if user requested to export orders, export orders
-if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
+if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     $orders = array();
     
     // Prepare array in order to store which orders will appear in this report
@@ -1140,7 +1180,7 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
     header("Content-disposition: attachment; filename=orders.zip");
     print $zipfile->file();
 
-} else if ($_GET['submit_data'] == 'Export Orders (single file)') {
+} else if (($_GET['submit_data'] ?? '') == 'Export Orders (single file)') {
     // get orders
     $query =
         "SELECT
@@ -2166,6 +2206,10 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
     $statuses[] = array('label' => lang('Complete or Exported'), 'value' => 'complete_or_exported');
     $statuses[] = array('label' => lang('Cancelled'), 'value' => 'cancelled');
 
+    if ($refund_columns_exist) {
+        $statuses[] = array('label' => lang('Refund Pending'), 'value' => 'refund_pending');
+    }
+
     $output_status_options = '';
 
     // Loop through the statuses in order to prepare pick list options.
@@ -2173,7 +2217,7 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
         $selected = '';
 
         // If this is the selected status, then select it.
-        if ($status['value'] == $_SESSION['software']['ecommerce']['view_orders']['status']) {
+        if ($status['value'] == ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? '')) {
             $selected = ' selected="selected"';
         }
 
@@ -2189,7 +2233,7 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
     $output_type_options = '';
     foreach ($types as $type) {
         $selected = '';
-        if ($type['value'] == $_SESSION['software']['ecommerce']['view_orders']['type']) {
+        if ($type['value'] == ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? '')) {
             $selected = ' selected="selected"';
         }
         $output_type_options .= '<option value="' . h($type['value']) . '"' . $selected . '>' . h($type['label']) . '</option>';
@@ -2203,13 +2247,13 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
 
     // get minimum year from oldest timestamp
     $oldest_year = date('Y', $oldest_timestamp);
-    if ($_SESSION['software']['ecommerce']['view_orders']['start_year'] < $oldest_year) {
-        $oldest_year = $_SESSION['software']['ecommerce']['view_orders']['start_year'];
+    if (($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') < $oldest_year) {
+        $oldest_year = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '');
     }
 
     $this_year = date('Y', strtotime('+1 year'));
-    if ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] > $this_year) {
-        $this_year = $_SESSION['software']['ecommerce']['view_orders']['stop_year'];
+    if (($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? '') > $this_year) {
+        $this_year = ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? '');
     }
 
     $years = array();
@@ -2236,7 +2280,8 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
     // If a screen was passed and it is a positive integer, then use it.
     // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
     if (
-        $_REQUEST['screen']
+        isset($_REQUEST['screen'])
+        and $_REQUEST['screen']
         and is_numeric($_REQUEST['screen'])
         and $_REQUEST['screen'] > 0
         and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -2248,7 +2293,13 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
         $screen = 1;
     }
 
-    switch ($_SESSION['software']['ecommerce']['view_orders']['sort']) {
+    // if the sort is not set yet, then default it to empty so that the switch below falls
+    // through to its default case
+    if (isset($_SESSION['software']['ecommerce']['view_orders']['sort']) == false) {
+        $_SESSION['software']['ecommerce']['view_orders']['sort'] = '';
+    }
+
+    switch (($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? '')) {
         case lang('First Name'):
             $sort_column = 'orders.billing_first_name';
             break;
@@ -2294,8 +2345,8 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
             $_SESSION['software']['ecommerce']['view_orders']['sort'] = 'Order Date';
     }
 
-    if ($_SESSION['software']['ecommerce']['view_orders']['order']) {
-        $asc_desc = $_SESSION['software']['ecommerce']['view_orders']['order'];
+    if (!empty($_SESSION['software']['ecommerce']['view_orders']['order'])) {
+        $asc_desc = ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '');
     } elseif ($sort_column == 'orders.order_date') {
         $asc_desc = 'desc';
         $_SESSION['software']['ecommerce']['view_orders']['order'] = 'desc';
@@ -2334,7 +2385,7 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
   
     
     if (AFFILIATE_PROGRAM == true) {
-        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>';
+        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>';
     }
 
 
@@ -2520,7 +2571,7 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
     $filter_totals = prepare_amount($filter_totals);
 
     // if the advanced filters are off
-    if ($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] == false) {
+    if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? '') == false) {
       
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
@@ -2537,15 +2588,15 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
         $output_advanced_filters_class = 'btn-danger';
 
         // prepare selection for payment method field
-        if ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'any') {
+        if (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'any') {
             $payment_method_any_selected = ' selected="selected"';
-        } elseif ((isset($_SESSION['software']['ecommerce']['view_orders']['payment_method']) == true) && ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == '')) {
+        } elseif ((isset($_SESSION['software']['ecommerce']['view_orders']['payment_method']) == true) && (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == '')) {
             $payment_method_none_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'Credit/Debit Card') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'Credit/Debit Card') {
             $payment_method_credit_debit_card_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'PayPal Express Checkout') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'PayPal Express Checkout') {
             $payment_method_paypal_express_checkout_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] == 'Offline Payment') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'Offline Payment') {
             $payment_method_offline_selected = ' selected="selected"';
         }
 
@@ -2554,25 +2605,25 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                 <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Affiliate') . '</h5></div>
                 <div class="col-12">
                     <label class="form-label">' . lang('Affiliate Code') . '</label>
-                    <input class="form-control" type="text" name="affiliate_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['affiliate_code']) . '" />
+                    <input class="form-control" type="text" name="affiliate_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . '" />
                 </div>';
         }
 
         // prepare selection for opt-in status
-        if ($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] == 'any') {
+        if (($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] ?? '') == 'any') {
             $opt_in_status_any_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] == 'opt_in') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] ?? '') == 'opt_in') {
             $opt_in_status_opt_in_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] == 'opt_out') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] ?? '') == 'opt_out') {
             $opt_in_status_opt_out_selected = ' selected="selected"';
         }
 
         // prepare selection for tax status
-        if ($_SESSION['software']['ecommerce']['view_orders']['tax_status'] == 'any') {
+        if (($_SESSION['software']['ecommerce']['view_orders']['tax_status'] ?? '') == 'any') {
             $tax_status_any_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['tax_status'] == 'tax_exempt') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['tax_status'] ?? '') == 'tax_exempt') {
             $tax_status_tax_exempt_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['tax_status'] == 'not_tax_exempt') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['tax_status'] ?? '') == 'not_tax_exempt') {
             $tax_status_not_tax_exempt_selected = ' selected="selected"';
         }
 
@@ -2581,31 +2632,31 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
             $output_currency_row =
                 '<div class="col-12 col-sm-6 col-md-12 my-1">
                     <label class="form-label">' . lang('Currency') . '</label>
-                    <select class="form-select" name="currency_code"><option value="">' . lang('Any') . '</option>' . get_currency_options($_SESSION['software']['ecommerce']['view_orders']['currency_code']) . '</select>
+                    <select class="form-select" name="currency_code"><option value="">' . lang('Any') . '</option>' . get_currency_options(($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? '')) . '</select>
                 </div>';
         } else {
             $output_currency_row = '';
         }
         
         // prepare selection for address type field
-        if ($_SESSION['software']['ecommerce']['view_orders']['address_type'] == 'any') {
+        if (($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == 'any') {
             $address_type_any_selected = ' selected="selected"';
-        } elseif ((isset($_SESSION['software']['ecommerce']['view_orders']['address_type']) == true) && ($_SESSION['software']['ecommerce']['view_orders']['address_type'] == '')) {
+        } elseif ((isset($_SESSION['software']['ecommerce']['view_orders']['address_type']) == true) && (($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == '')) {
             $address_type_none_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['address_type'] == 'residential') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == 'residential') {
             $address_type_residential_selected = ' selected="selected"';
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['address_type'] == 'business') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['address_type'] ?? '') == 'business') {
             $address_type_business_selected = ' selected="selected"';
         }
 
         // Prepare selection for shipping status field.
-        if ($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] == 'any') {
+        if (($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] ?? '') == 'any') {
             $shipping_status_any_selected = ' selected="selected"';
 
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] == 'unshipped') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] ?? '') == 'unshipped') {
             $shipping_status_unshipped_selected = ' selected="selected"';
 
-        } elseif ($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] == 'shipped') {
+        } elseif (($_SESSION['software']['ecommerce']['view_orders']['shipping_status'] ?? '') == 'shipped') {
             $shipping_status_shipped_selected = ' selected="selected"';
         }
 
@@ -2613,10 +2664,10 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
 
         // If shipping is enabled then output date type field.
         if (ECOMMERCE_SHIPPING == true) {
-            if ($_SESSION['software']['ecommerce']['view_orders']['date_type'] == 'order_date') {
+            if (($_SESSION['software']['ecommerce']['view_orders']['date_type'] ?? '') == 'order_date') {
                 $date_type_order_date_selected = ' selected="selected"';
 
-            } elseif ($_SESSION['software']['ecommerce']['view_orders']['date_type'] == 'ship_date') {
+            } elseif (($_SESSION['software']['ecommerce']['view_orders']['date_type'] ?? '') == 'ship_date') {
                 $date_type_ship_date_selected = ' selected="selected"';
             }
 
@@ -2634,45 +2685,45 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Order') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Order Number') . '</label>
-                            <input class="form-control" type="text" name="order_number" value="' . h($_SESSION['software']['ecommerce']['view_orders']['order_number']) . '" />
+                            <input class="form-control" type="text" name="order_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Transaction ID') . '</label>
-                            <input class="form-control" type="text" name="transaction_id" value="' . h($_SESSION['software']['ecommerce']['view_orders']['transaction_id']) . '" />
+                            <input class="form-control" type="text" name="transaction_id" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Authorization Code') . '</label>
-                            <input class="form-control" type="text" name="authorization_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['authorization_code']) . '" />
+                            <input class="form-control" type="text" name="authorization_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Special Offer Code') . '</label>
-                            <input class="form-control" type="text" name="special_offer_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['special_offer_code']) . '" />
+                            <input class="form-control" type="text" name="special_offer_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Referral Source Code') . '</label>
-                            <input class="form-control" type="text" name="referral_source_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['referral_source_code']) . '" />
+                            <input class="form-control" type="text" name="referral_source_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Reference Code') . '</label>
-                            <input class="form-control" type="text" name="reference_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['reference_code']) . '" />
+                            <input class="form-control" type="text" name="reference_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Tracking Code') . '</label>
-                            <input class="form-control" type="text" name="tracking_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['tracking_code']) . '" />
+                            <input class="form-control" type="text" name="tracking_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Referring URL') . '</label>
-                            <input class="form-control" type="text" name="http_referer" value="' . h($_SESSION['software']['ecommerce']['view_orders']['http_referer']) . '" />
+                            <input class="form-control" type="text" name="http_referer" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) . '" />
                         </div>
                         ' . $output_currency_row . '
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Customer\'s IP Address') . '</label>
-                            <input class="form-control" type="text" name="ip_address" value="' . h($_SESSION['software']['ecommerce']['view_orders']['ip_address']) . '" />
+                            <input class="form-control" type="text" name="ip_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . '" />
                         </div>
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Product') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Product Name') . '</label>
-                            <input class="form-control" type="text" name="product_name" value="' . h($_SESSION['software']['ecommerce']['view_orders']['product_name']) . '" />
+                            <input class="form-control" type="text" name="product_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Payment') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
@@ -2681,77 +2732,77 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Card Type') . '</label>
-                            <input class="form-control" type="text" name="card_type" value="' . h($_SESSION['software']['ecommerce']['view_orders']['card_type']) . '" />
+                            <input class="form-control" type="text" name="card_type" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Cardholder') . '</label>
-                            <input class="form-control" type="text" name="cardholder" value="' . h($_SESSION['software']['ecommerce']['view_orders']['cardholder']) . '" />
+                            <input class="form-control" type="text" name="cardholder" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Card Number') . '</label>
-                            <input class="form-control" type="text" name="card_number" value="' . h($_SESSION['software']['ecommerce']['view_orders']['card_number']) . '" />
+                            <input class="form-control" type="text" name="card_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . '" />
                         </div>
                         ' . $output_affiliate . '
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Billing') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Custom Field') . '  #1</label>
-                            <input class="form-control" type="text" name="custom_field_1" value="' . h($_SESSION['software']['ecommerce']['view_orders']['custom_field_1']) . '" />
+                            <input class="form-control" type="text" name="custom_field_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Custom Field') . '  #2</label>
-                            <input class="form-control" type="text" name="custom_field_2" value="' . h($_SESSION['software']['ecommerce']['view_orders']['custom_field_2']) . '" />
+                            <input class="form-control" type="text" name="custom_field_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Salutation') . '</label>
-                            <input class="form-control" type="text" name="billing_salutation" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_salutation']) . '" />
+                            <input class="form-control" type="text" name="billing_salutation" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('First Name') . '</label>
-                            <input class="form-control" type="text" name="billing_first_name" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_first_name']) . '" />
+                            <input class="form-control" type="text" name="billing_first_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Last Name') . '</label>
-                            <input class="form-control" type="text" name="billing_last_name" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_last_name']) . '" />
+                            <input class="form-control" type="text" name="billing_last_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Company') . '</label>
-                            <input class="form-control" type="text" name="billing_company" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_company']) . '" />
+                            <input class="form-control" type="text" name="billing_company" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 1</label>
-                            <input class="form-control" type="text" name="billing_address_1" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_address_1']) . '" />
+                            <input class="form-control" type="text" name="billing_address_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 2</label>
-                            <input class="form-control" type="text" name="billing_address_2" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_address_2']) . '" />
+                            <input class="form-control" type="text" name="billing_address_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('City') . '</label>
-                            <input class="form-control" type="text" name="billing_city" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_city']) . '" />
+                            <input class="form-control" type="text" name="billing_city" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('State') . '</label>
-                            <input class="form-control" type="text" name="billing_state" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_state']) . '" />
+                            <input class="form-control" type="text" name="billing_state" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Zip Code') . '</label>
-                            <input class="form-control" type="text" name="billing_zip_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code']) . '" />
+                            <input class="form-control" type="text" name="billing_zip_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Country') . '</label>
-                            <input class="form-control" type="text" name="billing_country" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_country']) . '" />
+                            <input class="form-control" type="text" name="billing_country" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Phone') . '</label>
-                            <input class="form-control" type="text" name="billing_phone_number" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number']) . '" />
+                            <input class="form-control" type="text" name="billing_phone_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Fax') . '</label>
-                            <input class="form-control" type="text" name="billing_fax_number" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number']) . '" />
+                            <input class="form-control" type="text" name="billing_fax_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Email') . '</label>
-                            <input class="form-control" type="text" name="billing_email_address" value="' . h($_SESSION['software']['ecommerce']['view_orders']['billing_email_address']) . '" />
+                            <input class="form-control" type="text" name="billing_email_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Opt-In Status') . '</label>
@@ -2759,7 +2810,7 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('PO Number') . '</label>
-                            <input class="form-control" type="text" name="po_number" value="' . h($_SESSION['software']['ecommerce']['view_orders']['po_number']) . '" />
+                            <input class="form-control" type="text" name="po_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Tax Status') . '</label>
@@ -2768,43 +2819,43 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Shipping') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Salutation') . '</label>
-                            <input class="form-control" type="text" name="shipping_salutation" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation']) . '" />
+                            <input class="form-control" type="text" name="shipping_salutation" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('First Name') . '</label>
-                            <input class="form-control" type="text" name="shipping_first_name" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name']) . '" />
+                            <input class="form-control" type="text" name="shipping_first_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Last Name') . '</label>
-                            <input class="form-control" type="text" name="shipping_last_name" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name']) . '" />
+                            <input class="form-control" type="text" name="shipping_last_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Company') . '</label>
-                            <input class="form-control" type="text" name="shipping_company" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_company']) . '" />
+                            <input class="form-control" type="text" name="shipping_company" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 1</label>
-                            <input class="form-control" type="text" name="shipping_address_1" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1']) . '" />
+                            <input class="form-control" type="text" name="shipping_address_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 2</label>
-                            <input class="form-control" type="text" name="shipping_address_2" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2']) . '" />
+                            <input class="form-control" type="text" name="shipping_address_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('City') . '</label>
-                            <input class="form-control" type="text" name="shipping_city" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_city']) . '" />
+                            <input class="form-control" type="text" name="shipping_city" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('State') . '</label>
-                            <input class="form-control" type="text" name="shipping_state" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_state']) . '" />
+                            <input class="form-control" type="text" name="shipping_state" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Zip Code') . '</label>
-                            <input class="form-control" type="text" name="shipping_zip_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code']) . '" />
+                            <input class="form-control" type="text" name="shipping_zip_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Country') . '</label>
-                            <input class="form-control" type="text" name="shipping_country" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_country']) . '" />
+                            <input class="form-control" type="text" name="shipping_country" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Address Type') . '</label>
@@ -2812,19 +2863,19 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Phone') . '</label>
-                            <input class="form-control" type="text" name="shipping_phone_number" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number']) . '" />
+                            <input class="form-control" type="text" name="shipping_phone_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Ship to Name') . '</label>
-                            <input class="form-control" type="text" name="ship_to_name" value="' . h($_SESSION['software']['ecommerce']['view_orders']['ship_to_name']) . '" />
+                            <input class="form-control" type="text" name="ship_to_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Arrival Date Code') . '</label>
-                            <input class="form-control" type="text" name="arrival_date_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code']) . '" />
+                            <input class="form-control" type="text" name="arrival_date_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Shipping Method Code') . '</label>
-                            <input class="form-control" type="text" name="shipping_method_code" value="' . h($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code']) . '" />
+                            <input class="form-control" type="text" name="shipping_method_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Shipping Status') . '</label>
@@ -2834,18 +2885,18 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                         <div class="col-12">' . $output_date_type_field . '</div>
                         <div class="col-12">
                             <label class="form-label">' . lang('From') . '</label>
-                            <select class="form-select my-1" name="start_month">' . select_month($_SESSION['software']['ecommerce']['view_orders']['start_month']) . '</select>
+                            <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="start_day">' . select_day($_SESSION['software']['ecommerce']['view_orders']['start_day']) . '</select>
-                                <select class="form-select my-1" name="start_year">' . select_year($years, $_SESSION['software']['ecommerce']['view_orders']['start_year']) . '</select>
+                                <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '')) . '</select>
+                                <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">' . lang('To') . '</label>
-                            <select class="form-select my-1" name="stop_month">' . select_month($_SESSION['software']['ecommerce']['view_orders']['stop_month']) . '</select>
+                            <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="stop_day">' . select_day($_SESSION['software']['ecommerce']['view_orders']['stop_day']) . '</select>
-                                <select class="form-select my-1" name="stop_year">' . select_year($years, $_SESSION['software']['ecommerce']['view_orders']['stop_year']) . '</select>
+                                <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? '')) . '</select>
+                                <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
@@ -2882,6 +2933,32 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
         $online_orders_total =  $local_sale_row['total'] / 100 + $online_orders_total;
     }
     $online_orders_total_all = prepare_amount($online_orders_total);
+
+    // Money already taken from customers that has not gone back yet.
+    //
+    // Site-wide like the online total beside it, NOT filtered by the date
+    // range or the status picker: a debt does not stop existing because the
+    // operator is looking at last year. Filtering it would also make the
+    // figure vanish exactly when someone is browsing history, which is when
+    // an unnoticed refund is most likely to be sitting there.
+    //
+    // Summed on the same basis as the other two cards (one SUM over
+    // orders.total through prepare_amount), so all three read alike; on a
+    // multi-currency shop all three are equally approximate.
+    //
+    // The column arrives with 2026.1.27. Without it the card shows zero
+    // rather than disappearing — an install that cannot answer the question
+    // is not an install that owes refunds.
+    $refund_pending_total = 0;
+
+    if ($refund_columns_exist) {
+        $refund_pending_total = ((float) db_value(
+            "SELECT COALESCE(SUM(total), 0)
+             FROM orders
+             WHERE refund_status IN ('manual_required', 'failed', 'pending')")) / 100;
+    }
+
+    $refund_pending_total_all = prepare_amount($refund_pending_total);
 
     $output .=
     pg_page_shell(
@@ -2962,7 +3039,18 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-3 offset-lg-6 p-1">
+                    <div class="col-12 col-md-6 col-lg-3 p-1">
+                        <div class="card border-0 border-4 h-100  shadow-sm">
+                            <div class="card-body">
+                                <h4 class="mb-0' . (($refund_pending_total > 0) ? ' text-danger' : '') . '">' . $refund_pending_total_all . '</h4>
+                                <span class="material-icons text-secondary" style="position: absolute;right: 0;bottom: 0;font-size: 5rem;opacity: 0.05;line-height: 5rem;">currency_exchange</span>
+                            </div>
+                            <div class="card-footer bg-reset border-0">
+                                <small>' . lang('Refund Pending') . '</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 offset-lg-3 p-1">
                         <div class="card border-0 border-4 h-100  shadow-sm">
                             <div class="card-body">
                                 <h4 class="mb-0">' . $filter_totals . '</h4>
@@ -2988,18 +3076,18 @@ if ($_GET['submit_data'] == 'Export Orders (multiple files)') {
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('First Name'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Last Name'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Status'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('First Name'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Last Name'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
                                         <th>' . lang('Type') . '</th>
-                                        <th>' . get_column_heading(lang('Order Number'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
-                                        <th class="text-end">' . get_column_heading(lang('Total'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('User'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Tracking Code'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
-                                        <th>' . get_column_heading(MEMBER_ID_LABEL, $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Order Number'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th class="text-end">' . get_column_heading(lang('Total'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('User'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Tracking Code'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(MEMBER_ID_LABEL, ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
                                         ' . $output_affiliate_heading . '
                                         <th>' . lang('Card Data') . '</th>
-                                        <th>' . get_column_heading(lang('Order Date'), $_SESSION['software']['ecommerce']['view_orders']['sort'], $_SESSION['software']['ecommerce']['view_orders']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Order Date'), ($_SESSION['software']['ecommerce']['view_orders']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '')) . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>

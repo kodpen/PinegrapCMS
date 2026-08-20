@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -90,7 +90,7 @@ if (!isset($_POST['name'])) {
     $_POST['name'] = trim($_POST['name']);
     // insert row into region table
     $query = "INSERT INTO dregion (dregion_name, dregion_code, dregion_user, dregion_timestamp) "
-            ."VALUES ('" . escape($_POST['name']) . "', '" . escape($_POST['code']) . "', {$user['id']}, UNIX_TIMESTAMP())";
+            ."VALUES ('" . escape($_POST['name'] ?? '') . "', '" . escape($_POST['code'] ?? '') . "', {$user['id']}, UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('dynamic region'),$_POST['name']))), $_SESSION['sessionusername']);

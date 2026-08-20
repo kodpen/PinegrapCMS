@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -99,6 +99,18 @@ $payment_method = $row['payment_method'];
 $ip_address = $row['ip_address'];
 $source = '';
 $output_contact_image = '';
+
+// Only set when a contact image is found below, but read in both branches.
+$accent_color = '';
+
+// These cells are only filled in for some order/product types, but they are always printed
+// in the tables further down.
+$output_shipped_quantity_field = '';
+$output_custom_field_1_cell = '';
+$output_custom_field_2_cell = '';
+$output_custom_field_3_cell = '';
+$output_custom_field_4_cell = '';
+
 if($contact_file_id == 0){
     if($contact_image){
         $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
@@ -735,6 +747,15 @@ if ($ship_to_exists == true) {
               // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
               if ($liveform->field_in_session('id') == FALSE) {
                 $shipping_tracking_numbers_for_field = '';
+                // array_key_last() needs PHP 7.3, so find the last key once, before the loop.
+                $last_shipping_tracking_number_key = null;
+
+                if ($shipping_tracking_numbers) {
+                    end($shipping_tracking_numbers);
+                    $last_shipping_tracking_number_key = key($shipping_tracking_numbers);
+                    reset($shipping_tracking_numbers);
+                }
+
                 // loop through the shipping tracking numbers in order to prepare value for field
                 foreach ($shipping_tracking_numbers as $shipping_tracking_number => $value) {
                     // if this is not the first shipping tracking number then add a line break
@@ -743,7 +764,7 @@ if ($ship_to_exists == true) {
                     }
                 
                     
-                    if ($shipping_tracking_number === array_key_last($shipping_tracking_numbers)) {
+                    if ($shipping_tracking_number === $last_shipping_tracking_number_key) {
                         $shipping_tracking_numbers_for_field .= $value['number'];
                     }else{
                         $shipping_tracking_numbers_for_field .= $value['number'] . ',';

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -33,7 +33,13 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-switch ($_SESSION['software']['ecommerce']['view_product_attributes']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_product_attributes']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_product_attributes']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'product_attributes.name';
         break;
@@ -85,7 +91,7 @@ $query =
     FROM product_attributes
     LEFT JOIN user AS created_user ON product_attributes.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON product_attributes.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_product_attributes']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? ''));
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $product_attributes = mysqli_fetch_items($result);
 
@@ -189,10 +195,10 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                    <th>' . get_column_heading(lang('Name'), $_SESSION['software']['ecommerce']['view_product_attributes']['sort'], $_SESSION['software']['ecommerce']['view_product_attributes']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Label & Options'), $_SESSION['software']['ecommerce']['view_product_attributes']['sort'], $_SESSION['software']['ecommerce']['view_product_attributes']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_product_attributes']['sort'], $_SESSION['software']['ecommerce']['view_product_attributes']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_product_attributes']['sort'], $_SESSION['software']['ecommerce']['view_product_attributes']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Label & Options'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_product_attributes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

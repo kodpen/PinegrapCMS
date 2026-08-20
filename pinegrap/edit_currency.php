@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -130,15 +130,15 @@ if (!$_POST) {
     validate_token_field();
     
     // if currency was selected for delete
-    if (isset($_POST['submit_delete']) && $_POST['submit_delete'] === 'Delete') {
+    if (isset($_POST['submit_delete']) && ($_POST['submit_delete'] ?? '') === 'Delete') {
         // get currency name for the log
-        $query = "SELECT name FROM currencies WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT name FROM currencies WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $currency_name = $row['name'];
         
         // delete currency
-        $query = "DELETE FROM currencies WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM currencies WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('currency'), $currency_name) )), $_SESSION['sessionusername']);
@@ -169,7 +169,7 @@ if (!$_POST) {
             FROM currencies
             WHERE
                 (code = '" . escape($liveform->get_field_value('code')) . "')
-                AND (id != '" . escape($_POST['id']) . "')";
+                AND (id != '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if code is already in use, prepare error and forward user back to screen
@@ -198,7 +198,7 @@ if (!$_POST) {
                 exchange_rate = '" . escape($exchange_rate) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // If this currency was set as the base currency then update all other currencies
@@ -209,7 +209,7 @@ if (!$_POST) {
                 SET base = '0'
                 WHERE
                     (base = '1')
-                    AND (id != '" . escape($_POST['id']) . "')");
+                    AND (id != '" . escape($_POST['id'] ?? '') . "')");
         }
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('Currency'),$liveform->get_field_value('name') ))), $_SESSION['sessionusername']);

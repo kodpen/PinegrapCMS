@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -51,11 +51,11 @@ if (isset($_GET['clear']) == true) {
 
 // If a folder was selected, then store that folder and all child folders
 // in an array so that we can later determine if items are in the selected folder scope.
-if ($_SESSION['software']['editor_select_page_or_file']['folder_id'] != 'all') {
+if (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') != 'all') {
     $folders = array();
 
     // Start the folders off with the selected folder.
-    $folders[] = $_SESSION['software']['editor_select_page_or_file']['folder_id'];
+    $folders[] = ($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '');
 
     // Get all folders in order to add child folders to array.
     $all_folders = db_items(
@@ -65,13 +65,13 @@ if ($_SESSION['software']['editor_select_page_or_file']['folder_id'] != 'all') {
         FROM folder");
 
     // Get child folders under the selected folder.
-    $child_folders = get_child_folders($_SESSION['software']['editor_select_page_or_file']['folder_id'], $all_folders);
+    $child_folders = get_child_folders(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? ''), $all_folders);
 
     // Add child folders to array.
     $folders = array_merge($folders, $child_folders);
 }
 
-$extras = '&CKEditorFuncNum=' . h(urlencode($_GET['CKEditorFuncNum']));
+$extras = '&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? '')));
 
 // Create an array that we will use to store all items.
 $items = array();
@@ -91,12 +91,18 @@ $output_type_file_class = '';
 $output_type_short_link_class = '';
 
 // Prepare info differently based on the selected type.
-switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
+switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
     default:
     case 'page':
         $output_type_page_class = ' active';
 
-        switch ($_SESSION['software']['editor_select_page_or_file']['sort']) {
+        // if the sort is not set yet, then default it to empty so that the switch below falls
+        // through to its default case
+        if (isset($_SESSION['software']['editor_select_page_or_file']['sort']) == false) {
+            $_SESSION['software']['editor_select_page_or_file']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
             case 'URL':
                 $sort_column = 'url';
                 break;
@@ -126,17 +132,17 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
         }
 
         $output_heading_cells =
-            '<th>' . get_column_heading(lang('URL'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Folder'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Page Type'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
+            '<th>' . get_column_heading(lang('URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Page Type'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
             <th class="noVis"></th>';
 
         $where = "";
 
         // If there is a search query and it is not blank, then prepare filter.
-        if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && ($_SESSION['software']['editor_select_page_or_file']['query'] != '')) {
-            $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower($_SESSION['software']['editor_select_page_or_file']['query']))) . "%')";
+        if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
+            $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
         }
 
         // Get all pages.
@@ -171,18 +177,18 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
                 )
                 &&
                 (
-                    ($_SESSION['software']['editor_select_page_or_file']['folder_id'] == 'all')
+                    (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') == 'all')
                     || (in_array($page['folder_id'], $folders) == true)
                 )
             ) {
                 // If an access control type has been selected, then get access control type for page,
                 // in order to determine if page should be included in results.
-                if ($_SESSION['software']['editor_select_page_or_file']['access_control_type'] != 'all') {
+                if (($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '') != 'all') {
                     $page['access_control_type'] = get_access_control_type($page['folder_id']);
 
                     // If the access control type for this page is the same as the selected access
                     // control type, then include page in results.
-                    if ($page['access_control_type'] == $_SESSION['software']['editor_select_page_or_file']['access_control_type']) {
+                    if ($page['access_control_type'] == ($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) {
                         $include = true;
                     }
 
@@ -202,7 +208,7 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
                     'folder_id' => $page['folder_id'],
                     'folder_name' => $page['folder_name'],
                     'page_type' => $page['type'],
-                    'access_control_type' => $page['access_control_type'],
+                    'access_control_type' => ($page['access_control_type'] ?? ''),
                     'last_modified_timestamp' => $page['last_modified_timestamp'],
                     'last_modified_username' => $page['last_modified_username']);
 
@@ -232,7 +238,13 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
     case 'file':
         $output_type_file_class = ' active';
 
-        switch ($_SESSION['software']['editor_select_page_or_file']['sort']) {
+        // if the sort is not set yet, then default it to empty so that the switch below falls
+        // through to its default case
+        if (isset($_SESSION['software']['editor_select_page_or_file']['sort']) == false) {
+            $_SESSION['software']['editor_select_page_or_file']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
             case 'URL':
                 $sort_column = 'url';
                 break;
@@ -263,17 +275,17 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
 
         $output_heading_cells =
             '<th>&nbsp;</th>
-            <th>' . get_column_heading(lang('URL'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Folder'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Size'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
+            <th>' . get_column_heading(lang('URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
             <th class="noVis"></th>';
 
         $where = "";
 
         // If there is a search query and it is not blank, then prepare filter.
-        if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && ($_SESSION['software']['editor_select_page_or_file']['query'] != '')) {
-            $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower($_SESSION['software']['editor_select_page_or_file']['query']))) . "%')";
+        if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
+            $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
         }
 
         // Get all files.
@@ -311,18 +323,18 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
                 )
                 &&
                 (
-                    ($_SESSION['software']['editor_select_page_or_file']['folder_id'] == 'all')
+                    (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') == 'all')
                     || (in_array($file['folder_id'], $folders) == true)
                 )
             ) {
                 // If an access control type has been selected, then get access control type for file,
                 // in order to determine if file should be included in results.
-                if ($_SESSION['software']['editor_select_page_or_file']['access_control_type'] != 'all') {
+                if (($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '') != 'all') {
                     $file['access_control_type'] = get_access_control_type($file['folder_id']);
 
                     // If the access control type for this file is the same as the selected access
                     // control type, then include file in results.
-                    if ($file['access_control_type'] == $_SESSION['software']['editor_select_page_or_file']['access_control_type']) {
+                    if ($file['access_control_type'] == ($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) {
                         $include = true;
                     }
 
@@ -374,7 +386,13 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
     case 'short_link':
         $output_type_short_link_class = ' active';
 
-        switch ($_SESSION['software']['editor_select_page_or_file']['sort']) {
+        // if the sort is not set yet, then default it to empty so that the switch below falls
+        // through to its default case
+        if (isset($_SESSION['software']['editor_select_page_or_file']['sort']) == false) {
+            $_SESSION['software']['editor_select_page_or_file']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
             case 'URL':
                 $sort_column = 'url';
                 break;
@@ -404,17 +422,17 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
         }
 
         $output_heading_cells =
-            '<th>' . get_column_heading(lang('URL'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Destination URL'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Folder'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['editor_select_page_or_file']['sort'], $_SESSION['software']['editor_select_page_or_file']['order'], $extras) . '</th>
+            '<th>' . get_column_heading(lang('URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Destination URL'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['editor_select_page_or_file']['sort'] ?? ''), ($_SESSION['software']['editor_select_page_or_file']['order'] ?? ''), $extras) . '</th>
             <th class="noVis"></th>';
 
         $where = "";
 
         // If there is a search query and it is not blank, then prepare filter.
-        if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && ($_SESSION['software']['editor_select_page_or_file']['query'] != '')) {
-            $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower($_SESSION['software']['editor_select_page_or_file']['query']))) . "%')";
+        if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
+            $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
         }
 
         // Get all short links.
@@ -466,7 +484,7 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
                 )
                 &&
                 (
-                    ($_SESSION['software']['editor_select_page_or_file']['folder_id'] == 'all')
+                    (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') == 'all')
                     ||
                     (
                         ($short_link['destination_type'] != 'url')
@@ -476,7 +494,7 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
             ) {
                 // If an access control type has been selected, then determine if short link
                 // should be included in results.
-                if ($_SESSION['software']['editor_select_page_or_file']['access_control_type'] != 'all') {
+                if (($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '') != 'all') {
                     // If the destination type for this short link is not url,
                     // then continue to check if short link should be included.
                     // When a user selects an access control type, other than "all",
@@ -486,7 +504,7 @@ switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
 
                         // If the access control type for this short link is the same as the selected access
                         // control type, then include short link in results.
-                        if ($short_link['access_control_type'] == $_SESSION['software']['editor_select_page_or_file']['access_control_type']) {
+                        if ($short_link['access_control_type'] == ($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) {
                             $include = true;
                         }
                     }
@@ -582,7 +600,7 @@ $output_rows = '';
 // if there is at least one result to display
 if ($items) {
     // If the order is ascending, then sort like that.
-    if ($_SESSION['software']['editor_select_page_or_file']['order'] == 'asc') {
+    if (($_SESSION['software']['editor_select_page_or_file']['order'] ?? '') == 'asc') {
         array_multisort($items_for_sorting, SORT_ASC, $items);
 
     // Otherwise the order is descending, so sort like that.
@@ -598,7 +616,7 @@ if ($items) {
         }
 
         // Prepare the rows of items differently based on the type.
-        switch ($_SESSION['software']['editor_select_page_or_file']['type']) {
+        switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             default:
             case 'page':
                 // If we did not get the access control type already up above for this page, then get it now.
@@ -607,7 +625,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript($_GET['CKEditorFuncNum'])) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
                         <td class="align-middle">' . h(get_page_type_name($item['page_type'])) . '</td>
@@ -659,7 +677,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript($_GET['CKEditorFuncNum'])) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
                         <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
@@ -684,7 +702,7 @@ if ($items) {
                 }
 
                 $output_rows .=
-                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript($_GET['CKEditorFuncNum'])) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
+                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['url'])) . '\'); window.close();">
                         <td class="align-middle chart_label">' . h($item['url']) . '</td>
                         <td class="align-middle">' . h($item['destination_url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
@@ -731,9 +749,9 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
                 <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                     <div class=" btn-group btn-group-sm flex-wrap">
 
-                        <a class="btn btn-outline-secondary my-2' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode($_GET['CKEditorFuncNum'])) . '"><span class="material-icons me-1">desktop_windows</span>' . lang('Pages') . '</a>
-                        <a class="btn btn-outline-secondary my-2' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode($_GET['CKEditorFuncNum'])) . '"><span class="material-icons me-1">insert_drive_file</span>' . lang('Files') . '</a>
-                        <a class="btn btn-outline-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode($_GET['CKEditorFuncNum'])) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>
+                        <a class="btn btn-outline-secondary my-2' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">desktop_windows</span>' . lang('Pages') . '</a>
+                        <a class="btn btn-outline-secondary my-2' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">insert_drive_file</span>' . lang('Files') . '</a>
+                        <a class="btn btn-outline-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>
                     </div>
                 </form>
             </nav>
@@ -741,14 +759,14 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
         <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
             <div class="row justify-content-center justify-content-md-end">
                 <form id="search" action="editor_select_page_or_file.php" method="get" class="search_form col-auto">
-                    <input type="hidden" name="CKEditorFuncNum" value="' . h($_GET['CKEditorFuncNum']) . '" />
+                    <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
                     <div class="input-group input-group-sm">
                         <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Folder') . '" for="filter_select">folder</label>
-                        <select id="folder_id" name="folder_id" class="form-select mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder($_SESSION['software']['editor_select_page_or_file']['folder_id']) . '</select>
+                        <select id="folder_id" name="folder_id" class="form-select mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
                     </div>
                     <div class="input-group input-group-sm">
                         <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Access') . '" for="access_control_type">verified_user</label>
-                        <select id="access_control_type" name="access_control_type" class="form-select mt-1 mb-1 ' . h($_SESSION['software']['editor_select_page_or_file']['access_control_type']) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type($_SESSION['software']['editor_select_page_or_file']['access_control_type'], false) . '</select>
+                        <select id="access_control_type" name="access_control_type" class="form-select mt-1 mb-1 ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
                     </div>
                 </form>
             </div>

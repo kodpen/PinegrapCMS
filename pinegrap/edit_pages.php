@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
@@ -190,16 +190,16 @@ if (!$_POST) {
                     // get folder that page is in, in order to validate access
                     $query = 
                         "SELECT
-                            page_folder, 
-                            page_search, 
-                            page_meta_keywords,
+                            page_folder,
+                            page_search,
+                            page_search_keywords,
                             page_type
-                        FROM page 
+                        FROM page
                         WHERE page_id = '" . escape($page_id) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $original_page_search = $row['page_search'];
-                    $original_meta_keywords = $row['page_meta_keywords'];
+                    $original_search_keywords = $row['page_search_keywords'];
                     $page_type = $row['page_type'];
                     
                     // if user has access to page then proceed
@@ -208,7 +208,7 @@ if (!$_POST) {
                         if ($_POST['move_to_folder']) {
                             $query = "UPDATE page
                                      SET
-                                        page_folder = '" . escape($_POST['move_to_folder']) . "',
+                                        page_folder = '" . escape($_POST['move_to_folder'] ?? '') . "',
                                         page_timestamp = UNIX_TIMESTAMP(),
                                         page_user = '" . $user['id'] . "'
                                      WHERE page_id = '" . escape($page_id) . "'";
@@ -244,7 +244,7 @@ if (!$_POST) {
                                         VALUES (
                                             '" . escape($page_id) . "',
                                             '" . escape($_SESSION['software']['preview_theme_id']) . "',
-                                            '" . escape($_POST['edit_page_style']) . "',
+                                            '" . escape($_POST['edit_page_style'] ?? '') . "',
                                             'desktop')");
                                 }
 
@@ -253,7 +253,7 @@ if (!$_POST) {
                             } else {
                                 $query = "UPDATE page
                                          SET
-                                            page_style = '" . escape($_POST['edit_page_style']) . "',
+                                            page_style = '" . escape($_POST['edit_page_style'] ?? '') . "',
                                             page_timestamp = UNIX_TIMESTAMP(),
                                             page_user = '" . $user['id'] . "'
                                          WHERE page_id = '" . escape($page_id) . "'";
@@ -290,7 +290,7 @@ if (!$_POST) {
                                         VALUES (
                                             '" . escape($page_id) . "',
                                             '" . escape($_SESSION['software']['preview_theme_id']) . "',
-                                            '" . escape($_POST['edit_mobile_style_id']) . "',
+                                            '" . escape($_POST['edit_mobile_style_id'] ?? '') . "',
                                             'mobile')");
                                 }
 
@@ -299,7 +299,7 @@ if (!$_POST) {
                             } else {
                                 $query = "UPDATE page
                                          SET
-                                            mobile_style_id = '" . escape($_POST['edit_mobile_style_id']) . "',
+                                            mobile_style_id = '" . escape($_POST['edit_mobile_style_id'] ?? '') . "',
                                             page_timestamp = UNIX_TIMESTAMP(),
                                             page_user = '" . $user['id'] . "'
                                          WHERE page_id = '" . escape($page_id) . "'";
@@ -311,7 +311,7 @@ if (!$_POST) {
                         if ($_POST['edit_site_search'] != '') {
                             $query = "UPDATE page
                                      SET
-                                        page_search = '" . escape($_POST['edit_site_search']) . "',
+                                        page_search = '" . escape($_POST['edit_site_search'] ?? '') . "',
                                         page_timestamp = UNIX_TIMESTAMP(),
                                         page_user = '" . $user['id'] . "'
                                      WHERE page_id = '" . escape($page_id) . "'";
@@ -319,11 +319,11 @@ if (!$_POST) {
                             
                             // if the site search was off and it is now being turned on, then call the function that updates the tag cloud table to add the keywords
                             if (($original_page_search != 1) && ($_POST['edit_site_search'] == 1)) {
-                                update_tag_cloud_keywords_for_page($page_id, $_POST['edit_site_search'], $original_meta_keywords, 0, '');
-                                
+                                update_tag_cloud_keywords_for_page($page_id, $_POST['edit_site_search'], $original_search_keywords, 0, '');
+
                             // else if the site search was on and it is now being turned off, then call the function that updates the tag cloud table to reduce or remove the keywords
                             } elseif (($original_page_search == 1) && ($_POST['edit_site_search'] != 1)) {
-                                update_tag_cloud_keywords_for_page($page_id, 0, '', $original_page_search, $original_meta_keywords);
+                                update_tag_cloud_keywords_for_page($page_id, 0, '', $original_page_search, $original_search_keywords);
                             }
                         }
                         
@@ -352,7 +352,7 @@ if (!$_POST) {
                             $query =
                                 "UPDATE page
                                 SET
-                                    sitemap = '" . escape($_POST['edit_sitemap']) . "',
+                                    sitemap = '" . escape($_POST['edit_sitemap'] ?? '') . "',
                                     page_timestamp = UNIX_TIMESTAMP(),
                                     page_user = '" . $user['id'] . "'
                                 WHERE page_id = '" . escape($page_id) . "'";
@@ -374,7 +374,7 @@ if (!$_POST) {
                     // if a folder was selected to move the page(s) to, then output message for log
                     if ($_POST['move_to_folder']) {
                         // get folder name for log
-                        $query = "SELECT folder_name FROM folder WHERE folder_id = '" . escape($_POST['move_to_folder']) . "'";
+                        $query = "SELECT folder_name FROM folder WHERE folder_id = '" . escape($_POST['move_to_folder'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
@@ -406,7 +406,7 @@ if (!$_POST) {
                         
                         // else get style name for log
                         } else {
-                            $query = "SELECT style_name FROM style WHERE style_id = '" . escape($_POST['edit_page_style']) . "'";
+                            $query = "SELECT style_name FROM style WHERE style_id = '" . escape($_POST['edit_page_style'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $style = $row['style_name'];
@@ -453,7 +453,7 @@ if (!$_POST) {
                         
                         // else get mobile style name for log
                         } else {
-                            $query = "SELECT style_name FROM style WHERE style_id = '" . escape($_POST['edit_mobile_style_id']) . "'";
+                            $query = "SELECT style_name FROM style WHERE style_id = '" . escape($_POST['edit_mobile_style_id'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $mobile_style = $row['style_name'];
@@ -543,7 +543,7 @@ if (!$_POST) {
                             page_type,
                             page_name,
                             page_search,
-                            page_meta_keywords
+                            page_search_keywords
                         FROM page
                         WHERE page_id = '" . escape($page_id) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -554,7 +554,7 @@ if (!$_POST) {
                     $page_type = $row['page_type'];
                     $page_name = $row['page_name'];
                     $original_page_search = $row['page_search'];
-                    $original_meta_keywords = $row['page_meta_keywords'];
+                    $original_search_keywords = $row['page_search_keywords'];
 
                     // if user has access to page, remember that
                     if (check_edit_access($page_folder) == true) {
@@ -585,9 +585,25 @@ if (!$_POST) {
                     if (($access_granted == true) && ($submitted_forms == false)) {
                         $query = "DELETE FROM page WHERE page_id = '" . escape($page_id) . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        
+
+                        // Stored SEO findings for this page. The single-page
+                        // delete in edit_page.php clears these; this screen
+                        // deletes pages too and was never given the same
+                        // cleanup. The seo_link rows matter in both directions:
+                        // a link from a deleted page still counts as an
+                        // incoming link when the graph decides whether another
+                        // page is an orphan, so leaving them hides real ones.
+                        if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+                            db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) $page_id . "')");
+                        }
+
+                        if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+                            db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) $page_id . "')");
+                            db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) $page_id . "')");
+                        }
+
                         // call the function that updates the tag cloud table
-                        update_tag_cloud_keywords_for_page($page_id, 0, '', $original_page_search, $original_meta_keywords);
+                        update_tag_cloud_keywords_for_page($page_id, 0, '', $original_page_search, $original_search_keywords);
                         
                         // if this is a search results page, then call the function responsible for removing the keywords for this page from the tag cloud
                         if ($page_type == 'search results') {

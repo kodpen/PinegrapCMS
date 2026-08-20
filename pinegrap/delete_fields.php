@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,7 +34,7 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
             page_folder,
             page_name
         FROM page
-        WHERE page_id = '" . escape($_POST['page_id']) . "'";
+        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
@@ -103,7 +103,7 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
     if ($page_type != 'express order' or $form_type != 'shipping') {
     
         // get form name for page
-        $query = "SELECT form_name FROM " . str_replace(' ', '_', $page_type) . "_pages WHERE page_id = '" . escape($_POST['page_id']) . "'";
+        $query = "SELECT form_name FROM " . str_replace(' ', '_', $page_type) . "_pages WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
@@ -130,7 +130,7 @@ if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
     $product_group = db_items(
         "SELECT name, short_description, form_name
         FROM product_groups
-        WHERE id = '" . e($_POST['product_group_id']) . "'
+        WHERE id = '" . e($_POST['product_group_id'] ?? '') . "'
         LIMIT 1");
 
     $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
@@ -160,7 +160,7 @@ if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
                  short_description,
                  form_name
              FROM products
-             WHERE id = '" . escape($_POST['product_id']) . "'";
+             WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
@@ -284,7 +284,7 @@ if ($_POST['fields']) {
                      SET
                         user = '" . $user['id'] . "',
                         timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . escape($_POST['product_id']) . "'";
+                     WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             log_activity(lang(array('string'=>'{var:1} field(s) were deleted from {var:2} ({var:3})','vars'=>array($number_of_fields,$form_type_name,$form_name) )), $_SESSION['sessionusername'] );
@@ -302,7 +302,7 @@ if ($_POST['fields']) {
                      SET
                         page_timestamp = UNIX_TIMESTAMP(),
                         page_user = '" . $user['id'] . "'
-                     WHERE page_id = '" . escape($_POST['page_id']) . "'";
+                     WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // If this page type supports a custom layout, then check if this page
@@ -313,7 +313,7 @@ if ($_POST['fields']) {
                         layout_type,
                         layout_modified
                     FROM page
-                    WHERE page_id = '" . e($_POST['page_id']) . "'");
+                    WHERE page_id = '" . e($_POST['page_id'] ?? '') . "'");
 
                 if (($page['layout_type'] == 'custom') && $page['layout_modified']) {
                     $liveform->add_warning(lang('You might need to edit the custom layout now, because you have made changes to fields on the custom form.'));

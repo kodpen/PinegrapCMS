@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
@@ -24,8 +24,8 @@ validate_area_access($user, 'user');
 
 
 $send_to = '';
-if(isset($_GET['send_to']) && $_GET['send_to'] != ''){
-    $send_to = '&send_to=' . $_GET['send_to'];
+if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''){
+    $send_to = '&send_to=' . ($_GET['send_to'] ?? '');
 }
 
 $form = new liveform('duplicate_folder');
@@ -54,13 +54,13 @@ if (!$_POST) {
     // If the form has not been submitted yet then autofill fields.
     if (!$form->field_in_session('find_replace')) {
 
-        if ($_SESSION['software']['duplicate_folder']['find_replace']) {
-            $form->set('find_replace', $_SESSION['software']['duplicate_folder']['find_replace']);
+        if (($_SESSION['software']['duplicate_folder']['find_replace'] ?? '')) {
+            $form->set('find_replace', ($_SESSION['software']['duplicate_folder']['find_replace'] ?? ''));
         } else {
             $form->set('find_replace', 'false');
         }
 
-        $find_replace_keywords = $_SESSION['software']['duplicate_folder']['find_replace_keywords'];
+        $find_replace_keywords = ($_SESSION['software']['duplicate_folder']['find_replace_keywords'] ?? '');
 
         if ($find_replace_keywords) {
             foreach ($find_replace_keywords as $key => $item) {

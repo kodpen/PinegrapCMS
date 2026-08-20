@@ -12,17 +12,20 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
 
 
 
-switch($_GET['sort']) {
+switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
     case lang('Name'):
         $sort_column = 'name';
         break;
@@ -38,13 +41,13 @@ switch($_GET['sort']) {
         $sort_column = 'timestamp';
 }
 
-if ($_GET['sort']) {
-    $asc_desc = $_GET['order'];
+if (isset($_GET['sort']) && $_GET['sort']) {
+    $asc_desc = isset($_GET['order']) ? $_GET['order'] : '';
 } else {
     $asc_desc = 'asc';
 }
 
-if (($sort_column == 'sort_order') && (!$_GET['order'])) {
+if (($sort_column == 'sort_order') && (empty($_GET['order']))) {
     $asc_desc = 'asc';
 } else {
     $asc_desc = 'desc';

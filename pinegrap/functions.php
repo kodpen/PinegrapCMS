@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -952,7 +952,7 @@ function get_child_folders($folder_id, $folders)
 
 // Determine whether this server hosts the site.
 // Checks hostname(s) and server IP against known values.
-// Compatible with PHP 5.6 - 8.x.
+// Compatible with PHP 7.0 - 8.5.
 
 function we_host()
 {
@@ -1396,9 +1396,9 @@ function get_style($folder_id, $device_type = 'desktop')
                 WHERE folder_id = '" . escape($folder_id) . "'";
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
-            $folder_parent = $row['folder_parent'];
-            $folder_style = $row['folder_style'];
-            $folder_level = $row['folder_level'];
+            $folder_parent = $row['folder_parent'] ?? '';
+            $folder_style = $row['folder_style'] ?? '';
+            $folder_level = $row['folder_level'] ?? '';
             // if there is a style for this folder, then return it
             if ($folder_style) {
                 return $folder_style;
@@ -1566,7 +1566,7 @@ function get_activated_style($properties)
 /**
  *
  * Generate a random string using a variety of character sets.
- * Compatible with PHP 5.6 - 8.x. Uses the best available CSPRNG:
+ * Compatible with PHP 7.0 - 8.5. Uses the best available CSPRNG:
  *   - random_int (PHP 7+)
  *   - openssl_random_pseudo_bytes (fallback for PHP 5.6)
  *   - mt_rand (last resort; not cryptographically secure)
@@ -1757,6 +1757,9 @@ function select_page($page_id = '', $page_type = '')
 // outputs the form's <select> page list for selecting a custom form
 function select_custom_form($page_id = '', $user = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     // get pages
     $query = "SELECT
 
@@ -1801,6 +1804,49 @@ function select_custom_form($page_id = '', $user = '')
 function select_page_type($page_type, $user)
 {
     $output = '';
+
+    // Only the case matching the current page type sets its own variable below, but every
+    // one of them is read when the option list is built, so they all have to start empty.
+    $affiliate_sign_up_confirmation_status = '';
+    $affiliate_sign_up_form_status = '';
+    $affiliate_welcome_status = '';
+    $billing_information_status = '';
+    $calendar_event_view_status = '';
+    $calendar_view_status = '';
+    $catalog_detail_status = '';
+    $catalog_status = '';
+    $change_password_status = '';
+    $custom_form_confirmation_status = '';
+    $custom_form_status = '';
+    $email_a_friend_status = '';
+    $email_preferences_status = '';
+    $error_status = '';
+    $express_order_status = '';
+    $folder_view_status = '';
+    $forgot_password_status = '';
+    $form_item_view_status = '';
+    $form_list_view_status = '';
+    $form_view_directory_status = '';
+    $login_status = '';
+    $logout_status = '';
+    $membership_confirmation_status = '';
+    $membership_entrance_status = '';
+    $my_account_profile_status = '';
+    $my_account_status = '';
+    $order_form_status = '';
+    $order_preview_status = '';
+    $order_receipt_status = '';
+    $photo_gallery_status = '';
+    $registration_confirmation_status = '';
+    $registration_entrance_status = '';
+    $search_results_status = '';
+    $set_password_status = '';
+    $shipping_address_and_arrival_status = '';
+    $shipping_method_status = '';
+    $shopping_cart_status = '';
+    $update_address_book_status = '';
+    $view_order_status = '';
+
     switch ($page_type) {
         case 'change password':
             $change_password_status = ' selected="selected"';
@@ -2354,6 +2400,9 @@ function get_file_options($design = FALSE)
 
 function select_image_options($image_name = '', $design = false)
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     $folders_that_user_has_access_to = array();
     global $user;
     // if user is a basic user, then get folders that user has access to
@@ -2422,6 +2471,9 @@ function select_image_options($image_name = '', $design = false)
 // outputs the form's <select> list for selecting a recurring payment period
 function select_payment_period($payment_period = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     $payment_periods[] = '';
     $payment_periods[] = 'Monthly';
     $payment_periods[] = 'Weekly';
@@ -2792,7 +2844,11 @@ function log_activity($description, $user = '')
     if (($user == '') && defined('USER_USERNAME')) {
         $user = USER_USERNAME;
     }
-    $query = "INSERT INTO log (log_id, log_description, log_ip, log_user, log_timestamp) " . "VALUES ('', '" . escape($description) . "', '" . escape($_SERVER['REMOTE_ADDR']) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
+    // No remote address when the software runs from the command line, which is
+    // how the scheduled jobs reach this function.
+    $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+
+    $query = "INSERT INTO log (log_id, log_description, log_ip, log_user, log_timestamp) " . "VALUES ('', '" . escape($description) . "', '" . escape($ip) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // get a random number between 1 and 100 in order to determine if we should delete old log entries
     // there is a 1 in 100 chance that we will delete old log entries each time a log entry is added
@@ -2924,10 +2980,10 @@ function select_product($selected_value = '', $value_type = 'id')
     $output = '';
 
     while ($row = mysqli_fetch_assoc($result)) {
-        // value_type 'id' veya 'name' olabilir
+        // value_type can be 'id' or 'name'
         $value = ($value_type === 'name') ? $row['name'] : $row['id'];
 
-        // seçili kontrolü
+        // Selected check.
         if ($value == $selected_value) {
             $selected = ' selected="selected"';
         } else {
@@ -2935,7 +2991,7 @@ function select_product($selected_value = '', $value_type = 'id')
         }
 
         $output_disabled_label = '';
-        // Eğer ürün disabled ise label ekle
+        // Append a label when the product is disabled.
         if ($row['enabled'] == 0) {
             $output_disabled_label = ' [' . lang('DISABLED') . ']';
         }
@@ -3003,6 +3059,9 @@ function get_recipient_options()
 }
 function select_country($country_id = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     $query = "SELECT id, name, default_selected " . "FROM countries " . "ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
@@ -3019,6 +3078,9 @@ function select_country($country_id = '')
 // outputs the options for a drop-down selection field for selecting a referral source
 function select_referral_source($referral_source_code = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     $query = "SELECT name, code FROM referral_sources ORDER BY sort_order";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
@@ -3034,6 +3096,9 @@ function select_referral_source($referral_source_code = '')
 // output options for drop-down selection for selecting an offer rule
 function select_offer_rule($offer_rule_id = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     // get offer rule
     $query = "SELECT id, name FROM offer_rules ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -3050,6 +3115,13 @@ function select_offer_rule($offer_rule_id = '')
 // output options for drop-down selection for selecting an offer action type
 function select_offer_action_type($offer_action_type = '')
 {
+    // Only the case matching the current type sets its own variable below, but all of them are
+    // read when the option list is built, so they all have to start out empty.
+    $order_discount_status = '';
+    $product_discount_status = '';
+    $add_product_status = '';
+    $shipping_discount_status = '';
+
     switch ($offer_action_type) {
         case 'discount order':
             $order_discount_status = ' selected="selected"';
@@ -3192,6 +3264,9 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
 // output options for drop-down selection for selecting a contact field
 function select_contact_field($selected_contact_field = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     $contact_fields = array();
     $contact_fields[] = array(
         'value' => 'salutation',
@@ -3464,7 +3539,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     $query = "SELECT id
         FROM order_items
         WHERE
-            (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
             AND (product_id = '" . escape($product_id) . "')
             AND (ship_to_id = '" . escape($ship_to_id) . "')
             AND (calendar_event_id = '" . escape($calendar_event_id) . "')
@@ -3482,7 +3557,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                 SET
                     price = (price + '" . e($donation_amount) . "')
                 WHERE
-                    (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                     AND (product_id = '" . escape($product_id) . "')
                     AND (ship_to_id = '" . escape($ship_to_id) . "')
                     AND (calendar_event_id = '" . escape($calendar_event_id) . "')
@@ -3494,7 +3569,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                 SET
                     quantity = (quantity + '" . e($quantity) . "')
                 WHERE
-                    (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                     AND (product_id = '" . escape($product_id) . "')
                     AND (ship_to_id = '" . escape($ship_to_id) . "')
                     AND (calendar_event_id = '" . escape($calendar_event_id) . "')
@@ -3531,8 +3606,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
         // If this product submits a form and add watcher info is in the session,
         // then add watcher info for this order item, so that a watcher is added
         // to the form and page when the order is submitted.
-        if (($product['submit_form'] == 1) && ($_SESSION['software']['product_submit_form']['add_watcher'] != '')) {
-            $add_watcher = $_SESSION['software']['product_submit_form']['add_watcher'];
+        if (($product['submit_form'] == 1) && (!empty($_SESSION['software']['product_submit_form']['add_watcher']))) {
+            $add_watcher = ($_SESSION['software']['product_submit_form']['add_watcher'] ?? '');
         }
         $query = "INSERT INTO order_items (
                     order_id,
@@ -3545,7 +3620,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     recurrence_number,
                     add_watcher)
                  VALUES (
-                    '" . $_SESSION['ecommerce']['order_id'] . "',
+                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                     '" . escape($ship_to_id) . "',
                     '" . escape($product_id) . "',
                     '" . escape($product['name']) . "',
@@ -3628,7 +3703,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                             name,
                             type)
                         VALUES (
-                            '" . $_SESSION['ecommerce']['order_id'] . "',
+                            '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                             '" . $order_item_id . "',
                             '1',
                             '" . $field['id'] . "',
@@ -3701,7 +3776,7 @@ function create_or_get_ship_to($ship_to, $add_name)
     }
 
     // figure out if ship_to record has already been created for ship to name
-    $query = "SELECT id FROM ship_tos WHERE ship_to_name = '" . escape($ship_to_name) . "' AND order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    $query = "SELECT id FROM ship_tos WHERE ship_to_name = '" . escape($ship_to_name) . "' AND order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // if ship_to record has already been created, get ship to id
     if (mysqli_num_rows($result)) {
@@ -3709,7 +3784,7 @@ function create_or_get_ship_to($ship_to, $add_name)
         $ship_to_id = $row['id'];
         // else ship_to record has not been created, so create record
     } else {
-        $query = "INSERT INTO ship_tos (order_id, ship_to_name) VALUES ('" . $_SESSION['ecommerce']['order_id'] . "', '" . escape($ship_to_name) . "')";
+        $query = "INSERT INTO ship_tos (order_id, ship_to_name) VALUES ('" . ($_SESSION['ecommerce']['order_id'] ?? '') . "', '" . escape($ship_to_name) . "')";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $ship_to_id = mysqli_insert_id(db::$con);
     }
@@ -3769,6 +3844,10 @@ function decrypt_credit_card_number($credit_card_number, $key)
 function protect_credit_card_number($card_number)
 {
     $protected_length = mb_strlen($card_number) - 4;
+
+    // built up in the loop below, so it has to start out empty
+    $credit_card_number = '';
+
     for ($i = 1; $i <= $protected_length; $i++) {
         $credit_card_number .= '*';
     }
@@ -3917,7 +3996,7 @@ function get_valid_zones($ship_to_id, $country_code, $state_code)
 
              FROM order_items
 
-             WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "' AND ship_to_id = '" . escape($ship_to_id) . "'";
+             WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND ship_to_id = '" . escape($ship_to_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $order_items = array();
     // add all items in cart to array
@@ -3980,7 +4059,9 @@ function get_valid_zones_for_destination($country_code, $state_code)
     $query = "SELECT id FROM countries WHERE code = '" . escape($country_code) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $country_id = $row['id'];
+
+    // $row is null when the country code is not in the database.
+    $country_id = isset($row['id']) ? $row['id'] : '';
     // find out if recipient's state is found in database and if it belongs to receipient's country
     $query = "SELECT id
 
@@ -4024,7 +4105,9 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
     $query = "SELECT id FROM countries WHERE code = '" . escape($country_code) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $country_id = $row['id'];
+
+    // $row is null when the country code is not in the database.
+    $country_id = isset($row['id']) ? $row['id'] : '';
     // get all allowed zones for this product
     $query = "SELECT zone_id
 
@@ -4091,7 +4174,7 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
 }
 function get_order_subtotal()
 {
-    $query = "SELECT price, quantity FROM order_items WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    $query = "SELECT price, quantity FROM order_items WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $order_subtotal = 0;
     while ($row = mysqli_fetch_assoc($result)) {
@@ -4122,7 +4205,7 @@ function update_order_item_prices()
 
              LEFT JOIN products ON order_items.product_id = products.id
 
-             WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+             WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $order_items = array();
     while ($row = mysqli_fetch_assoc($result)) {
@@ -4162,19 +4245,21 @@ function update_order_item_taxes()
 
              FROM orders
 
-             WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $billing_state = $row['billing_state'];
-    $billing_country = $row['billing_country'];
-    $tax_exempt = $row['tax_exempt'];
+
+    // $row is null when there is no order in the session yet.
+    $billing_state = isset($row['billing_state']) ? $row['billing_state'] : '';
+    $billing_country = isset($row['billing_country']) ? $row['billing_country'] : '';
+    $tax_exempt = isset($row['tax_exempt']) ? $row['tax_exempt'] : '';
     // if order is tax-exempt, clear tax from all order items
     if ($tax_exempt) {
         $query = "UPDATE order_items
 
                  SET tax = 0
 
-                 WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                 WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         // else order is not tax-exempt, so we need to apply taxes to order items
     } else {
@@ -4193,7 +4278,7 @@ function update_order_item_taxes()
 
                  LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
 
-                 WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'
+                 WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
 
                  ORDER BY order_items.ship_to_id";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -4221,7 +4306,7 @@ function update_order_item_taxes()
 
                      LEFT JOIN products ON order_items.product_id = products.id
 
-                     WHERE order_id = '" . $_SESSION['ecommerce']['order_id'] . "' AND ship_to_id = '" . $ship_to['ship_to_id'] . "'";
+                     WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND ship_to_id = '" . $ship_to['ship_to_id'] . "'";
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
             $order_items = array();
             // foreach order item for this ship to, add order item to array
@@ -4458,7 +4543,7 @@ function apply_offers_to_cart()
 
         WHERE
 
-            (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
             AND (order_items.discounted_by_offer = '1')
 
@@ -4503,16 +4588,18 @@ function apply_offers_to_cart()
 
             WHERE
 
-                (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                 AND (offer_id != '0')";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
     // get special offer code for this order
-    $query = "SELECT special_offer_code FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $special_offer_code = $row['special_offer_code'];
+
+    // $row is null when there is no order in the session yet.
+    $special_offer_code = isset($row['special_offer_code']) ? $row['special_offer_code'] : '';
     $offer_code = '';
     // if there is a special offer code for this order, then get offer code because the special offer code might just be a key code
     if ($special_offer_code != '') {
@@ -4642,7 +4729,7 @@ function apply_offers_to_cart()
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
@@ -4863,7 +4950,7 @@ function apply_offers_to_cart()
 
         WHERE
 
-            (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
             AND (order_items.added_by_offer = '1')
 
@@ -4987,7 +5074,7 @@ function apply_offers_to_cart()
 
                                     WHERE
 
-                                        (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                        (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                                         AND (offer_id = '" . $offer['id'] . "')
 
@@ -5016,7 +5103,7 @@ function apply_offers_to_cart()
 
                                 WHERE
 
-                                    (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                                     AND (offer_id = '" . $offer['id'] . "')
 
@@ -5035,7 +5122,7 @@ function apply_offers_to_cart()
 
                                             WHERE
 
-                                                (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                                                 AND (ship_to_id = '" . $ship_to['id'] . "')
 
@@ -5134,13 +5221,13 @@ function apply_offers_to_cart()
     }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {
-        $query = "UPDATE orders SET discount_offer_id = '" . $best_order_discount_offer_id . "' WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        $query = "UPDATE orders SET discount_offer_id = '" . $best_order_discount_offer_id . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
         // else there is not an order discount, so if there was before, then remove it
     } else if (isset($_SESSION['ecommerce']['order_discount']) == true) {
         // remove order discount until we find out below if there is an order discount
-        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         unset($_SESSION['ecommerce']['order_discount']);
     }
@@ -5268,7 +5355,7 @@ function get_best_offer_id($offer_code, $scope = '')
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
@@ -5593,10 +5680,12 @@ function get_best_offer_id($offer_code, $scope = '')
 function get_best_shipping_discount_offer($ship_to_id, $shipping_method_id)
 {
     // get special offer code that shopper might have entered
-    $query = "SELECT special_offer_code FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $special_offer_code = $row['special_offer_code'];
+
+    // $row is null when there is no order in the session yet.
+    $special_offer_code = isset($row['special_offer_code']) ? $row['special_offer_code'] : '';
     $offer_code = '';
     // if there is a special offer code for this order, then get offer code because the special offer code might just be a key code
     if ($special_offer_code != '') {
@@ -5727,10 +5816,12 @@ function get_best_shipping_discount_offer($ship_to_id, $shipping_method_id)
 function check_if_active_shipping_discount_offer_exists()
 {
     // get special offer code that shopper might have entered
-    $query = "SELECT special_offer_code FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $special_offer_code = $row['special_offer_code'];
+
+    // $row is null when there is no order in the session yet.
+    $special_offer_code = isset($row['special_offer_code']) ? $row['special_offer_code'] : '';
     $offer_code = '';
     // if there is a special offer code for this order, then get offer code because the special offer code might just be a key code
     if ($special_offer_code != '') {
@@ -5770,7 +5861,7 @@ function check_if_active_shipping_discount_offer_exists()
 function add_pending_offers($liveform)
 {
     // if pending offers form was submitted
-    if ($_POST['pending_offers']) {
+    if (!empty($_POST['pending_offers'])) {
         // loop through all submitted fields in order to determine if a pending offer was requested to be added
         foreach ($_POST as $key => $value) {
             // if the name of the field starts with "add_pending_offer_",
@@ -5782,7 +5873,7 @@ function add_pending_offers($liveform)
                 $offer_id = $offer_id_and_offer_action_id_parts[0];
                 $offer_action_id = $offer_id_and_offer_action_id_parts[1];
                 // get special offer code for this order
-                $query = "SELECT special_offer_code FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
                 $special_offer_code = $row['special_offer_code'];
@@ -5872,7 +5963,7 @@ function add_pending_offers($liveform)
                                 $ship_to_name = $ship_to;
                             }
                             // get ship to id for ship to name
-                            $query = "SELECT id FROM ship_tos WHERE (order_id = '" . escape($_SESSION['ecommerce']['order_id']) . "') AND (ship_to_name = '" . escape($ship_to_name) . "')";
+                            $query = "SELECT id FROM ship_tos WHERE (order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "') AND (ship_to_name = '" . escape($ship_to_name) . "')";
                             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
                             $row = mysqli_fetch_assoc($result);
                             $ship_to_id = $row['id'];
@@ -5891,7 +5982,7 @@ function add_pending_offers($liveform)
 
                                     WHERE
 
-                                        (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                        (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                                         AND (offer_id = '" . $offer_action['offer_id'] . "')
 
@@ -5940,7 +6031,7 @@ function add_pending_offers($liveform)
 
                                         ) VALUES (
 
-                                            '" . $_SESSION['ecommerce']['order_id'] . "',
+                                            '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
 
                                             '$ship_to_id',
 
@@ -6004,7 +6095,7 @@ function add_pending_offers($liveform)
 
                                 WHERE
 
-                                    (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                                     AND (offer_id = '" . $offer_action['offer_id'] . "')
 
@@ -6021,7 +6112,7 @@ function add_pending_offers($liveform)
 
                                         WHERE
 
-                                            (order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                                            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                                             AND (ship_to_id = '$ship_to_id')
 
@@ -6069,7 +6160,7 @@ function add_pending_offers($liveform)
 
                                             ) VALUES (
 
-                                                '" . $_SESSION['ecommerce']['order_id'] . "',
+                                                '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
 
                                                 '$ship_to_id',
 
@@ -6338,6 +6429,9 @@ function select_day($day)
 }
 function select_year($years, $year)
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     foreach ($years as $value) {
         // if this year is the selected year, select this option
         if ($value == $year) {
@@ -6463,14 +6557,14 @@ function initialize_order()
     // If the visitor already has an order in the session, then use it. We have already verified
     // the status of the order in init.php, to make sure it is still incomplete, so we don't need
     // to do that here.
-    if ($_SESSION['ecommerce']['order_id']) {
+    if (($_SESSION['ecommerce']['order_id'] ?? '')) {
         // If the user is logged in and not ghosting, then check if we should update user/contact
         // for order, because this function is run when an update is made to the order, and we want
         // to set the user/contact for an order when a user updates the order.
-        if (USER_LOGGED_IN and !$_SESSION['software']['ghost']) {
+        if (USER_LOGGED_IN and empty($_SESSION['software']['ghost'])) {
             $order = db_item("SELECT user_id, contact_id FROM orders
 
-                WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+                WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
             // If the order's user/contact info is different from this user, then update
             // user/contact info for order.
             if ($order['user_id'] != USER_ID or $order['contact_id'] != USER_CONTACT_ID) {
@@ -6482,7 +6576,7 @@ function initialize_order()
 
                         contact_id = '" . e(USER_CONTACT_ID) . "'
 
-                    WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+                    WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
             }
         }
         // Otherwise the visitor does not have an active order in session, so create order.
@@ -6541,21 +6635,21 @@ function initialize_order()
 
                     '" . escape(get_tracking_code()) . "',
 
-                    '" . e($_SESSION['software']['utm_source']) . "',
+                    '" . e($_SESSION['software']['utm_source'] ?? '') . "',
 
-                    '" . e($_SESSION['software']['utm_medium']) . "',
+                    '" . e($_SESSION['software']['utm_medium'] ?? '') . "',
 
-                    '" . e($_SESSION['software']['utm_campaign']) . "',
+                    '" . e($_SESSION['software']['utm_campaign'] ?? '') . "',
 
-                    '" . e($_SESSION['software']['utm_term']) . "',
+                    '" . e($_SESSION['software']['utm_term'] ?? '') . "',
 
-                    '" . e($_SESSION['software']['utm_content']) . "',
+                    '" . e($_SESSION['software']['utm_content'] ?? '') . "',
 
                     '" . escape(VISITOR_CURRENCY_CODE) . "',
 
                     '" . escape(get_affiliate_code()) . "',
 
-                    '" . escape($_SESSION['software']['http_referer']) . "',
+                    '" . escape($_SESSION['software']['http_referer'] ?? '') . "',
 
                     IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
 
@@ -6569,7 +6663,7 @@ function initialize_order()
 
                      SET
 
-                        order_id = '" . $_SESSION['ecommerce']['order_id'] . "',
+                        order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
 
                         order_created = '1',
 
@@ -6621,6 +6715,174 @@ function pg_track_content($type = null, $id = null)
     }
 
     return $item;
+}
+
+/**
+ * The style properties the render currently in progress is using.
+ *
+ * These were constants, which is right for a request - one request renders one
+ * page - and wrong for a process that renders many. define() latches the first
+ * value, so in the search indexer and the SEO structure pass every page after
+ * the first was rendered with the first page's collection and the first page's
+ * layout override. get_layout_type() and render_layout() take the override as
+ * the page's own layout type, so the wrong template file was used and nobody
+ * could see it in the output.
+ *
+ * A function can be set again. The COLLECTION and STYLE_LAYOUT_TYPE constants
+ * are still defined for anything outside the software that reads them; nothing
+ * inside it does any more.
+ *
+ * Called with no argument to read, with a value to set.
+ */
+function pg_render_collection($collection = null)
+{
+    static $current = '';
+
+    if ($collection !== null) {
+        $current = (string) $collection;
+    }
+
+    return $current;
+}
+
+/**
+ * The layout type the style of the render in progress overrides pages with.
+ *
+ * Empty when the style does not override anything, which is the normal case.
+ * See pg_render_collection() for why this is not a constant.
+ */
+function pg_render_layout_type($layout_type = null)
+{
+    static $current = '';
+
+    if ($layout_type !== null) {
+        $current = (string) $layout_type;
+    }
+
+    return $current;
+}
+
+/**
+ * Remember that this request produced the page a visitor would see.
+ *
+ * The performance monitor only measures a render that is representative of
+ * what the public gets. Three things are not: a PDF, an RSS feed and an
+ * iCalendar file, all served from the same URL as the page; and the same page
+ * rendered with the editing toolbar, which carries the toolbar itself and the
+ * edit wrappers and is measurably heavier.
+ *
+ * Registered once by get_page.php when it has decided which of those it is
+ * producing. Read by pg_measured_entity(), so the gate covers the catalogue
+ * item as well as the page - pg_track_content() is called from deep inside the
+ * render and has no idea who is looking, so gating only the page registration
+ * would leave an operator's edit-mode reloads landing in the product's own
+ * measurements.
+ */
+function pg_measurable_render($measurable = null)
+{
+    static $state = false;
+
+    if ($measurable !== null) {
+        $state = (bool) $measurable;
+    }
+
+    return $state;
+}
+
+/**
+ * Remember which page this request rendered.
+ *
+ * pg_track_content() above answers a different question: which catalogue item
+ * did the URL address. A plain page addresses none, so on its own it cannot
+ * tell the performance monitor whose measurement it is holding.
+ *
+ * Registered from get_page.php once the page has been sent, and deliberately
+ * not from update_visitor_page_data(): that call is behind the VISITOR_TRACKING
+ * switch, and an operator turning visitor statistics off should not silently
+ * turn the speed half of the SEO score off with it.
+ *
+ * First registration wins, same as pg_track_content(). A page that renders
+ * another page's content through a widget is still the page that was asked for.
+ */
+function pg_rendered_page($page_id = null)
+{
+    static $rendered_page_id = 0;
+
+    if (($page_id !== null) && ($rendered_page_id === 0) && ((int) $page_id > 0)) {
+        $rendered_page_id = (int) $page_id;
+    }
+
+    return $rendered_page_id;
+}
+
+/**
+ * The record a performance measurement belongs to, as (type, id).
+ *
+ * A product or a product group carries an SEO score of its own, so a request
+ * that resolved to one is measuring that record. Everything else - a plain
+ * page, a catalogue listing, a form item view - is measuring the page that
+ * rendered it. Form submissions are not scored records, so they fall through
+ * to their page rather than being recorded under a type nothing can join to.
+ *
+ * Returns an empty type when the request resolved to nothing worth scoring,
+ * which is the normal answer for a back-end screen or a 404.
+ */
+function pg_measured_entity()
+{
+    if (!pg_measurable_render()) {
+        return array('type' => '', 'id' => 0);
+    }
+
+    $item = pg_track_content();
+
+    if ((($item['type'] === 'product') || ($item['type'] === 'product_group')) && ((int) $item['id'] > 0)) {
+        return array('type' => $item['type'], 'id' => (int) $item['id']);
+    }
+
+    $page_id = pg_rendered_page();
+
+    if ($page_id > 0) {
+        return array('type' => 'page', 'id' => $page_id);
+    }
+
+    return array('type' => '', 'id' => 0);
+}
+
+/**
+ * True when the 2026.4.15 upgrade has added the identity columns to perf_stats.
+ *
+ * Probed rather than assumed because the monitor writes on every request. An
+ * installation that took the code update without running the database upgrade
+ * would otherwise have its one INSERT rejected for naming columns that do not
+ * exist, and would lose all performance data instead of just the identity.
+ * Mirrors pg_visitor_rollup_ready() and pg_sfv_stats_ready().
+ *
+ * Both columns are required, not just one. The upgrade adds them as two
+ * separate ALTERs and bumps the version only after the whole function returns,
+ * so a copy that times out between the two - which is what an ALTER on a table
+ * of a couple of hundred thousand rows does on an older MySQL - leaves exactly
+ * the half-applied state where probing one column says yes and the INSERT then
+ * names a column that is not there. Every request would silently record
+ * nothing, which is worse than recording no identity.
+ */
+function pg_perf_stats_has_entity()
+{
+    static $cached = null;
+
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM perf_stats LIKE 'entity\\_%'");
+    $cached = ($result && (@mysqli_num_rows($result) >= 2));
+
+    return $cached;
 }
 
 /**
@@ -7039,6 +7301,165 @@ function pg_sfv_stats_ready($recheck = false)
     $cached = ($result && @mysqli_num_rows($result) > 0);
 
     return $cached;
+}
+
+/**
+ * True when the page table carries the search engine indexing columns.
+ *
+ * An installation that takes a code update without running the database
+ * upgrade keeps the old behaviour: every page is indexable and robots.txt is
+ * built the way it always was. Mirrors pg_sfv_stats_ready().
+ *
+ * Both columns are probed. They are added by one upgrade step, but the step
+ * issues two statements, and a half-applied ALTER would otherwise leave the
+ * readiness check saying yes to a query that selects a column that is not
+ * there.
+ */
+function pg_page_noindex_ready($recheck = false)
+{
+    static $cached = null;
+
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(
+        db::$con,
+        "SHOW COLUMNS FROM page WHERE Field IN ('noindex', 'nofollow')");
+
+    $cached = ($result && @mysqli_num_rows($result) == 2);
+
+    return $cached;
+}
+
+/**
+ * Disallow lines that block crawling of the pages marked noindex.
+ *
+ * Returns one "Disallow: ..." line per entry and no User-agent line of its own:
+ * a rule belongs to whichever group it is written into, and choosing that group
+ * is the caller's job. Empty when the feature has nothing to say, so a site with
+ * no noindex page gets exactly the robots.txt it got before this existed.
+ */
+function pg_build_robots_disallow_rules()
+{
+    // PATH is defined by both entry points that can reach robots.txt, but this
+    // function builds absolute paths and has nothing to fall back on without it.
+    if (!defined('PATH') || !pg_page_noindex_ready()) {
+        return array();
+    }
+
+    $pages = db_items(
+        "SELECT
+            page_name,
+            page_folder,
+            page_home
+        FROM page
+        WHERE noindex = '1'
+        ORDER BY page_name ASC");
+
+    $rules = array();
+
+    foreach ($pages as $page) {
+        // A page behind a login is already out of reach for a crawler, and
+        // robots.txt is world readable: naming it here would publish the
+        // address of something the operator is keeping private.
+        if (get_access_control_type($page['page_folder']) != 'public') {
+            continue;
+        }
+
+        // The home page answers on the site root as well as under its own name.
+        if ($page['page_home'] == 'yes') {
+            $rules[] = 'Disallow: ' . PATH . '$';
+        }
+
+        $page_name = trim($page['page_name']);
+
+        if ($page_name == '') {
+            continue;
+        }
+
+        $path = PATH . encode_url_path($page_name);
+
+        // Three anchored rules rather than one prefix rule. A bare
+        // "Disallow: /search" also matches /search-engine-optimisation, which is
+        // a different page nobody asked to hide. '$' ends the match, '?' pins
+        // the query string form the site search page answers on, and the
+        // trailing slash covers the item addresses a list view builds below its
+        // own name. Both characters are part of the robots.txt grammar in
+        // RFC 9309, so a conforming crawler has to honour them.
+        $rules[] = 'Disallow: ' . $path . '$';
+        $rules[] = 'Disallow: ' . $path . '?';
+        $rules[] = 'Disallow: ' . $path . '/';
+    }
+
+    return array_values(array_unique($rules));
+}
+
+/**
+ * Write the rules into the operator's own catch-all group.
+ *
+ * Returns the rewritten robots.txt text, or FALSE when the operator's text has
+ * no "User-agent: *" group to write into.
+ *
+ * Opening a second "User-agent: *" group instead would be correct by the
+ * specification - RFC 9309 says a crawler MUST combine the groups that match
+ * the same token, and Google documents the same behaviour - but a parser that
+ * stops at the first matching group would then read ours and miss every rule
+ * the operator wrote. On a site whose additional content is "Disallow: /" that
+ * is the difference between closed and open.
+ */
+function pg_merge_robots_rules_into_catch_all($additional_robots_content, $rules)
+{
+    if (($additional_robots_content == '') || (count($rules) == 0)) {
+        return FALSE;
+    }
+
+    $lines = preg_split('/\r\n|\r|\n/', $additional_robots_content);
+
+    $catch_all_line = -1;
+
+    // Find the operator's catch-all group.
+    foreach ($lines as $index => $line) {
+        if (preg_match('/^\s*user-agent\s*:\s*\*\s*(#.*)?$/i', $line)) {
+            $catch_all_line = $index;
+            break;
+        }
+    }
+
+    if ($catch_all_line == -1) {
+        return FALSE;
+    }
+
+    // One group can be introduced by several User-agent lines at once, and
+    // neither a blank line nor a comment ends it. The rules go after the last of
+    // those lines: written in between, they would sit in the middle of the
+    // group's own declaration.
+    $insert_after = $catch_all_line;
+
+    for ($index = $catch_all_line + 1; $index < count($lines); $index++) {
+        $line = trim($lines[$index]);
+
+        if (($line == '') || (mb_substr($line, 0, 1) == '#')) {
+            continue;
+        }
+
+        if (preg_match('/^user-agent\s*:/i', $line)) {
+            $insert_after = $index;
+            continue;
+        }
+
+        break;
+    }
+
+    array_splice($lines, $insert_after + 1, 0, $rules);
+
+    return implode("\r\n", $lines);
 }
 
 /**
@@ -8032,7 +8453,9 @@ function get_tax_rate_for_address($country_code, $state_code)
     $query = "SELECT id FROM countries WHERE code = '" . escape($country_code) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
-    $country_id = $row['id'];
+
+    // $row is null when the country code is not in the database.
+    $country_id = isset($row['id']) ? $row['id'] : '';
     // find out if state is in database and if it belongs to country
     $query = "SELECT id
 
@@ -8067,8 +8490,11 @@ function get_tax_rate_for_address($country_code, $state_code)
         }
         // else state was not found in database, so valid tax zone is valid tax zone for country
     } else {
-        $valid_tax_zone_id = $tax_zones_for_country[0];
+        $valid_tax_zone_id = isset($tax_zones_for_country[0]) ? $tax_zones_for_country[0] : '';
     }
+    // only set when a valid tax zone is found just below
+    $tax_rate = '';
+
     // if a valid tax zone was found, get tax rate
     if ($valid_tax_zone_id) {
         $query = "SELECT tax_rate FROM tax_zones WHERE id = '$valid_tax_zone_id'";
@@ -8087,6 +8513,9 @@ function get_tax_rate_for_address($country_code, $state_code)
 function generate_order_reference_code()
 {
     $characters = array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z');
+    // built up in the loop below, so it has to start out empty
+    $reference_code = '';
+
     for ($i = 1; $i <= 10; $i++) {
         $index = mt_rand(0, 35);
         $reference_code .= $characters[$index];
@@ -8155,6 +8584,10 @@ function prepare_form_data_for_input($data, $type)
         switch ($type) {
             case 'date':
                 $date_parts = preg_split('/[-,\/]/', $data);
+
+                // A value that is not in a date format does not split into three parts.
+                $date_parts = $date_parts + array('', '', '');
+
                 $year = $date_parts[2];
                 if (DATE_FORMAT == 'month_day') {
                     $month = $date_parts[0];
@@ -8639,6 +9072,9 @@ function generate_email_recipient_reference_code()
         'Y',
         'Z'
     );
+    // built up in the loop below, so it has to start out empty
+    $reference_code = '';
+
     for ($i = 1; $i <= 10; $i++) {
         $index = mt_rand(0, 35);
         $reference_code .= $characters[$index];
@@ -8694,6 +9130,9 @@ function generate_form_reference_code()
         'Y',
         'Z'
     );
+    // built up in the loop below, so it has to start out empty
+    $reference_code = '';
+
     for ($i = 1; $i <= 10; $i++) {
         $index = mt_rand(0, 35);
         $reference_code .= $characters[$index];
@@ -8749,6 +9188,9 @@ function generate_commission_reference_code()
         'Y',
         'Z'
     );
+    // built up in the loop below, so it has to start out empty
+    $reference_code = '';
+
     for ($i = 1; $i <= 10; $i++) {
         $index = mt_rand(0, 35);
         $reference_code .= $characters[$index];
@@ -11011,6 +11453,9 @@ function get_currency_amount($amount, $exchange_rate)
 }
 function get_currency_options($currency_code = '')
 {
+    // only ever appended to below, so it has to start out empty
+    $output = '';
+
     // Get currency names and codes, with the base currency first.
     $query = "SELECT
 
@@ -11080,7 +11525,7 @@ function initialize_recipients()
 {
     // If recipients have not already been initialized, and user is logged in and not ghosting,
     // store recipients from address book in session.
-    if (!$_SESSION['ecommerce']['initialized_recipients'] and USER_LOGGED_IN and !$_SESSION['software']['ghost']) {
+    if (empty($_SESSION['ecommerce']['initialized_recipients']) and USER_LOGGED_IN and empty($_SESSION['software']['ghost'])) {
         // get user id
         $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -12857,7 +13302,9 @@ function get_submitted_form_content_with_form_fields($properties)
 {
     $type = $properties['type'];
     $order_id = $properties['order_id'];
-    $ship_to_id = $properties['ship_to_id'];
+
+    // Only passed for shipping forms.
+    $ship_to_id = isset($properties['ship_to_id']) ? $properties['ship_to_id'] : '';
     // Prepare where part of queries differently based on the custom form type.
     switch ($type) {
         case 'custom_billing_form':
@@ -13088,6 +13535,14 @@ function get_submitted_form_content_with_form_fields($properties)
 // express order, order preview, and order receipt.
 function get_form_review_info($properties)
 {
+    // Which of these the caller passes depends on the form type, so fill in the rest.
+    $properties = $properties + array(
+        'order_id'        => '',
+        'ship_to_id'      => '',
+        'order_item_id'   => '',
+        'quantity_number' => '',
+        'product_id'      => '');
+
     $type = $properties['type'];
     $order_id = $properties['order_id'];
     $ship_to_id = $properties['ship_to_id'];
@@ -13284,7 +13739,10 @@ function get_submitted_form_content_without_form_fields($properties)
 {
     $type = $properties['type'];
     $order_id = $properties['order_id'];
-    $ship_to_id = $properties['ship_to_id'];
+
+    // Only passed for shipping forms.
+    $ship_to_id = isset($properties['ship_to_id']) ? $properties['ship_to_id'] : '';
+
     $style = $properties['style'];
     // Prepare where part of queries differently based on the custom form type.
     switch ($type) {
@@ -14531,16 +14989,80 @@ function get_duplicate_catalog_item_address_name_number($address_name, $number =
         return $number;
     }
 }
+// Latin letters carrying a mark, written as the letter without it.
+//
+// Not a general transliteration: it covers the alphabets this software is
+// actually used in, which is what a URL segment needs. Turkish first, because
+// its dotless i and dotted I are the pair that most often breaks an address.
+function pg_transliterate_to_ascii($text)
+{
+    static $accented = array(
+        'ı','İ','ş','Ş','ğ','Ğ','ü','Ü','ö','Ö','ç','Ç',
+        'á','à','â','ä','ã','å','ā','Á','À','Â','Ä','Ã','Å','Ā',
+        'é','è','ê','ë','ē','É','È','Ê','Ë','Ē',
+        'í','ì','î','ï','ī','Í','Ì','Î','Ï','Ī',
+        'ó','ò','ô','õ','ø','ō','Ó','Ò','Ô','Õ','Ø','Ō',
+        'ú','ù','û','ũ','ū','Ú','Ù','Û','Ũ','Ū',
+        'ñ','Ñ','ý','ÿ','Ý','ć','č','Ć','Č','ď','đ','Ď','Đ',
+        'ł','Ł','ń','ň','Ń','Ň','ř','Ř','ś','š','Ś','Š',
+        'ť','Ť','ź','ż','ž','Ź','Ż','Ž','æ','Æ','œ','Œ','ß');
+
+    static $plain = array(
+        'i','I','s','S','g','G','u','U','o','O','c','C',
+        'a','a','a','a','a','a','a','A','A','A','A','A','A','A',
+        'e','e','e','e','e','E','E','E','E','E',
+        'i','i','i','i','i','I','I','I','I','I',
+        'o','o','o','o','o','o','O','O','O','O','O','O',
+        'u','u','u','u','u','U','U','U','U','U',
+        'n','N','y','y','Y','c','c','C','C','d','d','D','D',
+        'l','L','n','n','N','N','r','R','s','s','S','S',
+        't','T','z','z','z','Z','Z','Z','ae','AE','oe','OE','ss');
+
+    return str_replace($accented, $plain, (string) $text);
+}
+
 function prepare_catalog_item_address_name($address_name, $item_id = '')
 {
     // if item id is blank then set to zero.
     if ($item_id == '') {
         $item_id = '0';
     }
-    // prepare the address name for the database
+    // Prepare the address name for the database.
+    //
+    // This value becomes a path segment: /katalog/<address name>. Anything
+    // outside plain ASCII cannot survive that reliably - IIS decodes the
+    // request path and re-encodes it into the server's ANSI codepage, so a
+    // product called "kahve-fincani" with Turkish letters in it ends up at an
+    // address that does not match what is stored, and the product cannot be
+    // reached by its own URL at all. The same trap is documented for page
+    // names in seo.php, where it is only reported; here it is prevented.
+    //
+    // Turkish letters are transliterated rather than dropped, so "Çay Bardağı"
+    // becomes "Cay_Bardagi" and still reads as itself.
+    //
+    // Square brackets stay: get_duplicate_catalog_item_address_name_number()
+    // appends "[1]" to make a duplicate unique, and this function runs again
+    // over an address that already carries one. Hyphen and underscore stay
+    // because they are the ordinary word separators in an address.
     $address_name = trim($address_name);
-    $address_name = str_replace(' ', '_', $address_name);
-    $address_name = str_replace('&', '_', $address_name);
+    $address_name = pg_transliterate_to_ascii($address_name);
+
+    // Everything that is not allowed becomes an underscore rather than
+    // disappearing, so two different names cannot collapse into one.
+    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
+
+    // A run of separators reads as one, and neither end should start or finish
+    // on one.
+    $address_name = preg_replace('/_{2,}/', '_', $address_name);
+    $address_name = trim($address_name, '_');
+
+    // An address written entirely in a script this cannot transliterate -
+    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
+    // not an address, so fall back to a placeholder and let the duplicate
+    // numbering below make each one unique.
+    if ($address_name === '') {
+        $address_name = 'item';
+    }
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
@@ -14563,14 +15085,25 @@ function prepare_catalog_item_address_name($address_name, $item_id = '')
     }
     return $address_name;
 }
-function get_catalog_item_from_url()
+function get_catalog_item_from_url($forget = false)
 {
     // Memoised per request. The render path calls this between two and five
     // times for a single catalog detail page (get_page_content.php lines 2172,
     // 3074, 3409, 3431, 5043), and every call re-ran the same two lookups.
     // Visitor tracking calls it once more at the end of the request, so
     // caching also keeps the new tracking free rather than adding a query.
+    //
+    // "Per request" holds for a request, which renders one page. A process that
+    // renders many - the search indexer, the SEO structure pass - has to be
+    // able to forget, or every catalog detail page after the first resolves to
+    // the first one's product.
     static $cached = null;
+
+    if ($forget) {
+        $cached = null;
+        return null;
+    }
+
     if ($cached !== null) {
         return $cached;
     }
@@ -16403,13 +16936,140 @@ function get_codemirror_javascript($properties)
             });
         </script>';
 }
-// this function will update the keywords in the tag cloud keywords table for a page
-function update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_meta_keywords, $original_page_search, $original_meta_keywords)
+// this function lowercases a keyword and folds the four forms of the letter i onto one
+// another. turkish treats the dotless "ı" and the dotted "i" as two different letters,
+// and unicode's default lowercasing of "İ" leaves a combining dot behind that then
+// matches nothing, so "İstanbul" and "istanbul" would count as two separate keywords.
+// english is unaffected, "I" and "i" already fold together there.
+//
+// this is the conservative fold, used when deciding that two keywords are the same one
+// written twice. accents are left alone here on purpose: dropping one of them would
+// throw away a term the operator typed, and in turkish "kar" and "kâr" really are two
+// different words.
+function fold_keyword_for_duplicates($keyword)
 {
-    // if the new include in site search in on, and if there is data in the new web browser keywords field, then update the tag cloud table
-    if (($new_page_search == 1) && ($new_meta_keywords != '')) {
+    $keyword = str_replace(
+        array('I', 'İ', 'ı'),
+        array('i', 'i', 'i'),
+        (string) $keyword);
+    return mb_strtolower(trim($keyword), 'UTF-8');
+}
+// this function folds a keyword for matching a visitor's search query against it. it goes
+// further than the fold above and removes accents as well, because that is what the site
+// search did before the comparison moved into php: both keyword columns are
+// utf8mb4_unicode_ci, so the sql equality test this replaced already ignored accents and
+// a visitor typing "bahce" reached a page tagged "Bahçe". comparing in php without this
+// would quietly take that away.
+function fold_keyword_for_matching($keyword)
+{
+    static $accented_letters = array(
+        'á','à','â','ä','ã','å','ā','ă','ą',  'æ',
+        'ç','ć','č',  'ď','đ',
+        'é','è','ê','ë','ē','ĕ','ė','ę','ě',
+        'ğ','ĝ','ġ','ģ',  'ĥ',
+        'í','ì','î','ï','ĩ','ī','ĭ','į',  'ĵ',  'ķ',
+        'ĺ','ľ','ł',  'ñ','ń','ň','ņ',
+        'ó','ò','ô','ö','õ','ø','ō','ŏ','ő',  'œ',
+        'ŕ','ř',  'ś','ŝ','ş','š',  'ß',
+        'ţ','ť','ŧ',
+        'ú','ù','û','ü','ũ','ū','ŭ','ů','ű','ų',
+        'ŵ',  'ý','ÿ','ŷ',  'ź','ż','ž');
+    static $plain_letters = array(
+        'a','a','a','a','a','a','a','a','a',  'ae',
+        'c','c','c',  'd','d',
+        'e','e','e','e','e','e','e','e','e',
+        'g','g','g','g',  'h',
+        'i','i','i','i','i','i','i','i',  'j',  'k',
+        'l','l','l',  'n','n','n','n',
+        'o','o','o','o','o','o','o','o','o',  'oe',
+        'r','r',  's','s','s','s',  'ss',
+        't','t','t',
+        'u','u','u','u','u','u','u','u','u','u',
+        'w',  'y','y','y',  'z','z','z');
+    return str_replace($accented_letters, $plain_letters, fold_keyword_for_duplicates($keyword));
+}
+// this function merges two comma separated keyword lists into one, keeping the order of
+// the first list and dropping blank and repeated terms. it is used wherever a page arrives
+// carrying the retired meta keywords field alongside its promote on keyword list.
+//
+// there is no length limit because there is no column limit: page_search_keywords and
+// page_meta_keywords are both longtext.
+function merge_keyword_lists($first_list, $second_list)
+{
+    $terms = array();
+    $found_keywords = array();
+    $candidates = array_merge(
+        explode(',', (string) $first_list),
+        explode(',', (string) $second_list));
+    foreach ($candidates as $keyword) {
+        $keyword = trim($keyword);
+        if ($keyword == '') {
+            continue;
+        }
+        $found_keyword = fold_keyword_for_duplicates($keyword);
+        if (isset($found_keywords[$found_keyword])) {
+            continue;
+        }
+        $found_keywords[$found_keyword] = true;
+        $terms[] = $keyword;
+    }
+    return implode(', ', $terms);
+}
+// this function returns the ids of the pages that the site search should promote for a
+// search query, which are the pages whose promote on keyword list contains that query as
+// one of its terms.
+//
+// the comparison happens here instead of in the query for two reasons. the list is comma
+// separated, so an equality test in sql only ever matched a page that had exactly one
+// keyword in it and silently ignored every page with a real list. and the turkish forms
+// of the letter i need folding that no sql collation gives us.
+function get_page_ids_promoted_on_keyword($query)
+{
+    $page_ids = array();
+    $query_keyword = fold_keyword_for_matching($query);
+    if ($query_keyword == '') {
+        return $page_ids;
+    }
+    $pages = db_items(
+        "SELECT page_id, page_search_keywords
+        FROM page
+        WHERE (page_search = '1') AND (page_search_keywords != '')");
+    // loop through the searchable pages and keep the ones that list this keyword
+    foreach ($pages as $page) {
+        foreach (explode(',', (string) $page['page_search_keywords']) as $keyword) {
+            if (fold_keyword_for_matching($keyword) === $query_keyword) {
+                $page_ids[] = (int) $page['page_id'];
+                break;
+            }
+        }
+    }
+    return $page_ids;
+}
+// this function turns a list of page ids into a value that can be used with sql IN and
+// NOT IN. every id is cast to an integer here, so the result is safe to embed whatever
+// the caller passed in. a zero is returned for an empty list, because IN () is a syntax
+// error and no page has an id of zero, so IN (0) matches nothing and NOT IN (0) matches
+// everything.
+function get_page_id_list_for_sql($page_ids)
+{
+    $integer_ids = array();
+    foreach ($page_ids as $page_id) {
+        $integer_ids[] = (int) $page_id;
+    }
+    if (count($integer_ids) == 0) {
+        return '0';
+    }
+    return implode(', ', $integer_ids);
+}
+// this function will update the keywords in the tag cloud keywords table for a page.
+// the keywords come from the promote on keyword field (page_search_keywords), which is
+// the same list the site search promotes the page on.
+function update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_search_keywords, $original_page_search, $original_search_keywords)
+{
+    // if the new include in site search in on, and if there is data in the new promote on keyword field, then update the tag cloud table
+    if (($new_page_search == 1) && ($new_search_keywords != '')) {
         // break the keywords into an array
-        $new_keywords = explode(',', $new_meta_keywords);
+        $new_keywords = explode(',', $new_search_keywords);
         // loop through the keywords to tag to only add keywords that are not blank and remove any extra spaces before and after the keyword
         foreach ($new_keywords as $key => $new_keyword) {
             if ($new_keyword != '') {
@@ -16418,11 +17078,11 @@ function update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_met
         }
         // remove duplicate entries from the array
         $new_keywords = array_unique($new_keywords);
-        // if the original page search is on and if there are original meta keywords, then there is going to be records in the database,
+        // if the original page search is on and if there are original keywords, then there is going to be records in the database,
         // so remove the original keywords from the new keywords array and remove the orignal keywords from the database if they need to be removed
-        if (($original_page_search == 1) && ($original_meta_keywords != '')) {
+        if (($original_page_search == 1) && ($original_search_keywords != '')) {
             // break the keywords into an array
-            $original_keywords = explode(',', $original_meta_keywords);
+            $original_keywords = explode(',', $original_search_keywords);
             // loop through the keywords to tag to only add keywords that are not blank and remove any extra spaces before and after the keyword
             foreach ($original_keywords as $key => $original_keyword) {
                 if ($original_keyword != '') {
@@ -16474,8 +17134,8 @@ function update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_met
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
             }
         }
-        // else if the original page search is on and the original meta keywords are not blank, then remove any keywords for this page from the database
-    } elseif (($original_page_search == 1) && ($original_meta_keywords != '')) {
+        // else if the original page search is on and the original keywords are not blank, then remove any keywords for this page from the database
+    } elseif (($original_page_search == 1) && ($original_search_keywords != '')) {
         $query = "DELETE FROM tag_cloud_keywords WHERE item_id = '" . escape($page_id) . "' AND item_type = 'page'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
@@ -16814,6 +17474,10 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
     if (mb_strpos($content, '^^') !== false) {
         // get standard fields
         $standard_fields = get_standard_fields_for_view();
+
+        // built up in the loop below, so it has to start out empty
+        $sql_field_selects = '';
+
         // loop through all standard fields in order to prepare filters
         foreach ($standard_fields as $standard_field) {
             if ($sql_field_selects) {
@@ -16994,7 +17658,10 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
             // if the field name is valid, then replace conditional
             if ($field_name_valid == true) {
                 // if there is data to output, use first part of conditional
-                if (($submitted_form[$field_name] != '') || ($custom_fields_with_data[$field_name] == true)) {
+                // $field_name comes from the layout and refers to a form field that the site owner
+                // defined, so it can be any name at all.  Neither array is guaranteed to have a
+                // matching key.
+                if ((($submitted_form[$field_name] ?? '') != '') || (($custom_fields_with_data[$field_name] ?? false) == true)) {
                     $content = str_replace($whole_string, $positive_string, $content);
                     // else there is no data to output, so use second part of conditional
                 } else {
@@ -17062,7 +17729,7 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                 // get values differently based on the field group
                 switch ($field_group) {
                     case 'standard':
-                        $data = $submitted_form[$field_name];
+                        $data = $submitted_form[$field_name] ?? '';
                         break;
                     case 'custom':
                         $data = $submitted_form['field_' . $field_id];
@@ -17158,6 +17825,36 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
 function get_page_type_checkboxes_and_labels($set_page_type_values = array())
 {
     $output = '';
+
+    // This is also called for a brand new user, where no values exist yet.  Every key read
+    // below is filled in with an empty string, which is the same value the checks treat as
+    // "not set yet", so the defaults stay exactly as they were.
+    foreach (array(
+        'set_page_type_billing_information',
+        'set_page_type_calendar_event_view',
+        'set_page_type_calendar_view',
+        'set_page_type_catalog',
+        'set_page_type_catalog_detail',
+        'set_page_type_custom_form',
+        'set_page_type_custom_form_confirmation',
+        'set_page_type_email_a_friend',
+        'set_page_type_express_order',
+        'set_page_type_folder_view',
+        'set_page_type_form_item_view',
+        'set_page_type_form_list_view',
+        'set_page_type_form_view_directory',
+        'set_page_type_order_form',
+        'set_page_type_order_preview',
+        'set_page_type_order_receipt',
+        'set_page_type_photo_gallery',
+        'set_page_type_shipping_address_and_arrival',
+        'set_page_type_shipping_method',
+        'set_page_type_shopping_cart') as $set_page_type_key) {
+        if (isset($set_page_type_values[$set_page_type_key]) == false) {
+            $set_page_type_values[$set_page_type_key] = '';
+        }
+    }
+
     $set_page_type_email_a_friend_checked = '';
     $set_page_type_calendar_style = '';
     // if email a friend is set to blank or if it is turned on, then check it's checkbox
@@ -17317,7 +18014,7 @@ function get_discounted_product_prices()
     $offer_code = '';
     // if the visitor has an order, then get special offer code from order in database
     if (isset($_SESSION['ecommerce']['order_id']) == true) {
-        $query = "SELECT special_offer_code FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+        $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $special_offer_code = $row['special_offer_code'];
@@ -17783,7 +18480,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if (($properties['timezone_type'] != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {
@@ -17803,7 +18500,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if (($properties['timezone_type'] != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {
@@ -19566,21 +20263,21 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 //
 // Token paleti (per-product, expanded vs form_list_view to cover the products schema):
 //
-//   Temel:       ^^__id^^, ^^__name^^, ^^__short_description^^, ^^__description^^,
+//   Basic:       ^^__id^^, ^^__name^^, ^^__short_description^^, ^^__description^^,
 //                ^^__address_name^^, ^^__detail_url^^, ^^__sort_order^^,
 //                ^^__created_at^^
-//   Fiyat:       ^^__price^^, ^^__price_formatted^^
-//   Görsel:      ^^__image_url^^, ^^__image_alt^^, ^^__thumbnail_url^^,
+//   Price:       ^^__price^^, ^^__price_formatted^^
+//   Image:       ^^__image_url^^, ^^__image_alt^^, ^^__thumbnail_url^^,
 //                ^^__gallery_count^^
-//   Stok:        ^^__inventory_tracked^^, ^^__inventory_quantity^^,
+//   Stock:       ^^__inventory_tracked^^, ^^__inventory_quantity^^,
 //                ^^__quantity_available^^, ^^__backorder^^, ^^__out_of_stock^^,
 //                ^^__out_of_stock_label^^, ^^__out_of_stock_message^^
-//   Tanım:       ^^__sku^^ (=mpn), ^^__mpn^^, ^^__gtin^^, ^^__brand^^,
+//   Identity:    ^^__sku^^ (=mpn), ^^__mpn^^, ^^__gtin^^, ^^__brand^^,
 //                ^^__manufacturer^^ (alias of brand)
-//   Fiziksel:    ^^__weight^^, ^^__shippable^^, ^^__taxable^^
-//   Grup:        ^^__category_id^^, ^^__category_name^^, ^^__featured^^, ^^__is_new^^
-//   Özel:        ^^__custom_field_1^^ … ^^__custom_field_4^^
-//   Ödül/SEO:    ^^__reward_points^^, ^^__seo_score^^
+//   Physical:    ^^__weight^^, ^^__shippable^^, ^^__taxable^^
+//   Group:       ^^__category_id^^, ^^__category_name^^, ^^__featured^^, ^^__is_new^^
+//   Custom:      ^^__custom_field_1^^ … ^^__custom_field_4^^
+//   Reward/SEO:  ^^__reward_points^^, ^^__seo_score^^
 //
 // Group-context tokens (featured, is_new, sort_order) are populated from
 // products_groups_xref. When product_group_id = 0 (all products), they are
@@ -20677,7 +21374,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // product currently qualifying for an order-scope offer. Used to
     // populate the per-card discount tokens (__original_price_formatted,
     // __has_discount, __discount_percent…) that drive the strike-through
-    // visual the user requested.
+    // discount visual.
     $_pg_disc_prices = function_exists('get_discounted_product_prices')
         ? get_discounted_product_prices() : array();
     if (!is_array($_pg_disc_prices)) $_pg_disc_prices = array();
@@ -20756,7 +21453,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $price_block_html     = _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol);
 
         $values = array(
-            // Temel
+            // Basic
             '__id'                  => (string)$pid,
             '__name'                => isset($p['name']) ? (string)$p['name'] : '',
             '__address_name'        => isset($p['address_name']) ? (string)$p['address_name'] : '',
@@ -20767,12 +21464,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__sort_order'          => (string)$sort_order_val,
             '__created_at'          => !empty($p['timestamp']) ? date('Y-m-d', (int)$p['timestamp']) : '',
 
-            // Fiyat — effective (post-discount when one applies).
+            // Price — effective (post-discount when one applies).
             //   • __price (numeric, no symbol) — use for math / data attrs
-            //   • __price_formatted — sembollü; AND when an offer is in
-            //     effect this token expands to the strike+new HTML so a
-            //     designer who only binds "Fiyat (sembollü)" still sees
-            //     the indirim visual without composing two spans.
+            //   • __price_formatted — with currency symbol; AND when an
+            //     offer is in effect this token expands to the strike+new
+            //     HTML so a designer who only binds the formatted price
+            //     still sees the discount visual without composing two
+            //     spans.
             '__price'               => number_format($price_decimal, 2, '.', ''),
             '__price_formatted'     => $has_discount ? $price_block_html : $price_formatted,
             // Pre-rendered strike+new HTML — explicit alias so a designer
@@ -20808,13 +21506,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__discount_amount_formatted'=> $disc_save_cents > 0 ? $currency_symbol . number_format($disc_save_cents / 100, 2, '.', ',') : '',
             '__discount_percent'         => $disc_save_pct > 0 ? (string)$disc_save_pct : '',
 
-            // Görsel
+            // Image
             '__image_url'           => $image_url,
             '__image_alt'           => isset($p['name']) ? (string)$p['name'] : '',
             '__thumbnail_url'       => $image_url,  // alias — Pinegrap has no separate thumb yet
             '__gallery_count'       => (string)(isset($gallery_counts[$pid]) ? $gallery_counts[$pid] : 0),
 
-            // Stok / Envanter
+            // Stock / inventory
             '__inventory_tracked'   => (string)$tracked,
             '__inventory_quantity'  => (string)$qty,
             '__quantity_available'  => (string)$qty,
@@ -20826,31 +21524,31 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__out_of_stock_message'=> ($oos_notice && !empty($p['out_of_stock_message']))
                                            ? _pg_rich_text_to_inline($p['out_of_stock_message']) : '',
 
-            // Tanımlama
+            // Identity
             '__sku'                 => isset($p['mpn']) ? (string)$p['mpn'] : '',  // alias — Pinegrap uses MPN
             '__mpn'                 => isset($p['mpn']) ? (string)$p['mpn'] : '',
             '__gtin'                => isset($p['gtin']) ? (string)$p['gtin'] : '',
             '__brand'               => isset($p['brand']) ? (string)$p['brand'] : '',
             '__manufacturer'        => isset($p['brand']) ? (string)$p['brand'] : '',  // alias
 
-            // Fiziksel
+            // Physical
             '__weight'              => isset($p['weight']) ? (string)$p['weight'] : '',
             '__shippable'           => !empty($p['shippable']) ? '1' : '0',
             '__taxable'             => !empty($p['taxable'])  ? '1' : '0',
 
-            // Grup / Kategori
+            // Group / category
             '__category_id'         => (string)$category_id,
             '__category_name'       => $category_name,
             '__featured'            => (string)$featured_val,
             '__is_new'              => (string)$is_new,
 
-            // Özel alanlar
+            // Custom fields
             '__custom_field_1'      => isset($p['custom_field_1']) ? (string)$p['custom_field_1'] : '',
             '__custom_field_2'      => isset($p['custom_field_2']) ? (string)$p['custom_field_2'] : '',
             '__custom_field_3'      => isset($p['custom_field_3']) ? (string)$p['custom_field_3'] : '',
             '__custom_field_4'      => isset($p['custom_field_4']) ? (string)$p['custom_field_4'] : '',
 
-            // Ödül / SEO
+            // Reward / SEO
             '__reward_points'       => isset($p['reward_points']) ? (string)$p['reward_points'] : '0',
             '__seo_score'           => isset($p['seo_score']) ? (string)$p['seo_score'] : '0',
 
@@ -21096,7 +21794,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // descendant group. Previously we only filtered to DIRECT xref of
         // the active group — so a top-level catalog like "Mağaza" returned
         // zero attributes (since the chairs / chocolates / etc. live in
-        // sub-groups, not directly in Mağaza). User saw an empty filter
+        // sub-groups, not directly in Mağaza). Symptom: an empty filter
         // panel even when the listing showed products via descendant
         // groups. Recursive CTE materializes the descendant set in one
         // query; we then just check products_groups_xref against that set.
@@ -21728,8 +22426,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // configured default ("show only in-stock"). Treating that default as
     // "an active filter" makes the chip strip + clear button render on
     // every fresh page load, which the visitor sees as confusing UI clutter
-    // ("temizlenecek bir filtre yokken Filtreleri Temizle butonu" ne işe
-    // yarıyor?). The right gate is: stock counts as "active" only when the
+    // (a "clear filters" button with nothing to clear). The right gate is:
+    // stock counts as "active" only when the
     // visitor EXPLICITLY set ?stock= in the URL (i.e. opted out of or into
     // the default). Same intuition for any other configured-default filter
     // we add later.
@@ -22880,8 +23578,9 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
             $cfg = json_decode(base64_decode($m[1]), true);
             if (!is_array($cfg)) $cfg = array();
             $style    = isset($cfg['renderStyle']) ? $cfg['renderStyle'] : 'select';
-            // Checkbox stili kaldırıldı — variant attributes single-select.
-            // Eski kayıtlarda 'checkbox' kalmışsa otomatik 'radio'ya düşür.
+            // The checkbox style was removed — variant attributes are
+            // single-select. Legacy records still carrying 'checkbox'
+            // automatically fall back to 'radio'.
             if ($style === 'checkbox') $style = 'radio';
             if (!in_array($style, array('select','radio','button_group','button_list'), true)) $style = 'select';
             $lblCls   = isset($cfg['labelClass'])   ? (string)$cfg['labelClass']   : 'form-label fw-semibold';
@@ -22960,8 +23659,8 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
 
                     // 'checkbox' case removed — variant attributes are
                     // single-select by definition (a "Renk" can't be both
-                    // Mavi AND Kırmızı simultaneously). Eski 'checkbox'
-                    // kayıtları yukarıda 'radio'ya düşürülüyor.
+                    // Mavi AND Kırmızı simultaneously). Legacy 'checkbox'
+                    // records fall back to 'radio' above.
 
 
                     case 'select':
@@ -24293,7 +24992,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // (it is routinely left at 0), so nothing about stock may be inferred
         // from it. Only a tracked product can be out of stock.
         //
-        //   inventory=0            → sınırsız stok (quantity önemsiz)
+        //   inventory=0            → unlimited stock (quantity irrelevant)
         //   inventory=1, qty>0     → stokta
         //   inventory=1, qty<=0    → stokta yok
         //
@@ -24343,7 +25042,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                                     ? (int)round(($discount_save_cents / $original_price_cents) * 100) : 0;
 
         $values = array(
-            // Temel
+            // Basic
             '__id'                   => (string)$p_id,
             '__name'                 => isset($p['name']) ? (string)$p['name'] : '',
             '__address_name'         => isset($p['address_name']) ? (string)$p['address_name'] : '',
@@ -24354,18 +25053,19 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__sort_order'           => (string)$sort_order_val,
             '__created_at'           => !empty($p['timestamp']) ? date('Y-m-d', (int)$p['timestamp']) : '',
 
-            // Fiyat — effective (post-discount when one applies).
+            // Price — effective (post-discount when one applies).
             //   • __price (numeric, no symbol) — for math / data attrs
-            //   • __price_formatted — sembollü; AND when an offer is in
-            //     effect this token expands to the strike+new HTML so a
-            //     designer who only binds "Fiyat (sembollü)" still sees
-            //     the indirim visual without composing two spans.
+            //   • __price_formatted — with currency symbol; AND when an
+            //     offer is in effect this token expands to the strike+new
+            //     HTML so a designer who only binds the formatted price
+            //     still sees the discount visual without composing two
+            //     spans.
             '__price'                => number_format($price_decimal, 2, '.', ''),
             '__price_formatted'      => $has_discount ? _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol) : $price_formatted,
             '__price_min'            => number_format($price_decimal, 2, '.', ''),
             '__price_max'            => number_format($price_decimal, 2, '.', ''),
             '__price_range'          => $has_discount ? _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol) : $price_formatted,
-            // Fiyat — sticker (pre-discount, for strike-through display).
+            // Price — sticker (pre-discount, for strike-through display).
             // EMPTY when no discount applies → the designer's bound
             // strike-through element auto-hides (via CSS :empty rule).
             // Only when an actual offer is in effect do these tokens
@@ -24376,15 +25076,15 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__discount_amount'          => $discount_save_cents > 0 ? number_format($discount_save_cents / 100, 2, '.', '') : '',
             '__discount_amount_formatted'=> $discount_save_cents > 0 ? $currency_symbol . number_format($discount_save_cents / 100, 2, '.', ',') : '',
             '__discount_percent'         => $discount_save_pct > 0 ? (string)$discount_save_pct : '',
-            // Pre-rendered strike+new HTML — the unified visual the user
-            // wants across catalog/cart/cross-sell/upsell. Drop this single
+            // Pre-rendered strike+new HTML — the unified discount visual
+            // across catalog/cart/cross-sell/upsell. Drop this single
             // token in place of __price_formatted to get the discount
             // strike-through "for free" (red strike + green discounted).
             '__price_block_html'         => _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol),
             '__has_variants'         => '0',
             '__variant_count'        => '0',
 
-            // Görsel
+            // Image
             '__image_url'            => $image_url,
             '__image_alt'            => isset($p['name']) ? (string)$p['name'] : '',
             '__thumbnail_url'        => $image_url,   // alias — no separate thumb yet
@@ -24395,7 +25095,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__gallery_image_4'      => isset($gallery_urls[3]) ? $gallery_urls[3] : '',
             '__gallery_image_5'      => isset($gallery_urls[4]) ? $gallery_urls[4] : '',
 
-            // Stok / Envanter
+            // Stock / inventory
             '__inventory_tracked'    => (string)$tracked,
             '__inventory_quantity'   => (string)$qty,
             '__quantity_available'   => (string)$qty,
@@ -24411,31 +25111,31 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__out_of_stock_message' => ($oos_notice && !empty($p['out_of_stock_message']))
                                             ? _pg_rich_text_to_inline($p['out_of_stock_message']) : '',
 
-            // Tanımlama
+            // Identity
             '__sku'                  => isset($p['mpn']) ? (string)$p['mpn'] : '',  // alias
             '__mpn'                  => isset($p['mpn']) ? (string)$p['mpn'] : '',
             '__gtin'                 => isset($p['gtin']) ? (string)$p['gtin'] : '',
             '__brand'                => isset($p['brand']) ? (string)$p['brand'] : '',
             '__manufacturer'         => isset($p['brand']) ? (string)$p['brand'] : '',  // alias
 
-            // Fiziksel
+            // Physical
             '__weight'               => isset($p['weight']) ? (string)$p['weight'] : '',
             '__shippable'            => !empty($p['shippable']) ? '1' : '0',
             '__taxable'              => !empty($p['taxable'])   ? '1' : '0',
 
-            // Grup / Kategori
+            // Group / category
             '__category_id'          => (string)$category_id,
             '__category_name'        => $category_name,
             '__featured'             => (string)$featured_val,
             '__is_new'               => (string)$is_new,
 
-            // Özel alanlar
+            // Custom fields
             '__custom_field_1'       => isset($p['custom_field_1']) ? (string)$p['custom_field_1'] : '',
             '__custom_field_2'       => isset($p['custom_field_2']) ? (string)$p['custom_field_2'] : '',
             '__custom_field_3'       => isset($p['custom_field_3']) ? (string)$p['custom_field_3'] : '',
             '__custom_field_4'       => isset($p['custom_field_4']) ? (string)$p['custom_field_4'] : '',
 
-            // Ödül / SEO
+            // Reward / SEO
             '__reward_points'        => isset($p['reward_points']) ? (string)$p['reward_points'] : '0',
             '__seo_score'            => isset($p['seo_score']) ? (string)$p['seo_score'] : '0',
 
@@ -26914,7 +27614,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     //   • special_offer_code / reference_code → from orders row (string cols
     //                      are kept current by shopping_cart.php / our POST
     //                      handler above).
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     $sub_cents      = 0;
     $tax_cents      = 0;
     $surcharge_cents= 0;
@@ -26956,7 +27656,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
         // Discount — apply_offers_to_cart writes the cents amount here.
         if (isset($_SESSION['ecommerce']['order_discount'])) {
-            $discount_cents = (int)$_SESSION['ecommerce']['order_discount'];
+            $discount_cents = (int)($_SESSION['ecommerce']['order_discount'] ?? 0);
         }
         // Shipping — sum across recipients' chosen methods (only meaningful
         // after the visitor has completed the shipping step). The starter
@@ -27017,8 +27717,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         //      • orders.discount_offer_id        (order-level discount)
         //      • order_items.offer_id (DISTINCT) (per-item discount)
         //    NOTE: ship_tos.offer_id is INTENTIONALLY excluded — shipping
-        //    discounts belong on checkout pages, not the cart summary
-        //    (per user spec).
+        //    discounts belong on checkout pages, not the cart summary.
         //
         // 2) ELIGIBLE auto offers — enabled offers without a required code
         //    whose offer_rule (subtotal/qty threshold) is currently met AND
@@ -27050,9 +27749,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         //     no matching item to discount).
         //
         // Excluded action types:
-        //   • 'discount shipping' — kargo hesaplaması checkout adımlarında
-        //     yapıldığı için sepette gösterilmez. Per user request, sepet
-        //     ekranı sadece order/item bazlı offer'ları surface eder.
+        //   • 'discount shipping' — shipping is calculated during the
+        //     checkout steps, so it is not shown in the cart. The cart
+        //     screen only surfaces order/item level offers.
         //   • 'add product' — pending offer (visitor must opt-in via button)
         //     not a passive applied/eligible offer.
         //
@@ -27107,9 +27806,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 );
                 if (!is_array($_pg_actions) || empty($_pg_actions)) continue;
                 // First pass: if ANY action is shipping-related, skip the
-                // ENTIRE offer (mixed-type defensive check). Per user spec:
-                // "kargo indirimleri sepette gösterilmesin — sonraki ödeme
-                // adımlarında hesaplanacak". Shipping discounts only become
+                // ENTIRE offer (mixed-type defensive check). Shipping
+                // discounts stay out of the cart — they are calculated in
+                // the later checkout steps. Shipping discounts only become
                 // meaningful after address+method selection, so they belong
                 // on checkout pages, not the cart summary.
                 $_pg_has_shipping = false;
@@ -28077,7 +28776,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // submit_order.php's 3DS-confirm logic runs in its real request lifecycle.
     // We exit() afterward so nothing else on the page gets rendered (the
     // handler emits its own redirect / receipt).
-    $_eo_mode = isset($_GET['mode']) ? (string)$_GET['mode'] : '';
+    $_eo_mode = isset($_GET['mode']) ? (string)($_GET['mode'] ?? '') : '';
     if (in_array($_eo_mode, array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'), true)) {
         // The handler reads $_POST['page_id'] for express_order_pages lookup.
         // Callbacks usually arrive as GET (after gateway redirect) — synthesize
@@ -28191,7 +28890,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $_eo_offers = function_exists('apply_offers_to_cart') ? apply_offers_to_cart() : array();
     if (!is_array($_eo_offers)) $_eo_offers = array();
 
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
     // Pre-seed billing_country/state on the order so update_order_item_taxes()
     // can compute the right per-line tax at FORM RENDER time, not just after
@@ -29040,15 +29739,16 @@ function _eo_restore_cart_from_reference_code()
     if (!isset($_SESSION['ecommerce']) || !is_array($_SESSION['ecommerce'])) {
         $_SESSION['ecommerce'] = array();
     }
-    $prev_oid = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $prev_oid = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     $new_oid  = (int)$row['id'];
     $_SESSION['ecommerce']['order_id'] = $new_oid;
 
     // Ownership transfer: initialize_order() ALREADY updates orders.user_id
     // and contact_id to the current visitor when they\'re logged in (see
     // functions.php:6335-6351). So once we swap order_id here, the next
-    // initialize_order() call rebinds the cart to the link clicker — exactly
-    // the "linki kullanana atanır" behavior the user expected.
+    // initialize_order() call rebinds the cart to the link clicker — the
+    // cart is assigned to whoever uses the link, which is the intended
+    // behavior.
     //
     // For GUEST visitors we leave user_id as-is (the original owner). A
     // guest can\'t take ownership because they don\'t have an account; if
@@ -29873,7 +30573,7 @@ function _eo_default_designer_tree()
                 // ╭───────────── LEFT COLUMN ────────────────────────────╮
                 $sem('div', 'col-12 col-sm-8', array(
 
-                    // ┌── CARD: SEPETİNİZ ───────────────────────────────┐
+                    // ┌── CARD: cart summary ("Sepetiniz") ──────────────┐
                     // Bootstrap card wrapper. Dark-theme friendly: bg-body
                     // (not bg-white) on header so it inherits theme bg.
                     // Body uses p-0 so the table flushes to the card edge.
@@ -30032,7 +30732,7 @@ function _eo_default_designer_tree()
                         )),
                     )),
 
-                    // ┌── CARD: FATURA BİLGİLERİ ───────────────────────┐
+                    // ┌── CARD: billing details ("Fatura Bilgileri") ───┐
                     // Tax-exempt checkbox lives at the bottom of this card
                     // — wrapped in visibility binding so it disappears when
                     // the site hasn\'t enabled ECOMMERCE_TAX + ECOMMERCE_TAX_EXEMPT.
@@ -30073,7 +30773,7 @@ function _eo_default_designer_tree()
                         ), array('bindings' => array('eo_visible_if' => 'tax_exempt_allowed'))),
                     )),
 
-                    // ┌── CARD: ÖZEL TEKLİF KODU ───────────────────────┐
+                    // ┌── CARD: offer code ("Özel Teklif Kodu") ────────┐
                     $card('Özel Teklif Kodu', array(
                         $sem('div', 'input-group mb-1', array(
                             $input('special_offer_code', 'text', 'Kodunuz varsa girin', false),
@@ -30084,7 +30784,7 @@ function _eo_default_designer_tree()
                              'İndirim kodunuzu girin, "Uygula"\'ya tıklayın — toplamlar yeniden hesaplanır.'),
                     )),
 
-                    // ┌── CARD: TESLİMAT — visibility-bound at card level (drops
+                    // ┌── CARD: shipping ("Teslimat") — visibility-bound at card level (drops
                     // when no shippable items) AND nested row visibility for
                     // single-vs-multi recipient. Single-recipient: tree\'s real
                     // form fields render. Multi-recipient: row dropped, server
@@ -30128,7 +30828,7 @@ function _eo_default_designer_tree()
                         )),
                     ), array('bindings' => array('eo_visible_if' => 'has_shipping'))),
 
-                    // ┌── CARD: ÖDEME YÖNTEMİ + KART + TAKSİT + 2. SUBMIT ┐
+                    // ┌── CARD: payment method + card + installments + 2nd submit ┐
                     // Card footer hosts a secondary "Siparişi Tamamla" button
                     // so visitor doesn\'t have to scroll up to the sidebar.
                     //
@@ -30216,11 +30916,12 @@ function _eo_default_designer_tree()
                                                  'fw-bold border-top', 'text-end pe-0', 'pg-eo-total-formatted'),
                                     )),
                                 )),
-                                // Aktif promosyon listesi — orders.discount_offer_id /
-                                // order_items.offer_id / ship_tos.offer_id'den çekilir.
+                                // Active promotion list — sourced from
+                                // orders.discount_offer_id /
+                                // order_items.offer_id / ship_tos.offer_id.
                                 $bind('applied_offers', 'pg-eo-applied-offers-anchor'),
 
-                                // ── ŞARTLAR ONAY KUTUSU ───────────────────
+                                // ── Terms consent checkbox ─────────────────
                                 // Real form-check with real <input> (eo_field bound)
                                 // + label containing a real <a> with Bootstrap modal
                                 // trigger attrs. The modal itself is a REAL Bootstrap
@@ -30254,7 +30955,7 @@ function _eo_default_designer_tree()
                                     ), array('attrs' => array(array('name' => 'for', 'value' => 'agree_terms')))),
                                 )),
 
-                                // ── KAMPANYA BÜLTENİ ABONELİĞİ (opt_in) ────
+                                // ── Newsletter subscription (opt_in) ───────
                                 // Moved here from "Sipariş Tercihleri" card —
                                 // sits between terms acceptance and the
                                 // submit button so the visitor opts-in as
@@ -30278,7 +30979,7 @@ function _eo_default_designer_tree()
                 // ╰─────────────────────────────────────────────────────╯
             )),
 
-            // ── REAL BOOTSTRAP MODAL: Sipariş Koşulları ──────────────
+            // ── Real Bootstrap modal: order terms ("Sipariş Koşulları") ──
             // No extraction, no system binding — this is a normal Bootstrap
             // modal element the designer can edit, restyle, add fields to,
             // or delete entirely. The trigger <a> above uses standard
@@ -31153,7 +31854,7 @@ function _pg_render_pending_offers($pending_offers, $post_url, $send_to)
 // what discounts are baked into the price they\'re about to pay.
 function _eo_render_applied_offers()
 {
-    $oid = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $oid = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     if ($oid <= 0) return '';
     // Pull the union of offer IDs referenced anywhere on this order:
     //   • orders.discount_offer_id (cart-wide discount)
@@ -31200,7 +31901,7 @@ function _eo_render_applied_offers()
 // Returns empty string when no order exists yet (initial visit / no items).
 function _eo_render_saved_cart_link($cart_label)
 {
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     if ($order_id <= 0) return '';
     $ref = (string)db_value("SELECT reference_code FROM orders WHERE id = '" . (int)$order_id . "' LIMIT 1");
     if ($ref === '') return '';
@@ -34938,7 +35639,7 @@ function save_system_style($data)
 // $depth tracks shared_ref nesting to prevent infinite recursion (legacy — now unused since
 // shared_ref emits a marker instead of recursing; kept for backward-compat signature).
 //
-// ARCHITECTURE (placeholder-only — see F8 in project_shared_components_architecture_fix.md):
+// ARCHITECTURE (placeholder-only):
 // shared_ref nodes are NOT inline-expanded here. Instead, we emit a lightweight HTML comment
 // marker (`<!--pg-shared-ref:ID-->`) which `get_page_content.php` replaces with a fresh render
 // of `shared_components.tree_json` at page-render time. This means style_code in the DB never
@@ -37659,7 +38360,7 @@ function check_quantity($liveform)
 
         WHERE 
 
-            (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
             AND
 
@@ -37769,7 +38470,7 @@ function check_inventory($liveform)
 
         WHERE
 
-            (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
             AND (products.inventory = '1')
 
@@ -37802,7 +38503,7 @@ function check_inventory($liveform)
 
             WHERE
 
-                (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                 AND (order_items.product_id = '" . $product['id'] . "')
 
@@ -37904,7 +38605,7 @@ function check_reservations($liveform)
 
             WHERE
 
-                (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
 
                 AND (order_items.calendar_event_id != '0')";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -39004,6 +39705,17 @@ function get_email_campaign_profile_options()
 // use the data.
 function create_auto_email_campaigns($properties)
 {
+    // Everything except 'action' is optional (see the notes above), so fill in whatever the
+    // caller left out.
+    $properties = $properties + array(
+        'action_item_id'                   => '',
+        'calendar_event_recurrence_number' => '',
+        'order_id'                         => '',
+        'contact_id'                       => '',
+        'email_address'                    => '',
+        'fields'                           => array(),
+        'data'                             => array());
+
     $action = $properties['action'];
     $action_item_id = $properties['action_item_id'];
     $calendar_event_recurrence_number = $properties['calendar_event_recurrence_number'];
@@ -39028,7 +39740,7 @@ function create_auto_email_campaigns($properties)
             WHERE id = '" . e($contact_id) . "'");
     }
     // If a contact email was found, then use that email address for recipient.
-    if ($contact['email_address']) {
+    if (!empty($contact['email_address'])) {
         $email_address = $contact['email_address'];
         // Otherwise if no email address was passed either, then return, because we have no one to email.
     } else if (!$email_address) {
@@ -39522,7 +40234,7 @@ function replace_variables($properties)
                 // Start data off with the field data.
                 $data = $field['data'];
                 // Update the data so that it is ready for output (e.g. convert dates to fiendly formats).
-                $data = prepare_form_data_for_output($data, $field['type'], $prepare_for_html, $date_format);
+                $data = prepare_form_data_for_output($data, $field['type'] ?? '', $prepare_for_html, $date_format);
                 // Replace the variable with the data.
                 // We can't use str_replace() for this because we need to limit the number of replacements to 1
                 // in order to prevent bugs where it will replace variables further below that might have date formats.
@@ -39534,33 +40246,21 @@ function replace_variables($properties)
 }
 
 // Create function to take a PHP array and create JSON content.
-// This function will use the built-in function if it is available in PHP (normally v5.2+)
-// or include the JSON library if not. The built-in function is much faster.
+// json_encode() is part of core PHP and is always available on the supported versions
+// (PHP 7.0+), so there is no library fallback any more.
 function encode_json($value)
 {
-    if (function_exists('json_encode') == true) {
-        // Force UTF-8 characters to remain unescaped
-        return json_encode($value, JSON_UNESCAPED_UNICODE);
-    } else {
-        include_once('JSON.php');
-        $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
-        return $json->encode($value);
-    }
+    // Force UTF-8 characters to remain unescaped
+    return json_encode($value, JSON_UNESCAPED_UNICODE);
 }
 
 
-// Create function to take JSON content and convert it to a PHP array. This function will use the built-in
-// function if it is available in PHP (normally v5.2+) or include the JSON libary if not.
-// The built-in function is much faster, which is why we do this check.
+// Create function to take JSON content and convert it to a PHP array.
+// json_decode() is part of core PHP and is always available on the supported versions
+// (PHP 7.0+), so there is no library fallback any more.
 function decode_json($content)
 {
-    if (function_exists('json_decode') == true) {
-        return json_decode($content, true);
-    } else {
-        include_once('JSON.php');
-        $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
-        return $json->decode($content);
-    }
+    return json_decode($content, true);
 }
 
 
@@ -39765,7 +40465,15 @@ function pg_ascii_file_name($value)
     // that means something in a URL — becomes an underscore. A run of them
     // collapses, so a name written entirely in another script does not turn
     // into forty underscores.
-    $value = preg_replace('/[^A-Za-z0-9._-]+/', '_', $value);
+    //
+    // Square brackets are IN the set, and that is not an oversight. They are
+    // the software's own suffix for a name that is taken — get_unique_name()
+    // produces "photo[1].png" — and the release files are named the same way:
+    // pinegrap_hash_referance[2026.4.1].json. Stripping them renamed those on
+    // upload, so the update mechanism asked for a file that no longer existed
+    // under that name and every integrity check failed to fetch its reference.
+    // They are safe: measured, /avatar-2[2].png answers 200.
+    $value = preg_replace('/[^A-Za-z0-9._\-\[\]]+/', '_', $value);
     $value = preg_replace('/_{2,}/', '_', $value);
     $value = trim($value, '_');
 
@@ -41487,13 +42195,14 @@ function prepare_custom_form($properties)
     $ship_to_id = $properties['ship_to_id'];
     // Prefix is used on express order for custom shipping fields in order to make the field names
     // unique for each recipient, because fields might appear multiple times for multiple recipients
-    $prefix = $properties['prefix'];
+    // Only the express order screen passes a prefix.
+    $prefix = isset($properties['prefix']) ? $properties['prefix'] : '';
     // Used to set the default value for fields that use the folder id for default value feature
     $folder_id = $properties['folder_id'];
     // Is edit mode on or off.
     $edit = $properties['edit'];
     $form_name = $properties['form_name'];
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
     // If the necessary ids were passed, then get values that visitor has submitted in the past,
     // that are stored in the db, and prefill.
     if (($form_type == 'shipping' and $ship_to_id) or ($form_type == 'billing' and $order_id)) {
@@ -41755,14 +42464,15 @@ function submit_custom_form($properties)
     $ship_to_id = $properties['ship_to_id'];
     // Prefix is used on express order for custom shipping fields in order to make the field names
     // unique for each recipient, because fields might appear multiple times for multiple recipients
-    $prefix = $properties['prefix'];
+    // Only the express order screen passes a prefix.
+    $prefix = isset($properties['prefix']) ? $properties['prefix'] : '';
     // Require is used in order to determine if we should require fields or not
     if (isset($properties['require']) == true) {
         $require = $properties['require'];
     } else {
         $require = true;
     }
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
     $sql_ship_to_id_name = "";
     $sql_ship_to_id_value = "";
     // Delete existing form data and set SQL ship to id values differently,
@@ -41967,7 +42677,7 @@ function email($properties)
 
     $mail = new PHPMailer(true);
 
-    // Dil ayarı
+    // Language setting
     if (lang(array('info')) == 'tr') {
         $mail->setLanguage('tr', __DIR__ . '/assets/phpmailer/language/');
     }
@@ -42290,8 +43000,8 @@ function render_layout($properties)
     }
     // If the style that is being used for the current page,
     // has an override layout type, then use it.
-    if (defined('STYLE_LAYOUT_TYPE') and STYLE_LAYOUT_TYPE) {
-        $page['layout_type'] = STYLE_LAYOUT_TYPE;
+    if (pg_render_layout_type()) {
+        $page['layout_type'] = pg_render_layout_type();
     }
     ob_start();
     if ($page['layout_type'] == 'system') {
@@ -42447,12 +43157,191 @@ function get_submitter_email_address($submitted_form_id)
     }
     return $submitter_email_address;
 }
+// Sends the notification e-mails (submitter e-mail and administrator e-mail)
+// for a submitted form, and creates any auto e-mail campaigns that are
+// triggered by a custom form submission.
+// This logic used to live inline in edit_submitted_form.php.  It was extracted
+// so that add_submitted_form.php can reuse it instead of duplicating it.
+// $require_save_for_later preserves the original behavior of
+// edit_submitted_form.php, which only sent notifications for custom forms that
+// have save-for-later enabled.
+function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $contact_id = 0, $require_save_for_later = false)
+{
+    $custom_form = db_item(
+        "SELECT
+            page.page_id,
+            custom_form_pages.enabled,
+            custom_form_pages.save,
+            custom_form_pages.submitter_email,
+            custom_form_pages.submitter_email_from_email_address,
+            custom_form_pages.submitter_email_subject,
+            custom_form_pages.submitter_email_format,
+            custom_form_pages.submitter_email_body,
+            custom_form_pages.submitter_email_page_id,
+            custom_form_pages.administrator_email,
+            custom_form_pages.administrator_email_to_email_address,
+            custom_form_pages.administrator_email_bcc_email_address,
+            custom_form_pages.administrator_email_subject,
+            custom_form_pages.administrator_email_format,
+            custom_form_pages.administrator_email_body,
+            custom_form_pages.administrator_email_page_id
+        FROM page
+        LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
+        WHERE
+            (page.page_id = '" . e($custom_form_page_id) . "')
+            AND (page.page_type = 'custom form')");
+
+    // If the custom form could not be found, or it is not enabled, then there
+    // is nothing to send.
+    if (!$custom_form['enabled']) {
+        return false;
+    }
+
+    // If the caller requires save-for-later to be enabled (edit screen), and it
+    // is not enabled, then do not send anything.
+    if (($require_save_for_later == true) && (!$custom_form['save'])) {
+        return false;
+    }
+
+    $submitter_email_address = '';
+
+    // If the submitter or admin email is enabled, then get
+    // submitter email address for later.
+    if ($custom_form['submitter_email'] or $custom_form['administrator_email']) {
+        $submitter_email_address = get_submitter_email_address($form_id);
+    }
+
+    // If submitter email is enabled, and a submitter email address
+    // was found, then determine if there is a recipient to send email to.
+    if ($custom_form['submitter_email'] and $submitter_email_address) {
+
+        if ($custom_form['submitter_email_from_email_address']) {
+            $from_email_address = $custom_form['submitter_email_from_email_address'];
+        } else {
+            $from_email_address = EMAIL_ADDRESS;
+        }
+
+        $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['submitter_email_subject'], $prepare_for_html = false);
+
+        // If the format of the e-mail should be plain text,
+        // then prepare that.
+        if ($custom_form['submitter_email_format'] == 'plain_text') {
+
+            // Check the body for variable data and replace
+            // any variables with content from the submitted form.
+            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['submitter_email_body'], $prepare_for_html = false);
+
+        // Otherwise the format of the e-mail should be HTML, so prepare that.
+        } else {
+
+            require_once(dirname(__FILE__) . '/get_page_content.php');
+
+            $body = get_page_content($custom_form['submitter_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+        }
+
+        email(array(
+            'to' => $submitter_email_address,
+            'from_name' => ORGANIZATION_NAME,
+            'from_email_address' => $from_email_address,
+            'subject' => $subject,
+            'format' => $custom_form['submitter_email_format'],
+            'body' => $body
+        ));
+
+    }
+
+    // If admin email is enabled, then determine if we should send it.
+    if ($custom_form['administrator_email']) {
+
+        $administrator_email_addresses = array();
+
+        if ($custom_form['administrator_email_to_email_address']) {
+            $administrator_email_addresses[] = $custom_form['administrator_email_to_email_address'];
+        }
+
+        // Get conditional administrators.
+        $conditional_administrators = db_values(
+            "SELECT form_field_options.email_address
+            FROM form_field_options
+            LEFT JOIN form_data ON form_field_options.form_field_id = form_data.form_field_id
+            WHERE
+                (form_field_options.page_id = '" . $custom_form['page_id'] . "')
+                AND (form_data.form_id = '" . e($form_id) . "')
+                AND (form_field_options.email_address != '')
+                AND (form_data.data = form_field_options.value)");
+
+        // Loop through the conditional administrators in order to add them.
+        foreach ($conditional_administrators as $conditional_administrator) {
+            // We support multiple conditional admin email addresses, separated by comma,
+            // (e.g. ^^example1@example.com,example2@example.com^^), so deal with that.
+            $conditional_email_addresses = explode(',', $conditional_administrator);
+
+            foreach ($conditional_email_addresses as $conditional_email_address) {
+                $conditional_email_address = trim($conditional_email_address);
+
+                // If this e-mail address has not already been added, then add it.
+                if (in_array($conditional_email_address, $administrator_email_addresses) == false) {
+                    $administrator_email_addresses[] = $conditional_email_address;
+                }
+            }
+        }
+
+        // If there is an admin to email, then continue to send email.
+        if (
+            $administrator_email_addresses
+            or $custom_form['administrator_email_bcc_email_address']
+        ) {
+
+            $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['administrator_email_subject'], $prepare_for_html = false);
+
+            // If the format of the e-mail should be plain text,
+            // then prepare that.
+            if ($custom_form['administrator_email_format'] == 'plain_text') {
+
+                // Check the body for variable data and replace
+                // any variables with content from the submitted form.
+                $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['administrator_email_body'], $prepare_for_html = false);
+
+            // Otherwise the format of the e-mail should be HTML, so prepare that.
+            } else {
+
+                require_once(dirname(__FILE__) . '/get_page_content.php');
+
+                $body = get_page_content($custom_form['administrator_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+            }
+
+            email(array(
+                'to' => $administrator_email_addresses,
+                'bcc' => $custom_form['administrator_email_bcc_email_address'],
+                'from_name' => ORGANIZATION_NAME,
+                'from_email_address' => EMAIL_ADDRESS,
+                'reply_to' => $submitter_email_address,
+                'subject' => $subject,
+                'format' => $custom_form['administrator_email_format'],
+                'body' => $body
+            ));
+
+        }
+
+    }
+
+    // Check if there are auto e-mail campaigns that should be
+    // created based on this custom form being submitted.
+    create_auto_email_campaigns(array(
+        'action' => 'custom_form_submitted',
+        'action_item_id' => $custom_form['page_id'],
+        'contact_id' => $contact_id));
+
+    return true;
+}
 function get_layout_type($page_id)
 {
     // If the style that is being used for the current page,
     // has an override layout type, then use it.
-    if (defined('STYLE_LAYOUT_TYPE') and STYLE_LAYOUT_TYPE) {
-        return STYLE_LAYOUT_TYPE;
+    if (pg_render_layout_type()) {
+        return pg_render_layout_type();
         // Otherwise use the page's layout type.
     } else {
         return db_value("SELECT layout_type FROM page WHERE page_id = '" . e($page_id) . "'");
@@ -42593,6 +43482,116 @@ function who_is_online($check_time = 50)
             }
         }
     }
+}
+
+// ── Puzzle captcha (general purpose) ─────────────────────────────────────
+// Slide-the-piece verification. Its first consumer is the live chat's
+// anonymous visitor flow; thanks to the scope parameter other screens (e.g.
+// login) can reuse the same family later. The existing math-based form
+// captcha (CAPTCHA constant) is untouched.
+//
+// Honest security note: the target is drawn client-side as a visual cutout;
+// an advanced JS-running bot can read it from the DOM. The family's real
+// value is in its layers: (1) the challenge must be fetched and solved via
+// JS — bots that POST the form directly are eliminated outright, (2) solve
+// time limit: a "solution" faster than 1 second is not human and is
+// rejected, (3) 5 failed attempts lock for 60 seconds; the target is
+// regenerated on every attempt, so brute-force odds stay independent of the
+// attempt count. This is not a Turnstile-like service; its goal is to stop
+// form-spam bots.
+
+function pg_puzzle_captcha_state($scope)
+{
+    $scope = preg_replace('/[^a-z0-9_]/', '', (string) $scope);
+
+    if (!isset($_SESSION['puzzle_captcha'][$scope]) || !is_array($_SESSION['puzzle_captcha'][$scope])) {
+        $_SESSION['puzzle_captcha'][$scope] = array();
+    }
+
+    return $scope;
+}
+
+function pg_puzzle_captcha_challenge($scope)
+{
+    $scope = pg_puzzle_captcha_state($scope);
+    $state = $_SESSION['puzzle_captcha'][$scope];
+
+    if (isset($state['locked_until']) && time() < $state['locked_until']) {
+        return array('locked' => true, 'retry_after' => (int) ($state['locked_until'] - time()));
+    }
+
+    // 14%-86%: keeps the piece on the rail and away from the edges, where
+    // sticking to an end would be a free guess.
+    $target = mt_rand(14, 86);
+
+    $_SESSION['puzzle_captcha'][$scope]['target'] = $target;
+    $_SESSION['puzzle_captcha'][$scope]['issued_at'] = microtime(true);
+    $_SESSION['puzzle_captcha'][$scope]['solved'] = false;
+
+    return array('locked' => false, 'target' => $target);
+}
+
+function pg_puzzle_captcha_verify($scope, $position)
+{
+    $scope = pg_puzzle_captcha_state($scope);
+    $state = $_SESSION['puzzle_captcha'][$scope];
+
+    if (isset($state['locked_until']) && time() < $state['locked_until']) {
+        return array('ok' => false, 'locked' => true, 'retry_after' => (int) ($state['locked_until'] - time()));
+    }
+
+    if (!empty($state['solved'])) {
+        return array('ok' => true);
+    }
+
+    if (!isset($state['target']) || !isset($state['issued_at'])) {
+        return array('ok' => false, 'locked' => false);
+    }
+
+    $elapsed = microtime(true) - (float) $state['issued_at'];
+
+    // A drag faster than 1 second is not human; a challenge older than 3
+    // minutes is stale. In both cases this target is burned and a new one
+    // must be requested.
+    $position_ok = (abs((float) $position - (int) $state['target']) <= 4);
+
+    if ($position_ok && $elapsed >= 1.0 && $elapsed <= 180.0) {
+        $_SESSION['puzzle_captcha'][$scope]['solved'] = true;
+        $_SESSION['puzzle_captcha'][$scope]['fails'] = 0;
+        unset($_SESSION['puzzle_captcha'][$scope]['target']);
+
+        return array('ok' => true);
+    }
+
+    unset($_SESSION['puzzle_captcha'][$scope]['target']);
+
+    $fails = isset($state['fails']) ? (int) $state['fails'] : 0;
+    $fails++;
+
+    if ($fails >= 5) {
+        $_SESSION['puzzle_captcha'][$scope]['locked_until'] = time() + 60;
+        $_SESSION['puzzle_captcha'][$scope]['fails'] = 0;
+
+        return array('ok' => false, 'locked' => true, 'retry_after' => 60);
+    }
+
+    $_SESSION['puzzle_captcha'][$scope]['fails'] = $fails;
+
+    return array('ok' => false, 'locked' => false);
+}
+
+function pg_puzzle_captcha_solved($scope)
+{
+    $scope = pg_puzzle_captcha_state($scope);
+
+    return !empty($_SESSION['puzzle_captcha'][$scope]['solved']);
+}
+
+function pg_puzzle_captcha_reset($scope)
+{
+    $scope = pg_puzzle_captcha_state($scope);
+
+    $_SESSION['puzzle_captcha'][$scope] = array();
 }
 
 
@@ -42746,12 +43745,463 @@ function create_notification($properties)
 }
 
 /**
+ * Record that a scheduled job finished.
+ *
+ * The cron entries themselves live outside the software — a crontab, Windows
+ * Task Scheduler, a hosting control panel — so nothing here can ask whether a
+ * job is scheduled. Recording that one finished is the only evidence the panel
+ * will ever have, and it is enough: a job that used to finish and no longer
+ * does is a job whose schedule has stopped.
+ *
+ * Written on COMPLETION, not at the start. One timestamp can carry one fact,
+ * and "the work got done" is the more useful of the two: a job that is
+ * scheduled correctly but fatals halfway through would report green forever if
+ * the write happened first, which is the worst thing a health indicator can do.
+ *
+ * Not conditional on the request being CLI. Cron reaches these scripts as a
+ * shell command on some hosts and as an HTTP request on others, and a manual
+ * run from the panel still means the work happened — which is the question
+ * this answers. Attributing the run to a scheduler rather than a person would
+ * be a distinction without a difference here.
+ *
+ * Silent when the table is absent: these calls sit at the end of scripts that
+ * have to keep working on an installation where the 2026.4.9 upgrade has not
+ * been run yet.
+ *
+ * @param string $job_name Script base name, e.g. "email_campaign_job".
+ * @return bool True when the run was recorded.
+ */
+function pg_cron_ran($job_name)
+{
+    static $table_exists = null;
+
+    if ($table_exists === null) {
+        $table_exists = (bool) db_item("SHOW TABLES LIKE 'cron_runs'");
+    }
+
+    if (!$table_exists) {
+        return false;
+    }
+
+    db(
+        "INSERT INTO cron_runs (job_name, last_run_at)
+         VALUES ('" . e($job_name) . "', UNIX_TIMESTAMP())
+         ON DUPLICATE KEY UPDATE last_run_at = UNIX_TIMESTAMP()");
+
+    return true;
+}
+
+/**
+ * Last completion time per job, keyed by job name.
+ *
+ * Returns null — not an empty array — when the table does not exist yet, so a
+ * caller can tell "nothing recorded" apart from "cannot know" and stay quiet
+ * rather than reporting every job as broken on an installation that simply has
+ * not been upgraded.
+ *
+ * @return array<string,int>|null
+ */
+function pg_cron_last_runs()
+{
+    if (!db_item("SHOW TABLES LIKE 'cron_runs'")) {
+        return null;
+    }
+
+    $runs = array();
+
+    foreach (db_items("SELECT job_name, last_run_at FROM cron_runs") as $row) {
+        $runs[$row['job_name']] = (int) $row['last_run_at'];
+    }
+
+    return $runs;
+}
+
+/**
+ * Catalogue of the scheduled jobs this software ships with.
+ *
+ * One table, three readers: the settings screen builds its switches from it,
+ * the maintenance panel builds its health list from it, and the general job
+ * dispatches from it. A job present in one of those places and missing from
+ * another is the failure this exists to prevent.
+ *
+ * Keys are the names each script writes through pg_cron_ran(), which is what
+ * ties a row in cron_runs back to an entry here.
+ *
+ * - label       Shown to the operator.
+ * - script      File to run, relative to this directory.
+ * - interval    How long the dispatcher waits before running it again, in
+ *               seconds. Follows the recommended schedule printed next to the
+ *               job's command on the settings screen.
+ * - stale_after How long the maintenance panel waits before calling a job
+ *               that used to finish stalled. Deliberately generous: an alert
+ *               that cries wolf teaches the operator to scroll past it.
+ * - dispatch    False for the general job, which is the host rather than a
+ *               candidate.
+ *
+ * Order is the display order, and it is also the tie-break used when several
+ * jobs are equally overdue - which is why the SEO score job is listed before
+ * the structure job, whose input it produces.
+ *
+ * @return array<string,array>
+ */
+function pg_cron_jobs()
+{
+    return array(
+        'job' => array(
+            'label'       => lang('General job'),
+            'script'      => 'job.php',
+            'interval'    => 300,
+            'stale_after' => 21600,
+            'dispatch'    => false,
+        ),
+        'email_campaign_job' => array(
+            'label'       => lang('Email Campaigns'),
+            'script'      => 'email_campaign_job.php',
+            'interval'    => 300,
+            'stale_after' => 21600,
+            'dispatch'    => true,
+        ),
+        'recurring_payment_job' => array(
+            'label'       => lang('Recurring payments'),
+            'script'      => 'recurring_payment_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        'membership_job' => array(
+            'label'       => lang('Memberships'),
+            'script'      => 'membership_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        'update_exchange_rates' => array(
+            'label'       => lang('Exchange rates'),
+            'script'      => 'update_exchange_rates.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        'update_search_index' => array(
+            'label'       => lang('Search index'),
+            'script'      => 'update_search_index.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        'seo_score_job' => array(
+            'label'       => lang('SEO scores'),
+            'script'      => 'seo_score_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        'seo_analyze_job' => array(
+            'label'       => lang('SEO structure'),
+            'script'      => 'seo_analyze_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        'auto_backup' => array(
+            'label'       => lang('Auto backup'),
+            'script'      => 'auto_backup.php',
+            'interval'    => 604800,
+            'stale_after' => 1209600,
+            'dispatch'    => true,
+        ),
+    );
+}
+
+/**
+ * Human wording for a dispatch interval, for the settings screen.
+ *
+ * Only the three cadences the shipped jobs actually use get a sentence of
+ * their own; anything else an operator configures falls back to hours, which
+ * is accurate without needing a phrase per value.
+ *
+ * @param int $seconds
+ * @return string
+ */
+function pg_cron_interval_label($seconds)
+{
+    $seconds = (int) $seconds;
+
+    if ($seconds == 300) {
+        return lang('every 5 minutes');
+    }
+
+    if ($seconds == 86400) {
+        return lang('once a day');
+    }
+
+    if ($seconds == 604800) {
+        return lang('once a week');
+    }
+
+    $hours = (int) round($seconds / 3600);
+
+    if ($hours < 1) {
+        $hours = 1;
+    }
+
+    return lang(array(
+        'string' => 'every {var:1} hour{suffix:1}',
+        'vars'   => $hours,
+        'suffix' => (($hours == 1) ? '' : 's'),
+    ));
+}
+
+/**
+ * Job names the operator has allowed the general job to dispatch.
+ *
+ * Empty whenever the master switch is off, so a caller never has to check
+ * both. The constants come from the config row like every other feature flag,
+ * and default to off when the columns are not there yet.
+ *
+ * @return array<int,string>
+ */
+function pg_cron_dispatch_list()
+{
+    if (!defined('JOB_DISPATCH_ENABLED') || !JOB_DISPATCH_ENABLED) {
+        return array();
+    }
+
+    if (!defined('JOB_DISPATCH') || (JOB_DISPATCH === '')) {
+        return array();
+    }
+
+    $names = array();
+
+    foreach (explode(',', JOB_DISPATCH) as $name) {
+
+        $name = trim($name);
+
+        if ($name !== '') {
+            $names[] = $name;
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * Choose the job the general job should run in this tick, and take the lock.
+ *
+ * Returns a path rather than running anything itself, because the caller has
+ * to include it at global scope: included from inside a function, a job's
+ * top-level code would execute in that function's local scope and every
+ * variable it sets would be invisible to the functions it calls.
+ *
+ * @return string Absolute path of the script to include, or '' for nothing.
+ */
+function pg_cron_dispatch_next()
+{
+    $allowed = pg_cron_dispatch_list();
+
+    if (!$allowed) {
+        return '';
+    }
+
+    // null means the cron_runs table does not exist, and that table is the
+    // whole basis of the decision below. Without it every job would look
+    // overdue on every tick.
+    $runs = pg_cron_last_runs();
+
+    if ($runs === null) {
+        return '';
+    }
+
+    $jobs = pg_cron_jobs();
+    $now = time();
+    $due = array();
+
+    foreach ($jobs as $name => $job) {
+
+        if (!$job['dispatch']) {
+            continue;
+        }
+
+        if (!in_array($name, $allowed, true)) {
+            continue;
+        }
+
+        if (!file_exists(dirname(__FILE__) . '/' . $job['script'])) {
+            continue;
+        }
+
+        $last_run = isset($runs[$name]) ? (int) $runs[$name] : 0;
+
+        // A job that also has its own crontab entry writes this timestamp
+        // itself, whoever started it, so it never looks overdue here and is
+        // never run twice. That is the entire double-run guard - the measure
+        // corrects itself and there is no second bookkeeping to keep in step.
+        if (($now - $last_run) < (int) $job['interval']) {
+            continue;
+        }
+
+        $due[$name] = $last_run;
+    }
+
+    if (!$due) {
+        return '';
+    }
+
+    // Longest waiting first, so a rotation forms by itself and nothing
+    // starves. Strict comparison keeps the catalogue order on a tie, which is
+    // what puts the SEO score job ahead of the structure job on a site where
+    // both were just switched on.
+    $selected = '';
+    $selected_run = 0;
+
+    foreach ($due as $name => $last_run) {
+
+        if (($selected === '') || ($last_run < $selected_run)) {
+            $selected = $name;
+            $selected_run = $last_run;
+        }
+    }
+
+    // One dispatched job at a time for the whole site. The general job runs
+    // every five minutes and several of these take longer than that, so
+    // without a lock a slow campaign send or a large backup would be started
+    // again while the first one is still running.
+    //
+    // The lock expires on its own. pg_cron_dispatch_finished() releases it at
+    // the end of a normal run and after a fatal error, but a process killed
+    // outright runs no shutdown handler, and a lock that nothing can clear
+    // would stop every tick from then on.
+    $lock_seconds = defined('JOB_DISPATCH_LOCK_SECONDS') ? (int) JOB_DISPATCH_LOCK_SECONDS : 3600;
+
+    if ($lock_seconds < 60) {
+        $lock_seconds = 60;
+    }
+
+    db(
+        "UPDATE config
+        SET job_dispatch_lock_until = UNIX_TIMESTAMP() + " . (int) $lock_seconds . "
+        WHERE job_dispatch_lock_until < UNIX_TIMESTAMP()");
+
+    // Nothing updated means another tick holds the lock. Two ticks landing in
+    // the same second also report nothing updated, because the value would be
+    // identical - which errs towards running nothing, the safe direction.
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return '';
+    }
+
+    pg_cron_dispatch_current($selected);
+
+    return dirname(__FILE__) . '/' . $jobs[$selected]['script'];
+}
+
+/**
+ * Name of the job the general job is running in this tick.
+ *
+ * Set once by pg_cron_dispatch_next(); read by the output handler, which has
+ * no other way to know whose message it is holding.
+ *
+ * @param string|null $name
+ * @return string
+ */
+function pg_cron_dispatch_current($name = null)
+{
+    static $value = '';
+
+    if ($name !== null) {
+        $value = (string) $name;
+    }
+
+    return $value;
+}
+
+/**
+ * Output buffer handler for a dispatched job.
+ *
+ * These scripts are each written to be a whole request, and some of them print
+ * an error page and stop when their own settings are missing - the campaign job
+ * does exactly that without SMTP settings. Printed from inside the general job
+ * that lands in its output: mailed by cron every five minutes on a
+ * misconfigured site, or rendered into the page when someone opens job.php in a
+ * browser to trigger it by hand.
+ *
+ * Returning an empty string discards it. A buffer handler is used rather than a
+ * shutdown handler because it runs however the buffer ends - a normal return,
+ * exit() from the middle of the job's own flow, or a fatal error - and does not
+ * depend on the order shutdown handlers were registered in.
+ *
+ * The message is not lost: it goes to the site log, once a day per job. The
+ * job's health signal is unaffected either way, because a script that stops
+ * early never reaches its own pg_cron_ran() call and the maintenance panel
+ * goes on reporting it as never having finished.
+ *
+ * @param string $buffer
+ * @return string
+ */
+function pg_cron_dispatch_output($buffer)
+{
+    $message = trim(preg_replace('/\s+/', ' ', strip_tags((string) $buffer)));
+
+    if ($message === '') {
+        return '';
+    }
+
+    // A fatal error can end the run with the connection already gone, and
+    // there is no reporting anything from here without it.
+    if (!isset(db::$con) || !db::$con) {
+        return '';
+    }
+
+    $name = pg_cron_dispatch_current();
+
+    if ($name === '') {
+        return '';
+    }
+
+    // Once a day per job, the same throttle the structure job uses for its
+    // missing-DOM warning. A job that prints because its own settings are
+    // missing prints on every turn, which is 288 identical log lines a day.
+    $marker = $name . '_output';
+    $last_logged = (int) db_value("SELECT last_run_at FROM cron_runs WHERE job_name = '" . e($marker) . "'");
+
+    if ($last_logged < (time() - 86400)) {
+
+        $jobs = pg_cron_jobs();
+        $label = isset($jobs[$name]) ? $jobs[$name]['label'] : $name;
+
+        log_activity(
+            lang(array(
+                'string' => '{var:1} printed a message while running with the general job: {var:2}',
+                'vars'   => array($label, truncate($message, 500)),
+            )),
+            '');
+
+        pg_cron_ran($marker);
+    }
+
+    return '';
+}
+
+/**
+ * Release the dispatch lock.
+ *
+ * Registered as a shutdown handler by the general job so that it also runs
+ * when the dispatched script calls exit(), which several of them do from
+ * inside their own control flow, and when the run ends in a fatal error.
+ *
+ * @return void
+ */
+function pg_cron_dispatch_finished()
+{
+    db("UPDATE config SET job_dispatch_lock_until = 0");
+}
+
+/**
  * Truncate a string to a specified length and optionally append a suffix (default "...").
  *
  * Safety and multibyte support:
  * - Casts inputs to expected types for safety.
  * - Uses mbstring functions when available (UTF-8).
- * - Falls back to single-byte functions when mbstring is not available (compatible with PHP 5.6+ and PHP 8+).
+ * - Falls back to single-byte functions when mbstring is not available (compatible with PHP 7.0+ and PHP 8+).
  *
  * Behavior:
  * - If $length <= 0 returns an empty string.
@@ -42829,7 +44279,7 @@ if (!function_exists("array_key_last")) {
 
 /**
  * Get size of a directory (bytes). Uses SPL iterators, skips unreadable files.
- * Compatible with PHP 5.6+ and PHP 8.x (no type hints / return types).
+ * Compatible with PHP 7.0+ and PHP 8.x (no type hints / return types).
  *
  * @param string $dir
  * @param bool   $follow_symlinks
@@ -42901,7 +44351,7 @@ function folderSize($dir, $follow_symlinks = false)
 /**
  * Determine that URL exists or not.
  *
- * Compatible with PHP 5.6 - 8.x Uses cURL when available, falls back to get_headers().
+ * Compatible with PHP 7.0 - 8.5 Uses cURL when available, falls back to get_headers().
  *
  * @param string $url Absolute URL to check.
  * @return bool True if the resource exists (HTTP status 2xx or 3xx), false otherwise.
@@ -42990,7 +44440,7 @@ function url_exists($url)
 //   $lang = lang(array('info' => true)); // returns enforced or configured SOFTWARE_LANGUAGE (e.g. 'en' or 'tr')
 //
 // Notes:
-// - Works on PHP 5.6 up to PHP 8.4.
+// - Works on PHP 7.0 up to PHP 8.5.
 // - Looks for JSON translation files in assets/local/{lang}.json relative to this file or cwd.
 // - If mbstring is not available, falls back to single-byte string helpers.
 // - in english language file you can overwrite strings.
@@ -43275,7 +44725,7 @@ function detect_mime_type($file_path)
 /**
  * Get a short version string derived from VERSION constant.
  *
- * Improvements for PHP 5.6 - 8.4 compatibility:
+ * Improvements for PHP 7.0 - 8.5 compatibility:
  * - Accepts VERSION values like "1.2.3", "v1.2", "12", "SETUP" and preserves fallback behavior.
  * - Safely handles non-numeric versions (falls back to last 2 chars of the major segment).
  * - Uses mb_substr when available to be multibyte-safe.
@@ -43451,8 +44901,7 @@ function output_control_panel_header_includes()
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     ' . get_codemirror_includes() . '
     <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
-    <script type="module" src="https://70b18965-6ccb-40df-902d-313de9c5c89e.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js"></script>
-
+    <script type="module" src="https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js"></script>
 
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/backend.src.js?v=' . @filemtime(dirname(__FILE__) . '/assets/backend.src.js') . '"></script>
     <style>' . CUSTOM_CSS . '</style>';
@@ -43463,7 +44912,7 @@ function output_control_panel_header_includes()
 
 /**
  * Render a complete page shell: output_header + a standardized action bar.
- * Faz 3d additive component. output_header() remains the underlying API; this
+ * Additive: output_header() remains the underlying API; this
  * wrapper accepts the same keys plus optional UX-bar fields and renders:
  *   <output_header html>
  *   <main id="content" class="container">
@@ -43493,7 +44942,7 @@ function pg_page_shell($properties = array())
     $extra_class = isset($properties['action_bar_class']) ? (string) $properties['action_bar_class'] : 'mb-3';
     $extra_class = htmlspecialchars($extra_class, ENT_QUOTES, 'UTF-8');
 
-    // Faz 4a: opt-in raw HTML basable between <body>/header and <main>.
+    // Opt-in raw HTML printable between <body>/header and <main>.
     // Used by pages like view_log.php that render an advanced filter bar outside <main>.
     if (isset($properties['pre_main_html']) && is_string($properties['pre_main_html']) && $properties['pre_main_html'] !== '') {
         $output .= $properties['pre_main_html'];
@@ -43537,7 +44986,7 @@ function pg_page_shell($properties = array())
 
 /**
  * Validate a candidate "send_to" / back-navigation URL against an allowlist.
- * Faz 3c helper. Use to avoid open-redirect when echoing user-supplied $_REQUEST['send_to']
+ * Use to avoid open-redirect when echoing user-supplied $_REQUEST['send_to']
  * into a cancel-button URL.
  *
  * Accepts:
@@ -43597,7 +45046,7 @@ function pg_safe_back_url($candidate, $fallback)
 
 /**
  * Render an empty-state placeholder for list pages with no data.
- * Faz 2 helper. Additive — call sites must opt in.
+ * Additive — call sites must opt in.
  *
  * @param string $icon         Bootstrap Icon class without the leading "bi" (e.g. "bi-folder2-open")
  * @param string $title        Visible heading (will be HTML-escaped)
@@ -43692,7 +45141,7 @@ function output_header($properties = false)
 
     $url_from = '';
     if (isset($_GET['from'])) {
-        $url_from = $_GET['from'];
+        $url_from = ($_GET['from'] ?? '');
     }
 
     $output_body_class = '';
@@ -43727,7 +45176,7 @@ function output_header($properties = false)
                 $output_cancel_button_title = $cancel['title'];
             }
         } elseif (isset($cancel['url']) && $cancel['url'] !== '') {
-            // Faz 2: explicit cancel URL replaces fragile history.go(-1) fallback
+            // An explicit cancel URL replaces the fragile history.go(-1) fallback.
             $output_cancel_button_action = 'OnClick="window.location=\'' . htmlspecialchars($cancel['url'], ENT_QUOTES, 'UTF-8') . '\';"';
             if (isset($cancel['title'])) {
                 $output_cancel_button_title = $cancel['title'];
@@ -43752,7 +45201,7 @@ function output_header($properties = false)
         $output_heading = '<h1 class="navbar-text text-truncate h5 mb-0">' . $properties['heading'] . '</h1>';
     }
 
-    // Faz 2: optional breadcrumb. Pass ['breadcrumb' => [['label'=>'Pages','url'=>'view_pages.php'], ['label'=>'Edit Page']]]
+    // Optional breadcrumb. Pass ['breadcrumb' => [['label'=>'Pages','url'=>'view_pages.php'], ['label'=>'Edit Page']]]
     // Last item is rendered as the active page (no link, aria-current="page"). Empty/missing => no output.
     $output_breadcrumb = '';
     if (isset($properties['breadcrumb']) && is_array($properties['breadcrumb']) && count($properties['breadcrumb']) > 0) {
@@ -44077,7 +45526,7 @@ function output_header($properties = false)
             <nav id="menu" class="menu z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
             
                 <div class="menu-header  p-1">
-                    <div class="dropend no-arrow w-100 px-1">
+                    <div class="dropdown no-arrow w-100 px-1">
                         <a class="software-menu-create-button btn border p-1 rounded-pill text-start dropdown-toggle w-100 no-popover" data-bs-toggle="dropdown" title="' . lang('Quick Create') . '"><strong class="bi bi-plus-lg ms-1 me-2 software-menu-create-button-icon"></strong> <span class="software-menu-create-button-label">' . lang('Quick Create') . '</span></a>
                         
                         <ul class="p-1 dropdown-menu shadow backdrop overflow-y-auto dropdown-menu-start dropdown-menu-lg-end" style="max-height:500px;">';
@@ -44412,13 +45861,30 @@ function output_footer($properties = false)
             ' - <i class="bi bi-c-circle" aria-hidden="true"></i> ' . date('Y', time()) . '</p>';
     }
 
+    // ── Live chat launcher ───────────────────────────────────────────────
+    // The experimental <chat-bubble-snippet> (Cloudflare AutoRAG) was
+    // replaced by the native chat launcher. Chat must never break a page:
+    // when the module file is missing, the master switch is off or the
+    // schema is not ready, the output stays empty.
+    $output_chat_launcher = '';
+    if (
+        defined('USER_LOGGED_IN') && USER_LOGGED_IN
+        && defined('CHAT_ENABLED') && CHAT_ENABLED
+        && file_exists(dirname(__FILE__) . '/chat.php')
+    ) {
+        require_once(dirname(__FILE__) . '/chat.php');
+        if (function_exists('pg_chat_render_backend_launcher')) {
+            $output_chat_launcher = pg_chat_render_backend_launcher();
+        }
+    }
+
     $output = '
         <div id="footer" class="footer p-3 d-flex flex-wrap justify-content-center justify-content-md-between text-muted d-print-none">
             ' . $output_software_labeling . '
         </div>
         </div>
         </div>
-        <chat-bubble-snippet api-url="https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com" hide-branding="true"></chat-bubble-snippet>
+        ' . $output_chat_launcher . '
         </body>
         </html>';
 
@@ -44466,12 +45932,12 @@ function output_menu($properties = false)
         if (
             !isset($_SESSION['software']['cache']['log_count'])
             || !isset($_SESSION['software']['cache']['log_count_ts'])
-            || (time() - (int) $_SESSION['software']['cache']['log_count_ts']) > 60
+            || (time() - (int) ($_SESSION['software']['cache']['log_count_ts'] ?? '')) > 60
         ) {
             $_SESSION['software']['cache']['log_count'] = (int) db_value('SELECT COUNT(*) FROM log');
             $_SESSION['software']['cache']['log_count_ts'] = time();
         }
-        $log_counts = $_SESSION['software']['cache']['log_count'];
+        $log_counts = ($_SESSION['software']['cache']['log_count'] ?? '');
         $menu_items[0]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_log.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bug bi-me-2\'>' . lang('Site Log') . ' (' . $log_counts . ')</a>';
     }
 
@@ -45005,6 +46471,7 @@ function output_menu($properties = false)
             break;
         case 'view_forms.php':
         case 'view_submitted_forms.php':
+        case 'add_submitted_form.php':
         case 'edit_submitted_form.php':
         case 'import_submitted_forms.php':
             $active_menu = 5;
@@ -45265,11 +46732,11 @@ function output_menu($properties = false)
 }
 
 // license_check()
-// PHP 5.6 - 8.4 compatible helper to validate and display subscription/license status.
+// PHP 7.0 - 8.5 compatible helper to validate and display subscription/license status.
 // Improvements:
 //  - Robust input checks and fallbacks (cURL or file_get_contents).
 //  - Safer JSON handling and session updates.
-//  - Clear docblock and conservative use of language/features compatible with PHP 5.6+.
+//  - Clear docblock and conservative use of language/features compatible with PHP 7.0+.
 //  - Keeps original behavior: returns different outputs depending on $properties['output']
 //    ('bar' returns HTML fragment for header bar, 'text' returns 'licensed'/'not_licensed',
 //     otherwise it will block access and display a promotional/licensing page).
@@ -45327,7 +46794,7 @@ function license_check($properties = false)
             }
         }
 
-        $last_check = isset($_SESSION['software']['settings']['license']['last_check']) ? (int) $_SESSION['software']['settings']['license']['last_check'] : 0;
+        $last_check = isset($_SESSION['software']['settings']['license']['last_check']) ? (int) ($_SESSION['software']['settings']['license']['last_check'] ?? '') : 0;
         $need_check = $force_check || (empty($_SESSION['software']['settings']['license']['status'])) || ((time() - $last_check) > 43200);
 
         if ($need_check) {
@@ -45434,7 +46901,7 @@ function license_check($properties = false)
             }
 
             // successful license verification path
-            if (isset($_SESSION['software']['settings']['license']['status']) && $_SESSION['software']['settings']['license']['status'] === 'success') {
+            if (isset($_SESSION['software']['settings']['license']['status']) && ($_SESSION['software']['settings']['license']['status'] ?? '') === 'success') {
                 // server returns end date in 'P_end_d' per original code - guard it
                 if (isset($decoded['P_end_d']) && $decoded['P_end_d'] !== '') {
                     try {
@@ -45472,14 +46939,14 @@ function license_check($properties = false)
         } // end need_check
 
         // Interpret the session license values and set output variables
-        $status = isset($_SESSION['software']['settings']['license']['status']) ? $_SESSION['software']['settings']['license']['status'] : '';
-        $error_code = isset($_SESSION['software']['settings']['license']['error_code']) ? $_SESSION['software']['settings']['license']['error_code'] : '';
-        $countdown = isset($_SESSION['software']['settings']['license']['countdown']) ? (int) $_SESSION['software']['settings']['license']['countdown'] : 0;
-        $expiration_dt = isset($_SESSION['software']['settings']['license']['expiration_date_formatted']) ? $_SESSION['software']['settings']['license']['expiration_date_formatted'] : null;
+        $status = isset($_SESSION['software']['settings']['license']['status']) ? ($_SESSION['software']['settings']['license']['status'] ?? '') : '';
+        $error_code = isset($_SESSION['software']['settings']['license']['error_code']) ? ($_SESSION['software']['settings']['license']['error_code'] ?? '') : '';
+        $countdown = isset($_SESSION['software']['settings']['license']['countdown']) ? (int) ($_SESSION['software']['settings']['license']['countdown'] ?? '') : 0;
+        $expiration_dt = isset($_SESSION['software']['settings']['license']['expiration_date_formatted']) ? ($_SESSION['software']['settings']['license']['expiration_date_formatted'] ?? '') : null;
         $diag = array(
-            'errno' => isset($_SESSION['software']['settings']['license']['diag_errno']) ? $_SESSION['software']['settings']['license']['diag_errno'] : '',
-            'error' => isset($_SESSION['software']['settings']['license']['diag_error']) ? $_SESSION['software']['settings']['license']['diag_error'] : '',
-            'response' => isset($_SESSION['software']['settings']['license']['diag_response']) ? $_SESSION['software']['settings']['license']['diag_response'] : '',
+            'errno' => isset($_SESSION['software']['settings']['license']['diag_errno']) ? ($_SESSION['software']['settings']['license']['diag_errno'] ?? '') : '',
+            'error' => isset($_SESSION['software']['settings']['license']['diag_error']) ? ($_SESSION['software']['settings']['license']['diag_error'] ?? '') : '',
+            'response' => isset($_SESSION['software']['settings']['license']['diag_response']) ? ($_SESSION['software']['settings']['license']['diag_response'] ?? '') : '',
         );
 
         if ($status === 'success' && $expiration_dt instanceof DateTime && ($countdown >= 0) && ($today <= $expiration_dt)) {
@@ -46046,7 +47513,7 @@ function output_toolbar($toolbar)
                 if ($user['role'] <= 1) {
                     $output_subnav_page_properties .= '
                     <li>
-                        <a class="dropdown-item" href="edit_' . $style_type . '_style.php?id=' . h($style_id) . '&send_to=' . h(urlencode($_GET['send_to'])) . '" target="_parent">' . h($style_name) . '</a>
+                        <a class="dropdown-item" href="edit_' . $style_type . '_style.php?id=' . h($style_id) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" target="_parent">' . h($style_name) . '</a>
                     </li>';
 
                     // else the user does not have design access, so just output style name without a link
@@ -46092,10 +47559,10 @@ function output_toolbar($toolbar)
                 // For system styles, open Visual Pinegrap Editor instead of the page designer.
                 if (USER_ROLE < 2) {
                     if ($style_type == 'system') {
-                        $designer_href  = 'edit_system_style.php?id=' . h($style_id) . '&send_to=' . h(urlencode($_GET['send_to']));
+                        $designer_href  = 'edit_system_style.php?id=' . h($style_id) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? '')));
                         $designer_title = lang('Open Style Designer') . ' (Ctrl+G | &#8984;+G)';
                     } else {
-                        $designer_href  = 'page_designer.php?url=' . h(urlencode($_GET['send_to']));
+                        $designer_href  = 'page_designer.php?url=' . h(urlencode(($_GET['send_to'] ?? '')));
                         $designer_title = lang('Open Page Designer') . ' (Ctrl+G | &#8984;+G)';
                     }
                     $output_page_designer_button = '
@@ -46135,7 +47602,7 @@ function output_toolbar($toolbar)
 
                     $output_mobile_button = '
                     <li class="nav-item">
-                        <a id="mobile_button" class="nav-link nav-link-sm no-popover settings-color ' . $output_mobile_button_class . ' " href="update_device_type.php?device_type=' . $output_mobile_button_device_type . '&amp;send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '" target="_parent" title="' . $output_mobile_button_title . '">
+                        <a id="mobile_button" class="nav-link nav-link-sm no-popover settings-color ' . $output_mobile_button_class . ' " href="update_device_type.php?device_type=' . $output_mobile_button_device_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" target="_parent" title="' . $output_mobile_button_title . '">
                             <span class="bi ' . $output_mobile_button_icon_class . '"></span>
                         </a>
                     </li>';
@@ -46147,7 +47614,7 @@ function output_toolbar($toolbar)
                 if ($user['role'] <= 1) {
                     $output_edit_page_style_button .= '
                     <li class="nav-item">
-                        <a class="nav-link nav-link-sm no-popover design-color" href="edit_' . $style_type . '_style.php?id=' . h($style_id) . '&send_to=' . h(urlencode($_GET['send_to'])) . '" target="_parent" title="' . lang('Edit Page Style') . '">
+                        <a class="nav-link nav-link-sm no-popover design-color" href="edit_' . $style_type . '_style.php?id=' . h($style_id) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" target="_parent" title="' . lang('Edit Page Style') . '">
                             <span class="bi bi-file-earmark-richtext"></span>
                         </a>
                     </li>';
@@ -46387,7 +47854,7 @@ function output_toolbar($toolbar)
                         }
 
                         $output_preview_style_pick_list =
-                            '<select style="min-width:100px;" class="form-select me-2" name="style_id" id="style_id" onchange="parent.location.href = \'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_style.php?mode=preview&amp;style_id=\' + document.getElementById(\'style_id\').value + \'&amp;page_id=' . $page_id . '&amp;send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '\';">
+                            '<select style="min-width:100px;" class="form-select me-2" name="style_id" id="style_id" onchange="parent.location.href = \'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_style.php?mode=preview&amp;style_id=\' + document.getElementById(\'style_id\').value + \'&amp;page_id=' . $page_id . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '\';">
                                 ' . $output_preview_style_options . '
                             </select>';
 
@@ -46405,7 +47872,7 @@ function output_toolbar($toolbar)
                         }
 
                         $output_preview_style_set_button = '
-                                <a class="btn btn-sm no-popover text-success" href="preview_style.php?mode=set&amp;page_id=' . $page_id . '&amp;send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '" target="_parent" title="' . $output_preview_style_set_button_title . '">
+                                <a class="btn btn-sm no-popover text-success" href="preview_style.php?mode=set&amp;page_id=' . $page_id . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" target="_parent" title="' . $output_preview_style_set_button_title . '">
                                     <span class="bi bi-check-circle"></span>
                                 </a>';
 
@@ -46482,14 +47949,14 @@ function output_toolbar($toolbar)
                             // if the selected theme is a system theme, then output the edit theme button
                             if ($is_system_theme == TRUE) {
                                 $output_edit_theme_link = '
-                                    <a class="btn btn-sm no-popover position-relative design-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . h($selected_file_id) . '&send_to=' . h(urlencode($_GET['send_to'])) . '&clear_theme_designer_session=true&page_to_preview_id=' . $page_id . '" target="_parent" title="' . lang('Edit Theme') . '">
+                                    <a class="btn btn-sm no-popover position-relative design-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . h($selected_file_id) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '&clear_theme_designer_session=true&page_to_preview_id=' . $page_id . '" target="_parent" title="' . lang('Edit Theme') . '">
                                         <span class="bi bi-pencil"></span>
                                     </a>';
 
                                 // else output the edit css link
                             } else {
                                 $output_edit_theme_link = '
-                                    <a class="btn btn-sm no-popover position-relative design-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . h($selected_file_id) . '&send_to=' . h(urlencode($_GET['send_to'])) . '" target="_parent" title="' . lang('Edit Theme') . '">
+                                    <a class="btn btn-sm no-popover position-relative design-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . h($selected_file_id) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" target="_parent" title="' . lang('Edit Theme') . '">
                                         <span class="bi bi-pencil"></span>
                                     </a>';
                             }
@@ -46497,21 +47964,21 @@ function output_toolbar($toolbar)
 
                         $output_theme_pick_list =
                             '<li class="d-flex justify-content-between p-1" id="theme_pick_list">
-                                <select style="min-width:100px;"  class="form-select me-2" name="theme_id" id="theme_id" onchange="parent.location.href = \'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_theme.php?mode=preview&amp;id=\' + document.getElementById(\'theme_id\').value + \'&amp;send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '\';">
+                                <select style="min-width:100px;"  class="form-select me-2" name="theme_id" id="theme_id" onchange="parent.location.href = \'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_theme.php?mode=preview&amp;id=\' + document.getElementById(\'theme_id\').value + \'&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '\';">
                                     <option value="">-' . lang('None') . '-</option>'
                             . $output_theme_preview_options . '
                                 </select>
                                 ' . $output_edit_theme_link . '
                             </li>';
                         $output_theme_dropdown_close_button = '
-                            <a class="nav-link nav-link-sm no-popover position-relative text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_theme.php?mode=cancel&amp;send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '" target="_parent" title="' . lang('Close Preview') . '">
+                            <a class="nav-link nav-link-sm no-popover position-relative text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_theme.php?mode=cancel&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" target="_parent" title="' . lang('Close Preview') . '">
                                 <span class="bi bi-x-lg"></span>
                             </a>';
                         // else the user is not previewing a stylesheet, so output preview themes link
                     } else {
                         $output_preview_theme_link = '
                         <li class="nav-item">
-                            <a class="nav-link nav-link-sm no-popover position-relative design-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_theme.php?mode=preview&amp;send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '" target="_parent" title="' . lang('Preview Page Styles & Themes') . '">
+                            <a class="nav-link nav-link-sm no-popover position-relative design-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/preview_theme.php?mode=preview&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" target="_parent" title="' . lang('Preview Page Styles & Themes') . '">
                                 <span class="bi bi-flower2"></span>
                             </a>
                         </li>';
@@ -46534,7 +48001,7 @@ function output_toolbar($toolbar)
                 $output_button_bar =
                     '
                             <li class="nav-item">
-                                <a class="nav-link nav-link-sm no-popover position-relative pages-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php?id=' . h($_GET['page_id']) . '&amp;send_to=' . h(urlencode($_GET['send_to'])) . '" target="_parent"  title="' . lang('Edit Page Properties') . '">
+                                <a class="nav-link nav-link-sm no-popover position-relative pages-color" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php?id=' . h($_GET['page_id']) . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" target="_parent"  title="' . lang('Edit Page Properties') . '">
                                     <span class="bi bi-sliders"></span>
                                 </a>
                             </li>
@@ -46625,55 +48092,6 @@ function increase($properties = false)
     $_SESSION['temp_increase'] = (int) $_SESSION['temp_increase'] + 1;
 
     return (int) $_SESSION['temp_increase'];
-}
-
-
-/**
- * Generates SHA-256 hashes for all files in the current directory (excluding subdirectories)
- * and stores them in data/hash_reference.json for integrity verification.
- * Ignores server-generated files like error_log, .htaccess, etc.
- */
-function generate_directory_file_integrity()
-{
-    // Define reference file path
-    $reference_file = 'data/temp/hash_reference.json';
-    // Define files to ignore
-    $ignored_files = ['error_log', '.htaccess', '.user.ini'];
-    $hashes = [];
-    // Get current working directory
-    $base_path = getcwd();
-    if ($base_path === false) {
-        log_activity(lang('Unable to resolve current working directory.'), $_SESSION['sessionusername']);
-        return 'unable_to_resolve_directory';
-    }
-    // Scan current directory for files
-    $files = scandir($base_path);
-    // Generate hashes for each file
-    foreach ($files as $file) {
-        $full_path = $base_path . DIRECTORY_SEPARATOR . $file;
-        // Skip directories and ignored files
-        if (
-            $file === '.' ||
-            $file === '..' ||
-            is_dir($full_path) ||
-            in_array($file, $ignored_files) ||
-            realpath($full_path) === realpath($reference_file)
-        ) {
-            continue;
-        }
-
-        $relative_path = str_replace('\\', '/', $file);
-        $hashes[$relative_path] = hash_file('sha256', $full_path);
-    }
-    // Ensure data directory exists
-    if (!is_dir('data')) {
-        mkdir('data', 0755, true);
-    }
-    // Save hashes to reference file
-    file_put_contents($reference_file, json_encode($hashes, JSON_PRETTY_PRINT));
-    // Log activity
-    log_activity(lang('File integrity reference generated for current directory.'), $_SESSION['sessionusername']);
-    return 'success';
 }
 
 /**
@@ -46963,7 +48381,7 @@ function getPublicRootFolderId()
 }
 
 /**
- * Function: get_system_status_icons
+ * Function: get_system_status_checks
  * ------------------------------------------
  * This function evaluates the overall health and security status of the system.
  * It performs multiple checks including:
@@ -46977,28 +48395,63 @@ function getPublicRootFolderId()
  *   - Critical php.ini directives
  *
  * Each check contributes to a cumulative health score (0–100).
- * The function returns a block of HTML containing Bootstrap Icons that visually
- * represent the results of each check, along with the final score indicator.
  *
- * Compatibility: PHP 5.6 - 8.4
- * Returns: string (HTML markup with icons and score)
+ * It returns the checks as data, not as markup. The bar this used to print was
+ * the only thing that could be done with a string of <span>s; the dashboard now
+ * draws a gauge and a card per check from the same results, and settings.php
+ * draws the same widget. Rendering lives in api.php, the checks live here.
+ *
+ * Returned shape:
+ *   array(
+ *     'score'  => int 0-100,
+ *     'checks' => array of array(
+ *         'group'   => 'security' | 'seo' | 'server',
+ *         'icon'    => Bootstrap Icons class,
+ *         'color'   => the text-* class the bar used,
+ *         'state'   => 'ok' | 'warn' | 'fail' | 'info',
+ *         'title'   => full check name, translated,
+ *         'label'   => short name for a card, translated,
+ *         'message' => explanation for the popover, translated,
+ *         'value'   => short state text for the card, translated,
+ *         'href'    => optional screen that acts on this check,
+ *     ),
+ *   )
+ *
+ * Translations are baked in before caching, which is safe because
+ * SOFTWARE_LANGUAGE comes from the site config row and is the same for every
+ * user of an installation.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: array
  */
 
-function get_system_status_icons()
+function get_system_status_checks()
 {
     // Cache result for 10 minutes to avoid running all checks on every call
     $cache_file = dirname(__FILE__) . '/data/temp/system_status_cache.json';
     if (file_exists($cache_file)) {
         $cached = json_decode(file_get_contents($cache_file), true);
-        if (is_array($cached) && isset($cached['ts']) && (time() - $cached['ts']) < 600) {
-            return $cached['html'];
+        // A cache written by the version that stored rendered HTML has no
+        // 'checks' key, so it simply misses and the checks run once more. No
+        // migration, and no risk of handing a string to a caller expecting an
+        // array.
+        if (is_array($cached) && isset($cached['ts']) && isset($cached['checks'])
+            && ((time() - $cached['ts']) < 600)
+        ) {
+            return $cached;
         }
     }
 
     $output = '';
     $score = 100;
 
-    // Her kontrol için maksimum puanlar
+    // Filled by $makeIcon below. $group moves as the checks pass each divider
+    // and the closure reads it by reference, so a check lands in whichever
+    // group it is written under without having to name it.
+    $checks = array();
+    $group = 'security';
+
+    // Maximum points per check
     $weights = array(
         'file_integrity' => 30,
         'ssl' => 15,
@@ -47011,7 +48464,14 @@ function get_system_status_icons()
         'extensions' => 5,
         'directives' => 20,
         'waf' => 10,
-        'bot_filter' => 10
+        'bot_filter' => 10,
+        // Maintenance checks, folded in from the widget that used to carry
+        // them separately. Deliberately lighter than the security ones: a
+        // backup two days late is worth noticing, but it should not be able
+        // to outweigh a firewall that is switched off.
+        'backup' => 12,
+        'update' => 6,
+        'cron' => 8
     );
 
     // Icon rule for this bar — keep it when adding a check.
@@ -47036,14 +48496,95 @@ function get_system_status_icons()
     //
     // The icons are printed in three groups — security, SEO, server — divided by
     // this rule. Same markup as the divider in front of the score.
-    $group_separator = '<span class="vh pe-1 me-2 border-end"></span>';
 
-    $makeIcon = function ($icon, $color, $title, $content) {
-        return '<span class="fs-5 bi ' . $icon . ' ' . $color . ' px-1 status-popover" 
-            title="' . lang($title) . '" 
-            data-bs-toggle="popover"
-            data-bs-trigger="hover focus" 
-            data-bs-content="' . lang($content) . '"></span>';
+    // Short names for the cards. The popover carries the full title and the
+    // explanation; a card in a quarter-width dashboard column carries about ten
+    // characters. Keyed by title deliberately, and kept here rather than in
+    // api.php, so renaming a check and forgetting its short name is one edit
+    // away from being noticed instead of a screen away.
+    $short_labels = array(
+        'Directory File Integrity' => 'Files',
+        'SSL Status'               => 'SSL',
+        'Password Management'      => 'Password',
+        'CAPTCHA Protection'       => 'CAPTCHA',
+        'Web Application Firewall' => 'WAF',
+        'Unknown Bot Filtering'    => 'Bots',
+        'IndexNow'                 => 'IndexNow',
+        'PHP Version'              => 'PHP',
+        'Database Health'          => 'Database',
+        'PHP Extensions'           => 'Extensions',
+        'PHP Directives'           => 'php.ini',
+        // 'Backup' and 'Update' are already translated elsewhere as the verbs
+        // on buttons -- "Yedekle", "Güncelle". A tile wants the noun, so these
+        // point at keys of their own rather than borrowing a label that reads
+        // as an instruction.
+        // "Son yedek" is one character too wide once the tile gives up room
+        // for its arrow, and the value beside it is already a time.
+        'Last Backup'              => 'Backup age',
+        'Software Update'          => 'Update status',
+        'Scheduled Tasks'          => 'Tasks',
+        'Database Size'            => 'DB Size',
+    );
+
+    // The three checks that answer "can someone get in": files that have been
+    // tampered with, a connection in the clear, a firewall filtering nothing.
+    // They lead the grid instead of sitting in run order among the rest, so the
+    // first thing read is the thing that matters first. Titles again, for the
+    // same reason as $short_labels -- renaming a check and forgetting this list
+    // is one edit away from being noticed.
+    $priority_titles = array(
+        'Directory File Integrity',
+        'SSL Status',
+        'Web Application Firewall',
+    );
+
+    // Records one check. Named $makeIcon still, and still called as
+    // `$output .= $makeIcon(...)`, because every one of the thirty-odd call
+    // sites below keeps its exact condition, weight, glyph and wording that
+    // way -- the change is where the result goes, not what is checked.
+    //
+    // 'value' defaults to a word derived from the colour. Checks with something
+    // more specific to say -- a backup age, a version -- pass their own.
+    $makeIcon = function ($icon, $color, $title, $content, $value = '', $href = '', $detail = array()) use (&$checks, &$group, $short_labels, $priority_titles) {
+
+        $state = 'info';
+        if (strpos($color, 'success') !== false) {
+            $state = 'ok';
+        } elseif (strpos($color, 'warning') !== false) {
+            $state = 'warn';
+        } elseif (strpos($color, 'danger') !== false) {
+            $state = 'fail';
+        }
+
+        if ($value === '') {
+            $defaults = array(
+                'ok'   => 'OK',
+                'warn' => 'Warning',
+                'fail' => 'Problem',
+                'info' => 'Not applicable',
+            );
+            $value = lang($defaults[$state]);
+        }
+
+        $checks[] = array(
+            'group'   => $group,
+            'icon'    => $icon,
+            'color'   => $color,
+            'state'   => $state,
+            'title'   => lang($title),
+            'label'   => lang(isset($short_labels[$title]) ? $short_labels[$title] : $title),
+            'message' => lang($content),
+            'value'   => $value,
+            'href'    => $href,
+            'priority' => in_array($title, $priority_titles),
+            // Rows the tile can expand to. Only the scheduled-task check fills
+            // this: per-job run times exist nowhere else in the panel, so the
+            // tile has to be able to show them rather than point at a screen
+            // that does not have the answer.
+            'detail'  => $detail,
+        );
+
+        return '';
     };
 
     // 🔍 File integrity check
@@ -47227,10 +48768,10 @@ function get_system_status_icons()
         $score -= $weights['bot_filter'];
     }
 
-    // Security checks end here. A thin rule separates the three groups — twelve
-    // icons in an unbroken row read as one block, and the operator has no way to
-    // tell where "is my site secure" stops and "is my server healthy" begins.
-    $output .= $group_separator;
+    // Security checks end here. The groups still exist -- they are what lets
+    // the cards be read as "is my site secure" then "is my server healthy"
+    // rather than as one undifferentiated grid.
+    $group = 'seo';
 
     // 📡 IndexNow — a broadcast, because the feature announces changes to search
     // engines. It used to borrow the key glyph, which collided with the password
@@ -47263,7 +48804,7 @@ function get_system_status_icons()
         $score -= $weights['indexnow'];
     }
 
-    $output .= $group_separator;
+    $group = 'server';
 
     // 🐘 PHP version
     $php_version = PHP_VERSION;
@@ -47440,38 +48981,276 @@ function get_system_status_icons()
         $score -= $weights['directives'];
     }
 
+    $group = 'maintenance';
+
+    // 💾 Last backup
+    //
+    // Read from the directory, NOT from config.last_software_auto_backup. That
+    // column is the scheduler's cursor, not a record of what happened: opening
+    // backups.php sets it to 0 to force the next run, so a check trusting it
+    // would announce "never backed up" to anyone who had just visited the
+    // backup screen. The folders are the only thing that knows.
+    $backup_path = dirname(__FILE__) . '/data/backups';
+    $backup_count = 0;
+    $backup_newest = 0;
+
+    // Shipped with the product as install fixtures, not produced by any backup
+    // run. Counting them would let a site that has never been backed up show
+    // two backups dated the day it was installed.
+    $backup_seed = array('english_default', 'turkish_default');
+
+    if (is_dir($backup_path)) {
+        $backup_entries = @scandir($backup_path);
+        if ($backup_entries !== false) {
+            foreach ($backup_entries as $backup_entry) {
+                if (($backup_entry == '.') || ($backup_entry == '..')) {
+                    continue;
+                }
+                if (in_array($backup_entry, $backup_seed)) {
+                    continue;
+                }
+                if (!is_dir($backup_path . '/' . $backup_entry)) {
+                    continue;
+                }
+                $backup_count++;
+                // stat per folder, never a recursive walk. folderSize() on this
+                // directory would read every file of every backup — gigabytes —
+                // for one number on a card.
+                $backup_stamp = @filemtime($backup_path . '/' . $backup_entry);
+                if ($backup_stamp && ($backup_stamp > $backup_newest)) {
+                    $backup_newest = (int) $backup_stamp;
+                }
+            }
+        }
+    }
+
+    $auto_backup_off = (defined('SOFTWARE_AUTO_BACKUP') && (SOFTWARE_AUTO_BACKUP == false));
+
+    if ($backup_newest < 1) {
+        $backup_icon = 'bi-hdd-network-fill';
+        $backup_color = 'text-danger';
+        $backup_value = lang('Never');
+        $backup_message = 'No backup has ever been taken of this site.';
+        $score -= $weights['backup'];
+    } else {
+        $backup_age = time() - $backup_newest;
+        $backup_value = get_relative_time(array('timestamp' => $backup_newest, 'format' => 'plain_text'));
+        $backup_icon = 'bi-hdd-network-fill';
+
+        // Two days covers a daily schedule that missed one run; a week means
+        // the schedule itself has stopped.
+        if ($backup_age > 604800) {
+            $backup_color = 'text-danger';
+            $backup_message = 'The most recent backup is more than a week old.';
+            $score -= $weights['backup'];
+        } elseif ($backup_age > 172800) {
+            $backup_color = 'text-warning';
+            $backup_message = 'The most recent backup is more than two days old.';
+            $score -= $weights['backup'] * 0.5;
+        } else {
+            $backup_color = 'text-success';
+            $backup_message = 'A recent backup exists.';
+        }
+    }
+
+    // A switched-off schedule is not a stale backup. Scoring it as one would
+    // train the operator who turned it off deliberately to ignore the number,
+    // so it costs half and reads grey rather than red.
+    if ($auto_backup_off && ($backup_color == 'text-danger')) {
+        $score += $weights['backup'] * 0.5;
+        $backup_color = 'text-secondary';
+        $backup_message = 'Automatic backup is turned off.';
+    }
+
+    $output .= $makeIcon(
+        $backup_icon,
+        $backup_color,
+        'Last Backup',
+        $backup_message,
+        $backup_value,
+        'backups.php'
+    );
+
+    // ⬆️ Software update
+    //
+    // SOFTWARE_UPDATE_AVAILABLE is set in init.php from the periodic check; the
+    // timestamp says how much that answer is worth. A check from two months ago
+    // saying "up to date" is not information.
+    $update_available = (defined('SOFTWARE_UPDATE_AVAILABLE') && SOFTWARE_UPDATE_AVAILABLE);
+    $update_checked = defined('LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP')
+        ? (int) LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP
+        : 0;
+
+    if ($update_available) {
+        $output .= $makeIcon(
+            'bi-arrow-up-circle-fill',
+            'text-warning',
+            'Software Update',
+            'A software update is available.',
+            lang('New version'),
+            'software_update.php'
+        );
+        $score -= $weights['update'];
+    } elseif ($update_checked < 1) {
+        $output .= $makeIcon(
+            'bi-arrow-up-circle',
+            'text-warning',
+            'Software Update',
+            'The software has never been checked for updates, so it is not known whether one is waiting.',
+            lang('Not checked'),
+            'software_update.php'
+        );
+        $score -= $weights['update'] * 0.5;
+    } else {
+        $output .= $makeIcon(
+            'bi-check-circle-fill',
+            'text-success',
+            'Software Update',
+            'The software is up to date.',
+            defined('VERSION') ? VERSION : lang('OK'),
+            'software_update.php'
+        );
+    }
+
+    // ⏱ Scheduled tasks
+    //
+    // The cron entries live outside the software, so nothing here can ask
+    // whether a job is scheduled. What the panel has is the run each job
+    // records when it finishes; the useful signal is a job that used to finish
+    // and no longer does.
+    //
+    // Never run is therefore NOT a failure and costs nothing — it is a site
+    // that does not use that job, or one whose cron was never set up. The
+    // penalty is reserved for a job with a recorded run that has since gone
+    // quiet, which is unambiguous: it worked, now it doesn't.
+    $cron_runs = function_exists('pg_cron_last_runs') ? pg_cron_last_runs() : null;
+
+    // null means the table is not there yet. Silence beats reporting every job
+    // as broken on an installation that has simply not been upgraded.
+    if ($cron_runs !== null) {
+
+        $cron_jobs = pg_cron_jobs();
+        $cron_ok = 0;
+        $cron_never = 0;
+        $cron_stalled = array();
+        $cron_detail = array();
+
+        foreach ($cron_jobs as $cron_key => $cron_job) {
+
+            $cron_seen = isset($cron_runs[$cron_key]) ? (int) $cron_runs[$cron_key] : 0;
+
+            if ($cron_seen < 1) {
+                $cron_never++;
+                $cron_state = 'info';
+                $cron_when = lang('Never');
+            } elseif ((time() - $cron_seen) > (int) $cron_job['stale_after']) {
+                $cron_stalled[] = $cron_job['label'];
+                $cron_state = 'fail';
+                // plain_text: a <time> element would be baked into the cache
+                // and carry a tooltip built from a timestamp up to ten minutes
+                // out of date. The text is relative either way.
+                $cron_when = get_relative_time(array('timestamp' => $cron_seen, 'format' => 'plain_text'));
+            } else {
+                $cron_ok++;
+                $cron_state = 'ok';
+                $cron_when = get_relative_time(array('timestamp' => $cron_seen, 'format' => 'plain_text'));
+            }
+
+            $cron_detail[] = array(
+                'label' => $cron_job['label'],
+                'state' => $cron_state,
+                'when'  => $cron_when,
+            );
+        }
+
+        if ($cron_stalled) {
+            $output .= $makeIcon(
+                'bi-clock-fill',
+                'text-danger',
+                'Scheduled Tasks',
+                rtrim(lang('Scheduled task(s) that have stopped running:')) . ' ' . implode(', ', $cron_stalled),
+                lang(array(
+                    'string' => '{var:1} stopped',
+                    'vars' => number_format(count($cron_stalled)),
+                )),
+                '',
+                $cron_detail
+            );
+            $score -= $weights['cron'];
+        } elseif ($cron_ok > 0) {
+            $output .= $makeIcon(
+                'bi-clock-fill',
+                'text-success',
+                'Scheduled Tasks',
+                'Scheduled tasks are running on time.',
+                lang(array(
+                    'string' => '{var:1} running',
+                    'vars' => number_format($cron_ok),
+                )),
+                '',
+                $cron_detail
+            );
+        } else {
+            $output .= $makeIcon(
+                'bi-clock',
+                'text-secondary',
+                'Scheduled Tasks',
+                'No scheduled task has run yet. Set up cron jobs if you want them.',
+                // Shorter than 'Never' on purpose: this tile carries a chevron
+                // as well, and "Hiçbir zaman" does not fit beside it. The
+                // per-job panel underneath spells it out anyway.
+                lang('None yet'),
+                '',
+                $cron_detail
+            );
+        }
+    }
+
+    // 🗄 Database size
+    //
+    // Reported, never scored. There is no size at which a database is wrong:
+    // a busy shop's is large because the shop works. Any threshold here would
+    // be a number invented in this file and charged to sites that grew.
+    //
+    // information_schema is readable for one's own schema on ordinary hosting
+    // but not everywhere, and the figure is the storage engine's estimate. Both
+    // argue for reporting nothing rather than guessing, so a null simply leaves
+    // the card out.
+    $db_bytes = db_value(
+        "SELECT SUM(data_length + index_length)
+         FROM information_schema.TABLES
+         WHERE table_schema = DATABASE()");
+
+    if ($db_bytes !== null && $db_bytes !== '') {
+        $output .= $makeIcon(
+            'bi-hdd-fill',
+            'text-secondary',
+            'Database Size',
+            'Total size of the data and indexes in this site\'s database.',
+            convert_bytes_to_string((float) $db_bytes, 1)
+        );
+    }
+
     // Clamp score
     if ($score < 0)
         $score = 0;
     if ($score > 100)
         $score = 100;
 
-    // Colorize score
-    $score_color = 'text-success';
-    if ($score < 70) {
-        $score_color = 'text-danger';
-    } elseif ($score < 90) {
-        $score_color = 'text-warning';
-    }
-
-    $html = '<div class="d-block">
-                ' . $output . '
-                <span class="vh pe-1 me-2 border-end"></span>
-                <span class="fw-bold status-popover ' . $score_color . '"  style="vertical-align: text-bottom;"
-                    title="' . lang('Overall System Health') . '"
-                    data-bs-toggle="popover"
-                    data-bs-trigger="hover focus" 
-                    data-bs-content="' . lang('Overall system health score based on checks.') . '">' . round($score) . '%</span>
-            </div>';
+    $result = array(
+        'ts' => time(),
+        'score' => (int) round($score),
+        'checks' => $checks,
+    );
 
     // Write cache
     $cache_dir = dirname(__FILE__) . '/data/temp';
     if (!is_dir($cache_dir)) {
         mkdir($cache_dir, 0755, true);
     }
-    file_put_contents($cache_file, json_encode(array('ts' => time(), 'html' => $html)));
+    file_put_contents($cache_file, json_encode($result));
 
-    return $html;
+    return $result;
 }
 
 
@@ -47484,7 +49263,7 @@ function get_system_status_icons()
  * Results are collected in a report array and log entries are created for each
  * detected issue (corrupt or error).
  *
- * Compatibility: PHP 5.6 - 8.4
+ * Compatibility: PHP 7.0 - 8.5
  * Returns: array containing check messages for each table
  */
 
@@ -47649,7 +49428,11 @@ function check_and_repair_database_tables()
         'notifications',
         'local_sale_history',
         'local_sale_history_items',
-        'iyzipay_3ds_state'
+        'iyzipay_3ds_state',
+        'chat_conversations',
+        'chat_messages',
+        'seo_issue',
+        'seo_link'
     );
 
     $report = [];
@@ -49739,19 +51522,82 @@ function perf_monitor_shutdown()
     // minute from now updates this one. This is what replaces a million rows
     // of ordinary traffic that nobody was ever going to read individually.
     $hour_start = $now - ((int) $now % 3600);
-    $bucket_key = sha1($area . '|' . $label);
+
+    // Which record this measurement belongs to, resolved while the process
+    // that rendered it is still alive. The SEO score joins on this; without
+    // it the report would have to turn a URL back into a record, and
+    // '/katalog/urun-adi' turns into the catalog detail template rather than
+    // into the product, which would file every product under one page.
+    //
+    // Only for front-end requests that succeeded. A back-end screen is not a
+    // scored record, and a failure has already been folded into a '[404]'
+    // label that no longer identifies anything.
+    $entity_type = '';
+    $entity_id = 0;
+
+    // Probed once, and only where the answer can change anything: a back-end
+    // screen is not a scored record and a failure has already been folded into
+    // a '[404]' label that identifies nothing. Under mod_php, CGI and IIS
+    // there is no fastcgi_finish_request(), so everything here still runs while
+    // the visitor waits - a metadata round trip on every request would be new
+    // cost on the public path for no answer.
+    $has_entity_columns = false;
+
+    if (($area === 'frontend') && ($http_status < 400)) {
+
+        $has_entity_columns = pg_perf_stats_has_entity();
+        $entity = pg_measured_entity();
+        $entity_type = $entity['type'];
+        $entity_id = (int) $entity['id'];
+    }
+
+    // The record is part of the bucket key, not just a column on it.
+    //
+    // One label does not always mean one record. '[home]' is shared by every
+    // page carrying page_home, and get_page.php picks between them at random
+    // by design. A catalogue reached as '/urun-detay?pid=5' has its query
+    // string stripped, so every product behind it shares one label. Storing
+    // the identity as a plain column would hand the whole bucket to whichever
+    // record happened to be rendered first that hour and quietly credit one
+    // page with another page's timings.
+    //
+    // This does not widen the cost problem the summary design exists to solve.
+    // A label already carries whatever cardinality it had: a '[404]' never
+    // carries a record at all, and the page types that accept a trailing path
+    // segment (system layouts, catalog and catalog detail) were already
+    // producing one label per requested path before this change, all of them
+    // resolving to the same record. What the record adds is one bucket per
+    // record behind a shared label, which is bounded by the site's own content
+    // - the same bound visitor_content_hourly already accepts.
+    // PERF_MONITOR_MAX_ROWS remains the backstop for the paths that were
+    // unbounded to begin with.
+    // Only split the bucket when the identity can actually be written. Before
+    // the upgrade has run there is nowhere to record which record a bucket
+    // belongs to, so splitting would produce indistinguishable rows and spend
+    // the row cap several times faster for no benefit at all.
+    $bucket_key = $has_entity_columns
+        ? sha1($area . '|' . $label . '|' . $entity_type . '|' . $entity_id)
+        : sha1($area . '|' . $label);
+
+    $sql_entity_columns = '';
+    $sql_entity_values = '';
+
+    if ($has_entity_columns) {
+        $sql_entity_columns = ', entity_type, entity_id';
+        $sql_entity_values = ", '" . escape($entity_type) . "', " . (int) $entity_id;
+    }
 
     @mysqli_query(
         db::$con,
         "INSERT INTO perf_stats
             (bucket_key, hour_start, label, area, hits, slow_hits,
-             total_ms, min_ms, max_ms, total_kb, max_kb, total_cpu_ms)
+             total_ms, min_ms, max_ms, total_kb, max_kb, total_cpu_ms" . $sql_entity_columns . ")
          VALUES
             ('" . escape($bucket_key) . "', " . (int) $hour_start . ",
              '" . escape($label) . "', '" . escape($area) . "', 1, " . $is_slow . ",
              " . $duration_ms . ", " . $duration_ms . ", " . $duration_ms . ",
              " . $peak_memory_kb . ", " . $peak_memory_kb . ",
-             " . ($cpu_user_ms + $cpu_system_ms) . ")
+             " . ($cpu_user_ms + $cpu_system_ms) . $sql_entity_values . ")
          ON DUPLICATE KEY UPDATE
             hits         = hits + 1,
             slow_hits    = slow_hits + " . $is_slow . ",

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -178,8 +178,8 @@ if (!$_POST) {
 
     $type = strtolower($_POST['type']);
     $name = prepare_file_name($_POST['name'] . '.' . $type);
-    $folder = escape($_POST['folder']);
-    $description = escape($_POST['description']);
+    $folder = escape($_POST['folder'] ?? '');
+    $description = escape($_POST['description'] ?? '');
     $code = isset($_POST['code']) ? $_POST['code'] : '';
 
     if (!check_edit_access($folder)) {
@@ -210,7 +210,7 @@ if (!$_POST) {
     $sql_design_2 = '';
     if ($user['role'] <= 1 && isset($_POST['design'])) {
         $sql_design_1 = "design,";
-        $sql_design_2 = "'" . escape($_POST['design']) . "',";
+        $sql_design_2 = "'" . escape($_POST['design'] ?? '') . "',";
     }
 
     db("INSERT INTO files (

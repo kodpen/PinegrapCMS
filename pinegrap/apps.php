@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -210,15 +210,15 @@ switch ($action) {
 
 
 	case 'product':
-    // ECOMMERCE zorunlu
+    // The store has to be on.
     if (!(defined('ECOMMERCE') && ECOMMERCE === true)) {
         api_error(lang('Permission denied.'));
     }
-    // Kullanıcı rolü: contributor için manage_ecommerce flag zorunlu
+    // User role: a contributor needs the manage_ecommerce flag.
     if ($user['role'] >= 3 && !$user['manage_ecommerce']) {
         api_error(lang('Permission denied.'));
     }
-    // App permission: tüm roller için geçerli — API anahtarının yetkisini kısıtlar
+    // App permission: applies to every role - it narrows what the API key may do.
     $can_read = has_permission($app_permissions, 'product', 'read');
     $can_edit = has_permission($app_permissions, 'product', 'edit');
     if (!$can_read && !$can_edit) {
@@ -746,8 +746,10 @@ switch ($action) {
         $update_fields    = array();
         $update_attempted = false;
 
-        // Editable fields
-        $editable_columns = array('page_title', 'page_meta_description', 'page_meta_keywords', 'page_name');
+        // Editable fields. page_meta_keywords is still accepted so that apps written
+        // against the older field keep working, but it no longer drives anything;
+        // page_search_keywords is the list the site search and the tag cloud read.
+        $editable_columns = array('page_title', 'page_meta_description', 'page_meta_keywords', 'page_search_keywords', 'page_name');
 
         if ($req_page_id || $req_page_name !== '') {
             // Fetch specific page
@@ -757,13 +759,15 @@ switch ($action) {
                 $page_where = "page_name = '" . escape($req_page_name) . "'";
             }
             $result = mysqli_query(db::$con,
-                "SELECT page_id, page_name, page_title, page_meta_description, page_meta_keywords
+                "SELECT page_id, page_name, page_title, page_meta_description, page_meta_keywords, page_search, page_search_keywords
                  FROM page WHERE $page_where LIMIT 1"
             ) or api_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             if (!$row) api_error(lang('Page not found.'));
 
             $found_page_id = $row['page_id'];
+            $original_page_search = $row['page_search'];
+            $original_search_keywords = $row['page_search_keywords'];
 
             if ($can_edit) {
                 foreach ($editable_columns as $col) {
@@ -773,6 +777,10 @@ switch ($action) {
                     }
                 }
                 if (!empty($update_fields)) {
+                    // Every editable column feeds the SEO score, so the
+                    // stored analysis is stale after this write.
+                    $update_fields[] = "seo_analysis_current = '0'";
+
                     mysqli_query(db::$con,
                         "UPDATE page SET " . implode(', ', $update_fields) .
                         " WHERE page_id = '" . escape($found_page_id) . "'"
@@ -781,9 +789,21 @@ switch ($action) {
                         'string' => 'Page ({var:1}) modified by custom app: {var:2} (API Key: {var:3}, User: {var:4})',
                         'vars'   => array($row['page_name'], $matched_app['name'], $api_key, $user['user_username'])
                     )), $log_user);
+
+                    // The tag cloud is built from the promote on keyword list, so it has
+                    // to follow a write to it.
+                    if (isset($request['page_search_keywords'])) {
+                        update_tag_cloud_keywords_for_page(
+                            $found_page_id,
+                            $original_page_search,
+                            $request['page_search_keywords'],
+                            $original_page_search,
+                            $original_search_keywords);
+                    }
+
                     // Re-fetch updated row
                     $result = mysqli_query(db::$con,
-                        "SELECT page_id, page_name, page_title, page_meta_description, page_meta_keywords
+                        "SELECT page_id, page_name, page_title, page_meta_description, page_meta_keywords, page_search, page_search_keywords
                          FROM page WHERE page_id = '" . escape($found_page_id) . "' LIMIT 1"
                     ) or api_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
@@ -796,6 +816,7 @@ switch ($action) {
                 'page_title'            => $row['page_title'],
                 'page_meta_description' => $row['page_meta_description'],
                 'page_meta_keywords'    => $row['page_meta_keywords'],
+                'page_search_keywords'  => $row['page_search_keywords'],
                 'url'                   => OUTPUT_PATH . $row['page_name'],
             );
             api_success($page_response, $update_attempted
@@ -1020,15 +1041,15 @@ switch ($action) {
 
     // ─── PRODUCTS LIST ───────────────────────────────────────────────────────
     case 'products':
-        // ECOMMERCE zorunlu
+        // The store has to be on.
         if (!(defined('ECOMMERCE') && ECOMMERCE === true)) {
             api_error(lang('Permission denied.'));
         }
-        // Kullanıcı rolü: contributor için manage_ecommerce flag zorunlu
+        // User role: a contributor needs the manage_ecommerce flag.
         if ($user['role'] >= 3 && !$user['manage_ecommerce']) {
             api_error(lang('Permission denied.'));
         }
-        // App permission: tüm roller için geçerli
+        // App permission: applies to every role.
         if (!has_permission($app_permissions, 'products', 'read')) {
             api_error(lang('Permission denied: You cannot access products.'));
         }
@@ -1101,15 +1122,15 @@ switch ($action) {
 
     // ─── ORDERS LIST ─────────────────────────────────────────────────────────
     case 'orders':
-        // ECOMMERCE zorunlu
+        // The store has to be on.
         if (!(defined('ECOMMERCE') && ECOMMERCE === true)) {
             api_error(lang('Permission denied.'));
         }
-        // Kullanıcı rolü: contributor için manage_ecommerce flag zorunlu
+        // User role: a contributor needs the manage_ecommerce flag.
         if ($user['role'] >= 3 && !$user['manage_ecommerce']) {
             api_error(lang('Permission denied.'));
         }
-        // App permission: tüm roller için geçerli
+        // App permission: applies to every role.
         if (!has_permission($app_permissions, 'orders', 'read')) {
             api_error(lang('Permission denied: You cannot access orders.'));
         }

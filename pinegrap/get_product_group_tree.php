@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -122,7 +122,7 @@ function get_product_group_tree($parent_product_group_id)
     foreach ($items as $key => $value) {
         switch($items[$key]['type']) {
             // if the type is set to product_group
-            case 'product_group';
+            case 'product_group':
                 // add product_group to items_xml
                 $items_xml .= 
                     '<product_group>' .

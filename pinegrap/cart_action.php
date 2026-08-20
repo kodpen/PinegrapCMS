@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_POST)) {
     echo "OUTPUT_SOFTWARE_DIR:    " . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'UNDEFINED') . "\n";
     echo "URL_SCHEME + HOSTNAME:  " . (defined('URL_SCHEME') ? URL_SCHEME : '?') . (defined('HOSTNAME') ? HOSTNAME : '?') . "\n";
     echo "session_id:             " . session_id() . "\n";
-    echo "session order_id:       " . (isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : '0') . "\n";
+    echo "session order_id:       " . (isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : '0') . "\n";
     echo "data/cart_action.log:   " . (file_exists(dirname(__FILE__) . '/data/cart_action.log') ? 'exists' : 'missing') . "\n";
     echo "log file size:          " . (file_exists(dirname(__FILE__) . '/data/cart_action.log') ? filesize(dirname(__FILE__) . '/data/cart_action.log') . ' bytes' : '-') . "\n";
     echo "\nLast 30 log lines:\n";
@@ -75,7 +75,7 @@ $_pg_log('ENTER cart_action.php · POST=' . json_encode(array_keys($_POST))
 // Resolve the active session order. initialize_order creates one when
 // missing, so $oid is always > 0 after this call.
 initialize_order();
-$oid = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+$oid = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 $_pg_log('order_id=' . $oid);
 
 // liveform handle — used to surface "Cart updated" / coupon errors via the

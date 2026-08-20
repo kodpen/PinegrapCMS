@@ -12,11 +12,25 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 function get_cross_sell_items($request) {
+
+    // Every one of these is optional, so fill in the ones the caller left out.  The defaults are
+    // the values the code below already fell through to when the key was missing.
+    if (is_array($request) == false) {
+        $request = array();
+    }
+
+    $request = $request + array(
+        'product_group'    => '',
+        'recipient'        => '',
+        'limit'            => '',
+        'days'             => '',
+        'discounted'       => true,
+        'in_product_group' => '');
 
     $product_group = $request['product_group'];
     $recipient = $request['recipient'];
@@ -42,7 +56,7 @@ function get_cross_sell_items($request) {
     // Otherwise if a recipient was passed, then use products from recipient.
     } else if ($recipient['id']) {
 
-        if (!$_SESSION['ecommerce']['order_id']) {
+        if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
             return error_response('Sorry, we could not find cross-sell items for that recipient because the customer does not have an active order.');
         }
 
@@ -53,7 +67,7 @@ function get_cross_sell_items($request) {
             return error_response('Sorry, we could not find cross-sell items because the recipient could not be found.');
         }
 
-        if ($recipient['order_id'] != $_SESSION['ecommerce']['order_id']) {
+        if ($recipient['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
             return error_response('Sorry, we could not find cross-sell items because that recipient is not part of this customer\'s order.');
         }
 
@@ -62,10 +76,10 @@ function get_cross_sell_items($request) {
             WHERE ship_to_id = '" . e($recipient['id']) . "'");
 
     // Otherwise if the customer has an order, then use products from order.
-    } else if ($_SESSION['ecommerce']['order_id']) {
+    } else if (($_SESSION['ecommerce']['order_id'] ?? '')) {
         $products = db_items(
             "SELECT DISTINCT(product_id) AS id FROM order_items
-            WHERE order_id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+            WHERE order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
     }
 
     if (!$products) {

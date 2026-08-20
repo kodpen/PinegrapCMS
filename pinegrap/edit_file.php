@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,7 +24,7 @@ validate_area_access($user, 'user');
 
 $from = '';
 if(isset($_GET['from'])){
-    $from = $_GET['from'];
+    $from = ($_GET['from'] ?? '');
 }
 
 
@@ -578,7 +578,7 @@ $liveform->remove_form('edit_file');
 } else {
     validate_token_field();
 
-    $file_id = escape($_POST['id']);
+    $file_id = escape($_POST['id'] ?? '');
     $result = mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . $file_id . "'") or output_error('Query failed');
     $row = mysqli_fetch_array($result);
 
@@ -611,7 +611,7 @@ $liveform->remove_form('edit_file');
     // DESIGN FIELD
     $sql_design = '';
     if ($user['role'] <= 1) {
-        $sql_design = "design = '" . escape($_POST['design']) . "',";
+        $sql_design = "design = '" . escape($_POST['design'] ?? '') . "',";
     }
 
     $sql_size = '';
@@ -745,7 +745,7 @@ $liveform->remove_form('edit_file');
         $webpname = get_unique_name(array('name' => $webpname, 'type' => 'file'));
         $webp_path = FILE_DIRECTORY_PATH . '/' . $webpname;
         $sql_design_1 = ($user['role'] <= 1) ? "design," : '';
-        $sql_design_2 = ($user['role'] <= 1) ? "'" . escape($_POST['design']) . "'," : '';
+        $sql_design_2 = ($user['role'] <= 1) ? "'" . escape($_POST['design'] ?? '') . "'," : '';
 
         imagewebp($image, $webp_path);
         $size = filesize($webp_path);
@@ -754,8 +754,8 @@ $liveform->remove_form('edit_file');
             name, folder, description, type, size, " . $sql_design_1 . " user, timestamp
         ) VALUES (
             '" . escape($webpname) . "',
-            '" . escape($_POST['folder']) . "',
-            '" . escape($_POST['description']) . "',
+            '" . escape($_POST['folder'] ?? '') . "',
+            '" . escape($_POST['description'] ?? '') . "',
             'webp',
             '" . escape($size) . "',
             " . $sql_design_2 . "
@@ -798,8 +798,8 @@ $liveform->remove_form('edit_file');
             db("INSERT INTO files (name, folder, description, type, size, " . $sql_design_1 . " user, timestamp)
                 VALUES (
                     '" . escape($new_name) . "',
-                    '" . escape($_POST['folder']) . "',
-                    '" . escape($_POST['description']) . "',
+                    '" . escape($_POST['folder'] ?? '') . "',
+                    '" . escape($_POST['description'] ?? '') . "',
                     '" . escape($target_ext) . "',
                     '" . escape($new_size) . "',
                     " . $sql_design_2 . "
@@ -856,8 +856,8 @@ $liveform->remove_form('edit_file');
 
         $query = "UPDATE files SET
             name = '" . escape($name) . "',
-            folder = '" . escape($_POST['folder']) . "',
-            description = '" . escape($_POST['description']) . "',
+            folder = '" . escape($_POST['folder'] ?? '') . "',
+            description = '" . escape($_POST['description'] ?? '') . "',
             type = '" . escape($file_extension) . "',
             " . $sql_design . "
             " . $sql_size . "
@@ -868,12 +868,12 @@ $liveform->remove_form('edit_file');
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
 
-        if (!empty($_POST['submit_save']) && $_POST['submit_save'] === 'Save') {
+        if (!empty($_POST['submit_save']) && ($_POST['submit_save'] ?? '') === 'Save') {
             $liveform = new liveform('edit_file');
             $liveform->add_notice(lang('The file was edited successfully.'));
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
             exit();
-        } elseif (!empty($_POST['submit_save_and_return']) && $_POST['submit_save_and_return'] === 'Save & Return') {
+        } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
             $liveform = new liveform('view_files');
             $liveform->add_notice(lang('The file was edited successfully.'));
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_files.php');
@@ -882,7 +882,7 @@ $liveform->remove_form('edit_file');
     }
 
     // DUPLICATE
-    if (!empty($_POST['submit_duplicate']) && $_POST['submit_duplicate'] === 'Duplicate') {
+    if (!empty($_POST['submit_duplicate']) && ($_POST['submit_duplicate'] ?? '') === 'Duplicate') {
         $original_name = $row['name']; // always use last saved file from DB
         $new_file_name = prepare_file_name($original_name);
         $new_file_name = get_unique_name(array('name' => $new_file_name, 'type' => 'file'));
@@ -893,7 +893,7 @@ $liveform->remove_form('edit_file');
         copy(FILE_DIRECTORY_PATH . '/' . $original_name, $new_file_path);
 
         // Fetch folder and description from DB
-        $query = "SELECT folder, description FROM files WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT folder, description FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 

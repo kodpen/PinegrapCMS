@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -41,4 +41,4 @@ $new_page = $response['page'];
 // add notice that page has been saved
 $liveform_edit_page->add_notice(lang('The page has been duplicated. You are now editing the duplicate.'));
                 
-header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $new_page['id'] . '&from=' . $_GET['from']);
+header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $new_page['id'] . '&from=' . ($_GET['from'] ?? ''));

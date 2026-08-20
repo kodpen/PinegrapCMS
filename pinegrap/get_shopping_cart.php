@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -56,7 +56,7 @@ function get_shopping_cart($properties) {
     
     // If a reference code was passed in the query string, then retrieve order.
 
-    if ($_GET['r'] || $_GET['reference_code']) {
+    if (!empty($_GET['r']) || !empty($_GET['reference_code'])) {
 
         require_once(dirname(__FILE__) . '/retrieve_order.php');
 
@@ -70,13 +70,13 @@ function get_shopping_cart($properties) {
     }
     
     // if there is a special offer code in the session and an order has been created, prepare to add special offer code to order
-    if ($_SESSION['ecommerce']['special_offer_code'] && $_SESSION['ecommerce']['order_id']) {
+    if (!empty($_SESSION['ecommerce']['special_offer_code']) && !empty($_SESSION['ecommerce']['order_id'])) {
         // if an offer exists for special offer code, then add special offer code to order
         if (get_offer_code_for_special_offer_code($_SESSION['ecommerce']['special_offer_code'])) {
             $query =
                 "UPDATE orders
                 SET special_offer_code = '" . escape($_SESSION['ecommerce']['special_offer_code']) . "'
-                WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+                WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
         
@@ -107,19 +107,20 @@ function get_shopping_cart($properties) {
                 discount_offer_id,
                 offline_payment_allowed
              FROM orders
-             WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
-    $special_offer_code = $row['special_offer_code'];
-    $reference_code = $row['reference_code'];
-    $discount_offer_id = $row['discount_offer_id'];
-    $offline_payment_allowed = $row['offline_payment_allowed'];
+    // $row is null when there is no order in the session yet.
+    $special_offer_code = isset($row['special_offer_code']) ? $row['special_offer_code'] : '';
+    $reference_code = isset($row['reference_code']) ? $row['reference_code'] : '';
+    $discount_offer_id = isset($row['discount_offer_id']) ? $row['discount_offer_id'] : '';
+    $offline_payment_allowed = isset($row['offline_payment_allowed']) ? $row['offline_payment_allowed'] : '';
 
     if ($layout_type == 'system') {
     
         // get all ship tos
-        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . escape($_SESSION['ecommerce']['order_id']) . "' ORDER BY ship_to_id";
+        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "' ORDER BY ship_to_id";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         $ship_tos = array();
@@ -655,7 +656,7 @@ function get_shopping_cart($properties) {
                         products.submit_form_quantity_type
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
-                    WHERE order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "' AND order_items.ship_to_id = '$ship_to_id'
+                    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '$ship_to_id'
                     ORDER BY order_items.id";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
@@ -1457,7 +1458,7 @@ function get_shopping_cart($properties) {
             }
             
             // if there is an order discount from an offer
-            if ($_SESSION['ecommerce']['order_discount']) {
+            if (!empty($_SESSION['ecommerce']['order_discount'])) {
                 $output_subtotal =
                     '<tr class="order_totals data">
                         <td class="mobile_left" colspan="4" style="text-align: right">Subtotal:</td>
@@ -1465,7 +1466,7 @@ function get_shopping_cart($properties) {
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
                 
-                $order_discount = $_SESSION['ecommerce']['order_discount'] / 100;
+                $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
                 
                 $output_discount =
                     '<tr class="order_totals data">
@@ -1700,7 +1701,7 @@ function get_shopping_cart($properties) {
     // Otherwise the layout is custom.
     } else {
 
-        $order_id = $_SESSION['ecommerce']['order_id'];
+        $order_id = $_SESSION['ecommerce']['order_id'] ?? '';
 
         // Prepare attributes that are used for all forms (e.g. pending, quick add, cart).
         $attributes =
@@ -2366,6 +2367,9 @@ function get_shopping_cart($properties) {
 
                     // If calendars is enabled and this order item is for a calendar event,
                     // then get calendar event info like the name and date & time.
+                    // The layout templates always read this key, so it has to exist on every item.
+                    $item['calendar_event'] = false;
+
                     if (CALENDARS and $item['calendar_event_id']) {
                         $item['calendar_event'] = get_calendar_event($item['calendar_event_id'], $item['recurrence_number']);
                     }
@@ -2836,7 +2840,7 @@ function get_shopping_cart($properties) {
                 // If there is an offer applied to this ship to
                 // and offer has not already been added to applied offers array,
                 // then store this offer as an applied offer
-                if ($recipient['offer_id'] and !in_array($recipient['offer_id'], $applied_offers)) {
+                if (!empty($recipient['offer_id']) and !in_array($recipient['offer_id'], $applied_offers)) {
                     $applied_offers[] = $recipient['offer_id'];
                 }
 
@@ -2890,7 +2894,7 @@ function get_shopping_cart($properties) {
 
             $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 
-            $discount = $_SESSION['ecommerce']['order_discount'] / 100;
+            $discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
 
             // If there is a discount, then prepare discount info and total.
             if ($discount) {

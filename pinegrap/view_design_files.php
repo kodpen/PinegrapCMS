@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -41,7 +41,13 @@ if (isset($_REQUEST['order'])) {
 $output_clear_button = '';
 
 
-switch ($_SESSION['software']['design']['view_design_files']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['design']['view_design_files']['sort']) == false) {
+    $_SESSION['software']['design']['view_design_files']['sort'] = '';
+}
+
+switch (($_SESSION['software']['design']['view_design_files']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'name';
         break;
@@ -71,8 +77,8 @@ switch ($_SESSION['software']['design']['view_design_files']['sort']) {
         break;
 }
 
-if ($_SESSION['software']['design']['view_design_files']['order']) {
-    $asc_desc = $_SESSION['software']['design']['view_design_files']['order'];
+if (!empty($_SESSION['software']['design']['view_design_files']['order'])) {
+    $asc_desc = ($_SESSION['software']['design']['view_design_files']['order'] ?? '');
 } elseif ($sort_column == 'timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['design']['view_design_files']['order'] = 'desc';
@@ -277,13 +283,13 @@ pg_page_shell(
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
                                     <th>' . lang('Thumbnail') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Type'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Size'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Optimized'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Folder'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Description'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_design_files']['sort'], $_SESSION['software']['design']['view_design_files']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Optimized'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_design_files']['sort'] ?? ''), ($_SESSION['software']['design']['view_design_files']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

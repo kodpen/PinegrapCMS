@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -313,15 +313,15 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name']) . "',
-                '" . escape($_POST['type']) . "',
+                '" . escape($_POST['name'] ?? '') . "',
+                '" . escape($_POST['type'] ?? '') . "',
                 '" . escape($discount_order_amount) . "',
                 '" . escape($discount_order_percentage) . "',
-                '" . escape($_POST['discount_product_product_id']) . "',
+                '" . escape($_POST['discount_product_product_id'] ?? '') . "',
                 '" . escape($discount_product_amount) . "',
                 '" . escape($discount_product_percentage) . "',
-                '" . escape($_POST['add_product_product_id']) . "',
-                '" . escape($_POST['add_product_quantity']) . "',
+                '" . escape($_POST['add_product_product_id'] ?? '') . "',
+                '" . escape($_POST['add_product_quantity'] ?? '') . "',
                 '" . escape($add_product_discount_amount) . "',
                 '" . escape($add_product_discount_percentage) . "',
                 '" . escape($discount_shipping_percentage) . "',
@@ -334,7 +334,7 @@ if (!$_POST) {
     // loop through all shipping methods in order to add database records
     foreach ($shipping_methods as $shipping_method) {
         // if shipping method was selected, then add database record for shipping method for this offer action
-        if ($_POST['shipping_method_' . $shipping_method['id']] == 1) {
+        if (($_POST['shipping_method_' . $shipping_method['id']] ?? '') == 1) {
             $query =
                 "INSERT INTO offer_actions_shipping_methods_xref (
                     offer_action_id,

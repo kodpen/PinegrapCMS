@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -376,7 +376,8 @@ if (!$_POST) {
 
             $style_id = mysqli_insert_id(db::$con);
 
-            // Create the page.
+            // Create the page. The keywords scraped out of the imported markup go into
+            // the promote on keyword field, because that is the one a page still reads.
             db(
                 "INSERT INTO page (
                     page_name,
@@ -384,7 +385,7 @@ if (!$_POST) {
                     page_style,
                     page_title,
                     page_meta_description,
-                    page_meta_keywords,
+                    page_search_keywords,
                     page_user,
                     page_timestamp,
                     comments_disallow_new_comment_message)
@@ -394,7 +395,7 @@ if (!$_POST) {
                     '$style_id',
                     '" . escape($title) . "',
                     '" . escape($meta_description) . "',
-                    '" . escape($meta_keywords) . "',
+                    '" . escape(merge_keyword_lists($meta_keywords, '')) . "',
                     '" . USER_ID . "',
                     UNIX_TIMESTAMP(),
                     'We\'re sorry. New comments are no longer being accepted.')");

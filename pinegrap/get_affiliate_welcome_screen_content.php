@@ -12,14 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 function get_affiliate_welcome_screen_content() {
 
     // get commission rate for affiliate
-    $query = "SELECT affiliate_commission_rate FROM contacts WHERE affiliate_code = '" . escape($_SESSION['software']['affiliate_welcome']['affiliate_code']) . "'";
+    $query = "SELECT affiliate_commission_rate FROM contacts WHERE affiliate_code = '" . escape(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? '')) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
@@ -34,8 +34,8 @@ function get_affiliate_welcome_screen_content() {
     
     $output =
         '<div>
-            Affiliate Code: ' . h($_SESSION['software']['affiliate_welcome']['affiliate_code']) . '<br />
-            Affiliate Link: <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode($_SESSION['software']['affiliate_welcome']['affiliate_code'])) . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode($_SESSION['software']['affiliate_welcome']['affiliate_code'])) . '</a><br>
+            Affiliate Code: ' . h(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? '')) . '<br />
+            Affiliate Link: <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '</a><br>
             Affiliate Commission Rate: ' . $affiliate_commission_rate . '%
         </div>';
 

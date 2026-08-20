@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -65,8 +65,8 @@ function get_login($properties = array()) {
             $output_send_to = '';
 
             // If there is a send to, then prepare it.
-            if ((isset($_GET['send_to']) == TRUE) && ($_GET['send_to'] != '')) {
-                $output_send_to = h(urlencode($_GET['send_to']));
+            if ((isset($_GET['send_to']) == TRUE) && (($_GET['send_to'] ?? '') != '')) {
+                $output_send_to = h(urlencode(($_GET['send_to'] ?? '')));
 
             // Otherwise there is not a send to, so create send to based on the screen that the visitor is currently on.
             } else {
@@ -91,7 +91,7 @@ function get_login($properties = array()) {
             $form->output_errors() . '
             <form name="login" action="' . $action_url . '" method="post">
                 ' . get_token_field() . '
-                <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                 <input type="hidden" name="require_cookies" value="true" />
                 <table style="margin-bottom: 1em">
                     <tr>
@@ -154,14 +154,14 @@ function get_login($properties = array()) {
 
         $system =
             get_token_field() . '
-            <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '">
+            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
             <input type="hidden" name="require_cookies" value="true">';
 
         if (FORGOT_PASSWORD_LINK) {
             $forgot_password_url = PATH . SOFTWARE_DIRECTORY . '/forgot_password.php?send_to=';
 
-            if ($_GET['send_to'] != '') {
-                $forgot_password_url .= urlencode($_GET['send_to']);
+            if (($_GET['send_to'] ?? '') != '') {
+                $forgot_password_url .= urlencode(($_GET['send_to'] ?? ''));
             } else {
                 $forgot_password_url .= urlencode(REQUEST_URL);
             }

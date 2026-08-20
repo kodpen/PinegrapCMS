@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -43,6 +43,15 @@ if (!$_POST) {
         $output_style = lang('Default') . ' (' . lang('inherit') . ')';
         $output_mobile_style = lang('Default') . ' (' . lang('inherit') . ')';
     }
+
+    // Only set for non designers below, but always output in the form further down.
+    $layout_type_custom_label_class = '';
+    $layout_type_custom_label_title = '';
+    $layout_type_custom_option_disabled = '';
+
+    // NOTE: $page_folder is never assigned anywhere in this script, so the folder picklist has
+    // no preselected folder.  Empty keeps that behaviour and stops the warning.
+    $page_folder = '';
 
     // If the user is not an admin or designer, then disable custom layout type option.
     if (USER_ROLE > 1) {
@@ -187,6 +196,28 @@ if (!$_POST) {
             '<div class="col-12 col-md-12 col-lg-6 my-2" id="search_results_search_folder_id_row" style="display: none">
                 <label for="search_results_search_folder_id" class="form-label">' . lang('Search Folder') . '</label>
                 <select name="search_results_search_folder_id" id="search_results_search_folder_id" class="form-select"  >' . select_folder() . '</select>
+            </div>';
+    }
+
+    // Search engine indexing. The block is only built where the columns behind
+    // it exist: a switch that saves nothing is worse than no switch at all.
+    // A new page starts open to search engines, so both switches start off and
+    // nofollow starts unavailable, the way the master switch leaves it.
+    $output_noindex_rows = '';
+
+    if (pg_page_noindex_ready() == TRUE) {
+        $output_noindex_rows =
+            '<div class="col-12 my-3" id="noindex_row">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="noindex" name="noindex" value="1">
+                    <label class="form-check-label" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
+                </div>
+                <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
+                <div class="form-check form-switch mt-3 ms-4">
+                    <input class="form-check-input" type="checkbox" id="nofollow" name="nofollow" value="1" disabled="disabled">
+                    <label class="form-check-label" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
+                </div>
+                <div class="form-text ms-4">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
             </div>';
     }
 
@@ -810,7 +841,7 @@ if (!$_POST) {
                 <select class="form-select" name="order_preview_card_verification_number_page_id" id="order_preview_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page() . '</select>
             </div>
             ' . $output_order_preview_offline_payment_rows . '
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_terms_page_id_row" style="' . $express_order_terms_paorder_preview_terms_page_id_row_stylege_id_row_style . '">
+            <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_terms_page_id_row" style="' . $order_preview_terms_page_id_row_style . '">
                 <label for="order_preview_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
                 <select class="form-select" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page() . '</select>
             </div>
@@ -1579,6 +1610,7 @@ if (!$_POST) {
         }
         
         $calendar_view_calendar_check_boxes = '';
+        $calendar_event_view_calendar_check_boxes = '';
         $calendar_event_view_calendars_check_boxes = '';
         
         // loop through all calendars in order to check if user has access to calendar and if calendar should be checked
@@ -1832,19 +1864,20 @@ if (!$_POST) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 my-3" id="sitemap_row">
+                                <div class="col-12 my-3">
                                     <div class="card my-4">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                                             ' . lang('Search Engine Optimization') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 my-2">
+                                                <div class="col-12 my-2" id="sitemap_row">
                                                     <div class="form-check form-switch">
                                                         <input class="form-check-input" type="checkbox" id="sitemap" name="sitemap" value="1" checked="checked">
                                                         <label class="form-check-label" for="sitemap">' . lang('Include in Site Map?') . '</label>
                                                     </div>
                                                 </div>
+                                                ' . $output_noindex_rows . '
                                             </div>
                                         </div>
                                     </div>
@@ -1862,7 +1895,11 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    </main>
+    <script>
+    // Indexing switch dependencies — logic in assets/backend.src.js
+    bindPageIndexingSwitches();
+    </script>' .
         output_footer();
     
     $liveform_add_page->unmark_errors('add_page');
@@ -1908,7 +1945,7 @@ if (!$_POST) {
     
     // if page is a custom form, check to see if there is another page with this same form name
     if ($_POST['type'] == 'custom form') {
-        $query = "SELECT id FROM custom_form_pages WHERE form_name = '" . escape($_POST['custom_form_form_name']) . "'";
+        $query = "SELECT id FROM custom_form_pages WHERE form_name = '" . escape($_POST['custom_form_form_name'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // if there is another page with this form name, output error
@@ -1929,8 +1966,8 @@ if (!$_POST) {
             mobile_style_id,";
 
         $sql_style_values =
-            "'" . escape($_POST['style']) . "',
-            '" . escape($_POST['mobile_style_id']) . "',";
+            "'" . escape($_POST['style'] ?? '') . "',
+            '" . escape($_POST['mobile_style_id'] ?? '') . "',";
     }
     
     // if the user has access to the selected page type, then set page type to selected page type
@@ -1978,7 +2015,50 @@ if (!$_POST) {
         $layout_type = 'system';
     }
     
+    // Resolved into a variable rather than read straight into the query,
+    // because the indexing switch below can override it. The cast also keeps an
+    // unchecked checkbox - absent from the POST entirely - out of the TINYINT
+    // column as an empty string.
+    $sitemap = ((($_POST['sitemap'] ?? '') == 1) ? 1 : 0);
+
+    $noindex = 0;
+    $nofollow = 0;
+
+    // nofollow qualifies the noindex directive and is never emitted on its own,
+    // so it is only stored while the page is closed to search engines.
+    if (($_POST['noindex'] ?? '') == 1) {
+        $noindex = 1;
+
+        if (($_POST['nofollow'] ?? '') == 1) {
+            $nofollow = 1;
+        }
+    }
+
+    // A page that is closed to search engines has no business in the site map.
+    if ($noindex == 1) {
+        $sitemap = 0;
+    }
+
+    $sql_noindex_columns = "";
+    $sql_noindex_values = "";
+
+    if (pg_page_noindex_ready() == TRUE) {
+        $sql_noindex_columns =
+            "noindex,
+            nofollow,";
+
+        $sql_noindex_values =
+            "'" . $noindex . "',
+            '" . $nofollow . "',";
+    }
+
     // insert row into page table
+    //
+    // page_home and page_search are literals: a new page is never the home page
+    // and starts outside the site search. page_search is an INT column, so its
+    // literal has to be a number - a server running with STRICT_TRANS_TABLES,
+    // the default since MySQL 5.7 and MariaDB 10.2, rejects an empty string for
+    // it and page creation fails on the query.
     $query =
         "INSERT INTO page (
             page_name,
@@ -1993,25 +2073,25 @@ if (!$_POST) {
             $sql_style_fields
             page_title,
             page_meta_description,
-            page_meta_keywords,
             comments_disallow_new_comment_message,
+            $sql_noindex_columns
             sitemap)
         VALUES (
             '" . escape($name) . "',
-            '" . escape($_POST['folder']) . "',
+            '" . escape($_POST['folder'] ?? '') . "',
             '" . escape($type) . "',
             '" . e($layout_type) . "',
             '0',
-            '',
+            '0',
             '',
             UNIX_TIMESTAMP(),
             '$user[id]',
             $sql_style_values
             '',
             '',
-            '',
             'We\'re sorry. New comments are no longer being accepted.',
-            '" . escape($_POST['sitemap']) . "')";
+            $sql_noindex_values
+            '" . $sitemap . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $page_id = mysqli_insert_id(db::$con);
     
@@ -2300,7 +2380,7 @@ if (!$_POST) {
             // loop through all of the form list views in order to add them to the database if necessary
             foreach ($form_list_views as $form_list_view) {
                 // if the user has edit access to the form list view and the user selected it, then add it to the data
-                if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == TRUE) && ($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id']] == 1)) {
+                if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == TRUE) && (($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id']] ?? '') == 1)) {
                     $query =
                         "INSERT INTO form_view_directories_form_list_views_xref (
                             form_view_directory_page_id,

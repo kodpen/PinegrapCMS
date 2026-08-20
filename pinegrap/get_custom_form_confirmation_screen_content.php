@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -25,7 +25,7 @@ function get_custom_form_confirmation_screen_content($properties)
     $form_id = $properties['form_id'];
     
     // if the user came from the control panel, then return placeholder content
-    if ((isset($_GET['from']) == true) && ($_GET['from'] == 'control_panel')) {
+    if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
         return '<p class="software_notice">The submitted data for the Custom Form will be displayed here when this page is linked from a Custom Form Page Type.</p>';
     }
 

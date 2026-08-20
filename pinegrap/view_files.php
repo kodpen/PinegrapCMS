@@ -12,11 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 
 $user = validate_user();
 validate_area_access($user, 'user');
@@ -65,7 +68,13 @@ if (isset($_REQUEST['order'])) {
     $_SESSION['software']['files']['order'] = $_REQUEST['order'];
 }
 
-switch ($_SESSION['software']['files']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['files']['sort']) == false) {
+    $_SESSION['software']['files']['sort'] = '';
+}
+
+switch (($_SESSION['software']['files']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'name';
         break;
@@ -95,8 +104,8 @@ switch ($_SESSION['software']['files']['sort']) {
         break;
 }
 
-if ($_SESSION['software']['files']['order']) {
-    $asc_desc = $_SESSION['software']['files']['order'];
+if (!empty($_SESSION['software']['files']['order'])) {
+    $asc_desc = ($_SESSION['software']['files']['order'] ?? '');
 } elseif ($sort_column == 'timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['files']['order'] = 'desc';
@@ -551,13 +560,13 @@ echo
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                         ' . $output_thumbnail_heading_cell . '
-                                        <th>' . get_column_heading(lang('Name'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Type'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Size'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Optimized'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Folder'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Description'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['files']['sort'], $_SESSION['software']['files']['order'], $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Type'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Size'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Optimized'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['files']['sort'] ?? ''), ($_SESSION['software']['files']['order'] ?? ''), $output_filter_for_links) . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>

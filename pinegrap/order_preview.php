@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,7 +23,7 @@ include('init.php');
 // if this is not the request that PayPal Express Checkout returns,
 // then validate token field.  PayPal Express Checkout uses "token" for a query string parameter,
 // like we do, so that is why we can't validate the token.  This should not expose any major problem.
-if ($_GET['mode'] != 'paypal_express_checkout_return' and $_GET['mode'] != 'iyzipay_threedsecure_return') {
+if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
     //fix samesite error while 3dsecure
     // if php version above 7.3+
     if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
@@ -41,7 +41,7 @@ if ($_GET['mode'] != 'paypal_express_checkout_return' and $_GET['mode'] != 'iyzi
     }
 
     // Pay With Iyzico callback is a cross-site POST from iyzico and does not include the CSRF token field
-    if ($_GET['mode'] != 'pay_with_iyzico_return') {
+    if (($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         validate_token_field();
     }
 }
@@ -66,7 +66,7 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                 FROM order_items
                 LEFT JOIN products ON order_items.product_id = products.id
                 WHERE
-                    (order_items.order_id = '" . $_SESSION['ecommerce']['order_id'] . "')
+                    (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
                     AND products.gift_card = '0'") == 0
         ) {
             $liveform->assign_field_value('gift_card_code', '');
@@ -79,7 +79,7 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
         $gift_card_code = preg_replace('/[^A-Za-z0-9]/', '', $liveform->get_field_value('gift_card_code'));
 
         // check if the gift card has already been added to the order
-        $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = '" . $_SESSION['ecommerce']['order_id'] . "') AND (code = '" . escape($gift_card_code) . "')";
+        $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (code = '" . escape($gift_card_code) . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
@@ -183,7 +183,7 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                     givex)
                 VALUES (
                     '" . $gift_card_id . "',
-                    '" . $_SESSION['ecommerce']['order_id'] . "',
+                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
                     '" . escape($gift_card_code) . "',
                     '" . escape($old_balance) . "',
                     '" . $givex . "')";

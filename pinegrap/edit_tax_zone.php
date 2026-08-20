@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -154,16 +154,16 @@ if (!$_POST) {
     validate_token_field();
 
     // delete all existing country/state associations first (for both save and delete)
-    $query = "DELETE FROM tax_zones_countries_xref WHERE tax_zone_id = '" . escape($_POST['id']) . "'";
+    $query = "DELETE FROM tax_zones_countries_xref WHERE tax_zone_id = '" . escape($_POST['id'] ?? '') . "'";
     mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-    $query = "DELETE FROM tax_zones_states_xref WHERE tax_zone_id = '" . escape($_POST['id']) . "'";
+    $query = "DELETE FROM tax_zones_states_xref WHERE tax_zone_id = '" . escape($_POST['id'] ?? '') . "'";
     mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // if delete was requested
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
 
-        $query = "DELETE FROM tax_zones WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM tax_zones WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => $_POST['name'])), $_SESSION['sessionusername']);
@@ -171,18 +171,18 @@ if (!$_POST) {
     } else {
 
         $query = "UPDATE tax_zones SET
-                    name = '" . escape($_POST['name']) . "',
-                    tax_rate = '" . escape($_POST['tax_rate']) . "',
+                    name = '" . escape($_POST['name'] ?? '') . "',
+                    tax_rate = '" . escape($_POST['tax_rate'] ?? '') . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         $allowed_countries = isset($_POST['allowed_countries']) ? $_POST['allowed_countries'] : array();
 
         foreach ($allowed_countries as $country_id) {
             if ($country_id) {
-                $query = "INSERT INTO tax_zones_countries_xref (tax_zone_id, country_id) VALUES ('" . escape($_POST['id']) . "', '" . escape($country_id) . "')";
+                $query = "INSERT INTO tax_zones_countries_xref (tax_zone_id, country_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($country_id) . "')";
                 mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }
@@ -191,7 +191,7 @@ if (!$_POST) {
 
         foreach ($allowed_states as $state_id) {
             if ($state_id) {
-                $query = "INSERT INTO tax_zones_states_xref (tax_zone_id, state_id) VALUES ('" . escape($_POST['id']) . "', '" . escape($state_id) . "')";
+                $query = "INSERT INTO tax_zones_states_xref (tax_zone_id, state_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($state_id) . "')";
                 mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }

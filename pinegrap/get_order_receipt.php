@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1025,8 +1025,8 @@ function get_order_receipt($properties) {
         $grand_total = $subtotal;
 
         // if there is an order discount from an offer, prepare order discount
-        if ($_SESSION['ecommerce']['order_discount']) {
-            $order_discount = $_SESSION['ecommerce']['order_discount'] / 100;
+        if (!empty($_SESSION['ecommerce']['order_discount'])) {
+            $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
             
             $grand_total = $subtotal - $order_discount;
             
@@ -1443,14 +1443,14 @@ function get_order_receipt($properties) {
 
         // If a user account was created via the auto-registration feature,
         // then show user account info.
-        if ($_SESSION['software']['auto_registration']['email_address'] != '') {
+        if (($_SESSION['software']['auto_registration']['email_address'] ?? '') != '') {
             $output_auto_registration =
                 '<div class="account heading" style="margin-top: 1em">New Account</div>
                 <div class="account data">
                     <p>We have created a new account for you so you can view your orders on our site. You can find your login info below.</p>
                     <p>
-                        Email: ' . h($_SESSION['software']['auto_registration']['email_address']) . '<br>
-                        Password: ' . h($_SESSION['software']['auto_registration']['password']) . '
+                        Email: ' . h(($_SESSION['software']['auto_registration']['email_address'] ?? '')) . '<br>
+                        Password: ' . h(($_SESSION['software']['auto_registration']['password'] ?? '')) . '
                     </p>
                 </div>';
         }
@@ -1627,6 +1627,11 @@ function get_order_receipt($properties) {
         }
 
         foreach ($recipients as $key => $recipient) {
+
+            // The layout templates always read these, and 'name' is also read while it is being
+            // built below, so they have to exist on every recipient.
+            $recipient['name'] = '';
+            $recipient['form_data'] = false;
 
             $recipient['shipping'] = false;
 
@@ -1885,6 +1890,9 @@ function get_order_receipt($properties) {
 
                 // If calendars is enabled and this order item is for a calendar event,
                 // then get calendar event info like the name and date & time.
+                // The layout templates always read this key, so it has to exist on every item.
+                $item['calendar_event'] = false;
+
                 if (CALENDARS and $item['calendar_event_id']) {
                     $item['calendar_event'] = get_calendar_event($item['calendar_event_id'], $item['recurrence_number']);
                 }
@@ -2025,7 +2033,7 @@ function get_order_receipt($properties) {
             // If there is an offer applied to this ship to
             // and offer has not already been added to applied offers array,
             // then store this offer as an applied offer
-            if ($recipient['offer_id'] and !in_array($recipient['offer_id'], $applied_offers)) {
+            if (!empty($recipient['offer_id']) and !in_array($recipient['offer_id'], $applied_offers)) {
                 $applied_offers[] = $recipient['offer_id'];
             }
 
@@ -2036,7 +2044,7 @@ function get_order_receipt($properties) {
 
         $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 
-        $discount = $_SESSION['ecommerce']['order_discount'] / 100;
+        $discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
 
         // If there is a discount, then prepare discount info and total.
         if ($discount) {
@@ -2313,11 +2321,13 @@ function get_order_receipt($properties) {
         }
 
         $auto_registration = false;
+        $auto_registration_email_address = '';
+        $auto_registration_password = '';
 
-        if ($_SESSION['software']['auto_registration']['email_address'] != '') {
+        if (!empty($_SESSION['software']['auto_registration']['email_address'])) {
             $auto_registration = true;
-            $auto_registration_email_address = $_SESSION['software']['auto_registration']['email_address'];
-            $auto_registration_password = $_SESSION['software']['auto_registration']['password'];
+            $auto_registration_email_address = ($_SESSION['software']['auto_registration']['email_address'] ?? '');
+            $auto_registration_password = ($_SESSION['software']['auto_registration']['password'] ?? '');
         }
 
         $currency = false;

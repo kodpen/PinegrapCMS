@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -40,7 +40,8 @@ $keys_and_values = '';
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -52,7 +53,13 @@ if (
     $screen = 1;
 }
 
-switch ($_SESSION['software']['ecommerce']['view_order_reports']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_order_reports']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_order_reports']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'order_reports.name';
         break;
@@ -101,7 +108,7 @@ $query =
     FROM order_reports
     LEFT JOIN user AS created_user ON order_reports.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON order_reports.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_order_reports']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -175,9 +182,9 @@ echo
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['ecommerce']['view_order_reports']['sort'], $_SESSION['software']['ecommerce']['view_order_reports']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_order_reports']['sort'], $_SESSION['software']['ecommerce']['view_order_reports']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_order_reports']['sort'], $_SESSION['software']['ecommerce']['view_order_reports']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_order_reports']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_order_reports']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

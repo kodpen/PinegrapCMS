@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1912,7 +1912,7 @@ if (!$_POST) {
     validate_token_field();
     
     // if the user choose to save the file, then process a file save
-    if ($_POST['submit_button'] == 'Save') {
+    if (($_POST['submit_button'] ?? '') == 'Save') {
 
         // convert the post data into an array that contains the css rule's selector, property and value
         $new_css_properties = prepare_theme_designer_post_data($_POST);
@@ -1961,17 +1961,17 @@ if (!$_POST) {
                     
                     // if this is an ad region, then remove the properties from for this module
                     if ($area == 'ad_region') {
-                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id']) . "') AND (region_type = 'ad') AND (region_name = '" . escape($object) . "') AND (module = '" . escape($module) . "'))";
+                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id'] ?? '') . "') AND (region_type = 'ad') AND (region_name = '" . escape($object) . "') AND (module = '" . escape($module) . "'))";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     
                     // else if this is a menu region, then remove the properties from for this module
                     } elseif ($area == 'menu_region') {
-                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id']) . "') AND (region_type = 'menu') AND (region_name = '" . escape($object) . "') AND (module = '" . escape($module) . "'))";
+                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id'] ?? '') . "') AND (region_type = 'menu') AND (region_name = '" . escape($object) . "') AND (module = '" . escape($module) . "'))";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         
                     // else delete all of the rules from the database for this module
                     } else {
-                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id']) . "') AND (area = '" . escape($area) . "') AND (`row` = '" . escape($object_row) . "') AND (col = '" . escape($object_column) . "') AND (module = '" . escape($module) . "'))";
+                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id'] ?? '') . "') AND (area = '" . escape($area) . "') AND (`row` = '" . escape($object_row) . "') AND (col = '" . escape($object_column) . "') AND (module = '" . escape($module) . "'))";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
                     
@@ -1995,7 +1995,7 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($_POST['id']) . "',
+                                            '" . escape($_POST['id'] ?? '') . "',
                                             '" . escape($area) . "',
                                             '" . escape($object_row) . "',
                                             '" . escape($object_column) . "',
@@ -2022,7 +2022,7 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($_POST['id']) . "',
+                                            '" . escape($_POST['id'] ?? '') . "',
                                             '" . escape($area) . "',
                                             '" . escape($object_row) . "',
                                             '" . escape($object_column) . "',
@@ -2047,7 +2047,7 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($_POST['id']) . "',
+                                            '" . escape($_POST['id'] ?? '') . "',
                                             '" . escape($area) . "',
                                             '" . escape($object_row) . "',
                                             '" . escape($object_column) . "',
@@ -2065,7 +2065,7 @@ if (!$_POST) {
         }
         
         // get filename from the database
-        $query = "SELECT name FROM files WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT name FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_array($result);
         $file_name = $row['name'];
@@ -2087,7 +2087,7 @@ if (!$_POST) {
             SET 
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if the edit theme file script name is in the send to, then add a notice
@@ -2109,7 +2109,7 @@ if (!$_POST) {
         exit();
         
     // else if the user selected to save a new copy, then save a new copy
-    } elseif ($_POST['submit_button'] == 'Duplicate') {
+    } elseif (($_POST['submit_button'] ?? '') == 'Duplicate') {
         
         // get the file data from the database
         $query =
@@ -2119,7 +2119,7 @@ if (!$_POST) {
                 description,
                 theme
             FROM files
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_array($result);
         $file_name = $row['name'];
@@ -2322,7 +2322,7 @@ if (!$_POST) {
                 style_id,
                 device_type
             FROM preview_styles
-            WHERE theme_id = '" . escape($_POST['id']) . "'");
+            WHERE theme_id = '" . escape($_POST['id'] ?? '') . "'");
         
         foreach ($preview_styles as $preview_style) {
             db(

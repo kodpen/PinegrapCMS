@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -734,8 +734,8 @@ function get_order_receipt_in_plain_text($order_id)
     $output_discount = '';
 
     // if there is an order discount from an offer, prepare order discount
-    if ($_SESSION['ecommerce']['order_discount']) {
-        $order_discount = $_SESSION['ecommerce']['order_discount'] / 100;
+    if (!empty($_SESSION['ecommerce']['order_discount'])) {
+        $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
         
         $grand_total = $subtotal - $order_discount;
         
@@ -1128,7 +1128,7 @@ function get_order_receipt_in_plain_text($order_id)
 
     // If a user account was created via the auto-registration feature,
     // then show user account info.
-    if ($_SESSION['software']['auto_registration']['email_address'] != '') {
+    if (($_SESSION['software']['auto_registration']['email_address'] ?? '') != '') {
         $output_auto_registration =
             "\n" .
             "\n" .
@@ -1136,8 +1136,8 @@ function get_order_receipt_in_plain_text($order_id)
             '-------------------------' . "\n" .
             'We have created a new account for you so you can view your orders on our site. You can find your login info below.' . "\n" .
             "\n" .
-            'Email: ' . $_SESSION['software']['auto_registration']['email_address'] . "\n" .
-            'Password: ' . $_SESSION['software']['auto_registration']['password'];
+            'Email: ' . ($_SESSION['software']['auto_registration']['email_address'] ?? '') . "\n" .
+            'Password: ' . ($_SESSION['software']['auto_registration']['password'] ?? '');
     }
     
     return

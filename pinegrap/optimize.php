@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -55,10 +55,21 @@ if ($response['status'] == 'error') {
     output_error(h($response['message']));
 }
 
-if ($_GET['send_to'] == PATH . SOFTWARE_DIRECTORY . '/view_design_files.php') {
+// The File Management widget sends the operator here from the dashboard, not
+// from a file list, so put them back on the dashboard instead of leaving them
+// in view_files.php with no memory of where they started.
+//
+// "welcome" is a fixed keyword, not a URL, and it is turned into a hard-coded
+// address below — nothing arriving in the query string can steer the redirect.
+if (($_GET['send_to'] ?? '') == 'welcome') {
+    $form = new liveform('welcome');
+    $form->add_notice(h($response['message']));
+    go(PATH . SOFTWARE_DIRECTORY . '/welcome.php');
+
+} elseif (($_GET['send_to'] ?? '') == PATH . SOFTWARE_DIRECTORY . '/view_design_files.php') {
     $form = new liveform('view_design_files');
     $form->add_notice(h($response['message']));
-    go($_GET['send_to']);
+    go(($_GET['send_to'] ?? ''));
 
 } else {
     $form = new liveform('view_files');

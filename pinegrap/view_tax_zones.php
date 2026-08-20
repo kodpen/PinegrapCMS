@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,7 +24,13 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_tax_zones');
 
-switch ($_SESSION['software']['ecommerce']['view_tax_zones']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_tax_zones']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_tax_zones']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'tax_zones.name';
         break;
@@ -58,7 +64,7 @@ $tax_zones = db_items(
         tax_zones.timestamp AS last_modified_timestamp
     FROM tax_zones
     LEFT JOIN user ON tax_zones.user = user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_tax_zones']['order']));
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')));
 
 $output_rows = '';
 
@@ -110,9 +116,9 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $_SESSION['software']['ecommerce']['view_tax_zones']['sort'], $_SESSION['software']['ecommerce']['view_tax_zones']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Tax Rate'), $_SESSION['software']['ecommerce']['view_tax_zones']['sort'], $_SESSION['software']['ecommerce']['view_tax_zones']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_tax_zones']['sort'], $_SESSION['software']['ecommerce']['view_tax_zones']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Tax Rate'), ($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_tax_zones']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_tax_zones']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

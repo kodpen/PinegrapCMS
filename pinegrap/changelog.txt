@@ -19,6 +19,491 @@
 
 
 
+  2026.4.3
+  ==========================================================
+
+  [YENİ] Arama Motorlarına Kapat. Sayfa ekranındaki (ve
+         Görsel Editör'ün sayfa ayarları panelindeki) yeni
+         anahtar açıldığında o sayfa "noindex" etiketiyle
+         sunulur, robots.txt dosyasına engelleme satırı
+         eklenir ve sayfa site haritasından çıkarılır.
+         Sayfaya bağlı ürün, ürün grubu ve form adresleri de
+         site haritasından birlikte düşer. Başka bir sayfanın
+         içine widget olarak yerleştirdiğiniz liste
+         sayfaları ve site arama sayfası için düşünüldü:
+         bunlar zaten dizindeki içeriğin kopyasıdır ve arama
+         motorunun tarama bütçesini boşa harcar.
+
+         Anahtarın altındaki ikinci anahtar bağlantıları da
+         kapatır ("nofollow"). Kapalı bırakırsanız sayfa
+         dizine girmez ama içindeki bağlantılar taranmaya
+         devam eder — blog listesi widget'ı için genellikle
+         istediğiniz budur. Bağlantılar zaten başka bir
+         sayfada da varsa açın.
+
+         NOT robots.txt ile engellenen bir sayfa taranmaz,
+         dolayısıyla üzerindeki noindex etiketi de okunmaz.
+         Anahtarı sayfa arama sonuçlarına girmeden önce
+         kullanın; hâlihazırda listelenen bir sayfanın
+         sonuçlardan düşmesi zaman alabilir.
+
+  [DÜZELTME] Yeni sayfa eklenirken "Query failed" hatası.
+         Kayıt sorgusu, site aramasını kapalı tutan alana
+         sayı yerine boş metin yazıyordu. MySQL 5.7 ve
+         MariaDB 10.2'den beri varsayılan olan katı kip bunu
+         reddediyor ve sayfa hiç oluşturulamıyordu.
+
+  [ŞEMA] Sayfa tablosuna iki alan eklendi (noindex,
+         nofollow). Yükseltme veritabanınıza dokunur.
+
+  2026.4.2
+  ==========================================================
+
+  [YENİ] SEO Skoru. Sayfalar, ürünler ve varyant setleri
+         artık 0-100 arası bir skor taşıyor. Skor dört
+         parçadan oluşuyor: İçerik ve Meta (%45), HTML Yapısı
+         (%32), İç Bağlantılar (%13) ve Hız (%10). İçerik ve
+         Meta veritabanı alanlarına bakar — başlık, açıklama,
+         anahtar kelime, metin uzunluğu, yinelenen başlık.
+         HTML Yapısı sayfayı arka planda oluşturup çıkan
+         işaretlemeyi inceler: H1 var mı, başlık sırası
+         atlıyor mu, görsellerin alt metni eksik mi. İç
+         Bağlantılar sayfanın kaç tıkla ana sayfadan
+         ulaşıldığını, kırık bağlantılarını ve site
+         haritasında olup hiçbir yerden bağlantı verilmemiş
+         "yetim" sayfaları bulur. Hız, performans
+         izleyicisinin zaten ölçtüğü sunucu yanıt süresini
+         kullanır.
+
+  [YENİ] Skor listelerde ürün ve sayfa adının altında çubuk
+         olarak, düzenleme ekranlarında ayrı bir kartta
+         görünüyor. Çubuğa tıklayınca yandan açılan ayrıntı
+         paneli hangi denetimin kaç puan kaybettirdiğini
+         tek tek yazıyor.
+
+  [YENİ] Sayfalar ve Ürünler ekranlarına SEO süzgeçleri
+         eklendi: skoru zayıf olanlar, başlığı veya açıklaması
+         eksik olanlar, başlığı bir başka sayfayla aynı
+         olanlar, H1'i olmayanlar, yapı hatası olanlar, alt
+         metni eksik görsel taşıyanlar, kırık iç bağlantısı
+         olanlar ve yetim sayfalar. Sayfalar ekranının üstünde
+         sitenin genel durumunu özetleyen bir şerit var.
+
+  [YENİ] Sayfalar ve Ürünler listelerine "Etki" kolonu
+         eklendi. Son 30 günün ziyaret sayısıyla skoru bir
+         araya getirir: düzeltilmesi en çok işe yarayacak
+         kayıt en üste çıkar. Kolon sıralanabilir. Hiç
+         ziyaret almamış bir kayıtta boş kalır — sıfır
+         yazmaz, çünkü sıfır "etkisi yok" değil "veri yok"
+         demektir.
+
+  [YENİ] İki gecelik iş skoru güncel tutuyor:
+         seo_score_job.php alan denetimlerini, seo_analyze_job.php
+         yapı ve bağlantı denetimini yapıyor. İkisinin de
+         komutu Ayarlar > Cron işleri penceresinde. Sayfalar
+         ekranındaki iki düğmeyle elle de çalıştırılabiliyor:
+         "SEO Skorlarını Yenile" alan denetimlerini saniyeler
+         içinde yeniler, "HTML Yapısını Denetle" ise sayfaları
+         tek tek oluşturup işaretlemelerini inceler — ürünler
+         ve ürün grupları dahil. İkincisi pahalı olduğu için
+         ayrı düğme: bir tıkla yapabildiği kadarını yapıp
+         kalanı sıraya bırakıyor, büyük bir sitede birkaç
+         tıklama gerekebiliyor.
+
+  NOT    Yapı denetimi PHP'nin DOM eklentisini gerektirir.
+         Eklenti kapalıysa Cron işleri penceresinde uyarı
+         çıkar ve skorun yalnız diğer üç parçası hesaplanır.
+
+  NOT    Hız parçası son 30 günde en az 30 ölçüm biriken
+         kayıtlar için hesaplanır; yeni bir sitede bir süre
+         boş kalır, bu kayıtlar hız yüzünden puan kaybetmez.
+         Yönetici araç çubuğuyla bakılan sayfalar ölçüme
+         dahil edilmez. Dış bağlantılar denetlenmez.
+
+  [YENİ] Cron işlerini otomatik yürütme. Ayarlar sayfasındaki
+         yeni "Cron işleri" bölümünde bir ana anahtar, onu
+         açınca da her iş için ayrı bir anahtar ve yanında
+         çalışma sıklığı çıkıyor. Açtığınız işler genel
+         görevle (job.php) birlikte çalışır; sunucunuzda
+         zamanlanmış görev tanımlamanız gereken tek iş genel
+         görev olur. Genel görevin bu sunucuya göre
+         hazırlanmış komutu da aynı bölümde duruyor.
+
+  NOT    Hiçbir iş kendiliğinden açılmıyor. Özellikle e-posta
+         kampanya işi, çalıştığı anda durumu "Gönderilmeye
+         Hazır" olan bütün kampanyaları gönderir; bu yüzden
+         siz seçmeden hiçbir şey değişmez.
+
+  NOT    Her turda tek iş çalışır, en uzun bekleyen önce.
+         Günlük işlerin peş peşe sıraya girdiği zaman
+         diliminde beş dakikalık e-posta kampanya işi en
+         fazla 40 dakika gecikebilir. Gönderim saati sizin
+         için kritikse o işi kendi zamanlanmış görevinde
+         bırakın.
+
+  NOT    Bir işin eski zamanlanmış görevini silmek zorunda
+         değilsiniz. Her iş bittiğinde kendi bitiş zamanını
+         kaydediyor, onu kimin başlattığından bağımsız
+         olarak; kendi takviminde düzenli çalışan bir iş bu
+         yüzden buradan ikinci kez başlatılmıyor. Eski görevi
+         silerseniz de tersi oluyor: kayıt bayatlayınca genel
+         görev işi kendiliğinden devralıyor.
+
+  [YENİ] Canlı Sohbet. Yönetim panelinde sağ alttan açılan
+         sohbet penceresiyle yönetici, tasarımcı ve müdürler
+         birbirine yazabiliyor; Ayarlar'dan açılan site
+         balonuyla da ziyaretçiler size ulaşabiliyor.
+         Balonun teması, rengi, simgesi ve etiketi
+         ayarlanabiliyor. Yazıyor göstergesi, iletildi ve
+         görüldü tikleri, okunmamış rozeti ve bildirim sesi
+         var. Ziyaretçi doğrulaması yapboz şeklinde.
+         Görsel ve dosya eki gönderilebiliyor (varsayılan
+         kapalı; görsel için konuşma başına 5, dosya için 1
+         sınırı var), sohbet silinince ekler de siliniyor.
+         Ziyaretçinin IP adresi panelde görünüyor. Mobilde
+         sohbet penceresi tam ekran açılıyor.
+
+  [YENİ] Sayfalarda iki ayrı anahtar kelime alanı vardı ve
+         her biri işin yarısını yapıyordu. Artık tek alan
+         var: "Öne Çıkarma Anahtar Kelimesi". Site araması,
+         arama dizini, etiket bulutu ve SEO skoru hepsi bu
+         alanı okuyor. Eski "Web Tarayıcı Anahtar Kelimeleri"
+         alanı sayfa özelliklerinden kaldırıldı; içindeki
+         veriler yükseltmede yeni alana taşınıyor, hiçbir
+         etiket bulutu girdisi veya arama önceliği
+         kaybolmuyor.
+
+  NOT    page_meta_keywords kolonu ve API alanı yerinde
+         duruyor, geriye dönük uyumluluk için okunmaya ve
+         yazılmaya devam ediyor; artık hiçbir davranışı
+         yönetmiyor. Ürünlerin kendi anahtar kelime alanı
+         değişmedi.
+
+  [YENİ] "Bekleyen İade" kartı ve süzgeci. Müşteri siparişini
+         iptal ettiğinde ödeme yöntemi otomatik iadeye izin
+         vermiyorsa ya da otomatik iade başarısız olursa,
+         sipariş "iade bekliyor" olarak işaretleniyor. Kart
+         bekleyen iade sayısını, hepsi aynı para birimindeyse
+         toplam tutarı ve en uzun bekleyen beş siparişi
+         gösteriyor; iki günü geçenler kırmızı. Tam liste
+         Siparişler ekranındaki yeni süzgeçte.
+
+  [YENİ] Sipariş ekranında "İade yapıldı olarak işaretle".
+         İade ödeme sağlayıcınızın panelinde yapılıyor, yani
+         Pinegrap onu göremiyor ve bugüne kadar "iade
+         bekliyor" işareti hiç kalkmıyordu. Artık iadeyi
+         yaptıktan sonra siparişte tek tıkla kapatıyorsunuz;
+         isterseniz sağlayıcıdaki referans numarasını da
+         yazabiliyorsunuz.
+
+  [YENİ] "Bakım Durumu" kartı: en son ne zaman yedek alındığı
+         ve kaç yedek olduğu, güncelleme bekleyip beklemediği,
+         veritabanının boyutu. Yedek bir haftayı geçtiyse
+         kırmızı, iki günü geçtiyse sarı. Altında dokuz
+         zamanlanmış görevin son çalışma zamanı var: bir
+         görev önerilen takvimine göre fazla uzun süredir
+         tamamlanmıyorsa kırmızı ve adıyla yazılıyor. Hiç
+         çalışmamış görev kırmızı değil gri — o görev ya
+         kullanılmıyordur ya da cron'u hiç kurulmamıştır,
+         ikisi de arıza değil. Yönetici, tasarımcı ve müdür
+         görür.
+
+  [YENİ] Panodaki "Yönetici Notları" kartının yerini "Dosya
+         Yönetimi" aldı: optimize edilmeye değer ilk on
+         görseli tek tıkla küçültme ve sitenin en büyük beş
+         dosyası.
+
+  [ŞEMA] Not kartının metnini tutan kolon siliniyor. Panodaki
+         notlarınızda saklamak istediğiniz bir şey varsa
+         yükseltmeden önce kopyalayın.
+
+  [YENİ] "Yorum Moderasyonu" kartı: onay bekleyen yorum
+         sayısı ve en yeni beş tanesi. Tıklayınca yorumun
+         düzenleme ekranı açılır. Herkes yalnızca yetkisi
+         olan klasörlerdeki sayfaların yorumlarını görür.
+
+  [YENİ] "Kimler Çevrimiçi" kartı "Çevrimiçi Etkileşim" oldu.
+         Üstte kaç ziyaretçi ve kaç kullanıcı çevrimiçi;
+         altında sırayla yanıt bekleyen sohbetler (en uzun
+         bekleyen en üstte, 15 dakikayı geçen kırmızı),
+         çevrimiçi kullanıcılar ve çevrimdışı kullanıcılar.
+         Bekleyen bir sohbete tıklayınca sohbet penceresi
+         doğrudan o konuşmada açılır; ziyaretçi sohbetleri
+         de dahil.
+
+  NOT    Yeni kartlar panonuza kendiliğinden eklenir;
+         sıralamayı sıfırlamanız gerekmez. Yerlerini her
+         zamanki gibi sürükleyerek değiştirebilirsiniz.
+
+  [GÜVENLİK] Site arama sonuçlarında üyelik korumalı
+         klasördeki sayfaların adı, başlığı ve açıklaması üye
+         olmayan ziyaretçiye de görünüyordu. Sonuç listesinin
+         her bölümü artık öne çıkan bölümle aynı erişim
+         denetimini yapıyor.
+
+  [GÜVENLİK] Ürün silme ekranında seçilen ürün numarası
+         sorguya doğrudan yazılıyordu. Bu ekrana erişimi olan
+         bir kullanıcı veritabanına kendi sorgusunu
+         çalıştırabilirdi. Numara artık tam sayıya
+         çevriliyor.
+
+  [GÜVENLİK] Sayfa ve ürün listelerinde sıralama yönü
+         parametresi doğrudan sorguya giriyordu; artık
+         yalnızca artan ve azalan değerleri kabul ediliyor.
+
+  [DÜZELTME] "Öne Çıkarma Anahtar Kelimesi" alanı yıllardır
+         yalnızca tek kelime girildiğinde çalışıyordu. Alanın
+         tamamı arama sorgusuyla birebir karşılaştırıldığı
+         için, virgülle ayrılmış birden çok kelime yazan
+         hiçbir sayfa aramada öne çıkmıyordu. Artık
+         listedeki her kelime tek tek karşılaştırılıyor.
+
+  [DÜZELTME] Türkçe "I / İ / ı / i" harfleri artık aramada
+         aynı kabul ediliyor. "istanbul" yazan ziyaretçi
+         "İstanbul" etiketli sayfaya ulaşıyor. Aksanlar da
+         önemsenmiyor: "bahce" araması "Bahçe" etiketli
+         sayfayı buluyor.
+
+  [DÜZELTME] Site aramasında yorum araması "_" ve "%"
+         karakterlerini joker olarak yorumluyordu; tek
+         karakterlik bir arama bütün yorumları tarıyordu.
+
+  [DÜZELTME] Arama sayfasına sorgusuz girildiğinde (yani her
+         ziyaretçinin ilk isteğinde) PHP 8 uyarısı sayfaya
+         basılıyordu.
+
+  [DÜZELTME] Ürün ve ürün grubu adres adları artık ASCII'ye
+         çevriliyor. "Çay Bardağı" adresi "Cay_Bardagi"
+         oluyor. Türkçe harf taşıyan bir adres IIS'te
+         çözülüp sunucunun ANSI kod sayfasına yeniden
+         kodlandığı için ürün kendi adresinden açılamıyordu.
+         Köşeli parantez, tire ve alt çizgi korunuyor —
+         çoğaltılan ürünlerin adresine gelen "[1]" ekini
+         bozmamak için.
+
+  NOT    Mevcut ürünlerin adresi kendiliğinden değişmez.
+         Yalnız o ürün kaydedildiğinde düzeltilir; Türkçe
+         harf taşıyan bir adres o anda değişeceği için
+         eskisine verilmiş dış bağlantılar kırılır. Bu tür
+         ürünleriniz varsa kaydetmeden önce kısa bağlantı
+         tanımlamak isteyebilirsiniz.
+
+  [DÜZELTME] Bir işlemde birçok sayfa oluşturulduğunda (arama
+         dizini güncelleme, SEO yapı denetimi) ilk sayfanın
+         stil ayarları sonraki bütün sayfalara uygulanıyordu.
+         Farklı düzen şablonu kullanan sayfalar yanlış
+         şablonla oluşturuluyordu.
+
+  [DÜZELTME] Sayfa çoğaltıldığında öne çıkarma anahtar
+         kelimeleri kopyalanmıyordu, artık kopyalanıyor.
+
+  [DÜZELTME] Toplu düzenlemede anahtar kelimeler
+         değiştirildiğinde etiket bulutu güncellenmiyordu.
+         Sistem düzeni sayfaları ve site taşıma da etiket
+         bulutuna kayıt düşmüyordu; üçü de düzeltildi.
+
+  [DÜZELTME] Etiket alanına yapıştırılmış çok uzun tek parça
+         bir metin (örneğin bir kod bloğu) sayfa düzenleme
+         ekranının düzenini bozuyor, Sayfa Türü kartını tek
+         başına üste itiyordu. Etiket kutusu artık içeriği ne
+         olursa olsun bulunduğu sütunu genişletemez.
+
+  [DÜZELTME] Yapı denetimi, sayfa içi çapa etiketlerini "içi boş
+         bağlantı" sayıyordu. Yukarı çık düğmesinin hedefi
+         olan <a id="top"></a> gibi bir çapanın adresi de
+         metni de yoktur — bağlantı değildir. Skoru düşüren
+         ama kapatmanın tek yolu operatörün kendi düğmesini
+         kırmak olan bir uyarıydı. Adresi olmayan çapalar
+         artık denetime girmiyor.
+
+  NOT    Adresi "#" olan bağlantılar uyarı vermeye devam
+         ediyor. Örneğin şablonla gelen ama doldurulmamış
+         sosyal medya simgeleri gerçekten hiçbir yere
+         gitmiyor; onlar giderilebilir bir eksik.
+
+  [DÜZELTME] Kim Çevrimiçi listesinde herkes 50 saniyede bir
+         çevrimdışı görünüyordu; çevrimiçi eşiği kalp atışıyla
+         uyumlu hale getirildi (120 sn).
+
+  [DÜZELTME] Cron işleri penceresi Linux ve Windows dışındaki
+         sunucularda (macOS, FreeBSD, Solaris) komut
+         kutularının içine PHP uyarısı basıyordu. Bu sistemler
+         artık Linux komutunu görüyor.
+
+  [DÜZELTME] Bekleyen Sevkiyatlar kartı, siparişe takip
+         numarası yazıldığı anda o siparişi gönderilmiş
+         sayıyordu. Stok geç geldiği için iki partide çıkan
+         bir sipariş, ilk parti yola çıkar çıkmaz karttan
+         düşüyor, kalan ürünler hiçbir ekranda görünmüyordu.
+         Ölçüt artık sevk edilen miktar: nakliyeye uygun bir
+         kalemde sevk edilmemiş adet kaldığı sürece sipariş
+         kartta kalır.
+
+  [DÜZELTME] Aynı kart, yazılım gibi kargolanmayan ürünleri
+         de bekleyen sevkiyata sayıyordu. Artık yalnızca
+         nakliyeye uygun kalemler sayılıyor; karışık bir
+         siparişin dijital satırları paket üretmiyor.
+
+  [DÜZELTME] Kart yalnızca son 30 günü gösteriyordu; bir ay
+         önce takılmış bir sevkiyat kimsenin gözüne
+         çarpmadan listeden çıkıyordu. Tarih sınırı
+         kaldırıldı. Dışa aktarılmış siparişler de artık
+         sayılıyor — dışa aktarma, siparişin gönderildiği
+         anlamına gelmiyor.
+
+  [YENİ] Bekleyen Sevkiyatlar kartı yeniden düzenlendi.
+         Üstte bekleyen paket adedi ile tutarı, altında
+         adedi gösteren paket çubuğu, altında da her
+         sevkiyat için kargo firması, sipariş numarası ve o
+         sevkiyatta bekleyen paket adedi yer alıyor. Bir
+         sipariş birden çok adrese gidiyorsa her adres kendi
+         kargo firmasıyla ayrı satırda listeleniyor. Satıra
+         tıklamak siparişi açıyor.
+
+  [YENİ] Panelde widget'lar yüklenirken gösterilen gri
+         yer tutucular, o widget'ın gerçek içeriğiyle aynı
+         yerleşimi alıyor. Önceden hepsi aynı şekildeydi —
+         bir daire ve üç satır — hiçbir widget'a uymuyordu,
+         veri gelince kartın içi gözle görülür şekilde
+         yeniden diziliyordu. 24 widget'ın 20'sinde kutular
+         artık tam olarak aynı yere düşüyor, kalanlarda
+         birkaç piksel. Gösterecek verisi olmayan widget'lar
+         (E-posta Kampanyaları, Yorum Onayı, İade Bekleyen)
+         boş döndüklerinde yine kayıyor; bu, veri gelmeden
+         bilinemiyor.
+
+  [YENİ] Panel kartlarındaki listeler tek bir satır
+         biçimine geçti: yuvarlak köşeli, hafif zeminli bir
+         satır, solunda kartın kendi renginde bir ikon
+         karosu, sağında ok. Son Güncellemeler, Rehber,
+         Kullanıcılar, Stokta Tükenen Ürünler, Formlar,
+         Teklifler, Döviz Kurları, Site Günlükleri,
+         Alışveriş, Trend İçerik, E-Ticaret Özeti ve
+         Bekleyen Sevkiyatlar aynı dili konuşuyor. Trend
+         İçerik gibi çok satır sığdıran kartlar aynı biçimin
+         yarım boyundaki halini kullanıyor, böylece görünen
+         kayıt sayısı azalmadı.
+
+  [YENİ] Satırlara artık klavyeyle ulaşılıyor ve orta tuşla
+         yeni sekmede açılıyorlar. Önceden satır tıklaması
+         JavaScript ile yapılıyordu; şimdi gerçek bağlantı.
+
+  [DÜZELTME] İkon karosundaki simge veya baş harfler,
+         karonun rengine göre beyaz ya da koyu seçiliyor.
+         Sabit beyaz, açık tonlu kart renklerinde
+         okunmuyordu — amber zeminde beyaz simgenin
+         kontrastı 2,15:1 idi, erişilebilirlik alt sınırı
+         olan 4,5:1'in oldukça altında. Panelde ölçülen en
+         düşük kontrast artık 4,23:1, en yükseği 8,25:1.
+
+  [YENİ] Sistem Durumu widget'ı. Panelin üstünde duran ince
+         durum çubuğu ile Bakım kartı tek bir kartta
+         birleşti. Üstte 0-100 arası sistem sağlığı bir
+         gösterge halkasında, altında her denetim için birer
+         küçük kutu: dosya bütünlüğü, SSL, CAPTCHA, parola,
+         güvenlik duvarı, bot filtresi, IndexNow, PHP
+         sürümü, veritabanı, eklentiler, php.ini, son
+         yedekleme, sürüm, zamanlanmış görevler ve
+         veritabanı boyutu. Bir kutunun üzerine gelince
+         ayrıntısı çıkıyor; yedekleme ve sürüm kutuları
+         ilgili ekrana gidiyor.
+
+  [YENİ] Dosya bütünlüğü, SSL ve güvenlik duvarı kutuları
+         diğerlerinin üstünde, üçlü ayrı bir sırada duruyor.
+         Bunlar "içeri girilebilir mi" sorusunu cevaplayan
+         üç denetim, ilk okunan da onlar olsun diye.
+
+  [YENİ] Zamanlanmış görevler kutusu tıklanınca hangi
+         görevin en son ne zaman çalıştığını tek tek
+         açıyor. Bu bilgi başka hiçbir ekranda yok — Cron
+         İşleri penceresi komutları gösterir, çalışıp
+         çalışmadıklarını değil.
+
+  [YENİ] Skor artık yedeklemeyi, bekleyen güncellemeyi ve
+         duran zamanlanmış görevleri de hesaba katıyor.
+         Güvenlik denetimlerinden daha hafif ağırlıklarla:
+         iki gün gecikmiş bir yedek fark edilmeye değer ama
+         kapalı bir güvenlik duvarından ağır basmamalı.
+         Hiç çalışmamış bir görev puan düşürmüyor — o, cron
+         kurulmamış bir site demek, bozulmuş bir görev
+         değil. Veritabanı boyutu gösteriliyor ama puana
+         girmiyor.
+
+  [YENİ] Aynı kart Site Ayarları ekranında Genel kartının
+         solunda da görünüyor. Orada sürüklenmiyor ve
+         kendiliğinden yenilenmiyor; yalnızca çıktı.
+
+  [YENİ] Ziyaretçi Özetleri yeniden düzenlendi. Yan yana üç
+         küçük grafik yerine tek büyük grafik var ve bugün
+         ile dün üst üste çiziliyor: bugün dolu çizgi, dün
+         kesikli, aynı eksende. Önceden düğme dönemi
+         değiştiriyordu, yani farkı görmek için öbürünün
+         şeklini akılda tutmak gerekiyordu.
+
+  [YENİ] Bugünün çizgisi içinde bulunulan saatte duruyor,
+         eksen yine bütün günü gösteriyor. Kalan bölge
+         soluk ve kesikli bir çizgiyle ayrılıyor, böylece
+         "günün geri kalanı henüz olmadı" ile "trafik
+         durdu" birbirine karışmıyor.
+
+  [DÜZELTME] Dünle karşılaştırma artık aynı saate göre
+         yapılıyor: "dün bu saate kadar 214". Önceden yarım
+         gün, dünün tamamına kıyaslanıyordu; sabahları her
+         zaman düşüş, gece yarısına doğru her zaman toparlanma
+         görünüyordu. Dünün tam günü ayrıca yazıyor, günün
+         nerede biteceğine dair ölçü olsun diye.
+
+  [YENİ] Grafiğin altında dört kutu: bu hafta, bu ay, geçmiş
+         12 ay ve en çok ziyaret edilen sayfa. İlk üçü
+         tıklanınca o dönem büyük grafiğe çıkıyor,
+         karşılaştırmasıyla birlikte; tekrar tıklayınca güne
+         dönüyor. En çok ziyaret edilen kutusunda ayrıca
+         bugünün en çok ziyaret edilen sayfası ve sayısı var.
+
+  [YENİ] Faaliyet Özeti kartı kaldırıldı. Gösterdiği üç sayı
+         — sipariş, form ve rehber kaydı — artık ait oldukları
+         kartların başına taşındı. Alışveriş, Formlar ve
+         Rehber kartlarının üstünde bugünün sayısı, düne göre
+         yönü gösteren küçük bir ok, son yedi günün toplamı ve
+         sekiz günü çizen ince bir çizgi var. Sayıyı görmek
+         için ayrı bir karta bakmak gerekmiyor; sayı, ait
+         olduğu listenin başında duruyor.
+
+  [GÜVENLİK] Faaliyet Özeti, e-ticaret yetkisi olan herkese
+         form ve rehber sayılarını da gösteriyordu. Oysa
+         Formlar ve Rehber kartlarını görmek ayrı yetkilere
+         bağlı: form yetkisi olmayan bir kullanıcı formları
+         göremiyor ama kaç form geldiğini okuyabiliyordu. Her
+         sayı artık kendi kartının yetkisinin arkasında.
+
+  [HIZ] Kaldırılan kart, panel her açıldığında sekiz günü tek
+         tek saymak için 24 ayrı sorgu çalıştırıyordu. Aynı
+         sekiz gün artık kart başına tek sorguyla geliyor;
+         panelin açılışındaki 24 sorgu 3'e indi.
+
+  [DÜZELTME] Form sayısı, formun son değiştirilme tarihine
+         bakıyordu. Eski bir formu açıp "tamamlandı"
+         işaretlemek o formu "bugün gelen form" yapıyordu.
+         Ölçüt artık formun gönderildiği tarih. Kartın
+         altındaki liste, en son dokunulana göre sıralanmaya
+         devam ediyor — o liste "ne geldi" değil "nerede
+         kaldım" sorusunu cevaplıyor.
+
+  [ŞEMA] Bu sürüm veritabanınıza dokunur. Canlı sohbet iki
+         yeni tablo, SEO skoru iki yeni tablo ve sayfa, ürün,
+         varyant seti tablolarına skor kolonları, zamanlanmış
+         görev takibi bir tablo, cron ayarları ve sohbet
+         ayarları config tablosuna kolon ekler. Performans
+         ölçüm tablosuna kayıt kimliği kolonları, ziyaretçi
+         özet tablosuna bir indeks eklenir. Yükseltme
+         yarıda kesilirse yeniden çalıştırılabilir.
+
+  NOT    Yükseltmeden sonra skorlar hemen dolmaz. Alan
+         denetimleri listeleri gezdikçe ve ilk gecelik işte
+         hesaplanır; yapı ve bağlantı denetimi büyük bir
+         sitede ilk turu tamamlamak için birkaç gece
+         çalışabilir. Hız parçası ise ölçüm biriktikçe
+         devreye girer.
   2026.4.1
   ==========================================================
 

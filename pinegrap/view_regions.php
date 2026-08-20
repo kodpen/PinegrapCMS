@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -25,7 +25,7 @@ $liveform = new liveform('view_regions');
 
 $number_of_results = 0;
 
-$filter = $_GET['filter'];
+$filter = isset($_GET['filter']) ? $_GET['filter'] : '';
 
 $filter_for_links = '&filter=' . $filter;
 $output_filter_for_links = h($filter_for_links);
@@ -58,7 +58,13 @@ switch ($filter) {
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_ad_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // Set the sort option
-        switch($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort']) {
+        // if the sort is not set yet (first visit to this screen), then default it to empty so the
+        // switch below falls through to its default case
+        if (isset($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort']) == false) {
+            $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? '')) {
             case lang('Name'):
                 $sort_column = 'name';
                 break;
@@ -76,8 +82,8 @@ switch ($filter) {
                 $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] = lang('Last Modified');
         }
         
-        if ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order']) {
-            $asc_desc = $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'];
+        if (!empty($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'])) {
+            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? '');
         } elseif ($sort_column == 'last_modified_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = 'desc';
@@ -96,14 +102,14 @@ switch ($filter) {
         $output_table_headers .= '
             <tr>
                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Display Type'), $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'], $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Display Type'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
                 <th>' . lang('Duration') . '</th>
                 <th class="text-center">' . lang('Autoplay') . '</th>
                 <th>' . lang('Interval') . '</th>
                 <th class="text-center">' . lang('Continuous') . '</th>
-                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'], $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
             </tr>';
 
       
@@ -235,7 +241,13 @@ switch ($filter) {
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_login_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // Set the sort option
-        switch($_SESSION['software']['design']['view_regions']['all_login_regions']['sort']) {
+        // if the sort is not set yet (first visit to this screen), then default it to empty so the
+        // switch below falls through to its default case
+        if (isset($_SESSION['software']['design']['view_regions']['all_login_regions']['sort']) == false) {
+            $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? '')) {
             case lang('Name'):
                 $sort_column = 'name';
                 break;
@@ -265,8 +277,8 @@ switch ($filter) {
                 $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] = lang('Last Modified');
         }
         
-        if ($_SESSION['software']['design']['view_regions']['all_login_regions']['order']) {
-            $asc_desc = $_SESSION['software']['design']['view_regions']['all_login_regions']['order'];
+        if (!empty($_SESSION['software']['design']['view_regions']['all_login_regions']['order'])) {
+            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? '');
         } elseif ($sort_column == 'last_modified_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = 'desc';
@@ -285,14 +297,14 @@ switch ($filter) {
         $output_table_headers = '            
             <tr>
                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Not Logged In Header'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th class="text-center text-nowrap">' . get_column_heading(lang('Show Login Form'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Not Logged In Footer'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Logged In Header'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Logged In Footer'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_regions']['all_login_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_login_regions']['order'], $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Not Logged In Header'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th class="text-center text-nowrap">' . get_column_heading(lang('Show Login Form'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Not Logged In Footer'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Logged In Header'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Logged In Footer'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_login_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
             </tr>
             ';
 
@@ -422,7 +434,13 @@ switch ($filter) {
         // if user's role is above a designer role then output dynamic region area
         if ($user['role'] < 1) {
             // Set the sort option
-            switch($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort']) {
+            // if the sort is not set yet (first visit to this screen), then default it to empty so the
+            // switch below falls through to its default case
+            if (isset($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort']) == false) {
+                $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] = '';
+            }
+
+            switch (($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? '')) {
                 case lang('Name'):
                     $sort_column = 'dregion_name';
                     break;
@@ -437,8 +455,8 @@ switch ($filter) {
                     $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] = lang('Last Modified');
             }
             
-            if ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order']) {
-                $asc_desc = $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'];
+            if (!empty($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'])) {
+                $asc_desc = ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? '');
             } elseif ($sort_column == 'dregion_timestamp') {
                 $asc_desc = 'desc';
                 $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = 'desc';
@@ -457,9 +475,9 @@ switch ($filter) {
             $output_table_headers .= '
             <tr>
                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Code Preview'), $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'], $output_filter_for_links) . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'], $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Code Preview'), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
             </tr>
             ';
             
@@ -537,7 +555,13 @@ switch ($filter) {
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_designer_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // Set the sort option
-        switch($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort']) {
+        // if the sort is not set yet (first visit to this screen), then default it to empty so the
+        // switch below falls through to its default case
+        if (isset($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort']) == false) {
+            $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? '')) {
             case lang('Name'):
                 $sort_column = 'cregion_name';
                 break;
@@ -552,8 +576,8 @@ switch ($filter) {
                 $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] = lang('Last Modified');
         }
 
-        if ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order']) {
-            $asc_desc = $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'];
+        if (!empty($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'])) {
+            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? '');
         } elseif ($sort_column == 'cregion_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = 'desc';
@@ -572,9 +596,9 @@ switch ($filter) {
         $output_table_headers = '
         <tr>
             <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-            <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'], $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Content Preview'), $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'], $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'], $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Content Preview'), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
         </tr>';
         
        
@@ -653,7 +677,13 @@ switch ($filter) {
         $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_common_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // Set the sort option
-        switch($_SESSION['software']['design']['view_regions']['all_common_regions']['sort']) {
+        // if the sort is not set yet (first visit to this screen), then default it to empty so the
+        // switch below falls through to its default case
+        if (isset($_SESSION['software']['design']['view_regions']['all_common_regions']['sort']) == false) {
+            $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] = '';
+        }
+
+        switch (($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? '')) {
             case lang('Name'):
                 $sort_column = 'cregion_name';
                 break;
@@ -668,8 +698,8 @@ switch ($filter) {
                 $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] = lang('Last Modified');
         }
 
-        if ($_SESSION['software']['design']['view_regions']['all_common_regions']['order']) {
-            $asc_desc = $_SESSION['software']['design']['view_regions']['all_common_regions']['order'];
+        if (!empty($_SESSION['software']['design']['view_regions']['all_common_regions']['order'])) {
+            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? '');
         } elseif ($sort_column == 'cregion_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = 'desc';
@@ -688,9 +718,9 @@ switch ($filter) {
         $output_table_headers = '
         <tr>
             <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-            <th>' . get_column_heading(lang('Name'), $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_common_regions']['order'], $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Content Preview'), $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_common_regions']['order'], $output_filter_for_links) . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_regions']['all_common_regions']['sort'], $_SESSION['software']['design']['view_regions']['all_common_regions']['order'], $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Content Preview'), ($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
+            <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_regions']['all_common_regions']['sort'] ?? ''), ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? ''), $output_filter_for_links) . '</th>
         </tr>';
         
         

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -38,7 +38,8 @@ foreach ($_REQUEST as $key => $value) {
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -52,7 +53,13 @@ if (
 
 
 
-switch ($_SESSION['software']['ecommerce']['view_gift_cards']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_gift_cards']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_gift_cards']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? '')) {
     case lang('Code'):
         $sort_column = 'gift_cards.code';
         break;
@@ -109,7 +116,7 @@ $where = "";
 
 
 // If user requested to export gift cards, then export them.
-if ($_GET['submit_data'] == 'Export Gift Cards') {
+if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
     header("Content-type: text/csv");
     header("Content-disposition: attachment; filename=gift_cards.csv");
 
@@ -152,7 +159,7 @@ if ($_GET['submit_data'] == 'Export Gift Cards') {
         LEFT JOIN user AS created_user ON gift_cards.created_user_id = created_user.user_id
         LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
         $where
-        ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_gift_cards']['order']));
+        ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')));
 
     // If the date format is month and then day, then use that format.
     if (DATE_FORMAT == 'month_day') {
@@ -237,7 +244,7 @@ if ($_GET['submit_data'] == 'Export Gift Cards') {
         LEFT JOIN user AS created_user ON gift_cards.created_user_id = created_user.user_id
         LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
         $where
-        ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_gift_cards']['order']);
+        ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? ''));
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $gift_cards = mysqli_fetch_items($result);
 
@@ -396,16 +403,16 @@ if ($_GET['submit_data'] == 'Export Gift Cards') {
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Code'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Balance'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Original Amt'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Expiration Date'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Notes'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('From'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Recipient'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Delivery Date'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_gift_cards']['sort'], $_SESSION['software']['ecommerce']['view_gift_cards']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Code'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Balance'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Original Amt'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Expiration Date'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Notes'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('From'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Recipient'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Delivery Date'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_gift_cards']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_gift_cards']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

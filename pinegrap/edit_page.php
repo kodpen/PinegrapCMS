@@ -12,11 +12,13 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+require_once(dirname(__FILE__) . '/seo.php');
+require_once(dirname(__FILE__) . '/seo_structure.php');
 
 $liveform = new liveform('edit_page');
 
@@ -49,8 +51,8 @@ if (!$_POST) {
             mobile_style_id,
             page_title,
             page_meta_description,
-            page_meta_keywords,
             sitemap,
+            " . (pg_page_noindex_ready() ? "noindex, nofollow," : "'0' AS noindex, '0' AS nofollow,") . "
             page_type,
             layout_type,
             comments,
@@ -71,7 +73,11 @@ if (!$_POST) {
             comments_submitter_email_subject,
             comments_watcher_email_page_id,
             comments_watcher_email_subject,
-            comments_watchers_managed_by_submitter
+            comments_watchers_managed_by_submitter,
+            seo_score,
+            " . (pg_seo_schema_ready() ? "seo_flags, seo_checked_at," : "'0' AS seo_flags, '0' AS seo_checked_at,") . "
+            seo_analysis,
+            seo_analysis_current
         FROM page
         WHERE page_id = '" . escape($_GET['id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -87,8 +93,21 @@ if (!$_POST) {
     $mobile_style_id = $row['mobile_style_id'];
     $page_title = $row['page_title'];
     $page_meta_description = $row['page_meta_description'];
-    $page_meta_keywords = $row['page_meta_keywords'];
+    // seo_checked_at travels with the rest: pg_seo_row_scored() asks it
+    // first, and a row without it falls back to seo_analysis_current, which
+    // means "the number is up to date" rather than "there is a number". Every
+    // save marks the record stale, so the panel would go blank after each one
+    // and claim the score had never been calculated.
+    $seo_row = array(
+        'seo_score' => $row['seo_score'],
+        'seo_flags' => $row['seo_flags'],
+        'seo_checked_at' => $row['seo_checked_at'],
+        'seo_analysis' => $row['seo_analysis'],
+        'seo_analysis_current' => $row['seo_analysis_current'],
+    );
     $sitemap = $row['sitemap'];
+    $noindex = $row['noindex'];
+    $nofollow = $row['nofollow'];
     $page_type = $row['page_type'];
     $layout_type = $row['layout_type'];
     $comments = $row['comments'];
@@ -133,13 +152,18 @@ if (!$_POST) {
         LIMIT 1";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $short_link = mysqli_fetch_assoc($result);
-    
+
     // if there is a short link, then prepare to output description in sub-navigation area
-    if ($short_link['name'] != '') {
+    // ($short_link is null when the page has no short link)
+    if (!empty($short_link['name'])) {
         $output_subnav_short_link = ' | ' . lang('Short Link') . ': ' . h($short_link['name']);
     }
     
     $output_subnav_home = '';
+
+    // Only set for the page types that have a next / skip page, but always printed below.
+    $output_subnav_next_page = '';
+    $output_subnav_skip_page = '';
     
     // if this is a home page, then prepare to output description in sub-navigation area
     if ($page_home == 'yes') {
@@ -175,11 +199,11 @@ if (!$_POST) {
             &&
             (
                 ($page_type != 'catalog detail')
-                || ($page_type_properties['allow_customer_to_add_product_to_order'] == 1)
+                || (($page_type_properties['allow_customer_to_add_product_to_order'] ?? '') == 1)
             )
         ) {
             // Get the next page name and output the next page.
-            $next_page_name = get_page_name($page_type_properties['next_page_id']);
+            $next_page_name = get_page_name(($page_type_properties['next_page_id'] ?? ''));
             // Next page is blank then output none.
             if ($next_page_name == '') {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
@@ -187,9 +211,9 @@ if (!$_POST) {
             } else {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': <a href="' . OUTPUT_PATH . $next_page_name . '">' . $next_page_name . '</a>';
             }
-        } else if((isset($page_type_properties['add_button_next_page_id']) && ($page_type_properties['add_button_next_page_id'] != 0))) {
+        } else if((isset($page_type_properties['add_button_next_page_id']) && (($page_type_properties['add_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page. 
-            $next_page_name = get_page_name($page_type_properties['add_button_next_page_id']);
+            $next_page_name = get_page_name(($page_type_properties['add_button_next_page_id'] ?? ''));
             // Next page is blank then output none.
             if ($next_page_name == '') {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
@@ -202,9 +226,9 @@ if (!$_POST) {
             $output_subnav_next_page = '';
         }
         
-        if((isset($page_type_properties['skip_button_next_page_id']) && ($page_type_properties['skip_button_next_page_id'] != 0))) {
+        if((isset($page_type_properties['skip_button_next_page_id']) && (($page_type_properties['skip_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page.
-            $skip_page_name = get_page_name($page_type_properties['skip_button_next_page_id']);
+            $skip_page_name = get_page_name(($page_type_properties['skip_button_next_page_id'] ?? ''));
             $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': <a href="' . OUTPUT_PATH . $skip_page_name . '">' . $skip_page_name . '</a>';
         } else {
             // If no next page set the variable to blank.
@@ -441,7 +465,42 @@ if (!$_POST) {
         }
 
         $activate_editors = false;
-        
+
+        // Only the branch matching this page's type fills its own properties below, but the form
+        // further down reads every one of them, so they all have to start out as empty arrays.
+        $email_a_friend_properties = array();
+        $folder_view_properties = array();
+        $photo_gallery_properties = array();
+        $search_results_properties = array();
+        $update_address_book_properties = array();
+        $custom_form_properties = array();
+        $custom_form_confirmation_properties = array();
+        $form_list_view_properties = array();
+        $form_item_view_properties = array();
+        $form_view_directory_properties = array();
+        $calendar_view_properties = array();
+        $calendar_event_view_properties = array();
+        $catalog_properties = array();
+        $catalog_detail_properties = array();
+        $express_order_properties = array();
+        $order_form_properties = array();
+        $shopping_cart_properties = array();
+        $shipping_address_and_arrival_properties = array();
+        $shipping_method_properties = array();
+        $billing_information_properties = array();
+        $order_preview_properties = array();
+        $order_receipt_properties = array();
+        $affiliate_sign_up_form_properties = array();
+
+        // Same story for these: only the branch for this page's type sets them, but the form
+        // below prints them for every page type.
+        $custom_form_return_type_custom_form_checked = '';
+        $custom_form_return_type_message_checked = '';
+        $custom_form_return_type_page_checked = '';
+        $calendar_view_calendar_check_boxes = '';
+        $calendar_event_view_calendar_check_boxes = '';
+        $output_button_bar = '';
+
         switch($page_type) {
             case 'email a friend':
                 $email_a_friend_properties = get_page_type_properties($page_id, $page_type);
@@ -502,7 +561,7 @@ if (!$_POST) {
                 $custom_form_confirmation_type_row_style = '';
                 
                 // If confirmation type is message, then show rows for it.
-                if ($custom_form_properties['confirmation_type'] == 'message') {
+                if (($custom_form_properties['confirmation_type'] ?? '') == 'message') {
                     // Enable rich-text editor.
                     $activate_editors = true;
                 }
@@ -510,7 +569,7 @@ if (!$_POST) {
                 $custom_form_return_type_row_style = '';
                 
                 // If return type is message, then show rows for it.
-                if ($custom_form_properties['return_type'] == 'message') {
+                if (($custom_form_properties['return_type'] ?? '') == 'message') {
 
                     // Enable rich-text editor.
                     $activate_editors = true;
@@ -576,7 +635,7 @@ if (!$_POST) {
                 $calendar_view_calendar_event_view_page_id_row_style = '';
                 
                 // if the default view is set to upcoming, then display number_of_upcoming_events field
-                if ($calendar_view_properties['default_view'] == 'upcoming') {
+                if (($calendar_view_properties['default_view'] ?? '') == 'upcoming') {
                     $calendar_view_number_of_upcoming_events_row_style = '';
                 }
                 
@@ -629,7 +688,7 @@ if (!$_POST) {
                 $express_order_shipping_form_row_style = '';
                 
                 // If the shipping form is enabled, then output edit custom shipping form button
-                if ($express_order_properties['shipping_form']) {
+                if (($express_order_properties['shipping_form'] ?? '')) {
                     $output_edit_custom_shipping_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
@@ -642,7 +701,7 @@ if (!$_POST) {
                 $express_order_form_row_style = '';
                 
                 // If the form is enabled, then output edit custom billing form button and display fields.
-                if ($express_order_properties['form'] == '1') {
+                if (($express_order_properties['form'] ?? '') == '1') {
                     $output_edit_custom_billing_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
                     $express_order_form_name_row_style = '';
                     $express_order_form_label_column_width_row_style = '';
@@ -698,7 +757,7 @@ if (!$_POST) {
                 $shipping_address_and_arrival_form_row_style = '';
                 
                 // if the form is enabled, then output edit custom shipping form button and display fields
-                if ($shipping_address_and_arrival_properties['form'] == '1') {
+                if (($shipping_address_and_arrival_properties['form'] ?? '') == '1') {
                     $output_edit_custom_shipping_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
                     $shipping_address_and_arrival_form_name_row_style = '';
                     $shipping_address_and_arrival_form_label_column_width_row_style = '';
@@ -726,7 +785,7 @@ if (!$_POST) {
                 $billing_information_form_row_style = '';
                 
                 // If the form is enabled, then output edit custom billing form button and display fields.
-                if ($billing_information_properties['form'] == '1') {
+                if (($billing_information_properties['form'] ?? '') == '1') {
                     $output_edit_custom_billing_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
 
                     $billing_information_form_name_row_style = '';
@@ -794,6 +853,12 @@ if (!$_POST) {
                 </nav>';
         }
 
+        // Only filled in for the system layout branch below, but always output in the form
+        // further down, so they have to be set for the custom layout branch too.
+        $layout_type_custom_label_class = '';
+        $layout_type_custom_label_title = '';
+        $layout_type_custom_option_disabled = '';
+
         if ($layout_type == 'system') {
             $layout_type_system_checked = ' checked="checked"';
             $layout_type_custom_checked = '';
@@ -813,33 +878,33 @@ if (!$_POST) {
         $folder_view_pages_checked = '';
 
         // If pages are enabled for folder view or if there are not any properties, then check the checkbox
-        if (($folder_view_properties['pages'] == '1') || ($folder_view_properties['pages'] == '')) {
+        if ((($folder_view_properties['pages'] ?? '') == '1') || (($folder_view_properties['pages'] ?? '') == '')) {
             $folder_view_pages_checked = ' checked="checked"';
         }
 
         $folder_view_files_checked = '';
 
         // If files are enabled for folder view or if there are not any properties, then check the checkbox
-        if (($folder_view_properties['files'] == '1') || ($folder_view_properties['files'] == '')) {
+        if ((($folder_view_properties['files'] ?? '') == '1') || (($folder_view_properties['files'] ?? '') == '')) {
             $folder_view_files_checked = ' checked="checked"';
         }
 
         // Setup the photo galleries default number_of_columns value
-        if ($photo_gallery_properties['number_of_columns'] == '') {
+        if (($photo_gallery_properties['number_of_columns'] ?? '') == '') {
             $photo_gallery_number_of_columns = '4';
         } else {
-            $photo_gallery_number_of_columns = $photo_gallery_properties['number_of_columns'];
+            $photo_gallery_number_of_columns = ($photo_gallery_properties['number_of_columns'] ?? '');
         }
         
         // Setup the photo galleries default thumbnail max size value
-        if ($photo_gallery_properties['thumbnail_max_size'] == '') {
+        if (($photo_gallery_properties['thumbnail_max_size'] ?? '') == '') {
             $photo_gallery_thumbnail_max_size = '100';
         } else {
-            $photo_gallery_thumbnail_max_size = $photo_gallery_properties['thumbnail_max_size'];
+            $photo_gallery_thumbnail_max_size = ($photo_gallery_properties['thumbnail_max_size'] ?? '');
         }
         
         // if the product search is enabled or if there are not any properties, then check the checkbox
-        if (($search_results_properties['search_catalog_items'] == '1') || ($search_results_properties['search_catalog_items'] == '')) {
+        if ((($search_results_properties['search_catalog_items'] ?? '') == '1') || (($search_results_properties['search_catalog_items'] ?? '') == '')) {
             $search_results_search_catalog_items_checked = ' checked="checked"';
         
         // else leave the checkbox unchecked
@@ -848,49 +913,49 @@ if (!$_POST) {
         }
         
         // if update address book address type is enabled prepare to check checkbox
-        if ($update_address_book_properties['address_type'] == 1) {
+        if (($update_address_book_properties['address_type'] ?? '') == 1) {
             $update_address_book_address_type_checked = ' checked="checked"';
         } else {
             $update_address_book_address_type_checked = '';
         }
         
         // if custom form is enabled prepare to check checkbox
-        if (($custom_form_properties['enabled'] == 1) || ($custom_form_properties['enabled'] == '')) {
+        if ((($custom_form_properties['enabled'] ?? '') == 1) || (($custom_form_properties['enabled'] ?? '') == '')) {
             $custom_form_enabled_checked = ' checked="checked"';
         } else {
             $custom_form_enabled_checked = '';
         }
         
         // if custom form quiz is enabled prepare to check checkbox
-        if ($custom_form_properties['quiz'] == 1) {
+        if (($custom_form_properties['quiz'] ?? '') == 1) {
             $custom_form_quiz_checked = ' checked="checked"';
         } else {
             $custom_form_quiz_checked = '';
         }
 
         // If save is enabled, then check check box.
-        if ($custom_form_properties['save'] == 1) {
+        if (($custom_form_properties['save'] ?? '') == 1) {
             $custom_form_save_checked = ' checked="checked"';
         } else {
             $custom_form_save_checked = '';
         }
 
         // If auto-registration is enabled, then check check box.
-        if ($custom_form_properties['auto_registration'] == 1) {
+        if (($custom_form_properties['auto_registration'] ?? '') == 1) {
             $custom_form_auto_registration_checked = ' checked="checked"';
         } else {
             $custom_form_auto_registration_checked = '';
         }
 
         // if submitter e-mail is enabled prepare to check check box
-        if ($custom_form_properties['submitter_email'] == 1) {
+        if (($custom_form_properties['submitter_email'] ?? '') == 1) {
             $custom_form_submitter_email_checked = ' checked="checked"';
         } else {
             $custom_form_submitter_email_checked = '';
         }
 
         // if submitter e-mail format is set to plain text, then check the plain text radio button
-        if ($custom_form_properties['submitter_email_format'] == 'plain_text') {
+        if (($custom_form_properties['submitter_email_format'] ?? '') == 'plain_text') {
             $custom_form_submitter_email_format_plain_text_checked = ' checked="checked"';
             $custom_form_submitter_email_format_html_checked = '';
 
@@ -901,14 +966,14 @@ if (!$_POST) {
         }
 
         // if administrator e-mail is enabled prepare to check check box
-        if ($custom_form_properties['administrator_email'] == 1) {
+        if (($custom_form_properties['administrator_email'] ?? '') == 1) {
             $custom_form_administrator_email_checked = ' checked="checked"';
         } else {
             $custom_form_administrator_email_checked = '';
         }
 
         // if administrator e-mail format is set to plain text, then check the plain text radio button
-        if ($custom_form_properties['administrator_email_format'] == 'plain_text') {
+        if (($custom_form_properties['administrator_email_format'] ?? '') == 'plain_text') {
             $custom_form_administrator_email_format_plain_text_checked = ' checked="checked"';
             $custom_form_administrator_email_format_html_checked = '';
 
@@ -919,13 +984,13 @@ if (!$_POST) {
         }
         
         // if custom form membership is enabled prepare to check checkbox
-        if ($custom_form_properties['membership'] == 1) {
+        if (($custom_form_properties['membership'] ?? '') == 1) {
             $custom_form_membership_checked = ' checked="checked"';
         } else {
             $custom_form_membership_checked = '';
         }
 
-        if ($custom_form_properties['private'] == 1) {
+        if (($custom_form_properties['private'] ?? '') == 1) {
             $custom_form_private_checked = ' checked="checked"';
         } else {
             $custom_form_private_checked = '';
@@ -933,11 +998,11 @@ if (!$_POST) {
 
         // If private days is 0, then change value to an empty string,
         // so that a 0 does not appear in the field.
-        if ($custom_form_properties['private_days'] == 0) {
+        if (($custom_form_properties['private_days'] ?? '') == 0) {
             $custom_form_properties['private_days'] = '';
         }
 
-        if ($custom_form_properties['offer'] == 1) {
+        if (($custom_form_properties['offer'] ?? '') == 1) {
             $custom_form_offer_checked = ' checked="checked"';
         } else {
             $custom_form_offer_checked = '';
@@ -945,7 +1010,7 @@ if (!$_POST) {
 
         // If offer days is 0, then change value to an empty string,
         // so that a 0 does not appear in the field.
-        if ($custom_form_properties['offer_days'] == 0) {
+        if (($custom_form_properties['offer_days'] ?? '') == 0) {
             $custom_form_properties['offer_days'] = '';
         }
 
@@ -953,7 +1018,7 @@ if (!$_POST) {
         $custom_form_offer_eligibility_new_contacts = '';
         $custom_form_offer_eligibility_existing_contacts = '';
 
-        switch ($custom_form_properties['offer_eligibility']) {
+        switch (($custom_form_properties['offer_eligibility'] ?? '')) {
             case 'everyone':
                 $custom_form_offer_eligibility_everyone = ' selected="selected"';
                 break;
@@ -968,7 +1033,7 @@ if (!$_POST) {
         }
 
         // If confirmation type is set to message, then select the message radio button.
-        if ($custom_form_properties['confirmation_type'] == 'message') {
+        if (($custom_form_properties['confirmation_type'] ?? '') == 'message') {
             $custom_form_confirmation_type_message_checked = ' checked="checked"';
             $custom_form_confirmation_type_page_checked = '';
 
@@ -979,14 +1044,14 @@ if (!$_POST) {
         }
 
         // If confirmation alternative page is enabled then check checkbox.
-        if ($custom_form_properties['confirmation_alternative_page'] == 1) {
+        if (($custom_form_properties['confirmation_alternative_page'] ?? '') == 1) {
             $custom_form_confirmation_alternative_page_checked = ' checked="checked"';
         } else {
             $custom_form_confirmation_alternative_page_checked = '';
         }
 
         // Select the correct radio button for return type.
-        switch ($custom_form_properties['return_type']) {
+        switch (($custom_form_properties['return_type'] ?? '')) {
             case 'custom_form':
                 $custom_form_return_type_custom_form_checked = ' checked="checked"';
                 $custom_form_return_type_message_checked = '';
@@ -1007,14 +1072,14 @@ if (!$_POST) {
         }
 
         // If return alternative page is enabled then check checkbox.
-        if ($custom_form_properties['return_alternative_page'] == 1) {
+        if (($custom_form_properties['return_alternative_page'] ?? '') == 1) {
             $custom_form_return_alternative_page_checked = ' checked="checked"';
         } else {
             $custom_form_return_alternative_page_checked = '';
         }
 
         // If pretty urls is enabled then check checkbox.
-        if ($custom_form_properties['pretty_urls'] == 1) {
+        if (($custom_form_properties['pretty_urls'] ?? '') == 1) {
             $custom_form_pretty_urls_checked = ' checked="checked"';
         } else {
             $custom_form_pretty_urls_checked = '';
@@ -1022,37 +1087,37 @@ if (!$_POST) {
 
         $form_list_view_viewer_filter_checked = '';
 
-        if ($form_list_view_properties['viewer_filter'] == 1) {
+        if (($form_list_view_properties['viewer_filter'] ?? '') == 1) {
             $form_list_view_viewer_filter_checked = ' checked="checked"';
         }
 
         $form_list_view_viewer_filter_submitter_checked = '';
 
-        if (($form_list_view_properties['viewer_filter_submitter'] == 1) || ($form_list_view_properties['viewer_filter'] == 0)) {
+        if ((($form_list_view_properties['viewer_filter_submitter'] ?? '') == 1) || (($form_list_view_properties['viewer_filter'] ?? '') == 0)) {
             $form_list_view_viewer_filter_submitter_checked = ' checked="checked"';
         }
 
         $form_list_view_viewer_filter_watcher_checked = '';
 
-        if (($form_list_view_properties['viewer_filter_watcher'] == 1) || ($form_list_view_properties['viewer_filter'] == 0)) {
+        if ((($form_list_view_properties['viewer_filter_watcher'] ?? '') == 1) || (($form_list_view_properties['viewer_filter'] ?? '') == 0)) {
             $form_list_view_viewer_filter_watcher_checked = ' checked="checked"';
         }
 
         $form_list_view_viewer_filter_editor_checked = '';
 
-        if (($form_list_view_properties['viewer_filter_editor'] == 1) || ($form_list_view_properties['viewer_filter'] == 0)) {
+        if ((($form_list_view_properties['viewer_filter_editor'] ?? '') == 1) || (($form_list_view_properties['viewer_filter'] ?? '') == 0)) {
             $form_list_view_viewer_filter_editor_checked = ' checked="checked"';
         }
 
         // if form item view submitter security is enabled then prepare to check checkbox
-        if ($form_item_view_properties['submitter_security'] == 1) {
+        if (($form_item_view_properties['submitter_security'] ?? '') == 1) {
             $form_item_view_submitter_security_checked = ' checked="checked"';
         } else {
             $form_item_view_submitter_security_checked = '';
         }
         
         // if form item view allows registered users to edit form submissions, prepare to check checkbox
-        if ($form_item_view_properties['submitted_form_editable_by_registered_user'] == 1) {
+        if (($form_item_view_properties['submitted_form_editable_by_registered_user'] ?? '') == 1) {
             $form_item_view_submitted_form_editable_by_registered_user_checked = ' checked="checked"';
             $form_item_view_submitted_form_editable_by_submitter_row_style = 'display: none';
         } else {
@@ -1060,72 +1125,72 @@ if (!$_POST) {
         }
         
         // if form item view allows users to edit their own submissions, prepare to check checkbox
-        if ($form_item_view_properties['submitted_form_editable_by_submitter'] == 1) {
+        if (($form_item_view_properties['submitted_form_editable_by_submitter'] ?? '') == 1) {
             $form_item_view_submitted_form_editable_by_submitter_checked = ' checked="checked"';
         } else {
             $form_item_view_submitted_form_editable_by_submitter_checked = '';
         }
         
         // if display is enabled for form view directory, prepare to check checkbox
-        if ($form_view_directory_properties['summary'] == 1) {
+        if (($form_view_directory_properties['summary'] ?? '') == 1) {
             $form_view_directory_summary_checked = ' checked="checked"';
         } else {
             $form_view_directory_summary_checked = '';
         }
         
         // if form view directory's summary date range is blank, then set it to the default value
-        if ($form_view_directory_properties['summary_days'] == '') {
+        if (($form_view_directory_properties['summary_days'] ?? '') == '') {
             $form_view_directory_summary_days = '30';
             
         // else the form view directory's summary date range is not blank, so set it to the saved value
         } else {
-            $form_view_directory_summary_days = $form_view_directory_properties['summary_days'];
+            $form_view_directory_summary_days = ($form_view_directory_properties['summary_days'] ?? '');
         }
         
         // if form view directory's summary maximum number of results is blank, then set it to the default value
-        if ($form_view_directory_properties['summary_maximum_number_of_results'] == '') {
+        if (($form_view_directory_properties['summary_maximum_number_of_results'] ?? '') == '') {
             $form_view_directory_summary_maximum_number_of_results = '5';
             
         // else the form view directory's summary maximum number of results is not blank, so set it to the saved value
         } else {
-            $form_view_directory_summary_maximum_number_of_results = $form_view_directory_properties['summary_maximum_number_of_results'];
+            $form_view_directory_summary_maximum_number_of_results = ($form_view_directory_properties['summary_maximum_number_of_results'] ?? '');
         }
         
         // if form view directory's form list view heading is blank, then set it to the default value
-        if ($form_view_directory_properties['form_list_view_heading'] == '') {
+        if (($form_view_directory_properties['form_list_view_heading'] ?? '') == '') {
             $form_view_directory_form_list_view_heading = 'Forum';
             
         // else the form view directory's form list view heading is not blank, so set it to the saved value
         } else {
-            $form_view_directory_form_list_view_heading = $form_view_directory_properties['form_list_view_heading'];
+            $form_view_directory_form_list_view_heading = ($form_view_directory_properties['form_list_view_heading'] ?? '');
         }
         
         // if form view directory's subject heading is blank, then set it to the default value
-        if ($form_view_directory_properties['subject_heading'] == '') {
+        if (($form_view_directory_properties['subject_heading'] ?? '') == '') {
             $form_view_directory_subject_heading = 'Subject';
             
         // else the form view directory's subject heading is not blank, so set it to the saved value
         } else {
-            $form_view_directory_subject_heading = $form_view_directory_properties['subject_heading'];
+            $form_view_directory_subject_heading = ($form_view_directory_properties['subject_heading'] ?? '');
         }
         
         // if form view directory's number of submitted forms heading is blank, then set it to the default value
-        if ($form_view_directory_properties['number_of_submitted_forms_heading'] == '') {
+        if (($form_view_directory_properties['number_of_submitted_forms_heading'] ?? '') == '') {
             $form_view_directory_number_of_submitted_forms_heading = 'Forms';
             
         // else the form view directory's number of submitted forms heading is not blank, so set it to the saved value
         } else {
-            $form_view_directory_number_of_submitted_forms_heading = $form_view_directory_properties['number_of_submitted_forms_heading'];
+            $form_view_directory_number_of_submitted_forms_heading = ($form_view_directory_properties['number_of_submitted_forms_heading'] ?? '');
         }
         
         // if calendar view's default view is set to weekly, then prepare to select option
-        if ($calendar_view_properties['default_view'] == 'weekly') {
+        if (($calendar_view_properties['default_view'] ?? '') == 'weekly') {
             $calendar_view_default_view_monthly = '';
             $calendar_view_default_view_weekly = ' selected="selected"';
             $calendar_view_default_view_upcoming = '';
 
         // else if calendar view's default view is set to upcoming, then prepare to select option
-        } elseif ($calendar_view_properties['default_view'] == 'upcoming') {
+        } elseif (($calendar_view_properties['default_view'] ?? '') == 'upcoming') {
             $calendar_view_default_view_monthly = '';
             $calendar_view_default_view_weekly = '';
             $calendar_view_default_view_upcoming = ' selected="selected"';
@@ -1138,14 +1203,14 @@ if (!$_POST) {
         }
         
         // Setup the calendar views default number_of_upcoming_events value
-        if ($calendar_view_properties['number_of_upcoming_events'] == '') {
+        if (($calendar_view_properties['number_of_upcoming_events'] ?? '') == '') {
             $calendar_view_number_of_upcoming_events_value = '5';
         } else {
-            $calendar_view_number_of_upcoming_events_value = $calendar_view_properties['number_of_upcoming_events'];
+            $calendar_view_number_of_upcoming_events_value = ($calendar_view_properties['number_of_upcoming_events'] ?? '');
         }
         
         // If the catalog menu is on, or if the original page type was not a catalog page then check the menu checkbox
-        if (($catalog_properties['menu'] == '1') || ($catalog_properties['menu'] == '')) {
+        if ((($catalog_properties['menu'] ?? '') == '1') || (($catalog_properties['menu'] ?? '') == '')) {
             $catalog_menu_checked = ' checked="checked"';
             
         // else do not check the checkbox
@@ -1154,7 +1219,7 @@ if (!$_POST) {
         }
         
         // If the catalog search is on, or if the original page type was not a catalog page then check the search checkbox
-        if (($catalog_properties['search'] == '1') || ($catalog_properties['search'] == '')) {
+        if ((($catalog_properties['search'] ?? '') == '1') || (($catalog_properties['search'] ?? '') == '')) {
             $catalog_search_checked = ' checked="checked"';
             
         // else do not check the checkbox
@@ -1163,28 +1228,28 @@ if (!$_POST) {
         }
         
         // set the default number_of_columns value for the catalog page type
-        if ($catalog_properties['number_of_columns'] == '') {
+        if (($catalog_properties['number_of_columns'] ?? '') == '') {
             $catalog_number_of_columns = '4';
         } else {
-            $catalog_number_of_columns = $catalog_properties['number_of_columns'];
+            $catalog_number_of_columns = ($catalog_properties['number_of_columns'] ?? '');
         }
         
         // set the default image width value for the catalog page type
-        if ($catalog_properties['image_width'] == '') {
+        if (($catalog_properties['image_width'] ?? '') == '') {
             $catalog_image_width = '50';
         } else {
-            $catalog_image_width = $catalog_properties['image_width'];
+            $catalog_image_width = ($catalog_properties['image_width'] ?? '');
         }
         
         // set the default image height value for the catalog page type
-        if ($catalog_properties['image_height'] == '') {
+        if (($catalog_properties['image_height'] ?? '') == '') {
             $catalog_image_height = '50';
         } else {
-            $catalog_image_height = $catalog_properties['image_height'];
+            $catalog_image_height = ($catalog_properties['image_height'] ?? '');
         }
         
         // If allow_customer_to_add_product_to_order is on, or if the original page type was not a catalog detail page then check the allow_customer_to_add_product_to_order checkbox
-        if (($catalog_detail_properties['allow_customer_to_add_product_to_order'] == '1') || ($catalog_detail_properties['allow_customer_to_add_product_to_order'] == '')) {
+        if ((($catalog_detail_properties['allow_customer_to_add_product_to_order'] ?? '') == '1') || (($catalog_detail_properties['allow_customer_to_add_product_to_order'] ?? '') == '')) {
             $catalog_detail_allow_customer_to_add_product_to_order_checked = ' checked="checked"';
             
         // else do not check the checkbox
@@ -1193,7 +1258,7 @@ if (!$_POST) {
         }
 
         // if product description type is set to full description, then check that radio button
-        if ($express_order_properties['product_description_type'] == 'full_description') {
+        if (($express_order_properties['product_description_type'] ?? '') == 'full_description') {
             $express_order_product_description_type_full_description_checked = ' checked="checked"';
             $express_order_product_description_type_short_description_checked = '';
 
@@ -1205,15 +1270,15 @@ if (!$_POST) {
 
         $express_order_shipping_form_checked = '';
 
-        if ($express_order_properties['shipping_form']) {
+        if (($express_order_properties['shipping_form'] ?? '')) {
             $express_order_shipping_form_checked = ' checked="checked"';
         }
         
         // if update button label is empty, then prepare default value
-        if (!$express_order_properties['update_button_label']) {
+        if (!($express_order_properties['update_button_label'] ?? '')) {
             // if a shopping cart label is found, then use that with "Update" in front of the label
-            if ($express_order_properties['shopping_cart_label']) {
-                $express_order_properties['update_button_label'] = 'Update ' . h($express_order_properties['shopping_cart_label']);
+            if (($express_order_properties['shopping_cart_label'] ?? '')) {
+                $express_order_properties['update_button_label'] = 'Update ' . h(($express_order_properties['shopping_cart_label'] ?? ''));
                 
             // else a shopping cart label could not be found, so just use a default label
             } else {
@@ -1222,21 +1287,21 @@ if (!$_POST) {
         }
         
         // if express order custom field 1 required is enabled prepare to check checkbox
-        if ($express_order_properties['custom_field_1_required'] == 1) {
+        if (($express_order_properties['custom_field_1_required'] ?? '') == 1) {
             $express_order_custom_field_1_required_checked = ' checked="checked"';
         } else {
             $express_order_custom_field_1_required_checked = '';
         }
         
         // if express order custom field 2 required is enabled prepare to check checkbox
-        if ($express_order_properties['custom_field_2_required'] == 1) {
+        if (($express_order_properties['custom_field_2_required'] ?? '') == 1) {
             $express_order_custom_field_2_required_checked = ' checked="checked"';
         } else {
             $express_order_custom_field_2_required_checked = '';
         }
         
         // if express order po number is enabled prepare to check checkbox
-        if ($express_order_properties['po_number'] == 1) {
+        if (($express_order_properties['po_number'] ?? '') == 1) {
             $express_order_po_number_checked = ' checked="checked"';
         } else {
             $express_order_po_number_checked = '';
@@ -1244,33 +1309,33 @@ if (!$_POST) {
 
         $express_order_form_checked = '';
 
-        if ($express_order_properties['form'] == 1) {
+        if (($express_order_properties['form'] ?? '') == 1) {
             $express_order_form_checked = ' checked="checked"';
         }
 
         // If offline payment is always allowed then prepare to check check box.
-        if ($express_order_properties['offline_payment_always_allowed'] == 1) {
+        if (($express_order_properties['offline_payment_always_allowed'] ?? '') == 1) {
             $express_order_offline_payment_always_allowed_checked = ' checked="checked"';
         } else {
             $express_order_offline_payment_always_allowed_checked = '';
         }
 
         // If auto-registration is enabled, then check check box.
-        if ($express_order_properties['auto_registration'] == 1) {
+        if (($express_order_properties['auto_registration'] ?? '') == 1) {
             $express_order_auto_registration_checked = ' checked="checked"';
         } else {
             $express_order_auto_registration_checked = '';
         }
         
         // if order receipt e-mail is enabled prepare to check checkbox
-        if ($express_order_properties['order_receipt_email'] == 1) {
+        if (($express_order_properties['order_receipt_email'] ?? '') == 1) {
             $express_order_order_receipt_email_checked = ' checked="checked"';
         } else {
             $express_order_order_receipt_email_checked = '';
         }
 
         // if order receipt format is set to "plain text", then check the plain text radio button
-        if ($express_order_properties['order_receipt_email_format'] == 'plain_text') {
+        if (($express_order_properties['order_receipt_email_format'] ?? '') == 'plain_text') {
             $express_order_order_receipt_email_format_plain_text_checked = ' checked="checked"';
             $express_order_order_receipt_email_format_html_checked = '';
 
@@ -1281,7 +1346,7 @@ if (!$_POST) {
         }
 
         // if product layout is set to drop-down selection, prepare checked value for radio buttons
-        if ($order_form_properties['product_layout'] == 'drop-down selection') {
+        if (($order_form_properties['product_layout'] ?? '') == 'drop-down selection') {
             $order_form_product_layout_list = '';
             $order_form_product_layout_drop_down_selection = ' checked="checked"';
 
@@ -1292,12 +1357,12 @@ if (!$_POST) {
         }
         
         // if submit button label is empty, then prepare default value
-        if (!$order_form_properties['add_button_label']) {
+        if (!($order_form_properties['add_button_label'] ?? '')) {
             $order_form_properties['add_button_label'] = 'Continue';
         }
 
         // if product description type is set to full description, then check that radio button
-        if ($shopping_cart_properties['product_description_type'] == 'full_description') {
+        if (($shopping_cart_properties['product_description_type'] ?? '') == 'full_description') {
             $shopping_cart_product_description_type_full_description_checked = ' checked="checked"';
             $shopping_cart_product_description_type_short_description_checked = '';
 
@@ -1308,10 +1373,10 @@ if (!$_POST) {
         }
         
         // if update button label is empty, then prepare default value
-        if (!$shopping_cart_properties['update_button_label']) {
+        if (!($shopping_cart_properties['update_button_label'] ?? '')) {
             // if a shopping cart label is found, then use that with "Update" in front of the label
-            if ($shopping_cart_properties['shopping_cart_label']) {
-                $shopping_cart_properties['update_button_label'] = 'Update ' . h($shopping_cart_properties['shopping_cart_label']);
+            if (($shopping_cart_properties['shopping_cart_label'] ?? '')) {
+                $shopping_cart_properties['update_button_label'] = 'Update ' . h(($shopping_cart_properties['shopping_cart_label'] ?? ''));
                 
             // else a shopping cart label could not be found, so just use a default label
             } else {
@@ -1320,26 +1385,26 @@ if (!$_POST) {
         }
         
         // if checkout button label is empty, then prepare default value
-        if (!$shopping_cart_properties['checkout_button_label']) {
+        if (!($shopping_cart_properties['checkout_button_label'] ?? '')) {
             $shopping_cart_properties['checkout_button_label'] = 'Checkout';
         }
         
         // if shipping address and arrival address type is enabled prepare to check checkbox
-        if ($shipping_address_and_arrival_properties['address_type'] == 1) {
+        if (($shipping_address_and_arrival_properties['address_type'] ?? '') == 1) {
             $shipping_address_and_arrival_address_type_checked = ' checked="checked"';
         } else {
             $shipping_address_and_arrival_address_type_checked = '';
         }
         
         // if shipping address and arrival form is enabled prepare to check checkbox
-        if ($shipping_address_and_arrival_properties['form'] == 1) {
+        if (($shipping_address_and_arrival_properties['form'] ?? '') == 1) {
             $shipping_address_and_arrival_form_checked = ' checked="checked"';
         } else {
             $shipping_address_and_arrival_form_checked = '';
         }
 
         // if product description type is set to full description, then check that radio button
-        if ($shipping_method_properties['product_description_type'] == 'full_description') {
+        if (($shipping_method_properties['product_description_type'] ?? '') == 'full_description') {
             $shipping_method_product_description_type_full_description_checked = ' checked="checked"';
             $shipping_method_product_description_type_short_description_checked = '';
 
@@ -1350,21 +1415,21 @@ if (!$_POST) {
         }
         
         // if billing information custom field 1 required is enabled prepare to check checkbox
-        if ($billing_information_properties['custom_field_1_required'] == 1) {
+        if (($billing_information_properties['custom_field_1_required'] ?? '') == 1) {
             $billing_information_custom_field_1_required_checked = ' checked="checked"';
         } else {
             $billing_information_custom_field_1_required_checked = '';
         }
         
         // if billing information custom field 2 required is enabled prepare to check checkbox
-        if ($billing_information_properties['custom_field_2_required'] == 1) {
+        if (($billing_information_properties['custom_field_2_required'] ?? '') == 1) {
             $billing_information_custom_field_2_required_checked = ' checked="checked"';
         } else {
             $billing_information_custom_field_2_required_checked = '';
         }
         
         // if billing information po number is enabled prepare to check checkbox
-        if ($billing_information_properties['po_number'] == 1) {
+        if (($billing_information_properties['po_number'] ?? '') == 1) {
             $billing_information_po_number_checked = ' checked="checked"';
         } else {
             $billing_information_po_number_checked = '';
@@ -1372,12 +1437,12 @@ if (!$_POST) {
 
         $billing_information_form_checked = '';
 
-        if ($billing_information_properties['form'] == 1) {
+        if (($billing_information_properties['form'] ?? '') == 1) {
             $billing_information_form_checked = ' checked="checked"';
         }
 
         // if product description type is set to full description, then check that radio button
-        if ($order_preview_properties['product_description_type'] == 'full_description') {
+        if (($order_preview_properties['product_description_type'] ?? '') == 'full_description') {
             $order_preview_product_description_type_full_description_checked = ' checked="checked"';
             $order_preview_product_description_type_short_description_checked = '';
 
@@ -1388,28 +1453,28 @@ if (!$_POST) {
         }
 
         // If offline payment is always allowed then prepare to check check box.
-        if ($order_preview_properties['offline_payment_always_allowed'] == 1) {
+        if (($order_preview_properties['offline_payment_always_allowed'] ?? '') == 1) {
             $order_preview_offline_payment_always_allowed_checked = ' checked="checked"';
         } else {
             $order_preview_offline_payment_always_allowed_checked = '';
         }
 
         // If auto-registration is enabled, then check check box.
-        if ($order_preview_properties['auto_registration'] == 1) {
+        if (($order_preview_properties['auto_registration'] ?? '') == 1) {
             $order_preview_auto_registration_checked = ' checked="checked"';
         } else {
             $order_preview_auto_registration_checked = '';
         }
 
         // if order receipt e-mail is enabled prepare to check checkbox
-        if ($order_preview_properties['order_receipt_email'] == 1) {
+        if (($order_preview_properties['order_receipt_email'] ?? '') == 1) {
             $order_preview_order_receipt_email_checked = ' checked="checked"';
         } else {
             $order_preview_order_receipt_email_checked = '';
         }
 
         // if order receipt e-mail format is set to "plain text", then check the plain text radio button
-        if ($order_preview_properties['order_receipt_email_format'] == 'plain_text') {
+        if (($order_preview_properties['order_receipt_email_format'] ?? '') == 'plain_text') {
             $order_preview_order_receipt_email_format_plain_text_checked = ' checked="checked"';
             $order_preview_order_receipt_email_format_html_checked = '';
 
@@ -1420,7 +1485,7 @@ if (!$_POST) {
         }
 
         // if product description type is set to full description, then check that radio button
-        if ($order_receipt_properties['product_description_type'] == 'full_description') {
+        if (($order_receipt_properties['product_description_type'] ?? '') == 'full_description') {
             $order_receipt_product_description_type_full_description_checked = ' checked="checked"';
             $order_receipt_product_description_type_short_description_checked = '';
 
@@ -1431,7 +1496,7 @@ if (!$_POST) {
         }
         
         // if submit button label is empty, then prepare default value
-        if (!$affiliate_sign_up_form_properties['submit_button_label']) {
+        if (!($affiliate_sign_up_form_properties['submit_button_label'] ?? '')) {
             $affiliate_sign_up_form_properties['submit_button_label'] = 'Sign Up';
         }
         
@@ -1443,7 +1508,7 @@ if (!$_POST) {
             $output_search_results_page_type_properties .=
                 '<div class="col-12 col-md-12 col-lg-6 my-2" id="search_results_search_folder_id_row" style="' . $search_results_search_folder_id_row_style . '">
                     <label for="search_results_search_folder_id" class="form-label">' . lang('Search Folder') . '</label>
-                    <select name="search_results_search_folder_id" id="search_results_search_folder_id" class="form-select"  >' . select_folder($search_results_properties['search_folder_id']) . '</select>
+                    <select name="search_results_search_folder_id" id="search_results_search_folder_id" class="form-select"  >' . select_folder(($search_results_properties['search_folder_id'] ?? '')) . '</select>
                 </div>';
         }
 
@@ -1464,12 +1529,12 @@ if (!$_POST) {
                                 <div class="row">
                                     <div class="col-12 col-md-12 col-lg-6 my-1">
                                         <label for="search_results_product_group_id" class="form-label">' . lang('In Product Group') . '</label>
-                                        <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options($search_results_properties['product_group_id'],  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE) . '</select>
+                                        <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($search_results_properties['product_group_id'] ?? ''),  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE) . '</select>
                                         <div class="form-text">' . lang('leave unselected for all product groups') . '</div>
                                     </div>
                                     <div class="col-12 col-md-12 col-lg-6 my-1">
                                         <label for="search_results_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                        <select name="search_results_catalog_detail_page_id" id="search_results_catalog_detail_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($search_results_properties['catalog_detail_page_id'], 'catalog detail') . '</select>
+                                        <select name="search_results_catalog_detail_page_id" id="search_results_catalog_detail_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($search_results_properties['catalog_detail_page_id'] ?? ''), 'catalog detail') . '</select>
                                     </div>
                                 </div>
                             </div>
@@ -1487,7 +1552,7 @@ if (!$_POST) {
                 $output_express_order_offline_payment_rows = 
                 '<div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_offline_payment_label_row" style="' . $express_order_offline_payment_label_row_style . '">
                     <label class="form-label" for="express_order_offline_payment_label">'. lang('Offline Payment Label') . '</label>
-                    <input value="' . h($express_order_properties['offline_payment_label']) . '" type="text" id="express_order_offline_payment_label" name="express_order_offline_payment_label" class="form-control" maxlength="255" >
+                    <input value="' . h(($express_order_properties['offline_payment_label'] ?? '')) . '" type="text" id="express_order_offline_payment_label" name="express_order_offline_payment_label" class="form-control" maxlength="255" >
                 </div>';
                 $output_express_order_offline_payment_checkbox_rows = 
                 '<div class="col-12 my-2" id="express_order_offline_payment_always_allowed_row" style="' . $express_order_offline_payment_always_allowed_row_style . '">
@@ -1500,7 +1565,7 @@ if (!$_POST) {
                 $output_order_preview_offline_payment_rows = 
                 '<div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_offline_payment_label_row" style="' . $order_preview_offline_payment_label_row_style . '">
                     <label class="form-label" for="order_preview_offline_payment_label">'. lang('Offline Payment Label') . '</label>
-                    <input value="' . h($order_preview_properties['offline_payment_label']) . '" type="text" id="order_preview_offline_payment_label" name="order_preview_offline_payment_label" class="form-control" maxlength="255" >
+                    <input value="' . h(($order_preview_properties['offline_payment_label'] ?? '')) . '" type="text" id="order_preview_offline_payment_label" name="order_preview_offline_payment_label" class="form-control" maxlength="255" >
                 </div>';
                 $output_order_preview_offline_payment_checkbox_rows = 
                 '<div class="col-12 my-2" id="order_preview_offline_payment_always_allowed_row" style="' . $order_preview_offline_payment_always_allowed_row_style . '">
@@ -1514,7 +1579,7 @@ if (!$_POST) {
             $output_ecommerce_page_type_properties =
                 '<div class="col-12 col-md-6 my-2" id="catalog_product_group_id_row" style="' . $catalog_product_group_id_row_style . '">
                     <label for="catalog_product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                    <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options($catalog_properties['product_group_id'], $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE) . '</select>
+                    <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($catalog_properties['product_group_id'] ?? ''), $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE) . '</select>
                     <div class="form-text text-end">' . lang('leave unselected for all product groups') . '</div>
                 </div>
                 <div class="col-12 my-2" id="catalog_menu_row" style="' . $catalog_menu_row_style . '">
@@ -1531,11 +1596,11 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_featured_items_row" style="' . $catalog_number_of_featured_items_row_style . '">
                     <label for="catalog_number_of_featured_items" class="form-label">' . lang('Number of Featured Items') . '</label>
-                    <input value="' . $catalog_properties['number_of_featured_items'] . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                    <input value="' . ($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_new_items_row" style="' . $catalog_number_of_new_items_row_style . '">
                     <label for="catalog_number_of_new_items" class="form-label">' . lang('Number of New Items') . '</label>
-                    <input value="' . $catalog_properties['number_of_new_items'] . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                    <input value="' . ($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_columns_row" style="' . $catalog_number_of_columns_row_style . '">
                     <label for="catalog_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
@@ -1561,11 +1626,11 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_back_button_label_row" style="' . $catalog_back_button_label_row_style . '">
                     <label for="catalog_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
-                    <input value="' . $catalog_properties['back_button_label'] . '" type="text" name="catalog_back_button_label" id="catalog_back_button_label" maxlength="50" class="form-control" />
+                    <input value="' . ($catalog_properties['back_button_label'] ?? '') . '" type="text" name="catalog_back_button_label" id="catalog_back_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_catalog_detail_page_id_row" style="' . $catalog_catalog_detail_page_id_row_style . '">
                     <label for="catalog_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                    <select class="form-select" id="catalog_catalog_detail_page_id" name="catalog_catalog_detail_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page($catalog_properties['catalog_detail_page_id'], 'catalog detail') . '</select>
+                    <select class="form-select" id="catalog_catalog_detail_page_id" name="catalog_catalog_detail_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page(($catalog_properties['catalog_detail_page_id'] ?? ''), 'catalog detail') . '</select>
                 </div>
                 <div class="col-12 my-2" id="catalog_detail_allow_customer_to_add_product_to_order_row" style="' . $catalog_detail_allow_customer_to_add_product_to_order_row_style . '">
                     <div class="form-check form-switch">
@@ -1578,11 +1643,11 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-md-12 my-1">
                                     <label for="catalog_detail_add_button_label" class="form-label">' . lang('Add Button Label') . '</label>
-                                    <input value="' . $catalog_detail_properties['add_button_label'] . '" type="text" name="catalog_detail_add_button_label" id="catalog_detail_add_button_label" maxlength="50" class="form-control" />
+                                    <input value="' . ($catalog_detail_properties['add_button_label'] ?? '') . '" type="text" name="catalog_detail_add_button_label" id="catalog_detail_add_button_label" maxlength="50" class="form-control" />
                                 </div>
                                 <div class="col-12 col-md-12 my-1">
                                     <label for="catalog_detail_next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                                    <select class="form-select" id="catalog_detail_next_page_id" name="catalog_detail_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page($catalog_detail_properties['next_page_id']) . '</select>
+                                    <select class="form-select" id="catalog_detail_next_page_id" name="catalog_detail_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page(($catalog_detail_properties['next_page_id'] ?? '')) . '</select>
                                 </div>
                             </div>
                         </div>
@@ -1590,19 +1655,19 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_detail_back_button_label_row" style="' . $catalog_detail_back_button_label_row_style . '">
                     <label for="catalog_detail_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
-                    <input value="' . $catalog_detail_properties['back_button_label'] . '" type="text" name="catalog_detail_back_button_label" id="catalog_detail_back_button_label" maxlength="50" class="form-control" />
+                    <input value="' . ($catalog_detail_properties['back_button_label'] ?? '') . '" type="text" name="catalog_detail_back_button_label" id="catalog_detail_back_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_shopping_cart_label_row" style="' . $express_order_shopping_cart_label_row_style . '">
                     <label for="express_order_shopping_cart_label" class="form-label">' . lang('Shopping Cart Label') . '</label>
-                    <input value="' . $express_order_properties['shopping_cart_label'] . '" type="text" name="express_order_shopping_cart_label" id="express_order_shopping_cart_label" maxlength="50" class="form-control" />
+                    <input value="' . ($express_order_properties['shopping_cart_label'] ?? '') . '" type="text" name="express_order_shopping_cart_label" id="express_order_shopping_cart_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_label_row" style="' . $express_order_quick_add_label_row_style . '">
                     <label for="express_order_quick_add_label" class="form-label">' . lang('Quick Add Label') . '</label>
-                    <input value="' . $express_order_properties['quick_add_label'] . '" type="text" name="express_order_quick_add_label" id="express_order_quick_add_label" maxlength="255" class="form-control" />
+                    <input value="' . ($express_order_properties['quick_add_label'] ?? '') . '" type="text" name="express_order_quick_add_label" id="express_order_quick_add_label" maxlength="255" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_product_group_id_row" style="' . $express_order_quick_add_product_group_id_row_style . '">
                     <label for="express_order_quick_add_product_group_id" class="form-label">' . lang('Quick Add Product Group') . '</label>
-                    <select class="form-select" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options($express_order_properties['quick_add_product_group_id']) . '</select>
+                    <select class="form-select" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? '')) . '</select>
                 </div>
                 <div class="col-12 my-2" id="express_order_product_description_type_row" style="' . $express_order_product_description_type_row_style . '">
                     <label class="form-label" for="">'. lang('Product Description Type') . '</label>
@@ -1621,7 +1686,7 @@ if (!$_POST) {
                         <label class="form-check-label" for="express_order_shipping_form">' . lang('Enable Custom Shipping Form') . '</label>
                     </div>
                     <script>
-                        var original_express_order_shipping_form = "' . $express_order_properties['shipping_form'] . '";
+                        var original_express_order_shipping_form = "' . ($express_order_properties['shipping_form'] ?? '') . '";
                     </script>
     
                     <div id="express_order_shipping_form_notice" style="display:none;">
@@ -1632,16 +1697,16 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_special_offer_code_label_row" style="' . $express_order_special_offer_code_label_row_style . '">
                     <label for="express_order_special_offer_code_label" class="form-label">' . lang('Special Offer Code Label') . '</label>
-                    <input value="' . $express_order_properties['special_offer_code_label'] . '" type="text" name="express_order_special_offer_code_label" id="express_order_special_offer_code_label" maxlength="50" class="form-control" />
+                    <input value="' . ($express_order_properties['special_offer_code_label'] ?? '') . '" type="text" name="express_order_special_offer_code_label" id="express_order_special_offer_code_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-8 my-2" id="express_order_special_offer_code_message_row" style="' . $express_order_special_offer_code_message_row_style . '">
                     <label for="express_order_special_offer_code_message" class="form-label">' . lang('Special Offer Code Message') . '</label>
-                    <input value="' . $express_order_properties['special_offer_code_message'] . '" type="text" name="express_order_special_offer_code_message" id="express_order_special_offer_code_message" maxlength="255" class="form-control" />
+                    <input value="' . ($express_order_properties['special_offer_code_message'] ?? '') . '" type="text" name="express_order_special_offer_code_message" id="express_order_special_offer_code_message" maxlength="255" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 my-2" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="express_order_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
-                        <input value="' . $express_order_properties['custom_field_1_label'] . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
+                        <input value="' . ($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="express_order_custom_field_1_required" id="express_order_custom_field_1_required" value="1"' . $express_order_custom_field_1_required_checked . ' />
                             <label class="form-check-label" for="express_order_custom_field_1_required">' . lang('Required') . '</label>
@@ -1651,7 +1716,7 @@ if (!$_POST) {
                 <div class="col-12 col-sm-6 my-2" id="express_order_custom_field_2_label_row" style="' . $express_order_custom_field_2_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="express_order_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
-                        <input value="' . $express_order_properties['custom_field_2_label'] . '" type="text" name="express_order_custom_field_2_label" id="express_order_custom_field_2_label" maxlength="255" class="form-control" />
+                        <input value="' . ($express_order_properties['custom_field_2_label'] ?? '') . '" type="text" name="express_order_custom_field_2_label" id="express_order_custom_field_2_label" maxlength="255" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="express_order_custom_field_2_required" id="express_order_custom_field_2_required" value="1"' . $express_order_custom_field_2_required_checked . ' />
                             <label class="form-check-label" for="express_order_custom_field_2_required">' . lang('Required') . '</label>
@@ -1669,7 +1734,7 @@ if (!$_POST) {
                         <input value="1"' . $express_order_form_checked . ' id="express_order_form" name="express_order_form" class="form-check-input collapse-switcher" type="checkbox" onclick="show_or_hide_express_order_custom_billing_form()" data-bs-target="#show_or_hide_express_order_custom_billing_form_row"/>
                         <label class="form-check-label" for="express_order_form">' . lang('Enable Custom Billing Form') . '</label>
                     </div>
-                    <script>var original_express_order_form = "' . $express_order_properties['form'] . '";</script>
+                    <script>var original_express_order_form = "' . ($express_order_properties['form'] ?? '') . '";</script>
                     <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_express_order_custom_billing_form_row">
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
@@ -1681,12 +1746,12 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-8 my-1" id="express_order_form_name_row" style="' . $express_order_form_name_row_style . '">
                                     <label for="express_order_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
-                                    <input value="' . h($express_order_properties['form_name']) . '" type="text" name="express_order_form_name" id="express_order_form_name" maxlength="100" class="form-control" />
+                                    <input value="' . h(($express_order_properties['form_name'] ?? '')) . '" type="text" name="express_order_form_name" id="express_order_form_name" maxlength="100" class="form-control" />
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-1" id="express_order_form_label_column_width_row" style="' . $express_order_form_label_column_width_row_style . '">
                                     <label for="express_order_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                     <div class="input-group">
-                                        <input value="' . h($express_order_properties['form_label_column_width']) . '" type="text" name="express_order_form_label_column_width" id="express_order_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
+                                        <input value="' . h(($express_order_properties['form_label_column_width'] ?? '')) . '" type="text" name="express_order_form_label_column_width" id="express_order_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
                                         <label class="input-group-text" for="form_label_column_width">%</label>
                                     </div>
                                     <div class="form-text text-end">'. lang('leave blank for auto') . '</div>
@@ -1704,20 +1769,20 @@ if (!$_POST) {
                 ' . $output_express_order_offline_payment_checkbox_rows . '
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_card_verification_number_page_id_row" style="' . $express_order_card_verification_number_page_id_row_style . '">
                     <label for="express_order_card_verification_number_page_id" class="form-label">' . lang('Card Verification Number Page') . '</label>
-                    <select class="form-select" name="express_order_card_verification_number_page_id" id="express_order_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($express_order_properties['card_verification_number_page_id']) . '</select>
+                    <select class="form-select" name="express_order_card_verification_number_page_id" id="express_order_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($express_order_properties['card_verification_number_page_id'] ?? '')) . '</select>
                 </div>
                 ' . $output_express_order_offline_payment_rows . '
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_terms_page_id_row" style="' . $express_order_terms_page_id_row_style . '">
                     <label for="express_order_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
-                    <select class="form-select" name="express_order_terms_page_id" id="express_order_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($express_order_properties['terms_page_id']) . '</select>
+                    <select class="form-select" name="express_order_terms_page_id" id="express_order_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($express_order_properties['terms_page_id'] ?? '')) . '</select>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_update_button_label_row" style="' . $express_order_update_button_label_row_style . '">
                     <label class="form-label" for="express_order_update_button_label">'. lang('Update Button Label') . '</label>
-                    <input value="' . $express_order_properties['update_button_label'] . '" type="text" id="express_order_update_button_label" name="express_order_update_button_label" class="form-control" maxlength="50" >
+                    <input value="' . ($express_order_properties['update_button_label'] ?? '') . '" type="text" id="express_order_update_button_label" name="express_order_update_button_label" class="form-control" maxlength="50" >
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_purchase_now_button_label_row" style="' . $express_order_purchase_now_button_label_row_style . '">
                     <label class="form-label" for="express_order_purchase_now_button_label">'. lang('Purchase Now Button Label') . '</label>
-                    <input value="' . $express_order_properties['purchase_now_button_label'] . '" type="text" id="express_order_purchase_now_button_label" name="express_order_purchase_now_button_label" class="form-control" maxlength="50" >
+                    <input value="' . ($express_order_properties['purchase_now_button_label'] ?? '') . '" type="text" id="express_order_purchase_now_button_label" name="express_order_purchase_now_button_label" class="form-control" maxlength="50" >
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook rows for PHP code.
@@ -1727,11 +1792,11 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12 col-lg-6 my-2" id="express_order_pre_save_hook_code_row" style="' . $express_order_pre_save_hook_code_row_style . '">
                                 <label class="form-label" for="express_order_pre_save_hook_code">' . lang('Pre-Save Hook Code') . '</label>
-                                <textarea id="express_order_pre_save_hook_code" name="express_order_pre_save_hook_code" class="form-control">' . h($express_order_properties['pre_save_hook_code']) . '</textarea>
+                                <textarea id="express_order_pre_save_hook_code" name="express_order_pre_save_hook_code" class="form-control">' . h(($express_order_properties['pre_save_hook_code'] ?? '')) . '</textarea>
                             </div>
                             <div class="col-12 col-lg-6 my-2" id="express_order_post_save_hook_code_row" style="' . $express_order_post_save_hook_code_row_style . '">
                                 <label class="form-label" for="express_order_post_save_hook_code">' . lang('Post-Save Hook Code') . '</label>
-                                <textarea id="express_order_post_save_hook_code" name="express_order_post_save_hook_code" class="form-control">' . h($express_order_properties['post_save_hook_code']) . '</textarea>
+                                <textarea id="express_order_post_save_hook_code" name="express_order_post_save_hook_code" class="form-control">' . h(($express_order_properties['post_save_hook_code'] ?? '')) . '</textarea>
                             </div>
                         </div>
                     </div>';
@@ -1740,7 +1805,7 @@ if (!$_POST) {
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12 col-md-6 col-lg-4 my-2" id="express_order_next_page_id_row" style="' . $express_order_next_page_id_row_style . '">
                     <label class="form-label" for="express_order_next_page_id">' . lang('Next Page') . '</label>
-                    <select class="form-select" id="express_order_next_page_id" name="express_order_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page($express_order_properties['next_page_id'], 'order receipt') . '</select>
+                    <select class="form-select" id="express_order_next_page_id" name="express_order_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($express_order_properties['next_page_id'] ?? ''), 'order receipt') . '</select>
                 </div>
                 <div class="col-12 my-2" id="express_order_order_receipt_email_row" style="' . $express_order_order_receipt_email_row_style . '">
                     <div class="form-check form-switch">
@@ -1753,7 +1818,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-sm-6 col-md-8 my-1">
                                     <label class="form-label" for="express_order_order_receipt_email_subject">' . lang('Subject') . '</label>
-                                    <input value="' . h($express_order_properties['order_receipt_email_subject']) . '" type="text" id="express_order_order_receipt_email_subject" name="express_order_order_receipt_email_subject" class="form-control" maxlength="255">
+                                    <input value="' . h(($express_order_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="express_order_order_receipt_email_subject" name="express_order_order_receipt_email_subject" class="form-control" maxlength="255">
                                 </div> 
                                 <div class="col-12 my-1">
                                     <div class="col-12">
@@ -1773,11 +1838,11 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                   <label for="express_order_order_receipt_email_header" class="form-label">' . lang('Header') . '</label>
-                                                  <textarea class="form-control" id="express_order_order_receipt_email_header" name="express_order_order_receipt_email_header" rows="3">' . h($express_order_properties['order_receipt_email_header']) . '</textarea>
+                                                  <textarea class="form-control" id="express_order_order_receipt_email_header" name="express_order_order_receipt_email_header" rows="3">' . h(($express_order_properties['order_receipt_email_header'] ?? '')) . '</textarea>
                                                 </div>
                                                 <div class="col-12 my-1">
                                                   <label for="express_order_order_receipt_email_footer" class="form-label">' . lang('Footer') . '</label>
-                                                  <textarea class="form-control" id="express_order_order_receipt_email_footer" name="express_order_order_receipt_email_footer" rows="3">' . h($express_order_properties['order_receipt_email_footer']) . '</textarea>
+                                                  <textarea class="form-control" id="express_order_order_receipt_email_footer" name="express_order_order_receipt_email_footer" rows="3">' . h(($express_order_properties['order_receipt_email_footer'] ?? '')) . '</textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -1788,7 +1853,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                     <label class="form-label" for="express_order_order_receipt_email_page_id">' . lang('Page') . '</label>
-                                                    <select class="form-select" id="express_order_order_receipt_email_page_id" name="express_order_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page($express_order_properties['order_receipt_email_page_id'], 'order receipt') . '</select>
+                                                    <select class="form-select" id="express_order_order_receipt_email_page_id" name="express_order_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($express_order_properties['order_receipt_email_page_id'] ?? ''), 'order receipt') . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -1800,7 +1865,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="order_form_product_group_id_row" style="' . $order_form_product_group_id_row_style . '">
                     <label class="form-label" for="order_form_product_group_id">' . lang('Product Group') . '</label>
-                    <select class="form-select" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options($order_form_properties['product_group_id']) . '</select>
+                    <select class="form-select" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? '')) . '</select>
                 </div>
                 <div class="col-12 my-3" id="order_form_product_layout_row_1" style="' . $order_form_product_layout_row_1_style . '">
                     <label class="form-label">' . lang('Format') . '</label>
@@ -1817,11 +1882,11 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_add_button_label">' . lang('Add Button Label') . '</label>
-                            <input value="' . $order_form_properties['add_button_label'] . '" type="text" class="form-control" id="order_form_add_button_label" name="order_form_add_button_label" maxlength="50"/>
+                            <input value="' . ($order_form_properties['add_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_add_button_label" name="order_form_add_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_add_button_next_page_id">' . lang('Next Page') . '</label>
-                            <select class="form-select" id="order_form_add_button_next_page_id" name="order_form_add_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($order_form_properties['add_button_next_page_id']) . '</select>
+                            <select class="form-select" id="order_form_add_button_next_page_id" name="order_form_add_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($order_form_properties['add_button_next_page_id'] ?? '')) . '</select>
                         </div> 
                     </div>
                 </div>
@@ -1829,25 +1894,25 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_skip_button_label">' . lang('Skip Button Label') . '</label>
-                            <input value="' . $order_form_properties['skip_button_label'] . '" type="text" class="form-control" id="order_form_skip_button_label" name="order_form_skip_button_label" maxlength="50"/>
+                            <input value="' . ($order_form_properties['skip_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_skip_button_label" name="order_form_skip_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_skip_button_next_page_id">' . lang('Next Page') . '</label>
-                            <select class="form-select" id="order_form_skip_button_next_page_id" name="order_form_skip_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($order_form_properties['skip_button_next_page_id']) . '</select>
+                            <select class="form-select" id="order_form_skip_button_next_page_id" name="order_form_skip_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($order_form_properties['skip_button_next_page_id'] ?? '')) . '</select>
                         </div> 
                     </div>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_shopping_cart_label_row" style="' . $shopping_cart_shopping_cart_label_row_style . '">
                     <label class="form-label" for="shopping_cart_shopping_cart_label">' . lang('Shopping Cart Label') . '</label>
-                    <input value="' . $shopping_cart_properties['shopping_cart_label'] . '" type="text" class="form-control" id="shopping_cart_shopping_cart_label" name="shopping_cart_shopping_cart_label" maxlength="50"/>
+                    <input value="' . ($shopping_cart_properties['shopping_cart_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_shopping_cart_label" name="shopping_cart_shopping_cart_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_label_row" style="' . $shopping_cart_quick_add_label_row_style . '">
                     <label class="form-label" for="shopping_cart_quick_add_label">' . lang('Quick Add Label') . '</label>
-                    <input value="' . $shopping_cart_properties['quick_add_label'] . '" type="text" class="form-control" id="shopping_cart_quick_add_label" name="shopping_cart_quick_add_label" maxlength="255"/>
+                    <input value="' . ($shopping_cart_properties['quick_add_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_quick_add_label" name="shopping_cart_quick_add_label" maxlength="255"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_product_group_id_row" style="' . $shopping_cart_quick_add_product_group_id_row_style . '">
                     <label class="form-label" for="shopping_cart_quick_add_product_group_id">' . lang('Quick Add Product Group') . '</label>
-                    <select class="form-select" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options($shopping_cart_properties['quick_add_product_group_id']) . '</select>
+                    <select class="form-select" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? '')) . '</select>
                 </div> 
                 <div class="col-12 my-3" id="shopping_cart_product_description_type_row" style="' . $shopping_cart_product_description_type_row_style . '">
                     <label class="form-label">' . lang('Product Description Type') . '</label>
@@ -1862,19 +1927,19 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_special_offer_code_label_row" style="' . $shopping_cart_special_offer_code_label_row_style . '">
                     <label class="form-label" for="shopping_cart_special_offer_code_label">' . lang('Special Offer Code Label') . '</label>
-                    <input value="' . $shopping_cart_properties['special_offer_code_label'] . '" type="text" class="form-control" id="shopping_cart_special_offer_code_label" name="shopping_cart_special_offer_code_label" maxlength="50"/>
+                    <input value="' . ($shopping_cart_properties['special_offer_code_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_label" name="shopping_cart_special_offer_code_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-8 my-2" id="shopping_cart_special_offer_code_message_row" style="' . $shopping_cart_special_offer_code_message_row_style . '">
                     <label class="form-label" for="shopping_cart_special_offer_code_message">' . lang('Special Offer Code Message') . '</label>
-                    <input value="' . $shopping_cart_properties['special_offer_code_message'] . '" type="text" class="form-control" id="shopping_cart_special_offer_code_message" name="shopping_cart_special_offer_code_message" maxlength="255"/>
+                    <input value="' . ($shopping_cart_properties['special_offer_code_message'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_message" name="shopping_cart_special_offer_code_message" maxlength="255"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_update_button_label_row" style="' . $shopping_cart_update_button_label_row_style . '">
                     <label class="form-label" for="shopping_cart_update_button_label">' . lang('Update Button Label') . '</label>
-                    <input value="' . $shopping_cart_properties['update_button_label'] . '" type="text" class="form-control" id="shopping_cart_update_button_label" name="shopping_cart_update_button_label" maxlength="50"/>
+                    <input value="' . ($shopping_cart_properties['update_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_update_button_label" name="shopping_cart_update_button_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_checkout_button_label_row" style="' . $shopping_cart_checkout_button_label_row_style . '">
                     <label class="form-label" for="shopping_cart_checkout_button_label">' . lang('Checkout Button Label') . '</label>
-                    <input value="' . $shopping_cart_properties['checkout_button_label'] . '" type="text" class="form-control" id="shopping_cart_checkout_button_label" name="shopping_cart_checkout_button_label" maxlength="50"/>
+                    <input value="' . ($shopping_cart_properties['checkout_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_checkout_button_label" name="shopping_cart_checkout_button_label" maxlength="50"/>
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook row for PHP code.
@@ -1882,18 +1947,18 @@ if (!$_POST) {
                 $output_ecommerce_page_type_properties .=
                     '<div class="col-12 my-2" id="shopping_cart_hook_code_row" style="' . $shopping_cart_hook_code_row_style . '">
                         <label class="form-label" for="shopping_cart_hook_code">' . lang('Hook Code') . '</label>
-                        <textarea id="shopping_cart_hook_code" name="shopping_cart_hook_code" class="form-control">' . h($shopping_cart_properties['hook_code']) . '</textarea>
+                        <textarea id="shopping_cart_hook_code" name="shopping_cart_hook_code" class="form-control">' . h(($shopping_cart_properties['hook_code'] ?? '')) . '</textarea>
                     </div>';
             }
 
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12 col-lg-6 col-xl-4 my-2" id="shopping_cart_next_page_id_with_shipping_row" style="' . $shopping_cart_next_page_id_with_shipping_row_style . '">
                     <label class="form-label" for="shopping_cart_next_page_id_with_shipping">' . lang('Next Page') . ' (' . lang('with shipping') . ')</label>
-                    <select class="form-select" id="shopping_cart_next_page_id_with_shipping" name="shopping_cart_next_page_id_with_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Address & Arrival or Express Order Page')) )) . '-</option>' . select_page($shopping_cart_properties['next_page_id_with_shipping'], array('shipping address and arrival', 'express order')) . '</select>
+                    <select class="form-select" id="shopping_cart_next_page_id_with_shipping" name="shopping_cart_next_page_id_with_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Address & Arrival or Express Order Page')) )) . '-</option>' . select_page(($shopping_cart_properties['next_page_id_with_shipping'] ?? ''), array('shipping address and arrival', 'express order')) . '</select>
                 </div>
                 <div class="col-12 col-lg-6 col-xl-4 my-2" id="shopping_cart_next_page_id_without_shipping_row" style="' . $shopping_cart_next_page_id_without_shipping_row_style . '">
                     <label class="form-label" for="shopping_cart_next_page_id_without_shipping">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
-                    <select class="form-select" id="shopping_cart_next_page_id_without_shipping" name="shopping_cart_next_page_id_without_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Billing Information or Express Order Page')) )) . '-</option>' . select_page($shopping_cart_properties['next_page_id_without_shipping'], array('billing information', 'express order')) . '</select>
+                    <select class="form-select" id="shopping_cart_next_page_id_without_shipping" name="shopping_cart_next_page_id_without_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Billing Information or Express Order Page')) )) . '-</option>' . select_page(($shopping_cart_properties['next_page_id_without_shipping'] ?? ''), array('billing information', 'express order')) . '</select>
                 </div> 
                 <div class="col-12 my-2" id="shipping_address_and_arrival_address_type_row" style="' . $shipping_address_and_arrival_address_type_row_style . '">
                     <div class="form-check form-switch">
@@ -1906,7 +1971,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 my-1">
                                     <label class="form-label" for="shipping_address_and_arrival_address_type_page_id">' . lang('Address Type Page') . '</label>
-                                    <select class="form-select" id="shipping_address_and_arrival_address_type_page_id" name="shipping_address_and_arrival_address_type_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($shipping_address_and_arrival_properties['address_type_page_id']) . '</select>
+                                    <select class="form-select" id="shipping_address_and_arrival_address_type_page_id" name="shipping_address_and_arrival_address_type_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($shipping_address_and_arrival_properties['address_type_page_id'] ?? '')) . '</select>
                                 </div> 
                             </div>
                         </div>
@@ -1917,7 +1982,7 @@ if (!$_POST) {
                         <input value="1"' . $shipping_address_and_arrival_form_checked . ' id="shipping_address_and_arrival_form" name="shipping_address_and_arrival_form" class="form-check-input collapse-switcher" type="checkbox" onclick="show_or_hide_custom_shipping_form()" data-bs-target="#show_or_hide_custom_shipping_form_row"/>
                         <label class="form-check-label" for="shipping_address_and_arrival_form">' . lang('Enable Custom Shipping Form') . '</label>
                     </div>
-                    <script type="text/javascript">var original_shipping_address_and_arrival_form = "' . $shipping_address_and_arrival_properties['form'] . '";</script>
+                    <script type="text/javascript">var original_shipping_address_and_arrival_form = "' . ($shipping_address_and_arrival_properties['form'] ?? '') . '";</script>
                     <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_shipping_form_row">
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
@@ -1929,12 +1994,12 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-8 my-1" id="shipping_address_and_arrival_form_name_row" style="' . $shipping_address_and_arrival_form_name_row_style . '">
                                     <label for="shipping_address_and_arrival_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
-                                    <input value="' . h($shipping_address_and_arrival_properties['form_name']) . '" type="text" name="shipping_address_and_arrival_form_name" id="shipping_address_and_arrival_form_name" maxlength="100" class="form-control" />
+                                    <input value="' . h(($shipping_address_and_arrival_properties['form_name'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_name" id="shipping_address_and_arrival_form_name" maxlength="100" class="form-control" />
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-1" id="shipping_address_and_arrival_form_label_column_width_row" style="' . $shipping_address_and_arrival_form_label_column_width_row_style . '">
                                     <label for="shipping_address_and_arrival_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                     <div class="input-group">
-                                        <input value="' . h($shipping_address_and_arrival_properties['form_label_column_width']) . '" type="text" name="shipping_address_and_arrival_form_label_column_width" id="shipping_address_and_arrival_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
+                                        <input value="' . h(($shipping_address_and_arrival_properties['form_label_column_width'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_label_column_width" id="shipping_address_and_arrival_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
                                         <label class="input-group-text" for="shipping_address_and_arrival_form_label_column_width">%</label>
                                     </div>
                                     <div class="form-text text-end">'. lang('leave blank for auto') . '</div>
@@ -1947,11 +2012,11 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_address_and_arrival_submit_button_label">' . lang('Submit Button Label') . '</label>
-                            <input value="' . $shipping_address_and_arrival_properties['submit_button_label'] . '" type="text" class="form-control" id="shipping_address_and_arrival_submit_button_label" name="shipping_address_and_arrival_submit_button_label" maxlength="50"/>
+                            <input value="' . ($shipping_address_and_arrival_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_address_and_arrival_submit_button_label" name="shipping_address_and_arrival_submit_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_address_and_arrival_next_page_id">' . lang('Next Page') . '</label>
-                            <select class="form-select" id="shipping_address_and_arrival_next_page_id" name="shipping_address_and_arrival_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Method Page')) )) . '-</option>' . select_page($shipping_address_and_arrival_properties['next_page_id'], 'shipping method') . '</select>
+                            <select class="form-select" id="shipping_address_and_arrival_next_page_id" name="shipping_address_and_arrival_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Method Page')) )) . '-</option>' . select_page(($shipping_address_and_arrival_properties['next_page_id'] ?? ''), 'shipping method') . '</select>
                         </div> 
                     </div>
                 </div>
@@ -1970,18 +2035,18 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_method_submit_button_label">' . lang('Submit Button Label') . '</label>
-                            <input value="' . $shipping_method_properties['submit_button_label'] . '" type="text" class="form-control" id="shipping_method_submit_button_label" name="shipping_method_submit_button_label" maxlength="50"/>
+                            <input value="' . ($shipping_method_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_method_submit_button_label" name="shipping_method_submit_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_method_next_page_id">' . lang('Next Page') . '</label>
-                            <select class="form-select" id="shipping_method_next_page_id" name="shipping_method_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($shipping_method_properties['next_page_id']) . '</select>
+                            <select class="form-select" id="shipping_method_next_page_id" name="shipping_method_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($shipping_method_properties['next_page_id'] ?? '')) . '</select>
                         </div> 
                     </div>
                 </div>
                 <div class="col-12 col-sm-6 my-2" id="billing_information_custom_field_1_label_row" style="' . $billing_information_custom_field_1_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="billing_information_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
-                        <input value="' . $billing_information_properties['custom_field_1_label'] . '" type="text" name="billing_information_custom_field_1_label" id="billing_information_custom_field_1_label" maxlength="255" class="form-control" />
+                        <input value="' . ($billing_information_properties['custom_field_1_label'] ?? '') . '" type="text" name="billing_information_custom_field_1_label" id="billing_information_custom_field_1_label" maxlength="255" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="billing_information_custom_field_1_required" id="billing_information_custom_field_1_required" value="1"' . $billing_information_custom_field_1_required_checked . ' />
                             <label class="form-check-label" for="billing_information_custom_field_1_required">' . lang('Required') . '</label>
@@ -1991,7 +2056,7 @@ if (!$_POST) {
                 <div class="col-12 col-sm-6 my-2" id="billing_information_custom_field_2_label_row" style="' . $billing_information_custom_field_2_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="billing_information_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
-                        <input value="' . $billing_information_properties['custom_field_2_label'] . '" type="text" name="billing_information_custom_field_2_label" id="billing_information_custom_field_2_label" maxlength="255" class="form-control" />
+                        <input value="' . ($billing_information_properties['custom_field_2_label'] ?? '') . '" type="text" name="billing_information_custom_field_2_label" id="billing_information_custom_field_2_label" maxlength="255" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="billing_information_custom_field_2_required" id="billing_information_custom_field_2_required" value="1"' . $billing_information_custom_field_2_required_checked . ' />
                             <label class="form-check-label" for="billing_information_custom_field_2_required">' . lang('Required') . '</label>
@@ -2009,7 +2074,7 @@ if (!$_POST) {
                         <input value="1"' . $billing_information_form_checked . ' id="billing_information_form" name="billing_information_form" class="form-check-input collapse-switcher" type="checkbox" onclick="show_or_hide_billing_information_custom_billing_form()" data-bs-target="#show_or_hide_billing_information_custom_billing_form_row"/>
                         <label class="form-check-label" for="billing_information_form">' . lang('Enable Custom Billing Form') . '</label>
                     </div>
-                    <script type="text/javascript">var original_billing_information_form = "' . $billing_information_properties['form'] . '";</script>
+                    <script type="text/javascript">var original_billing_information_form = "' . ($billing_information_properties['form'] ?? '') . '";</script>
                     <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_billing_information_custom_billing_form_row">
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
@@ -2021,12 +2086,12 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-8 my-1" id="billing_information_form_name_row" style="' . $billing_information_form_name_row_style . '">
                                     <label for="billing_information_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
-                                    <input value="' . h($billing_information_properties['form_name']) . '" type="text" name="billing_information_form_name" id="billing_information_form_name" maxlength="100" class="form-control" />
+                                    <input value="' . h(($billing_information_properties['form_name'] ?? '')) . '" type="text" name="billing_information_form_name" id="billing_information_form_name" maxlength="100" class="form-control" />
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-1" id="billing_information_form_label_column_width_row" style="' . $billing_information_form_label_column_width_row_style . '">
                                     <label for="billing_information_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                     <div class="input-group">
-                                        <input value="' . h($billing_information_properties['form_label_column_width']) . '" type="text" name="billing_information_form_label_column_width" id="billing_information_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
+                                        <input value="' . h(($billing_information_properties['form_label_column_width'] ?? '')) . '" type="text" name="billing_information_form_label_column_width" id="billing_information_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
                                         <label class="input-group-text" for="billing_information_form_label_column_width">%</label>
                                     </div>
                                     <div class="form-text text-end">'. lang('leave blank for auto') . '</div>
@@ -2037,11 +2102,11 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="billing_information_submit_button_label_row" style="' . $billing_information_submit_button_label_row_style . '">
                     <label class="form-label" for="billing_information_submit_button_label">' . lang('Submit Button Label') . '</label>
-                    <input value="' . $billing_information_properties['submit_button_label'] . '" type="text" class="form-control" id="billing_information_submit_button_label" name="billing_information_submit_button_label" maxlength="50"/>
+                    <input value="' . ($billing_information_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="billing_information_submit_button_label" name="billing_information_submit_button_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-lg-6 col-xl-4 my-2" id="billing_information_next_page_id_row" style="' . $billing_information_next_page_id_row_style . '">
                     <label class="form-label" for="billing_information_next_page_id">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
-                    <select class="form-select" id="billing_information_next_page_id" name="billing_information_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Preview or Express Order Page')) )) . '-</option>' . select_page($billing_information_properties['next_page_id'], 'order preview') . select_page($billing_information_properties['next_page_id'], 'express order') . '</select>
+                    <select class="form-select" id="billing_information_next_page_id" name="billing_information_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Preview or Express Order Page')) )) . '-</option>' . select_page(($billing_information_properties['next_page_id'] ?? ''), 'order preview') . select_page(($billing_information_properties['next_page_id'] ?? ''), 'express order') . '</select>
                 </div> 
                 <div class="col-12 my-2" id="order_preview_product_description_type_row" style="' . $order_preview_product_description_type_row_style . '">
                     <label class="form-label" for="">'. lang('Product Description Type') . '</label>
@@ -2063,16 +2128,16 @@ if (!$_POST) {
                 ' . $output_order_preview_offline_payment_checkbox_rows . '
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_card_verification_number_page_id_row" style="' . $order_preview_card_verification_number_page_id_row_style . '">
                     <label for="order_preview_card_verification_number_page_id" class="form-label">' . lang('Card Verification Number Page') . '</label>
-                    <select class="form-select" name="order_preview_card_verification_number_page_id" id="order_preview_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($order_preview_properties['card_verification_number_page_id']) . '</select>
+                    <select class="form-select" name="order_preview_card_verification_number_page_id" id="order_preview_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['card_verification_number_page_id'] ?? '')) . '</select>
                 </div>
                 ' . $output_order_preview_offline_payment_rows . '
-                <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_terms_page_id_row" style="' . $express_order_terms_paorder_preview_terms_page_id_row_stylege_id_row_style . '">
+                <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_terms_page_id_row" style="' . $order_preview_terms_page_id_row_style . '">
                     <label for="order_preview_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
-                    <select class="form-select" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($order_preview_properties['terms_page_id']) . '</select>
+                    <select class="form-select" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['terms_page_id'] ?? '')) . '</select>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_submit_button_label_row" style="' . $order_preview_submit_button_label_row_style . '">
                     <label class="form-label" for="order_preview_submit_button_label">'. lang('Update Button Label') . '</label>
-                    <input value="' . $order_preview_properties['submit_button_label'] . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
+                    <input value="' . ($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook rows for PHP code.
@@ -2082,11 +2147,11 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12 col-lg-6 my-2" id="order_preview_pre_save_hook_code_row" style="' . $order_preview_pre_save_hook_code_row_style . '">
                                 <label class="form-label" for="order_preview_pre_save_hook_code">' . lang('Pre-Save Hook Code') . '</label>
-                                <textarea id="order_preview_pre_save_hook_code" name="order_preview_pre_save_hook_code" class="form-control">' . h($order_preview_properties['pre_save_hook_code']) . '</textarea>
+                                <textarea id="order_preview_pre_save_hook_code" name="order_preview_pre_save_hook_code" class="form-control">' . h(($order_preview_properties['pre_save_hook_code'] ?? '')) . '</textarea>
                             </div>
                             <div class="col-12 col-lg-6 my-2" id="order_preview_post_save_hook_code_row" style="' . $order_preview_post_save_hook_code_row_style . '">
                                 <label class="form-label" for="order_preview_post_save_hook_code">' . lang('Post-Save Hook Code') . '</label>
-                                <textarea id="order_preview_post_save_hook_code" name="order_preview_post_save_hook_code" class="form-control">' . h($order_preview_properties['post_save_hook_code']) . '</textarea>
+                                <textarea id="order_preview_post_save_hook_code" name="order_preview_post_save_hook_code" class="form-control">' . h(($order_preview_properties['post_save_hook_code'] ?? '')) . '</textarea>
                             </div> 
                         </div>
                     </div>';
@@ -2095,7 +2160,7 @@ if (!$_POST) {
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12 col-md-6 col-lg-4 my-2" id="order_preview_next_page_id_row" style="' . $order_preview_next_page_id_row_style . '">
                     <label class="form-label" for="order_preview_next_page_id">' . lang('Next Page') . '</label>
-                    <select class="form-select" id="order_preview_next_page_id" name="order_preview_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page($order_preview_properties['next_page_id'], 'order receipt') . '</select>
+                    <select class="form-select" id="order_preview_next_page_id" name="order_preview_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($order_preview_properties['next_page_id'] ?? ''), 'order receipt') . '</select>
                 </div>
                 <div class="col-12 my-2" id="order_preview_order_receipt_email_row" style="' . $order_preview_order_receipt_email_row_style . '">
                     <div class="form-check form-switch">
@@ -2108,7 +2173,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-sm-6 col-md-8 my-1">
                                     <label class="form-label" for="order_preview_order_receipt_email_subject">' . lang('Subject') . '</label>
-                                    <input value="' . h($order_preview_properties['order_receipt_email_subject']) . '" type="text" id="order_preview_order_receipt_email_subject" name="order_preview_order_receipt_email_subject" class="form-control" maxlength="255">
+                                    <input value="' . h(($order_preview_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="order_preview_order_receipt_email_subject" name="order_preview_order_receipt_email_subject" class="form-control" maxlength="255">
                                 </div> 
                                 <div class="col-12 my-1">
                                     <div class="col-12">
@@ -2128,11 +2193,11 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                   <label for="order_preview_order_receipt_email_header" class="form-label">' . lang('Header') . '</label>
-                                                  <textarea class="form-control" id="order_preview_order_receipt_email_header" name="order_preview_order_receipt_email_header" rows="3">' . h($order_preview_properties['order_receipt_email_header']) . '</textarea>
+                                                  <textarea class="form-control" id="order_preview_order_receipt_email_header" name="order_preview_order_receipt_email_header" rows="3">' . h(($order_preview_properties['order_receipt_email_header'] ?? '')) . '</textarea>
                                                 </div>
                                                 <div class="col-12 my-1">
                                                   <label for="order_preview_order_receipt_email_footer" class="form-label">' . lang('Footer') . '</label>
-                                                  <textarea class="form-control" id="order_preview_order_receipt_email_footer" name="order_preview_order_receipt_email_footer" rows="3">' . h($order_preview_properties['order_receipt_email_footer']) . '</textarea>
+                                                  <textarea class="form-control" id="order_preview_order_receipt_email_footer" name="order_preview_order_receipt_email_footer" rows="3">' . h(($order_preview_properties['order_receipt_email_footer'] ?? '')) . '</textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -2143,7 +2208,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                     <label class="form-label" for="order_preview_order_receipt_email_page_id">' . lang('Page') . '</label>
-                                                    <select class="form-select" id="order_preview_order_receipt_email_page_id" name="order_preview_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page($order_preview_properties['order_receipt_email_page_id'], 'order receipt') . '</select>
+                                                    <select class="form-select" id="order_preview_order_receipt_email_page_id" name="order_preview_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($order_preview_properties['order_receipt_email_page_id'] ?? ''), 'order receipt') . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -2303,7 +2368,7 @@ if (!$_POST) {
             $output_forms_page_type_properties =
                 '<div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_form_name_row" style="' . $custom_form_form_name_row_style . '">
                     <label for="custom_form_form_name" class="form-label">' . lang('Form Name') . '</label>
-                    <input value="' . h($custom_form_properties['form_name']) . '" type="text" name="custom_form_form_name" id="custom_form_form_name" maxlength="100" class="form-control" />
+                    <input value="' . h(($custom_form_properties['form_name'] ?? '')) . '" type="text" name="custom_form_form_name" id="custom_form_form_name" maxlength="100" class="form-control" />
                 </div>
                 <div class="col-12 my-2" id="custom_form_enabled_row" style="' . $custom_form_enabled_row_style . '">
                     <div class="form-check form-switch">
@@ -2323,7 +2388,7 @@ if (!$_POST) {
                                 <div class="col-12 col-md-12 my-1">
                                     <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                     <div class="input-group">
-                                        <input value="' . $custom_form_properties['quiz_pass_percentage'] . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
+                                        <input value="' . ($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
                                         <label class="input-group-text" for="custom_form_quiz_pass_percentage">%</label>
                                     </div>
                                 </div>
@@ -2346,19 +2411,19 @@ if (!$_POST) {
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_label_column_width_row" style="' . $custom_form_label_column_width_row_style . '">
                     <label for="custom_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                     <div class="input-group">
-                        <input value="' . h($custom_form_properties['label_column_width']) . '" type="text" name="custom_form_label_column_width" id="custom_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
+                        <input value="' . h(($custom_form_properties['label_column_width'] ?? '')) . '" type="text" name="custom_form_label_column_width" id="custom_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
                         <label class="input-group-text" for="custom_form_label_column_width">%</label>
                     </div>
                     <div class="form-text text-end">' . lang('leave blank for auto') . '</div>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_submit_button_label_row" style="' . $custom_form_submit_button_label_row_style . '">
                     <label for="custom_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                    <input value="' . $custom_form_properties['submit_button_label'] . '" type="text" name="custom_form_submit_button_label" id="custom_form_submit_button_label" maxlength="50" class="form-control" />
+                    <input value="' . ($custom_form_properties['submit_button_label'] ?? '') . '" type="text" name="custom_form_submit_button_label" id="custom_form_submit_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_watcher_page_id_row" style="' . $custom_form_watcher_page_id_row_style . '">
                     <label for="custom_form_watcher_page_id" class="form-label">' . lang('Enable Watcher Option') . '</label>
                     <select class="form-select" name="custom_form_watcher_page_id" id="custom_form_watcher_page_id">
-                    <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page($custom_form_properties['watcher_page_id'], 'form item view') . '</select>
+                    <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page(($custom_form_properties['watcher_page_id'] ?? ''), 'form item view') . '</select>
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook row for PHP code.
@@ -2366,7 +2431,7 @@ if (!$_POST) {
                 $output_forms_page_type_properties .=
                     '<div class="col-12 my-2" id="custom_form_hook_code_row" style="' . $custom_form_hook_code_row_style . '">
                         <label class="form-label" for="custom_form_hook_code">' . lang('Hook Code') . '</label>
-                        <textarea id="custom_form_hook_code" name="custom_form_hook_code" class="form-control">' . h($custom_form_properties['hook_code']) . '</textarea>
+                        <textarea id="custom_form_hook_code" name="custom_form_hook_code" class="form-control">' . h(($custom_form_properties['hook_code'] ?? '')) . '</textarea>
                     </div>';
             }
 
@@ -2404,7 +2469,7 @@ if (!$_POST) {
             $output_forms_page_type_properties .=
                 '<div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_contact_group_id_row" style="' . $custom_form_contact_group_id_row_style . '">
                     <label class="form-label" for="custom_form_contact_group_id">' . lang('Add to Contact Group') . '</label>
-                    <select class="form-select" id="custom_form_contact_group_id" name="custom_form_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($custom_form_properties['contact_group_id'], $user) . '</select>
+                    <select class="form-select" id="custom_form_contact_group_id" name="custom_form_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['contact_group_id'] ?? ''), $user) . '</select>
                 </div>
                 <div class="col-12 my-2" id="custom_form_submitter_email_row" style="' . $custom_form_submitter_email_row_style . '">
                     <div class="form-check form-switch">
@@ -2417,11 +2482,11 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-sm-6 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_submitter_email_from_email_address">' . lang('From E-mail Address') . '</label>
-                                    <input value="' . $custom_form_properties['submitter_email_from_email_address'] . '" type="text" class="form-control text-end" id="custom_form_submitter_email_from_email_address" name="custom_form_submitter_email_from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                    <input value="' . ($custom_form_properties['submitter_email_from_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_submitter_email_from_email_address" name="custom_form_submitter_email_from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                 </div>
                                 <div class="col-12 col-sm-6 col-xl-8 my-1">
                                     <label class="form-label" for="custom_form_submitter_email_subject">' . lang('Subject') . '</label>
-                                    <input value="' . h($custom_form_properties['submitter_email_subject']) . '" type="text" id="custom_form_submitter_email_subject" name="custom_form_submitter_email_subject" class="form-control" maxlength="255">
+                                    <input value="' . h(($custom_form_properties['submitter_email_subject'] ?? '')) . '" type="text" id="custom_form_submitter_email_subject" name="custom_form_submitter_email_subject" class="form-control" maxlength="255">
                                 </div>
                                 <div class="col-12 my-1">
                                     <div class="col-12">
@@ -2441,7 +2506,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                   <label for="custom_form_submitter_email_body" class="form-label">' . lang('Body') . '</label>
-                                                  <textarea class="form-control" id="custom_form_submitter_email_body" name="custom_form_submitter_email_body" rows="3">' . h($custom_form_properties['submitter_email_body']) . '</textarea>
+                                                  <textarea class="form-control" id="custom_form_submitter_email_body" name="custom_form_submitter_email_body" rows="3">' . h(($custom_form_properties['submitter_email_body'] ?? '')) . '</textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -2452,7 +2517,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                     <label class="form-label" for="custom_form_submitter_email_page_id">' . lang('Page') . '</label>
-                                                    <select class="form-select" id="custom_form_submitter_email_page_id" name="custom_form_submitter_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_properties['submitter_email_page_id']) . '</select>
+                                                    <select class="form-select" id="custom_form_submitter_email_page_id" name="custom_form_submitter_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['submitter_email_page_id'] ?? '')) . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -2473,15 +2538,15 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-sm-6 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_administrator_email_to_email_address">' . lang('To E-mail Address') . '</label>
-                                    <input value="' . $custom_form_properties['administrator_email_to_email_address'] . '" type="text" class="form-control text-end" id="custom_form_administrator_email_to_email_address" name="custom_form_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                    <input value="' . ($custom_form_properties['administrator_email_to_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_to_email_address" name="custom_form_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                 </div>
                                 <div class="col-12 col-sm-6 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_administrator_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
-                                    <input value="' . $custom_form_properties['administrator_email_bcc_email_address'] . '" type="text" class="form-control text-end" id="custom_form_administrator_email_bcc_email_address" name="custom_form_administrator_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                    <input value="' . ($custom_form_properties['administrator_email_bcc_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_bcc_email_address" name="custom_form_administrator_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                 </div>
                                 <div class="col-12 col-sm-12 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_administrator_email_subject">' . lang('Subject') . '</label>
-                                    <input value="' . h($custom_form_properties['administrator_email_subject']) . '" type="text" id="custom_form_administrator_email_subject" name="custom_form_administrator_email_subject" class="form-control" maxlength="255">
+                                    <input value="' . h(($custom_form_properties['administrator_email_subject'] ?? '')) . '" type="text" id="custom_form_administrator_email_subject" name="custom_form_administrator_email_subject" class="form-control" maxlength="255">
                                 </div>
                                 <div class="col-12 my-1">
                                     <div class="col-12">
@@ -2501,7 +2566,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                   <label for="custom_form_administrator_email_body" class="form-label">' . lang('Body') . '</label>
-                                                  <textarea class="form-control" id="custom_form_administrator_email_body" name="custom_form_administrator_email_body" rows="3">' . h($custom_form_properties['administrator_email_body']) . '</textarea>
+                                                  <textarea class="form-control" id="custom_form_administrator_email_body" name="custom_form_administrator_email_body" rows="3">' . h(($custom_form_properties['administrator_email_body'] ?? '')) . '</textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -2512,7 +2577,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                     <label class="form-label" for="custom_form_administrator_email_page_id">' . lang('Page') . '</label>
-                                                    <select class="form-select" id="custom_form_administrator_email_page_id" name="custom_form_administrator_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_properties['administrator_email_page_id']) . '</select>
+                                                    <select class="form-select" id="custom_form_administrator_email_page_id" name="custom_form_administrator_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['administrator_email_page_id'] ?? '')) . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -2534,13 +2599,13 @@ if (!$_POST) {
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label for="custom_form_membership_days" class="form-label">' . lang('Trial Length') . '</label>
                                     <div class="input-group">
-                                        <input value="' . h($custom_form_properties['membership_days']) . '" type="text" name="custom_form_membership_days" id="custom_form_membership_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                        <input value="' . h(($custom_form_properties['membership_days'] ?? '')) . '" type="text" name="custom_form_membership_days" id="custom_form_membership_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                         <span class="input-group-text">' . lang('day(s)') . '</span>
                                     </div>
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label class="form-label" for="custom_form_membership_start_page_id">' . lang('Set Member\'s Start Page to') . '</label>
-                                    <select class="form-select" id="custom_form_membership_start_page_id" name="custom_form_membership_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($custom_form_properties['membership_start_page_id']) . '</select>
+                                    <select class="form-select" id="custom_form_membership_start_page_id" name="custom_form_membership_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($custom_form_properties['membership_start_page_id'] ?? '')) . '</select>
                                 </div>
                             </div>
                         </div>
@@ -2557,19 +2622,19 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label class="form-label" for="custom_form_private_folder_id">' . lang('Set "View" Access to Folder') . '</label>
-                                    <select class="form-select" id="custom_form_private_folder_id" name="custom_form_private_folder_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('private folder')) )) . '-</option>' . select_folder($custom_form_properties['private_folder_id'], 0, 0, 0, array(), array(), 'private') . '</select>
+                                    <select class="form-select" id="custom_form_private_folder_id" name="custom_form_private_folder_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('private folder')) )) . '-</option>' . select_folder(($custom_form_properties['private_folder_id'] ?? ''), 0, 0, 0, array(), array(), 'private') . '</select>
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label for="custom_form_private_days" class="form-label">' . lang('Length') . '</label>
                                     <div class="input-group">
-                                        <input value="' . h($custom_form_properties['private_days']) . '" type="text" name="custom_form_private_days" id="custom_form_private_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                        <input value="' . h(($custom_form_properties['private_days'] ?? '')) . '" type="text" name="custom_form_private_days" id="custom_form_private_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                         <span class="input-group-text">' . lang('day(s)') . '</span>
                                     </div>
                                     <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label class="form-label" for="custom_form_private_start_page_id">' . lang('Set User\'s Start Page to') . '</label>
-                                    <select class="form-select" id="custom_form_private_start_page_id" name="custom_form_private_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($custom_form_properties['private_start_page_id']) . '</select>
+                                    <select class="form-select" id="custom_form_private_start_page_id" name="custom_form_private_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($custom_form_properties['private_start_page_id'] ?? '')) . '</select>
                                 </div>
                             </div>
                         </div>
@@ -2590,12 +2655,12 @@ if (!$_POST) {
                                 <div class="row">
                                     <div class="col-12 col-md-6 col-lg-4 my-1">
                                         <label class="form-label" for="custom_form_offer_id">' . lang('Offer') . '</label>
-                                        <select class="form-select" id="custom_form_offer_id" name="custom_form_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('offer')) )) . '-</option>' . select_offer($custom_form_properties['offer_id']) . '</select>
+                                        <select class="form-select" id="custom_form_offer_id" name="custom_form_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('offer')) )) . '-</option>' . select_offer(($custom_form_properties['offer_id'] ?? '')) . '</select>
                                     </div>
                                     <div class="col-12 col-md-6 col-lg-4 my-1">
                                         <label for="custom_form_offer_days" class="form-label">' . lang('Validity Length') . '</label>
                                         <div class="input-group">
-                                            <input value="' . h($custom_form_properties['offer_days']) . '" type="text" name="custom_form_offer_days" id="custom_form_offer_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                            <input value="' . h(($custom_form_properties['offer_days'] ?? '')) . '" type="text" name="custom_form_offer_days" id="custom_form_offer_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                             <span class="input-group-text">' . lang('day(s)') . '</span>
                                         </div>
                                         <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
@@ -2629,7 +2694,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 my-1">
                                   <label for="custom_form_confirmation_message" class="form-label">' . lang('Message') . '</label>
-                                  <textarea class="form-control" id="custom_form_confirmation_message" name="custom_form_confirmation_message" rows="3">' . h(prepare_rich_text_editor_content_for_output($custom_form_properties['confirmation_message'])) . '</textarea>
+                                  <textarea class="form-control" id="custom_form_confirmation_message" name="custom_form_confirmation_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['confirmation_message'] ?? ''))) . '</textarea>
                                 </div>
                             </div>
                         </div>
@@ -2640,7 +2705,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label class="form-label" for="custom_form_confirmation_page_id">' . lang('Next Page') . '</label>
-                                    <select class="form-select" id="custom_form_confirmation_page_id" name="custom_form_confirmation_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_properties['confirmation_page_id']) . '</select>
+                                    <select class="form-select" id="custom_form_confirmation_page_id" name="custom_form_confirmation_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['confirmation_page_id'] ?? '')) . '</select>
                                 </div>
                                 <div class="col-12 my-1">
                                     <div class="form-check form-switch">
@@ -2653,11 +2718,11 @@ if (!$_POST) {
                                             <div class="row p-1 border border-1 rounded bg-light">
                                                 <div class="col-12 col-lg-6 my-1">
                                                     <label class="form-label" for="custom_form_confirmation_alternative_page_contact_group_id">' . lang('If Contact Group') . '</label>
-                                                    <select class="form-select" id="custom_form_confirmation_alternative_page_contact_group_id" name="custom_form_confirmation_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group($custom_form_properties['confirmation_alternative_page_contact_group_id'], $user) . '</select>
+                                                    <select class="form-select" id="custom_form_confirmation_alternative_page_contact_group_id" name="custom_form_confirmation_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group(($custom_form_properties['confirmation_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
                                                 </div>
                                                 <div class="col-12 col-lg-6 my-1">
                                                     <label class="form-label" for="custom_form_confirmation_alternative_page_id">' . lang('Then Go to Page') . '</label>
-                                                    <select class="form-select" id="custom_form_confirmation_alternative_page_id" name="custom_form_confirmation_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_properties['confirmation_alternative_page_id']) . '</select>
+                                                    <select class="form-select" id="custom_form_confirmation_alternative_page_id" name="custom_form_confirmation_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['confirmation_alternative_page_id'] ?? '')) . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -2689,7 +2754,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 my-1">
                                     <label for="custom_form_return_message" class="form-label">' . lang('Message') . '</label>
-                                    <textarea class="form-control" id="custom_form_return_message" name="custom_form_return_message" rows="3">' . h(prepare_rich_text_editor_content_for_output($custom_form_properties['return_message'])) . '</textarea>
+                                    <textarea class="form-control" id="custom_form_return_message" name="custom_form_return_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['return_message'] ?? ''))) . '</textarea>
                                 </div>
                             </div>
                         </div>
@@ -2700,7 +2765,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-md-6 col-lg-4 my-1">
                                     <label class="form-label" for="custom_form_return_page_id">' . lang('Page') . '</label>
-                                    <select class="form-select" id="custom_form_return_page_id" name="custom_form_return_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_properties['return_page_id']) . '</select>
+                                    <select class="form-select" id="custom_form_return_page_id" name="custom_form_return_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['return_page_id'] ?? '')) . '</select>
                                 </div>
                                 <div class="col-12 my-1">
                                     <div class="form-check form-switch">
@@ -2713,11 +2778,11 @@ if (!$_POST) {
                                             <div class="row p-1 border border-1 rounded bg-light">
                                                 <div class="col-12 col-lg-6 my-1">
                                                     <label class="form-label" for="custom_form_return_alternative_page_contact_group_id">' . lang('If Contact Group') . '</label>
-                                                    <select class="form-select" id="custom_form_return_alternative_page_contact_group_id" name="custom_form_return_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group($custom_form_properties['return_alternative_page_contact_group_id'], $user) . '</select>
+                                                    <select class="form-select" id="custom_form_return_alternative_page_contact_group_id" name="custom_form_return_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group(($custom_form_properties['return_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
                                                 </div>
                                                 <div class="col-12 col-lg-6 my-1">
                                                     <label class="form-label" for="custom_form_return_alternative_page_id">' . lang('Then Go to Page') . '</label>
-                                                    <select class="form-select" id="custom_form_return_alternative_page_id" name="custom_form_return_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_properties['return_alternative_page_id']) . '</select>
+                                                    <select class="form-select" id="custom_form_return_alternative_page_id" name="custom_form_return_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['return_alternative_page_id'] ?? '')) . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -2735,19 +2800,19 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_confirmation_continue_button_label_row" style="' . $custom_form_confirmation_continue_button_label_row_style . '">
                     <label for="custom_form_confirmation_continue_button_label" class="form-label">' . lang('Continue Button Label') . '</label>
-                    <input value="' . $custom_form_confirmation_properties['continue_button_label'] . '" type="text" name="custom_form_confirmation_continue_button_label" id="custom_form_confirmation_continue_button_label" maxlength="50" class="form-control" />
+                    <input value="' . ($custom_form_confirmation_properties['continue_button_label'] ?? '') . '" type="text" name="custom_form_confirmation_continue_button_label" id="custom_form_confirmation_continue_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_confirmation_next_page_id_row" style="' . $custom_form_confirmation_next_page_id_row_style . '">
                     <label class="form-label" for="custom_form_confirmation_next_page_id">' . lang('Next Page') . '</label>
-                    <select class="form-select" id="custom_form_confirmation_next_page_id" name="custom_form_confirmation_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($custom_form_confirmation_properties['next_page_id']) . '</select>
+                    <select class="form-select" id="custom_form_confirmation_next_page_id" name="custom_form_confirmation_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_confirmation_properties['next_page_id'] ?? '')) . '</select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="form_list_view_custom_form_page_id_row" style="' . $form_list_view_custom_form_page_id_row_style . '">
                     <label class="form-label" for="form_list_view_custom_form_page_id">' . lang('Custom Form') . '</label>
-                    <select class="form-select" id="form_list_view_custom_form_page_id" name="form_list_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form($form_list_view_properties['custom_form_page_id'], $user) . '</select>
+                    <select class="form-select" id="form_list_view_custom_form_page_id" name="form_list_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form(($form_list_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="form_list_view_form_item_view_page_id_row" style="' . $form_list_view_form_item_view_page_id_row_style . '">
                     <label class="form-label" for="form_list_view_form_item_view_page_id">' . lang('Form Item View') . '</label>
-                    <select class="form-select" id="form_list_view_form_item_view_page_id" name="form_list_view_form_item_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page($form_list_view_properties['form_item_view_page_id'], 'form item view') . '</select>
+                    <select class="form-select" id="form_list_view_form_item_view_page_id" name="form_list_view_form_item_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page(($form_list_view_properties['form_item_view_page_id'] ?? ''), 'form item view') . '</select>
                 </div>
                 <div class="col-12 my-1" id="form_list_view_viewer_filter_row" style="' . $form_list_view_viewer_filter_row_style . '">
                     <div class="form-check form-switch">
@@ -2783,7 +2848,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="form_item_view_custom_form_page_id_row" style="' . $form_item_view_custom_form_page_id_row_style . '">
                     <label class="form-label" for="form_item_view_custom_form_page_id">' . lang('Custom Form') . '</label>
-                    <select class="form-select" id="form_item_view_custom_form_page_id" name="form_item_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form($form_item_view_properties['custom_form_page_id'], $user) . '</select>
+                    <select class="form-select" id="form_item_view_custom_form_page_id" name="form_item_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form(($form_item_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
                 </div>
                 <div class="col-12 my-3" id="form_item_view_submitter_security_row" style="' . $form_item_view_submitter_security_row_style . '">
                     <div class="form-check form-switch">
@@ -2811,7 +2876,7 @@ if (!$_POST) {
                 $output_forms_page_type_properties .=
                     '<div class="col-12 my-2" id="form_item_view_hook_code_row" style="' . $form_item_view_hook_code_row_style . '">
                         <label class="form-label" for="form_item_view_hook_code">' . lang('Hook Code') . '</label>
-                        <textarea id="form_item_view_hook_code" name="form_item_view_hook_code" class="form-control">' . h($form_item_view_properties['hook_code']) . '</textarea>
+                        <textarea id="form_item_view_hook_code" name="form_item_view_hook_code" class="form-control">' . h(($form_item_view_properties['hook_code'] ?? '')) . '</textarea>
                     </div>';
             }
 
@@ -2924,7 +2989,7 @@ if (!$_POST) {
             }
             
             // if notes is enabled for calendar event view prepare to check checkbox
-            if ($calendar_event_view_properties['notes'] == 1) {
+            if (($calendar_event_view_properties['notes'] ?? '') == 1) {
                 $calendar_event_view_notes_checked = ' checked="checked"';
             } else {
                 $calendar_event_view_notes_checked = '';
@@ -2955,7 +3020,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_view_calendar_event_view_page_id_row" style="' . $calendar_view_calendar_event_view_page_id_row_style . '">
                     <label for="calendar_view_calendar_event_view_page_id" class="form-label">' . lang('Calendar Event View') . '</label>
-                    <select class="form-select" name="calendar_view_calendar_event_view_page_id" id="calendar_view_calendar_event_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('calendar event view page')) )) . '-</option>' . select_page($calendar_view_properties['calendar_event_view_page_id'], 'calendar event view') . '</select>
+                    <select class="form-select" name="calendar_view_calendar_event_view_page_id" id="calendar_view_calendar_event_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('calendar event view page')) )) . '-</option>' . select_page(($calendar_view_properties['calendar_event_view_page_id'] ?? ''), 'calendar event view') . '</select>
                 </div>
                 <div class="col-12 my-2" id="calendar_event_view_calendars_row" style="' . $calendar_event_view_calendars_row_style . '">
                     <h5>' . lang('Calendars') . '</h5>
@@ -2973,7 +3038,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_event_view_back_button_label_row" style="' . $calendar_event_view_back_button_label_row_style . '">
                     <label for="calendar_event_view_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
-                    <input value="' . $calendar_event_view_properties['back_button_label'] . '" name="calendar_event_view_back_button_label" id="calendar_event_view_back_button_label" type="text" maxlength="50" class="form-control" />
+                    <input value="' . ($calendar_event_view_properties['back_button_label'] ?? '') . '" name="calendar_event_view_back_button_label" id="calendar_event_view_back_button_label" type="text" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 my-2" id="calendar_event_view_notes_row" style="' . $calendar_event_view_notes_row_style . '">
                     <div class="form-check form-switch">
@@ -2987,15 +3052,15 @@ if (!$_POST) {
             $output_affiliate_page_type_properties =
                 '<div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_terms_page_id_row" style="' . $affiliate_sign_up_form_terms_page_id_row_style . '">
                     <label for="affiliate_sign_up_form_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
-                    <select class="form-select" name="affiliate_sign_up_form_terms_page_id" id="affiliate_sign_up_form_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($affiliate_sign_up_form_properties['terms_page_id']) . '</select>
+                    <select class="form-select" name="affiliate_sign_up_form_terms_page_id" id="affiliate_sign_up_form_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($affiliate_sign_up_form_properties['terms_page_id'] ?? '')) . '</select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_submit_button_label_row" style="' . $affiliate_sign_up_form_submit_button_label_row_style . '">
                     <label for="affiliate_sign_up_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                    <input value="' . $affiliate_sign_up_form_properties['submit_button_label'] . '" type="text" name="affiliate_sign_up_form_submit_button_label" id="affiliate_sign_up_form_submit_button_label" placeholder="' . lang('Sign Up') . '"  class="form-control" maxlength="50"/>
+                    <input value="' . ($affiliate_sign_up_form_properties['submit_button_label'] ?? '') . '" type="text" name="affiliate_sign_up_form_submit_button_label" id="affiliate_sign_up_form_submit_button_label" placeholder="' . lang('Sign Up') . '"  class="form-control" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_next_page_id_row" style="' . $affiliate_sign_up_form_next_page_id_row_style . '">
                     <label class="form-label" for="affiliate_sign_up_form_next_page_id">' . lang('Next Page') . '</label>
-                    <select class="form-select" id="affiliate_sign_up_form_next_page_id" name="affiliate_sign_up_form_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('affiliate sign up confirmation page')) )) . '-</option>' . select_page($affiliate_sign_up_form_properties['next_page_id'], 'affiliate sign up confirmation') . '</select>
+                    <select class="form-select" id="affiliate_sign_up_form_next_page_id" name="affiliate_sign_up_form_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('affiliate sign up confirmation page')) )) . '-</option>' . select_page(($affiliate_sign_up_form_properties['next_page_id'] ?? ''), 'affiliate sign up confirmation') . '</select>
                 </div>';
         }
         
@@ -3043,11 +3108,11 @@ if (!$_POST) {
                             </div>
                             <div class="col-12 col-md-6 col-lg-4 my-2" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">
                                 <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                                <input value="' . $email_a_friend_properties['submit_button_label'] . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
+                                <input value="' . ($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
                             </div>
                             <div class="col-12 col-md-6 col-lg-4 my-2" id="email_a_friend_next_page_id_row" style="' . $email_a_friend_next_page_id_row_style . '">
                                 <label for="email_a_friend_next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                                <select name="email_a_friend_next_page_id" id="email_a_friend_next_page_id" class="form-select"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($email_a_friend_properties['next_page_id']) . '</select>
+                                <select name="email_a_friend_next_page_id" id="email_a_friend_next_page_id" class="form-select"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($email_a_friend_properties['next_page_id'] ?? '')) . '</select>
                             </div>
                             <div class="col-12 my-2" id="folder_view_pages_row" style="' . $folder_view_pages_row_style . '">
                                 <div class="form-check form-switch">
@@ -3084,7 +3149,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 col-md-12 my-1">
                                                 <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Address Type Page') . '</label>
-                                                <select name="update_address_book_address_type_page_id" id="update_address_book_address_type_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($update_address_book_properties['address_type_page_id']) . '</select>
+                                                <select name="update_address_book_address_type_page_id" id="update_address_book_address_type_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($update_address_book_properties['address_type_page_id'] ?? '')) . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -3101,6 +3166,8 @@ if (!$_POST) {
     }
     
     // find search default
+    $search_checked = '';
+
     if ($page_search == 1) {
         $search_checked = ' checked="checked"';
     }
@@ -3149,8 +3216,47 @@ if (!$_POST) {
     }
     
     // if sitemap is enabled, then check the checkbox
+    $sitemap_checked = '';
+
     if ($sitemap == '1') {
         $sitemap_checked = ' checked="checked"';
+    }
+
+    // Search engine indexing. The block is only built where the columns behind
+    // it exist: a switch that saves nothing is worse than no switch at all.
+    $output_noindex_rows = '';
+
+    if (pg_page_noindex_ready() == TRUE) {
+        $noindex_checked = '';
+        $nofollow_checked = '';
+
+        // nofollow qualifies the noindex directive and is meaningless without
+        // it, so it starts out unavailable and the master switch opens it.
+        $nofollow_disabled = ' disabled="disabled"';
+
+        if ($noindex == '1') {
+            $noindex_checked = ' checked="checked"';
+            $nofollow_disabled = '';
+
+            if ($nofollow == '1') {
+                $nofollow_checked = ' checked="checked"';
+            }
+        }
+
+        $output_noindex_rows =
+            '<div class="col-12 my-3" id="noindex_row">
+                <div class="form-check form-switch">
+                    <input value="1"' . $noindex_checked . ' id="noindex" name="noindex" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
+                </div>
+                <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
+                <div class="form-check form-switch mt-3 ms-4">
+                    <input value="1"' . $nofollow_checked . $nofollow_disabled . ' id="nofollow" name="nofollow" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
+                </div>
+                <div class="form-text ms-4">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
+                <div class="form-text text-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i>' . lang('A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.') . '</div>
+            </div>';
     }
     
     $comments_checked = '';
@@ -3189,6 +3295,8 @@ if (!$_POST) {
         }
     }
    
+    $comments_rating_checked = '';
+
     if ($comments_rating == '1') {
         // check the comments rating checkbox
         $comments_rating_checked = ' checked="checked"';
@@ -3282,11 +3390,11 @@ if (!$_POST) {
                 </div>
                 <form name="form" action="edit_page.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <div class="row">
                         ' . $output_page_type_selector . '
-                        <div class="col-12 col-md">
+                        <div class="col-12 col-md" style="min-width:0">
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-4 position-sticky" style="top:56px;">
@@ -3337,7 +3445,7 @@ if (!$_POST) {
                                 <div class="col-12 col-xl-6 mb-5">
                                     <div class="card my-4 h-100">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                            ' . lang('Search Engine Optimization') . '
+                                            ' . lang('Search Engine Optimization') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
@@ -3351,20 +3459,15 @@ if (!$_POST) {
                                                     <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($page_meta_description) . '</textarea>
                                                     <div id="seo_c_meta_description"></div>
                                                 </div>
-                                                <div class="col-12 mt-1 mb-2">
-                                                    <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                                    <input type="text" value="' . h($page_meta_keywords) . '" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>
-                                                    <script>
-                                                        if(document.body.contains(document.querySelector("input#meta_keywords"))){
-                                                            tagin(document.querySelector("#meta_keywords"));
-                                                        }
-                                                    </script>
-                                                </div>
                                                 <div class="col-12 my-3" id="sitemap_row" style="' . $sitemap_row_style . '">
                                                     <div class="form-check form-switch">
                                                         <input value="1"' . $sitemap_checked . ' id="sitemap" name="sitemap" class="form-check-input" type="checkbox" />
                                                         <label class="form-check-label" for="sitemap">' . lang('Include in Site Map') . '</label>
                                                     </div>
+                                                </div>
+                                                ' . $output_noindex_rows . '
+                                                <div class="col-12">
+                                                    ' . pg_seo_render_checklist($seo_row, 'page', $page_id) . '
                                                 </div>
                                             </div>
                                         </div>
@@ -3388,7 +3491,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12 mt-3 mb-2">
                                                                     <label for="keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
-                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>
+                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"/>
                                                                     <script>
                                                                         if(document.body.contains(document.querySelector("input#search_keywords"))){
                                                                             tagin( document.querySelector("#search_keywords") );
@@ -3570,6 +3673,9 @@ if (!$_POST) {
         { sel: "#title",            counterId: "seo_c_title",            min: 50,  max: 60  },
         { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
     ]);
+
+    // Indexing switch dependencies — logic in assets/backend.src.js
+    bindPageIndexingSwitches();
     </script>' .
     output_footer();
 
@@ -3589,13 +3695,16 @@ if (!$_POST) {
             page_title,
             page_meta_description,
             seo_analysis_current,
-            page_search, 
-            page_meta_keywords
+            page_search,
+            page_search_keywords,
+            page_folder,
+            sitemap,
+            " . (pg_page_noindex_ready() ? "noindex, nofollow" : "'0' AS noindex, '0' AS nofollow") . "
         FROM page
-        WHERE page_id = '" . escape($_POST['id']) . "'";
+        WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    
+
     $page_id = $row['page_id'];
 	$current_page_name = $row['page_name'];
     $current_page_type = $row['page_type'];
@@ -3604,10 +3713,14 @@ if (!$_POST) {
     $current_page_meta_description = $row['page_meta_description'];
     $current_seo_analysis_current = $row['seo_analysis_current'];
     $current_page_search = $row['page_search'];
-    $current_meta_keywords = $row['page_meta_keywords'];
+    $current_search_keywords = $row['page_search_keywords'];
+    $current_page_folder = $row['page_folder'];
+    $current_sitemap = $row['sitemap'];
+    $current_noindex = $row['noindex'];
+    $current_nofollow = $row['nofollow'];
     
     // if page was selected for delete, check if user has access and then delete page
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // if the user has a user role and the user does not have access to delete pages, then output error
         if (($user['role'] == '3') && ($user['delete_pages'] == FALSE)) {
             log_activity(lang('access denied because user does not have access to delete pages'), $_SESSION['sessionusername']);
@@ -3617,7 +3730,7 @@ if (!$_POST) {
         // if this page is a custom form, we need to check if there are submitted forms for this page,
         // because software will not allow this page to be deleted if there are submitted forms for this page
         if ($current_page_type == 'custom form') {
-            $query = "SELECT id FROM forms WHERE page_id = '" . escape($_POST['id']) . "'";
+            $query = "SELECT id FROM forms WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // if there are submitted forms for this page, do not delete page and notify user
@@ -3636,39 +3749,39 @@ if (!$_POST) {
         }
         
         // delete page
-        $query = "DELETE FROM page WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM page WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete regions
-        $query = "DELETE FROM pregion WHERE pregion_page = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM pregion WHERE pregion_page = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete form fields for page
-        $query = "DELETE FROM form_fields WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM form_fields WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete form field options for page
-        $query = "DELETE FROM form_field_options WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM form_field_options WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // Delete target options for page.
-        db("DELETE FROM target_options WHERE page_id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM target_options WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
         
         // if this page is a form list view, delete records from related tables.
         if ($current_page_type == 'form list view') {
-            $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-            $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
-            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
         
         // if this page is a form view directory, delete form_view_directories_form_list_views_xref records
         if ($current_page_type == 'form view directory') {
-            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
         
@@ -3676,18 +3789,18 @@ if (!$_POST) {
         pg_sfv_delete_views('page_id', $_POST['id']);
         
         // delete calendar_views_calendars_xref records
-        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete calendar_event_views_calendars_xref records
-        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if page type has a table for properties, delete page type record of properties
         if (check_for_page_type_properties($current_page_type) == true) {
             $page_type_table_name = str_replace(' ', '_', $current_page_type) . '_pages';
             
-            $query = "DELETE FROM $page_type_table_name WHERE page_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM $page_type_table_name WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
         
@@ -3700,7 +3813,7 @@ if (!$_POST) {
             FROM comments
             LEFT JOIN files ON comments.file_id = files.id
             WHERE
-                (comments.page_id = '" . escape($_POST['id']) . "')
+                (comments.page_id = '" . escape($_POST['id'] ?? '') . "')
                 AND (files.id IS NOT NULL)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
@@ -3732,23 +3845,38 @@ if (!$_POST) {
         }
         
         // delete comments for page
-        $query = "DELETE FROM comments WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM comments WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete submitted_form_info for page
-        $query = "DELETE FROM submitted_form_info WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM submitted_form_info WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete allow new comments data for this page
-        $query = "DELETE FROM allow_new_comments_for_items WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM allow_new_comments_for_items WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
+        // delete stored SEO structure findings for this page.
+        // Guarded on the table existing, because a page can be deleted on an
+        // installation that has not run the upgrade that creates it.
+        if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+            db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) ($_POST['id'] ?? 0) . "')");
+        }
+
+        // Both directions of the link graph: the rows this page produced and
+        // the rows naming it as a destination. Leaving the latter would make
+        // pages that linked here look connected to something that is gone.
+        if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+            db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) ($_POST['id'] ?? 0) . "')");
+            db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) ($_POST['id'] ?? 0) . "')");
+        }
+
         // delete watchers for this page
-        $query = "DELETE FROM watchers WHERE page_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM watchers WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // remove this page's keywords from the tag cloud
-        update_tag_cloud_keywords_for_page($_POST['id'], 0, '', $current_page_search, $current_meta_keywords);
+        update_tag_cloud_keywords_for_page($_POST['id'], 0, '', $current_page_search, $current_search_keywords);
 
         // Check if this page has short links, in order to determine if we need to delete them.
         $query =
@@ -3756,7 +3884,7 @@ if (!$_POST) {
             FROM short_links
             WHERE
                 (destination_type = 'page')
-                AND (page_id = '" . escape($_POST['id']) . "')";
+                AND (page_id = '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -3766,11 +3894,11 @@ if (!$_POST) {
                 "DELETE FROM short_links
                 WHERE
                     (destination_type = 'page')
-                    AND (page_id = '" . escape($_POST['id']) . "')";
+                    AND (page_id = '" . escape($_POST['id'] ?? '') . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
 
-        db("DELETE FROM preview_styles WHERE page_id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM preview_styles WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
 
         // If a layout file exists, then delete it.
         if (file_exists(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php')) {
@@ -3820,7 +3948,7 @@ if (!$_POST) {
         
         // if page is a custom form, check to see if there is another page with this same form name
         if ($_POST['type'] == 'custom form') {
-            $query = "SELECT id FROM custom_form_pages WHERE (form_name = '" . escape($_POST['custom_form_form_name']) . "') AND (page_id != '" . escape($_POST['id']) . "')";
+            $query = "SELECT id FROM custom_form_pages WHERE (form_name = '" . escape($_POST['custom_form_form_name'] ?? '') . "') AND (page_id != '" . escape($_POST['id'] ?? '') . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // if there is another page with this form name, output error
@@ -3833,7 +3961,7 @@ if (!$_POST) {
         
         // if user is above a user role, then deal with home page checkbox
         if ($user['role'] < 3) {
-            $sql_home_page = " page_home = '" . escape($_POST['home']) . "',";
+            $sql_home_page = " page_home = '" . escape($_POST['home'] ?? '') . "',";
             
         // else this user does not have access to change the home page property
         } else {
@@ -3881,7 +4009,7 @@ if (!$_POST) {
             // we need to check if there are submitted forms for this page,
             // because software will not allow the page type for this page to be changed if there are submitted forms for this page
             if (($current_page_type != $_POST['type']) && ($current_page_type == 'custom form')) {
-                $query = "SELECT id FROM forms WHERE page_id = '" . escape($_POST['id']) . "'";
+                $query = "SELECT id FROM forms WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
                 if (mysqli_num_rows($result) > 0) {
@@ -3956,7 +4084,7 @@ if (!$_POST) {
                             // get current contact group id
                             $query = "SELECT contact_group_id
                                      FROM custom_form_pages
-                                     WHERE page_id = '" . escape($_POST['id']) . "'";
+                                     WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             
@@ -3980,7 +4108,7 @@ if (!$_POST) {
                             $old_private_folder_id = db_value(
                                 "SELECT private_folder_id
                                 FROM custom_form_pages
-                                WHERE page_id = '" . escape($_POST['id']) . "'");
+                                WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
                             
                             // If the user is trying to change the private folder to a folder
                             // that he/she does not have edit access to,
@@ -4058,7 +4186,7 @@ if (!$_POST) {
                                         offer,
                                         offer_id
                                     FROM custom_form_pages
-                                    WHERE page_id = '" . e($_POST['id']) . "'");
+                                    WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
                             }
 
                             // If the user has access to commerce or the user just disabled grant offer,
@@ -4068,7 +4196,7 @@ if (!$_POST) {
 
                             // Otherwise the user does not have access to commerce, so save old value.
                             } else {
-                                $properties['offer'] = $old_properties['offer'];
+                                $properties['offer'] = ($old_properties['offer'] ?? '');
                             }
 
                             // If the user has access to commerce or the user just selected the blank offer,
@@ -4078,7 +4206,7 @@ if (!$_POST) {
 
                             // Otherwise the user does not have access to commerce, so save old value.
                             } else {
-                                $properties['offer_id'] = $old_properties['offer_id'];
+                                $properties['offer_id'] = ($old_properties['offer_id'] ?? '');
                             }
 
                             $properties['offer_days'] = $_POST['custom_form_offer_days'];
@@ -4105,7 +4233,7 @@ if (!$_POST) {
                             $query = "SELECT custom_form_page_id
                                      FROM form_list_view_pages
                                      WHERE
-                                        (page_id = '" . escape($_POST['id']) . "')
+                                        (page_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (collection = 'a')";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
@@ -4143,7 +4271,7 @@ if (!$_POST) {
                         $query =
                             "SELECT COUNT(*)
                             FROM form_list_view_pages
-                            WHERE page_id = '" . escape($_POST['id']) . "'";
+                            WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
                         
@@ -4166,7 +4294,7 @@ if (!$_POST) {
                                 "SELECT custom_form_page_id
                                 FROM form_item_view_pages
                                 WHERE
-                                    (page_id = '" . escape($_POST['id']) . "')
+                                    (page_id = '" . escape($_POST['id'] ?? '') . "')
                                     AND (collection = 'a')";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
@@ -4236,7 +4364,7 @@ if (!$_POST) {
                         );
                         
                         // delete old connections between form view directory and form list views
-                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id']) . "'";
+                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         
                         // prepare to get folders that user has access to, in order to determine which form list views should be available to be selected for the form view directory page type
@@ -4275,7 +4403,7 @@ if (!$_POST) {
                         // loop through all of the form list views in order to add them to the database if necessary
                         foreach ($form_list_views as $form_list_view) {
                             // if the user has edit access to the form list view and the user selected it, then add it to the data
-                            if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == TRUE) && ($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id']] == 1)) {
+                            if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == TRUE) && (($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id']] ?? '') == 1)) {
                                 $query =
                                     "INSERT INTO form_view_directories_form_list_views_xref (
                                         form_view_directory_page_id,
@@ -4283,7 +4411,7 @@ if (!$_POST) {
                                         form_list_view_name,
                                         subject_form_field_id)
                                     VALUES (
-                                        '" . escape($_POST['id']) . "',
+                                        '" . escape($_POST['id'] ?? '') . "',
                                         '" . $form_list_view['page_id'] . "',
                                         '" . escape($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name']) . "',
                                         '" . escape($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id']) . "')";
@@ -4302,7 +4430,7 @@ if (!$_POST) {
                         );
                         
                         // delete old connections between calendar view and calendars
-                        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($_POST['id']) . "'";
+                        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         
                         // get calendars in order to connect calendar view to calendars
@@ -4329,7 +4457,7 @@ if (!$_POST) {
                                        page_id,
                                        calendar_id)
                                     VALUES (
-                                       '" . escape($_POST['id']) . "',
+                                       '" . escape($_POST['id'] ?? '') . "',
                                        '" . $calendar['id'] . "')";
                                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             }
@@ -4340,7 +4468,7 @@ if (!$_POST) {
                             "SELECT
                                default_view
                             FROM calendar_view_pages
-                            WHERE id = '" . e($_POST['id']) . "'";
+                            WHERE id = '" . e($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
@@ -4360,7 +4488,7 @@ if (!$_POST) {
                         );
                     
                         // delete old connections between calendar event view and calendars
-                        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = '" . escape($_POST['id']) . "'";
+                        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         
                         // get calendars in order to connect calendar event view to calendars
@@ -4387,7 +4515,7 @@ if (!$_POST) {
                                        page_id,
                                        calendar_id)
                                     VALUES (
-                                       '" . escape($_POST['id']) . "',
+                                       '" . escape($_POST['id'] ?? '') . "',
                                        '" . $calendar['id'] . "')";
                                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             }
@@ -4439,7 +4567,7 @@ if (!$_POST) {
 
                         $old_properties = db_item(
                             "SELECT shipping_form, form FROM express_order_pages
-                            WHERE page_id = '" . e($_POST['id']) . "'");
+                            WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
 
                         $properties = array(
                             'page_id' => $_POST['id'],
@@ -4523,7 +4651,7 @@ if (!$_POST) {
 
                     case 'shipping address and arrival':
                         // get current form value before we update it, so that we know later if we should forward the user to the form designer or not
-                        $query = "SELECT form FROM shipping_address_and_arrival_pages WHERE page_id = '" . escape($_POST['id']) . "'";
+                        $query = "SELECT form FROM shipping_address_and_arrival_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         $current_shipping_address_and_arrival_form = $row['form'];
@@ -4554,7 +4682,7 @@ if (!$_POST) {
                     case 'billing information':
                         // Get current form value before we update it, so that we know later
                         // if we should forward the user to the form designer or not.
-                        $current_billing_information_form = db_value("SELECT form FROM billing_information_pages WHERE page_id = '" . escape($_POST['id']) . "'");
+                        $current_billing_information_form = db_value("SELECT form FROM billing_information_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
 
                         $properties = array(
                             'page_id' => $_POST['id'],
@@ -4628,19 +4756,19 @@ if (!$_POST) {
                     if (check_for_page_type_properties($current_page_type) == TRUE) {
                         $page_type_table_name = str_replace(' ', '_', $current_page_type) . '_pages';
                         
-                        $query = "DELETE FROM $page_type_table_name WHERE page_id = '" . escape($_POST['id']) . "'";
+                        $query = "DELETE FROM $page_type_table_name WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
                     
                     // if the old page type was form list view, delete form_view_directories_form_list_views_xref records
                     if ($current_page_type == 'form list view') {
-                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($_POST['id']) . "'";
+                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
 
                     // if the old page type was form view directory, then delete form_view_directories_form_list_views_xref records
                     if ($current_page_type == 'form view directory') {
-                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id']) . "'";
+                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
                 }
@@ -4650,7 +4778,7 @@ if (!$_POST) {
                     create_or_update_page_type_record($_POST['type'], $properties);
                 }
                 
-                $sql_page_type = " page_type = '" . escape($_POST['type']) . "',";
+                $sql_page_type = " page_type = '" . escape($_POST['type'] ?? '') . "',";
                 
             // else we cannot update the page type, so don't allow page type to be updated
             } else {
@@ -4684,21 +4812,36 @@ if (!$_POST) {
         }
         
         // call the function that is responsible for updating the tag cloud table for pages
-        update_tag_cloud_keywords_for_page($_POST['id'], $_POST['search'], $_POST['meta_keywords'], $current_page_search, $current_meta_keywords);
+        update_tag_cloud_keywords_for_page($_POST['id'], $_POST['search'] ?? '', $_POST['search_keywords'] ?? '', $current_page_search, $current_search_keywords);
         
         $sql_style_fields = "";
 
         // if user role is Administrator, Designer, or Manager, then allow user to change desktop style and mobile style for page
         if ($user['role'] < 3) {
             $sql_style_fields =
-                "page_style = '" . escape($_POST['style']) . "',
-                mobile_style_id = '" . escape($_POST['mobile_style_id']) . "',";
+                "page_style = '" . escape($_POST['style'] ?? '') . "',
+                mobile_style_id = '" . escape($_POST['mobile_style_id'] ?? '') . "',";
         }
         
+        $noindex = 0;
+        $nofollow = 0;
+
+        // The two indexing switches only mean something together. nofollow
+        // qualifies the noindex directive and is never emitted on its own, so it
+        // is stored as off whenever the page is open to search engines, and
+        // nothing downstream has to decide which of the two to believe.
+        if (($_POST['noindex'] ?? '') == 1) {
+            $noindex = 1;
+
+            if (($_POST['nofollow'] ?? '') == 1) {
+                $nofollow = 1;
+            }
+        }
+
         // if sitemap was enabled and the selected page type is a valid page type for the sitemap,
         // then include this page in the sitemap
         if (
-            ($_POST['sitemap'] == 1)
+            (($_POST['sitemap'] ?? '') == 1)
             &&
             (
                 ($_POST['type'] == 'standard')
@@ -4725,11 +4868,46 @@ if (!$_POST) {
         } else {
             $sitemap = 0;
         }
-        
+
+        // A page that is closed to search engines has no business in the site
+        // map. The switch is disabled on screen while noindex is on, so a
+        // browser never sends it, but a POST does not have to come from that
+        // screen and the two columns have to agree in the database.
+        if ($noindex == 1) {
+            $sitemap = 0;
+        }
+
+        $sql_noindex_fields = "";
+
+        if (pg_page_noindex_ready() == TRUE) {
+            $sql_noindex_fields =
+                "noindex = '" . $noindex . "',
+                nofollow = '" . $nofollow . "',";
+        }
+
         $sql_seo_analysis_current = "";
-        
-        // if the seo analysis is current and the title or the meta description has changed, then prepare to clear current status
-        if (($current_seo_analysis_current == 1) && (($current_page_title != $_POST['title']) || ($current_page_meta_description != $_POST['meta_description']))) {
+
+        // If the seo analysis is current and any field the SEO score reads
+        // has changed, then prepare to clear the current status. Beyond the
+        // title and description: the promoted keywords feed the site search
+        // check, the name feeds the URL check, and the folder, search and
+        // sitemap switches decide which checks apply to the page at all, and
+        // the indexing switches change the robots tag the structure pass reads
+        // back out of the rendered markup.
+        if (
+            ($current_seo_analysis_current == 1)
+            && (
+                ($current_page_title != $_POST['title'])
+                || ($current_page_meta_description != $_POST['meta_description'])
+                || ($current_search_keywords != ($_POST['search_keywords'] ?? ''))
+                || ($current_page_name != $name)
+                || ((int) $current_page_folder != (int) ($_POST['folder'] ?? 0))
+                || ((int) $current_page_search != (int) ($_POST['search'] ?? 0))
+                || ((int) $current_sitemap != (int) $sitemap)
+                || ((int) $current_noindex != (int) $noindex)
+                || ((int) $current_nofollow != (int) $nofollow)
+            )
+        ) {
             $sql_seo_analysis_current = "seo_analysis_current = '0',";
         }
         
@@ -4738,40 +4916,40 @@ if (!$_POST) {
             "UPDATE page
             SET
                 page_name = '" . escape($name) . "',
-                page_folder = '" . escape($_POST['folder']) . "',
+                page_folder = '" . escape($_POST['folder'] ?? '') . "',
                 $sql_page_type
                 layout_type = '" . e($layout_type) . "',
                 $sql_home_page
-                page_search = '" . escape($_POST['search']) . "',
-                page_search_keywords = '" . escape($_POST['search_keywords']) . "',
+                page_search = '" . escape($_POST['search'] ?? '') . "',
+                page_search_keywords = '" . escape($_POST['search_keywords'] ?? '') . "',
                 page_timestamp = UNIX_TIMESTAMP(),
                 page_user = '" . $user['id'] . "',
                 $sql_style_fields
-                page_title = '" . escape($_POST['title']) . "',
-                page_meta_description = '" . escape($_POST['meta_description']) . "',
-                page_meta_keywords = '" . escape($_POST['meta_keywords']) . "',
+                page_title = '" . escape($_POST['title'] ?? '') . "',
+                page_meta_description = '" . escape($_POST['meta_description'] ?? '') . "',
                 sitemap = '" . $sitemap . "',
+                $sql_noindex_fields
                 $sql_seo_analysis_current
-                comments = '" . escape($_POST['comments']) . "',
-                comments_label = '" . e($_POST['comments_label']) . "',
-                comments_message = '" . e($_POST['comments_message']) . "',
-                comments_rating = '" . escape($_POST['comments_rating']) . "',
-                comments_allow_new_comments = '" . escape($_POST['comments_allow_new_comments']) . "',
-                comments_disallow_new_comment_message = '" . escape($_POST['comments_disallow_new_comment_message']) . "',
-                comments_automatic_publish = '" . escape($_POST['comments_automatic_publish']) . "',
-                comments_allow_user_to_select_name = '" . escape($_POST['comments_allow_user_to_select_name']) . "',
-                comments_require_login_to_comment = '" . escape($_POST['comments_require_login_to_comment']) . "',
-                comments_allow_file_attachments = '" . escape($_POST['comments_allow_file_attachments']) . "',
-                comments_show_submitted_date_and_time = '" . escape($_POST['comments_show_submitted_date_and_time']) . "',
-                comments_administrator_email_to_email_address = '" . escape($_POST['comments_administrator_email_to_email_address']) . "',
-                comments_administrator_email_subject = '" . escape($_POST['comments_administrator_email_subject']) . "',
-                comments_administrator_email_conditional_administrators = '" . escape($_POST['comments_administrator_email_conditional_administrators']) . "',
-                comments_submitter_email_page_id = '" . escape($_POST['comments_submitter_email_page_id']) . "',
-                comments_submitter_email_subject = '" . escape($_POST['comments_submitter_email_subject']) . "',
-                comments_watcher_email_page_id = '" . escape($_POST['comments_watcher_email_page_id']) . "',
-                comments_watcher_email_subject = '" . escape($_POST['comments_watcher_email_subject']) . "',
-                comments_watchers_managed_by_submitter = '" . escape($_POST['comments_watchers_managed_by_submitter']) . "'
-            WHERE page_id = '" . escape($_POST['id']) . "'";
+                comments = '" . escape($_POST['comments'] ?? '') . "',
+                comments_label = '" . e($_POST['comments_label'] ?? '') . "',
+                comments_message = '" . e($_POST['comments_message'] ?? '') . "',
+                comments_rating = '" . escape($_POST['comments_rating'] ?? '') . "',
+                comments_allow_new_comments = '" . escape($_POST['comments_allow_new_comments'] ?? '') . "',
+                comments_disallow_new_comment_message = '" . escape($_POST['comments_disallow_new_comment_message'] ?? '') . "',
+                comments_automatic_publish = '" . escape($_POST['comments_automatic_publish'] ?? '') . "',
+                comments_allow_user_to_select_name = '" . escape($_POST['comments_allow_user_to_select_name'] ?? '') . "',
+                comments_require_login_to_comment = '" . escape($_POST['comments_require_login_to_comment'] ?? '') . "',
+                comments_allow_file_attachments = '" . escape($_POST['comments_allow_file_attachments'] ?? '') . "',
+                comments_show_submitted_date_and_time = '" . escape($_POST['comments_show_submitted_date_and_time'] ?? '') . "',
+                comments_administrator_email_to_email_address = '" . escape($_POST['comments_administrator_email_to_email_address'] ?? '') . "',
+                comments_administrator_email_subject = '" . escape($_POST['comments_administrator_email_subject'] ?? '') . "',
+                comments_administrator_email_conditional_administrators = '" . escape($_POST['comments_administrator_email_conditional_administrators'] ?? '') . "',
+                comments_submitter_email_page_id = '" . escape($_POST['comments_submitter_email_page_id'] ?? '') . "',
+                comments_submitter_email_subject = '" . escape($_POST['comments_submitter_email_subject'] ?? '') . "',
+                comments_watcher_email_page_id = '" . escape($_POST['comments_watcher_email_page_id'] ?? '') . "',
+                comments_watcher_email_subject = '" . escape($_POST['comments_watcher_email_subject'] ?? '') . "',
+                comments_watchers_managed_by_submitter = '" . escape($_POST['comments_watchers_managed_by_submitter'] ?? '') . "'
+            WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // If this page is a custom form, and pretty URLs were disabled before this update,
@@ -4821,8 +4999,8 @@ if (!$_POST) {
             || (
                 ($_POST['type'] == 'express order')
                 and (
-                    ($_POST['express_order_shipping_form'] and !$old_properties['shipping_form'])
-                    or ($_POST['express_order_form'] and !$old_properties['form'])
+                    ($_POST['express_order_shipping_form'] and !($old_properties['shipping_form'] ?? ''))
+                    or ($_POST['express_order_form'] and !($old_properties['form'] ?? ''))
                 )
             )
         ) {
@@ -4835,7 +5013,7 @@ if (!$_POST) {
 
                 $form_type = '&form_type=';
 
-                if ($_POST['express_order_shipping_form'] and !$old_properties['shipping_form']) {
+                if ($_POST['express_order_shipping_form'] and !($old_properties['shipping_form'] ?? '')) {
                     $form_type .= 'shipping';
                 } else {
                     $form_type .= 'billing';

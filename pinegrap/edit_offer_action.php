@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -269,17 +269,17 @@ if (!$_POST) {
     
     // delete related records in offer_actions_shipping_methods_xref
     // we do this regardless of whether we are deleting or updating this offer action
-    $query = "DELETE FROM offer_actions_shipping_methods_xref WHERE offer_action_id = '" . escape($_POST['id']) . "'";
+    $query = "DELETE FROM offer_actions_shipping_methods_xref WHERE offer_action_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // if offer action was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete offer action
-        $query = "DELETE FROM offer_actions WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM offer_actions WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete records where this action was a selected action for offers
-        $query = "DELETE FROM offers_offer_actions_xref WHERE offer_action_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM offers_offer_actions_xref WHERE offer_action_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'offer action ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
@@ -356,33 +356,33 @@ if (!$_POST) {
 
         // update offer action
         $query = "UPDATE offer_actions SET
-                    name = '" . escape($_POST['name']) . "',
-                    type = '" . escape($_POST['type']) . "',
+                    name = '" . escape($_POST['name'] ?? '') . "',
+                    type = '" . escape($_POST['type'] ?? '') . "',
                     discount_order_amount = '" . escape($discount_order_amount) . "',
                     discount_order_percentage = '" . escape($discount_order_percentage) . "',
-                    discount_product_product_id = '" . escape($_POST['discount_product_product_id']) . "',
+                    discount_product_product_id = '" . escape($_POST['discount_product_product_id'] ?? '') . "',
                     discount_product_amount = '" . escape($discount_product_amount) . "',
                     discount_product_percentage = '" . escape($discount_product_percentage) . "',
-                    add_product_product_id = '" . escape($_POST['add_product_product_id']) . "',
-                    add_product_quantity = '" . escape($_POST['add_product_quantity']) . "',
+                    add_product_product_id = '" . escape($_POST['add_product_product_id'] ?? '') . "',
+                    add_product_quantity = '" . escape($_POST['add_product_quantity'] ?? '') . "',
                     add_product_discount_amount = '" . escape($add_product_discount_amount) . "',
                     add_product_discount_percentage = '" . escape($add_product_discount_percentage) . "',
                     discount_shipping_percentage = '" . escape($discount_shipping_percentage) . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // loop through all shipping methods in order to add database records
         foreach ($shipping_methods as $shipping_method) {
             // if shipping method was selected, then add database record for shipping method for this offer action
-            if ($_POST['shipping_method_' . $shipping_method['id']] == 1) {
+            if (($_POST['shipping_method_' . $shipping_method['id']] ?? '') == 1) {
                 $query =
                     "INSERT INTO offer_actions_shipping_methods_xref (
                         offer_action_id,
                         shipping_method_id)
                     VALUES (
-                        '" . escape($_POST['id']) . "',
+                        '" . escape($_POST['id'] ?? '') . "',
                         '" . $shipping_method['id'] . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }

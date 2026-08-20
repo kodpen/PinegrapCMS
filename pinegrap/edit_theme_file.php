@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -43,8 +43,11 @@ if (!$_POST) {
     $activated_desktop_theme = $row['activated_desktop_theme'];
     $activated_mobile_theme = $row['activated_mobile_theme'];
     
+    // The screen is carried through to the hidden field below; it is never set anywhere else.
+    $from = isset($_GET['from']) ? ($_GET['from'] ?? '') : '';
+
     // if user requested to export the theme, then export the theme
-    if ($_GET['export'] == TRUE) {
+    if (($_GET['export'] ?? '') == TRUE) {
 
         // remove the file extension from the filename
         $file_name_for_csv = mb_substr($file_name, 0, -4);
@@ -135,7 +138,7 @@ if (!$_POST) {
                         </div>
                 <form action="edit_theme_file.php" method="post">
                     ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
+                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>(isset($_GET['id']) ? $_GET['id'] : ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>$from)) . '
                     <table class="field">
                         <tr>

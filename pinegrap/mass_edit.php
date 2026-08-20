@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -45,7 +45,7 @@ if (!$_POST) {
     }
 
     //if session tags are cleared or empty output tag  selection menu
-    if(!isset($_SESSION['software']['mass_edit']['tags']) || $_SESSION['software']['mass_edit']['tags'] == ''){
+    if(!isset($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
       
         $outputs = '
         <div class="row justify-content-center mt-5 pt-5">
@@ -86,7 +86,7 @@ if (!$_POST) {
         </script>';
     }else{
 
-        $tags = explode(',',$_SESSION['software']['mass_edit']['tags']);
+        $tags = explode(',',($_SESSION['software']['mass_edit']['tags'] ?? ''));
 
         $output_page_editing = false;
 
@@ -195,7 +195,7 @@ if (!$_POST) {
                                                 <div class="row">
                                                     <div class="col-12 mt-3 mb-2">
                                                         <label for="page_search_keywords_' . $row['page_id'] . '" class="form-label">' . lang('Promote on Keyword') . '</label>
-                                                        <input value="' . h($row['page_search_keywords']) . '" type="text" name="page_search_keywords_' . $row['page_id'] . '" id="page_search_keywords_' . $row['page_id'] . '" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>
+                                                        <input value="' . h($row['page_search_keywords']) . '" type="text" name="page_search_keywords_' . $row['page_id'] . '" id="page_search_keywords_' . $row['page_id'] . '" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"/>
                                                         <script>tagin( document.querySelector("#page_search_keywords_' . $row['page_id'] . '") );</script>
                                                     </div>
                                                 </div>
@@ -289,7 +289,7 @@ if (!$_POST) {
         </div>';
 
     $output_clear_button = '';
-    if(isset($_SESSION['software']['mass_edit']['tags']) && $_SESSION['software']['mass_edit']['tags'] != ''){
+    if(isset($_SESSION['software']['mass_edit']['tags']) && ($_SESSION['software']['mass_edit']['tags'] ?? '') != ''){
         $output_clear_button = '
         <li class="nav-item me-1 mb-1">
             <a href="?tags=clear" class="btn btn-sm"><i class="bi bi-trash me-2"></i>' . lang('Clear') . '</a>
@@ -467,7 +467,12 @@ if (!$_POST) {
         $current_page_meta_description = $row['page_meta_description'];
         $current_page_search = $row['page_search'];
         $current_page_search_keywords = $row['page_search_keywords'];
-        $current_meta_keywords = $row['page_meta_keywords'];
+
+        //the tag cloud is built from the promote on keyword list of the pages that are in the
+        //site search, so remember what those two end up as and refresh it once, after both
+        //of them have had a chance to change in this submit.
+        $new_page_search = $current_page_search;
+        $new_page_search_keywords = $current_page_search_keywords;
 
         
         
@@ -475,7 +480,7 @@ if (!$_POST) {
 
 
         // if page_name was posted, sanitize and save (same rules as edit_page.php)
-        if (isset($_POST['page_name_' . $page_id]) && $_POST['page_name_' . $page_id] !== '') {
+        if (isset($_POST['page_name_' . $page_id]) && ($_POST['page_name_' . $page_id] ?? '') !== '') {
             $new_page_name = trim($_POST['page_name_' . $page_id]);
             $new_page_name = str_replace(' ', '_', $new_page_name);
             $new_page_name = str_replace('&', '_', $new_page_name);
@@ -526,22 +531,30 @@ if (!$_POST) {
             //update with db function.
             db("UPDATE page SET page_search = '" . escape($_POST['page_search_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
 
-            // call the function that is responsible for updating the tag cloud table for pages
-            update_tag_cloud_keywords_for_page($row['page_id'], $_POST['page_search_' . $row['page_id']], $current_meta_keywords, $current_page_search, $current_meta_keywords);
-           
+            $new_page_search = $_POST['page_search_' . $row['page_id']];
         }
 
         //if page_search_keywords posted and posted page_search_keywords not equal to current one, update it.
-        if( 
+        if(
             $_POST['page_search_keywords_' . $row['page_id']]
             && $_POST['page_search_keywords_' . $row['page_id']] != $current_page_search_keywords)
         {
-            
+
             //count how many updated.
             $count_change++;
             $count_page_search_keywords_changes++;
             //update with db function.
             db("UPDATE page SET page_search_keywords = '" . escape($_POST['page_search_keywords_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
+
+            $new_page_search_keywords = $_POST['page_search_keywords_' . $row['page_id']];
+        }
+
+        //if either half of what the tag cloud is built from changed, rebuild this page's entries.
+        if(
+            ($new_page_search != $current_page_search)
+            || ($new_page_search_keywords != $current_page_search_keywords))
+        {
+            update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_page_search_keywords, $current_page_search, $current_page_search_keywords);
         }
 
     }

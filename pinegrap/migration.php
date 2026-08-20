@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -688,6 +688,8 @@ if (!$_POST) {
                     seo_analysis,
                     seo_analysis_current,
                     sitemap,
+                    " . (pg_page_noindex_ready() ? "noindex,
+                    nofollow," : "") . "
                     system_region_header,
                     system_region_footer,
                     page_user,
@@ -727,13 +729,26 @@ if (!$_POST) {
                     '" . escape($page['seo_analysis']) . "',
                     '" . escape($page['seo_analysis_current']) . "',
                     '" . escape($page['sitemap']) . "',
+                    " . (pg_page_noindex_ready() ? "'" . (int) ($page['noindex'] ?? 0) . "',
+                    '" . (int) ($page['nofollow'] ?? 0) . "'," : "") . "
                     '" . escape($page['system_region_header']) . "',
                     '" . escape($page['system_region_footer']) . "',
                     '" . USER_ID . "',
                     UNIX_TIMESTAMP())");
 
             $new_page_id = mysqli_insert_id(db::$con);
-            
+
+            // Register the page in the tag cloud, which is built from the promote on
+            // keyword list of the pages that are in the site search. Both keyword fields
+            // are copied across verbatim above: a migration reproduces the source site,
+            // and the source has its own upgrade history to have merged them already.
+            update_tag_cloud_keywords_for_page(
+                $new_page_id,
+                $page['search'],
+                $page['search_keywords'],
+                0,
+                '');
+
             // Loop through page regions in order to add them to database.
             foreach ($page['page_regions'] as $page_region) {
                 db(

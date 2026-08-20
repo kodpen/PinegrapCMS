@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -48,7 +48,7 @@ if(isset($_REQUEST['refresh']) && is_numeric($_REQUEST['refresh']) && $_REQUEST[
 
 // if widget refresh time value was passed in the query string
 if(isset($_SESSION['software']['welcome']['widget']['refresh'])){
-    $widget_refresh_time = $_SESSION['software']['welcome']['widget']['refresh'];
+    $widget_refresh_time = ($_SESSION['software']['welcome']['widget']['refresh'] ?? '');
 }
 
 // Add pinegrap notices
@@ -86,6 +86,9 @@ $output_widget_20 = '';
 $output_widget_21 = '';
 $output_widget_22 = '';
 $output_widget_23 = '';
+$output_widget_24 = '';
+$output_widget_25 = '';
+$output_widget_26 = '';
 
 
 
@@ -263,34 +266,194 @@ if ($user['role'] < 2){
   
 
 }
-$placeholder = '
-<div class="card-body card-body-placeholder overflow-auto h-75">
-    <div class="row ">
-        <div class="col-auto align-self-center">
-            <div class="card-title placeholder-glow " style="width:50px;height:50px;">
-                <span class="placeholder w-100 h-100 rounded-pill"></span>
-            </div>
+// ── Loading skeletons ───────────────────────────────────────────────────────
+//
+// .card.widget is aspect-ratio 1/1, so a widget card never resizes and the
+// grid cannot reflow when the AJAX lands. What the single generic skeleton got
+// wrong was where the boxes sit *inside* the card: one 50px circle over three
+// full-width lines matches no widget body api.php actually returns, so every
+// card visibly rearranged itself as its data arrived.
+//
+// Each shape below mirrors what api.php sends for that widget. Pixel heights
+// are explicit for two reasons: Bootstrap sizes .placeholder from the font
+// size of the line it sits on rather than the one the real markup uses, and
+// pinning the height of the blocks above a list is what puts the list itself
+// in the right place. Every number here was measured against the loaded card
+// in a browser, not estimated.
+//
+// One case cannot be solved from here: a widget with nothing to show renders a
+// centred "none yet" panel, and no skeleton can know that before the data
+// arrives. Widgets 19, 25 and 26 will always shift when they come back empty.
+
+$pg_ph_card = function ($inner) {
+    return '<div class="card-body card-body-placeholder p-0 overflow-hidden placeholder-glow">' . $inner . '</div>';
+};
+
+// The shared dashboard row. It borrows .pg-row and .pg-row-text from the real
+// markup rather than re-describing them, so the two match by construction and
+// cannot drift apart the next time the row is restyled. The tile is a plain
+// placeholder box rather than .pg-row-badge, because that class paints itself
+// with the card's accent colour and the skeleton would look already loaded.
+$pg_ph_row = '
+<div class="pg-row">
+    <span class="placeholder rounded flex-shrink-0" style="width:34px;height:34px"></span>
+    <span class="pg-row-text">
+        <span class="placeholder col-8 d-block" style="height:13px"></span>
+        <span class="placeholder col-5 d-block mt-1" style="height:11px"></span>
+    </span>
+</div>';
+
+// The compact variant, for the widgets that list one line per entry.
+$pg_ph_row_sm = '
+<div class="pg-row pg-row-sm">
+    <span class="placeholder rounded flex-shrink-0" style="width:22px;height:22px"></span>
+    <span class="pg-row-text">
+        <span class="placeholder col-7 d-block" style="height:12px"></span>
+    </span>
+</div>';
+
+// Section heading inside a list -- "Top Pages", "Expiring Soon".
+$pg_ph_heading = '
+<div class="pg-row-heading">
+    <span class="placeholder col-5 rounded" style="height:11px"></span>
+</div>';
+
+// KPI tile strip, in the two sizes api.php ships: compact (widgets 2 and 13,
+// a 12px inline icon) and large (widgets 3 and 4, a 20px block icon). The
+// strip height is pinned rather than left to the contents, because everything
+// below the strip inherits any error in it.
+$pg_ph_tiles = function ($height, $large) {
+    $icon = $large ? 20 : 12;
+    $tile =
+        '<div class="flex-fill rounded ' . ($large ? 'p-2' : 'px-1 py-1') . ' text-center d-flex flex-column align-items-center justify-content-center" style="gap:4px">'
+        . '<span class="placeholder rounded" style="width:' . $icon . 'px;height:' . $icon . 'px"></span>'
+        . '<span class="placeholder rounded" style="width:60%;height:' . ($large ? 15 : 13) . 'px"></span>'
+        . '<span class="placeholder rounded" style="width:80%;height:' . ($large ? 12 : 9) . 'px"></span>'
+        . '</div>';
+    return '<div class="d-flex ' . ($large ? 'gap-2 p-2' : 'gap-1 px-2 pt-2 pb-1') . '" style="height:' . $height . 'px">' . str_repeat($tile, 3) . '</div>';
+};
+
+// Panels of a given height, for the widgets whose body is neither a list nor a
+// tile strip. Anything from 100px up is a chart, calendar or similar, so it
+// gets one soft rectangle; shorter blocks get a couple of lines so they read
+// as a summary strip rather than a slab.
+$pg_ph_blocks = function ($heights) {
+    $out = '';
+    foreach ($heights as $height) {
+        if ($height >= 100) {
+            $out .= '<div class="p-2" style="height:' . $height . 'px"><span class="placeholder w-100 h-100 rounded"></span></div>';
+        } else {
+            $out .= '<div class="d-flex flex-column justify-content-center px-2 border-bottom" style="height:' . $height . 'px;gap:6px">'
+                . '<span class="placeholder col-7 rounded" style="height:12px"></span>'
+                . '<span class="placeholder col-4 rounded" style="height:10px"></span>'
+                . '</div>';
+        }
+    }
+    return $out;
+};
+
+// The headline that replaced the activity summary. Same 46px on all three
+// widgets that carry it, so it is one shape rather than three that can drift.
+$pg_ph_head = '
+<div class="pg-head">
+    <div class="pg-head-line">
+        <span class="placeholder rounded" style="width:26px;height:19px"></span>
+        <span class="placeholder col-4 rounded"></span>
+    </div>
+    <span class="placeholder rounded d-block" style="height:20px"></span>
+</div>';
+
+// Default: the plain list, which is what most widgets render.
+$placeholder = $pg_ph_card('<div class="pg-list">' . str_repeat($pg_ph_row, 5) . '</div>');
+
+$placeholder_w10 = $pg_ph_card($pg_ph_head . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
+
+$placeholder_w3  = $pg_ph_card($pg_ph_tiles(123, true)  . '<div class="border-top mx-2 mb-1"></div><div class="pg-list">' . str_repeat($pg_ph_row_sm, 4) . '</div>');
+$placeholder_w4  = $pg_ph_card($pg_ph_tiles(126, true)  . $pg_ph_blocks(array(133)));
+$placeholder_w5  = $pg_ph_card($pg_ph_blocks(array(277)));
+$placeholder_w6  = $pg_ph_card('<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 8) . '</div>');
+$placeholder_w8  = $pg_ph_card($pg_ph_head . $pg_ph_blocks(array(27)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 3) . '</div>');
+$placeholder_w13 = $pg_ph_card($pg_ph_head . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
+$placeholder_w15 = $pg_ph_card('<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row, 4) . '</div>');
+$placeholder_w18 = $pg_ph_card($pg_ph_blocks(array(29, 91, 29, 110)));
+$placeholder_w20 = $pg_ph_card($pg_ph_blocks(array(231)));
+$placeholder_w21 = $pg_ph_card($pg_ph_blocks(array(47, 36, 58, 86)));
+$placeholder_w22 = $pg_ph_card($pg_ph_blocks(array(54, 28, 115)));
+$placeholder_w23 = $pg_ph_card($pg_ph_blocks(array(79, 51, 28, 69)));
+// The gauge, then the tile grid. Both borrow the widget's own classes so the
+// boxes land where api.php will put them.
+$placeholder_w24 = $pg_ph_card(
+    '<div class="pg-health">'
+    . '<span class="placeholder rounded d-block mx-auto" style="width:170px;height:80px"></span>'
+    . '<span class="placeholder rounded d-block mx-auto mt-2" style="width:70px;height:12px"></span>'
+    . '</div>'
+    . '<div class="pg-health-grid">' . str_repeat('<span class="placeholder rounded" style="height:32px"></span>', 15) . '</div>'
+);
+$placeholder_w25 = $pg_ph_card($pg_ph_blocks(array(35)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
+
+// Loading state for the pending shipments card. The card itself cannot resize
+// -- .card.widget is aspect-ratio 1/1 -- so this is not about the grid moving.
+// It is about the boxes inside: the generic skeleton above puts them nowhere
+// near where the loaded body puts them, so the content visibly slides into
+// place. Mirroring the real structure holds every box within a pixel of where
+// api.php will put it. Measured against the live card: head, meter and first
+// row all land within 1px.
+$placeholder_shipments = '
+<div class="card-body card-body-placeholder p-0 overflow-hidden">
+    <div class="pg-ship-head placeholder-glow">
+        <div class="d-flex align-items-baseline flex-wrap gap-2">
+            <span class="placeholder rounded" style="width:46px;height:32px"></span>
+            <span class="placeholder col-6 rounded"></span>
         </div>
-        <div class="col">
-            <p class="card-text placeholder-glow">
-                <span class="placeholder col-12"></span>
-                <span class="placeholder col-4"></span>
-                <span class="placeholder col-7"></span>
-            </p>
+        <div class="pg-ship-meter">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+    <div class="pg-ship-list placeholder-glow">
+        <div class="pg-ship-row">
+            <span class="placeholder pg-ship-badge"></span>
+            <span class="pg-ship-text">
+                <span class="placeholder col-7 d-block mb-1"></span>
+                <span class="placeholder col-4 d-block"></span>
+            </span>
+        </div>
+        <div class="pg-ship-row">
+            <span class="placeholder pg-ship-badge"></span>
+            <span class="pg-ship-text">
+                <span class="placeholder col-7 d-block mb-1"></span>
+                <span class="placeholder col-4 d-block"></span>
+            </span>
+        </div>
+        <div class="pg-ship-row">
+            <span class="placeholder pg-ship-badge"></span>
+            <span class="pg-ship-text">
+                <span class="placeholder col-7 d-block mb-1"></span>
+                <span class="placeholder col-4 d-block"></span>
+            </span>
         </div>
     </div>
 </div>';
 
 $output_widget_1    = '';
 if ((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS)){
-    $output_widget_2    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="2"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-bar-chart-line me-2"></i>' . lang('Activity Summary')  . '</div>  ' . $placeholder . '  </div></div>';
-    $output_widget_3    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="3"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-cash-stack me-2"></i>' . lang('Ecommerce Summary')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_3    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="3"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-cash-stack me-2"></i>' . lang('Ecommerce Summary')  . '</div>  ' . $placeholder_w3 . '  </div></div>';
 }
 if ($user['role'] < 3){
-    $output_widget_4    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="4"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-globe me-2"></i>' . lang('Whois Online')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_4    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="4"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-broadcast-pin me-2"></i>' . lang('Online Engagement')  . '</div>  ' . $placeholder_w4 . '  </div></div>';
 }
 if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
-    $output_widget_5    = '<div class="col-12"><div widget-id="5"  class="card widget no-sortable" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-graph-up me-2"></i>' . lang('Visitor Summaries')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_5    = '<div class="col-12"><div widget-id="5"  class="card widget no-sortable" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-graph-up me-2"></i>' . lang('Visitor Summaries')  . '</div>  ' . $placeholder_w5 . '  </div></div>';
 }
 
 if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
@@ -300,21 +463,30 @@ if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         <div class="card-header border-0 bg-reset position-relative">
           <i class="bi bi-fire me-2"></i>' . lang('Trending Content') . '
         </div>
-        ' . $placeholder . '
+        ' . $placeholder_w6 . '
       </div>
     </div>';
 }
     $output_widget_7    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="7"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-clock-history me-2"></i>' . lang('Recent Updates')  . '</div>  ' . $placeholder . '  </div></div>';
 if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))){
-    $output_widget_8    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="8"  class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-bag me-2"></i>' . lang('Shopping')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_8    = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="8"  class="card widget" ><div class="card-header border-0 bg-reset position-relative">
+                            <nav class="nav nav-underline nav-justified nav-fill flex-nowrap mb-0" id="nav-tab" role="tablist" style="--bs-nav-pills-border-radius: var(--bs-border-radius);--bs-nav-pills-link-active-color: #fff;--bs-nav-pills-link-active-bg: #0d6efd;">
+                                <li class="nav-item">
+                                    <a class="nav-link link-secondary active py-0 px-1" href="javascript:void(0)"data-bs-toggle="tab" data-bs-target="#tab-order" role="tab" aria-selected="true"><i class="bi bi-cart4 me-2"></i>' . lang('Orders') . '</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link link-secondary py-0 px-1    " href="javascript:void(0)" data-bs-toggle="tab" data-bs-target="#tab-card" role="tab" aria-selected="false"><i class="bi bi-basket me-2"></i>' . lang('Carts') . '</a>
+                                </li>
+                            </nav>
+                            </div>  ' . $placeholder_w8 . '  </div></div>';
 }
 if ((ECOMMERCE === true) && (ECOMMERCE_SHIPPING === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
-    $output_widget_9 = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="9" class="card widget"><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-truck me-2"></i>' . lang('Pending Shipments') . '</div>' . $placeholder . '</div></div>';
+    $output_widget_9 = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="9" class="card widget"><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-truck me-2"></i>' . lang('Pending Shipments') . '</div>' . $placeholder_shipments . '</div></div>';
 } else {
     $output_widget_9 = '';
 }
 if (($user['role'] < 3) || ($user['manage_contacts'] == true)){
-    $output_widget_10   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="10" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-person-lines-fill me-2"></i>' . lang('Contacts')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_10   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="10" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-person-lines-fill me-2"></i>' . lang('Contacts')  . '</div>  ' . $placeholder_w10 . '  </div></div>';
 }
 if ($user['role'] < 3){
     $output_widget_11   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="11" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-people me-2"></i>' . lang('Users')  . '</div>  ' . $placeholder . '  </div></div>';
@@ -323,13 +495,13 @@ if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] ==
     $output_widget_12   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="12" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-exclamation-diamond me-2"></i>' . lang('Out of Stock Products')  . '</div>  ' . $placeholder . '  </div></div>';
 }
 if (($user['role'] < 3) || ($user['manage_forms'] == true)){
-    $output_widget_13   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="13" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-file-earmark-text me-2"></i>' . lang('Forms')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_13   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="13" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-file-earmark-text me-2"></i>' . lang('Forms')  . '</div>  ' . $placeholder_w13 . '  </div></div>';
 }
 if (($user['role'] < 1) && (SUBSCRIPTION_ID != '') && (SUBSCRIPTION_ID != ' ') && (SUBSCRIPTION_ID != NULL)){
     $output_widget_14   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="14" class="card widget" ><div class="card-header border-0 bg-reset position-relative">' . lang('Subscriptions')  . '</div>  ' . $placeholder . '  </div></div>';
 }
 if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
-    $output_widget_15 = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="15" class="card widget"><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-tag me-2"></i>' . lang('Offers') . '</div>' . $placeholder . '</div></div>';
+    $output_widget_15 = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="15" class="card widget"><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-tag me-2"></i>' . lang('Offers') . '</div>' . $placeholder_w15 . '</div></div>';
 } else {
     $output_widget_15 = '';
 }
@@ -340,116 +512,27 @@ if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] ==
 if ($user['role'] < 3){
     $output_widget_17   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="17" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-journal-text me-2"></i>' . lang('Site Logs')  . '</div>  ' . $placeholder . '  </div></div>';
 }
-if ($user['role'] < 1){
-    $output_header_includes .= '
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js" defer></script>';
-  $output_widget_controls .= '
-function init_editor() {
-    var once = false;
-    var editor = $("#editor");
-    var save = $("#submit_note");
-    var clear = $("#clear_note");
-    var quill;
-
-    editor.click(function () {
-        if (!once) {
-            once = true;
-
-            var toolbarOptions = [
-                [{ "header": [1, 2, 3, 4, 5, 6, false] }],
-                [{ "align": [] }],
-                ["blockquote"],
-                [{ "list": "ordered" }]
-            ];
-
-            // Initialize Quill editor
-            quill = new Quill("#editor", {
-                modules: { toolbar: toolbarOptions },
-                theme: "snow"
-            });
-
-            // Enable clear button if editor has content
-            if (quill.getText().trim().length > 0) {
-                clear.removeClass("disabled");
-            }
-
-            // Listen for content changes
-            quill.on("text-change", function () {
-                save.removeClass("disabled");
-
-                if (quill.getText().trim().length > 0) {
-                    clear.removeClass("disabled");
-                } else {
-                    clear.addClass("disabled");
-                }
-            });
-
-            // Ctrl+S or Cmd+S triggers save
-            $(document).keydown(function (event) {
-                if ((event.ctrlKey || event.metaKey) && String.fromCharCode(event.which).toLowerCase() === "s") {
-                    event.preventDefault();
-                    save.click();
-                    return false;
-                }
-            });
-        }
-    });
-
-    // Clear button logic
-    clear.click(function () {
-        pgConfirm({
-            title: "' . lang('Clear') . '",
-            message: "' . lang('Do you really want to clear current note?') . '",
-            confirmText: "' . lang('Clear') . '",
-            cancelText: "' . lang('Cancel') . '",
-            variant: "warning"
-        }).then(function (ok) {
-            if (ok && quill) {
-                quill.setText("");
-                clear.addClass("disabled");
-                save.click();
-            }
-        });
-    });
-
-    // Save button logic
-    save.click(function () {
-        save.html("' . lang('Saving') . '.. <i id=\"save_load\" class=\"bi bi-arrow-repeat\"></i>");
-
-        var notes = editor.find(".ql-editor").html();
-
-        $.ajax({
-            contentType: "application/json",
-            url: "api.php",
-            data: JSON.stringify({
-                action: "update_dashboard_note",
-                token: software_token,
-                notes: notes
-            }),
-            type: "POST",
-            success: function (response) {
-                var status = response.status;
-                if (status === "success") {
-                    save.html("' . lang('Save') . '");
-                    save.addClass("disabled");
-                }
-            }
-        });
-    });
-}
-';
-
-
-
-    $output_widget_18   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="18" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-check2-square me-2"></i>' . lang('Admin Notes')  . '</div>  ' . $placeholder . '  </div></div>';
+// ── File Management (widget 18) ─────────────────────────────────────
+//
+// Replaces the old Admin Notes widget and deliberately keeps its id, so
+// dashboards that already stored "18" in dashboard.order_widgets pick the
+// new widget up in the same slot without anyone having to reset widgets.
+//
+// Shown to anyone who can actually act on a file. Roles 0-2 always can;
+// a role 3 contributor only when at least one folder was granted to them
+// with edit rights, otherwise the widget would be a permanently empty
+// card on their dashboard. The scoping itself (which files, and whether
+// design files are included at all) happens in api.php, where the data
+// is built.
+if (($user['role'] < 3) || no_acl_check($user['id'])) {
+    $output_widget_18   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="18" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-hdd-stack me-2"></i>' . lang('File Management')  . '</div>  ' . $placeholder_w18 . '  </div></div>';
 }
 if($user['role'] < 3){
     $output_widget_19   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="19" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-megaphone me-2"></i>' . lang('Email Campaigns')  . '</div>  ' . $placeholder . '  </div></div>';
 }
 
 if(validate_calendars_access($user, $only_return = true) != false){
-    $output_widget_20   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="20" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-calendar3 me-2"></i>' . lang('Calendars')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_20   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="20" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-calendar3 me-2"></i>' . lang('Calendars')  . '</div>  ' . $placeholder_w20 . '  </div></div>';
 }
 
 // Firewall widgets: staff roles only (0 administrator, 1 manager,
@@ -459,22 +542,45 @@ if(validate_calendars_access($user, $only_return = true) != false){
 // 21 is the event feed (what happened, most recent first).
 // 22 is the threat digest (who is generating the load, ranked).
 if ($user['role'] < 3){
-    $output_widget_21   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="21" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-shield-check me-2"></i>' . lang('Firewall')  . '</div>  ' . $placeholder . '  </div></div>';
-    $output_widget_22   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="22" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-radar me-2"></i>' . lang('Threat Summary')  . '</div>  ' . $placeholder . '  </div></div>';
+    $output_widget_21   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="21" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-shield-check me-2"></i>' . lang('Firewall')  . '</div>  ' . $placeholder_w21 . '  </div></div>';
+    $output_widget_22   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="22" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-radar me-2"></i>' . lang('Threat Summary')  . '</div>  ' . $placeholder_w22 . '  </div></div>';
     // Only when monitoring is on. With it off the tables are emptied, so the
     // widget would sit on the dashboard showing zeroes as though the site had
     // no traffic — which reads as a fault rather than as a setting.
     if (!defined('PERF_MONITOR_ENABLED') || PERF_MONITOR_ENABLED) {
-        $output_widget_23   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="23" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-speedometer2 me-2"></i>' . lang('Performance')  . '</div>  ' . $placeholder . '  </div></div>';
+        $output_widget_23   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="23" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-speedometer2 me-2"></i>' . lang('Performance')  . '</div>  ' . $placeholder_w23 . '  </div></div>';
     }
+}
+
+// One health score for the installation: security checks, plus the backup,
+// update and scheduled-task checks that used to be a separate maintenance card
+// at this same id. Limited to the roles that can act on any of it -- backups.php
+// and software_update.php both require manager or above, so below that the card
+// would be a list of read-only worries.
+if ($user['role'] < 3) {
+    $output_widget_2   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="2" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-activity me-2"></i>' . lang('System Status')  . '</div>  ' . $placeholder_w24 . '  </div></div>';
+}
+
+// Comment moderation queue. Same reach as view_comments.php: staff always,
+// and a contributor once at least one folder has been granted to them, since
+// the queue is scoped through the commented page's folder.
+if (($user['role'] < 3) || no_acl_check($user['id'])) {
+    $output_widget_25   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="25" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-chat-square-quote me-2"></i>' . lang('Comment Moderation')  . '</div>  ' . $placeholder_w25 . '  </div></div>';
+}
+
+// Cancelled orders whose money has not gone back yet. Same reach as the rest
+// of the shop screens, because view_order.php is where the refund is marked
+// done and that is what every row here links to.
+if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
+    $output_widget_26   = '<div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3"><div widget-id="26" class="card widget" ><div class="card-header border-0 bg-reset position-relative"><i class="bi bi-cash-coin me-2"></i>' . lang('Refund Pending')  . '</div>  ' . $placeholder_w25 . '  </div></div>';
 }
 
 
 $widgets = array(
     //1   => $output_widget_1,//removed
-    2   => $output_widget_2,//Activity Summary
+    2  => $output_widget_2,//System Status
     3   => $output_widget_3,//Ecommerce Summary
-    4   => $output_widget_4,//Whois Online
+    4   => $output_widget_4,//Online Engagement
     //5   => $output_widget_5,//Visitor Summaries
     6   => $output_widget_6,//Trending Content
     7   => $output_widget_7,//Recent Updates
@@ -488,20 +594,39 @@ $widgets = array(
     15  => $output_widget_15,//Offers
     16  => $output_widget_16,//Current Site Exchange Rates
     17  => $output_widget_17,//Site Logs
-    18  => $output_widget_18,//Admin Notes
+    18  => $output_widget_18,//File Management
     19  => $output_widget_19,//Email Campaigns
     20  => $output_widget_20,//Calendars
     21  => $output_widget_21,//Firewall
     22  => $output_widget_22,//Threat Summary
-    23  => $output_widget_23//Performance
+    23  => $output_widget_23,//Performance
+    //24   => $output_widget_24,//removed
+    25  => $output_widget_25,//Comment Moderation
+    26  => $output_widget_26//Pending Refunds
 );
 
 $order_widgets = $dashboard['order_widgets'];
 if($order_widgets == 'default'){
-    $order_widgets = '5,1,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23';
+    $order_widgets = '5,1,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26';
 }
 $output_widgets = '';
 $order_widgets_array = explode(',', $order_widgets);
+
+// A widget that shipped after this dashboard's order was last saved is not in
+// the stored list. array_search() answers false for it, false compares as 0,
+// and the sort below then scatters new widgets to the front in an order nobody
+// chose. Appending the unknown ids gives every widget a defined position and
+// places new ones at the end, which is where a new thing belongs.
+//
+// It also means adding a widget never needs a database migration or a message
+// asking everyone to press "Reset Widgets".
+foreach (array_keys($widgets) as $unplaced_widget_key) {
+
+    if (!in_array((string) $unplaced_widget_key, $order_widgets_array)) {
+        $order_widgets_array[] = (string) $unplaced_widget_key;
+    }
+}
+
 $selected_widgets = $order_widgets_array;
 uksort($widgets, function ($key1, $key2) use ($selected_widgets)
 {
@@ -537,31 +662,17 @@ if ($time < 4) {
 
 $output_greeting_message_text .= $_SESSION['sessionusername'];
 
-$output_system_status_widget = '';
-//if user is at least manager
-if ($user['role'] < 3){
-    $output_system_status_widget = '
-    <div class="mt-3 card widget" style="aspect-ratio: unset;" id="system_status_widget">
-        <div class="card-body">
-            <span class="placeholder-glow d-flex align-items-center gap-2">
-                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                <span class="placeholder rounded-circle" style="width:1.25rem;height:1.25rem;"></span>
-                <span class="vr mx-1"></span>
-                <span class="placeholder rounded" style="width:2.5rem;height:1rem;"></span>
-            </span>
-        </div>
-    </div>
-    <script>
-        var statuspopover = new bootstrap.Popover(document.body, {
-          selector: \'.status-popover\',
-          trigger: "hover"
-        });
-    </script>';
-}
+// The system status bar that used to sit above the widget grid is gone: the
+// same checks are widget 24 now, so keeping the bar would have printed the same
+// score twice on one screen. The popover binding stays, because the widget's
+// tiles use it and it has to exist before the widget's markup arrives.
+$output_status_popover_script = '
+<script>
+    var statuspopover = new bootstrap.Popover(document.body, {
+      selector: \'.status-popover\',
+      trigger: "hover"
+    });
+</script>';
 
 
 print
@@ -608,15 +719,13 @@ $output_header_includes .
                     ' . $liveform->output_notices() . '
                 </div>
             </div>
-            <div class="row mb-3 justify-content-center justify-content-md-between align-items-center">
-                <div class="col-auto col-md-auto order-1 order-md-0">
-                    ' . $output_system_status_widget . '
-                </div>
-                <div class="col-12 col-md-auto order-0 order-md-1 text-center d-flex justify-content-center align-items-center">
+            <div class="row mb-3 justify-content-center align-items-center">
+                <div class="col-12 col-md-auto text-center d-flex justify-content-center align-items-center">
                     ' . $output_changelog_button . '
                     ' . $output_widget_control_buttons . '
                 </div>
             </div>
+            ' . $output_status_popover_script . '
             <div class="row g-4 mb-4">
                 ' . $output_widget_5 . '
             </div>
@@ -711,7 +820,7 @@ $output_header_includes .
                 $(".card[widget-id]").each(function(){
                     var widget_id = $(this).attr("widget-id");
                     //ids of refresh required widgets
-                    if (["4","6","7","8","10","11","12","13","16","17","19"].includes(widget_id)) {
+                    if (["4","6","7","8","10","11","12","13","16","17","19","25","26"].includes(widget_id)) {
                         $.ajax({
                             contentType: "application/json",
                             url: "api.php",

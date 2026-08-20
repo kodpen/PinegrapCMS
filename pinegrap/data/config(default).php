@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -186,6 +186,29 @@ define('PERF_MONITOR_RETENTION_DAYS', 30);
 // Hard ceiling on stored rows. Retention by age alone cannot bound the table
 // on a busy site; this can. Oldest rows are dropped beyond it.
 define('PERF_MONITOR_MAX_ROWS', 200000);
+
+// ── SEO structure analysis ───────────────────────────────────────────────
+//
+// seo_analyze_job.php renders every page in process to examine its markup.
+// That is a full request's worth of queries per page, so the job works to a
+// time budget and picks up where it left off on the next run rather than
+// trying to finish in one go. Raise it on a small site, lower it if the
+// nightly window is tight.
+
+// Seconds of work per run.
+define('SEO_ANALYZE_TIME_BUDGET', 120);
+
+// Seconds of work for one click of the Analyze HTML Structure button on the
+// Pages screen. Much shorter than the job's budget on purpose: this one runs
+// inside a browser request, and a screen that sits there for a minute reads as
+// a hang. Whatever is left stays queued for the next click or for tonight.
+define('SEO_ANALYZE_BUTTON_BUDGET', 20);
+
+// Days between full re-analyses. Editing a page bumps its own timestamp and
+// re-queues it on its own, but changing a shared page style or common region
+// changes the markup of many pages without touching any of them. Only a full
+// pass sees that, and this is how often one starts.
+define('SEO_ANALYZE_FULL_REFRESH_DAYS', 7);
 
 // ── Update channel TLS ───────────────────────────────────────────────────
 //

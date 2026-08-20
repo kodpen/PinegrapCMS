@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -64,7 +64,7 @@ if (!isset($_POST['name'])) {
                 <form name="form" action="edit_designer_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">
@@ -118,9 +118,9 @@ $liveform->remove_form();
     validate_token_field();
     
     // if region was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $query = "DELETE FROM cregion "
-                ."WHERE cregion_id = '" . escape($_POST['id']) . "'";
+                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('designer region'), $_POST['name']) )), $_SESSION['sessionusername']);
 
@@ -140,12 +140,12 @@ $liveform->remove_form();
         }
         
         $query = "UPDATE cregion "
-                ."SET cregion_name = '" . escape($_POST['name']) . "', "
-                    ."cregion_content = '" . escape($_POST['content']) . "', "
+                ."SET cregion_name = '" . escape($_POST['name'] ?? '') . "', "
+                    ."cregion_content = '" . escape($_POST['content'] ?? '') . "', "
                     ."cregion_designer_type = '$cregion_designer_type', "
                     ."cregion_user = '" . $user['id'] . "', "
                     ."cregion_timestamp = UNIX_TIMESTAMP() "
-                ."WHERE cregion_id = '" . escape($_POST['id']) . "'";
+                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
         // update region
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('designer region'), $_POST['name']) )), $_SESSION['sessionusername']);

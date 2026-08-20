@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -50,8 +50,8 @@ function get_forgot_password($properties = array()) {
 
         // If a send to was passed in the query string,
         // then set send to.
-        if ($_GET['send_to'] != '') {
-            $form->assign_field_value('send_to', $_GET['send_to']);
+        if (($_GET['send_to'] ?? '') != '') {
+            $form->assign_field_value('send_to', ($_GET['send_to'] ?? ''));
 
         // Otherwise if there is no send to set in the session,
         // then set send to to home page as a default.

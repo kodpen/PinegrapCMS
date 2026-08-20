@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -245,7 +245,7 @@ if (!$_POST) {
         // if the user is a designer or administrator, then save design property
         if ($user['role'] <= 1) {
             $sql_design_1 = "design,";
-            $sql_design_2 = "'" . escape($_POST['design']) . "',";
+            $sql_design_2 = "'" . escape($_POST['design'] ?? '') . "',";
         }
 
         db(
@@ -260,8 +260,8 @@ if (!$_POST) {
                 timestamp)
             VALUES (
                 '" . escape($file_name) . "',
-                '" . escape($_POST['folder']) . "',
-                '" . escape($_POST['description']) . "',
+                '" . escape($_POST['folder'] ?? '') . "',
+                '" . escape($_POST['description'] ?? '') . "',
                 '" . escape($file_extension) . "',
                 '" . escape($_FILES['file']['size'][$index]) . "',
                 " . $sql_design_2 . "

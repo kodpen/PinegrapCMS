@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -214,7 +214,7 @@ if (!$_POST) {
 
                         // if a folder was selected to move the file(s) to, then move file
                         if ($_POST['move_to_folder']) {
-                            $sql_folder = "folder = '" . escape($_POST['move_to_folder']) . "',";
+                            $sql_folder = "folder = '" . escape($_POST['move_to_folder'] ?? '') . "',";
                         }
 
                         $sql_design = "";
@@ -225,7 +225,7 @@ if (!$_POST) {
                             ($_POST['edit_design'] != '')
                             && ($user['role'] <= 1)
                         ) {
-                            $sql_design = "design = '" . escape($_POST['edit_design']) . "',";
+                            $sql_design = "design = '" . escape($_POST['edit_design'] ?? '') . "',";
                         }
 
                         if ($sql_folder or $sql_design) {
@@ -280,7 +280,7 @@ if (!$_POST) {
                         // if a folder was selected to move the files(s) to, then output message for log
                         if ($_POST['move_to_folder']) {
                             // get folder name for log
-                            $query = "SELECT folder_name FROM folder WHERE folder_id = '" . escape($_POST['move_to_folder']) . "'";
+                            $query = "SELECT folder_name FROM folder WHERE folder_id = '" . escape($_POST['move_to_folder'] ?? '') . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             

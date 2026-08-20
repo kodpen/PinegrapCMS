@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,7 +24,7 @@ $liveform = new liveform('edit_design_file');
 validate_area_access($user, 'designer');
 $from = '';
 if(isset($_GET['from'])){
-    $from = $_GET['from'];
+    $from = ($_GET['from'] ?? '');
 }
 if (!$_POST['name']) {
     $query = 
@@ -295,7 +295,7 @@ print $output;
 } else {
     validate_token_field();
     
-    $result=mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+    $result=mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
     $row=mysqli_fetch_array($result);
 
     $name = prepare_file_name($_POST['name']);
@@ -304,22 +304,22 @@ print $output;
     if ($_POST['delete'])
     {
         // delete file row
-        $query = "DELETE FROM files WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
         
         // check to see if this is a system theme
-        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if this is a system theme then delete it's css theme properties from the database
         if ($row[0] > 0) {
             // delete file's system css properties
-            $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
 
-        db("DELETE FROM preview_styles WHERE theme_id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM preview_styles WHERE theme_id = '" . escape($_POST['id'] ?? '') . "'");
 
         // Delete file on file system.
         @unlink(FILE_DIRECTORY_PATH . '/' . $name);
@@ -349,9 +349,9 @@ print $output;
         // then update theme property.
         if (
             (mb_strtolower($file_extension) == 'css')
-            && (db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id']) . "'") == 0)
+            && (db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'") == 0)
         ) {
-            $sql_theme = "theme = '" . escape($_POST['theme']) . "',";
+            $sql_theme = "theme = '" . escape($_POST['theme'] ?? '') . "',";
         }
         
         // update file
@@ -359,14 +359,14 @@ print $output;
             "UPDATE files 
             SET 
                 name = '" . escape($name) . "',
-                folder = '" . escape($_POST['folder']) . "', 
-                description = '" . escape($_POST['description']) . "',
+                folder = '" . escape($_POST['folder'] ?? '') . "', 
+                description = '" . escape($_POST['description'] ?? '') . "',
                 type = '" . escape($file_extension) . "',
-                design = '" . escape($_POST['design']) . "',
+                design = '" . escape($_POST['design'] ?? '') . "',
                 $sql_theme
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
         

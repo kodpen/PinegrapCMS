@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,26 +24,30 @@ $folder_id = 0;
 
 
 $url_parameters = '';
-if($_GET['CKEditorFuncNum']){
-    $url_parameters = 'CKEditorFuncNum=' . h(urlencode($_GET['CKEditorFuncNum']));
+if(($_GET['CKEditorFuncNum'] ?? '')){
+    $url_parameters = 'CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? '')));
 }
 
-if($_GET['SingleImage']){
+if(($_GET['SingleImage'] ?? '')){
     if($url_parameters != ''){
         $url_parameters .= '&';
     }
-    $url_parameters .= 'SingleImage=' . h(urlencode($_GET['SingleImage']));
+    $url_parameters .= 'SingleImage=' . h(urlencode(($_GET['SingleImage'] ?? '')));
 }
 
-if($_GET['file_input_name']){
+if(($_GET['file_input_name'] ?? '')){
     if($url_parameters != ''){
         $url_parameters .= '&';
     }
-    $url_parameters .= 'file_input_name=' . h(urlencode($_GET['file_input_name']));
+    $url_parameters .= 'file_input_name=' . h(urlencode(($_GET['file_input_name'] ?? '')));
 }
 
 
 $max_file_uploads = ini_get('max_file_uploads');
+
+// NOTE: $max_number_of_files is never assigned anywhere in this script, so the dropzone limit
+// below is never emitted.  Starting it at zero keeps that behaviour and stops the warning.
+$max_number_of_files = 0;
 
 $output_maxfiles = '';
 if ($max_number_of_files > 0) {
@@ -64,7 +68,8 @@ foreach ($_REQUEST as $key => $value) {
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -97,7 +102,13 @@ $sort_link_href = '#!';
 $sort_link_icon = '';
 $sort_link_title = '';
 
-switch ($_SESSION['software']['editor_select_image']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['editor_select_image']['sort']) == false) {
+    $_SESSION['software']['editor_select_image']['sort'] = '';
+}
+
+switch (($_SESSION['software']['editor_select_image']['sort'] ?? '')) {
     
     case 'newest':
         $sort_link_href = 'editor_select_image.php?sort=oldest&' . $url_parameters;
@@ -132,7 +143,7 @@ if (isset($_GET['clear']) == true) {
 $output_clear_button = '';
 
 // if there is a search query, then prepare to output clear button
-if ((isset($_SESSION['software']['editor_select_image']['query']) == true) && ($_SESSION['software']['editor_select_image']['query'] != '')) {
+if ((isset($_SESSION['software']['editor_select_image']['query']) == true) && (($_SESSION['software']['editor_select_image']['query'] ?? '') != '')) {
     $output_clear_button = ' <button type="button" value="Clear" title="' . lang(array('string'=>'Clear') ) . '" class="btn btn-link link-danger position-absolute top-0 end-0 py-0 px-0 me-1 bi bi-trash" onclick="document.location.href = \'' . h(escape_javascript($_SERVER['PHP_SELF'])) . '?clear=true&' . $url_parameters . '\'"></button>';
 }
 
@@ -142,7 +153,13 @@ if (USER_ROLE == 3) {
     $folders_that_user_has_access_to = get_folders_that_user_has_access_to(USER_ID);
 }
 
-switch ($_SESSION['software']['editor_select_image']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['editor_select_image']['sort']) == false) {
+    $_SESSION['software']['editor_select_image']['sort'] = '';
+}
+
+switch (($_SESSION['software']['editor_select_image']['sort'] ?? '')) {
     default:
     case 'newest':
         $order_by =
@@ -164,8 +181,8 @@ switch ($_SESSION['software']['editor_select_image']['sort']) {
 $where = "";
 
 // If there is a search query and it is not blank, then prepare filter.
-if ((isset($_SESSION['software']['editor_select_image']['query']) == true) && ($_SESSION['software']['editor_select_image']['query'] != '')) {
-    $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower($_SESSION['software']['editor_select_image']['query']))) . "%')";
+if ((isset($_SESSION['software']['editor_select_image']['query']) == true) && (($_SESSION['software']['editor_select_image']['query'] ?? '') != '')) {
+    $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_image']['query'] ?? '')))) . "%')";
 }
 
 // Get all images.
@@ -200,11 +217,11 @@ $all_images = db_items(
 
 // If a folder was selected, then store that folder and all child folders
 // in an array so that we can later determine if images are in the selected folder scope.
-if ($_SESSION['software']['editor_select_image']['folder_id'] != 'all') {
+if (($_SESSION['software']['editor_select_image']['folder_id'] ?? '') != 'all') {
     $folders = array();
 
     // Start the folders off with the selected folder.
-    $folders[] = $_SESSION['software']['editor_select_image']['folder_id'];
+    $folders[] = ($_SESSION['software']['editor_select_image']['folder_id'] ?? '');
 
     // Get all folders in order to add child folders to array.
     $all_folders = db_items(
@@ -214,7 +231,7 @@ if ($_SESSION['software']['editor_select_image']['folder_id'] != 'all') {
         FROM folder");
 
     // Get child folders under the selected folder.
-    $child_folders = get_child_folders($_SESSION['software']['editor_select_image']['folder_id'], $all_folders);
+    $child_folders = get_child_folders(($_SESSION['software']['editor_select_image']['folder_id'] ?? ''), $all_folders);
 
     // Add child folders to array.
     $folders = array_merge($folders, $child_folders);
@@ -235,18 +252,18 @@ foreach ($all_images as $image) {
         )
         &&
         (
-            ($_SESSION['software']['editor_select_image']['folder_id'] == 'all')
+            (($_SESSION['software']['editor_select_image']['folder_id'] ?? '') == 'all')
             || (in_array($image['folder_id'], $folders) == true)
         )
     ) {
         // If an access control type has been selected, then get access control type for image,
         // in order to determine if image should be included in results.
-        if ($_SESSION['software']['editor_select_image']['access_control_type'] != 'all') {
+        if (($_SESSION['software']['editor_select_image']['access_control_type'] ?? '') != 'all') {
             $image['access_control_type'] = get_access_control_type($image['folder_id']);
 
             // If the access control type for this image is the same as the selected access
             // control type, then include image in results.
-            if ($image['access_control_type'] == $_SESSION['software']['editor_select_image']['access_control_type']) {
+            if ($image['access_control_type'] == ($_SESSION['software']['editor_select_image']['access_control_type'] ?? '')) {
                 $images[] = $image;
             }
 
@@ -269,6 +286,9 @@ if ($images) {
     $number_of_screens = ceil($number_of_results / $max);
 
     
+    // only ever appended to below, so it has to start out empty
+    $output_screen_links = '';
+
     // if there are more than one screen
     if ($number_of_screens > 1) {
 
@@ -326,9 +346,10 @@ if ($images) {
             $images[$key]['access_control_type'] = get_access_control_type($images[$key]['folder_id']);
         }
 
+        // getimagesize() returns false for a missing file or one that is not an image.
         $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $images[$key]['name']);
-        $image_width = $image_size[0];
-        $image_height = $image_size[1];
+        $image_width = isset($image_size[0]) ? $image_size[0] : 0;
+        $image_height = isset($image_size[1]) ? $image_size[1] : 0;
         $output_image_dimantion_based_css = 'h-100';
         if($image_width > $image_height){
             $output_image_dimantion_based_css = 'w-100';
@@ -342,15 +363,15 @@ if ($images) {
             $output_last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($images[$key]['last_modified_username']) ) ) );
         }
         
-        if($_GET['CKEditorFuncNum']){
-            $output_onclick = 'window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript($_GET['CKEditorFuncNum'])) . '\', \'' . OUTPUT_PATH . h(escape_javascript(encode_url_path($images[$key]['name']))) . '\'); window.close();';
+        if(($_GET['CKEditorFuncNum'] ?? '')){
+            $output_onclick = 'window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . OUTPUT_PATH . h(escape_javascript(encode_url_path($images[$key]['name']))) . '\'); window.close();';
         }else{
             $output_properties = '';
-            if($_GET['SingleImage']){
+            if(($_GET['SingleImage'] ?? '')){
                 $output_properties .= 'SingleImage:true,';
             }
-            if($_GET['file_input_name']){
-                $output_properties .= 'file_input_name:\''  . $_GET['file_input_name'] . '\',';
+            if(($_GET['file_input_name'] ?? '')){
+                $output_properties .= 'file_input_name:\''  . ($_GET['file_input_name'] ?? '') . '\',';
             }
             $output_onclick = 'window.opener.software_image_picker({' . $output_properties . 'return:true,file_id:' . $images[$key]['file_id'] . ',image_name: \'' . h(escape_javascript(encode_url_path($images[$key]['name']))) . '\'}); window.close();';
         }
@@ -444,19 +465,19 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
             <li class="nav-item ms-auto">
                 <form id="search" action="editor_select_image.php" method="get" class="search_form flex-nowrap row g-1 mb-0">
                     
-                    <input type="hidden" name="CKEditorFuncNum" value="' . h($_GET['CKEditorFuncNum']) . '" />
-                    <input type="hidden" name="file_input_name" value="' . h($_GET['file_input_name']) . '" />
-                    <input type="hidden" name="SingleImage" value="' . h($_GET['SingleImage']) . '" />
+                    <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
+                    <input type="hidden" name="file_input_name" value="' . h(($_GET['file_input_name'] ?? '')) . '" />
+                    <input type="hidden" name="SingleImage" value="' . h(($_GET['SingleImage'] ?? '')) . '" />
                     <div class="position-relative" style="width:100px">
-                        <select  title="' . lang('Folder') . '" id="folder_id" name="folder_id" class="form-select border-0 py-0" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder($_SESSION['software']['editor_select_image']['folder_id']) . '</select>
+                        <select  title="' . lang('Folder') . '" id="folder_id" name="folder_id" class="form-select border-0 py-0" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_image']['folder_id'] ?? '')) . '</select>
                     </div>
                     <div class="position-relative" style="width:100px">
-                        <select title="' . lang('Access') . '" id="access_control_type" name="access_control_type" class="form-select border-0 py-0 ' . h($_SESSION['software']['editor_select_image']['access_control_type']) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type($_SESSION['software']['editor_select_image']['access_control_type'], false) . '</select>
+                        <select title="' . lang('Access') . '" id="access_control_type" name="access_control_type" class="form-select border-0 py-0 ' . h(($_SESSION['software']['editor_select_image']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_image']['access_control_type'] ?? ''), false) . '</select>
                     </div>
 
                     <div class="position-relative" style="width:100px">
                         <button type="submit" value="Search" title="' . lang(array('string'=>'Search') ) . '" class="btn btn-link link-success bi bi-search position-absolute top-0 start-0 py-0 px-0 ms-1"></button> 
-                        <input type="text" class="form-control border-0 py-0 px-4" name="query" placeholder="' . lang(array('string'=>'Search') ) . '" value="' . h($_SESSION['software']['editor_select_image']['query']) . '" aria-label="search">
+                        <input type="text" class="form-control border-0 py-0 px-4" name="query" placeholder="' . lang(array('string'=>'Search') ) . '" value="' . h(($_SESSION['software']['editor_select_image']['query'] ?? '')) . '" aria-label="search">
                         ' . $output_clear_button . '
                     </div>
                 </form>
@@ -511,9 +532,9 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     ' . get_token_field() . '
     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
     <input type="hidden" name="uploadreturn" value="true" />
-    <input type="hidden" name="CKEditorFuncNum" value="' . h($_GET['CKEditorFuncNum']) . '" />
-    <input type="hidden" name="file_input_name" value="' . h($_GET['file_input_name']) . '" />
-    <input type="hidden" name="SingleImage" value="' . h($_GET['SingleImage']) . '" />
+    <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
+    <input type="hidden" name="file_input_name" value="' . h(($_GET['file_input_name'] ?? '')) . '" />
+    <input type="hidden" name="SingleImage" value="' . h(($_GET['SingleImage'] ?? '')) . '" />
 
     <div class="row">
         <div class="col-12">

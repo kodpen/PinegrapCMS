@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -57,7 +57,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
    Helper: total qty in cart for a product (ignores offer items)
    --------------------------------------------------------- */
 function cart_qty_for_product($product_id) {
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
     if ($order_id <= 0) {
         return 0;
     }
@@ -149,7 +149,7 @@ if ($action === 'add_to_cart') {
    --------------------------------------------------------- */
 if ($action === 'increase_qty') {
     $item_id  = isset($_POST['item_id']) ? (int)$_POST['item_id'] : 0;
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
     if ($item_id > 0 && $order_id > 0) {
         $item = db_item(
@@ -191,7 +191,7 @@ if ($action === 'increase_qty') {
    --------------------------------------------------------- */
 if ($action === 'decrease_qty') {
     $item_id  = isset($_POST['item_id']) ? (int)$_POST['item_id'] : 0;
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
     if ($item_id > 0 && $order_id > 0) {
         $item = db_item(
@@ -223,7 +223,7 @@ if ($action === 'decrease_qty') {
    --------------------------------------------------------- */
 if ($action === 'remove_item') {
     $item_id  = isset($_POST['item_id']) ? (int)$_POST['item_id'] : 0;
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
     if ($item_id > 0 && $order_id > 0) {
         db("DELETE FROM order_items
@@ -239,7 +239,7 @@ if ($action === 'remove_item') {
    POST: complete the order as a local sale
    --------------------------------------------------------- */
 if ($action === 'complete_order') {
-    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
+    $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
     if ($order_id > 0) {
         // Fetch items with product inventory info for decrement
@@ -324,8 +324,8 @@ $order_id         = 0;
 $cart_items       = array();
 $cart_total_cents = 0;
 
-if (isset($_SESSION['ecommerce']['order_id']) && $_SESSION['ecommerce']['order_id'] != '') {
-    $order_id = (int)$_SESSION['ecommerce']['order_id'];
+if (isset($_SESSION['ecommerce']['order_id']) && ($_SESSION['ecommerce']['order_id'] ?? '') != '') {
+    $order_id = (int)($_SESSION['ecommerce']['order_id'] ?? '');
     $existing = db_item("SELECT id, status FROM orders WHERE id = '" . escape($order_id) . "'");
     if (!$existing || $existing['status'] !== 'incomplete') {
         unset($_SESSION['ecommerce']['order_id']);

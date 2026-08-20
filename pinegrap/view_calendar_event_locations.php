@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -40,7 +40,13 @@ foreach ($_REQUEST as $key => $value) {
 }
 
 
-switch ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['calendars']['view_calendar_event_locations']['sort']) == false) {
+    $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] = '';
+}
+
+switch (($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? '')) {
     case 'Name':
         $sort_column = 'calendar_event_locations.name';
         break;
@@ -78,7 +84,7 @@ $query =
     FROM calendar_event_locations
     LEFT JOIN user as created_user ON calendar_event_locations.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON calendar_event_locations.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['calendars']['view_calendar_event_locations']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -152,9 +158,9 @@ pg_page_shell(
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'], $_SESSION['software']['calendars']['view_calendar_event_locations']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'], $_SESSION['software']['calendars']['view_calendar_event_locations']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'], $_SESSION['software']['calendars']['view_calendar_event_locations']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendar_event_locations']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -337,7 +337,7 @@ if (!$_POST) {
                 </div>
                 <form name="form" action="add_field.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '">
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
                     <input type="hidden" id="' . $form_type_identifier_id . '" name="' . $form_type_identifier_id . '" value="' . h($_REQUEST[$form_type_identifier_id]) . '">
                     <input type="hidden" name="form_type" value="' . $form_type . '">
                     <div class="row">
@@ -610,7 +610,7 @@ if (!$_POST) {
             }
 
             $sql_upload_folder_id_column = "upload_folder_id,";
-            $sql_upload_folder_id_value = "'" . e($_POST['upload_folder_id']) . "',";
+            $sql_upload_folder_id_value = "'" . e($_POST['upload_folder_id'] ?? '') . "',";
         }
     }
     
@@ -652,25 +652,25 @@ if (!$_POST) {
                 '" . e($form_type) . "',
                 '" . escape($_POST[$form_type_identifier_id]) . "',
                 '" . escape($name) . "',
-                '" . escape($_POST['rss_field']) . "',
-                '" . escape($_POST['label']) . "',
-                '" . escape($_POST['type']) . "',
+                '" . escape($_POST['rss_field'] ?? '') . "',
+                '" . escape($_POST['label'] ?? '') . "',
+                '" . escape($_POST['type'] ?? '') . "',
                 '" . escape($required) . "',
                 '" . escape(prepare_rich_text_editor_content_for_input($_POST['information'])) . "',
-                '" . escape($_POST['default_value']) . "',
-                '" . escape($_POST['use_folder_name_for_default_value']) . "',
-                '" . escape($_POST['size']) . "',
-                '" . escape($_POST['maxlength']) . "',
-                '" . escape($_POST['wysiwyg']) . "',
-                '" . escape($_POST['rows']) . "',
-                '" . escape($_POST['cols']) . "',
-                '" . escape($_POST['multiple']) . "',
-                '" . escape($_POST['spacing_above']) . "',
-                '" . escape($_POST['spacing_below']) . "',
-                '" . escape($_POST['contact_field']) . "',
-                '" . escape($_POST['office_use_only']) . "',
+                '" . escape($_POST['default_value'] ?? '') . "',
+                '" . escape($_POST['use_folder_name_for_default_value'] ?? '') . "',
+                '" . escape($_POST['size'] ?? '') . "',
+                '" . escape($_POST['maxlength'] ?? '') . "',
+                '" . escape($_POST['wysiwyg'] ?? '') . "',
+                '" . escape($_POST['rows'] ?? '') . "',
+                '" . escape($_POST['cols'] ?? '') . "',
+                '" . escape($_POST['multiple'] ?? '') . "',
+                '" . escape($_POST['spacing_above'] ?? '') . "',
+                '" . escape($_POST['spacing_below'] ?? '') . "',
+                '" . escape($_POST['contact_field'] ?? '') . "',
+                '" . escape($_POST['office_use_only'] ?? '') . "',
                 $sql_upload_folder_id_value
-                '" . escape($_POST['quiz_question']) . "',
+                '" . escape($_POST['quiz_question'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['quiz_answer'], $_POST['type'])) . "',
                 '" . $user['id'] . "',
                 UNIX_TIMESTAMP())";
@@ -895,7 +895,7 @@ if (!$_POST) {
                  SET
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                 WHERE id = '" . escape($_POST['product_id']) . "'";
+                 WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
     // else this is a form for a page, so update last modified info for page
@@ -904,7 +904,7 @@ if (!$_POST) {
                  SET
                     page_timestamp = UNIX_TIMESTAMP(),
                     page_user = '" . $user['id'] . "'
-                 WHERE page_id = '" . escape($_POST['page_id']) . "'";
+                 WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     }
 
@@ -918,7 +918,7 @@ if (!$_POST) {
                 layout_type,
                 layout_modified
             FROM page
-            WHERE page_id = '" . e($_POST['page_id']) . "'");
+            WHERE page_id = '" . e($_POST['page_id'] ?? '') . "'");
 
         if (($page['layout_type'] == 'custom') && $page['layout_modified']) {
             $liveform->add_warning(lang('You might need to edit the custom layout now, because you have made changes to fields on the custom form.'));

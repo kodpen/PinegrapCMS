@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -58,7 +58,8 @@ $number_of_screens = ceil($number_of_results / $max);
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -105,7 +106,13 @@ if ($number_of_screens > 1) {
     $output_screen_links .= '</ul></nav>';
 }
 
-switch ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? '')) {
     case lang('Affiliate Name'):
         $sort_column = 'contacts.affiliate_name';
         break;
@@ -181,7 +188,7 @@ $query =
     LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
     LEFT JOIN user as created_user ON recurring_commission_profiles.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id
-    ORDER BY " . $sort_column . " " . escape($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . " ";
+    ORDER BY " . $sort_column . " " . escape(($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . " ";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $recurring_commission_profiles = array();
@@ -270,17 +277,17 @@ pg_page_shell([
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Name'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Code'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Enabled'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th class="text-end">' . get_column_heading(lang('Amount'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Start Date'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Frequency'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Commissions'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Order'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Product'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'], $_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Affiliate Name'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Affiliate Code'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th class="text-end">' . get_column_heading(lang('Amount'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Start Date'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Frequency'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Commissions'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Order'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Product'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_recurring_commission_profiles']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -21,6 +21,10 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 if (!$_POST) {
+
+    // only ever appended to below, so it has to start out empty
+    $output_disallowed_zones = '';
+
     // get all zones for zones selection
     $query = "SELECT id, name FROM zones ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -721,13 +725,13 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name']) . "',
-                '" . escape($_POST['description']) . "',
-                '" . escape($_POST['code']) . "',
+                '" . escape($_POST['name'] ?? '') . "',
+                '" . escape($_POST['description'] ?? '') . "',
+                '" . escape($_POST['code'] ?? '') . "',
                 '" . escape($status) . "',
                 '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
                 '" . escape(prepare_form_data_for_input($_POST['end_time'], 'date and time')) . "',
-                '" . e($_POST['service']) . "',
+                '" . e($_POST['service'] ?? '') . "',
                 '" . e($realtime_rate) . "',
                 '" . escape($base_rate) . "',
                 '" . escape($variable_base_rate) . "',
@@ -738,48 +742,48 @@ if (!$_POST) {
                 '" . escape($base_rate_4) . "',
                 '" . escape($base_rate_4_subtotal) . "',
                 '" . escape($primary_weight_rate) . "',
-                '" . escape($_POST['primary_weight_rate_first_item_excluded']) . "',
+                '" . escape($_POST['primary_weight_rate_first_item_excluded'] ?? '') . "',
                 '" . escape($secondary_weight_rate) . "',
-                '" . escape($_POST['secondary_weight_rate_first_item_excluded']) . "',
+                '" . escape($_POST['secondary_weight_rate_first_item_excluded'] ?? '') . "',
                 '" . escape($item_rate) . "',
-                '" . escape($_POST['item_rate_first_item_excluded']) . "',
-                '" . escape($_POST['base_transit_days']) . "',
-                '" . escape($_POST['adjust_transit']) . "',
-                '" . escape($_POST['street_address']) . "',
-                '" . escape($_POST['po_box']) . "',
-                '" . e($_POST['handle_days']) . "',
-                '" . e($_POST['handle_mon']) . "',
-                '" . e($_POST['handle_tue']) . "',
-                '" . e($_POST['handle_wed']) . "',
-                '" . e($_POST['handle_thu']) . "',
-                '" . e($_POST['handle_fri']) . "',
-                '" . e($_POST['handle_sat']) . "',
-                '" . e($_POST['handle_sun']) . "',
-                '" . e($_POST['ship_mon']) . "',
-                '" . e($_POST['ship_tue']) . "',
-                '" . e($_POST['ship_wed']) . "',
-                '" . e($_POST['ship_thu']) . "',
-                '" . e($_POST['ship_fri']) . "',
-                '" . e($_POST['ship_sat']) . "',
-                '" . e($_POST['ship_sun']) . "',
+                '" . escape($_POST['item_rate_first_item_excluded'] ?? '') . "',
+                '" . escape($_POST['base_transit_days'] ?? '') . "',
+                '" . escape($_POST['adjust_transit'] ?? '') . "',
+                '" . escape($_POST['street_address'] ?? '') . "',
+                '" . escape($_POST['po_box'] ?? '') . "',
+                '" . e($_POST['handle_days'] ?? '') . "',
+                '" . e($_POST['handle_mon'] ?? '') . "',
+                '" . e($_POST['handle_tue'] ?? '') . "',
+                '" . e($_POST['handle_wed'] ?? '') . "',
+                '" . e($_POST['handle_thu'] ?? '') . "',
+                '" . e($_POST['handle_fri'] ?? '') . "',
+                '" . e($_POST['handle_sat'] ?? '') . "',
+                '" . e($_POST['handle_sun'] ?? '') . "',
+                '" . e($_POST['ship_mon'] ?? '') . "',
+                '" . e($_POST['ship_tue'] ?? '') . "',
+                '" . e($_POST['ship_wed'] ?? '') . "',
+                '" . e($_POST['ship_thu'] ?? '') . "',
+                '" . e($_POST['ship_fri'] ?? '') . "',
+                '" . e($_POST['ship_sat'] ?? '') . "',
+                '" . e($_POST['ship_sun'] ?? '') . "',
                 '" . e(prepare_form_data_for_input($_POST['end_of_day'], 'time')) . "',
-                '" . escape($_POST['transit_on_sunday']) . "',
-                '" . escape($_POST['transit_on_saturday']) . "',
-                '" . escape($_POST['available_on_sunday']) . "',
+                '" . escape($_POST['transit_on_sunday'] ?? '') . "',
+                '" . escape($_POST['transit_on_saturday'] ?? '') . "',
+                '" . escape($_POST['available_on_sunday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_sunday_cutoff_time'], 'time')) . "',
-                '" . escape($_POST['available_on_monday']) . "',
+                '" . escape($_POST['available_on_monday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_monday_cutoff_time'], 'time')) . "',
-                '" . escape($_POST['available_on_tuesday']) . "',
+                '" . escape($_POST['available_on_tuesday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_tuesday_cutoff_time'], 'time')) . "',
-                '" . escape($_POST['available_on_wednesday']) . "',
+                '" . escape($_POST['available_on_wednesday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_wednesday_cutoff_time'], 'time')) . "',
-                '" . escape($_POST['available_on_thursday']) . "',
+                '" . escape($_POST['available_on_thursday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_thursday_cutoff_time'], 'time')) . "',
-                '" . escape($_POST['available_on_friday']) . "',
+                '" . escape($_POST['available_on_friday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_friday_cutoff_time'], 'time')) . "',
-                '" . escape($_POST['available_on_saturday']) . "',
+                '" . escape($_POST['available_on_saturday'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['available_on_saturday_cutoff_time'], 'time')) . "',
-                '" . e($_POST['protected']) . "',
+                '" . e($_POST['protected'] ?? '') . "',
                 " . $user['id'] . ",
                 UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

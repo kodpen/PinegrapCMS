@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -110,7 +110,7 @@ if (!$_POST) {
                     <form name="form" action="edit_ad.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                        <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                        <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-4">
@@ -255,7 +255,7 @@ if (!$_POST) {
                 sort_order = '" . escape($liveform->get_field_value('sort_order')) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);

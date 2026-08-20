@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -118,7 +118,7 @@ if (!$_POST) {
     validate_token_field();
     
     // if save new copy was selected, then save a new copy of the file
-    if ($_POST['submit_duplicate'] == 'Duplicate') {
+    if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
         $new_file_name = prepare_file_name($_POST['name']);
 
         $new_file_name = get_unique_name(array(
@@ -147,7 +147,7 @@ if (!$_POST) {
                 description,
                 theme
             FROM files
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
@@ -184,7 +184,7 @@ if (!$_POST) {
                 style_id,
                 device_type
             FROM preview_styles
-            WHERE theme_id = '" . escape($_POST['id']) . "'");
+            WHERE theme_id = '" . escape($_POST['id'] ?? '') . "'");
         
         foreach ($preview_styles as $preview_style) {
             db(
@@ -235,7 +235,7 @@ if (!$_POST) {
                 size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $_POST['name'])) . "',
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // log the change and add a notice that the file was modified
@@ -252,7 +252,7 @@ if (!$_POST) {
             $liveform->add_notice(lang('The CSS file was edited successfully.'));
         }
 
-        if ($_POST['submit_save'] == 'Save') {
+        if (($_POST['submit_save'] ?? '') == 'Save') {
             $liveform->remove_form($_POST['from']);
             include_once('liveform.class.php');
             $liveform = new liveform('edit_theme_css');

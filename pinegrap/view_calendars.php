@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -41,7 +41,13 @@ if ($user['role'] < 3) {
     $output_add_calendar_button = '<a class="btn btn-sm btn-primary m-1 " href="add_calendar.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
 }
 
-switch ($_SESSION['software']['calendars']['view_calendars']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['calendars']['view_calendars']['sort']) == false) {
+    $_SESSION['software']['calendars']['view_calendars']['sort'] = '';
+}
+
+switch (($_SESSION['software']['calendars']['view_calendars']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'calendars.name';
         break;
@@ -81,7 +87,7 @@ $query =
     FROM calendars
     LEFT JOIN user AS created_user ON calendars.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON calendars.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['calendars']['view_calendars']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['calendars']['view_calendars']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -104,6 +110,10 @@ $output_rows = '';
 if ($calendars) {
 
     foreach ($calendars as $calendar) {
+
+        $created_username = '';
+        $last_modified_username = '';
+
         if ($calendar['created_username']) {
             $created_username = lang(array('string'=>'by {var:1}','vars'=>$calendar['created_username']));
         } 
@@ -156,9 +166,9 @@ pg_page_shell(
                         <thead>
                             <tr>
                                 <th class="noVis text-start">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $_SESSION['software']['calendars']['view_calendars']['sort'], $_SESSION['software']['calendars']['view_calendars']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['calendars']['view_calendars']['sort'], $_SESSION['software']['calendars']['view_calendars']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['calendars']['view_calendars']['sort'], $_SESSION['software']['calendars']['view_calendars']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['calendars']['view_calendars']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendars']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['calendars']['view_calendars']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendars']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['calendars']['view_calendars']['sort'] ?? ''), ($_SESSION['software']['calendars']['view_calendars']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

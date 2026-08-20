@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -114,35 +114,35 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // get all states so that we can delete all items connected to each state
-        $states = db_items("SELECT id FROM states WHERE country_id = '" . escape($_POST['id']) . "'");
+        $states = db_items("SELECT id FROM states WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
         foreach ($states as $state) {
             db("DELETE FROM zones_states_xref WHERE state_id = '" . escape($state['id']) . "'");
             db("DELETE FROM tax_zones_states_xref WHERE state_id = '" . escape($state['id']) . "'");
             db("DELETE FROM verified_shipping_addresses WHERE state_id = '" . escape($state['id']) . "'");
         }
 
-        db("DELETE FROM states WHERE country_id = '" . escape($_POST['id']) . "'");
-        db("DELETE FROM zones_countries_xref WHERE country_id = '" . escape($_POST['id']) . "'");
-        db("DELETE FROM countries WHERE id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM states WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
+        db("DELETE FROM zones_countries_xref WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
+        db("DELETE FROM countries WHERE id = '" . escape($_POST['id'] ?? '') . "'");
 
         log_activity(lang(array('string' => 'country ({var:1}) was deleted', 'vars' => array($_POST['name']))), $_SESSION['sessionusername']);
 
     } else {
         db("UPDATE countries SET
-                name = '" . escape($_POST['name']) . "',
-                code = '" . escape($_POST['code']) . "',
-                zip_code_required = '" . e($_POST['zip_code_required']) . "',
-                transit_adjustment_days = '" . escape($_POST['transit_adjustment_days']) . "',
-                default_selected = '" . escape($_POST['default_selected']) . "',
+                name = '" . escape($_POST['name'] ?? '') . "',
+                code = '" . escape($_POST['code'] ?? '') . "',
+                zip_code_required = '" . e($_POST['zip_code_required'] ?? '') . "',
+                transit_adjustment_days = '" . escape($_POST['transit_adjustment_days'] ?? '') . "',
+                default_selected = '" . escape($_POST['default_selected'] ?? '') . "',
                 user = '" . $user['id'] . "',
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'");
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'");
 
         // if default selected was checked, then turn value off for all other countries
         if ($_POST['default_selected'] == 1) {
-            db("UPDATE countries SET default_selected = 0 WHERE id != '" . escape($_POST['id']) . "'");
+            db("UPDATE countries SET default_selected = 0 WHERE id != '" . escape($_POST['id'] ?? '') . "'");
         }
 
         log_activity(lang(array('string' => 'country ({var:1}) was modified', 'vars' => array($_POST['name']))), $_SESSION['sessionusername']);

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -550,7 +550,7 @@ if (!$_POST) {
 
         // The selects below are re-synced by the script at the bottom of the form, but the
         // session keys do not exist on a first visit, which would raise undefined index notices.
-        $saved_filters = isset($_SESSION['software']['settings']['view_log']) ? $_SESSION['software']['settings']['view_log'] : array();
+        $saved_filters = isset($_SESSION['software']['settings']['view_log']) ? ($_SESSION['software']['settings']['view_log'] ?? '') : array();
         $saved_start_month = isset($saved_filters['start_month']) ? $saved_filters['start_month'] : $start_month;
         $saved_start_day   = isset($saved_filters['start_day'])   ? $saved_filters['start_day']   : $start_day;
         $saved_stop_month  = isset($saved_filters['stop_month'])  ? $saved_filters['stop_month']  : $stop_month;

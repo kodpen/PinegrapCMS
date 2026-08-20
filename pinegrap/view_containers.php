@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,7 +24,13 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_containers');
 
-switch ($_SESSION['software']['ecommerce']['view_containers']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_containers']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_containers']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? '')) {
     case lang('Name'):
         $sort_column = 'containers.name';
         break;
@@ -90,7 +96,7 @@ $containers = db_items(
     FROM containers
     LEFT JOIN user AS created_user ON containers.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON containers.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape($_SESSION['software']['ecommerce']['view_containers']['order']));
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')));
 
 $output_rows = '';
 
@@ -193,15 +199,15 @@ echo
                                 <tr>
                                     <th class="noVis"></th>
                                     <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Enabled'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Length'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Width'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Height'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Weight'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th class="text-end">' . get_column_heading(lang('Cost'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Length'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Width'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Height'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Weight'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th class="text-end">' . get_column_heading(lang('Cost'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

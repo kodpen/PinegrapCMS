@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -294,26 +294,26 @@ if (!$_POST['name']) {
     $liveform_view_folders = new liveform('view_folders');
     
     // if folder was selected for deletion
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // assume that a child item does not exist until we find out otherwise
         $child_exists = false;
         
         // is there a child folder in this folder?
-        $query = "SELECT folder_id FROM folder WHERE folder_parent = '" . escape($_POST['id']) . "' LIMIT 1";
+        $query = "SELECT folder_id FROM folder WHERE folder_parent = '" . escape($_POST['id'] ?? '') . "' LIMIT 1";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         if (mysqli_num_rows($result)) {
             $child_exists = true;
         }
 
         // is there a child page in this folder?
-        $query = "SELECT page_id FROM page WHERE page_folder = '" . escape($_POST['id']) . "' LIMIT 1";
+        $query = "SELECT page_id FROM page WHERE page_folder = '" . escape($_POST['id'] ?? '') . "' LIMIT 1";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         if (mysqli_num_rows($result)) {
             $child_exists = true;
         }
 
         // is there a child file in this folder?
-        $query = "SELECT id FROM files WHERE folder = '" . escape($_POST['id']) . "' LIMIT 1";
+        $query = "SELECT id FROM files WHERE folder = '" . escape($_POST['id'] ?? '') . "' LIMIT 1";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         if (mysqli_num_rows($result)) {
             $child_exists = true;
@@ -325,16 +325,16 @@ if (!$_POST['name']) {
         }
         
         // delete entries in acl for this folder
-        $result=mysqli_query(db::$con, "DELETE FROM aclfolder WHERE aclfolder_folder = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+        $result=mysqli_query(db::$con, "DELETE FROM aclfolder WHERE aclfolder_folder = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
         // delete folder
-        $result=mysqli_query(db::$con, "DELETE FROM folder WHERE folder_id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+        $result=mysqli_query(db::$con, "DELETE FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
         log_activity(lang(array('string'=>'folder ({var:1}) was deleted','vars'=>array($_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang('The folder was deleted successfully.');
         
     } else {
         
         // get parent
-        $result=mysqli_query(db::$con, "SELECT folder_parent FROM folder WHERE folder_id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+        $result=mysqli_query(db::$con, "SELECT folder_parent FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
         $row=mysqli_fetch_array($result);
 
         // if select form was blank or not displayed
@@ -356,7 +356,7 @@ if (!$_POST['name']) {
         {
             
             // find level of folder being moved
-            $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+            $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
             $row=mysqli_fetch_array($result);
             $level_folder = $row['folder_level'];
             
@@ -367,7 +367,7 @@ if (!$_POST['name']) {
             // how much each level will change
             $change_level = $level_parent + 1;
             // update the parent and level attributes of the folder being moved
-            $result=mysqli_query(db::$con, "UPDATE folder SET folder_parent = '" . escape($folder) . "', folder_level = '$change_level' WHERE folder_id = '" . escape($_POST['id']) . "'") or output_error('Query failed');
+            $result=mysqli_query(db::$con, "UPDATE folder SET folder_parent = '" . escape($folder) . "', folder_level = '$change_level' WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
             
             // if the level of the subfolders do not need to be changed then don't execute code
             if (($level_folder - $level_parent) != 1)
@@ -384,21 +384,21 @@ if (!$_POST['name']) {
         // if user role is Administrator, Designer, or Manager, then allow user to change style and mobile style for folder
         if ($user['role'] < 3) {
             $sql_style_fields =
-                "folder_style = '" . escape($_POST['style']) . "',
-                mobile_style_id = '" . escape($_POST['mobile_style_id']) . "',";
+                "folder_style = '" . escape($_POST['style'] ?? '') . "',
+                mobile_style_id = '" . escape($_POST['mobile_style_id'] ?? '') . "',";
         }
         
         $query =
             "UPDATE folder
             SET
                 folder_name = '" . escape($name) . "',
-                folder_order = '" . escape($_POST['order']) . "',
-                folder_access_control_type = '" . escape($_POST['access_control_type']) . "',
-                folder_archived = '" . escape($_POST['folder_archived']) . "',
+                folder_order = '" . escape($_POST['order'] ?? '') . "',
+                folder_access_control_type = '" . escape($_POST['access_control_type'] ?? '') . "',
+                folder_archived = '" . escape($_POST['folder_archived'] ?? '') . "',
                 $sql_style_fields
                 folder_timestamp = UNIX_TIMESTAMP(),
                 folder_user = '" . $user['id'] . "'
-            WHERE folder_id = '" . escape($_POST['id']) . "'";
+            WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'folder ({var:1}) was modified','vars'=>array($name) )) , $_SESSION['sessionusername']);

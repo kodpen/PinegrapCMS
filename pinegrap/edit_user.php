@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -981,12 +981,12 @@ if (!$_POST) {
     validate_token_field();
     
     // if create contact was selected, then create contact
-    if ($_POST['submit_create_contact'] == 'Create Contact') {
+    if (($_POST['submit_create_contact'] ?? '') == 'Create Contact') {
         // get e-mail address for this user
         $query =
             "SELECT user_email
             FROM user
-            WHERE user_id = '" . escape($_POST['id']) . "'";
+            WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $email_address = $row['user_email'];
@@ -1011,7 +1011,7 @@ if (!$_POST) {
                 user_contact = '" . $contact_id . "',
                 user_user = '" . $user['id'] . "',
                 user_timestamp = UNIX_TIMESTAMP()
-            WHERE user_id = '" . escape($_POST['id']) . "'";
+            WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // forward user to contact that was just created
@@ -1019,12 +1019,12 @@ if (!$_POST) {
         exit();
     
     // else if user was selected for delete
-    } else if ($_POST['submit_delete'] == 'Delete') {
+    } else if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // get role for user that is being deleted
         $query =
             "SELECT user_role
             FROM user
-            WHERE user_id = '" . escape($_POST['id']) . "'";
+            WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $role = $row['user_role'];
@@ -1040,7 +1040,7 @@ if (!$_POST) {
                 FROM user
                 WHERE
                     (user_role = '0')
-                    AND (user_id != '" . escape($_POST['id']) . "')";
+                    AND (user_id != '" . escape($_POST['id'] ?? '') . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if there is no other administrator user, do not allow user to be deleted
@@ -1052,38 +1052,38 @@ if (!$_POST) {
         // if the user is allowed to be deleted
         if ($allow_delete == true) {
             // delete user record
-            $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete aclfolder records
-            $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete users_contact_groups_xref records
-            $query = "DELETE FROM users_contact_groups_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_contact_groups_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete users_calendars_xref records
-            $query = "DELETE FROM users_calendars_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_calendars_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete address book records
-            $query = "DELETE FROM address_book WHERE user = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM address_book WHERE user = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete ad region xref records
-            $query = "DELETE FROM users_ad_regions_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_ad_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete common region xref records
-            $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete menu xref records
-            $query = "DELETE FROM users_menus_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_menus_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-            db("DELETE FROM users_messages_xref WHERE user_id = '" . e($_POST['id']) . "'");
+            db("DELETE FROM users_messages_xref WHERE user_id = '" . e($_POST['id'] ?? '') . "'");
             
             log_activity(lang(array('string'=>'user ({var:1}) was deleted','vars'=>$_POST['username'])), $_SESSION['sessionusername']);
             
@@ -1137,14 +1137,14 @@ if (!$_POST) {
         }
 
         // determine if username is already in use
-        $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE ((user_username = '" . escape($_POST['username']) . "') OR (user_email = '" . escape($_POST['username']) . "')) AND (user_id != '" . escape($_POST['id']) . "')") or output_error('Query failed');
+        $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE ((user_username = '" . escape($_POST['username'] ?? '') . "') OR (user_email = '" . escape($_POST['username'] ?? '') . "')) AND (user_id != '" . escape($_POST['id'] ?? '') . "')") or output_error('Query failed');
         if (mysqli_num_rows($result) > 0)
         {
             output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
 
         // determine if e-mail address is already in use
-        $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE ((user_email = '" . escape($_POST['email']) . "') OR (user_username = '" . escape($_POST['email']) . "')) AND (user_id != '" . escape($_POST['id']) . "')") or output_error('Query failed');
+        $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE ((user_email = '" . escape($_POST['email'] ?? '') . "') OR (user_username = '" . escape($_POST['email'] ?? '') . "')) AND (user_id != '" . escape($_POST['id'] ?? '') . "')") or output_error('Query failed');
         if (mysqli_num_rows($result) > 0) {
             output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
@@ -1155,7 +1155,7 @@ if (!$_POST) {
         $query =
             "SELECT user_role
             FROM user
-            WHERE user_id = '" . escape($_POST['id']) . "'";
+            WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $role = $row['user_role'];
@@ -1171,7 +1171,7 @@ if (!$_POST) {
                 FROM user
                 WHERE
                     (user_role = '0')
-                    AND (user_id != '" . escape($_POST['id']) . "')";
+                    AND (user_id != '" . escape($_POST['id'] ?? '') . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if there is no other administrator user, do not allow the role to be changed
@@ -1182,7 +1182,7 @@ if (!$_POST) {
 
         // if the role is allowed to be changed
         if ($allow_role_change == true) {
-            $sql_role = " user_role = '" . escape($_POST['role']) . "',";
+            $sql_role = " user_role = '" . escape($_POST['role'] ?? '') . "',";
         } else {
             $sql_role = "";
         }
@@ -1191,7 +1191,7 @@ if (!$_POST) {
         
         // if offline payment is enabled, then prepare to update set offline payment
         if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
-            $sql_offline_payment = "user_set_offline_payment = '" . escape($_POST['set_offline_payment']) . "',";
+            $sql_offline_payment = "user_set_offline_payment = '" . escape($_POST['set_offline_payment'] ?? '') . "',";
         }
         
         $sql_set_page_types = '';
@@ -1199,33 +1199,33 @@ if (!$_POST) {
         // if forms are enabled, then set the sql to update the set page type columns that are associated with this feature
         if (FORMS == true) {
             $sql_set_page_types .= 
-                " user_set_page_type_custom_form = '" . escape($_POST['set_page_type_custom_form']) . "',
-                user_set_page_type_custom_form_confirmation = '" . escape($_POST['set_page_type_custom_form_confirmation']) . "', 
-                user_set_page_type_form_list_view = '" . escape($_POST['set_page_type_form_list_view']) . "',
-                user_set_page_type_form_item_view = '" . escape($_POST['set_page_type_form_item_view']) . "',
-                user_set_page_type_form_view_directory = '" . escape($_POST['set_page_type_form_view_directory']) . "',";
+                " user_set_page_type_custom_form = '" . escape($_POST['set_page_type_custom_form'] ?? '') . "',
+                user_set_page_type_custom_form_confirmation = '" . escape($_POST['set_page_type_custom_form_confirmation'] ?? '') . "', 
+                user_set_page_type_form_list_view = '" . escape($_POST['set_page_type_form_list_view'] ?? '') . "',
+                user_set_page_type_form_item_view = '" . escape($_POST['set_page_type_form_item_view'] ?? '') . "',
+                user_set_page_type_form_view_directory = '" . escape($_POST['set_page_type_form_view_directory'] ?? '') . "',";
         }
         
         // if calendars are enabled, then set the sql to update the set page type columns that are associated with this feature
         if (CALENDARS == true) {
             $sql_set_page_types .= 
-                " user_set_page_type_calendar_view = '" . escape($_POST['set_page_type_calendar_view']) . "',
-                user_set_page_type_calendar_event_view = '" . escape($_POST['set_page_type_calendar_event_view']) . "',";
+                " user_set_page_type_calendar_view = '" . escape($_POST['set_page_type_calendar_view'] ?? '') . "',
+                user_set_page_type_calendar_event_view = '" . escape($_POST['set_page_type_calendar_event_view'] ?? '') . "',";
         }
         
         // if ecommerce is enabled, then set the sql to update the set page type columns that are associated with this feature
         if (ECOMMERCE == true) {
             $sql_set_page_types .= 
-                " user_set_page_type_catalog = '" . escape($_POST['set_page_type_catalog']) . "',
-                user_set_page_type_catalog_detail = '" . escape($_POST['set_page_type_catalog_detail']) . "',
-                user_set_page_type_express_order = '" . escape($_POST['set_page_type_express_order']) . "',
-                user_set_page_type_order_form = '" . escape($_POST['set_page_type_order_form']) . "',
-                user_set_page_type_shopping_cart = '" . escape($_POST['set_page_type_shopping_cart']) . "',
-                user_set_page_type_shipping_address_and_arrival = '" . escape($_POST['set_page_type_shipping_address_and_arrival']) . "',
-                user_set_page_type_shipping_method = '" . escape($_POST['set_page_type_shipping_method']) . "',
-                user_set_page_type_billing_information = '" . escape($_POST['set_page_type_billing_information']) . "',
-                user_set_page_type_order_preview = '" . escape($_POST['set_page_type_order_preview']) . "',
-                user_set_page_type_order_receipt = '" . escape($_POST['set_page_type_order_receipt']) . "',";
+                " user_set_page_type_catalog = '" . escape($_POST['set_page_type_catalog'] ?? '') . "',
+                user_set_page_type_catalog_detail = '" . escape($_POST['set_page_type_catalog_detail'] ?? '') . "',
+                user_set_page_type_express_order = '" . escape($_POST['set_page_type_express_order'] ?? '') . "',
+                user_set_page_type_order_form = '" . escape($_POST['set_page_type_order_form'] ?? '') . "',
+                user_set_page_type_shopping_cart = '" . escape($_POST['set_page_type_shopping_cart'] ?? '') . "',
+                user_set_page_type_shipping_address_and_arrival = '" . escape($_POST['set_page_type_shipping_address_and_arrival'] ?? '') . "',
+                user_set_page_type_shipping_method = '" . escape($_POST['set_page_type_shipping_method'] ?? '') . "',
+                user_set_page_type_billing_information = '" . escape($_POST['set_page_type_billing_information'] ?? '') . "',
+                user_set_page_type_order_preview = '" . escape($_POST['set_page_type_order_preview'] ?? '') . "',
+                user_set_page_type_order_receipt = '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
         }
         
         // update user
@@ -1233,36 +1233,36 @@ if (!$_POST) {
             "UPDATE user
             SET
                 user_username = '" . escape($username) . "',
-                user_email = '" . escape($_POST['email']) . "',
+                user_email = '" . escape($_POST['email'] ?? '') . "',
                 $sql_role
-                user_home = '" . escape($_POST['home_page']) . "',
-                user_password_hint = '" . escape($_POST['password_hint']) . "',
-                user_badge = '" . escape($_POST['badge']) . "',
-                user_badge_label = '" . escape($_POST['badge_label']) . "',
-                user_reward_points = '" . escape($_POST['reward_points']) . "',
-                user_manage_contacts = '" . escape($_POST['manage_contacts']) . "',
-                user_manage_visitors = '" . escape($_POST['manage_visitors']) . "',
-                user_create_pages = '" . escape($_POST['create_pages']) . "',
-                user_delete_pages = '" . escape($_POST['delete_pages']) . "',
-                user_manage_forms = '" . escape($_POST['manage_forms']) . "',
-                user_manage_calendars = '" . escape($_POST['manage_calendars']) . "',
-                user_manage_emails = '" . escape($_POST['manage_emails']) . "',
-                user_manage_ecommerce = '" . escape($_POST['manage_ecommerce']) . "',
-                user_view_card_data = '" . escape($_POST['view_card_data']) . "',
-                manage_ecommerce_reports = '" . e($_POST['manage_ecommerce_reports']) . "',
+                user_home = '" . escape($_POST['home_page'] ?? '') . "',
+                user_password_hint = '" . escape($_POST['password_hint'] ?? '') . "',
+                user_badge = '" . escape($_POST['badge'] ?? '') . "',
+                user_badge_label = '" . escape($_POST['badge_label'] ?? '') . "',
+                user_reward_points = '" . escape($_POST['reward_points'] ?? '') . "',
+                user_manage_contacts = '" . escape($_POST['manage_contacts'] ?? '') . "',
+                user_manage_visitors = '" . escape($_POST['manage_visitors'] ?? '') . "',
+                user_create_pages = '" . escape($_POST['create_pages'] ?? '') . "',
+                user_delete_pages = '" . escape($_POST['delete_pages'] ?? '') . "',
+                user_manage_forms = '" . escape($_POST['manage_forms'] ?? '') . "',
+                user_manage_calendars = '" . escape($_POST['manage_calendars'] ?? '') . "',
+                user_manage_emails = '" . escape($_POST['manage_emails'] ?? '') . "',
+                user_manage_ecommerce = '" . escape($_POST['manage_ecommerce'] ?? '') . "',
+                user_view_card_data = '" . escape($_POST['view_card_data'] ?? '') . "',
+                manage_ecommerce_reports = '" . e($_POST['manage_ecommerce_reports'] ?? '') . "',
                 $sql_offline_payment
-                user_publish_calendar_events = '" . escape($_POST['publish_calendar_events']) . "',
-                user_set_page_type_email_a_friend = '" . escape($_POST['set_page_type_email_a_friend']) . "',
-                user_set_page_type_folder_view = '" . escape($_POST['set_page_type_folder_view']) . "',
-                user_set_page_type_photo_gallery = '" . escape($_POST['set_page_type_photo_gallery']) . "',
+                user_publish_calendar_events = '" . escape($_POST['publish_calendar_events'] ?? '') . "',
+                user_set_page_type_email_a_friend = '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
+                user_set_page_type_folder_view = '" . escape($_POST['set_page_type_folder_view'] ?? '') . "',
+                user_set_page_type_photo_gallery = '" . escape($_POST['set_page_type_photo_gallery'] ?? '') . "',
                 $sql_set_page_types
                 user_user = '" . $user['id'] . "',
                 user_timestamp = UNIX_TIMESTAMP()
-            WHERE user_id = '" . escape($_POST['id']) . "'";
+            WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // Delete current access control records in order to add new ones.
-        $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // find all folders to update access control list
@@ -1272,11 +1272,11 @@ if (!$_POST) {
             $sql_expiration_date = "";
             
             // if the user was given edit rights to this folder, then set rights value to 2
-            if ($_POST['edit_' . $folder_id] == 1) {
+            if (($_POST['edit_' . $folder_id] ?? '') == 1) {
                 $rights = 2;
                 
             // else if the user was given view rights to this folder, then deal with that.
-            } elseif ($_POST['view_' . $folder_id] == 1) {
+            } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
                 // Remove spaces from beginning and end of date.
                 $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date']);
 
@@ -1311,13 +1311,13 @@ if (!$_POST) {
                 $rights = 0;
             }
 
-            $result2 = mysqli_query(db::$con, "INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES ('" . escape($_POST['id']) . "', '" . $folder_id . "', '" . $rights . "', '" . escape($sql_expiration_date) . "')") or output_error('Query failed.');
+            $result2 = mysqli_query(db::$con, "INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . $folder_id . "', '" . $rights . "', '" . escape($sql_expiration_date) . "')") or output_error('Query failed.');
         }
         
         // if user that was created has a user role, then prepare to assign access to various items for user
         if ($_POST['role'] == 3) {
             // delete user and common region references in users_common_regions_xref
-            $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // get all common regions
@@ -1333,20 +1333,20 @@ if (!$_POST) {
             // loop through all common regions and input them if they were selected
             foreach ($common_regions as $common_region) {
                 // if common region was selected for user to be given access to, give access to common region
-                if ($_POST['common_region_' . $common_region['cregion_id']] == 1) {
+                if (($_POST['common_region_' . $common_region['cregion_id']] ?? '') == 1) {
                     $query =
                         "INSERT INTO users_common_regions_xref (
                             user_id,
                             common_region_id)
                         VALUES (
-                            '" . escape($_POST['id']) . "',
+                            '" . escape($_POST['id'] ?? '') . "',
                             '" . escape($common_region['cregion_id']) . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 }
             }
             
             // delete user and menu references in users_menus_xref
-            $query = "DELETE FROM users_menus_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_menus_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // get all menus
@@ -1362,20 +1362,20 @@ if (!$_POST) {
             // loop through all menus and input them if they were selected
             foreach ($menus as $menu) {
                 // if menu was selected for user to be given access to, give access to menu
-                if ($_POST['menu_' . $menu['id']] == 1) {
+                if (($_POST['menu_' . $menu['id']] ?? '') == 1) {
                     $query =
                         "INSERT INTO users_menus_xref (
                             user_id,
                             menu_id)
                         VALUES (
-                            '" . escape($_POST['id']) . "',
+                            '" . escape($_POST['id'] ?? '') . "',
                             '" . escape($menu['id']) . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 }
             }
             
             // delete user and contact group references in users_contact_groups_xref
-            $query = "DELETE FROM users_contact_groups_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_contact_groups_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if manage contacts or manage e-mails was checked, check to see which contact groups the user needs to be given access to
@@ -1393,13 +1393,13 @@ if (!$_POST) {
                 // loop through all contact groups
                 foreach ($contact_groups as $contact_group) {
                     // if contact group was selected for user to be given access to, give access to user to contact group
-                    if ($_POST['contact_group_' . $contact_group['id']] == 1) {
+                    if (($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) {
                         $query =
                             "INSERT INTO users_contact_groups_xref (
                                 user_id,
                                 contact_group_id)
                             VALUES (
-                                '" . escape($_POST['id']) . "',
+                                '" . escape($_POST['id'] ?? '') . "',
                                 '" . $contact_group['id'] . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
@@ -1407,7 +1407,7 @@ if (!$_POST) {
             }
             
             // delete user and calendar references in users_calendars_xref
-            $query = "DELETE FROM users_calendars_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_calendars_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if manage calendars was checked, check to see which calendars the user needs to be given access to
@@ -1425,13 +1425,13 @@ if (!$_POST) {
                 // loop through all calendars
                 foreach ($calendars as $calendar) {
                     // if calendar was selected for user to be given access to, give access to user to calendar
-                    if ($_POST['calendar_' . $calendar['id']] == 1) {
+                    if (($_POST['calendar_' . $calendar['id']] ?? '') == 1) {
                         $query =
                             "INSERT INTO users_calendars_xref (
                                 user_id,
                                 calendar_id)
                             VALUES (
-                                '" . escape($_POST['id']) . "',
+                                '" . escape($_POST['id'] ?? '') . "',
                                 '" . $calendar['id'] . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }
@@ -1441,7 +1441,7 @@ if (!$_POST) {
             // If ads are enabled, then store access.
             if (ADS === true) {
                 // delete user and ad region references in users_ad_regions_xref
-                $query = "DELETE FROM users_ad_regions_xref WHERE user_id = '" . escape($_POST['id']) . "'";
+                $query = "DELETE FROM users_ad_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
                 // get all ad regions
@@ -1457,13 +1457,13 @@ if (!$_POST) {
                 // loop through all ad regions and input them if they were selected
                 foreach ($ad_regions as $ad_region) {
                     // if ad region was selected for user to be given access to, give access to ad region
-                    if ($_POST['ad_region_' . $ad_region['id']] == 1) {
+                    if (($_POST['ad_region_' . $ad_region['id']] ?? '') == 1) {
                         $query =
                             "INSERT INTO users_ad_regions_xref (
                                 user_id,
                                 ad_region_id)
                             VALUES (
-                                '" . escape($_POST['id']) . "',
+                                '" . escape($_POST['id'] ?? '') . "',
                                 '" . escape($ad_region['id']) . "')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     }

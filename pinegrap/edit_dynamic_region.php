@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -99,9 +99,9 @@ if (!isset($_POST['name'])) {
     include_once('liveform.class.php');
     
     // if region was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $query = "DELETE FROM dregion "
-                ."WHERE dregion_id = '" . escape($_POST['id']) . "'";
+                ."WHERE dregion_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Dynamic Region') ));
@@ -109,11 +109,11 @@ if (!isset($_POST['name'])) {
         $_POST['name'] = trim($_POST['name']);
         // update region
         $query = "UPDATE dregion "
-                ."SET dregion_name = '" . escape($_POST['name']) . "', "
-                    ."dregion_code = '" . escape($_POST['code']) . "', "
+                ."SET dregion_name = '" . escape($_POST['name'] ?? '') . "', "
+                    ."dregion_code = '" . escape($_POST['code'] ?? '') . "', "
                     ."dregion_user = {$user['id']}, "
                     ."dregion_timestamp = UNIX_TIMESTAMP() "
-                ."WHERE dregion_id = '" . escape($_POST['id']) . "'";
+                ."WHERE dregion_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was edited successfully','vars'=>lang('Dynamic Region') ));

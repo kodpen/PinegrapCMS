@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -937,28 +937,28 @@ if (!$_POST) {
     
     // delete shipping method references in shipping_methods_zones_xref (we do this reguardless of whether we are deleting the shipping method or updating the shipping method)
     $query = "DELETE FROM shipping_methods_zones_xref ".
-             "WHERE shipping_method_id = '" . escape($_POST['id']) . "'";
+             "WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // delete excluded transit dates for this shipping method (we do this reguardless of whether we are deleting the shipping method or updating the shipping method)
-    $query = "DELETE FROM excluded_transit_dates WHERE shipping_method_id = '" . escape($_POST['id']) . "'";
+    $query = "DELETE FROM excluded_transit_dates WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // if shipping method was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete shipping_method
-        $query = "DELETE FROM shipping_methods WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM shipping_methods WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete records in offer_actions_shipping_methods_xref for this shipping method
-        $query = "DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // delete shipping cut-offs for this shipping method
-        $query = "DELETE FROM shipping_cutoffs WHERE shipping_method_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM shipping_cutoffs WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-        db("DELETE FROM ship_date_adjustments WHERE shipping_method_id = '" . escape($_POST['id']) . "'");
+        db("DELETE FROM ship_date_adjustments WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'");
 
         log_activity(lang(array('string'=>'shipping method ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
         
@@ -1067,13 +1067,13 @@ if (!$_POST) {
 
         // update shipping method
         $query = "UPDATE shipping_methods SET
-                    name = '" . escape($_POST['name']) . "',
-                    description = '" . escape($_POST['description']) . "',
-                    code = '" . escape($_POST['code']) . "',
+                    name = '" . escape($_POST['name'] ?? '') . "',
+                    description = '" . escape($_POST['description'] ?? '') . "',
+                    code = '" . escape($_POST['code'] ?? '') . "',
                     status = '" . escape($status) . "',
                     start_time = '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
                     end_time = '" . escape(prepare_form_data_for_input($_POST['end_time'], 'date and time')) . "',
-                    service = '" . e($_POST['service']) . "',
+                    service = '" . e($_POST['service'] ?? '') . "',
                     realtime_rate = '" . e($realtime_rate) . "',
                     base_rate = '" . escape($base_rate) . "',
                     variable_base_rate = '" . escape($variable_base_rate) . "',
@@ -1084,51 +1084,51 @@ if (!$_POST) {
                     base_rate_4 = '" . escape($base_rate_4) . "',
                     base_rate_4_subtotal = '" . escape($base_rate_4_subtotal) . "',
                     primary_weight_rate = '" . escape($primary_weight_rate) . "',
-                    primary_weight_rate_first_item_excluded = '" . escape($_POST['primary_weight_rate_first_item_excluded']) . "',
+                    primary_weight_rate_first_item_excluded = '" . escape($_POST['primary_weight_rate_first_item_excluded'] ?? '') . "',
                     secondary_weight_rate = '" . escape($secondary_weight_rate) . "',
-                    secondary_weight_rate_first_item_excluded = '" . escape($_POST['secondary_weight_rate_first_item_excluded']) . "',
+                    secondary_weight_rate_first_item_excluded = '" . escape($_POST['secondary_weight_rate_first_item_excluded'] ?? '') . "',
                     item_rate = '" . escape($item_rate) . "',
-                    item_rate_first_item_excluded = '" . escape($_POST['item_rate_first_item_excluded']) . "',
-                    base_transit_days = '" . escape($_POST['base_transit_days']) . "',
-                    adjust_transit = '" . escape($_POST['adjust_transit']) . "',
-                    street_address = '" . escape($_POST['street_address']) . "',
-                    po_box = '" . escape($_POST['po_box']) . "',
-                    handle_days = '" . e($_POST['handle_days']) . "',
-                    handle_mon = '" . e($_POST['handle_mon']) . "',
-                    handle_tue = '" . e($_POST['handle_tue']) . "',
-                    handle_wed = '" . e($_POST['handle_wed']) . "',
-                    handle_thu = '" . e($_POST['handle_thu']) . "',
-                    handle_fri = '" . e($_POST['handle_fri']) . "',
-                    handle_sat = '" . e($_POST['handle_sat']) . "',
-                    handle_sun = '" . e($_POST['handle_sun']) . "',
-                    ship_mon = '" . e($_POST['ship_mon']) . "',
-                    ship_tue = '" . e($_POST['ship_tue']) . "',
-                    ship_wed = '" . e($_POST['ship_wed']) . "',
-                    ship_thu = '" . e($_POST['ship_thu']) . "',
-                    ship_fri = '" . e($_POST['ship_fri']) . "',
-                    ship_sat = '" . e($_POST['ship_sat']) . "',
-                    ship_sun = '" . e($_POST['ship_sun']) . "',
+                    item_rate_first_item_excluded = '" . escape($_POST['item_rate_first_item_excluded'] ?? '') . "',
+                    base_transit_days = '" . escape($_POST['base_transit_days'] ?? '') . "',
+                    adjust_transit = '" . escape($_POST['adjust_transit'] ?? '') . "',
+                    street_address = '" . escape($_POST['street_address'] ?? '') . "',
+                    po_box = '" . escape($_POST['po_box'] ?? '') . "',
+                    handle_days = '" . e($_POST['handle_days'] ?? '') . "',
+                    handle_mon = '" . e($_POST['handle_mon'] ?? '') . "',
+                    handle_tue = '" . e($_POST['handle_tue'] ?? '') . "',
+                    handle_wed = '" . e($_POST['handle_wed'] ?? '') . "',
+                    handle_thu = '" . e($_POST['handle_thu'] ?? '') . "',
+                    handle_fri = '" . e($_POST['handle_fri'] ?? '') . "',
+                    handle_sat = '" . e($_POST['handle_sat'] ?? '') . "',
+                    handle_sun = '" . e($_POST['handle_sun'] ?? '') . "',
+                    ship_mon = '" . e($_POST['ship_mon'] ?? '') . "',
+                    ship_tue = '" . e($_POST['ship_tue'] ?? '') . "',
+                    ship_wed = '" . e($_POST['ship_wed'] ?? '') . "',
+                    ship_thu = '" . e($_POST['ship_thu'] ?? '') . "',
+                    ship_fri = '" . e($_POST['ship_fri'] ?? '') . "',
+                    ship_sat = '" . e($_POST['ship_sat'] ?? '') . "',
+                    ship_sun = '" . e($_POST['ship_sun'] ?? '') . "',
                     end_of_day = '" . e(prepare_form_data_for_input($_POST['end_of_day'], 'time')) . "',
-                    transit_on_sunday = '" . escape($_POST['transit_on_sunday']) . "',
-                    transit_on_saturday = '" . escape($_POST['transit_on_saturday']) . "',
-                    available_on_sunday = '" . escape($_POST['available_on_sunday']) . "',
+                    transit_on_sunday = '" . escape($_POST['transit_on_sunday'] ?? '') . "',
+                    transit_on_saturday = '" . escape($_POST['transit_on_saturday'] ?? '') . "',
+                    available_on_sunday = '" . escape($_POST['available_on_sunday'] ?? '') . "',
                     available_on_sunday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_sunday_cutoff_time'], 'time')) . "',
-                    available_on_monday = '" . escape($_POST['available_on_monday']) . "',
+                    available_on_monday = '" . escape($_POST['available_on_monday'] ?? '') . "',
                     available_on_monday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_monday_cutoff_time'], 'time')) . "',
-                    available_on_tuesday = '" . escape($_POST['available_on_tuesday']) . "',
+                    available_on_tuesday = '" . escape($_POST['available_on_tuesday'] ?? '') . "',
                     available_on_tuesday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_tuesday_cutoff_time'], 'time')) . "',
-                    available_on_wednesday = '" . escape($_POST['available_on_wednesday']) . "',
+                    available_on_wednesday = '" . escape($_POST['available_on_wednesday'] ?? '') . "',
                     available_on_wednesday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_wednesday_cutoff_time'], 'time')) . "',
-                    available_on_thursday = '" . escape($_POST['available_on_thursday']) . "',
+                    available_on_thursday = '" . escape($_POST['available_on_thursday'] ?? '') . "',
                     available_on_thursday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_thursday_cutoff_time'], 'time')) . "',
-                    available_on_friday = '" . escape($_POST['available_on_friday']) . "',
+                    available_on_friday = '" . escape($_POST['available_on_friday'] ?? '') . "',
                     available_on_friday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_friday_cutoff_time'], 'time')) . "',
-                    available_on_saturday = '" . escape($_POST['available_on_saturday']) . "',
+                    available_on_saturday = '" . escape($_POST['available_on_saturday'] ?? '') . "',
                     available_on_saturday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_saturday_cutoff_time'], 'time')) . "',
-                    protected = '" . e($_POST['protected']) . "',
+                    protected = '" . e($_POST['protected'] ?? '') . "',
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id']) . "'";
+                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // load all zones in array by exploding string that has allowed zone ids separated by commas
@@ -1138,7 +1138,7 @@ if (!$_POST) {
         foreach ($allowed_zones as $zone_id) {
             // if zone id is not blank, insert row
             if ($zone_id) {
-                $query = "INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES ('" . escape($_POST['id']) . "', '" . escape($zone_id) . "')";
+                $query = "INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($zone_id) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }
@@ -1183,7 +1183,7 @@ if (!$_POST) {
                     shipping_method_id,
                     date)
                 VALUES (
-                    '" . escape($_POST['id']) . "',
+                    '" . escape($_POST['id'] ?? '') . "',
                     '" . escape($excluded_transit_date) . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }

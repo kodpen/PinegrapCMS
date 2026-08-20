@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -21,6 +21,22 @@ $user = validate_user();
 validate_area_access($user, 'user');
 $liveform = new liveform('view_comments');
 
+
+// make sure the session values that this screen reads below actually exist
+if (isset($_SESSION['software']['comments']) == false) {
+    $_SESSION['software']['comments'] = array();
+}
+
+foreach (array('sort', 'order', 'query') as $comments_session_key) {
+    if (isset($_SESSION['software']['comments'][$comments_session_key]) == false) {
+        $_SESSION['software']['comments'][$comments_session_key] = '';
+    }
+}
+
+// these are only ever appended to further below, so they have to start out empty
+$where = '';
+$output_rows = '';
+$number_of_results = 0;
 
 // if sort was set, update session
 if (isset($_REQUEST['sort'])) {
@@ -37,7 +53,13 @@ if (isset($_REQUEST['order'])) {
     $_SESSION['software']['comments']['order'] = $_REQUEST['order'];
 }
 
-switch($_SESSION['software']['comments']['sort'])
+// if the sort is not set yet (first visit to this screen), then default it to empty so the
+// switch below falls through to its default case
+if (isset($_SESSION['software']['comments']['sort']) == false) {
+    $_SESSION['software']['comments']['sort'] = '';
+}
+
+switch (($_SESSION['software']['comments']['sort'] ?? ''))
 {
     case lang('Name'):
         $sort_column = 'name';
@@ -60,8 +82,8 @@ switch($_SESSION['software']['comments']['sort'])
         $_SESSION['software']['comments']['sort'] = lang('Submitted');
 }
 
-if ($_SESSION['software']['comments']['order']) {
-    $asc_desc = $_SESSION['software']['comments']['order'];
+if (!empty($_SESSION['software']['comments']['order'])) {
+    $asc_desc = ($_SESSION['software']['comments']['order'] ?? '');
 } elseif ($sort_column == 'created_timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['comments']['order'] = 'desc';
@@ -79,12 +101,12 @@ $row = mysqli_fetch_row($result);
 $all_comments = $row[0];
 
 
-$search_query = mb_strtolower($_SESSION['software']['comments']['query']);
+$search_query = mb_strtolower(($_SESSION['software']['comments']['query'] ?? ''));
 
 // create where clause for sql
 $sql_search = "(LOWER(CONCAT_WS(',',  comments.name,comments.message,user.user_username)) LIKE '%" . escape($search_query) . "%')";
 
-if (isset($_SESSION['software']['comments']['query'])) {
+if (($_SESSION['software']['comments']['query'] ?? '') != '') {
     // Get only the results the user wanted in the search.
     $where .= "WHERE $sql_search";
 }
@@ -270,13 +292,13 @@ print
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $_SESSION['software']['comments']['sort'], $_SESSION['software']['comments']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Published'), $_SESSION['software']['comments']['sort'], $_SESSION['software']['comments']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Featured'), $_SESSION['software']['comments']['sort'], $_SESSION['software']['comments']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Name'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Published'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Featured'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
                                     <th>' . lang('At a Scheduled Time') . '</th>
-                                    <th>' . get_column_heading(lang('Cancel if Added First'), $_SESSION['software']['comments']['sort'], $_SESSION['software']['comments']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Cancel if Added First'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
                                     <th>' . lang('Message') . '</th>
-                                    <th>' . get_column_heading(lang('Submitted'), $_SESSION['software']['comments']['sort'], $_SESSION['software']['comments']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Submitted'), ($_SESSION['software']['comments']['sort'] ?? ''), ($_SESSION['software']['comments']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>

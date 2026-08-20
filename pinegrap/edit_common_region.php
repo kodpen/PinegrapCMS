@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -122,13 +122,13 @@ if (!isset($_POST['name'])) {
     validate_token_field();
     
     // if region was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $query = "DELETE FROM cregion "
-                ."WHERE cregion_id = '" . escape($_POST['id']) . "'";
+                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         
         // delete users_common_regions_xref records
-        $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('common region'), $_POST['name']) )), $_SESSION['sessionusername']);
@@ -143,12 +143,12 @@ if (!isset($_POST['name'])) {
         }
 
         $query = "UPDATE cregion "
-                ."SET cregion_name = '" . escape($_POST['name']) . "', "
+                ."SET cregion_name = '" . escape($_POST['name'] ?? '') . "', "
                     ."cregion_content = '" . escape(prepare_rich_text_editor_content_for_input($_POST['content'])) . "', "
                     ."cregion_designer_type = '$cregion_designer_type', "
                     ."cregion_user = '" . $user['id'] . "', "
                     ."cregion_timestamp = UNIX_TIMESTAMP() "
-                ."WHERE cregion_id = '" . escape($_POST['id']) . "'";
+                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
         // update region
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('common region'), $_POST['name']) )), $_SESSION['sessionusername']);

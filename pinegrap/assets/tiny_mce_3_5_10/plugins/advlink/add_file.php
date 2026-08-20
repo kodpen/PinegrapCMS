@@ -83,7 +83,7 @@ copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name) or output_error('U
 // insert file data into file table
 $query =    "INSERT INTO files ".
             "(name, folder, type, size, user, timestamp, design) ".
-            "VALUES ('" . escape($file_name) . "','" . escape($_POST['folder_id']) . "','" . escape($file_extension) . "','" . escape($file_size) . "','" . $user['id'] . "',UNIX_TIMESTAMP(), '0')";
+            "VALUES ('" . escape($file_name) . "','" . escape($_POST['folder_id'] ?? '') . "','" . escape($file_extension) . "','" . escape($file_size) . "','" . $user['id'] . "',UNIX_TIMESTAMP(), '0')";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $file_id = mysqli_insert_id(db::$con);
 

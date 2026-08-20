@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -432,7 +432,7 @@ if (!$_POST) {
                 <form name="form" action="edit_calendar_event.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>$_GET['send_to'])) . '
+                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$_GET['recurrence_number'])) . '
                     <div class="row">
                         <div class="col-12">

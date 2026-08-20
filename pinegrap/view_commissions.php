@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,6 +24,16 @@ validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_commissions');
+
+// NOTE: $sql_status is never assigned anywhere in this script, so the status filter it was
+// meant to carry is never applied.  Starting it empty keeps the current behaviour and stops
+// the warning; the filter itself still needs to be implemented.
+$sql_status = '';
+
+// if advanced filters are not set yet, then default them to off
+if (isset($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters']) == false) {
+    $_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] = false;
+}
 
 // if necessary create commission instances from recurring profiles
 update_recurring_commissions();
@@ -67,8 +77,8 @@ if (isset($_SESSION['software']['ecommerce']['view_commissions']['start_month'])
 
 
 // get timestamps for start and stop dates
-$start_timestamp = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_commissions']['start_month'], $_SESSION['software']['ecommerce']['view_commissions']['start_day'], $_SESSION['software']['ecommerce']['view_commissions']['start_year']);
-$stop_timestamp = mktime(23, 59, 59, $_SESSION['software']['ecommerce']['view_commissions']['stop_month'], $_SESSION['software']['ecommerce']['view_commissions']['stop_day'], $_SESSION['software']['ecommerce']['view_commissions']['stop_year']);
+$start_timestamp = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['start_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['start_year'] ?? ''));
+$stop_timestamp = mktime(23, 59, 59, ($_SESSION['software']['ecommerce']['view_commissions']['stop_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['stop_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['stop_year'] ?? ''));
 
 // get oldest timestamp
 $query = "SELECT MIN(created_timestamp) FROM commissions";
@@ -103,7 +113,7 @@ foreach ($statuses as $status) {
     $selected = '';
     
     // if this is the selected status, then select it
-    if ($status == $_SESSION['software']['ecommerce']['view_commissions']['status']) {
+    if ($status == ($_SESSION['software']['ecommerce']['view_commissions']['status'] ?? '')) {
         $selected = ' selected="selected"';
     }
     
@@ -140,7 +150,8 @@ $number_of_screens = ceil($number_of_results / $max);
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -187,7 +198,13 @@ if ($number_of_screens > 1) {
     $output_screen_links .= '</ul></nav>';
 }
 
-switch ($_SESSION['software']['ecommerce']['view_commissions']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ecommerce']['view_commissions']['sort']) == false) {
+    $_SESSION['software']['ecommerce']['view_commissions']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? '')) {
     case lang('Affiliate Name'):
         $sort_column = 'contacts.affiliate_name';
         break;
@@ -264,7 +281,7 @@ $query =
         (commissions.created_timestamp >= '" . $start_timestamp . "')
         AND (commissions.created_timestamp <= '" . $stop_timestamp . "')
         " . $sql_status . "
-    ORDER BY " . $sort_column . " " . escape($_SESSION['software']['ecommerce']['view_commissions']['order']) . "";
+    ORDER BY " . $sort_column . " " . escape(($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . "";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $commissions = array();
@@ -391,7 +408,7 @@ $paid_total = $row['paid_total'];
 
 
 // if the advanced filters are off
-if ($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] == false) {
+if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] ?? '') == false) {
     $output_header_with_options = pg_page_shell([
         'title'=> lang('All Commissions'),
         'extra classes'=>'products',
@@ -425,18 +442,18 @@ if ($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] =
                 <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
                 <div class="col-12">
                     <label class="form-label">' . lang('From') . '</label>
-                    <select class="form-select my-1" name="start_month">' . select_month($_SESSION['software']['ecommerce']['view_commissions']['start_month']) . '</select>
+                    <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
-                        <select class="form-select my-1" name="start_day">' . select_day($_SESSION['software']['ecommerce']['view_commissions']['start_day']) . '</select>
-                        <select class="form-select my-1" name="start_year">' . select_year($years, $_SESSION['software']['ecommerce']['view_commissions']['start_year']) . '</select>
+                        <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['start_day'] ?? '')) . '</select>
+                        <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['start_year'] ?? '')) . '</select>
                     </div>
                 </div>
                 <div class="col-12">
                     <label class="form-label">' . lang('To') . '</label>
-                    <select class="form-select my-1" name="stop_month">' . select_month($_SESSION['software']['ecommerce']['view_commissions']['stop_month']) . '</select>
+                    <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['stop_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
-                        <select class="form-select my-1" name="stop_day">' . select_day($_SESSION['software']['ecommerce']['view_commissions']['stop_day']) . '</select>
-                        <select class="form-select my-1" name="stop_year">' . select_year($years, $_SESSION['software']['ecommerce']['view_commissions']['stop_year']) . '</select>
+                        <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['stop_day'] ?? '')) . '</select>
+                        <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['stop_year'] ?? '')) . '</select>
                     </div>
                 </div>
                 <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
@@ -481,16 +498,16 @@ $output_header_with_options . '
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang('Action') . '</th> 
-                                <th>' . get_column_heading(lang('Affiliate Name'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Code'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Reference Code'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Status'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Amount'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Frequency'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Order'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Product'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Created'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_commissions']['sort'], $_SESSION['software']['ecommerce']['view_commissions']['order']) . '</th>
+                                <th>' . get_column_heading(lang('Affiliate Name'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Affiliate Code'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Reference Code'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Amount'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Frequency'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Order'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Product'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_commissions']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         ' . $output_rows . '

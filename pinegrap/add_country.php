@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -117,11 +117,11 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name']) . "',
-                '" . escape($_POST['code']) . "',
-                '" . e($_POST['zip_code_required']) . "',
-                '" . escape($_POST['transit_adjustment_days']) . "',
-                '" . escape($_POST['default_selected']) . "',
+                '" . escape($_POST['name'] ?? '') . "',
+                '" . escape($_POST['code'] ?? '') . "',
+                '" . e($_POST['zip_code_required'] ?? '') . "',
+                '" . escape($_POST['transit_adjustment_days'] ?? '') . "',
+                '" . escape($_POST['default_selected'] ?? '') . "',
                 '" . $user['id'] . "',
                 UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  * 
  */
@@ -60,7 +60,6 @@ if (
     and ($action != 'get_unselected_products')
 
     and ($action != 'upload_file')
-    and ($action != 'update_dashboard_note')
     and ($action != 'update_dashboard_widgets')
     and ($action != 'software_backup')
     and ($action != 'software_update')
@@ -82,6 +81,16 @@ if (
     and ($action != 'software_update_check')
 
     and ($action != 'user_online_check')
+
+    // Live chat actions are open to all backend roles (role 3 included):
+    // the general gate below requires role <= 1, so they are exempted here.
+    // Session + token checks happen in the case block; role/pairing/
+    // ownership rules are enforced inside chat.php.
+    and (strpos($action, 'chat_') !== 0)
+
+    // Site chat: visitor endpoints — they work without a login; token,
+    // ownership, captcha and rate limiting live inside chat.php.
+    and (strpos($action, 'site_chat_') !== 0)
 
     and ($action != 'sitemap_check')
 
@@ -130,6 +139,57 @@ switch ($action) {
             );
         }
         respond($response);
+        break;
+
+    // ── Live chat (backend) ─────────────────────────────────────────────
+    // Single gate: session + CSRF token here; application rules (pairing
+    // rule, side/ownership, rate limit, delete authority) live in chat.php.
+    // When the schema has not been upgraded yet,
+    // pg_chat_handle_backend_action returns a polite error — no page
+    // breaks (pg_chat_ready probe).
+    case 'chat_bootstrap':
+    case 'chat_online_users':
+    case 'chat_open':
+    case 'chat_send':
+    case 'chat_poll':
+    case 'chat_unread_check':
+    case 'chat_mark_read':
+    case 'chat_conversations':
+    case 'chat_close':
+    case 'chat_delete':
+    case 'chat_attach':
+
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
+
+        validate_token();
+
+        require_once(dirname(__FILE__) . '/chat.php');
+
+        respond(pg_chat_handle_backend_action($action, $request));
+
+        break;
+
+    // ── Live chat (site) ────────────────────────────────────────────────
+    // Visitor/member endpoints. bootstrap hands the token to the client;
+    // every other action validates it inside chat.php
+    // (pg_chat_site_token_ok). Ownership is session-based (same pattern as
+    // the cart's order_id); captcha and rate limiting live in the module.
+    case 'site_chat_bootstrap':
+    case 'site_chat_captcha':
+    case 'site_chat_send':
+    case 'site_chat_poll':
+    case 'site_chat_update_identity':
+    case 'site_chat_attach':
+
+        require_once(dirname(__FILE__) . '/chat.php');
+
+        respond(pg_chat_handle_site_action($action, $request));
+
         break;
 
     case 'sitemap_check':
@@ -197,286 +257,219 @@ switch ($action) {
 
 
             case '2':
-                if ((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS)) {
+                // ── System status ───────────────────────────────────────
+                //
+                // One score for "is this installation healthy", drawn as a
+                // gauge, over one tile per check. It absorbed the maintenance
+                // card that used to live at this id: backup age, pending
+                // update and scheduled tasks are now scored checks rather than
+                // a separate list, because an operator reading a health number
+                // that ignores a month-old backup is reading a number that
+                // lies.
+                //
+                // The checks themselves are in functions.php and are cached
+                // there for ten minutes -- several of them stat the filesystem
+                // or open a socket. This case only renders.
+                //
+                // Role gate matches the screens the tiles link to: backups.php
+                // and software_update.php both require manager or above.
+                if ($user['role'] < 3) {
 
-                    // get the date today in order to get the timestamp for the beginning of today
-                    $date_today = date('Y-m-d');
-                    // get the timestamp for the beginning of today
-                    $timestamp_today = strtotime($date_today);
-                    // get the timestamp for the beginning of yesterday
-                    $timestamp_yesterday = $timestamp_today - 86400;
-                    // get the timestamp for current time yesterday
-                    $timestamp_current_time_yesterday = time() - 86400;
-                    $timestamp_2_days_ago = $timestamp_yesterday - 86400;
-                    $timestamp_3_days_ago = $timestamp_2_days_ago - 86400;
-                    $timestamp_4_days_ago = $timestamp_3_days_ago - 86400;
-                    $timestamp_5_days_ago = $timestamp_4_days_ago - 86400;
-                    $timestamp_6_days_ago = $timestamp_5_days_ago - 86400;
-                    $timestamp_7_days_ago = $timestamp_today - 604800;
+                    $status = get_system_status_checks();
 
-                    //ORDER//
-                    // get the number of orders for today
-                    $query = "SELECT COUNT(*) as number_of_orders_for_today FROM orders WHERE (orders.order_date >= '$timestamp_today') AND (orders.status = 'complete')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_today = $row['number_of_orders_for_today'];
+                    $health_score = isset($status['score']) ? (int) $status['score'] : 0;
+                    $health_checks = isset($status['checks']) && is_array($status['checks'])
+                        ? $status['checks']
+                        : array();
 
-                    // get the number of orders for yesterday
-                    $query = "SELECT COUNT(*) as number_of_orders_for_yesterday FROM orders WHERE ((orders.order_date >= '$timestamp_yesterday') AND (orders.order_date < '$timestamp_today') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_yesterday = $row['number_of_orders_for_yesterday'];
+                    // Arc geometry. A half circle of r=52 about (70,70) --
+                    // the same shape and radius the performance widget draws,
+                    // so the two gauges on one dashboard read as one idea.
+                    // Circumference is 326.73 and half of it is 163.36; the
+                    // rest is the opening at the bottom, which is what leaves
+                    // room for the score to sit inside the arc rather than
+                    // under it.
+                    //
+                    // Drawn as a dashed circle rather than a path, so filling
+                    // it is one number instead of two arc endpoints in PHP.
+                    $health_arc = 163.36;
 
-                    // get the number of orders for 2 days ago
-                    $query = "SELECT COUNT(*) as number_of_orders_for_2_days_ago FROM orders WHERE ((orders.order_date >= '$timestamp_2_days_ago') AND (orders.order_date < '$timestamp_yesterday') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_2_days_ago = $row['number_of_orders_for_2_days_ago'];
+                    // The number carries the verdict, the arc carries the
+                    // magnitude. Same thresholds the old status bar used, so a
+                    // site does not change colour just because the widget did.
+                    if ($health_score < 70) {
+                        $health_color = 'text-danger';
+                    } elseif ($health_score < 90) {
+                        $health_color = 'text-warning';
+                    } else {
+                        $health_color = 'text-success';
+                    }
 
-                    // get the number of orders for 3 days Ago
-                    $query = "SELECT COUNT(*) as number_of_orders_for_3_days_ago FROM orders WHERE ((orders.order_date >= '$timestamp_3_days_ago') AND (orders.order_date < '$timestamp_2_days_ago') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_3_days_ago = $row['number_of_orders_for_3_days_ago'];
+                    // Two grids, not one. The three checks flagged in
+                    // functions.php lead at three across, the rest follow at
+                    // four. Row count is unchanged either way -- three plus
+                    // twelve is one row plus three, same as fifteen over four
+                    // -- so leading them costs no height.
+                    $output_lead_tiles = '';
+                    $output_tiles = '';
+                    $output_detail = '';
 
-                    // get the number of orders for 4 days Ago
-                    $query = "SELECT COUNT(*) as number_of_orders_for_4_days_ago FROM orders WHERE ((orders.order_date >= '$timestamp_4_days_ago') AND (orders.order_date < '$timestamp_3_days_ago') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_4_days_ago = $row['number_of_orders_for_4_days_ago'];
+                    foreach ($health_checks as $health_check) {
 
-                    // get the number of orders for 5 days Ago
-                    $query = "SELECT COUNT(*) as number_of_orders_for_5_days_ago FROM orders WHERE ((orders.order_date >= '$timestamp_5_days_ago') AND (orders.order_date < '$timestamp_4_days_ago') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_5_days_ago = $row['number_of_orders_for_5_days_ago'];
+                        $tile_href = isset($health_check['href']) ? $health_check['href'] : '';
+                        $tile_detail = (isset($health_check['detail']) && is_array($health_check['detail']))
+                            ? $health_check['detail']
+                            : array();
 
-                    // get the number of orders for 6 days Ago
-                    $query = "SELECT COUNT(*) as number_of_orders_for_6_days_ago FROM orders WHERE ((orders.order_date >= '$timestamp_6_days_ago') AND (orders.order_date < '$timestamp_5_days_ago') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_6_days_ago = $row['number_of_orders_for_6_days_ago'];
+                        // The popover is the only place the full explanation
+                        // fits, and welcome.php and settings.php both bind it
+                        // by delegation from document, so it survives the
+                        // markup being injected after page load.
+                        $tile_attributes =
+                            ' class="pg-health-tile status-popover"'
+                            . ' title="' . h($health_check['title']) . '"'
+                            . ' data-bs-toggle="popover"'
+                            . ' data-bs-trigger="hover focus"'
+                            . ' data-bs-content="' . h($health_check['message']) . '"';
 
-                    // get the number of orders for 7 days Ago
-                    $query = "SELECT COUNT(*) as number_of_orders_for_7_days_ago FROM orders WHERE ((orders.order_date >= '$timestamp_7_days_ago') AND (orders.order_date < '$timestamp_6_days_ago') AND (orders.status = 'complete'))";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_orders_for_7_days_ago = $row['number_of_orders_for_7_days_ago'];
+                        // Three kinds of tile, and the marker in the corner says
+                        // which: an arrow for one that navigates, a chevron for
+                        // one that opens in place, nothing for one that is only
+                        // a reading.
+                        $tile_marker = '';
 
-                    //FORMS//
-                    // get the number of forms for today
-                    $query = "SELECT COUNT(*) as number_of_forms_for_today FROM forms WHERE forms.last_modified_timestamp >= '$timestamp_today'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_today = $row['number_of_forms_for_today'];
+                        if ($tile_detail) {
 
-                    // get the number of forms for yesterday
-                    $query = "SELECT COUNT(*) as number_of_forms_for_yesterday FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_yesterday') AND (forms.last_modified_timestamp < '$timestamp_today')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_yesterday = $row['number_of_forms_for_yesterday'];
+                            // Bootstrap's collapse data-api is delegated from
+                            // document, so it binds to markup this widget
+                            // injects after page load. Widget 24 is
+                            // deliberately absent from welcome.php's periodic
+                            // refresh list, so nothing re-renders the card and
+                            // closes the panel under the operator's hand.
+                            //
+                            // The popover would fire on the same hover that
+                            // opens the panel, so this tile carries the
+                            // collapse attributes instead and its explanation
+                            // is the panel itself.
+                            $tile_open = '<a role="button" data-bs-toggle="collapse" href="#system_status_detail"'
+                                . ' aria-expanded="false" aria-controls="system_status_detail"'
+                                . ' class="pg-health-tile pg-health-tile-marked" title="' . h($health_check['title']) . '">';
+                            $tile_close = '</a>';
+                            $tile_marker = '<i class="bi bi-chevron-down pg-health-tile-go"></i>';
 
-                    // get the number of forms 2 days ago
-                    $query = "SELECT COUNT(*) as number_of_forms_for_2_days_ago FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_2_days_ago') AND (forms.last_modified_timestamp < '$timestamp_yesterday')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_2_days_ago = $row['number_of_forms_for_2_days_ago'];
+                            foreach ($tile_detail as $detail_row) {
+                                $output_detail .= '
+                                <div class="pg-health-detail-row">
+                                    <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot text-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
+                                    <span class="text-muted flex-shrink-0">' . h($detail_row['when']) . '</span>
+                                </div>';
+                            }
 
-                    // get the number of forms 3 days ago
-                    $query = "SELECT COUNT(*) as number_of_forms_for_3_days_ago FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_3_days_ago') AND (forms.last_modified_timestamp < '$timestamp_2_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_3_days_ago = $row['number_of_forms_for_3_days_ago'];
+                        } elseif ($tile_href !== '') {
+                            // pg-health-tile-marked earns the name line a
+                            // little right padding, because the marker is
+                            // positioned over the corner rather than sitting in
+                            // either line. In the flow it was costing the value
+                            // its last few characters -- "10 saat önce" became
+                            // "10 saat ö...".
+                            $tile_open  = '<a href="' . h($tile_href) . '"' . str_replace('class="pg-health-tile ', 'class="pg-health-tile pg-health-tile-marked ', $tile_attributes) . '>';
+                            $tile_close = '</a>';
+                            $tile_marker = '<i class="bi bi-arrow-right pg-health-tile-go"></i>';
+                        } else {
+                            $tile_open  = '<div' . $tile_attributes . '>';
+                            $tile_close = '</div>';
+                        }
 
-                    // get the number of forms 4 days ago
-                    $query = "SELECT COUNT(*) as number_of_forms_for_4_days_ago FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_4_days_ago') AND (forms.last_modified_timestamp < '$timestamp_3_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_4_days_ago = $row['number_of_forms_for_4_days_ago'];
+                        // The marker rides the value line rather than the name
+                        // line. "Tamam" leaves room for an arrow; "Veritabanı"
+                        // does not, and the label is the half worth reading.
+                        $output_tile = $tile_open . '
+                            <span class="pg-health-tile-name ' . h($health_check['color']) . '">
+                                <i class="bi ' . h($health_check['icon']) . '"></i><span>' . h($health_check['label']) . '</span>
+                            </span>
+                            <span class="pg-health-tile-value text-muted">
+                                <span>' . h($health_check['value']) . '</span>
+                            </span>' . $tile_marker . '
+                        ' . $tile_close;
 
-                    // get the number of forms for 5 days ago
-                    $query = "SELECT COUNT(*) as number_of_forms_for_5_days_ago FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_5_days_ago') AND (forms.last_modified_timestamp < '$timestamp_4_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_5_days_ago = $row['number_of_forms_for_5_days_ago'];
+                        if (!empty($health_check['priority'])) {
+                            $output_lead_tiles .= $output_tile;
+                        } else {
+                            $output_tiles .= $output_tile;
+                        }
+                    }
 
-                    // get the number of forms for 6 days ago
-                    $query = "SELECT COUNT(*) as number_of_forms_for_6_days_ago FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_6_days_ago') AND (forms.last_modified_timestamp < '$timestamp_5_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_6_days_ago = $row['number_of_forms_for_6_days_ago'];
+                    if ($output_lead_tiles !== '') {
+                        $output_lead_tiles = '<div class="pg-health-grid pg-health-grid-lead">' . $output_lead_tiles . '</div>';
+                    }
 
-                    // get the number of forms for 7 days ago
-                    $query = "SELECT COUNT(*) as number_of_forms_for_7_days_ago FROM forms WHERE (forms.last_modified_timestamp >= '$timestamp_7_days_ago') AND (forms.last_modified_timestamp < '$timestamp_6_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_forms_for_7_days_ago = $row['number_of_forms_for_7_days_ago'];
-
-                    //CONTACTS//
-                    // get the number of contacts for today
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_today FROM contacts WHERE contacts.timestamp >= '$timestamp_today'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_today = $row['number_of_contacts_for_today'];
-
-                    // get the number of contacts for yesterday
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_yesterday FROM contacts WHERE (contacts.timestamp >= '$timestamp_yesterday') AND (contacts.timestamp < '$timestamp_today')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_yesterday = $row['number_of_contacts_for_yesterday'];
-
-                    // get the number of contacts 2 days ago
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_2_days_ago FROM contacts WHERE (contacts.timestamp >= '$timestamp_2_days_ago') AND (contacts.timestamp < '$timestamp_yesterday')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_2_days_ago = $row['number_of_contacts_for_2_days_ago'];
-
-                    // get the number of contacts 3 days ago
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_3_days_ago FROM contacts WHERE (contacts.timestamp >= '$timestamp_3_days_ago') AND (contacts.timestamp < '$timestamp_2_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_3_days_ago = $row['number_of_contacts_for_3_days_ago'];
-
-                    // get the number of contacts 4 days ago
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_4_days_ago FROM contacts WHERE (contacts.timestamp >= '$timestamp_4_days_ago') AND (contacts.timestamp < '$timestamp_3_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_4_days_ago = $row['number_of_contacts_for_4_days_ago'];
-
-                    // get the number of contacts for 5 days ago
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_5_days_ago FROM contacts WHERE (contacts.timestamp >= '$timestamp_5_days_ago') AND (contacts.timestamp < '$timestamp_4_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_5_days_ago = $row['number_of_contacts_for_5_days_ago'];
-
-                    // get the number of contacts for 6 days ago
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_6_days_ago FROM contacts WHERE (contacts.timestamp >= '$timestamp_6_days_ago') AND (contacts.timestamp < '$timestamp_5_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_6_days_ago = $row['number_of_contacts_for_6_days_ago'];
-
-                    // get the number of contacts for 7 days ago
-                    $query = "SELECT COUNT(*) as number_of_contacts_for_7_days_ago FROM contacts WHERE (contacts.timestamp >= '$timestamp_7_days_ago') AND (contacts.timestamp < '$timestamp_6_days_ago')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $number_of_contacts_for_7_days_ago = $row['number_of_contacts_for_7_days_ago'];
-
-
-                    // ── 7-day totals & trend indicators ──────────────────────
-                    $orders_7d = $number_of_orders_for_today + $number_of_orders_for_yesterday + $number_of_orders_for_2_days_ago + $number_of_orders_for_3_days_ago + $number_of_orders_for_4_days_ago + $number_of_orders_for_5_days_ago + $number_of_orders_for_6_days_ago;
-                    $forms_7d = $number_of_forms_for_today + $number_of_forms_for_yesterday + $number_of_forms_for_2_days_ago + $number_of_forms_for_3_days_ago + $number_of_forms_for_4_days_ago + $number_of_forms_for_5_days_ago + $number_of_forms_for_6_days_ago;
-                    $contacts_7d = $number_of_contacts_for_today + $number_of_contacts_for_yesterday + $number_of_contacts_for_2_days_ago + $number_of_contacts_for_3_days_ago + $number_of_contacts_for_4_days_ago + $number_of_contacts_for_5_days_ago + $number_of_contacts_for_6_days_ago;
-
-                    // trend: today vs yesterday  ↑ ↓ —
-                    $o_trend = $number_of_orders_for_today > $number_of_orders_for_yesterday ? '<i class="bi bi-arrow-up-short text-success"></i>' : ($number_of_orders_for_today < $number_of_orders_for_yesterday ? '<i class="bi bi-arrow-down-short text-danger"></i>' : '<i class="bi bi-dash text-muted"></i>');
-                    $f_trend = $number_of_forms_for_today > $number_of_forms_for_yesterday ? '<i class="bi bi-arrow-up-short text-success"></i>' : ($number_of_forms_for_today < $number_of_forms_for_yesterday ? '<i class="bi bi-arrow-down-short text-danger"></i>' : '<i class="bi bi-dash text-muted"></i>');
-                    $c_trend = $number_of_contacts_for_today > $number_of_contacts_for_yesterday ? '<i class="bi bi-arrow-up-short text-success"></i>' : ($number_of_contacts_for_today < $number_of_contacts_for_yesterday ? '<i class="bi bi-arrow-down-short text-danger"></i>' : '<i class="bi bi-dash text-muted"></i>');
+                    if ($output_detail !== '') {
+                        $output_detail = '
+                        <div class="collapse" id="system_status_detail">
+                            <div class="pg-health-detail">' . $output_detail . '</div>
+                        </div>';
+                    }
 
                     $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden">
-
-                        <!-- KPI tiles: 3-column compact -->
-                        <div class="d-flex gap-1 px-2 pt-2 pb-1">
-                            <div class="flex-fill rounded px-1 py-1 text-center" style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15)">
-                                <i class="bi bi-bag-check" style="color:#ef4444;font-size:12px"></i>
-                                <span class="fw-bold d-block" style="font-size:13px;line-height:1.2">' . $orders_7d . '</span>
-                                <span class="d-block" style="font-size:10px;color:#ef4444">' . $number_of_orders_for_today . ' ' . $o_trend . '</span>
-                                <span class="text-muted d-block" style="font-size:9px">' . lang('Orders') . '</span>
-                            </div>
-                            <div class="flex-fill rounded px-1 py-1 text-center" style="background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15)">
-                                <i class="bi bi-ui-checks" style="color:#3b82f6;font-size:12px"></i>
-                                <span class="fw-bold d-block" style="font-size:13px;line-height:1.2">' . $forms_7d . '</span>
-                                <span class="d-block" style="font-size:10px;color:#3b82f6">' . $number_of_forms_for_today . ' ' . $f_trend . '</span>
-                                <span class="text-muted d-block" style="font-size:9px">' . lang('Forms') . '</span>
-                            </div>
-                            <div class="flex-fill rounded px-1 py-1 text-center" style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15)">
-                                <i class="bi bi-person-plus" style="color:#10b981;font-size:12px"></i>
-                                <span class="fw-bold d-block" style="font-size:13px;line-height:1.2">' . $contacts_7d . '</span>
-                                <span class="d-block" style="font-size:10px;color:#10b981">' . $number_of_contacts_for_today . ' ' . $c_trend . '</span>
-                                <span class="text-muted d-block" style="font-size:9px">' . lang('Contacts') . '</span>
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                        <div class="pg-health">
+                            <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . (int) $health_score . '%">
+                                <defs>
+                                    <linearGradient id="pg_health_gradient" x1="0" y1="1" x2="1" y2="0">
+                                        <stop offset="0%" stop-color="#22d3ee"/>
+                                        <stop offset="50%" stop-color="#a855f7"/>
+                                        <stop offset="100%" stop-color="#ec4899"/>
+                                    </linearGradient>
+                                    <!--
+                                        The glow is a blurred copy of the arc
+                                        rather than a drop-shadow, because a
+                                        drop-shadow takes one colour and the arc
+                                        has three: blurring the stroke itself
+                                        keeps the glow the colour of whatever it
+                                        is under. .pg-health-gauge is
+                                        overflow:visible so the blur is not
+                                        clipped at the viewBox edge.
+                                    -->
+                                    <filter id="pg_health_glow" x="-50%" y="-50%" width="200%" height="200%">
+                                        <feGaussianBlur stdDeviation="4.5"/>
+                                    </filter>
+                                </defs>
+                                <circle class="pg-health-track" cx="70" cy="70" r="52" stroke-width="10"
+                                        stroke-dasharray="' . $health_arc . ' 326.73"></circle>
+                                <circle class="pg-health-glow" cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
+                                        filter="url(#pg_health_glow)"
+                                        stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
+                                <circle cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
+                                        stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
+                                <!--
+                                    A second, hairline arc inside the thick one.
+                                    Its own radius means its own circumference,
+                                    so the fraction is recomputed rather than
+                                    reused: 2*pi*42 = 263.89, half of it 131.95.
+                                -->
+                                <circle class="pg-health-inner" cx="70" cy="70" r="42" stroke-width="2" stroke="url(#pg_health_gradient)"
+                                        stroke-dasharray="' . round(131.95 * $health_score / 100, 2) . ' 263.89"></circle>
+                            </svg>
+                            <div class="pg-health-readout">
+                                <div class="pg-health-score ' . $health_color . '">' . (int) $health_score . '<span>%</span></div>
+                                <div class="pg-health-label text-muted">' . lang('Overall System Health') . '</div>
                             </div>
                         </div>
-
-                        <!-- Bar chart -->
-                        <div class="px-2 pb-2 pt-1 position-relative" style="height:165px">
-                            <canvas id="activity_summary"></canvas>
+                        ' . $output_lead_tiles . '
+                        <div class="pg-health-grid">
+                            ' . $output_tiles . '
                         </div>
+                        ' . $output_detail . '
+                    </div>';
 
-                    </div>
-                    <script>
-                    (function(){
-                        const ctx = document.getElementById("activity_summary").getContext("2d");
-                        const labels = [
-                            "' . lang(array('string' => '{var:1} Day{suffix:1} ago', 'vars' => array('7'), 'suffix' => array('s'))) . '",
-                            "' . lang(array('string' => '{var:1} Day{suffix:1} ago', 'vars' => array('6'), 'suffix' => array('s'))) . '",
-                            "' . lang(array('string' => '{var:1} Day{suffix:1} ago', 'vars' => array('5'), 'suffix' => array('s'))) . '",
-                            "' . lang(array('string' => '{var:1} Day{suffix:1} ago', 'vars' => array('4'), 'suffix' => array('s'))) . '",
-                            "' . lang(array('string' => '{var:1} Day{suffix:1} ago', 'vars' => array('3'), 'suffix' => array('s'))) . '",
-                            "' . lang(array('string' => '{var:1} Day{suffix:1} ago', 'vars' => array('2'), 'suffix' => array('s'))) . '",
-                            "' . lang('Yesterday') . '",
-                            "' . lang('Today') . '"
-                        ];
-                        new Chart(ctx, {
-                            type: "bar",
-                            data: {
-                                labels: labels,
-                                datasets: [
-                                    {
-                                        label: "' . lang('Orders') . '",
-                                        data: [' . $number_of_orders_for_7_days_ago . ',' . $number_of_orders_for_6_days_ago . ',' . $number_of_orders_for_5_days_ago . ',' . $number_of_orders_for_4_days_ago . ',' . $number_of_orders_for_3_days_ago . ',' . $number_of_orders_for_2_days_ago . ',' . $number_of_orders_for_yesterday . ',' . $number_of_orders_for_today . '],
-                                        backgroundColor: "rgba(239,68,68,.7)",
-                                        borderRadius: 3,
-                                        borderSkipped: false
-                                    },
-                                    {
-                                        label: "' . lang('Forms') . '",
-                                        data: [' . $number_of_forms_for_7_days_ago . ',' . $number_of_forms_for_6_days_ago . ',' . $number_of_forms_for_5_days_ago . ',' . $number_of_forms_for_4_days_ago . ',' . $number_of_forms_for_3_days_ago . ',' . $number_of_forms_for_2_days_ago . ',' . $number_of_forms_for_yesterday . ',' . $number_of_forms_for_today . '],
-                                        backgroundColor: "rgba(59,130,246,.7)",
-                                        borderRadius: 3,
-                                        borderSkipped: false
-                                    },
-                                    {
-                                        label: "' . lang('Contacts') . '",
-                                        data: [' . $number_of_contacts_for_7_days_ago . ',' . $number_of_contacts_for_6_days_ago . ',' . $number_of_contacts_for_5_days_ago . ',' . $number_of_contacts_for_4_days_ago . ',' . $number_of_contacts_for_3_days_ago . ',' . $number_of_contacts_for_2_days_ago . ',' . $number_of_contacts_for_yesterday . ',' . $number_of_contacts_for_today . '],
-                                        backgroundColor: "rgba(16,185,129,.7)",
-                                        borderRadius: 3,
-                                        borderSkipped: false
-                                    }
-                                ]
-                            },
-                            options: {
-                                animation: {duration: 400},
-                                plugins: {
-                                    legend: {display: false}
-                                },
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    x: {
-                                        ticks: {color: getPreferredThemeColor(), font: {size: 9}},
-                                        grid: {color: "rgba(128,128,128,.1)"}
-                                    },
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: {color: getPreferredThemeColor(), font: {size: 9}, stepSize: 1},
-                                        grid: {color: "rgba(128,128,128,.1)"}
-                                    }
-                                },
-                                interaction: {mode: "index", intersect: false}
-                            }
-                        });
-                    })();
-                    </script>';
-                    //return success json output
                     $response = array(
                         'status' => 'success',
-                        'message' => lang('Data Received successfully.'),
+                        'message' => 'Action Success',
                         'data' => $output_data,
                     );
                     echo encode_json($response);
                     exit();
                     break;
-
                 } else {
                     $response = array(
                         'status' => 'error',
@@ -624,14 +617,18 @@ switch ($action) {
 
                     $output_period_rows = '';
                     foreach ($periods as $p) {
-                        $muted = $p['count'] == 0 ? ' opacity-50' : '';
-                        $output_period_rows .= '
-                        <div class="d-flex align-items-center px-2 py-1' . $muted . '">
-                            <i class="bi ' . $p['icon'] . ' me-2 flex-shrink-0" style="font-size:14px;color:' . $p['color'] . '"></i>
-                            <span class="flex-grow-1 small">' . $p['label'] . '</span>
-                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background:' . $p['color'] . '22;color:' . $p['color'] . '">' . $p['count'] . '</span>
-                            <span class="small fw-semibold flex-shrink-0">' . ($p['count'] > 0 ? $p['total'] : '—') . '</span>
-                        </div>';
+                        // Each period already has its own colour in $periods,
+                        // and the four of them are a scale rather than one card
+                        // accent, so they keep it.
+                        $output_period_rows .= pg_widget_row(array(
+                            'small' => true,
+                            'muted' => ($p['count'] == 0),
+                            'color' => $p['color'],
+                            'badge' => '<i class="bi ' . $p['icon'] . '"></i>',
+                            'name'  => $p['label'],
+                            'aside' => '<span class="badge rounded-pill me-1" style="background:' . $p['color'] . '22;color:' . $p['color'] . '">' . $p['count'] . '</span>'
+                                . '<span class="fw-semibold">' . ($p['count'] > 0 ? $p['total'] : '&mdash;') . '</span>',
+                        ));
                     }
 
                     $output_rows = '
@@ -650,10 +647,10 @@ switch ($action) {
                         </div>
                     </div>
                     <div class="border-top mx-2 mb-1"></div>
-                    ' . $output_period_rows;
+                    <div class="pg-list">' . $output_period_rows . '</div>';
 
                     $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
                         ' . $output_rows . '
                     </div>';
 
@@ -677,184 +674,325 @@ switch ($action) {
                 }
 
             case '4':
-                // if the user is a manager or above, then get users
-
-                $online_users = array();
+                // ── Online Engagement ───────────────────────────────────
+                //
+                // Was "Whois Online", a flat list of accounts. It now answers
+                // the question that list only half answered: is anything
+                // happening right now that needs a person?
+                //
+                // Order is deliberate. Counts first, then anyone waiting for
+                // a reply, then who is around to give one, then who is not.
+                // A conversation with an unread message is the only row here
+                // that costs the business something while it is ignored, so
+                // it sits above the roster rather than inside it.
                 $user = validate_user();
 
                 if ($user['role'] < 3) {
 
+                    $eg_now = time();
 
+                    // 20 minutes, the same span the two counters use. The
+                    // roster is split on this boundary rather than on the
+                    // 120-second "online" threshold so the tile and the list
+                    // beneath it cannot disagree — a tile reading 3 above a
+                    // list showing 1 reads as a fault, not as two different
+                    // measurements.
+                    $eg_recent_seconds = 1200;
 
-                    $user_role = intval($user['role']);
+                    $eg_active_visitors = (int) db_value(
+                        "SELECT COUNT(*) FROM visitors
+                         WHERE stop_timestamp >= '" . e($eg_now - $eg_recent_seconds) . "'");
 
-                    $query = "SELECT
-                        user.user_id as id,
-                        user.user_role as user_role,
-                        user.user_username as username,
-                        user.user_email as email_address,
-                        user.user_online_timestamp as user_online_timestamp,
-                        contacts.image as image,
-                        contacts.file_id as image_file_id,
-                        contacts.first_name as first_name,
-                        contacts.last_name as last_name,
-                        last_modified_user.user_username as last_modified_username
-                    FROM user
-                    LEFT JOIN user as last_modified_user ON user.user_user = last_modified_user.user_id
-                    LEFT JOIN contacts ON contacts.id = user.user_contact
-                    WHERE user.user_role >= '$user_role'
-                    ORDER BY user.user_online_timestamp DESC
-                    LIMIT 30";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                    $eg_online_users_count = (int) db_value(
+                        "SELECT COUNT(*) FROM user
+                         WHERE user_online_timestamp >= '" . e($eg_now - $eg_recent_seconds) . "'");
 
+                    // ── Waiting conversations ───────────────────────────
+                    //
+                    // Same scope as the chat panel's own list
+                    // (pg_chat_conversation_list): mine as either side, plus
+                    // every site conversation for role 0 administrators.
+                    //
+                    // "Waiting" is status open AND a message arrived after my
+                    // read cursor. Which cursor applies depends on my side,
+                    // so the side test and the cursor test travel together in
+                    // each branch — comparing against the wrong cursor would
+                    // report my own last message as something I owe a reply
+                    // to.
+                    $eg_chat_rows = array();
+                    $eg_chat_available = false;
 
+                    require_once(dirname(__FILE__) . '/chat.php');
 
+                    if (pg_chat_enabled()) {
 
+                        $eg_chat_available = true;
+                        $eg_me = (int) $user['id'];
 
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $eg_waiting_where =
+                            "((c.target_user_id = '" . e($eg_me) . "' AND c.last_message_id > c.target_last_read_id)
+                              OR (c.initiator_user_id = '" . e($eg_me) . "' AND c.last_message_id > c.initiator_last_read_id)";
 
-                    // loop through the result in order to prepare array of items
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $online_users[] = $row;
-                    }
-                    if (!empty($online_users)) {
-                        // loop through the users, in order to output rows
-                        // we are using the variable name $recent_user instead of $user, because $user is a reserved variable for storing user information
-                        // there was a bug where the start page link in the header would not appear because were using the $user variable
-                        foreach ($online_users as $online_user) {
-
-                            switch ($online_user['user_role']) {
-                                case '0':
-
-                                    $user_role = lang('Administrator');
-                                    break;
-                                case '1':
-
-                                    $user_role = lang('Designer');
-                                    break;
-                                case '2':
-
-                                    $user_role = lang('Manager');
-                                    break;
-                                case '3':
-
-                                    $user_role = lang('User');
-                                    break;
-                            }
-
-                            //now timestamp - user_online_timestamp give use how second ago user online who is online function in function.php and check once at 50 sec.
-                            $user_last_online_date = time() - $online_user['user_online_timestamp'];
-
-                            //output last online date.
-                            if ((time() - $online_user['user_online_timestamp']) < 50) {
-                                $output_user_last_online_date = lang('Online');
-                            } else {
-                                $output_user_last_online_date = (get_relative_time(array(
-                                    'timestamp' => $online_user['user_online_timestamp']
-                                )));
-                            }
-
-
-                            //if user last online timestamp is 0 this mean user didnt online before so set unknown
-                            if ($online_user['user_online_timestamp'] == 0) {
-                                $output_user_last_online_date = '[' . lang('Unknown') . ']';
-                            }
-                            // Avatar
-                            if ($online_user['image_file_id'] == 0) {
-                                $avatar_src = $online_user['image'] ? h($online_user['image']) : 'assets/images/person1.png';
-                            } else {
-                                $q2 = mysqli_query(db::$con, "SELECT files.name FROM files WHERE files.id = '" . escape($online_user['image_file_id']) . "'") or output_error('Query failed.');
-                                $f2 = mysqli_fetch_array($q2);
-                                $avatar_src = PATH . h($f2['name']);
-                            }
-
-                            // Status color & label
-                            if ($user_last_online_date < 299) {
-                                $dot_color = '#10b981';
-                                $status_label = lang('Online');
-                            } elseif ($user_last_online_date < 1200) {
-                                $dot_color = '#f59e0b';
-                                $status_label = lang('Away');
-                            } else {
-                                $dot_color = '#a1a1a1';
-                                $status_label = lang('Offline');
-                            }
-
-                            // Role badge color
-                            switch ((int) $online_user['user_role']) {
-                                case 0:
-                                    $role_color = '#ef4444';
-                                    break; // Administrator
-                                case 1:
-                                    $role_color = '#8b5cf6';
-                                    break; // Designer
-                                case 2:
-                                    $role_color = '#3b82f6';
-                                    break; // Manager
-                                default:
-                                    $role_color = '#6b7280';
-                                    break; // User
-                            }
-
-                            $output_link_url = 'edit_user.php?id=' . $online_user['id'];
-                            $output_title = ($online_user['first_name'] || $online_user['last_name'])
-                                ? h($online_user['first_name']) . ' ' . h($online_user['last_name']) . ' (' . h($online_user['username']) . ')'
-                                : h($online_user['username']);
-
-                            if ($online_user['user_online_timestamp'] >= 1) {
-                                $output_link = '';
-                                $output_pointer_class = '';
-                                if ($user['role'] == 0 || ($user['role'] < $online_user['user_role'])) {
-                                    $output_link = 'onclick="window.location.href=\'' . $output_link_url . '\'"';
-                                    $output_pointer_class = ' pointer';
-                                }
-
-                                $output_rows .= '
-                                <div class="d-flex align-items-center px-2 py-1' . $output_pointer_class . '" ' . $output_link . '>
-                                    <div class="position-relative me-2 flex-shrink-0">
-                                        <img src="' . $avatar_src . '" class="rounded-circle" style="width:34px;height:34px;object-fit:cover;" alt="" />
-                                        <span class="position-absolute rounded-circle border border-2 border-white" title="' . $status_label . '"
-                                              style="width:10px;height:10px;bottom:0;right:0;background:' . $dot_color . '"></span>
-                                    </div>
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-truncate me-1 fw-semibold" style="font-size:13px">' . $output_title . '</span>
-                                            <span class="badge rounded-pill flex-shrink-0" style="background:' . $role_color . '22;color:' . $role_color . ';font-size:10px">' . $user_role . '</span>
-                                        </div>
-                                        <small class="text-muted">' . $output_user_last_online_date . '</small>
-                                    </div>
-                                </div>';
-                            }
+                        if ((int) $user['role'] === 0) {
+                            $eg_waiting_where .=
+                                " OR (c.channel = 'site' AND c.last_message_id > c.target_last_read_id)";
                         }
-                    } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center text-muted">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Online User'))) . '</p>';
+
+                        $eg_waiting_where .= ')';
+
+                        // Oldest first: the visitor who has been waiting
+                        // longest is the one about to give up. Newest-first
+                        // would bury exactly that row.
+                        $eg_chat_rows = db_items(
+                            "SELECT
+                                c.id,
+                                c.channel,
+                                c.party_name,
+                                c.last_message_at,
+                                c.last_message_preview,
+                                u.user_username AS peer_username,
+                                contacts.first_name AS first_name,
+                                contacts.last_name AS last_name
+                             FROM chat_conversations c
+                             LEFT JOIN user u
+                                ON u.user_id = IF(c.initiator_user_id = '" . e($eg_me) . "', c.target_user_id, c.initiator_user_id)
+                             LEFT JOIN contacts ON contacts.id = u.user_contact
+                             WHERE c.status = 'open'
+                               AND " . $eg_waiting_where . "
+                             ORDER BY c.last_message_at ASC, c.id ASC
+                             LIMIT 5");
                     }
 
-                    $active_visitors = (int) db("SELECT COUNT(*) FROM visitors WHERE stop_timestamp >= '" . e(time() - 1200) . "'");
-                    $online_users_count = (int) db("SELECT COUNT(*) FROM user WHERE user_online_timestamp >= '" . e(time() - 1200) . "'");
+                    $eg_waiting_html = '';
+
+                    foreach ($eg_chat_rows as $eg_chat) {
+
+                        if ($eg_chat['channel'] == 'site') {
+                            $eg_title = ($eg_chat['party_name'] != '')
+                                ? $eg_chat['party_name']
+                                : lang('Visitor') . ' #' . (int) $eg_chat['id'];
+                        } else {
+                            $eg_title = pg_chat_display_name(
+                                isset($eg_chat['first_name']) ? $eg_chat['first_name'] : '',
+                                isset($eg_chat['last_name']) ? $eg_chat['last_name'] : '',
+                                isset($eg_chat['peer_username']) ? $eg_chat['peer_username'] : '');
+                        }
+
+                        $eg_waited = $eg_now - (int) $eg_chat['last_message_at'];
+
+                        // Past a quarter of an hour with no answer this is no
+                        // longer a notification, it is a lost conversation.
+                        $eg_wait_class = ($eg_waited >= 900) ? 'text-danger' : 'text-warning';
+
+                        $eg_waiting_html .= '
+                        <div class="d-flex align-items-center px-2 py-1 pointer"
+                             onclick="if (window.pgChatOpenConversation) { window.pgChatOpenConversation(' . (int) $eg_chat['id'] . '); }">
+                            <div class="me-2 flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+                                 style="width:34px;height:34px;background:rgba(245,158,11,.12)">
+                                <i class="bi bi-chat-dots" style="color:#f59e0b"></i>
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center" style="gap:6px">
+                                    <span class="text-truncate fw-semibold" style="font-size:13px">' . h($eg_title) . '</span>
+                                    <span class="' . $eg_wait_class . ' flex-shrink-0" style="font-size:11px">' . get_relative_time(array('timestamp' => (int) $eg_chat['last_message_at'])) . '</span>
+                                </div>
+                                <small class="text-muted text-truncate d-block">' . h($eg_chat['last_message_preview']) . '</small>
+                            </div>
+                        </div>';
+                    }
+
+                    // ── Roster ──────────────────────────────────────────
+                    //
+                    // user_role >= own role: staff see their peers and the
+                    // ranks below, never above. Unchanged from the widget
+                    // this replaces.
+                    $eg_roster = db_items(
+                        "SELECT
+                            user.user_id AS id,
+                            user.user_role AS user_role,
+                            user.user_username AS username,
+                            user.user_online_timestamp AS user_online_timestamp,
+                            contacts.image AS image,
+                            contacts.file_id AS image_file_id,
+                            contacts.first_name AS first_name,
+                            contacts.last_name AS last_name,
+                            files.name AS image_file_name
+                         FROM user
+                         LEFT JOIN contacts ON contacts.id = user.user_contact
+                         LEFT JOIN files ON files.id = contacts.file_id
+                         WHERE user.user_role >= '" . e((int) $user['role']) . "'
+                         ORDER BY user.user_online_timestamp DESC
+                         LIMIT 30");
+
+                    $eg_online_html  = '';
+                    $eg_offline_html = '';
+                    $eg_online_shown = 0;
+                    $eg_offline_shown = 0;
+
+                    foreach ($eg_roster as $eg_person) {
+
+                        $eg_seen = (int) $eg_person['user_online_timestamp'];
+
+                        // Never signed in. There is no presence to report and
+                        // no last-seen to show, so the row would be three
+                        // blanks and an avatar.
+                        if ($eg_seen < 1) {
+                            continue;
+                        }
+
+                        $eg_presence = pg_chat_presence($eg_seen);
+                        $eg_is_recent = (($eg_now - $eg_seen) < $eg_recent_seconds);
+
+                        if ($eg_presence == 'online') {
+                            $eg_dot = '#10b981';
+                            $eg_status_label = lang('Online');
+                            // Already-escaped HTML in every branch, because
+                            // get_relative_time() emits a <time> element with
+                            // an absolute-date tooltip. Escaping the whole
+                            // thing at the print site would print the tag.
+                            $eg_seen_text = h(lang('Online'));
+                        } elseif ($eg_presence == 'away') {
+                            $eg_dot = '#f59e0b';
+                            $eg_status_label = lang('Away');
+                            $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
+                        } else {
+                            $eg_dot = '#a1a1a1';
+                            $eg_status_label = lang('Offline');
+                            $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
+                        }
+
+                        switch ((int) $eg_person['user_role']) {
+                            case 0:
+                                $eg_role_color = '#ef4444';
+                                break;
+                            case 1:
+                                $eg_role_color = '#8b5cf6';
+                                break;
+                            case 2:
+                                $eg_role_color = '#3b82f6';
+                                break;
+                            default:
+                                $eg_role_color = '#6b7280';
+                                break;
+                        }
+
+                        $eg_avatar = pg_chat_avatar_src(
+                            isset($eg_person['image']) ? $eg_person['image'] : '',
+                            isset($eg_person['image_file_id']) ? $eg_person['image_file_id'] : 0,
+                            isset($eg_person['image_file_name']) ? $eg_person['image_file_name'] : '');
+
+                        $eg_name = pg_chat_display_name(
+                            isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
+                            isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
+                            $eg_person['username']);
+
+                        // Opening someone's account screen is an edit action:
+                        // offered to administrators, and otherwise only
+                        // downward through the hierarchy. Unchanged from the
+                        // widget this replaces.
+                        $eg_click = '';
+                        $eg_pointer = '';
+
+                        if (((int) $user['role'] === 0) || ((int) $user['role'] < (int) $eg_person['user_role'])) {
+                            $eg_click = 'onclick="window.location.href=\'edit_user.php?id=' . (int) $eg_person['id'] . '\'"';
+                            $eg_pointer = ' pointer';
+                        }
+
+                        // No chat handle against yourself, and none when the
+                        // pair is not allowed to talk (pg_chat_can_pair: at
+                        // least one side must be staff).
+                        $eg_chat_icon = '';
+
+                        if ($eg_chat_available
+                            && ((int) $eg_person['id'] !== (int) $user['id'])
+                            && pg_chat_can_pair($user['role'], $eg_person['user_role'])
+                        ) {
+                            $eg_chat_icon = '
+                                <i class="bi bi-chat-text ms-1 flex-shrink-0" style="cursor:pointer"
+                                   title="' . lang('Start Chat') . '"
+                                   onclick="event.stopPropagation(); if (window.pgChatOpenWith) { window.pgChatOpenWith(' . (int) $eg_person['id'] . '); }"></i>';
+                        }
+
+                        $eg_row = '
+                        <div class="d-flex align-items-center px-2 py-1' . $eg_pointer . '" ' . $eg_click . '>
+                            <div class="position-relative me-2 flex-shrink-0">
+                                <img src="' . h($eg_avatar) . '" class="rounded-circle" style="width:34px;height:34px;object-fit:cover;" alt="" />
+                                <span class="position-absolute rounded-circle border border-2 border-white" title="' . h($eg_status_label) . '"
+                                      style="width:10px;height:10px;bottom:0;right:0;background:' . $eg_dot . '"></span>
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-truncate me-1 fw-semibold" style="font-size:13px">' . h($eg_name) . '</span>
+                                    <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:' . $eg_role_color . ';font-size:10px">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
+                                    ' . $eg_chat_icon . '
+                                </div>
+                                <small class="text-muted">' . $eg_seen_text . '</small>
+                            </div>
+                        </div>';
+
+                        if ($eg_is_recent) {
+                            $eg_online_html .= $eg_row;
+                            $eg_online_shown++;
+                        } else {
+                            $eg_offline_html .= $eg_row;
+                            $eg_offline_shown++;
+                        }
+                    }
+
+                    // Section heading. Printed only when the section has rows
+                    // — an empty "Waiting for a reply" heading would read as a
+                    // fault, and three empty headings would fill the card.
+                    $eg_heading = function ($eg_label, $eg_count) {
+                        return '
+                        <div class="d-flex align-items-center justify-content-between px-2 pt-2 pb-1">
+                            <span class="text-muted text-uppercase" style="font-size:10px;letter-spacing:.06em">' . h($eg_label) . '</span>
+                            <span class="text-muted" style="font-size:10px">' . number_format($eg_count) . '</span>
+                        </div>';
+                    };
+
+                    $eg_sections = '';
+
+                    if ($eg_waiting_html !== '') {
+                        $eg_sections .= $eg_heading(lang('Waiting for a reply'), count($eg_chat_rows)) . $eg_waiting_html;
+                    }
+
+                    if ($eg_online_html !== '') {
+                        $eg_sections .= $eg_heading(lang('Online'), $eg_online_shown) . $eg_online_html;
+                    }
+
+                    if ($eg_offline_html !== '') {
+                        $eg_sections .= $eg_heading(lang('Offline'), $eg_offline_shown) . $eg_offline_html;
+                    }
+
+                    if ($eg_sections === '') {
+                        $eg_sections = '
+                        <div class="text-center py-4">
+                            <i class="bi bi-person-dash d-block mb-2" style="font-size:22px;opacity:.35"></i>
+                            <p class="text-muted mb-0" style="font-size:12px">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Online User'))) . '</p>
+                        </div>';
+                    }
 
                     $output_data = '
                     <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
                         <div class="d-flex gap-2 p-2">
                             <div class="flex-fill rounded p-2 text-center" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2)">
                                 <i class="bi bi-people-fill d-block" style="color:#10b981;font-size:20px"></i>
-                                <span class="fw-bold d-block" style="font-size:15px">' . $active_visitors . '</span>
+                                <span class="fw-bold d-block" style="font-size:15px">' . number_format($eg_active_visitors) . '</span>
                                 <small class="text-muted">' . lang('Active Visitors') . '</small>
                                 <small class="text-muted d-block" style="font-size:10px">' . lang('Last 20 min') . '</small>
                             </div>
                             <div class="flex-fill rounded p-2 text-center" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2)">
                                 <i class="bi bi-person-gear d-block" style="color:#3b82f6;font-size:20px"></i>
-                                <span class="fw-bold d-block" style="font-size:15px">' . $online_users_count . '</span>
+                                <span class="fw-bold d-block" style="font-size:15px">' . number_format($eg_online_users_count) . '</span>
                                 <small class="text-muted">' . lang('Online Users') . '</small>
                                 <small class="text-muted d-block" style="font-size:10px">' . lang('Last 20 min') . '</small>
                             </div>
                         </div>
-                        <div class="border-top mx-2 mb-1 position-relative">
-                            ' . $output_rows . '
+                        <div class="border-top mx-2 mb-1">
+                            ' . $eg_sections . '
                         </div>
                     </div>';
 
-                    //return success json output
                     $response = array(
                         'status' => 'success',
                         'message' => 'Action Success',
@@ -1101,6 +1239,84 @@ switch ($action) {
                     // Top content — this month
                     $tp_tm = $vs5_top(date('Y-m-d', $month_start), date('Y-m-d', $now));
 
+                    // ── Like-for-like comparisons ─────────────────────────────────────────
+                    //
+                    // Today is a part-day and yesterday is a whole one. Setting
+                    // one against the other says traffic collapsed every
+                    // morning and recovered every midnight, which is the clock
+                    // talking, not the site. Each comparison below is cut to
+                    // the same point in its own period.
+                    $kpi_yesterday_same = 0;
+                    for ($h = 0; $h <= $current_hour; $h++) {
+                        $kpi_yesterday_same += $h_yest[$h];
+                    }
+
+                    // Previous month day by day, so the month card can overlay
+                    // like with like and its figure can be cut at today's date.
+                    // One more read of the rollup, which is 24 rows per day
+                    // whatever the traffic -- the same reason the rest of this
+                    // widget stopped touching the visitors table.
+                    $prev_month_start = mktime(0, 0, 0, (int) date('n') - 1, 1, (int) date('Y'));
+                    $prev_month_end   = mktime(0, 0, 0, (int) date('n'), 0, (int) date('Y'));
+                    $prev_month_days  = (int) date('t', $prev_month_start);
+                    $pm_daily_map     = $vs5_daily($prev_month_start, $prev_month_end);
+
+                    $today_day = (int) date('j');
+                    $kpi_pm_prev_same = 0;
+                    $m_pmd_data = '';
+
+                    for ($day = 1; $day <= $days_in_month; $day++) {
+                        // A 31 day month laid over a 30 day one leaves the last
+                        // slot with nothing behind it. null, not zero: zero
+                        // draws a line to the floor and reads as "no traffic
+                        // that day".
+                        if ($day > $prev_month_days) {
+                            $m_pmd_data .= 'null,';
+                            continue;
+                        }
+                        $d = date('Y-m-d', mktime(0, 0, 0, (int) date('n') - 1, $day, (int) date('Y')));
+                        $cnt = isset($pm_daily_map[$d]) ? $pm_daily_map[$d] : 0;
+                        $m_pmd_data .= $cnt . ',';
+                        if ($day <= $today_day) {
+                            $kpi_pm_prev_same += $cnt;
+                        }
+                    }
+
+                    // Today's hours run to the current hour, but the axis keeps
+                    // all 24 so the shape sits under yesterday's at the same
+                    // clock position. The hours that have not happened are null
+                    // rather than absent, which is what stops the line instead
+                    // of stretching it across the day.
+                    $h_today_full_js = '';
+                    for ($h = 0; $h < 24; $h++) {
+                        $h_today_full_js .= (($h <= $current_hour) ? $h_today[$h] : 'null') . ',';
+                    }
+                    $h_today_views_full_js = '';
+                    for ($h = 0; $h < 24; $h++) {
+                        $h_today_views_full_js .= (($h <= $current_hour) ? $h_today_views[$h] : 'null') . ',';
+                    }
+
+                    // Same treatment for the month: days after today are null.
+                    $m_tmd_data = '';
+                    for ($day = 1; $day <= $days_in_month; $day++) {
+                        if ($day > $today_day) {
+                            $m_tmd_data .= 'null,';
+                            continue;
+                        }
+                        $d = date('Y-m-d', mktime(0, 0, 0, (int) date('n'), $day, (int) date('Y')));
+                        $m_tmd_data .= (isset($m_tm_map[$d]) ? $m_tm_map[$d] : 0) . ',';
+                    }
+
+                    // Percentage rather than the raw difference: 242 against
+                    // 214 and 24,200 against 21,400 are the same news, and only
+                    // one of the two fits in a badge.
+                    $vs5_pct_change = function ($current, $previous) {
+                        if ($previous <= 0) {
+                            return null;
+                        }
+                        return (int) round((($current - $previous) / $previous) * 100);
+                    };
+
                     // ── Helper: inline top-page row HTML ─────────────────────────────────
                     // The badge counts page views, while the figure above the
                     // chart counts visitors. Two different units sitting one
@@ -1138,71 +1354,96 @@ switch ($action) {
                     }
 
                     // ── Assemble output ───────────────────────────────────────────────────
+                    //
+                    // One chart, not three. The three panels each got a third
+                    // of the card for a day that has 24 points in it, and the
+                    // period buttons swapped the series rather than showing
+                    // both, so seeing whether today beat yesterday meant
+                    // holding the other shape in your head. Here they share an
+                    // axis: today drawn, yesterday dashed behind it.
+                    //
+                    // The strip underneath promotes a period into the chart
+                    // when clicked, so all of the same series are still
+                    // reachable -- they are just not all drawn at postage
+                    // stamp size at once.
+                    $vs5_day_pct = $vs5_pct_change($kpi_today, $kpi_yesterday_same);
+                    $vs5_week_pct = $vs5_pct_change($kpi_tw, $kpi_lw);
+                    $vs5_month_pct = $vs5_pct_change($kpi_tm, $kpi_pm_prev_same);
+
+                    $vs5_badge = function ($pct) {
+                        if ($pct === null) {
+                            return '';
+                        }
+                        $direction = ($pct >= 0) ? 'up' : 'down';
+                        $arrow = ($pct >= 0) ? '&#9650;' : '&#9660;';
+                        return '<span class="pg-vs-pill ' . $direction . '">' . $arrow . ' %' . abs($pct) . '</span>';
+                    };
+
+                    // Today's busiest page, under the period's. Two different
+                    // questions -- "what carries this site" and "what is
+                    // happening right now" -- and the second one was not
+                    // answerable anywhere on the dashboard.
+                    $vs5_today_top = '';
+                    if ($tp_today) {
+                        $vs5_today_top = '<span class="pg-vs-today">' . lang('Today') . ': <b>'
+                            . $tp_today['name'] . '</b> &middot; '
+                            . number_format($tp_today['cnt']) . ' ' . h($vs5_views_label) . '</span>';
+                    }
+
+                    $vs5_cell = function ($key, $label, $value, $pct_badge, $active = false) {
+                        return '<button type="button" class="pg-vs-cell' . ($active ? ' is-active' : '') . '" data-vs5="' . $key . '">'
+                            . '<span class="pg-vs-cell-label">' . $label . '</span>'
+                            . '<span class="pg-vs-cell-value">' . $value . ' ' . $pct_badge . '</span>'
+                            // Chart.js sizes a responsive canvas from its
+                            // parent, so the box owns the dimensions and the
+                            // canvas fills it. Sizing the canvas directly made
+                            // the two fight and drew the line as a smear.
+                            . '<span class="pg-vs-spark"><canvas data-spark="' . $key . '"></canvas></span>'
+                            . '</button>';
+                    };
+
                     $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
                       ' . $vs5_progress . '
-                      <div class="row g-0">
+                      <div class="pg-vs">
 
-                        <!-- ══ PANEL 1 : Daily — Hourly peaks ══════════════════════════════ -->
-                        <div class="col-12 col-md-4" style="border-right:1px solid rgba(128,128,128,.12)">
-                          <div class="p-3 d-flex flex-column" style="min-height:270px">
-                            <div class="d-flex align-items-start justify-content-between mb-2 gap-2">
-                              <div>
-                                <div class="text-muted fw-semibold" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em">' . lang('Daily Traffic') . '</div>
-                                <div style="font-size:20px;font-weight:700;color:#3b82f6;line-height:1.15"><span id="vs5_d_kpi">' . number_format($kpi_today) . '</span></div>
-                                <div class="text-muted" style="font-size:10px">' . lang('visitors') . '</div>
-                              </div>
-                              <div class="btn-group btn-group-sm flex-shrink-0">
-                                <button id="vs5_d_btn_t" type="button" class="btn py-0 px-2" onclick="vs5Day(\'t\')" style="font-size:10px;background:#3b82f6;color:#fff;border-color:#3b82f6">' . lang('Today') . '</button>
-                                <button id="vs5_d_btn_y" type="button" class="btn py-0 px-2" onclick="vs5Day(\'y\')" style="font-size:10px;background:transparent;color:#3b82f6;border-color:#3b82f6">' . lang('Yesterday') . '</button>
-                              </div>
+                        <div class="pg-vs-head">
+                          <div>
+                            <div class="pg-vs-eyebrow" id="vs5_eyebrow">' . lang('Daily Traffic') . '</div>
+                            <div class="pg-vs-big"><span id="vs5_kpi">' . number_format($kpi_today) . '</span><span class="pg-vs-unit">' . lang('visitors') . '</span></div>
+                            <div class="pg-vs-compare" id="vs5_compare">
+                              ' . $vs5_badge($vs5_day_pct) . '
+                              <span class="pg-vs-cmp">' . lang(array(
+                                  'string' => 'by this time yesterday {var:1}',
+                                  'vars' => '<b>' . number_format($kpi_yesterday_same) . '</b>',
+                              )) . '</span>
                             </div>
-                            <div class="position-relative flex-grow-1" style="min-height:140px">
-                              ' . (($kpi_today > 0 || $kpi_yesterday > 0) ? '<canvas id="vs5_d_canvas"></canvas>' : $vs5_no_data) . '
-                            </div>
-                            <div id="vs5_d_tp" class="mt-2 pt-2 border-top" style="min-height:24px">' . $vs5_tp($tp_today, '59,130,246') . '</div>
+                            <div class="pg-vs-sub" id="vs5_sub">' . lang(array(
+                                'string' => 'all of yesterday {var:1}',
+                                'vars' => number_format($kpi_yesterday),
+                            )) . '</div>
+                          </div>
+                          <div class="pg-vs-legend" id="vs5_legend">
+                            <span class="pg-vs-key"><i class="pg-vs-sw now"></i><span id="vs5_leg_now">' . lang('Today') . '</span></span>
+                            <span class="pg-vs-key"><i class="pg-vs-sw prev"></i><span id="vs5_leg_prev">' . lang('Yesterday') . '</span></span>
                           </div>
                         </div>
 
-                        <!-- ══ PANEL 2 : Weekly — Daily peaks ═══════════════════════════════ -->
-                        <div class="col-12 col-md-4" style="border-right:1px solid rgba(128,128,128,.12)">
-                          <div class="p-3 d-flex flex-column" style="min-height:270px">
-                            <div class="d-flex align-items-start justify-content-between mb-2 gap-2">
-                              <div>
-                                <div class="text-muted fw-semibold" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em">' . lang('Weekly Traffic') . '</div>
-                                <div style="font-size:20px;font-weight:700;color:#10b981;line-height:1.15"><span id="vs5_w_kpi">' . number_format($kpi_tw) . '</span></div>
-                                <div class="text-muted" style="font-size:10px">' . lang('visitors') . '</div>
-                              </div>
-                              <div class="btn-group btn-group-sm flex-shrink-0">
-                                <button id="vs5_w_btn_t" type="button" class="btn py-0 px-2" onclick="vs5Week(\'t\')" style="font-size:10px;background:#10b981;color:#fff;border-color:#10b981">' . lang('This Week') . '</button>
-                                <button id="vs5_w_btn_l" type="button" class="btn py-0 px-2" onclick="vs5Week(\'l\')" style="font-size:10px;background:transparent;color:#10b981;border-color:#10b981">' . lang('Last Week') . '</button>
-                              </div>
-                            </div>
-                            <div class="position-relative flex-grow-1" style="min-height:140px">
-                              ' . (($has_tw || $has_lw) ? '<canvas id="vs5_w_canvas"></canvas>' : $vs5_no_data) . '
-                            </div>
-                            <div id="vs5_w_tp" class="mt-2 pt-2 border-top" style="min-height:24px">' . $vs5_tp($tp_tw, '16,185,129') . '</div>
-                          </div>
+                        <div class="pg-vs-chart">
+                          ' . (($kpi_today > 0 || $kpi_yesterday > 0 || $has_tw || $has_tm) ? '<canvas id="vs5_canvas"></canvas>' : $vs5_no_data) . '
                         </div>
 
-                        <!-- ══ PANEL 3 : Monthly ═════════════════════════════════════════════ -->
-                        <div class="col-12 col-md-4">
-                          <div class="p-3 d-flex flex-column" style="min-height:270px">
-                            <div class="d-flex align-items-start justify-content-between mb-2 gap-2">
-                              <div>
-                                <div class="text-muted fw-semibold" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em">' . lang('Monthly Traffic') . '</div>
-                                <div style="font-size:20px;font-weight:700;color:#8b5cf6;line-height:1.15"><span id="vs5_m_kpi">' . number_format($kpi_tm) . '</span></div>
-                                <div class="text-muted" style="font-size:10px">' . lang('visitors') . '</div>
-                              </div>
-                              <div class="btn-group btn-group-sm flex-shrink-0">
-                                <button id="vs5_m_btn_t" type="button" class="btn py-0 px-2" onclick="vs5Month(\'t\')" style="font-size:10px;background:#8b5cf6;color:#fff;border-color:#8b5cf6">' . lang('This Month') . '</button>
-                                <button id="vs5_m_btn_p" type="button" class="btn py-0 px-2" onclick="vs5Month(\'p\')" style="font-size:10px;background:transparent;color:#8b5cf6;border-color:#8b5cf6">' . lang('Prev. Months') . '</button>
-                              </div>
-                            </div>
-                            <div class="position-relative flex-grow-1" style="min-height:140px">
-                              ' . (($has_tm || $has_pm) ? '<canvas id="vs5_m_canvas"></canvas>' : $vs5_no_data) . '
-                            </div>
-                            <div id="vs5_m_tp" class="mt-2 pt-2 border-top" style="min-height:24px">' . $vs5_tp($tp_tm, '139,92,246') . '</div>
+                        <div class="pg-vs-strip">
+                          ' . $vs5_cell('w', lang('This Week'), number_format($kpi_tw), $vs5_badge($vs5_week_pct)) . '
+                          ' . $vs5_cell('m', lang('This Month'), number_format($kpi_tm), $vs5_badge($vs5_month_pct)) . '
+                          ' . $vs5_cell('y', lang('Last 12 Months'), number_format($kpi_pm), '') . '
+                          <div class="pg-vs-cell pg-vs-top">
+                            <span class="pg-vs-cell-label">' . lang('Most Visited') . '</span>
+                            ' . ($tp_tm
+                                ? '<span class="pg-vs-page">' . $tp_tm['name'] . '</span>'
+                                  . '<span class="pg-vs-views">' . number_format($tp_tm['cnt']) . ' ' . h($vs5_views_label) . '</span>'
+                                : '<span class="pg-vs-views">&mdash;</span>') . '
+                            ' . $vs5_today_top . '
                           </div>
                         </div>
 
@@ -1212,168 +1453,233 @@ switch ($action) {
                     <script>(function(){
                       var tc = getPreferredThemeColor();
                       var fmtN = function(n){ return Number(n).toLocaleString(); };
-                      // Twin of the PHP $vs5_views_label. The badge is page
-                      // views, the headline above it is visitors; keep both
-                      // renderers saying so or the two paths disagree.
                       var VIEWS_LABEL = ' . json_encode($vs5_views_label) . ';
+                      var L = {
+                        visitors: ' . json_encode(lang('New Visitors')) . ',
+                        views:    ' . json_encode(lang('Page Views')) . ',
+                        daily:    ' . json_encode(lang('Daily Traffic')) . ',
+                        weekly:   ' . json_encode(lang('Weekly Traffic')) . ',
+                        monthly:  ' . json_encode(lang('Monthly Traffic')) . ',
+                        yearly:   ' . json_encode(lang('Last 12 Months')) . ',
+                        today:    ' . json_encode(lang('Today')) . ',
+                        yesterday:' . json_encode(lang('Yesterday')) . ',
+                        thisWeek: ' . json_encode(lang('This Week')) . ',
+                        lastWeek: ' . json_encode(lang('Last Week')) . ',
+                        thisMonth:' . json_encode(lang('This Month')) . ',
+                        prevMonth:' . json_encode(lang('Previous Month')) . ',
+                        total:    ' . json_encode(lang('Total')) . '
+                      };
 
-                        // ── Dataset registry ─────────────────────────────────────────────────
-                        var DS = {
-                          d: {
-                            t: { labels:[' . $h_today_labels_js . '], data:[' . $h_today_js . '], views:[' . $h_today_views_js . '], kpi:' . $kpi_today . ', tp:' . json_encode($tp_today) . ', pages:' . json_encode(array_values($h_today_pages)) . ' },
-                            y: { labels:[' . $h_yest_labels_js . '], data:[' . $h_yest_js . '], views:[' . $h_yest_views_js . '], kpi:' . $kpi_yesterday . ', tp:' . json_encode($tp_yest) . ', pages:' . json_encode(array_values($h_yest_pages)) . ' }
-                          },
-                          w: {
-                            t: { labels:[' . $w_tw_labels . '], data:[' . $w_tw_data . '], kpi:' . $kpi_tw . ', tp:' . json_encode($tp_tw) . ' },
-                            l: { labels:[' . $w_lw_labels . '], data:[' . $w_lw_data . '], kpi:' . $kpi_lw . ', tp:' . json_encode($tp_lw) . ' }
-                          },
-                          m: {
-                            t: { labels:[' . $m_tm_labels . '], data:[' . $m_tm_data . '], kpi:' . $kpi_tm . ', tp:' . json_encode($tp_tm) . ' },
-                            p: { labels:[' . $m_pm_labels . '], data:[' . $m_pm_data . '], kpi:' . $kpi_pm . ', tp:null }
-                          }
-                        };
+                      // The day view has wording of its own -- "by this time
+                      // yesterday" is the whole point of the comparison and
+                      // "Yesterday: 214" does not say it. Sent as templates so
+                      // the sentence stays in tr.json rather than being
+                      // assembled from fragments here, which is what makes a
+                      // translation impossible to word naturally.
+                      var T = {
+                        byThisTime:   ' . json_encode(lang(array('string' => 'by this time yesterday {var:1}', 'vars' => '%N%'))) . ',
+                        allYesterday: ' . json_encode(lang(array('string' => 'all of yesterday {var:1}', 'vars' => '%N%'))) . '
+                      };
 
-                      // ── Chart factory ─────────────────────────────────────────────────────
-                      function mkChart(id, ds, rgb, isLine) {
-                        var el = document.getElementById(id);
-                        if (!el) return null;
-                        var dataset = isLine
-                          ? { data: ds.data,
-                              backgroundColor: "rgba("+rgb+",.12)", borderColor: "rgba("+rgb+",1)",
-                              borderWidth:2, fill:true, tension:0.35,
-                              pointRadius:2, pointHoverRadius:5,
-                              pointBackgroundColor:"rgba("+rgb+",1)" }
-                          : { data: ds.data,
-                              backgroundColor: "rgba("+rgb+",.55)", borderColor: "rgba("+rgb+",1)",
-                              borderWidth:1, borderRadius:3, borderSkipped:false };
-                        return new Chart(el.getContext("2d"), {
-                          type: isLine ? "line" : "bar",
-                          data: { labels: ds.labels, datasets: [dataset] },
-                          options: {
-                            animation: { duration:220 },
-                            plugins: { legend:{ display:false } },
-                            responsive:true, maintainAspectRatio:false,
-                            scales: {
-                              x: { ticks:{ color:tc, font:{size:9}, maxRotation:45 }, grid:{ display:false } },
-                              y: { ticks:{ color:tc, precision:0, font:{size:9} }, beginAtZero:true, grid:{ color:"rgba(128,128,128,.1)" } }
-                            },
-                            interaction: { mode:"index", intersect:false }
-                          }
+                      // Each period carries both series against one label set,
+                      // which is what lets them be drawn on top of each other.
+                      // "prev" of null means there is nothing to compare with,
+                      // and the legend drops its second key accordingly.
+                      var P = {
+                        d: { eyebrow:L.daily,   type:"line", labels:[' . $h_yest_labels_js . '],
+                             now:{ label:L.today,     data:[' . $h_today_full_js . '], views:[' . $h_today_views_full_js . '], pages:' . json_encode(array_values($h_today_pages)) . ' },
+                             prev:{ label:L.yesterday, data:[' . $h_yest_js . '],       views:[' . $h_yest_views_js . '],      pages:' . json_encode(array_values($h_yest_pages)) . ' },
+                             kpi:' . $kpi_today . ', cmp:' . $kpi_yesterday_same . ', full:' . $kpi_yesterday . ', nowIndex:' . $current_hour . ' },
+                        w: { eyebrow:L.weekly,  type:"line", labels:[' . $w_tw_labels . '],
+                             now:{ label:L.thisWeek, data:[' . $w_tw_data . '] },
+                             prev:{ label:L.lastWeek, data:[' . $w_lw_data . '] },
+                             kpi:' . $kpi_tw . ', cmp:' . $kpi_lw . ', full:null, nowIndex:null },
+                        m: { eyebrow:L.monthly, type:"line", labels:[' . $m_tm_labels . '],
+                             now:{ label:L.thisMonth, data:[' . $m_tmd_data . '] },
+                             prev:{ label:L.prevMonth, data:[' . $m_pmd_data . '] },
+                             kpi:' . $kpi_tm . ', cmp:' . $kpi_pm_prev_same . ', full:null, nowIndex:' . ($today_day - 1) . ' },
+                        y: { eyebrow:L.yearly,  type:"bar",  labels:[' . $m_pm_labels . '],
+                             now:{ label:L.total, data:[' . $m_pm_data . '] },
+                             prev:null,
+                             kpi:' . $kpi_pm . ', cmp:null, full:null, nowIndex:null }
+                      };
+
+                      // The line simply stopping is ambiguous -- it reads as
+                      // traffic falling to nothing rather than as the day not
+                      // being over. This shades what has not happened yet and
+                      // rules off where the data ends.
+                      var nowMarker = {
+                        id: "vs5NowMarker",
+                        afterDatasetsDraw: function (c) {
+                          var p = P[mode];
+                          if (p.nowIndex === null || p.nowIndex >= p.labels.length - 1) return;
+                          var x = c.scales.x.getPixelForValue(p.nowIndex);
+                          var a = c.chartArea;
+                          var ctx = c.ctx;
+                          ctx.save();
+                          ctx.fillStyle = "rgba(128,128,128,.07)";
+                          ctx.fillRect(x, a.top, a.right - x, a.bottom - a.top);
+                          ctx.setLineDash([2, 3]);
+                          ctx.strokeStyle = "rgba(128,128,128,.5)";
+                          ctx.lineWidth = 1;
+                          ctx.beginPath();
+                          ctx.moveTo(x, a.top);
+                          ctx.lineTo(x, a.bottom);
+                          ctx.stroke();
+                          ctx.restore();
+                        }
+                      };
+
+                      var NOW_RGB  = "59,130,246";
+                      var PREV_RGB = "148,163,184";
+
+                      var el = document.getElementById("vs5_canvas");
+                      var chart = null;
+                      var mode = "d";
+
+                      function datasets(p) {
+                        var out = [];
+                        // Previous first so the current series draws over it.
+                        if (p.prev) {
+                          out.push({
+                            label: p.prev.label, data: p.prev.data,
+                            borderColor: "rgba("+PREV_RGB+",.9)", backgroundColor: "rgba("+PREV_RGB+",.10)",
+                            borderWidth: 1.6, borderDash: p.type === "line" ? [4,4] : [],
+                            fill: false, tension: 0.35, pointRadius: 0, pointHoverRadius: 4,
+                            spanGaps: false
+                          });
+                        }
+                        out.push({
+                          label: p.now.label, data: p.now.data,
+                          borderColor: "rgba("+NOW_RGB+",1)", backgroundColor: "rgba("+NOW_RGB+",.14)",
+                          borderWidth: 2.2, fill: p.type === "line",
+                          tension: 0.35, pointRadius: 0, pointHoverRadius: 5,
+                          pointBackgroundColor: "rgba("+NOW_RGB+",1)",
+                          borderRadius: 3, borderSkipped: false,
+                          // false, so the hours that have not happened end the
+                          // line where the data ends instead of jumping the gap
+                          // to nothing.
+                          spanGaps: false
                         });
+                        return out;
                       }
 
-                      // ── Top-page row renderer ─────────────────────────────────────────────
-                      function showTp(elId, tp, rgb) {
-                        var el = document.getElementById(elId);
+                      function build() {
                         if (!el) return;
-                        if (!tp) { el.innerHTML = ""; return; }
-                        el.innerHTML = `<div class="d-flex align-items-center gap-1" style="font-size:11px">`
-                          + `<i class="bi bi-window text-muted flex-shrink-0"></i>`
-                          + `<span class="text-truncate flex-grow-1 text-muted" title="${tp.name}">${tp.name}</span>`
-                          + `<span class="badge rounded-pill flex-shrink-0" style="background:rgba(${rgb},.12);color:rgb(${rgb});font-size:10px" title="${VIEWS_LABEL}">${fmtN(tp.cnt)} <span style="opacity:.75;font-weight:400">${VIEWS_LABEL}</span></span>`
-                          + `</div>`;
-                      }
-
-                      // ── Switch helpers ────────────────────────────────────────────────────
-                      function switchChart(chart, ds) {
-                        if (!chart) return;
-                        chart.data.labels = ds.labels;
-                        chart.data.datasets[0].data = ds.data;
-                        chart.update("none");
-                      }
-                      function toggleBtns(onId, offId, onRgb) {
-                        var on  = document.getElementById(onId);
-                        var off = document.getElementById(offId);
-                        if (on)  { on.style.background  = "rgb("+onRgb+")"; on.style.color  = "#fff";            on.style.borderColor  = "rgb("+onRgb+")"; }
-                        if (off) { off.style.background = "transparent";    off.style.color = "rgb("+onRgb+")"; off.style.borderColor = "rgb("+onRgb+")"; }
-                      }
-
-                      // ── Init ──────────────────────────────────────────────────────────────
-                      // Daily chart — line with per-hour top-page tooltip
-                      var vs5_d_mode = "t";
-                      var cD = (function(){
-                        var el = document.getElementById("vs5_d_canvas");
-                        if (!el) return null;
-                        return new Chart(el.getContext("2d"), {
-                          type: "line",
-                          data: { labels: DS.d.t.labels, datasets: [{
-                            data: DS.d.t.data,
-                            backgroundColor: "rgba(59,130,246,.12)", borderColor: "rgba(59,130,246,1)",
-                            borderWidth:2, fill:true, tension:0.35,
-                            pointRadius:2, pointHoverRadius:5,
-                            pointBackgroundColor:"rgba(59,130,246,1)"
-                          }]},
+                        var p = P[mode];
+                        if (chart) { chart.destroy(); }
+                        chart = new Chart(el.getContext("2d"), {
+                          type: p.type,
+                          data: { labels: p.labels, datasets: datasets(p) },
+                          plugins: [nowMarker],
                           options: {
-                            animation: { duration:220 },
+                            animation: { duration: 220 },
                             plugins: {
-                              legend: { display:false },
+                              legend: { display: false },
                               tooltip: {
                                 callbacks: {
-                                  // Name the plotted number. Unlabelled, a
-                                  // bare "0" reads as a contradiction of the
-                                  // content line below it.
                                   label: function(ctx) {
-                                    return ' . json_encode(lang('New Visitors')) . ' + ": " + fmtN(ctx.parsed.y);
+                                    return ctx.dataset.label + " · " + L.visitors + ": " + fmtN(ctx.parsed.y);
                                   },
                                   afterLabel: function(ctx) {
-                                    var ds = DS.d[vs5_d_mode];
+                                    // Only the day view carries per-hour detail;
+                                    // the others have nothing to add and an
+                                    // empty line in a tooltip looks like a bug.
+                                    var p = P[mode];
+                                    var series = (p.prev && ctx.datasetIndex === 0) ? p.prev : p.now;
+                                    if (!series.views && !series.pages) return "";
                                     var out = [];
-
-                                    // Views during the hour, as opposed to
-                                    // sessions that began in it. These differ
-                                    // whenever a visit spans the hour, which
-                                    // is most of the time.
-                                    var vw = ds.views ? ds.views[ctx.dataIndex] : null;
+                                    var vw = series.views ? series.views[ctx.dataIndex] : null;
                                     if (vw !== null && vw !== undefined) {
-                                      out.push(' . json_encode(lang('Page Views')) . ' + ": " + fmtN(vw));
+                                      out.push(L.views + ": " + fmtN(vw));
                                     }
-
-                                    var pg = ds.pages[ctx.dataIndex];
-                                    if (pg) {
-                                      out.push("\u21b3 " + pg.name + "  \u00b7  " + fmtN(pg.cnt));
-                                    }
-
+                                    var pg = series.pages ? series.pages[ctx.dataIndex] : null;
+                                    if (pg) { out.push("↳ " + pg.name + "  ·  " + fmtN(pg.cnt)); }
                                     return out.join("\n");
                                   }
                                 }
                               }
                             },
-                            responsive:true, maintainAspectRatio:false,
+                            responsive: true, maintainAspectRatio: false,
                             scales: {
-                              x: { ticks:{ color:tc, font:{size:9}, maxRotation:45 }, grid:{ display:false } },
+                              x: { ticks:{ color:tc, font:{size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid:{ display:false } },
                               y: { ticks:{ color:tc, precision:0, font:{size:9} }, beginAtZero:true, grid:{ color:"rgba(128,128,128,.1)" } }
                             },
                             interaction: { mode:"index", intersect:false }
                           }
                         });
-                      })();
-                      var cW = mkChart("vs5_w_canvas", DS.w.t, "16,185,129");
-                      var cM = mkChart("vs5_m_canvas", DS.m.t, "139,92,246");
+                      }
 
-                      // ── Public toggles ────────────────────────────────────────────────────
-                      window.vs5Day = function(mode) {
-                        vs5_d_mode = mode;
-                        var ds = DS.d[mode];
-                        switchChart(cD, ds);
-                        document.getElementById("vs5_d_kpi").textContent = fmtN(ds.kpi);
-                        showTp("vs5_d_tp", ds.tp, "59,130,246");
-                        toggleBtns(mode==="t"?"vs5_d_btn_t":"vs5_d_btn_y", mode==="t"?"vs5_d_btn_y":"vs5_d_btn_t", "59,130,246");
-                      };
-                      window.vs5Week = function(mode) {
-                        var ds = DS.w[mode];
-                        switchChart(cW, ds);
-                        document.getElementById("vs5_w_kpi").textContent = fmtN(ds.kpi);
-                        showTp("vs5_w_tp", ds.tp, "16,185,129");
-                        toggleBtns(mode==="t"?"vs5_w_btn_t":"vs5_w_btn_l", mode==="t"?"vs5_w_btn_l":"vs5_w_btn_t", "16,185,129");
-                      };
-                      window.vs5Month = function(mode) {
-                        var ds = DS.m[mode];
-                        switchChart(cM, ds);
-                        document.getElementById("vs5_m_kpi").textContent = fmtN(ds.kpi);
-                        showTp("vs5_m_tp", ds.tp, "139,92,246");
-                        toggleBtns(mode==="t"?"vs5_m_btn_t":"vs5_m_btn_p", mode==="t"?"vs5_m_btn_p":"vs5_m_btn_t", "139,92,246");
-                      };
+                      function head() {
+                        var p = P[mode];
+                        document.getElementById("vs5_eyebrow").textContent = p.eyebrow;
+                        document.getElementById("vs5_kpi").textContent = fmtN(p.kpi);
+                        document.getElementById("vs5_leg_now").textContent = p.now.label;
 
+                        var legend = document.getElementById("vs5_legend");
+                        legend.classList.toggle("no-prev", !p.prev);
+                        if (p.prev) { document.getElementById("vs5_leg_prev").textContent = p.prev.label; }
+
+                        var compare = document.getElementById("vs5_compare");
+                        var sub = document.getElementById("vs5_sub");
+                        if (p.cmp === null) { compare.innerHTML = ""; sub.textContent = ""; return; }
+
+                        var pct = (p.cmp > 0) ? Math.round(((p.kpi - p.cmp) / p.cmp) * 100) : null;
+                        var pill = "";
+                        if (pct !== null) {
+                          pill = \'<span class="pg-vs-pill \' + (pct >= 0 ? "up" : "down") + \'">\'
+                               + (pct >= 0 ? "▲" : "▼") + " %" + Math.abs(pct) + "</span>";
+                        }
+                        var text = (mode === "d")
+                          ? T.byThisTime.replace("%N%", "<b>" + fmtN(p.cmp) + "</b>")
+                          : (p.prev.label + ": <b>" + fmtN(p.cmp) + "</b>");
+                        compare.innerHTML = pill + \'<span class="pg-vs-cmp">\' + text + "</span>";
+                        sub.innerHTML = (p.full !== null) ? T.allYesterday.replace("%N%", fmtN(p.full)) : "";
+                      }
+
+                      // Sparklines. Same series the chart would draw, at the
+                      // size a cell can hold: no axes, no interaction, just the
+                      // shape, because the number beside it is the reading.
+                      function sparks() {
+                        var colors = { w:"16,185,129", m:"139,92,246", y:"245,158,11" };
+                        document.querySelectorAll("[data-spark]").forEach(function(c){
+                          var key = c.getAttribute("data-spark");
+                          var p = P[key];
+                          if (!p) return;
+                          new Chart(c.getContext("2d"), {
+                            type: p.type,
+                            data: { labels: p.labels, datasets: [{
+                              data: p.now.data,
+                              borderColor: "rgba("+colors[key]+",1)",
+                              backgroundColor: "rgba("+colors[key]+",.18)",
+                              borderWidth: 1.6, fill: p.type === "line", tension: 0.35,
+                              pointRadius: 0, spanGaps: false, borderRadius: 2
+                            }]},
+                            options: {
+                              animation: false, responsive: true, maintainAspectRatio: false,
+                              plugins: { legend:{display:false}, tooltip:{enabled:false} },
+                              scales: { x:{display:false}, y:{display:false, beginAtZero:true} },
+                              events: []
+                            }
+                          });
+                        });
+                      }
+
+                      document.querySelectorAll("[data-vs5]").forEach(function(btn){
+                        btn.addEventListener("click", function(){
+                          var next = btn.getAttribute("data-vs5");
+                          // Clicking the period already showing returns to the
+                          // day, so the strip toggles rather than trapping the
+                          // reader in a period with no way back.
+                          mode = (mode === next) ? "d" : next;
+                          document.querySelectorAll("[data-vs5]").forEach(function(b){
+                            b.classList.toggle("is-active", b.getAttribute("data-vs5") === mode);
+                          });
+                          build(); head();
+                        });
+                      });
+
+                      build(); head(); sparks();
                     })();</script>';
 
                     $response = array(
@@ -1478,57 +1784,42 @@ switch ($action) {
 
 
                     // --- Render Pages
-                    $output_rows .= '
-                    <div class="d-flex align-items-center px-2 py-1 border-bottom small">
-                        <span class="flex-grow-1 text-muted fw-semibold">' . lang('Top Pages') . '</span>
-                        <span class="text-muted">' . lang('Total Visits') . '</span>
-                    </div>';
+                    $output_rows .= pg_widget_row_heading(lang('Top Pages'), lang('Total Visits'));
                     foreach ($top_pages as $pg) {
                         $trend_badge = !empty($pg['trend'])
                             ? ' <i class="bi bi-fire text-danger ms-1" title="' . lang('Trending Page') . '"></i>'
                             : '';
-                        $output_rows .= '
-                        <div class="d-flex align-items-center px-2 py-1 pointer" onclick="window.open(\'' . h($pg['url']) . '\', \'_blank\')">
-                            <i class="bi bi-window me-2 flex-shrink-0 text-muted" style="font-size:13px"></i>
-                            <div class="flex-grow-1 overflow-hidden">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-truncate me-1" style="font-size:12px">' . h($pg['name']) . $trend_badge . '</span>
-                                    <span class="badge bg-reset text-muted flex-shrink-0">' . number_format($pg['visits']) . '</span>
-                                </div>
-                            </div>
-                        </div>';
+                        $output_rows .= pg_widget_row(array(
+                            'small'  => true,
+                            'href'   => h($pg['url']),
+                            'target' => '_blank',
+                            'badge'  => '<i class="bi bi-window"></i>',
+                            'name'   => h($pg['name']) . $trend_badge,
+                            'aside'  => number_format($pg['visits']),
+                        ));
                     }
 
                     // --- Render Products
                     if (!empty($top_products)) {
-                        $output_rows .= '
-                        <div class="d-flex align-items-center px-2 py-1 border-bottom small mt-1">
-                            <span class="flex-grow-1 text-muted fw-semibold">' . lang('Top Products') . '</span>
-                            <span class="text-muted">' . lang('Total Sales') . '</span>
-                        </div>';
+                        $output_rows .= pg_widget_row_heading(lang('Top Products'), lang('Total Sales'));
 
                         foreach ($top_products as $pr) {
-                            $image_html = $pr['image_name']
-                                ? '<img src="' . PATH . h($pr['image_name']) . '" class="rounded flex-shrink-0 me-2" style="width:26px;height:26px;object-fit:cover" alt="" />'
-                                : '<i class="bi bi-box-seam text-muted me-2 flex-shrink-0" style="font-size:13px"></i>';
-
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-1 pointer" onclick="window.location.href=\'edit_product.php?id=' . $pr['id'] . '\'">
-                                ' . $image_html . '
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-truncate me-1" style="font-size:12px">' . $pr['product_name'] . '</span>
-                                        <span class="badge bg-reset text-muted flex-shrink-0">' . number_format($pr['qty'], 0, ',', '.') . '</span>
-                                    </div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'small' => true,
+                                'href'  => 'edit_product.php?id=' . $pr['id'],
+                                'badge' => $pr['image_name']
+                                    ? '<img src="' . PATH . h($pr['image_name']) . '" alt="">'
+                                    : '<i class="bi bi-box-seam"></i>',
+                                'name'  => $pr['product_name'],
+                                'aside' => number_format($pr['qty'], 0, ',', '.'),
+                            ));
                         }
                     }
 
                     // --- Final HTML for widget body
                     $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                        ' . $output_rows . '
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                        <div class="pg-list">' . $output_rows . '</div>
                     </div>';
 
                     $response = [
@@ -2330,27 +2621,24 @@ switch ($action) {
                                 $icon_color = 'var(--design-color)';
                         }
 
-                        $output_rows .= '
-                        <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded" style="width:30px;height:30px;background:rgba(0,0,0,.05)">
-                                <i class="bi ' . $type_bi_icon . '" style="color:' . $icon_color . ';font-size:14px"></i>
-                            </div>
-                            <div class="flex-fill overflow-hidden">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span class="fw-semibold text-truncate" style="font-size:13px">' . h($recent_update_item['name']) . '</span>
-                                    <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $recent_update_item['timestamp'])) . '</span>
-                                </div>
-                                <div class="text-truncate text-muted" style="font-size:11px">' . h($type_name) . ($recent_update_item['username'] ? ' &middot; ' . h($recent_update_item['username']) : '') . '</div>
-                            </div>
-                        </div>';
+                        // The per-type colour the icon used to carry is gone:
+                        // the tile is the card's accent now. No information is
+                        // lost, because the glyph already differs per type.
+                        $output_rows .= pg_widget_row(array(
+                            'href'  => $output_link_url,
+                            'badge' => '<i class="bi ' . $type_bi_icon . '"></i>',
+                            'name'  => h($recent_update_item['name']),
+                            'aside' => get_relative_time(array('timestamp' => $recent_update_item['timestamp'])),
+                            'meta'  => h($type_name) . ($recent_update_item['username'] ? ' &middot; ' . h($recent_update_item['username']) : ''),
+                        ));
                     }
 
                 } else {
                     $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Recent Update'))) . '</p>';
                 }
                 $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                        ' . $output_rows . '
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                        <div class="pg-list">' . $output_rows . '</div>
                     </div>';
 
                 //return success json output
@@ -2438,25 +2726,22 @@ switch ($action) {
                             $ship_title = $shipped ? lang('Shipped') : lang('Not shipped yet');
 
                             $order_canceled = ($order['status'] == 'cancelled');
-                            $output_order_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer' . ($order_canceled ? ';opacity:.65' : '') . '">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded" style="width:30px;height:30px;background:rgba(0,0,0,.05)">
-                                    ' . ($order_canceled
-                                ? '<i class="bi bi-x-circle" title="' . lang('Canceled') . '" style="color:#dc3545;font-size:15px"></i>'
-                                : '<i class="bi bi-truck" title="' . $ship_title . '" style="color:' . $ship_icon_color . ';font-size:15px"></i>'
-                            ) . '
-                                </div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate' . ($order_canceled ? ' text-decoration-line-through' : '') . '" style="font-size:13px">' . h($name) . '</span>
-                                        <span class="flex-shrink-0 fw-semibold ms-1' . ($order_canceled ? ' text-danger' : '') . '" style="font-size:12px">' . prepare_amount($order['total'] / 100) . '</span>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-muted text-truncate" style="font-size:11px">' . h($order['order_number']) . ($order_canceled ? ' &mdash; <span style="color:#dc3545">' . lang('Canceled') . '</span>' : '') . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $order['timestamp'])) . '</span>
-                                    </div>
-                                </div>
-                            </div>';
+                            // Shipped and not-shipped are both ordinary states,
+                            // so the glyph separates them and the tile stays on
+                            // the card accent. Cancelled is not ordinary, so it
+                            // takes the tile.
+                            $output_order_rows .= pg_widget_row(array(
+                                'href'  => $output_link_url,
+                                'color' => $order_canceled ? '#dc3545' : '',
+                                'badge' => $order_canceled
+                                    ? '<i class="bi bi-x-circle" title="' . lang('Canceled') . '"></i>'
+                                    : '<i class="bi ' . ($shipped ? 'bi-truck' : 'bi-box-seam') . '" title="' . $ship_title . '"></i>',
+                                'name'  => h($name),
+                                'aside' => prepare_amount($order['total'] / 100),
+                                'meta'  => h($order['order_number'])
+                                    . ($order_canceled ? ' &mdash; <span class="text-danger">' . lang('Canceled') . '</span>' : '')
+                                    . ' &middot; ' . get_relative_time(array('timestamp' => $order['timestamp'])),
+                            ));
                         }
                     } else {
                         $output_order_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Order'))) . '</p>';
@@ -2532,38 +2817,35 @@ switch ($action) {
                             }
 
 
-                            $output_cart_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded" style="width:30px;height:30px;background:rgba(249,115,22,.1)">
-                                    <i class="bi bi-cart" style="color:#f97316;font-size:15px"></i>
-                                </div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate" style="font-size:13px">' . h($name) . '</span>
-                                        <span class="flex-shrink-0 fw-semibold ms-1" style="font-size:12px">' . $total . '</span>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-muted text-truncate" style="font-size:11px">' . h($cart['reference_code']) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $cart['timestamp'])) . '</span>
-                                    </div>
-                                </div>
-                            </div>';
+                            $output_cart_rows .= pg_widget_row(array(
+                                'href'  => $output_link_url,
+                                'badge' => '<i class="bi bi-cart"></i>',
+                                'name'  => h($name),
+                                'aside' => $total,
+                                'meta'  => h($cart['reference_code'])
+                                    . ' &middot; ' . get_relative_time(array('timestamp' => $cart['timestamp'])),
+                            ));
                         }
                     } else {
                         $output_cart_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Shopping Cart'))) . '</p>';
                     }
 
+                    // Orders per day for the last eight -- the figure the
+                    // activity summary used to carry. Same status filter the
+                    // list below uses, so the headline and the rows cannot
+                    // disagree about what counts as an order.
+                    $output_headline = pg_widget_headline(array(
+                        'id' => 'w8_spark',
+                        'rgb' => '5,150,105',
+                        'unit' => lang('orders today'),
+                        'series' => pg_activity_daily('orders', 'orders.order_date', " AND (orders.status = 'complete')"),
+                    ));
+
                     $output_data = '
-                        <div class="card-body px-0 pt-1 pb-0">
-                            <nav class="text-center">
-                                <div class="nav d-inline-flex justify-content-center btn-group" id="nav-tab" role="tablist">
-                                    <button class="btn btn-outline-success py-0 px-2 active" data-bs-toggle="tab" data-bs-target="#tab-order" type="button" role="tab" aria-selected="true">' . lang('Orders') . '</button>
-                                    <button class="btn btn-outline-success py-0 px-2"        data-bs-toggle="tab" data-bs-target="#tab-card" type="button" role="tab" aria-selected="false">' . lang('Carts') . '</button>
-                                </div>
-                            </nav>
+                        <div class="card-body px-0 pt-1 pb-0">                           
                             <div class="tab-content" id="visitor_report_tabs">
-                                <div style="height:240px;overflow-x:hidden;overflow-y:auto" class="tab-pane fade show active py-1" id="tab-order" role="tabpanel" tabindex="0">' . $output_order_rows . '</div>
-                                <div style="height:240px;overflow-x:hidden;overflow-y:auto" class="tab-pane fade py-1"             id="tab-card" role="tabpanel" tabindex="0">' . $output_cart_rows . '</div>
+                                <div style="height:240px;overflow-x:hidden;overflow-y:auto" class="tab-pane fade show active" id="tab-order" role="tabpanel" tabindex="0">' . $output_headline . '<div class="pg-list">' . $output_order_rows . '</div></div>
+                                <div style="height:240px;overflow-x:hidden;overflow-y:auto" class="tab-pane fade"             id="tab-card" role="tabpanel" tabindex="0"><div class="pg-list">' . $output_cart_rows . '</div></div>
                             </div>
                         </div>';
 
@@ -2590,99 +2872,222 @@ switch ($action) {
 
             case '9':
                 if ((ECOMMERCE === true) && (ECOMMERCE_SHIPPING === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
-                    $time = time();
-                    // Orders that are not incomplete/cancelled/refunded and have no shipping tracking number
-                    $pending_orders = db_items(
-                        "SELECT
-                            orders.id,
-                            orders.order_number,
-                            orders.total,
-                            orders.order_date AS timestamp,
-                            orders.status,
-                            contacts.first_name,
-                            contacts.last_name,
-                            user.user_username AS username
-                         FROM orders
-                         LEFT JOIN contacts ON orders.contact_id = contacts.id
-                         LEFT JOIN user    ON orders.user_id     = user.user_id
-                         WHERE orders.status = 'complete'
-                           AND NOT EXISTS (
-                               SELECT 1 FROM shipping_tracking_numbers
-                               WHERE shipping_tracking_numbers.order_id = orders.id
-                           )
-                           AND (orders.order_date > '" . e(time() - 2592000) . "')
-                           AND orders.type = 'online'
-                         ORDER BY orders.order_date ASC
-                        "
-                    );
 
-                    $pending_count = count($pending_orders);
-                    $pending_total = 0;
-                    foreach ($pending_orders as $po) {
-                        $pending_total += (int) $po['total'];
+                    // What counts as outstanding
+                    // --------------------------
+                    // A shipment is outstanding while a shippable line still
+                    // has quantity that has not been shipped. Tracking numbers
+                    // are deliberately not consulted: one order is regularly
+                    // sent in two runs under a single carrier when stock
+                    // arrives late, and the first number would otherwise mark
+                    // the whole order as gone.
+                    //
+                    // order_items.ship_to_id is the shippable marker.
+                    // add_order_item() writes it only when shipping is on AND
+                    // products.shippable was 1 as the line was added, so a
+                    // digital line in a mixed order carries 0 and can never
+                    // join a recipient row. Reading products.shippable here
+                    // instead would answer for today's catalogue rather than
+                    // for the order as it was placed.
+                    //
+                    // ship_tos.complete = 1 skips recipient rows left behind by
+                    // abandoned carts, and orders.type = 'online' skips
+                    // counter sales, which are handed over rather than shipped.
+                    //
+                    // 'exported' belongs with 'complete': shipworks.php sets it
+                    // when an order is pulled into fulfilment and writes the
+                    // shipped quantity back only afterwards, so an exported
+                    // order is exactly one that is waiting to leave. Sites on
+                    // the export flow would otherwise see an empty card.
+
+                    // Both quantity columns are INT UNSIGNED, so subtracting
+                    // them raises "BIGINT UNSIGNED value is out of range" and
+                    // aborts the query the moment a line has been recorded as
+                    // over-shipped, which nothing stops update_order.php from
+                    // accepting. Casting to SIGNED first lets GREATEST() floor
+                    // the row at zero instead. Since PHP 8.1 mysqli throws on
+                    // that error, so the card would take the dashboard with it.
+                    //
+                    // Save-for-later lines stay in order_items with the flag
+                    // set. The column arrived in 2026.1.28, so probe for it
+                    // before filtering, or the widget dies on older schemas.
+                    $sql_saved_for_later = '';
+                    if (db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'") != '') {
+                        $sql_saved_for_later = " AND (order_items.saved_for_later = 0)";
                     }
 
+                    // Headline figures, grouped per order rather than per
+                    // recipient: the package count is the same either way, but
+                    // orders.total must be summed once per order or a
+                    // multi-recipient order would contribute its value twice.
+                    // MAX(orders.total) rather than a bare column because
+                    // ONLY_FULL_GROUP_BY does not always trace the functional
+                    // dependency on orders.id through a join.
+                    $pending_summary = db_item(
+                        "SELECT
+                            COALESCE(SUM(pending.pending_quantity), 0) AS package_count,
+                            COALESCE(SUM(pending.order_total), 0) AS pending_value
+                        FROM (
+                            SELECT
+                                orders.id,
+                                MAX(orders.total) AS order_total,
+                                SUM(GREATEST(CAST(order_items.quantity AS SIGNED) - CAST(order_items.shipped_quantity AS SIGNED), 0)) AS pending_quantity
+                            FROM orders
+                            INNER JOIN ship_tos ON (ship_tos.order_id = orders.id) AND (ship_tos.complete = '1')
+                            INNER JOIN order_items ON order_items.ship_to_id = ship_tos.id
+                            WHERE
+                                (orders.status IN ('complete', 'exported'))
+                                AND (orders.type = 'online')
+                                $sql_saved_for_later
+                            GROUP BY orders.id
+                            HAVING pending_quantity > 0
+                        ) AS pending"
+                    );
+
+                    $package_count = (int) ($pending_summary['package_count'] ?? 0);
+                    $pending_value = (int) ($pending_summary['pending_value'] ?? 0);
+
+                    // Rows are grouped per recipient because the carrier lives
+                    // on ship_tos: one order going to two addresses can leave
+                    // by two different carriers, and a row that averaged them
+                    // would name neither. One row over the display cap is
+                    // fetched so we can tell whether to offer the full list.
+                    $row_limit = 12;
+                    $pending_shipments = db_items(
+                        "SELECT
+                            ship_tos.id AS ship_to_id,
+                            MAX(ship_tos.ship_to_name) AS ship_to_name,
+                            MAX(ship_tos.shipping_method_code) AS shipping_method_code,
+                            MAX(shipping_methods.name) AS shipping_method_name,
+                            orders.id AS order_id,
+                            MAX(orders.order_number) AS order_number,
+                            MAX(orders.order_date) AS order_date,
+                            SUM(GREATEST(CAST(order_items.quantity AS SIGNED) - CAST(order_items.shipped_quantity AS SIGNED), 0)) AS pending_quantity
+                        FROM ship_tos
+                        INNER JOIN orders ON orders.id = ship_tos.order_id
+                        INNER JOIN order_items ON order_items.ship_to_id = ship_tos.id
+                        LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
+                        WHERE
+                            (orders.status IN ('complete', 'exported'))
+                            AND (orders.type = 'online')
+                            AND (ship_tos.complete = '1')
+                            $sql_saved_for_later
+                        GROUP BY ship_tos.id, orders.id
+                        HAVING pending_quantity > 0
+                        ORDER BY MAX(orders.order_date) ASC, ship_tos.id ASC
+                        LIMIT " . ($row_limit + 1)
+                    );
+
+                    $more_shipments_exist = (count($pending_shipments) > $row_limit);
+                    if ($more_shipments_exist) {
+                        $pending_shipments = array_slice($pending_shipments, 0, $row_limit);
+                    }
+
+                    // An order that ships to several addresses puts the same
+                    // order number on more than one row. Count the rows per
+                    // order so those rows can name their recipient and stay
+                    // tellable apart; single-recipient rows say nothing extra.
+                    $rows_per_order = array();
+                    foreach ($pending_shipments as $shipment) {
+                        $oid = $shipment['order_id'];
+                        $rows_per_order[$oid] = ($rows_per_order[$oid] ?? 0) + 1;
+                    }
+
+                    // Fixed palette keyed by a hash of the carrier name, so a
+                    // carrier keeps its colour across refreshes and installs
+                    // without anyone having to configure one.
+                    $carrier_colors = array('#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#ec4899', '#14b8a6');
+
                     $output_rows = '';
-                    if (!empty($pending_orders)) {
-                        foreach ($pending_orders as $order) {
-                            if ($order['username']) {
-                                $name = h($order['username']);
-                            } else {
-                                $name = h(trim($order['first_name'] . ' ' . $order['last_name']));
+                    if (!empty($pending_shipments)) {
+                        foreach ($pending_shipments as $shipment) {
+                            $carrier = trim((string) $shipment['shipping_method_name']);
+                            if ($carrier === '') {
+                                $carrier = trim((string) $shipment['shipping_method_code']);
                             }
-                            if (!$name)
-                                $name = '[' . lang('Visitor') . ']';
-
-                            // Status badge color
-                            switch ($order['status']) {
-                                case 'processing':
-                                    $s_color = '#3b82f6';
-                                    break;
-                                case 'complete':
-                                    $s_color = '#10b981';
-                                    break;
-                                default:
-                                    $s_color = '#f59e0b';
-                                    break;
+                            if ($carrier === '') {
+                                $carrier = lang('No Shipping Method');
                             }
 
+                            $carrier_color = $carrier_colors[abs(crc32($carrier)) % count($carrier_colors)];
+                            $shipment_packages = (int) $shipment['pending_quantity'];
+
+                            $meta = '#' . h($shipment['order_number'])
+                                . ' &middot; ' . h(lang(array(
+                                    'string' => '{var:1} package{suffix:1}',
+                                    'vars' => number_format($shipment_packages, 0, ',', '.'),
+                                    'suffix' => ($shipment_packages == 1 ? '' : 's'),
+                                )));
+
+                            if (($rows_per_order[$shipment['order_id']] ?? 0) > 1) {
+                                $meta .= ' &middot; ' . h($shipment['ship_to_name']);
+                            }
+
+                            // A real link rather than an onclick handler, so
+                            // the row is reachable by keyboard and opens in a
+                            // new tab on middle click like any other row here.
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => 'view_order.php?id=' . (int) $shipment['order_id'],
+                                'badge' => '<i class="bi bi-box-seam"></i>',
+                                'color' => $carrier_color,
+                                'name'  => h($carrier),
+                                'meta'  => $meta,
+                            ));
+                        }
+
+                        // Only offered when the list was actually cut short,
+                        // so the link never implies there is more to see when
+                        // the card already shows everything.
+                        if ($more_shipments_exist) {
                             $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-1 pointer border-bottom" onclick="window.location.href=\'view_order.php?id=' . $order['id'] . '\'">
-                                <i class="bi bi-box-seam me-2 flex-shrink-0" style="color:#f59e0b;font-size:15px"></i>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-truncate me-1 fw-semibold" style="font-size:13px">' . $name . '</span>
-                                        <span class="small flex-shrink-0 fw-semibold">' . prepare_amount($order['total'] / 100) . '</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted text-truncate me-1">' . h($order['order_number']) . '</small>
-                                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $s_color . '22;color:' . $s_color . ';font-size:10px">' . lang(ucfirst($order['status'])) . '</span>
-                                    </div>
-                                </div>
+                            <div class="pg-ship-more">
+                                <a href="view_orders.php" class="small text-decoration-none">' . lang('All Orders') . '</a>
                             </div>';
                         }
                     } else {
-                        $output_rows = '<div class="px-2 py-4 text-center text-muted small">'
-                            . '<i class="bi bi-check-circle d-block mb-1" style="font-size:24px;color:#10b981"></i>'
+                        $output_rows = '<div class="pg-row-empty text-muted small">'
+                            . '<i class="bi bi-check-circle text-success"></i>'
                             . lang('All orders have been shipped.') . '</div>';
                     }
 
+                    // Package meter. Twelve slots is a readable width at the
+                    // narrowest dashboard column; past that the count in the
+                    // headline carries the magnitude and the meter just reads
+                    // as full. Both dot states are styled in backend.src.css;
+                    // only the on/off class is decided here.
+                    $meter_slots = 12;
+                    $meter_filled = min($package_count, $meter_slots);
+                    $output_meter = '';
+                    for ($slot = 0; $slot < $meter_slots; $slot++) {
+                        $output_meter .= '<span' . ($slot < $meter_filled ? ' class="is-on"' : '') . '></span>';
+                    }
+
+                    // Two keys rather than one sentence: the entity between
+                    // them is markup, and a translator should not have to carry
+                    // it through to keep the line from breaking.
+                    $output_summary =
+                        lang(array(
+                            'string' => 'package{suffix:1}',
+                            'suffix' => ($package_count == 1 ? '' : 's'),
+                        ))
+                        . ' &middot; '
+                        . lang(array(
+                            'string' => 'worth {var:1}',
+                            'vars' => BASE_CURRENCY_SYMBOL . number_format($pending_value / 100, 2, ',', '.'),
+                        ));
+
                     $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                        <div class="d-flex gap-2 p-2">
-                            <div class="flex-fill rounded p-2 text-center" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)">
-                                <i class="bi bi-clock-history d-block" style="color:#f59e0b;font-size:20px"></i>
-                                <span class="fw-bold d-block" style="font-size:15px">' . $pending_count . '</span>
-                                <small class="text-muted">' . lang('Awaiting Shipment') . '</small>
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                        <div class="pg-ship-head">
+                            <div class="d-flex align-items-baseline flex-wrap gap-2">
+                                <span class="pg-ship-count">' . number_format($package_count, 0, ',', '.') . '</span>
+                                <span class="pg-ship-summary text-muted">' . $output_summary . '</span>
                             </div>
-                            <div class="flex-fill rounded p-2 text-center" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2)">
-                                <i class="bi bi-wallet2 d-block" style="color:#3b82f6;font-size:20px"></i>
-                                <span class="fw-bold d-block" style="font-size:13px">' . BASE_CURRENCY_SYMBOL . number_format($pending_total / 100, 2, ',', '.') . '</span>
-                                <small class="text-muted">' . lang('Pending Value') . '</small>
-                            </div>
+                            <div class="pg-ship-meter">' . $output_meter . '</div>
                         </div>
-                        <div class="border-top mx-2 mb-1"></div>
-                        ' . $output_rows . '
+                        <div class="pg-list">
+                            ' . $output_rows . '
+                        </div>
                     </div>';
 
                     $response = array(
@@ -2794,24 +3199,26 @@ switch ($action) {
                             if ($initials == '')
                                 $initials = '?';
 
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle fw-bold" style="width:32px;height:32px;background:rgba(16,185,129,.15);color:#10b981;font-size:12px">' . h($initials) . '</div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate" style="font-size:13px">' . h($name ?: $contact['username']) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '</span>
-                                    </div>
-                                    <div class="text-truncate text-muted" style="font-size:11px">' . h($contact['email_address']) . '</div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => $output_link_url,
+                                'badge' => h($initials),
+                                'name'  => h($name ?: $contact['username']),
+                                'aside' => get_relative_time(array('timestamp' => $contact['timestamp'])),
+                                'meta'  => h($contact['email_address']),
+                            ));
                         }
                     } else {
                         $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Contact'))) . '</p>';
                     }
                     $output_data = '
-                        <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                            ' . $output_rows . '
+                        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                            ' . pg_widget_headline(array(
+                                'id' => 'w10_spark',
+                                'rgb' => '99,102,241',
+                                'unit' => lang('contacts today'),
+                                'series' => pg_activity_daily('contacts', 'contacts.timestamp'),
+                            )) . '
+                            <div class="pg-list">' . $output_rows . '</div>
                         </div>';
 
                     //return success json output
@@ -2869,25 +3276,21 @@ switch ($action) {
                             if ($u_initial == '')
                                 $u_initial = '?';
 
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle fw-bold" style="width:32px;height:32px;background:rgba(59,130,246,.15);color:#3b82f6;font-size:12px">' . h($u_initial) . '</div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate" style="font-size:13px">' . h($recent_user['username']) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $recent_user['timestamp'])) . '</span>
-                                    </div>
-                                    <div class="text-truncate text-muted" style="font-size:11px">' . h($recent_user['email_address']) . '</div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => $output_link_url,
+                                'badge' => h($u_initial),
+                                'name'  => h($recent_user['username']),
+                                'aside' => get_relative_time(array('timestamp' => $recent_user['timestamp'])),
+                                'meta'  => h($recent_user['email_address']),
+                            ));
                         }
                     } else {
                         $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('User'))) . '</p>';
                     }
 
                     $output_data = '
-                        <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                            ' . $output_rows . '
+                        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                            <div class="pg-list">' . $output_rows . '</div>
                         </div>';
 
                     //return success json output
@@ -2946,23 +3349,18 @@ switch ($action) {
                             $output_link_url = 'edit_product.php?id=' . $out_of_stock_product['id'];
 
                             $has_image = !empty($out_of_stock_product['image_name']);
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer">
-                                ' . ($has_image
-                                ? '<img src="' . PATH . h($out_of_stock_product['image_name']) . '" class="flex-shrink-0 rounded object-fit-cover" style="width:36px;height:36px;object-fit:cover">'
-                                : '<div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded" style="width:36px;height:36px;background:rgba(239,68,68,.1)"><i class="bi bi-exclamation-diamond" style="color:#ef4444;font-size:16px"></i></div>'
-                            ) . '
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate" style="font-size:13px">' . h($out_of_stock_product['name']) . '</span>
-                                        <span class="fw-semibold flex-shrink-0 ms-1" style="font-size:12px">' . prepare_amount($out_of_stock_product['price'] / 100) . '</span>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-truncate text-muted" style="font-size:11px">' . h($out_of_stock_product['short_description']) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $out_of_stock_product['timestamp'])) . '</span>
-                                    </div>
-                                </div>
-                            </div>';
+                            // A product photo fills the tile; without one the
+                            // tile falls back to the card accent and the icon.
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => $output_link_url,
+                                'badge' => $has_image
+                                    ? '<img src="' . PATH . h($out_of_stock_product['image_name']) . '" alt="">'
+                                    : '<i class="bi bi-exclamation-diamond"></i>',
+                                'name'  => h($out_of_stock_product['name']),
+                                'aside' => prepare_amount($out_of_stock_product['price'] / 100),
+                                'meta'  => h($out_of_stock_product['short_description'])
+                                    . ' &middot; ' . get_relative_time(array('timestamp' => $out_of_stock_product['timestamp'])),
+                            ));
                         }
 
                     } else {
@@ -2971,8 +3369,8 @@ switch ($action) {
 
 
                     $output_data = '
-                        <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                            ' . $output_rows . '
+                        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                            <div class="pg-list">' . $output_rows . '</div>
                         </div>';
 
                     //return success json output
@@ -3082,39 +3480,24 @@ switch ($action) {
                         }
                     }
 
-                    // ── KPI counts ──────────────────────────────────────────────────────────
-                    $total_forms = count($submitted_forms);
-                    $forms_today = 0;
-                    $forms_week = 0;
-                    $today_str = date('Y-m-d');
-                    $week_ago = date('Y-m-d', strtotime('-7 days'));
-                    foreach ($submitted_forms as $sf) {
-                        $ts = substr($sf['timestamp'], 0, 10);
-                        if ($ts == $today_str)
-                            $forms_today++;
-                        if ($ts >= $week_ago)
-                            $forms_week++;
-                    }
-
-                    // ── KPI tiles ────────────────────────────────────────────────────────────
-                    $output_kpi = '
-                    <div class="d-flex gap-1 px-2 pt-2 pb-1">
-                        <div class="flex-fill rounded px-1 py-1 text-center" style="background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15)">
-                            <i class="bi bi-file-earmark-check" style="color:#3b82f6;font-size:12px"></i>
-                            <span class="fw-bold d-block" style="font-size:13px;line-height:1.2">' . $total_forms . '</span>
-                            <span class="text-muted d-block" style="font-size:9px">' . lang('Total') . '</span>
-                        </div>
-                        <div class="flex-fill rounded px-1 py-1 text-center" style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15)">
-                            <i class="bi bi-file-earmark-plus" style="color:#10b981;font-size:12px"></i>
-                            <span class="fw-bold d-block" style="font-size:13px;line-height:1.2">' . $forms_today . '</span>
-                            <span class="text-muted d-block" style="font-size:9px">' . lang('Today') . '</span>
-                        </div>
-                        <div class="flex-fill rounded px-1 py-1 text-center" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.15)">
-                            <i class="bi bi-file-earmark-text" style="color:#f59e0b;font-size:12px"></i>
-                            <span class="fw-bold d-block" style="font-size:13px;line-height:1.2">' . $forms_week . '</span>
-                            <span class="text-muted d-block" style="font-size:9px">' . lang('7 Days') . '</span>
-                        </div>
-                    </div>';
+                    // ── Headline ────────────────────────────────────────────────────────────
+                    //
+                    // submitted_timestamp, not last_modified_timestamp. The
+                    // three KPI tiles that used to sit here counted forms that
+                    // had been *edited*, which put an old form touched today
+                    // into today's activity and made this figure mean something
+                    // different from the orders and contacts figures beside it
+                    // on the dashboard.
+                    //
+                    // It is also a real query now rather than a tally of the
+                    // rows this widget happened to fetch, which was capped and
+                    // therefore undercounted a busy day.
+                    $output_kpi = pg_widget_headline(array(
+                        'id' => 'w13_spark',
+                        'rgb' => '14,165,233',
+                        'unit' => lang('forms today'),
+                        'series' => pg_activity_daily('forms', 'forms.submitted_timestamp'),
+                    ));
 
                     // ── Rows ─────────────────────────────────────────────────────────────────
                     $output_rows = '';
@@ -3138,27 +3521,22 @@ switch ($action) {
                             $ref = isset($submitted_form['reference_code']) ? h($submitted_form['reference_code']) : '';
                             $time = get_relative_time(array('timestamp' => $submitted_form['timestamp']));
 
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $link . '\'" style="gap:8px">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded" style="width:30px;height:30px;background:rgba(59,130,246,.1)">
-                                    <i class="bi bi-file-earmark-text" style="color:#3b82f6;font-size:14px"></i>
-                                </div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate" style="font-size:13px">' . h($contact_name) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . $time . '</span>
-                                    </div>
-                                    <div class="text-truncate text-muted" style="font-size:11px">' . $form_name . ($ref != '' ? ' &middot; ' . $ref : '') . '</div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => $link,
+                                'badge' => '<i class="bi bi-file-earmark-text"></i>',
+                                'name'  => h($contact_name),
+                                'aside' => $time,
+                                'meta'  => $form_name . ($ref != '' ? ' &middot; ' . $ref : ''),
+                            ));
                         }
                     } else {
                         $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Form'))) . '</p>';
                     }
 
                     $output_data = '
-                        <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                            ' . $output_kpi . $output_rows . '
+                        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                            ' . $output_kpi . '
+                            <div class="pg-list">' . $output_rows . '</div>
                         </div>';
 
                     //return success json output
@@ -3234,6 +3612,34 @@ switch ($action) {
                         $curl_error = curl_error($ch);
                         curl_close($ch);
                         $data = decode_json($response);
+
+                        // The remote service can be unreachable or answer with something that is not JSON,
+                        // in which case decode_json() returns null.
+                        if (is_array($data) == false) {
+                            $data = array();
+                        }
+
+                        foreach (array(
+                            'D_name',
+                            'D_Host',
+                            'D_start_d',
+                            'D_end_d',
+                            'Hosting',
+                            'H_Host',
+                            'H_Domain',
+                            'H_start_d',
+                            'H_end_d',
+                            'SSL_author',
+                            'SSL_Domain',
+                            'SSL_start_d',
+                            'SSL_end_d',
+                            'P_KEY',
+                            'P_start_d',
+                            'P_end_d') as $remote_key) {
+                            if (isset($data[$remote_key]) == false) {
+                                $data[$remote_key] = '';
+                            }
+                        }
 
                         $D_name = $data['D_name'];
                         $D_Host = $data['D_Host'];
@@ -3426,84 +3832,66 @@ switch ($action) {
 
                     // ── Section: Expiring Soon (only shown when non-empty) ────
                     if (!empty($expiring)) {
-                        $output_rows .= '
-                        <div class="d-flex align-items-center px-2 py-1 border-bottom small">
-                            <i class="bi bi-alarm-fill text-danger me-1"></i>
-                            <span class="text-danger fw-semibold flex-grow-1">' . lang('Expiring Soon') . '</span>
-                            <span class="text-muted">' . lang('Days Left') . '</span>
-                        </div>';
+                        $output_rows .= pg_widget_row_heading('<i class="bi bi-alarm-fill text-danger"></i> <span class="text-danger">' . lang('Expiring Soon') . '</span>', lang('Days Left'));
                         foreach ($expiring as $offer) {
                             $days_left = max(0, (int) ceil((strtotime($offer['end_date']) - strtotime($today)) / 86400));
+                            // Three days or fewer is the point at which an offer
+                            // needs attention today rather than this week, so the
+                            // tile turns red instead of amber.
                             $badge_color = $days_left <= 3 ? '#ef4444' : '#f59e0b';
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-1 border-bottom pointer" onclick="window.location.href=\'edit_offer.php?id=' . $offer['id'] . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-truncate fw-semibold" style="font-size:13px">' . h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')) . '</span>
-                                        <span class="badge rounded-pill flex-shrink-0 ms-1" style="background:' . $badge_color . '22;color:' . $badge_color . ';font-size:10px">' . $days_left . '</span>
-                                    </div>
-                                    <div class="text-truncate text-muted" style="font-size:11px">' . h($offer['rule_name'] ?: '—') . '</div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => 'edit_offer.php?id=' . $offer['id'],
+                                'color' => $badge_color,
+                                'badge' => '<i class="bi bi-alarm"></i>',
+                                'name'  => h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')),
+                                'aside' => $days_left,
+                                'meta'  => h($offer['rule_name'] ?: '—'),
+                            ));
                         }
                     }
 
                     // ── Section: Active Offers (only shown when non-empty) ────
                     if (!empty($active)) {
-                        $output_rows .= '
-                        <div class="d-flex align-items-center px-2 py-1 border-bottom small' . (!empty($expiring) ? ' mt-1' : '') . '">
-                            <i class="bi bi-tag-fill text-success me-1"></i>
-                            <span class="text-success fw-semibold flex-grow-1">' . lang('Active Offers') . '</span>
-                            <span class="text-muted">' . lang('Days Left') . '</span>
-                        </div>';
+                        $output_rows .= pg_widget_row_heading('<i class="bi bi-tag-fill text-success"></i> <span class="text-success">' . lang('Active Offers') . '</span>', lang('Days Left'));
                         foreach ($active as $offer) {
                             $days_left = max(0, (int) ceil((strtotime($offer['end_date']) - strtotime($today)) / 86400));
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-1 border-bottom pointer" onclick="window.location.href=\'edit_offer.php?id=' . $offer['id'] . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-truncate" style="font-size:13px">' . h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')) . '</span>
-                                        <span class="badge rounded-pill flex-shrink-0 ms-1" style="background:rgba(16,185,129,.15);color:#10b981;font-size:10px">' . $days_left . '</span>
-                                    </div>
-                                    <div class="text-truncate text-muted" style="font-size:11px">' . h($offer['rule_name'] ?: '—') . '</div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => 'edit_offer.php?id=' . $offer['id'],
+                                'color' => '#10b981',
+                                'badge' => '<i class="bi bi-tag-fill"></i>',
+                                'name'  => h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')),
+                                'aside' => $days_left,
+                                'meta'  => h($offer['rule_name'] ?: '—'),
+                            ));
                         }
                     }
 
                     // ── Section: Expired (only shown when non-empty) ──────────
                     if (!empty($expired)) {
-                        $output_rows .= '
-                        <div class="d-flex align-items-center px-2 py-1 border-bottom small mt-1">
-                            <i class="bi bi-tag text-muted me-1"></i>
-                            <span class="text-muted fw-semibold flex-grow-1">' . lang('Expired') . '</span>
-                            <span class="text-muted">' . lang('End Date') . '</span>
-                        </div>';
+                        $output_rows .= pg_widget_row_heading(lang('Expired'), lang('End Date'));
                         foreach ($expired as $offer) {
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-1 border-bottom pointer opacity-50" onclick="window.location.href=\'edit_offer.php?id=' . $offer['id'] . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-truncate" style="font-size:13px">' . h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . h($offer['end_date']) . '</span>
-                                    </div>
-                                    <div class="text-truncate text-muted" style="font-size:11px">' . h($offer['rule_name'] ?: '—') . '</div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => 'edit_offer.php?id=' . $offer['id'],
+                                'color' => '#94a3b8',
+                                'badge' => '<i class="bi bi-tag"></i>',
+                                'name'  => h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')),
+                                'aside' => h($offer['end_date']),
+                                'meta'  => h($offer['rule_name'] ?: '—'),
+                            ));
                         }
                     }
 
                     // ── Global empty state ────────────────────────────────────
                     if ($output_rows === '') {
-                        $output_rows = '<div class="px-2 py-4 text-center text-muted small">
-                            <i class="bi bi-tag d-block mb-1" style="font-size:24px"></i>'
+                        $output_rows = '<div class="pg-row-empty text-muted small">
+                            <i class="bi bi-tag"></i>'
                             . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Offer'))) .
                             '</div>';
                     }
 
                     $output_data = '
-                    <div class="card-body p-0 overflow-auto" style="max-height:300px;overflow-x:hidden;">
-                        ' . $output_rows . '
+                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                        <div class="pg-list">' . $output_rows . '</div>
                     </div>';
 
                     $response = array(
@@ -3556,17 +3944,13 @@ switch ($action) {
                             $output_link_url = 'edit_currency.php?id=' . $currency['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
                             if ($currency['base'] != 1) {
                                 $rate_display = number_format((1 / $currency['exchange_rate']), 5);
-                                $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'' . $output_link_url . '\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded fw-bold" style="width:36px;height:36px;background:rgba(20,184,166,.1);color:#14b8a6;font-size:13px">' . $currency['symbol'] . '</div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate" style="font-size:13px">' . h($currency['code']) . ' &mdash; ' . h($currency['name']) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1 fw-semibold" style="font-size:12px">' . h($currency['exchange_rate']) . '</span>
-                                    </div>
-                                    <div class="text-muted" style="font-size:11px">1 ' . $currency['symbol'] . ' = ' . $rate_display . ' ' . BASE_CURRENCY_SYMBOL . '</div>
-                                </div>
-                            </div>';
+                                $output_rows .= pg_widget_row(array(
+                                    'href'  => $output_link_url,
+                                    'badge' => $currency['symbol'],
+                                    'name'  => h($currency['code']) . ' &mdash; ' . h($currency['name']),
+                                    'aside' => h($currency['exchange_rate']),
+                                    'meta'  => '1 ' . $currency['symbol'] . ' = ' . $rate_display . ' ' . BASE_CURRENCY_SYMBOL,
+                                ));
                             }
                         }
                     } else {
@@ -3574,8 +3958,8 @@ switch ($action) {
                     }
 
                     $output_data = '
-                        <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                            ' . $output_rows . '
+                        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                            <div class="pg-list">' . $output_rows . '</div>
                         </div>';
 
                     //return success json output
@@ -3626,22 +4010,13 @@ switch ($action) {
                                 $log_user = lang('UNKNOWN');
                             }
                             // output style row
-                            $output_rows .= '
-                            <div class="d-flex align-items-center px-2 py-2 border-bottom pointer" onclick="window.location.href=\'view_log.php\'" style="gap:8px;cursor:pointer">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded" style="width:30px;height:30px;background:rgba(0,0,0,.05)">
-                                    <i class="bi bi-journal-text" style="color:var(--settings-color);font-size:14px"></i>
-                                </div>
-                                <div class="flex-fill overflow-hidden">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-truncate fw-semibold" style="font-size:13px">' . h($log_user) . '</span>
-                                        <span class="badge rounded-pill flex-shrink-0 ms-1" style="background:rgba(0,0,0,.06);color:inherit;font-size:10px">IP: ' . h($log_ip) . '</span>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-truncate text-muted" style="font-size:11px">' . convert_text_to_html($log_description) . '</span>
-                                        <span class="text-muted flex-shrink-0 ms-1" style="font-size:10px">' . get_relative_time(array('timestamp' => $log_timestamp)) . '</span>
-                                    </div>
-                                </div>
-                            </div>';
+                            $output_rows .= pg_widget_row(array(
+                                'href'  => 'view_log.php',
+                                'badge' => '<i class="bi bi-journal-text"></i>',
+                                'name'  => h($log_user),
+                                'aside' => get_relative_time(array('timestamp' => $log_timestamp)),
+                                'meta'  => convert_text_to_html($log_description) . ' &middot; IP ' . h($log_ip),
+                            ));
 
                         }
                     } else {
@@ -3652,8 +4027,8 @@ switch ($action) {
 
 
                     $output_data = '
-                        <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                            ' . $output_rows . '
+                        <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
+                            <div class="pg-list">' . $output_rows . '</div>
                         </div>';
 
                     //return success json output
@@ -3676,44 +4051,371 @@ switch ($action) {
                 }
 
             case '18':
-                if ($user['role'] < 1) {
-                    $query = "SELECT notes_widget_data FROM dashboard";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $dashboard = mysqli_fetch_assoc($result);
-                    $notes_widget_data = $dashboard['notes_widget_data'];
-                    $notes_widget_data = quoted_printable_decode(base64_decode($notes_widget_data));
-                    $output_data = '
-                    <div class="card-body p-1 overflow-auto">
-                        <div id="editor" contenteditable="true" class="ql-container h-100 ql-snow"><span class="ql-editor">' . $notes_widget_data . '</span></div>
-                    </div>
-                    <div class="card-footer justify-content-center d-flex flex-wrap">
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn py-0 border-0 btn-outline-success disabled" id="submit_note">' . lang('Save') . '</button>
-                            <button class="btn py-0 border-0 btn-outline-secondary disabled" id="clear_note">' . lang('Clear') . '</button>
-                        </div>
-                        <script>
-                            init_editor();
-                        </script>
-                    </div>';
-                    //return success json output
-                    $response = array(
-                        'status' => 'success',
-                        'message' => 'Action Success',
-                        'data' => $output_data,
-                    );
-                    echo encode_json($response);
-                    exit();
-                    break;
+                // ── File Management ─────────────────────────────────────
+                //
+                // Two lists, in the order an operator acts on them: images
+                // that can still be made lighter without changing how they
+                // look, then the heaviest files on the site whatever their
+                // type.
+                //
+                // Keeps the id of the Admin Notes widget it replaced, so a
+                // dashboard whose stored order already contains "18" picks
+                // this up in the same slot with no reset and no migration.
+                //
+                // Scoped to what the user may actually edit, so the widget
+                // never advertises a file that answers with access denied on
+                // click:
+                //
+                //   0 administrator  everything
+                //   1 designer       everything
+                //   2 manager        design files excluded — view_files.php
+                //                    and optimize.php both refuse them above
+                //                    role 1, so listing them would only
+                //                    produce a dead end
+                //   3 contributor    design files excluded, and narrowed to
+                //                    the folders granted with edit rights
+                //
+                // Archived folders are left out for everyone, matching the
+                // default view_files.php listing.
 
-                } else {
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'Access denied'
-                    );
-                    echo encode_json($response);
-                    exit();
-                    break;
+                // Above this an image is too heavy for a web page however
+                // well it is compressed, so it is reported even when the row
+                // is already flagged optimized. Optimizing strips metadata
+                // and recompresses; it does not resize, and a 6000 px photo
+                // stays a 6000 px photo. Those rows get a resize suggestion
+                // instead of an optimize button, because that is the only
+                // thing left that would help.
+                $fm_large_image_bytes = 3 * 1024 * 1024;
+
+                // The optimize list is the one that gets worked through, so
+                // it carries the longer allowance. The size list only has to
+                // answer "what is taking up the room", which the top few do.
+                $fm_optimize_limit = 10;
+                $fm_largest_limit  = 5;
+
+                // Exactly what optimize_image() accepts. 'tif' is absent on
+                // purpose: optimize.php answers that spelling with "we don't
+                // support optimizing that type of file", so offering the
+                // button for one would hand the operator a guaranteed error.
+                $fm_optimizable_types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+
+                // Everything counted as an image, which is the wider set: the
+                // column stores whatever extension was uploaded, and a .tif
+                // too heavy for a page is still too heavy for a page even
+                // though nothing here can recompress it.
+                $fm_image_types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif', 'webp');
+
+                // Without one of these there is nothing to run the image
+                // through, so the button is withheld rather than offered and
+                // then failing.
+                $fm_optimizer_available = (extension_loaded('imagick') || extension_loaded('gd'));
+
+                $fm_where = "(folder.folder_archived = '0')";
+
+                // Design files belong to designers and administrators.
+                if ($user['role'] > 1) {
+                    $fm_where .= " AND (files.design = '0')";
                 }
+
+                $fm_no_access = false;
+
+                // Contributors see only the folders they were granted edit
+                // rights on, plus those folders' children. Resolved into the
+                // WHERE clause rather than by filtering rows afterwards: on a
+                // site with thousands of files, reading them all to discard
+                // most would make this the most expensive card on a dashboard
+                // that reloads on every visit.
+                if ($user['role'] == 3) {
+
+                    $fm_folders = get_folders_that_user_has_access_to($user['id']);
+
+                    if ($fm_folders) {
+
+                        $fm_folder_ids = array();
+
+                        foreach ($fm_folders as $fm_folder_id) {
+                            $fm_folder_ids[] = "'" . e($fm_folder_id) . "'";
+                        }
+
+                        $fm_where .= " AND (files.folder IN (" . implode(',', $fm_folder_ids) . "))";
+
+                    } else {
+                        // Granted nothing: no query can return a row this user
+                        // is allowed to touch.
+                        $fm_no_access = true;
+                    }
+                }
+
+                $fm_image_list = array();
+
+                foreach ($fm_image_types as $fm_image_type) {
+                    $fm_image_list[] = "'" . e($fm_image_type) . "'";
+                }
+
+                $fm_image_list = implode(',', $fm_image_list);
+
+                $fm_optimizable_list = array();
+
+                foreach ($fm_optimizable_types as $fm_optimizable_type) {
+                    $fm_optimizable_list[] = "'" . e($fm_optimizable_type) . "'";
+                }
+
+                $fm_optimizable_list = implode(',', $fm_optimizable_list);
+
+                $fm_optimize_items = array();
+                $fm_largest_items  = array();
+                $fm_optimize_total = 0;
+
+                if (!$fm_no_access) {
+
+                    // One pass for both reasons a picture lands on this list.
+                    //
+                    // Never optimized, and of a type optimize.php will accept
+                    // — an unoptimized .tif is left out because there is no
+                    // action to offer for it and a row with no action is just
+                    // a row the operator cannot clear.
+                    //
+                    // Or over the size ceiling, whatever the flag says and
+                    // whatever the type: too heavy is too heavy.
+                    //
+                    // Ordered by size so the rows worth the operator's time
+                    // are the ones that fit.
+                    $fm_optimize_condition =
+                        "(((LOWER(files.type) IN (" . $fm_optimizable_list . ")) AND (files.optimized = '0'))
+                          OR ((LOWER(files.type) IN (" . $fm_image_list . ")) AND (files.size > " . (int) $fm_large_image_bytes . ")))";
+
+                    $fm_result = mysqli_query(
+                        db::$con,
+                        "SELECT
+                            files.id,
+                            files.name,
+                            files.type,
+                            files.size,
+                            files.optimized,
+                            files.optimization_percent,
+                            files.design
+                         FROM files
+                         LEFT JOIN folder ON files.folder = folder.folder_id
+                         WHERE " . $fm_where . "
+                           AND " . $fm_optimize_condition . "
+                         ORDER BY files.size DESC
+                         LIMIT " . (int) $fm_optimize_limit
+                    );
+
+                    $fm_optimize_items = $fm_result ? mysqli_fetch_items($fm_result) : array();
+
+                    // The list is capped at ten, so the count is what tells an
+                    // operator whether they are looking at the whole backlog
+                    // or the top of it.
+                    $fm_optimize_total = (int) db_value(
+                        "SELECT COUNT(*)
+                         FROM files
+                         LEFT JOIN folder ON files.folder = folder.folder_id
+                         WHERE " . $fm_where . "
+                           AND " . $fm_optimize_condition
+                    );
+
+                    // Every type, not just images: a 40 MB video or an
+                    // uncompressed PDF costs the same disk and the same
+                    // backup as a photo does.
+                    $fm_result = mysqli_query(
+                        db::$con,
+                        "SELECT
+                            files.id,
+                            files.name,
+                            files.type,
+                            files.size
+                         FROM files
+                         LEFT JOIN folder ON files.folder = folder.folder_id
+                         WHERE " . $fm_where . "
+                         ORDER BY files.size DESC
+                         LIMIT " . (int) $fm_largest_limit
+                    );
+
+                    $fm_largest_items = $fm_result ? mysqli_fetch_items($fm_result) : array();
+                }
+
+                // File names carry meaning at both ends — what it is at the
+                // front, what it is at the back — so long ones lose the
+                // middle rather than either edge.
+                $fm_shorten = function ($fm_text, $fm_max = 30) {
+
+                    if (mb_strlen($fm_text) <= $fm_max) {
+                        return $fm_text;
+                    }
+
+                    $fm_head = (int) floor(($fm_max - 1) / 2);
+                    $fm_tail = $fm_max - 1 - $fm_head;
+
+                    return mb_substr($fm_text, 0, $fm_head) . '…' . mb_substr($fm_text, -$fm_tail);
+                };
+
+                $fm_optimize_rows = '';
+
+                foreach ($fm_optimize_items as $fm_item) {
+
+                    $fm_size      = (int) $fm_item['size'];
+                    $fm_too_large = ($fm_size > $fm_large_image_bytes);
+                    $fm_can_run   = ((!$fm_item['optimized'])
+                        && $fm_optimizer_available
+                        && in_array(mb_strtolower($fm_item['type']), $fm_optimizable_types));
+
+                    // Read from the cached column only. Filling it in means
+                    // decoding and recompressing the image, which view_files.php
+                    // does deliberately and under a threshold; a dashboard that
+                    // every logged-in user loads is the wrong place to start
+                    // that work.
+                    $fm_percent = '';
+
+                    if ($fm_can_run
+                        && ($fm_item['optimization_percent'] !== null)
+                        && ($fm_item['optimization_percent'] !== '')
+                        && ((int) $fm_item['optimization_percent'] > 0)
+                    ) {
+                        $fm_percent = '<span class="ps-1" style="font-size:10px">' . (int) $fm_item['optimization_percent'] . '%</span>';
+                    }
+
+                    $fm_action = '';
+
+                    if ($fm_can_run) {
+
+                        // send_to is a fixed keyword rather than a URL:
+                        // optimize.php turns it into a hard-coded address, so
+                        // nothing a visitor puts in the query string can
+                        // become a redirect target.
+                        $fm_action = '
+                        <a class="btn btn-sm btn-outline-success border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+                           title="' . lang('Optimize this image') . '"
+                           href="optimize.php?id=' . h($fm_item['id']) . get_token_query_string_field() . '&amp;send_to=welcome"><i class="bi bi-fast-forward-circle"></i>' . $fm_percent . '</a>';
+
+                    } elseif ($fm_too_large && (!$fm_item['design'])) {
+
+                        // Already optimized and still heavy, so compression
+                        // has nothing left to give and only resizing will.
+                        //
+                        // Design files are excluded even for administrators:
+                        // image_editor_edit.php refuses to save over one at
+                        // any role, so the link would open an editor whose
+                        // save button always fails. The row still carries the
+                        // size warning, it just has nothing to offer.
+                        $fm_action = '
+                        <a class="btn btn-sm btn-outline-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+                           title="' . lang(array('string' => 'Edit this image with {var:1}', 'vars' => array(lang('Image Editor')))) . '"
+                           href="image_editor_edit.php?file_name=' . rawurlencode($fm_item['name']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '"><i class="bi bi-arrows-angle-contract"></i></a>';
+                    }
+
+                    $fm_note = '';
+
+                    if ($fm_too_large) {
+                        $fm_note = '
+                        <div class="text-warning" style="font-size:10px;line-height:1.3">' . lang('The file is very large, please make it smaller if possible.') . '</div>';
+                    }
+
+                    $fm_optimize_rows .= '
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center" style="gap:6px">
+                            <span class="text-truncate flex-fill" style="font-size:12px" title="' . h($fm_item['name']) . '">' . h($fm_shorten($fm_item['name'])) . '</span>
+                            <span class="text-muted flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
+                            ' . $fm_action . '
+                        </div>
+                        ' . $fm_note . '
+                    </div>';
+                }
+
+                if ($fm_optimize_rows === '') {
+                    $fm_optimize_rows = '
+                    <div class="text-center py-3">
+                        <i class="bi bi-check2-circle d-block mb-1 text-success" style="font-size:22px;opacity:.8"></i>
+                        <p class="text-muted mb-0" style="font-size:12px">' . lang('Congratulations, there are no files that need optimizing.') . '</p>
+                    </div>';
+                }
+
+                // Bars are scaled against the biggest file on the list rather
+                // than an absolute ceiling: with one 200 MB archive present,
+                // every other bar would round away to nothing.
+                $fm_peak = 0;
+
+                foreach ($fm_largest_items as $fm_item) {
+                    if ((int) $fm_item['size'] > $fm_peak) {
+                        $fm_peak = (int) $fm_item['size'];
+                    }
+                }
+
+                $fm_largest_rows = '';
+
+                foreach ($fm_largest_items as $fm_item) {
+
+                    $fm_size  = (int) $fm_item['size'];
+                    $fm_width = ($fm_peak > 0) ? (int) round(100 * $fm_size / $fm_peak) : 0;
+
+                    if ($fm_width < 3) {
+                        $fm_width = 3;
+                    }
+
+                    // One neutral colour for every bar. A large video or
+                    // archive is not a fault the way an unoptimized photo is,
+                    // and colouring it as one would train the operator to
+                    // ignore the warning that does mean something.
+                    $fm_largest_rows .= '
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center justify-content-between" style="gap:6px">
+                            <a class="text-truncate text-decoration-none" style="font-size:12px"
+                               title="' . h($fm_item['name']) . '"
+                               href="edit_file.php?id=' . h($fm_item['id']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '">' . h($fm_shorten($fm_item['name'])) . '</a>
+                            <span class="text-muted flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
+                        </div>
+                        <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)">
+                            <div class="progress-bar bg-secondary" style="width:' . $fm_width . '%"></div>
+                        </div>
+                    </div>';
+                }
+
+                if ($fm_largest_rows === '') {
+                    $fm_largest_rows = '
+                    <div class="text-center py-3">
+                        <i class="bi bi-folder2-open d-block mb-1" style="font-size:22px;opacity:.35"></i>
+                        <p class="text-muted mb-0" style="font-size:12px">' . lang('No files found.') . '</p>
+                    </div>';
+                }
+
+                // Said out loud only when it applies, so the absent buttons
+                // read as a server limitation rather than a broken widget.
+                $fm_optimizer_note = '';
+
+                if ((!$fm_optimizer_available) && $fm_optimize_items) {
+                    $fm_optimizer_note = '
+                    <div class="px-3 pb-2">
+                        <div class="text-muted" style="font-size:10px">' . lang('Image optimization is not available on this server.') . '</div>
+                    </div>';
+                }
+
+                $output_data = '
+                <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
+                    <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
+                        <span class="text-muted" style="font-size:11px">' . lang('Needs optimizing') . '</span>
+                        <span class="text-muted" style="font-size:10px">' . number_format($fm_optimize_total) . '</span>
+                    </div>
+                    <div class="px-3 pb-1">' . $fm_optimize_rows . '</div>
+                    ' . $fm_optimizer_note . '
+                    <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1 border-top">
+                        <span class="text-muted" style="font-size:11px">' . lang('Largest files') . '</span>
+                        <span class="text-muted" style="font-size:10px">' . lang(array('string' => 'Top {var:1}', 'vars' => number_format($fm_largest_limit))) . '</span>
+                    </div>
+                    <div class="px-3 pb-2">' . $fm_largest_rows . '</div>
+                </div>
+                <div class="card-footer border-0 bg-reset py-1 text-center">
+                    <a href="view_files.php" class="text-decoration-none" style="font-size:11px">'
+                    . lang('Files') . ' <i class="bi bi-arrow-right-short"></i></a>
+                </div>';
+
+                $response = array(
+                    'status' => 'success',
+                    'message' => 'Action Success',
+                    'data' => $output_data,
+                );
+                echo encode_json($response);
+                exit();
+                break;
 
             case '19':
                 if ($user['role'] < 3) {
@@ -4832,23 +5534,363 @@ switch ($action) {
                     exit();
                     break;
                 }
-            case 'system_status':
-                if ($user['role'] < 3) {
-                    $response = array(
-                        'status' => 'success',
-                        'message' => 'Action Success',
-                        'data' => get_system_status_icons(),
-                    );
-                } else {
-                    $response = array(
-                        'status' => 'error',
-                        'message' => 'Access denied',
-                    );
+
+            case '24':
+
+                // Empty slot. The activity summary that lived here counted
+                // orders, forms and contacts over eight days -- twenty-four
+                // COUNT queries per dashboard load -- and showed all three to
+                // anyone holding manage_ecommerce, although the forms and
+                // contacts widgets are gated on manage_forms and
+                // manage_contacts. Each figure now heads the widget it belongs
+                // to, behind that widget's own permission.
+                //
+                // The id is answered rather than removed because of the
+                // upgrade window. welcome.php no longer prints a card for 2, so
+                // a fresh page never asks -- but a tab left open across the
+                // update still holds the old card and asks on its first run.
+                // The switch's default branch answers 'Invalid widget id', and
+                // the dashboard only replaces a placeholder on status success,
+                // so that card would sit on its skeleton until reload. An empty
+                // success clears it instead.
+                $response = array(
+                    'status' => 'success',
+                    'message' => lang('Data Received successfully.'),
+                    'data' => '',
+                );
+                echo encode_json($response);
+                exit();
+                break;
+            case '25':
+                // ── Comment moderation ──────────────────────────────────
+                //
+                // An unapproved comment is invisible to the person who wrote
+                // it and to everyone else, and nothing on the dashboard has
+                // ever said one was waiting. view_comments.php exists, but a
+                // queue nobody is reminded of is a queue that grows.
+                //
+                // Scope follows view_comments.php exactly: the comment's page
+                // decides, through its folder. check_edit_access() returns
+                // true for every folder below role 3, so only contributors
+                // need the folder list — and resolving it in SQL keeps this
+                // to two queries instead of one recursive access check per
+                // row.
+                $cm_where = "(comments.published = '0')";
+                $cm_no_access = false;
+
+                if ($user['role'] == 3) {
+
+                    $cm_folders = get_folders_that_user_has_access_to($user['id']);
+
+                    if ($cm_folders) {
+
+                        $cm_folder_ids = array();
+
+                        foreach ($cm_folders as $cm_folder_id) {
+                            $cm_folder_ids[] = "'" . e($cm_folder_id) . "'";
+                        }
+
+                        $cm_where .= " AND (page.page_folder IN (" . implode(',', $cm_folder_ids) . "))";
+
+                    } else {
+                        $cm_no_access = true;
+                    }
                 }
+
+                $cm_items = array();
+                $cm_total = 0;
+
+                if (!$cm_no_access) {
+
+                    $cm_items = db_items(
+                        "SELECT
+                            comments.id,
+                            comments.name,
+                            comments.message,
+                            comments.rating,
+                            comments.created_timestamp,
+                            page.page_name
+                         FROM comments
+                         LEFT JOIN page ON comments.page_id = page.page_id
+                         WHERE " . $cm_where . "
+                         ORDER BY comments.created_timestamp DESC
+                         LIMIT 5");
+
+                    $cm_total = (int) db_value(
+                        "SELECT COUNT(*)
+                         FROM comments
+                         LEFT JOIN page ON comments.page_id = page.page_id
+                         WHERE " . $cm_where);
+                }
+
+                $cm_rows = '';
+
+                foreach ($cm_items as $cm_item) {
+
+                    // The stored body is rich text from the comment form.
+                    // Tags are stripped rather than rendered: this is a
+                    // three-line preview inside a card, and a stray <div> or
+                    // an unclosed tag would take the widget's layout with it.
+                    $cm_preview = trim(preg_replace('/\s+/', ' ', strip_tags($cm_item['message'])));
+
+                    if (mb_strlen($cm_preview) > 90) {
+                        $cm_preview = mb_substr($cm_preview, 0, 89) . '…';
+                    }
+
+                    $cm_stars = '';
+
+                    if ((int) $cm_item['rating'] > 0) {
+                        $cm_stars = '<span class="text-warning ms-1 flex-shrink-0" style="font-size:10px">'
+                            . str_repeat('★', min(5, (int) $cm_item['rating'])) . '</span>';
+                    }
+
+                    $cm_where_text = ($cm_item['page_name'] != '')
+                        ? $cm_item['page_name']
+                        : lang('Unknown');
+
+                    $cm_rows .= '
+                    <a class="d-block px-3 py-2 border-top text-decoration-none text-body" href="edit_comment.php?id=' . (int) $cm_item['id'] . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/view_comments.php') . '">
+                        <div class="d-flex align-items-center" style="gap:6px">
+                            <span class="text-truncate fw-semibold" style="font-size:12px">' . h($cm_item['name'] != '' ? $cm_item['name'] : lang('Unknown')) . '</span>
+                            ' . $cm_stars . '
+                            <span class="text-muted ms-auto flex-shrink-0" style="font-size:10px">' . get_relative_time(array('timestamp' => (int) $cm_item['created_timestamp'])) . '</span>
+                        </div>
+                        <div class="text-muted" style="font-size:11px;line-height:1.35">' . h($cm_preview) . '</div>
+                        <div class="text-muted text-truncate" style="font-size:10px;opacity:.75">' . h($cm_where_text) . '</div>
+                    </a>';
+                }
+
+                if ($cm_rows === '') {
+                    $cm_rows = '
+                    <div class="text-center py-4">
+                        <i class="bi bi-check2-circle d-block mb-2 text-success" style="font-size:22px;opacity:.8"></i>
+                        <p class="text-muted mb-0" style="font-size:12px">' . lang('No comments are waiting for approval.') . '</p>
+                    </div>';
+                }
+
+                // The list stops at five; the number says whether that is the
+                // whole queue or the top of it.
+                $cm_more = '';
+
+                if ($cm_total > count($cm_items)) {
+                    $cm_more = '
+                    <div class="px-3 py-1 text-center border-top">
+                        <span class="text-muted" style="font-size:10px">' . lang(array(
+                            'string' => '{var:1} more waiting',
+                            'vars'   => number_format($cm_total - count($cm_items)),
+                        )) . '</span>
+                    </div>';
+                }
+
+                $output_data = '
+                <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
+                    <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
+                        <span class="text-muted" style="font-size:11px">' . lang('Waiting for approval') . '</span>
+                        <span class="fw-semibold text-' . ($cm_total > 0 ? 'warning' : 'success') . '" style="font-size:15px">' . number_format($cm_total) . '</span>
+                    </div>
+                    ' . $cm_rows . '
+                    ' . $cm_more . '
+                </div>
+                <div class="card-footer border-0 bg-reset py-1 text-center">
+                    <a href="view_comments.php" class="text-decoration-none" style="font-size:11px">'
+                    . lang('Comments') . ' <i class="bi bi-arrow-right-short"></i></a>
+                </div>';
+
+                $response = array(
+                    'status' => 'success',
+                    'message' => 'Action Success',
+                    'data' => $output_data,
+                );
                 echo encode_json($response);
                 exit();
                 break;
 
+            case '26':
+                // ── Pending refunds ─────────────────────────────────────
+                //
+                // cancel_order.php is customer-facing self-service. A customer
+                // cancels; Iyzipay's auto-refund either fails or was never
+                // possible for that payment method; process_order_cancellation()
+                // writes orders.refund_status = 'manual_required' and a
+                // REFUND ACTION REQUIRED line into the activity log.
+                //
+                // That log line was the only thing on the operator's side. On
+                // the customer's side the cancellation email already says
+                // "Payment refunds are processed manually. Please contact us
+                // for refund status." — so the software has made a promise
+                // that nothing in the panel reminded anyone to keep.
+                //
+                // view_orders.php filters on orders.status, so "cancelled" is
+                // reachable but "still owes a refund" was not; the flag showed
+                // up one order at a time on view_order.php. A refund filter is
+                // added there in the same change for the full list — this card
+                // exists to say the queue is non-empty at all.
+                //
+                // Oldest first: a customer waiting on money escalates to a
+                // chargeback, and the fee plus the gateway risk score costs
+                // more than the refund did.
+                if (defined('ECOMMERCE') && ECOMMERCE
+                    && (($user['role'] < 3) || (isset($user['manage_ecommerce']) && $user['manage_ecommerce']))
+                ) {
+
+                    // Columns arrive with the 2026.1.27 upgrade. Without them
+                    // there is nothing to report and nothing is wrong — an
+                    // installation that has not been upgraded is not an
+                    // installation with unpaid refunds.
+                    if (!db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'")) {
+
+                        $output_data = '
+                        <div class="card-body d-flex align-items-center justify-content-center text-center">
+                            <div>
+                                <i class="bi bi-database-exclamation d-block mb-2" style="font-size:22px;opacity:.4"></i>
+                                <p class="text-muted mb-0" style="font-size:12px">' . lang('The refund columns do not exist yet. Please run the software upgrade to create them.') . '</p>
+                            </div>
+                        </div>';
+
+                        $response = array('status' => 'success', 'message' => 'Action Success', 'data' => $output_data);
+                        echo encode_json($response);
+                        exit();
+                        break;
+                    }
+
+                    // 'pending' and 'failed' belong here as much as
+                    // 'manual_required': all three mean money has not gone
+                    // back yet. Only 'refunded' and '' are settled.
+                    //
+                    // No orders.status test. refund_status is written by the
+                    // cancellation path alone, so it already implies a
+                    // cancelled order, and adding the condition would push the
+                    // planner off idx_refund_status for nothing.
+                    $rf_states = "('manual_required', 'failed', 'pending')";
+
+                    // Grouped by currency on purpose. Summing a 500 TRY refund
+                    // and a 40 EUR refund into "540" would be a made-up number
+                    // on any multi-currency shop, so the total is only shown
+                    // when every waiting refund is in one currency; otherwise
+                    // the count stands on its own.
+                    $rf_groups = db_items(
+                        "SELECT currency_code, COUNT(*) AS orders_count, SUM(total) AS orders_total
+                         FROM orders
+                         WHERE refund_status IN " . $rf_states . "
+                         GROUP BY currency_code");
+
+                    $rf_total_count = 0;
+
+                    foreach ($rf_groups as $rf_group) {
+                        $rf_total_count += (int) $rf_group['orders_count'];
+                    }
+
+                    $rf_amount_line = '';
+
+                    if (count($rf_groups) === 1) {
+                        $rf_amount_line = number_format(((float) $rf_groups[0]['orders_total']) / 100, 2, ',', '.')
+                            . ' ' . h($rf_groups[0]['currency_code']);
+                    }
+
+                    $rf_items = db_items(
+                        "SELECT
+                            orders.id,
+                            orders.order_number,
+                            orders.billing_first_name,
+                            orders.billing_last_name,
+                            orders.total,
+                            orders.currency_code,
+                            orders.cancelled_at,
+                            orders.refund_status
+                         FROM orders
+                         WHERE orders.refund_status IN " . $rf_states . "
+                         ORDER BY orders.cancelled_at ASC, orders.id ASC
+                         LIMIT 5");
+
+                    $rf_rows = '';
+
+                    foreach ($rf_items as $rf_item) {
+
+                        $rf_waited = time() - (int) $rf_item['cancelled_at'];
+
+                        // Two days is where a refund stops being slow and
+                        // starts being the thing a customer opens a dispute
+                        // about.
+                        $rf_wait_class = ($rf_waited >= 172800) ? 'text-danger' : 'text-warning';
+
+                        $rf_who = trim((string) $rf_item['billing_first_name'] . ' ' . (string) $rf_item['billing_last_name']);
+
+                        if ($rf_who === '') {
+                            $rf_who = lang('Unknown');
+                        }
+
+                        $rf_number = ((string) $rf_item['order_number'] !== '')
+                            ? (string) $rf_item['order_number']
+                            : (string) (int) $rf_item['id'];
+
+                        $rf_rows .= '
+                        <a class="d-block px-3 py-2 border-top text-decoration-none text-body" href="view_order.php?id=' . (int) $rf_item['id'] . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/view_orders.php') . '">
+                            <div class="d-flex align-items-center" style="gap:6px">
+                                <span class="text-truncate fw-semibold" style="font-size:12px">#' . h($rf_number) . ' · ' . h($rf_who) . '</span>
+                                <span class="' . $rf_wait_class . ' ms-auto flex-shrink-0" style="font-size:10px">' . get_relative_time(array('timestamp' => (int) $rf_item['cancelled_at'])) . '</span>
+                            </div>
+                            <div class="text-muted" style="font-size:11px">'
+                                . number_format(((float) $rf_item['total']) / 100, 2, ',', '.') . ' ' . h($rf_item['currency_code'])
+                            . '</div>
+                        </a>';
+                    }
+
+                    if ($rf_rows === '') {
+                        $rf_rows = '
+                        <div class="text-center py-4">
+                            <i class="bi bi-check2-circle d-block mb-2 text-success" style="font-size:22px;opacity:.8"></i>
+                            <p class="text-muted mb-0" style="font-size:12px">' . lang('No refunds are waiting.') . '</p>
+                        </div>';
+                    }
+
+                    $rf_more = '';
+
+                    if ($rf_total_count > count($rf_items)) {
+                        $rf_more = '
+                        <div class="px-3 py-1 text-center border-top">
+                            <span class="text-muted" style="font-size:10px">' . lang(array(
+                                'string' => '{var:1} more waiting',
+                                'vars'   => number_format($rf_total_count - count($rf_items)),
+                            )) . '</span>
+                        </div>';
+                    }
+
+                    $output_data = '
+                    <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
+                        <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
+                            <div class="overflow-hidden">
+                                <span class="text-muted d-block" style="font-size:11px">' . lang('Refund Pending') . '</span>'
+                                . ($rf_amount_line !== ''
+                                    ? '<span class="text-muted text-truncate d-block" style="font-size:10px">' . $rf_amount_line . '</span>'
+                                    : '')
+                            . '</div>
+                            <span class="fw-semibold text-' . ($rf_total_count > 0 ? 'danger' : 'success') . ' flex-shrink-0" style="font-size:15px">' . number_format($rf_total_count) . '</span>
+                        </div>
+                        ' . $rf_rows . '
+                        ' . $rf_more . '
+                    </div>
+                    <div class="card-footer border-0 bg-reset py-1 text-center">
+                        <a href="view_orders.php?status=refund_pending" class="text-decoration-none" style="font-size:11px">'
+                        . lang('Orders') . ' <i class="bi bi-arrow-right-short"></i></a>
+                    </div>';
+
+                    $response = array(
+                        'status' => 'success',
+                        'message' => 'Action Success',
+                        'data' => $output_data,
+                    );
+                    echo encode_json($response);
+                    exit();
+                    break;
+                } else {
+                    $response = array(
+                        'status' => 'error',
+                        'message' => 'Access denied'
+                    );
+                    echo encode_json($response);
+                    exit();
+                    break;
+                }
             // if there is no id.
             default:
                 $response = array(
@@ -5206,9 +6248,16 @@ switch ($action) {
 
         validate_token();
         $user = validate_user();
+
+        // returned in the response below; this branch never fills it
+        $array = array();
         // get all notifications
         $query = "SELECT * FROM notifications ORDER BY timestamp DESC";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // stays empty when there are no notifications
+        $notifications = array();
+
         while ($row = mysqli_fetch_assoc($result)) {
             $notifications[] = $row;
         }
@@ -5313,7 +6362,7 @@ switch ($action) {
         if (isset($request['folder'])) {
             $folder = $request['folder'];
         } else {
-            $folder = $_SESSION['software']['explorer']['folder']['folder_id'];
+            $folder = ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '');
         }
 
         // get file name with and without file extension
@@ -5371,24 +6420,6 @@ switch ($action) {
             'filesize' => h(convert_bytes_to_string(filesize(FILE_DIRECTORY_PATH . '/' . $file_name))),
             'fileid' => $file_id,
             'message' => 'Upload Success'
-        );
-        echo encode_json($response);
-        exit();
-        break;
-
-    case 'update_dashboard_note':
-        $notes = $request['notes'];
-        $notes = base64_encode($notes);
-        $query =
-            "UPDATE dashboard
-            SET
-            notes_widget_data = '$notes'
-        ";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        //return success json output
-        $response = array(
-            'status' => 'success',
-            'message' => 'Dashboard update is successful'
         );
         echo encode_json($response);
         exit();
@@ -5824,8 +6855,8 @@ switch ($action) {
                 curl_setopt($ch, CURLOPT_HEADER, 0);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15); // bağlantı kurma süresi
-                curl_setopt($ch, CURLOPT_TIMEOUT, 120);       // zip indirme için toplam süre
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15); // seconds to establish the connection
+                curl_setopt($ch, CURLOPT_TIMEOUT, 120);       // total seconds allowed for the zip download
 
                 // if there is a proxy address, then send cURL request through proxy
                 if (PROXY_ADDRESS != '') {
@@ -7039,24 +8070,24 @@ switch ($action) {
             $actions[] = array('label' => lang('Order Reports'), 'icon' => 'bi-bar-chart', 'url' => $base_url . '/view_order_reports.php', 'keys' => array('siparis rapor', 'order report', 'rapor sip', 'raporord'));
         }
 
-        // ── Ziyaretçiler / Visitors ───────────────────────────────────────────
+        // ── Visitors ──────────────────────────────────────────────────────────
         $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
         $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
 
-        // ── Kişiler / Contacts ────────────────────────────────────────────────
+        // ── Contacts ──────────────────────────────────────────────────────────
         if ($can_contacts) {
             $actions[] = array('label' => lang('Contacts'), 'icon' => 'bi-people', 'url' => $base_url . '/view_contacts.php', 'keys' => array('kisi', 'kişi', 'contact', 'rehber', 'con', 'kis', 'reh'));
             $actions[] = array('label' => lang('Add Contact'), 'icon' => 'bi-person-plus', 'url' => $base_url . '/add_contact.php', 'keys' => array('kisi ekle', 'add contact', 'yeni kisi', 'kisieki'));
             $actions[] = array('label' => lang('Contact Groups'), 'icon' => 'bi-people-fill', 'url' => $base_url . '/view_contact_groups.php', 'keys' => array('grup kisi', 'contact group', 'kisigrup'));
         }
 
-        // ── Kullanıcılar / Users ──────────────────────────────────────────────
+        // ── Users ─────────────────────────────────────────────────────────────
         if ($can_manage) {
             $actions[] = array('label' => lang('Users'), 'icon' => 'bi-person-gear', 'url' => $base_url . '/view_users.php', 'keys' => array('kullanici', 'kullanıcı', 'user', 'usr', 'kul'));
             $actions[] = array('label' => lang('Add User'), 'icon' => 'bi-person-plus', 'url' => $base_url . '/add_user.php', 'keys' => array('kullanici ekle', 'add user', 'yeni kullanici', 'kullanicieki'));
         }
 
-        // ── Kampanyalar / Campaigns ───────────────────────────────────────────
+        // ── Campaigns ─────────────────────────────────────────────────────────
         if ($can_manage) {
             $actions[] = array('label' => lang('Email Campaigns'), 'icon' => 'bi-megaphone', 'url' => $base_url . '/view_email_campaigns.php', 'keys' => array('kampanya', 'mail', 'email', 'campaign', 'kamp'));
             $actions[] = array('label' => lang('Add Email Campaign'), 'icon' => 'bi-megaphone', 'url' => $base_url . '/add_email_campaign.php', 'keys' => array('kampanya ekle', 'add campaign', 'kampanyaekle'));
@@ -7070,7 +8101,7 @@ switch ($action) {
             $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
         }
 
-        // ── Tasarım / Design ──────────────────────────────────────────────────
+        // ── Design ────────────────────────────────────────────────────────────
         if ($can_design) {
             $actions[] = array('label' => lang('Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
             $actions[] = array('label' => lang('Add Style'), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_style.php', 'keys' => array('stil ekle', 'add style', 'yeni stil', 'stilekle'));
@@ -7436,6 +8467,9 @@ switch ($action) {
                 seo_analysis,
                 seo_analysis_current,
                 sitemap,
+                " . (pg_page_noindex_ready() ? "noindex,
+                nofollow," : "'0' AS noindex,
+                '0' AS nofollow,") . "
                 system_region_header,
                 system_region_footer
             FROM page
@@ -8194,21 +9228,21 @@ switch ($action) {
         validate_area_access($user, 'user');
 
 
-        if (isset($request['folder_id']) && $_SESSION['software']['explorer']['folder']['folder_id'] != $request['folder_id']) {
+        if (isset($request['folder_id']) && ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '') != $request['folder_id']) {
             $_SESSION['software']['explorer']['folder']['folder_id'] = $request['folder_id'];
         }
 
-        $folder_id = $_SESSION['software']['explorer']['folder']['folder_id'];
+        $folder_id = ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '');
         if (!isset($folder_id)) {
             $folder_id = db("SELECT folder_id FROM folder WHERE folder.folder_parent = '0'");
         }
 
 
-        if (isset($request['view_type']) && $_SESSION['software']['explorer']['folder']['view_type'] != $request['view_type']) {
+        if (isset($request['view_type']) && ($_SESSION['software']['explorer']['folder']['view_type'] ?? '') != $request['view_type']) {
             $_SESSION['software']['explorer']['folder']['view_type'] = $request['view_type'];
         }
 
-        $folder_table_view_type = $_SESSION['software']['explorer']['folder']['view_type'];
+        $folder_table_view_type = ($_SESSION['software']['explorer']['folder']['view_type'] ?? '');
 
         if (!isset($folder_table_view_type)) {
             $folder_table_view_type = 'list';
@@ -10071,6 +11105,226 @@ switch ($action) {
         exit();
 
         break;
+}
+
+// Eight daily counts -- seven days ago through today -- for one timestamp
+// column, in ONE query.
+//
+// This replaces what the activity summary widget used to do: eight separate
+// COUNT(*) per metric, twenty-four in total on every dashboard load. The counts
+// are bucketed with CASE rather than GROUP BY on a formatted date, so the WHERE
+// still compares the raw column against a constant and the index on it applies.
+// Wrapping the column in FROM_UNIXTIME() to group by day would defeat exactly
+// the index that makes this cheap.
+//
+// $extra is appended to the WHERE and must already be escaped by the caller.
+function pg_activity_daily($table, $column, $extra = '')
+{
+    $midnight = strtotime(date('Y-m-d'));
+
+    // Boundaries first, oldest to newest, so the buckets below read in the same
+    // order the chart draws them.
+    $edges = array();
+    for ($day = 7; $day >= 0; $day--) {
+        $edges[] = $midnight - ($day * 86400);
+    }
+
+    $sums = array();
+    foreach ($edges as $index => $from) {
+        // The last bucket is today and has no upper edge: nothing is recorded
+        // in the future, and an upper bound of "now" would drop rows written
+        // between building this query and running it.
+        $to = isset($edges[$index + 1]) ? $edges[$index + 1] : 0;
+        $sums[] = ($to > 0)
+            ? "SUM(CASE WHEN $column >= $from AND $column < $to THEN 1 ELSE 0 END) AS d$index"
+            : "SUM(CASE WHEN $column >= $from THEN 1 ELSE 0 END) AS d$index";
+    }
+
+    $row = db_item(
+        "SELECT " . implode(', ', $sums) . "
+         FROM $table
+         WHERE ($column >= " . $edges[0] . ")" . $extra
+    );
+
+    $out = array();
+    for ($index = 0; $index < 8; $index++) {
+        $out[] = isset($row['d' . $index]) ? (int) $row['d' . $index] : 0;
+    }
+
+    return $out;
+}
+
+// Headline for a list widget: today's count, which way it moved against
+// yesterday, the seven day total, and a sparkline of the eight days.
+//
+// One line rather than the block the pending shipments card uses. That card has
+// a dozen rows under it and can spare the height; these three have lists of
+// 52px rows, and a headline that cost 100px would take two of them.
+function pg_widget_headline($properties)
+{
+    $series = $properties['series'];
+    $unit   = $properties['unit'];
+    $rgb    = $properties['rgb'];
+    $id     = $properties['id'];
+
+    $today     = (int) end($series);
+    $yesterday = (int) $series[count($series) - 2];
+    // The series carries eight days so the sparkline has a lead-in point
+    // before the week it labels. The total sums the last seven only --
+    // today plus six -- because that is what the label says.
+    $total     = array_sum(array_slice($series, -7));
+
+    if ($today > $yesterday) {
+        $direction = 'up';
+        $arrow = 'bi-caret-up-fill';
+        $color = 'text-success';
+    } elseif ($today < $yesterday) {
+        $direction = 'down';
+        $arrow = 'bi-caret-down-fill';
+        $color = 'text-danger';
+    } else {
+        $direction = 'flat';
+        $arrow = 'bi-dash';
+        $color = 'text-muted';
+    }
+
+    return '
+    <div class="pg-head">
+        <div class="pg-head-line">
+            <span class="pg-head-num">' . number_format($today) . '</span>
+            <span class="pg-head-unit text-muted">' . $unit . '</span>
+            <i class="bi ' . $arrow . ' pg-head-dir ' . $color . '" title="' . h(lang('Compared to yesterday')) . '"></i>
+            <span class="pg-head-total text-muted">' . lang(array(
+                'string' => 'in 7 days {var:1}',
+                'vars' => '<b>' . number_format($total) . '</b>',
+            )) . '</span>
+        </div>
+        <span class="pg-head-spark"><canvas id="' . $id . '" data-series="' . h(json_encode($series)) . '" data-rgb="' . $rgb . '"></canvas></span>
+    </div>
+    <script>(function(){
+        var el = document.getElementById(' . json_encode($id) . ');
+        if (!el || typeof Chart === "undefined") return;
+        var series = JSON.parse(el.getAttribute("data-series"));
+        var rgb = el.getAttribute("data-rgb");
+        new Chart(el.getContext("2d"), {
+            type: "line",
+            data: { labels: series.map(function(_, i){ return i; }), datasets: [{
+                data: series,
+                borderColor: "rgba("+rgb+",1)", backgroundColor: "rgba("+rgb+",.16)",
+                borderWidth: 1.6, fill: true, tension: 0.35, pointRadius: 0
+            }]},
+            options: {
+                animation: false, responsive: true, maintainAspectRatio: false,
+                plugins: { legend:{display:false}, tooltip:{enabled:false} },
+                scales: { x:{display:false}, y:{display:false, beginAtZero:true} },
+                events: []
+            }
+        });
+    })();</script>';
+}
+
+// Dashboard list row. Every widget that renders a list builds its rows through
+// this, so the cards read as one surface instead of a dozen dialects: an accent
+// tile, a bold title with an optional value beside it, a muted second line, and
+// an arrow. The shape is styled in backend.src.css (.pg-row-*), which is also
+// what lets welcome.php reuse the same boxes for the loading skeleton.
+//
+// Values arrive already escaped, because several callers legitimately pass
+// markup: a product thumbnail, a Bootstrap icon, a formatted amount.
+//
+// 'color' overrides the tile colour. The rule: the tile is the card's accent,
+// so a card reads as one thing, EXCEPT where the row's state is exceptional
+// and worth breaking the pattern for -- a cancelled order, an offer expiring
+// in three days -- or where the row, not the card, is what the colour
+// identifies, as pending shipments does with carriers. Two normal states of
+// the same kind are told apart by the glyph, not by colour.
+//
+// A row with no 'href' renders as a div and drops the arrow, so a list that
+// leads nowhere does not advertise a click that will not happen.
+function pg_widget_row($properties)
+{
+    $href   = $properties['href']   ?? '';
+    $badge  = $properties['badge']  ?? '';
+    $name   = $properties['name']   ?? '';
+    $aside  = $properties['aside']  ?? '';
+    $meta   = $properties['meta']   ?? '';
+    $color  = $properties['color']  ?? '';
+    $target = $properties['target'] ?? '';
+
+    $small = !empty($properties['small']);
+    $muted = !empty($properties['muted']);
+
+    $output_aside  = ($aside !== '') ? '<span class="pg-row-aside text-muted">' . $aside . '</span>' : '';
+    $output_meta   = ($meta !== '') ? '<span class="pg-row-meta d-block text-muted">' . $meta . '</span>' : '';
+    // A row that sets its own tile colour has to bring its own glyph colour
+    // with it, because the CSS variable pairing only covers the card accents.
+    $output_color = ($color !== '')
+        ? ' style="background:' . $color . ';color:' . pg_readable_ink($color) . '"'
+        : '';
+    $output_target = ($target !== '') ? ' target="' . $target . '" rel="noopener"' : '';
+
+    // A real link rather than an onclick handler, so the row is reachable by
+    // keyboard and opens in a new tab on middle click like any other link.
+    $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' opacity-50' : '');
+
+    if ($href !== '') {
+        $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . '>';
+        $close = '<i class="bi bi-arrow-right text-muted pg-row-go"></i></a>';
+    } else {
+        $open  = '<div class="' . $class . '">';
+        $close = '</div>';
+    }
+
+    return $open . '
+        <span class="pg-row-badge"' . $output_color . '>' . $badge . '</span>
+        <span class="pg-row-text">
+            <span class="pg-row-line">
+                <span class="pg-row-name">' . $name . '</span>
+                ' . $output_aside . '
+            </span>
+            ' . $output_meta . '
+        </span>
+        ' . $close;
+}
+
+// White or near-black, whichever reads better on the given background. Mid-tone
+// brand colours are the problem case: white on #f59e0b is 2.15:1, which fails
+// even the 3:1 that a graphical object needs, and some tiles hold initials,
+// which is text and wants 4.5:1. Relative luminance per WCAG 2.1.
+function pg_readable_ink($hex)
+{
+    $hex = ltrim((string) $hex, '#');
+    if (strlen($hex) === 3) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+    if (strlen($hex) !== 6 || !ctype_xdigit($hex)) {
+        return '#fff';
+    }
+
+    $luminance = 0;
+    $weights = array(0.2126, 0.7152, 0.0722);
+    foreach (array(0, 2, 4) as $index => $offset) {
+        $channel = hexdec(substr($hex, $offset, 2)) / 255;
+        $channel = ($channel <= 0.03928)
+            ? $channel / 12.92
+            : pow(($channel + 0.055) / 1.055, 2.4);
+        $luminance += $weights[$index] * $channel;
+    }
+
+    // 0.0593 is #18181b's relative luminance plus the same 0.05 offset.
+    $against_white = 1.05 / ($luminance + 0.05);
+    $against_dark  = ($luminance + 0.05) / 0.0593;
+
+    return ($against_white >= $against_dark) ? '#fff' : '#18181b';
+}
+
+// Section heading inside a list, for the widgets that group their rows --
+// "Top Pages" over "Top Products", "Expiring Soon" over the rest.
+function pg_widget_row_heading($label, $aside = '')
+{
+    return '<div class="pg-row-heading text-muted">' . $label
+        . (($aside !== '') ? '<span class="pg-row-aside">' . $aside . '</span>' : '')
+        . '</div>';
 }
 
 function respond($response)

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -161,7 +161,7 @@ function get_order_form($properties) {
 
                             break;
                             
-                        case 'quantity';
+                        case 'quantity':
                             // assume that the product is not discounted, until we find out otherwise
                             $discounted = FALSE;
                             $discounted_price = '';
@@ -183,7 +183,7 @@ function get_order_form($properties) {
                             
                             break;
                             
-                        case 'donation';
+                        case 'donation':
                             // if the product is available then prepare various info
                             if ($available == TRUE) {
                                 $output_price = VISITOR_CURRENCY_SYMBOL . $form->output_field(array('type'=>'text', 'name'=>'donation_' . $product['id'], 'size'=>'5', 'class'=>'software_input_text', 'style'=>'text-align: right')) . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
@@ -676,7 +676,7 @@ function get_order_form($properties) {
 
                         break;
                         
-                    case 'quantity';
+                    case 'quantity':
                         // assume that the product is not discounted, until we find out otherwise
                         $discounted = FALSE;
                         $discounted_price = '';
@@ -704,7 +704,7 @@ function get_order_form($properties) {
                         
                         break;
                         
-                    case 'donation';
+                    case 'donation':
                         // if the product is available then prepare various info
                         if ($available == TRUE) {
                             $available_donations = true;

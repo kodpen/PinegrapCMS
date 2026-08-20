@@ -28,7 +28,7 @@
  * counterpart and intentionally bypasses the admin gate.
  *
  * @author      Erdal Güral (Kodpen)
- * @copyright   2016–2025 Kodpen
+ * @copyright   2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 

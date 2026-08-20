@@ -5720,6 +5720,59 @@ function initSeoCounters(rules) {
     });
 }
 
+// Search engine indexing switches, shared by the page screens (add_page.php,
+// edit_page.php) and the Visual Editor's style settings panel
+// (add_system_style.php, edit_system_style.php).
+//
+// Both dependent controls are driven from the master switch rather than being
+// left in a state the save would silently discard: a page closed to search
+// engines is dropped from the site map by the save, and nofollow only qualifies
+// a noindex directive, so neither can stand on its own on screen either.
+//
+// The two screens use different element ids, so they are passed in. The page
+// screens post a bare checkbox, where a disabled control sends nothing at all;
+// the style panel pairs each checkbox with a hidden zero, which submits instead.
+// Either way the disabled state and the save agree without trusting each other.
+function bindPageIndexingSwitches(ids) {
+    ids = ids || {};
+
+    var noindex = document.getElementById(ids.noindex || 'noindex');
+
+    if (!noindex) {
+        return;
+    }
+
+    var nofollow = document.getElementById(ids.nofollow || 'nofollow');
+    var sitemap = document.getElementById(ids.sitemap || 'sitemap');
+    var hint = ids.hint ? document.getElementById(ids.hint) : null;
+
+    function applyPageIndexingState() {
+        if (nofollow) {
+            nofollow.disabled = !noindex.checked;
+
+            if (!noindex.checked) {
+                nofollow.checked = false;
+            }
+        }
+
+        if (sitemap) {
+            sitemap.disabled = noindex.checked;
+
+            if (noindex.checked) {
+                sitemap.checked = false;
+            }
+        }
+
+        if (hint) {
+            hint.style.display = noindex.checked ? '' : 'none';
+        }
+    }
+
+    noindex.addEventListener('change', applyPageIndexingState);
+
+    applyPageIndexingState();
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Barcode management and label editor for PineGrap CMS.
    Requires: JsBarcode (loaded from CDN on pages that use barcode features).

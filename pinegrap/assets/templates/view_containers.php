@@ -6,8 +6,8 @@
 	<h1>All Containers</h1>
 	<div class="subheading">All shipping containers (e.g. boxes) that products are packaged in.</div>
 	<form class="search_form">
-		<input type="text" name="query" value="<?=h($_SESSION['software']['ecommerce']['view_containers']['query'])?>" /> <input type="submit" value="Search" class="submit_small_secondary">
-		<?php if ($_SESSION['software']['ecommerce']['view_containers']['query'] != ''): ?>
+		<input type="text" name="query" value="<?=h(($_SESSION['software']['ecommerce']['view_containers']['query'] ?? ''))?>" /> <input type="submit" value="Search" class="submit_small_secondary">
+		<?php if (($_SESSION['software']['ecommerce']['view_containers']['query'] ?? '') != ''): ?>
 		<input type="button" value="Clear" onclick="document.location.href = '<?=h(escape_javascript($_SERVER['PHP_SELF'])) . '?clear=true'?>'" class="submit_small_secondary">
 		<?php endif ?>
 	</form>
@@ -16,15 +16,15 @@
 	</div>
 	<table class="chart">
 		<tr>
-			<th><?=get_column_heading('Name', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th style="text-align: center"><?=get_column_heading('Enabled', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th><?=get_column_heading('Length', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th><?=get_column_heading('Width', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th><?=get_column_heading('Height', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th><?=get_column_heading('Weight', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th style="text-align: right"><?=get_column_heading('Cost', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th><?=get_column_heading('Created', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
-			<th><?=get_column_heading('Last Modified', $_SESSION['software']['ecommerce']['view_containers']['sort'], $_SESSION['software']['ecommerce']['view_containers']['order'])?></th>
+			<th><?=get_column_heading('Name', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th style="text-align: center"><?=get_column_heading('Enabled', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th><?=get_column_heading('Length', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th><?=get_column_heading('Width', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th><?=get_column_heading('Height', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th><?=get_column_heading('Weight', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th style="text-align: right"><?=get_column_heading('Cost', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th><?=get_column_heading('Created', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
+			<th><?=get_column_heading('Last Modified', ($_SESSION['software']['ecommerce']['view_containers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_containers']['order'] ?? ''))?></th>
 		</tr>
 		<?php foreach($containers as $container): ?>
 		<tr class="pointer" onclick="window.location.href='edit_container.php?id=<?=$container['id']?>'">

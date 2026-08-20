@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -32,6 +32,6 @@ if (
     setcookie('software[device_type]', $_SESSION['software']['device_type'], time() + 315360000, '/');
 }
 
-header('Location: ' . URL_SCHEME . HOSTNAME . $_GET['send_to']);
+header('Location: ' . URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? ''));
 exit();
 ?>

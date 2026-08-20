@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -57,7 +57,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         $calendars[] = $row;
         
         // Get current calendar name
-        if ($row['id'] == $_SESSION['software']['calendars']['calendar_id']) {
+        if ($row['id'] == ($_SESSION['software']['calendars']['calendar_id'] ?? '')) {
             $calendar_name = $row['name'];
         }
     }
@@ -71,7 +71,7 @@ if($calendar_name == ''){
     $pg_breadcrumb_items[] = array('label' => lang('All Calendars'));
 }else{
     $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
-    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h($_SESSION['software']['calendars']['calendar_id']) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
+    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
 }
 echo
 
@@ -106,7 +106,7 @@ pg_page_shell(
                 </div>
             </div>
             <div class="card my-4">
-                ' . get_calendar($_SESSION['software']['calendars']['calendar_id'], $calendars, $_SESSION['software']['calendars']['view'], $_SESSION['software']['calendars']['status'], $user, $_SESSION['software']['calendars']['date'], PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event.php') . '
+                ' . get_calendar(($_SESSION['software']['calendars']['calendar_id'] ?? ''), $calendars, ($_SESSION['software']['calendars']['view'] ?? ''), ($_SESSION['software']['calendars']['status'] ?? ''), $user, ($_SESSION['software']['calendars']['date'] ?? ''), PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event.php') . '
             </div>
         </div>
     </div>

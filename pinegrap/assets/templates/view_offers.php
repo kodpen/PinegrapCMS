@@ -15,16 +15,16 @@
                         <thead>
                             <tr>
                                 <th class="noVis"><?=lang('Action')?></th>
-								<th><?=get_column_heading(lang('Offer Code'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th><?=get_column_heading(lang('Message'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th><?=get_column_heading(lang('Rule'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
+								<th><?=get_column_heading(lang('Offer Code'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Message'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Rule'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
 								<th><?=lang('Actions')?></th>
-								<th><?=get_column_heading(lang('Status'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th><?=get_column_heading(lang('Start Date'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th><?=get_column_heading(lang('End Date'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th class="text-center"><?=get_column_heading(lang('Require Code'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th class="text-center"><?=get_column_heading(lang('Best'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
-								<th><?=get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_offers']['sort'], $_SESSION['software']['ecommerce']['view_offers']['order'])?></th>
+								<th><?=get_column_heading(lang('Status'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Start Date'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('End Date'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th class="text-center"><?=get_column_heading(lang('Require Code'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th class="text-center"><?=get_column_heading(lang('Best'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_offers']['order'] ?? ''))?></th>
                             </tr>
                         </thead>
                         <tbody>

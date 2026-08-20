@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -115,6 +115,15 @@ if (!$_POST) {
     $total = number_format($row['total'] / 100, 2, '.', ',');
     $total_cents = (int)$row['total'];
     $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
+
+    // Captured here with the rest of the order fields, and deliberately NOT
+    // read from $row where the refund banner is built further down: $row is
+    // reassigned by half a dozen later queries on this screen, so by that
+    // point it holds another result set entirely. The columns are 2026.1.27
+    // additions, hence the defaults.
+    $order_refund_status    = isset($row['refund_status']) ? (string) $row['refund_status'] : '';
+    $order_refunded_at      = isset($row['refunded_at']) ? (int) $row['refunded_at'] : 0;
+    $order_refund_reference = isset($row['refund_reference']) ? (string) $row['refund_reference'] : '';
     $commission = number_format($row['commission'] / 100, 2, '.', ',');
     $transaction_id = $row['transaction_id'];
     $authorization_code = $row['authorization_code'];
@@ -166,6 +175,10 @@ if (!$_POST) {
     $source = '';
 
     $output_contact_image = '';
+
+    // Only set when a contact image is found below, but read in both branches.
+    $accent_color = '';
+
     if($contact_file_id == 0){
         if($contact_image){
             $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
@@ -896,6 +909,15 @@ if (!$_POST) {
                   if ($liveform->field_in_session('id') == FALSE) {
                     $shipping_tracking_numbers_for_field = '';
 
+                    // array_key_last() needs PHP 7.3, so find the last key once, before the loop.
+                    $last_shipping_tracking_number_key = null;
+
+                    if ($shipping_tracking_numbers) {
+                        end($shipping_tracking_numbers);
+                        $last_shipping_tracking_number_key = key($shipping_tracking_numbers);
+                        reset($shipping_tracking_numbers);
+                    }
+
                     // loop through the shipping tracking numbers in order to prepare value for field
                     foreach ($shipping_tracking_numbers as $shipping_tracking_number => $value) {
                         // if this is not the first shipping tracking number then add a line break
@@ -904,7 +926,7 @@ if (!$_POST) {
                         }
                     
                         
-                        if ($shipping_tracking_number === array_key_last($shipping_tracking_numbers)) {
+                        if ($shipping_tracking_number === $last_shipping_tracking_number_key) {
                             $shipping_tracking_numbers_for_field .= $value['number'];
                         }else{
                             $shipping_tracking_numbers_for_field .= $value['number'] . ',';
@@ -2104,6 +2126,87 @@ if (!$_POST) {
     // modal copy below tells the operator which of the two will happen.
     $output_cancel_button = '';
     $output_cancel_modal  = '';
+
+    // ── Manual refund state ─────────────────────────────────────────────
+    //
+    // process_order_cancellation() writes refund_status = 'manual_required'
+    // when the gateway could not void the payment, or would not have been
+    // asked to. Until 2026.4.10 nothing could clear that: the refund itself
+    // happens in the provider's dashboard, outside this software, so no code
+    // path here ever learned it was done. The flag was therefore permanent,
+    // and the dashboard card built on it would have shown the same orders
+    // forever — a queue that never drains stops being read.
+    //
+    // The button below does not move money. It records the operator's
+    // statement that they moved it, which is the only thing this side can
+    // honestly know, and it leaves an activity log entry naming them.
+    $output_refund_banner = '';
+    $output_refund_modal  = '';
+
+    // From the copy taken next to the main order query; see the note there.
+    $refund_state = $order_refund_status;
+    $refund_amount_text = number_format($total_cents / 100, 2, ',', '.')
+        . ($currency_code != '' ? ' ' . h($currency_code) : '');
+
+    if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
+
+        $output_refund_banner =
+            '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 d-print-none" role="alert">
+                <i class="bi bi-cash-coin"></i>
+                <div class="flex-grow-1">
+                    <strong>' . lang('Refund Pending') . '</strong> · ' . $refund_amount_text . '
+                    <div class="small">' . lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.') . '</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#order-refund-modal">
+                    <i class="bi bi-check2 me-1"></i>' . lang('Mark refund as processed') . '
+                </button>
+            </div>';
+
+        $output_refund_modal =
+            '<div class="modal fade" id="order-refund-modal" tabindex="-1" aria-labelledby="order-refund-modal-label" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form method="post">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                        <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="order-refund-modal-label">' . lang('Mark refund as processed') . '</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>' . lang('This only records that you processed the refund; it does not move any money.') . '</p>
+                                <p class="fw-semibold mb-2">' . $refund_amount_text . '</p>
+                                <label class="form-label fw-semibold mt-2" for="refund_reference">' . lang('Refund reference') . ' <span class="text-muted fw-normal">(' . lang('optional') . ')</span></label>
+                                <input type="text" class="form-control" id="refund_reference" name="refund_reference" maxlength="255">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
+                                <button type="submit" name="submit_mark_refunded" value="refunded" class="btn btn-success">' . lang('Mark refund as processed') . '</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>';
+
+    } elseif ($refund_state === 'refunded') {
+
+        // Shown too, so the order carries its own evidence rather than the
+        // absence of a warning.
+        $refund_done_when = ($order_refunded_at > 0)
+            ? ' · ' . get_relative_time(array('timestamp' => $order_refunded_at))
+            : '';
+
+        $refund_done_reference = ($order_refund_reference !== '')
+            ? ' · ' . h($order_refund_reference)
+            : '';
+
+        $output_refund_banner =
+            '<div class="alert alert-success d-flex align-items-center gap-2 d-print-none" role="alert">
+                <i class="bi bi-check2-circle"></i>
+                <div><strong>' . lang('Refunded') . '</strong>' . $refund_done_when . $refund_done_reference . '</div>
+            </div>';
+    }
     if ($status != 'cancelled' && $status != 'incomplete') {
 
         $cancel_voids_payment =
@@ -2292,6 +2395,7 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
+                ' . $output_refund_banner . '
                 <div class="row mb-2  flex-wrap d-print-none">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View the details of this order and update shipping information.') . '" title="' . lang('View Order') . '">[#' . $order_number . ']</h2>
@@ -2309,7 +2413,7 @@ if (!$_POST) {
                 <form method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>$_GET['send_to'])) . '
+                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
 
                     <div class="row g-4 ">
                         <div class="col-12 col-md-6 col-lg-4">
@@ -2512,6 +2616,7 @@ if (!$_POST) {
     </main>' .
         $output_iyzico_modals .
         $output_cancel_modal .
+        $output_refund_modal .
         $output_parasut_forms .
         output_footer();
         $liveform->remove_form();
@@ -2642,6 +2747,53 @@ if (!$_POST) {
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
 
         $liveform->add_notice(lang('The refund has been processed.'));
+        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+
+    // if the operator confirmed that they processed the refund themselves
+    } elseif ($liveform->get_field_value('submit_mark_refunded') == 'refunded') {
+
+        // The refund happens in the payment provider's dashboard, outside this
+        // software. Nothing here can observe it, so the operator says so and
+        // this records the statement — that is the honest limit of what the
+        // panel can know, and it is what lets the pending-refund queue drain.
+        $order_id = (int) $liveform->get('id');
+
+        if (!db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'")) {
+            output_error(lang('The refund columns do not exist yet. Please run the software upgrade to create them.'));
+        }
+
+        $refund_row = db_item("SELECT refund_status FROM orders WHERE id = '" . e($order_id) . "'");
+
+        if (!$refund_row) {
+            output_error(lang('Order not found.'));
+        }
+
+        // Only from a state that actually owes money. Refuses to overwrite an
+        // order already marked refunded, and refuses to invent a refund on an
+        // order that never had one pending — either would corrupt the record
+        // this button exists to keep.
+        if (!in_array((string) $refund_row['refund_status'], array('manual_required', 'failed', 'pending'), true)) {
+            $liveform->mark_error('_error', lang('This order is not waiting for a refund.'));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+        }
+
+        $refund_reference = trim(mb_substr((string) $liveform->get_field_value('refund_reference'), 0, 255));
+
+        db(
+            "UPDATE orders SET
+                refund_status    = 'refunded',
+                refunded_at      = '" . time() . "',
+                refund_reference = '" . escape($refund_reference) . "'
+             WHERE id = '" . e($order_id) . "'");
+
+        // Says "marked", not "refunded": the log is an audit trail and must
+        // not claim the software saw money move. log_activity() attaches the
+        // signed-in username on its own.
+        log_activity(
+            'Refund marked as processed by operator for order #' . $order_id
+            . ($refund_reference !== '' ? '. Reference: ' . $refund_reference : ''));
+
+        $liveform->add_notice(lang('The refund has been marked as processed.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
     // if the user selected to restore a cancelled order back to complete

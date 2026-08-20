@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,7 +24,7 @@ initialize_order();
 
 $liveform = new liveform('billing_information');
 
-$ghost = $_SESSION['software']['ghost'];
+$ghost = $_SESSION['software']['ghost'] ?? false;
 
 $liveform->add_fields_to_session();
 
@@ -37,7 +37,7 @@ $query =
         custom_field_2_required,
         form
     FROM billing_information_pages
-    WHERE page_id = '" . escape($_POST['page_id']) . "'";
+    WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
@@ -108,10 +108,12 @@ if ($form == 1) {
 }
 
 // get old address verified value from the database
-$query = "SELECT billing_address_verified FROM orders WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+$query = "SELECT billing_address_verified FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
-$address_verified = $row['address_verified'];
+
+// The query above selects billing_address_verified, so that is the key to read.
+$address_verified = isset($row['billing_address_verified']) ? $row['billing_address_verified'] : '';
 
 // Verify address if address verification is enabled and it is a US address
 
@@ -165,7 +167,7 @@ $query =
         po_number = '" . escape($liveform->get_field_value('po_number')) . "',
         referral_source_code = '" . escape($liveform->get_field_value('referral_source')) . "',
         billing_complete = '0'
-    WHERE id = '" . $_SESSION['ecommerce']['order_id'] . "'";
+    WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if an error does not exist
@@ -184,7 +186,7 @@ if ($liveform->check_form_errors() == false) {
     if (!$contact_id) {
         
         // get contact id for this order
-        $query = "SELECT contact_id FROM orders WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'";
+        $query = "SELECT contact_id FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $contact_id = $row['contact_id'];
@@ -276,7 +278,7 @@ if ($liveform->check_form_errors() == false) {
                 user_id = '$user_id',
                 contact_id = '$contact_id',
                 billing_complete = '1'
-             WHERE id = " . $_SESSION['ecommerce']['order_id'];
+             WHERE id = " . ($_SESSION['ecommerce']['order_id'] ?? '');
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // If the user is logged in and not ghosting and the user selected that he/she
@@ -291,7 +293,7 @@ if ($liveform->check_form_errors() == false) {
     
     // If the user is not logged in or is ghosting or if the user is logged in and wants
     // his/her contact info updated with billing info, then update contact.
-    if (!USER_LOGGED_IN or $ghost or ($_SESSION['software']['update_contact'] !== false)) {
+    if (!USER_LOGGED_IN or $ghost or ((isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null) !== false)) {
 
         $sql_fax = '';
 

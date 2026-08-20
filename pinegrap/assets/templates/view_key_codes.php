@@ -26,15 +26,15 @@
                         <thead>
                             <tr>
                                 <th class="noVis"><?=lang('Action')?></th>
-								<th><?=get_column_heading(lang('Key Code'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th><?=get_column_heading(lang('Offer Code'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th><?=get_column_heading(lang('Offer Message'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th class="text-center"><?=get_column_heading(lang('Enabled'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th><?=get_column_heading(lang('Expiration Date'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th><?=get_column_heading(lang('Notes'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th class="text-center"><?=get_column_heading(lang('Single-Use'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th><?=get_column_heading(lang('Report'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
-								<th><?=get_column_heading(lang('Last Modified'), $_SESSION['software']['ecommerce']['view_key_codes']['sort'], $_SESSION['software']['ecommerce']['view_key_codes']['order'])?></th>
+								<th><?=get_column_heading(lang('Key Code'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Offer Code'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Offer Message'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th class="text-center"><?=get_column_heading(lang('Enabled'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Expiration Date'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Notes'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th class="text-center"><?=get_column_heading(lang('Single-Use'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Report'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
+								<th><?=get_column_heading(lang('Last Modified'), ($_SESSION['software']['ecommerce']['view_key_codes']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_key_codes']['order'] ?? ''))?></th>
                             </tr>
                         </thead>
                         <tbody>

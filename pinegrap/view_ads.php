@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -46,7 +46,8 @@ if (isset($_SESSION['software']['ads']['view_ads']['ad_region_id']) == false) {
 // If a screen was passed and it is a positive integer, then use it.
 // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
 if (
-    $_REQUEST['screen']
+    isset($_REQUEST['screen'])
+    and $_REQUEST['screen']
     and is_numeric($_REQUEST['screen'])
     and $_REQUEST['screen'] > 0
     and $_REQUEST['screen'] == round($_REQUEST['screen'])
@@ -90,7 +91,7 @@ $output_ad_region_options = '';
 // loop through all ad regions in order to prepare options for ad region pick list
 foreach ($ad_regions as $ad_region) {
     // if this ad region is equal to the selected ad region
-    if ($ad_region['id'] == $_SESSION['software']['ads']['view_ads']['ad_region_id']) {
+    if ($ad_region['id'] == ($_SESSION['software']['ads']['view_ads']['ad_region_id'] ?? '')) {
         $selected = ' selected="selected"';
     } else {
         $selected = '';
@@ -111,7 +112,13 @@ if (isset($_GET['clear']) == true) {
 }
 
 
-switch ($_SESSION['software']['ads']['view_ads']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['ads']['view_ads']['sort']) == false) {
+    $_SESSION['software']['ads']['view_ads']['sort'] = '';
+}
+
+switch (($_SESSION['software']['ads']['view_ads']['sort'] ?? '')) {
     case 'Name':
         $sort_column = 'ads.name';
         break;
@@ -189,7 +196,7 @@ if ($user['role'] == 3) {
 }
 
 // if user has not choosen [All] filter for ad region pick list, then prepare where clause
-if ($_SESSION['software']['ads']['view_ads']['ad_region_id'] != '[All]') {
+if (($_SESSION['software']['ads']['view_ads']['ad_region_id'] ?? '') != '[All]') {
     // if this is the first where clause, then add where first
     if ($where == '') {
         $where .= "WHERE ";
@@ -199,7 +206,7 @@ if ($_SESSION['software']['ads']['view_ads']['ad_region_id'] != '[All]') {
         $where .= "AND ";
     }
     
-    $where .= "(ads.ad_region_id = '" . escape($_SESSION['software']['ads']['view_ads']['ad_region_id']) . "') ";
+    $where .= "(ads.ad_region_id = '" . escape(($_SESSION['software']['ads']['view_ads']['ad_region_id'] ?? '')) . "') ";
 }
 
 // get all ads
@@ -221,7 +228,7 @@ $query =
     LEFT JOIN ad_regions ON ads.ad_region_id = ad_regions.id
     $sql_join
     $where
-    ORDER BY $sort_column " . escape($_SESSION['software']['ads']['view_ads']['order']);
+    ORDER BY $sort_column " . escape(($_SESSION['software']['ads']['view_ads']['order'] ?? ''));
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -330,13 +337,13 @@ print
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name') , $_SESSION['software']['ads']['view_ads']['sort'], $_SESSION['software']['ads']['view_ads']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Ad Region'),  $_SESSION['software']['ads']['view_ads']['sort'], $_SESSION['software']['ads']['view_ads']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Display Type') , $_SESSION['software']['ads']['view_ads']['sort'], $_SESSION['software']['ads']['view_ads']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Name') , ($_SESSION['software']['ads']['view_ads']['sort'] ?? ''), ($_SESSION['software']['ads']['view_ads']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Ad Region'),  ($_SESSION['software']['ads']['view_ads']['sort'] ?? ''), ($_SESSION['software']['ads']['view_ads']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Display Type') , ($_SESSION['software']['ads']['view_ads']['sort'] ?? ''), ($_SESSION['software']['ads']['view_ads']['order'] ?? '')) . '</th>
                                     <th class="text-center">' . lang('Label') . '</th>
                                     <th class="text-center">' . lang('Sort Order') . '</th>
-                                    <th>' . get_column_heading(lang('Created') , $_SESSION['software']['ads']['view_ads']['sort'], $_SESSION['software']['ads']['view_ads']['order']) . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified') , $_SESSION['software']['ads']['view_ads']['sort'], $_SESSION['software']['ads']['view_ads']['order']) . '</th>
+                                    <th>' . get_column_heading(lang('Created') , ($_SESSION['software']['ads']['view_ads']['sort'] ?? ''), ($_SESSION['software']['ads']['view_ads']['order'] ?? '')) . '</th>
+                                    <th>' . get_column_heading(lang('Last Modified') , ($_SESSION['software']['ads']['view_ads']['sort'] ?? ''), ($_SESSION['software']['ads']['view_ads']['order'] ?? '')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '</tbody>

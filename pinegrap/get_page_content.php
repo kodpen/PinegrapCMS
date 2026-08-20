@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -27,34 +27,39 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
              "FROM page " .
              "WHERE page_id = '" . e($page_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+
+    // The page can be missing (for example when a screen points at a page that was never set up
+    // or was deleted), in which case there is no row here at all.
     $row = mysqli_fetch_assoc($result);
 
-    $page_name = $row['page_name'];
-    $page_folder = $row['page_folder'];
-    $page_style = $row['page_style'];
-    $mobile_style_id = $row['mobile_style_id'];
-    $page_home = $row['page_home'];
-    $page_title = $row['page_title'];
-    $page_meta_description = $row['page_meta_description'];
-    $page_type = $row['page_type'];
-    $comments = $row['comments'];
-    $comments_label = $row['comments_label'];
-    $comments_message = $row['comments_message'];
-    $comments_rating = $row['comments_rating'];
-    $comments_allow_new_comments = $row['comments_allow_new_comments'];
-    $comments_disallow_new_comment_message = $row['comments_disallow_new_comment_message'];
-    $comments_automatic_publish = $row['comments_automatic_publish'];
-    $comments_allow_user_to_select_name = $row['comments_allow_user_to_select_name'];
-    $comments_require_login_to_comment = $row['comments_require_login_to_comment'];
-    $comments_allow_file_attachments = $row['comments_allow_file_attachments'];
-    $comments_show_submitted_date_and_time = $row['comments_show_submitted_date_and_time'];
-    $comments_administrator_email_to_email_address = $row['comments_administrator_email_to_email_address'];
-    $comments_administrator_email_conditional_administrators = $row['comments_administrator_email_conditional_administrators'];
-    $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
-    $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
-    $comments_watchers_managed_by_submitter = $row['comments_watchers_managed_by_submitter'];
-    $system_region_header = $row['system_region_header'];
-    $system_region_footer = $row['system_region_footer'];
+    $page_name = $row['page_name'] ?? '';
+    $page_folder = $row['page_folder'] ?? '';
+    $page_style = $row['page_style'] ?? '';
+    $mobile_style_id = $row['mobile_style_id'] ?? '';
+    $page_home = $row['page_home'] ?? '';
+    $page_title = $row['page_title'] ?? '';
+    $page_meta_description = $row['page_meta_description'] ?? '';
+    $page_noindex = (int) ($row['noindex'] ?? 0);
+    $page_nofollow = (int) ($row['nofollow'] ?? 0);
+    $page_type = $row['page_type'] ?? '';
+    $comments = $row['comments'] ?? '';
+    $comments_label = $row['comments_label'] ?? '';
+    $comments_message = $row['comments_message'] ?? '';
+    $comments_rating = $row['comments_rating'] ?? '';
+    $comments_allow_new_comments = $row['comments_allow_new_comments'] ?? '';
+    $comments_disallow_new_comment_message = $row['comments_disallow_new_comment_message'] ?? '';
+    $comments_automatic_publish = $row['comments_automatic_publish'] ?? '';
+    $comments_allow_user_to_select_name = $row['comments_allow_user_to_select_name'] ?? '';
+    $comments_require_login_to_comment = $row['comments_require_login_to_comment'] ?? '';
+    $comments_allow_file_attachments = $row['comments_allow_file_attachments'] ?? '';
+    $comments_show_submitted_date_and_time = $row['comments_show_submitted_date_and_time'] ?? '';
+    $comments_administrator_email_to_email_address = $row['comments_administrator_email_to_email_address'] ?? '';
+    $comments_administrator_email_conditional_administrators = $row['comments_administrator_email_conditional_administrators'] ?? '';
+    $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'] ?? '';
+    $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'] ?? '';
+    $comments_watchers_managed_by_submitter = $row['comments_watchers_managed_by_submitter'] ?? '';
+    $system_region_header = $row['system_region_header'] ?? '';
+    $system_region_footer = $row['system_region_footer'] ?? '';
 
     // Save per-page asset fields before $row is overwritten by the style query
     $page_custom_fonts = isset($row['page_custom_fonts']) ? trim($row['page_custom_fonts']) : '';
@@ -84,7 +89,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 	
     // Create global constant for style id so that we don't have to figure out the
     // current style again for the toolbar.
-    define('STYLE_ID', $style_id);
+    if (!defined('STYLE_ID')) {
+        define('STYLE_ID', $style_id);
+    }
 
     // Get style information.
     $query =
@@ -105,26 +112,38 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
-    $style_name = $row['style_name'];
-    $content = $row['style_code'];
-    $style_type = $row['style_type'];
-    $style_head = $row['style_head'];
-    $social_networking_position = $row['social_networking_position'];
-    $collection = $row['collection'];
-    $layout_type = $row['layout_type'];
-    $style_layout = $row['style_layout'];
-    $style_theme_id = $row['theme_id'];
-    $style_theme_name = $row['style_theme_name'];
+    $style_name = $row['style_name'] ?? '';
+    $content = $row['style_code'] ?? '';
+    $style_type = $row['style_type'] ?? '';
+    $style_head = $row['style_head'] ?? '';
+    $social_networking_position = $row['social_networking_position'] ?? '';
+    $collection = $row['collection'] ?? '';
+    $layout_type = $row['layout_type'] ?? '';
+    $style_layout = $row['style_layout'] ?? '';
+    $style_theme_id = $row['theme_id'] ?? '';
+    $style_theme_name = $row['style_theme_name'] ?? '';
 
-    // Set a global constant to remember the collection, so that for primary and
-    // secondary system regions, the code in the separate files to generate
-    // those system regions will know what collection to use for those system regions.
-    // This is currently only used for form list views and form item views.
-    define('COLLECTION', $collection);
+    // Remember the collection and the style's layout override, so that the
+    // separate files that generate the system regions know which to use.
+    //
+    // Set on every render, not latched once. These used to be constants only,
+    // which is right for a request - one request renders one page - and wrong
+    // for a process that renders many: the search indexer and the SEO structure
+    // pass render hundreds, and every page after the first was built with the
+    // first page's collection and the first page's layout override.
+    //
+    // The constants are still defined, on first render, for anything outside
+    // the software that reads them. Nothing inside it does any more.
+    pg_render_collection($collection);
+    pg_render_layout_type($layout_type);
 
-    // Set a global constant to remember the layout type override for the style,
-    // if one exists, so we will know it when we generate the system content.
-    define('STYLE_LAYOUT_TYPE', $layout_type);
+    if (!defined('COLLECTION')) {
+        define('COLLECTION', $collection);
+    }
+
+    if (!defined('STYLE_LAYOUT_TYPE')) {
+        define('STYLE_LAYOUT_TYPE', $layout_type);
+    }
     
     // if this is a system style and there is head content, then add head content
     if (($style_type == 'system') && ($style_head != '')) {
@@ -686,11 +705,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             case 'search results':
 
                 // If there is a specific query for this page, then use it.
-                if ($_GET[$page_id . '_query'] != '') {
+                if (($_GET[$page_id . '_query'] ?? '') != '') {
                     $query_string = '?' . $page_id . '_query=' . urlencode(trim($_GET[$page_id . '_query']));
-                    
+
                 // Otherwise if there is a general query, then use it.
-                } else if ($_GET['query'] != '') {
+                } else if (($_GET['query'] ?? '') != '') {
                     $query_string = '?query=' . urlencode(trim($_GET['query']));
                 }
 
@@ -720,8 +739,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $output_kiosk_javascript = '';
 
         // If kiosk mode is enabled then output javascript variable for that.
-        if (isset($_SESSION['software']['kiosk']['enabled']) && $_SESSION['software']['kiosk']['enabled'] == true) {
-            if ($_SESSION['software']['kiosk']['activity'] == true) {
+        if (isset($_SESSION['software']['kiosk']['enabled']) && ($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
+            if (($_SESSION['software']['kiosk']['activity'] ?? '') == true) {
                 $output_kiosk_activity_value = 'true';
             } else {
                 $output_kiosk_activity_value = 'false';
@@ -730,11 +749,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $output_kiosk_javascript =
                 'var software_kiosk = true;
             var software_kiosk_activity = ' . $output_kiosk_activity_value . ';
-            var software_kiosk_inactivity_time = ' . escape_javascript($_SESSION['software']['kiosk']['inactivity_time']) . ';
-            var software_kiosk_dialog_time = ' . escape_javascript($_SESSION['software']['kiosk']['dialog_time']) . ';
-            var software_kiosk_dialog_message = "' . escape_javascript($_SESSION['software']['kiosk']['dialog_message']) . '";
-            var software_kiosk_continue_button_label = "' . escape_javascript($_SESSION['software']['kiosk']['continue_button_label']) . '";
-            var software_kiosk_logout_button_label = "' . escape_javascript($_SESSION['software']['kiosk']['logout_button_label']) . '";';
+            var software_kiosk_inactivity_time = ' . escape_javascript(($_SESSION['software']['kiosk']['inactivity_time'] ?? '')) . ';
+            var software_kiosk_dialog_time = ' . escape_javascript(($_SESSION['software']['kiosk']['dialog_time'] ?? '')) . ';
+            var software_kiosk_dialog_message = "' . escape_javascript(($_SESSION['software']['kiosk']['dialog_message'] ?? '')) . '";
+            var software_kiosk_continue_button_label = "' . escape_javascript(($_SESSION['software']['kiosk']['continue_button_label'] ?? '')) . '";
+            var software_kiosk_logout_button_label = "' . escape_javascript(($_SESSION['software']['kiosk']['logout_button_label'] ?? '')) . '";';
         }
 
         $output_edit_region_code = '';
@@ -1352,7 +1371,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $number_of_items = 0;
         if(isset($_SESSION['ecommerce']['order_id'])){
             // get the number of items in the order
-            $query = "SELECT SUM(quantity) FROM order_items WHERE order_id = '" . escape($_SESSION['ecommerce']['order_id']) . "'";
+            $query = "SELECT SUM(quantity) FROM order_items WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             $number_of_items = $row[0];
@@ -2921,7 +2940,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     
                     $output_form_item_view = get_form_item_view(array(
                         'page_id' => $system_region_properties['page_id'],
-                        'form_id' => $dynamic_properties['form_id'],
+                        'form_id' => (isset($dynamic_properties['form_id']) ? $dynamic_properties['form_id'] : ''),
                         'editable' => $editable));
                     
                     // if this form item view page is editable, then add edit buttons to images in content
@@ -4985,8 +5004,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // Loop through all of the regions in the content,
         // in order to replace them with the page region content.
         for ($i = 1; $i <= $number_of_regions; $i++) {
-            $pregion_id = $page_regions[$i - 1]['id'];
-            $pregion_content = $page_regions[$i - 1]['content'];
+            // The query can return fewer regions than the page declares.
+            $pregion_id = isset($page_regions[$i - 1]['id']) ? $page_regions[$i - 1]['id'] : '';
+            $pregion_content = isset($page_regions[$i - 1]['content']) ? $page_regions[$i - 1]['content'] : '';
             
             // if mode is edit, and the user is able to edit the page then add edit button for images and edit button for region
             if ($mode == 'edit') {
@@ -5043,11 +5063,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         // if there is an item and if the item type is product, then prepare sql to get meta data for product
-        if (($item['id'] != '') && ($item['type'] == 'product')) {
+        if ((isset($item['id'])) && ($item['id'] != '') && (isset($item['type'])) && ($item['type'] == 'product')) {
             $sql_table = 'products';
         
         // else if there is an item and if the item type is a product group, then use that product group
-        } elseif (($item['id'] != '') && ($item['type'] == 'product group')) {
+        } elseif ((isset($item['id'])) && ($item['id'] != '') && (isset($item['type'])) && ($item['type'] == 'product group')) {
             $current_product_group_id = $item['id'];
             
         // else if there is a default product group set, then use that product group
@@ -5101,7 +5121,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if ($page_type == 'form item view') {
         // If a submitted form id was passed to this function (e.g. for emailing a form item view as a confirmation
         // after a custom form was submitted, then use that id.
-        if ($dynamic_properties['form_id']) {
+        if (!empty($dynamic_properties['form_id'])) {
             $submitted_form['id'] = $dynamic_properties['form_id'];
 
         // Otherwise a submitted form id was not passed, so if there is a reference code,
@@ -5169,12 +5189,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // because HTML is not supported in the meta description tag.  It was necessary
             // to do this because some systems, like Facebook, will show the HTML tags
             // as plain text (e.g. <bold>example</bold>).
-            if (($description['type'] == 'html') && ($description['data'] != '')) {
+            if ((($description['type'] ?? '') == 'html') && (($description['data'] ?? '') != '')) {
                 $description['data'] = trim(convert_html_to_text($description['data']));
             }
 
             // If submitted form description was found then override page's meta description.
-            if ($description['data'] != '') {
+            if (($description['data'] ?? '') != '') {
                 $page_meta_description = $description['data'];
             }
         }
@@ -5191,7 +5211,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // if title in style for page does not contain a title, add default title
         // We store the title so we can include it in the open graph tag.
-        if (!$matches[1]) {
+        if (empty($matches[1])) {
             $content = preg_replace('/<title>.*?<\/title>/i', '<title>' . h(TITLE) . '</title>', $content);
             $page_title = TITLE;
         } else {
@@ -5255,16 +5275,47 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // two tags with duplicate content.  The open graph description attribute has to appear before
     // the name attribute in the meta tag in order for the description to work with Twitter Cards.
 
+    $robots_content = '';
+    $robots_meta_tag = '';
+
+    // A page the operator has taken out of the search engines. The follow half
+    // stays open unless the second switch is on as well: a widget page is a
+    // duplicate of a page that is already indexed, but the links it lists can
+    // still be the shortest route to an item the crawler has not seen.
+    //
+    // Not emitted for an e-mail body. There is no crawler there, and the tag
+    // would only travel to the recipient's mail client as dead markup.
+    if (($page_noindex == 1) && ($email != TRUE)) {
+        $robots_content = 'noindex, ' . (($page_nofollow == 1) ? 'nofollow' : 'follow');
+        $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+    }
+
     // The <meta name="keywords"> tag was removed: no search engine has used it for years.
     // The keyword fields themselves stay in place, they feed site search and the tag cloud.
-    $meta_tags ='<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
+    $meta_tags = $robots_meta_tag .
+        '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
         get_generator_meta_tag() . "\n" .
         '        <link rel="canonical" href="' . h($canonical_url) . '">';
 
+    // The placeholder is written into every style the software creates, but a
+    // designer editing raw style code can delete it, and then none of this block
+    // is emitted. The rest of it degrades quietly. The robots directive does not:
+    // the operator threw a switch and the page has to carry the answer, so it is
+    // spliced in on its own when the placeholder is gone.
+    $meta_tags_placeholder_found = (preg_match('/<meta_tags><\/meta_tags>/i', $content) == 1);
+
     // embed meta tags in code
     $content = preg_replace('/<meta_tags><\/meta_tags>/i', $meta_tags, $content);
+
+    if (($robots_content != '') && ($meta_tags_placeholder_found == FALSE)) {
+        $content = preg_replace(
+            '/<\/head>/i',
+            '        <meta name="robots" content="' . $robots_content . '">' . "\n" . '</head>',
+            $content,
+            1);
+    }
 
     $theme_id = '';
     $theme_name = '';
@@ -5590,5 +5641,30 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $content = str_replace($email_link[0], '<script id="software_email_link_script">software.output_email_link(\'' . base64_encode(str_rot13($email_link[0])) . '\')</script><noscript>' . lang('You may enable JavaScript to see this email address.') . '</noscript>', $content);
         }
     }
+
+    // ── Live chat site bubble ────────────────────────────────────────────
+    // Added to every front-end page from this one place. Not emitted in edit
+    // mode (the same rule as JSON-LD and RSS) and never in e-mail output. When
+    // the module or the schema is not ready, or the switches are off, the
+    // output is empty - the chat cannot break a page.
+    if (
+        ($mode != 'edit')
+        && ($email == FALSE)
+        && defined('CHAT_ENABLED') && CHAT_ENABLED
+        && defined('CHAT_SITE_ENABLED') && CHAT_SITE_ENABLED
+        && (stristr($content, '</body>') != FALSE)
+        && file_exists(dirname(__FILE__) . '/chat.php')
+    ) {
+        require_once(dirname(__FILE__) . '/chat.php');
+
+        if (function_exists('pg_chat_render_site_widget')) {
+            $_pg_chat_site_widget = pg_chat_render_site_widget();
+
+            if ($_pg_chat_site_widget != '') {
+                $content = str_replace('</body>', $_pg_chat_site_widget . "\n</body>", $content);
+            }
+        }
+    }
+
     return $content;
 }

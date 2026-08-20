@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,7 +39,7 @@ function get_shipping_address_and_arrival($properties) {
     $_SESSION['ecommerce']['shipping_address_and_arrival_page_id'] = $page_id;
 
     // if the user came from the control panel, clear ship_to_id, to prevent edit user from accessing ship to that user should not have access to
-    if ((isset($_GET['from']) == true) && ($_GET['from'] == 'control_panel')) {
+    if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
         unset($_GET['ship_to_id']);
 
     // else the user did not come from the control panel, so perform validation to make sure that this user has access to the ship to
@@ -77,11 +77,11 @@ function get_shipping_address_and_arrival($properties) {
             output_error(lang('Sorry, the order for that recipient has already been completed, so that recipient may not be updated.  This might happen if you already completed your order and then used the back button to go back to a recipient.  Since your order is complete, there is nothing further you need to do.'));
         }
 
-        if (!$_SESSION['ecommerce']['order_id']) {
+        if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
             output_error(lang('Sorry, we could not find your order, so we can\'t allow you to update that recipient.  This might happen if you were inactive for a while and your session expired.  You might try starting a new order or retrieving a past order.'));
         }
 
-        if ($recipient['order_id'] != $_SESSION['ecommerce']['order_id']) {
+        if ($recipient['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
             output_error(lang('Sorry, that recipient belongs to a different order, so we can\'t allow you to update that recipient.  This might happen if your session expired and you started a new order, and then you used the back button to go back to a recipient for an old order.'));
         }
 
@@ -91,7 +91,7 @@ function get_shipping_address_and_arrival($properties) {
 
     $form = new liveform('shipping_address_and_arrival');
 
-    $ghost = $_SESSION['software']['ghost'];
+    $ghost = $_SESSION['software']['ghost'] ?? false;
 
     // if form has not been filled out yet, get recipient data in order to populate fields
     if ($form->field_in_session('first_name') == false) {
@@ -153,7 +153,7 @@ function get_shipping_address_and_arrival($properties) {
         // then prefill those fields.
         if (
             ($form_enabled == 1)
-            && ($_GET['from'] != 'control_panel')
+            && (($_GET['from'] ?? '') != 'control_panel')
         ) {
             $query =
                 "SELECT
@@ -247,7 +247,7 @@ function get_shipping_address_and_arrival($properties) {
     // if recipient mode is multi-recipient then determine if shipping same as billing option should be displayed
     if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') {
         // get all recipients for this order
-        $query = "SELECT ship_to_name FROM ship_tos WHERE order_id = '" . escape($_SESSION['ecommerce']['order_id']) . "'";
+        $query = "SELECT ship_to_name FROM ship_tos WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // get number of recipients for this order
@@ -280,7 +280,7 @@ function get_shipping_address_and_arrival($properties) {
             "SELECT id
             FROM orders
             WHERE
-                (id = '" . escape($_SESSION['ecommerce']['order_id']) . "')
+                (id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "')
                 AND
                 (
                     (billing_salutation != '')
@@ -865,7 +865,7 @@ function get_shipping_address_and_arrival($properties) {
                 // (e.g. the form has not been submitted by the customer),
                 // then set default value.
                 if (!isset($attributes['value'])) {
-                    $value_from_query_string = trim($_GET['value_' . $field['id']]);
+                    $value_from_query_string = trim($_GET['value_' . $field['id']] ?? '');
 
                     // If a default value was passed in the query string, then use that.
                     if ($value_from_query_string != '') {

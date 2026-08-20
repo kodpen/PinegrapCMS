@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -33,7 +33,13 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-switch ($_SESSION['software']['view_email_campaign_history']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['view_email_campaign_history']['sort']) == false) {
+    $_SESSION['software']['view_email_campaign_history']['sort'] = '';
+}
+
+switch (($_SESSION['software']['view_email_campaign_history']['sort'] ?? '')) {
     case lang('Profile'):
         $sort_column = 'email_campaign_profiles.name';
         break;
@@ -90,7 +96,7 @@ if (isset($_SESSION['software']['view_email_campaign_history']['order']) == fals
 }
 
 if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
-    $output_start_time_heading = '<th>' . get_column_heading(lang('Scheduled Time'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>';
+    $output_start_time_heading = '<th>' . get_column_heading(lang('Scheduled Time'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>';
 } else {
     $output_start_time_heading = '';
 }
@@ -122,7 +128,7 @@ $query =
      WHERE
         (email_campaigns.status = 'cancelled')
         OR (email_campaigns.status = 'complete')
-     ORDER BY $sort_column " . escape($_SESSION['software']['view_email_campaign_history']['order']);
+     ORDER BY $sort_column " . escape(($_SESSION['software']['view_email_campaign_history']['order'] ?? ''));
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $email_campaigns = array();
@@ -276,15 +282,15 @@ pg_page_shell(
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                         <th>' . lang('To') . '</th>
-                                        <th>' . get_column_heading(lang('Profile'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Subject'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Page to Send'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Profile'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Subject'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Page to Send'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
                                         ' . $output_start_time_heading . '
-                                        <th>' . get_column_heading(lang('Status'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Status'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
                                         <th>' . lang('Progress (Subscribers)') . '</th>
-                                        <th>' . get_column_heading(lang('Purpose'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Created'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['view_email_campaign_history']['sort'], $_SESSION['software']['view_email_campaign_history']['order']) . '</th>
+                                        <th>' . get_column_heading(lang('Purpose'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Created'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
+                                        <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['view_email_campaign_history']['sort'] ?? ''), ($_SESSION['software']['view_email_campaign_history']['order'] ?? '')) . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_rows . '</tbody>

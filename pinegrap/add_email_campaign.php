@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
  
@@ -93,7 +93,7 @@ if (!$_POST) {
             $selected = '';
             
             // if this page should be selected, then prepare to select it
-            if ($page['id'] == $_GET['page_id']) {
+            if ($page['id'] == ($_GET['page_id'] ?? '')) {
                 $selected = ' selected="selected"';
             }
             
@@ -155,6 +155,9 @@ if (!$_POST) {
         $output_contact_groups = '<div class="alert alert-danger"><p>' . lang('You do not have access to any contact groups with subscribers.') . '</p></div>';
     }
     
+    // only set when the e-mail campaign job is available, but always output below
+    $output_start_time = '';
+
     // if an e-mail campaign job is setup on the server, then allow e-mail campaign to be scheduled
     if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB === true) {
         $output_start_time =
@@ -371,7 +374,7 @@ if (!$_POST) {
         }
 
         // get folder id for selected page in order to check if user has access to view content in folder
-        $query = "SELECT page_folder FROM page WHERE page_id = '" . escape($_POST['page_id']) . "'";
+        $query = "SELECT page_folder FROM page WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $folder_id = $row['page_folder'];
@@ -401,7 +404,7 @@ if (!$_POST) {
     // loop through all contact groups in order to get included e-mail addresses
     foreach ($contact_groups as $contact_group_id) {
         // if this contact group was included, then get e-mail addresses for this contact group
-        if ($_POST['contact_group_' . $contact_group_id] == 'included') {
+        if (($_POST['contact_group_' . $contact_group_id] ?? '') == 'included') {
             // if user has access to contact group, then continue
             if (validate_contact_group_access($user, $contact_group_id) == true) {
                 // store this included contact group in array, so later we can store which contact groups were included
@@ -475,7 +478,7 @@ if (!$_POST) {
     // loop through all contact groups in order to get excluded e-mail addresses
     foreach ($contact_groups as $contact_group_id) {
         // if this contact group was excluded, then get e-mail addresses for this contact group
-        if ($_POST['contact_group_' . $contact_group_id] == 'excluded') {
+        if (($_POST['contact_group_' . $contact_group_id] ?? '') == 'excluded') {
             // if user has access to contact group, then continue
             if (validate_contact_group_access($user, $contact_group_id) == true) {
                 // store this excluded contact group in array, so later we can store which contact groups were excluded
@@ -516,20 +519,20 @@ if (!$_POST) {
                 // determine if entered e-mail address is already in use by a contact
                 $query = "SELECT id
                          FROM contacts
-                         WHERE email_address = '" . escape($_POST['entered_email_address']) . "'";
+                         WHERE email_address = '" . escape($_POST['entered_email_address'] ?? '') . "'";
                 $result_contacts = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
                 // determine if entered e-mail address is already in use by a user
                 $query = "SELECT user_id
                          FROM user
-                         WHERE user_email = '" . escape($_POST['entered_email_address']) . "'";
+                         WHERE user_email = '" . escape($_POST['entered_email_address'] ?? '') . "'";
                 $result_users = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
                 // if entered e-mail address is not in use by a contact or a user, create contact for entered e-mail address
                 if ((mysqli_num_rows($result_contacts) == 0) && (mysqli_num_rows($result_users) == 0)) {
                     $query = "INSERT INTO contacts
                              (email_address, user, timestamp)
-                             VALUES ('" . escape($_POST['entered_email_address']) . "', '" . $user['id'] . "', UNIX_TIMESTAMP())";
+                             VALUES ('" . escape($_POST['entered_email_address'] ?? '') . "', '" . $user['id'] . "', UNIX_TIMESTAMP())";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 }
             }
@@ -699,15 +702,15 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($_POST['from_name']) . "',
-            '" . escape($_POST['from_email_address']) . "',
-            '" . escape($_POST['reply_email_address']) . "',
-            '" . escape($_POST['subject']) . "',
-            '" . escape($_POST['format']) . "',
+            '" . escape($_POST['from_name'] ?? '') . "',
+            '" . escape($_POST['from_email_address'] ?? '') . "',
+            '" . escape($_POST['reply_email_address'] ?? '') . "',
+            '" . escape($_POST['subject'] ?? '') . "',
+            '" . escape($_POST['format'] ?? '') . "',
             '" . escape($body) . "',
-            '" . escape($_POST['page_id']) . "',
+            '" . escape($_POST['page_id'] ?? '') . "',
             '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
-            '" . e($_POST['purpose']) . "',
+            '" . e($_POST['purpose'] ?? '') . "',
             '" . $user['id'] . "',
             UNIX_TIMESTAMP(),
             '" . $user['id'] . "',

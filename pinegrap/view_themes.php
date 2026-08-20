@@ -12,11 +12,14 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
+
+// only ever appended to further below, so it has to start out empty
+$output_rows = '';
 
 $user = validate_user();
 validate_area_access($user, 'designer');
@@ -39,7 +42,13 @@ if (isset($_REQUEST['order'])) {
 }
 
 
-switch ($_SESSION['software']['design']['view_themes']['sort']) {
+// if the sort is not set yet, then default it to empty so that the switch below falls
+// through to its default case
+if (isset($_SESSION['software']['design']['view_themes']['sort']) == false) {
+    $_SESSION['software']['design']['view_themes']['sort'] = '';
+}
+
+switch (($_SESSION['software']['design']['view_themes']['sort'] ?? '')) {
     case lang('File Name'):
         $sort_column = 'name';
         break;
@@ -70,8 +79,8 @@ switch ($_SESSION['software']['design']['view_themes']['sort']) {
         break;
 }
 
-if ($_SESSION['software']['design']['view_themes']['order']) {
-    $asc_desc = $_SESSION['software']['design']['view_themes']['order'];
+if (!empty($_SESSION['software']['design']['view_themes']['order'])) {
+    $asc_desc = ($_SESSION['software']['design']['view_themes']['order'] ?? '');
 } elseif ($sort_column == 'timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['design']['view_themes']['order'] = 'desc';
@@ -93,12 +102,19 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_theme_files = $row[0];
 
-$search_query = mb_strtolower($_SESSION['software']['design']['view_themes']['query']);
+$where = '';
+
+// if the search query is not set yet, then default it to empty
+if (isset($_SESSION['software']['design']['view_themes']['query']) == false) {
+    $_SESSION['software']['design']['view_themes']['query'] = '';
+}
+
+$search_query = mb_strtolower(($_SESSION['software']['design']['view_themes']['query'] ?? ''));
 
 // create where clause for sql
 $sql_search = "(LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape($search_query) . "%')";
 
-if (isset($_SESSION['software']['design']['view_themes']['query'])) {
+if (!empty($_SESSION['software']['design']['view_themes']['query'])) {
     // Get only the results the user wanted in the search.
     $where .= " AND ($sql_search) ";
 }
@@ -206,12 +222,12 @@ pg_page_shell([
                         <thead>
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('File Name'), $_SESSION['software']['design']['view_themes']['sort'], $_SESSION['software']['design']['view_themes']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Description'), $_SESSION['software']['design']['view_themes']['sort'], $_SESSION['software']['design']['view_themes']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Folder'), $_SESSION['software']['design']['view_themes']['sort'], $_SESSION['software']['design']['view_themes']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Activated for Desktop'), $_SESSION['software']['design']['view_themes']['sort'], $_SESSION['software']['design']['view_themes']['order']) . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Activated for Mobile'), $_SESSION['software']['design']['view_themes']['sort'], $_SESSION['software']['design']['view_themes']['order']) . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $_SESSION['software']['design']['view_themes']['sort'], $_SESSION['software']['design']['view_themes']['order']) . '</th>
+                                <th>' . get_column_heading(lang('File Name'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Description'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Folder'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Activated for Desktop'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Activated for Mobile'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
+                                <th>' . get_column_heading(lang('Last Modified'), ($_SESSION['software']['design']['view_themes']['sort'] ?? ''), ($_SESSION['software']['design']['view_themes']['order'] ?? '')) . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

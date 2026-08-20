@@ -12,13 +12,18 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
+
+// This screen always works on one menu, so without an id there is nothing to show.
+if ((isset($_GET['id']) == false) || ($_GET['id'] == '')) {
+    output_error(lang('Sorry, the page could not be found.'), 404);
+}
 
 // get menu name
 $query = "SELECT name FROM menus WHERE id = '" . escape($_GET['id']) . "'";
@@ -43,13 +48,13 @@ if ($user['role'] < 2) {
     $output_subheading = '<p>' . lang('Page Style Body Tag') . ': <strong>' . h('<menu>' . $menu_name . '</menu>') . '</strong></p>';
 }
 
-$back_button_url = escape_url($_GET['send_to']);
+$back_button_url = escape_url(($_GET['send_to'] ?? ''));
 // if the user came from the pages tab, then prepare back button label
-if ($_GET['from'] == 'pages') {
+if (($_GET['from'] ?? '') == 'pages') {
     $output_back_button_label = lang('Back to Page');
     
 // else if the user came from the welcome screen, then prepare different back button label
-} else if ($_GET['from'] == 'welcome') {
+} else if (($_GET['from'] ?? '') == 'welcome') {
     $output_back_button_label = lang('Back to Welcome');
     //we move welcome screen content to widget_api for some reasons and send_to url send from widget_api 
     // so we replace it.
@@ -156,7 +161,7 @@ foreach ($menu_items as $menu_item) {
     $indentation_padding = 20 * ($menu_item['level'] - 1);
     
     // Add link url for onclick event.
-    $output_link_url = 'edit_menu_item.php?id=' . $menu_item['id'] . '&from=' . h(escape_javascript(urlencode($_GET['from']))) . '&send_to=' . h(escape_javascript(urlencode($_GET['send_to'])));
+    $output_link_url = 'edit_menu_item.php?id=' . $menu_item['id'] . '&from=' . h(escape_javascript(urlencode(($_GET['from'] ?? '')))) . '&send_to=' . h(escape_javascript(urlencode(($_GET['send_to'] ?? ''))));
     
     $number_of_results++;
     
@@ -223,10 +228,10 @@ $reorder_button = '';
 
 // If this user is an admin or designer, then show edit and duplicate buttons
 if ($user['role'] < 2) {
-    $edit_button = '<a class="btn btn-sm btn-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode($_GET['from'])) . '&send_to=' . h(urlencode($_GET['send_to'])) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
+    $edit_button = '<a class="btn btn-sm btn-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
     $duplicate_button =
     '<div class=" btn-group btn-group-sm flex-wrap">
-        <a class="btn btn-link link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode($_GET['from'])) . '&send_to=' . h(urlencode($_GET['send_to'])) . get_token_query_string_field() . '" data-loading-content="' . lang('Duplicating') . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+        <a class="btn btn-link link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" data-loading-content="' . lang('Duplicating') . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
     </div>';
 }
 
@@ -247,7 +252,7 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                     <h2 class="d-inline-block " data-bs-content="' . lang('Update, add, or remove menu items.') . '" title="' . lang('Edit Menu') . '">[' . h($menu_name) . ']</h2>
                     ' . $output_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode($_GET['from'])) . '&send_to=' . h(urlencode($_GET['send_to'])) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $edit_button . '
                         ' . $duplicate_button . '
                         ' . $reorder_button . '

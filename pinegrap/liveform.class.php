@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1094,7 +1094,7 @@ class liveform {
 
     function check_form_notices()
     {
-        if ($_SESSION['software']['liveforms'][$this->form][$this->index]['notices']) {
+        if (!empty($_SESSION['software']['liveforms'][$this->form][$this->index]['notices'])) {
             return true;
         } else {
             return false;
@@ -1163,8 +1163,9 @@ class liveform {
 
             $new_tag = $old_tag;
 
+            // Not every input tag has a name attribute, in which case there is no match here.
             preg_match('/\sname="(.*?)"/is', $new_tag, $name_match);
-            $name = trim($name_match[1]);
+            $name = isset($name_match[1]) ? trim($name_match[1]) : '';
 
             // If the field has brackets on the end of the name, then remove them.
             // Fields like checkboxes, that allow for multiple values, have brackets.
@@ -1276,8 +1277,9 @@ class liveform {
 
             $new_tag = $old_start_tag;
 
+            // Not every input tag has a name attribute, in which case there is no match here.
             preg_match('/\sname="(.*?)"/is', $new_tag, $name_match);
-            $name = trim($name_match[1]);
+            $name = isset($name_match[1]) ? trim($name_match[1]) : '';
 
             // If the field has brackets on the end of the name, then remove them.
             // If a pick list supports multi-selection, then it has brackets in the name.
@@ -1414,8 +1416,9 @@ class liveform {
 
             $new_tag = $old_start_tag;
 
+            // Not every input tag has a name attribute, in which case there is no match here.
             preg_match('/\sname="(.*?)"/is', $new_tag, $name_match);
-            $name = trim($name_match[1]);
+            $name = isset($name_match[1]) ? trim($name_match[1]) : '';
 
             $field = $this->get_field($name);
 

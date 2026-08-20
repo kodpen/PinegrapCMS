@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -309,4 +309,36 @@ function unpublish_events() {
 if (MAILCHIMP and ECOMMERCE) {
     require_once(dirname(__FILE__) . '/mailchimp.php');
     mailchimp_sync();
+}
+
+// Scheduled-task health: record that this job finished. See pg_cron_ran().
+pg_cron_ran('job');
+
+// Optional dispatcher: at most one other scheduled job per tick, and only as
+// the very last thing this script does. Several of those scripts call exit()
+// from inside their own control flow, which ends this process too - harmless
+// here, because there is nothing left to run and the completion above is
+// already recorded. Nothing happens at all until an operator selects jobs on
+// the settings screen.
+//
+// The include is at global scope on purpose. Done from inside a function, the
+// job's top-level code would run in that function's local scope, and every
+// variable it set would be invisible to the functions it calls.
+$dispatch_script = pg_cron_dispatch_next();
+
+if ($dispatch_script !== '') {
+
+    // Registered before the include so the lock is released even when the job
+    // exits from the middle of its own flow: shutdown handlers still run.
+    register_shutdown_function('pg_cron_dispatch_finished');
+
+    // Each of these scripts is written to be a whole request, and some print an
+    // error page and stop when their own settings are missing. From here that
+    // would land in the general job's output - cron mail every five minutes on
+    // a misconfigured site, or markup on the page when someone opens job.php in
+    // a browser to trigger it by hand. The handler discards it and files it in
+    // the site log instead.
+    ob_start('pg_cron_dispatch_output');
+
+    include($dispatch_script);
 }

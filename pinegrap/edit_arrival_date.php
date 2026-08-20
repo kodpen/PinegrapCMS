@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -335,7 +335,7 @@ if (!$_POST) {
     validate_token_field();
     
     // delete shipping cut-offs (we do this regardless of whether the arrival date is being deleted or edited)
-    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = '" . escape($_POST['id']) . "'";
+    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // assume that there is not an error for a shipping cut-off until we find out otherwise
@@ -349,9 +349,9 @@ if (!$_POST) {
 
 
     // if arrival date was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete arrival date
-        $query = "DELETE FROM arrival_dates WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM arrival_dates WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('arrival date'), $_POST['name']) )), $_SESSION['sessionusername']);
     // else arrival date was not selected for delete
@@ -359,26 +359,26 @@ if (!$_POST) {
         // update arrival date
         $query =
             "UPDATE arrival_dates SET
-                name = '" . escape($_POST['name']) . "',
-                description = '" . escape($_POST['description']) . "',
-                code = '" . escape($_POST['code']) . "',
+                name = '" . escape($_POST['name'] ?? '') . "',
+                description = '" . escape($_POST['description'] ?? '') . "',
+                code = '" . escape($_POST['code'] ?? '') . "',
                 arrival_date = '" . escape(prepare_form_data_for_input($_POST['arrival_date'], 'date')) . "',
                 status = '" . escape($status) . "',
                 start_date = '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
                 end_date = '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-                default_selected = '" . escape($_POST['default_selected']) . "',
-                sort_order = '" . escape($_POST['sort_order']) . "',
-                custom = '" . escape($_POST['custom']) . "',
+                default_selected = '" . escape($_POST['default_selected'] ?? '') . "',
+                sort_order = '" . escape($_POST['sort_order'] ?? '') . "',
+                custom = '" . escape($_POST['custom'] ?? '') . "',
                 custom_maximum_arrival_date = '" . escape(prepare_form_data_for_input($_POST['custom_maximum_arrival_date'], 'date')) . "',
                 user = '" . $user['id'] . "',
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // if default selected was checked, then turn value off for all other arrival dates
-        if ($_POST['default_selected'] == 1) {
+        if (($_POST['default_selected'] ?? '') == 1) {
             // update arrival date
-            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != '" . escape($_POST['id']) . "'";
+            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         }
         
@@ -394,9 +394,9 @@ if (!$_POST) {
             // and the cut-off date and time is between the start date and end date for the arrival date,
             // then insert shipping cut-off into database
             if (
-                ($_POST['shipping_cutoff_' . $i . '_shipping_method_id'] != '')
+                (($_POST['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '') != '')
                 && (in_array($_POST['shipping_cutoff_' . $i . '_shipping_method_id'], $shipping_cutoff_shipping_methods) == FALSE)
-                && ($_POST['shipping_cutoff_' . $i . '_date_and_time'] != '')
+                && (($_POST['shipping_cutoff_' . $i . '_date_and_time'] ?? '') != '')
                 && (validate_date_and_time($_POST['shipping_cutoff_' . $i . '_date_and_time']) == TRUE)
                 && (prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time') >= prepare_form_data_for_input($_POST['start_date'], 'date') . ' 00:00:00')
                 && (prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time') <= prepare_form_data_for_input($_POST['end_date'], 'date') . ' 23:59:59')
@@ -407,7 +407,7 @@ if (!$_POST) {
                         shipping_method_id,
                         date_and_time)
                     VALUES (
-                        '" . escape($_POST['id']) . "',
+                        '" . escape($_POST['id'] ?? '') . "',
                         '" . escape($_POST['shipping_cutoff_' . $i . '_shipping_method_id']) . "',
                         '" . escape(prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time')) . "')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

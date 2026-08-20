@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -81,8 +81,8 @@ function get_membership_entrance($properties = array()) {
             $output_send_to_query_string = '';
 
             // if there is a send to, then add send to to query string
-            if ((isset($_GET['send_to']) == true) && ($_GET['send_to'] != '')) {
-                $output_send_to_query_string = h('?send_to=' . urlencode($_GET['send_to']));
+            if ((isset($_GET['send_to']) == true) && (($_GET['send_to'] ?? '') != '')) {
+                $output_send_to_query_string = h('?send_to=' . urlencode(($_GET['send_to'] ?? '')));
             }
 
             $output_forgot_password_link = '<a class="forgot_button" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/forgot_password.php' . $output_send_to_query_string . '">' . lang('Forgot password?') . '</a><br />' . "\n";
@@ -118,7 +118,7 @@ function get_membership_entrance($properties = array()) {
                     <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em">
                         ' . get_token_field() . '
                         <input type="hidden" name="login" value="true">
-                        <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                        <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                         <input type="hidden" name="require_cookies" value="true" />
                         <table style="margin-bottom: 1em">
                             <tr>
@@ -142,7 +142,7 @@ function get_membership_entrance($properties = array()) {
                     <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em">
                         ' . get_token_field() . '
                         <input type="hidden" name="register" value="true">
-                        <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                        <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                         <input type="hidden" name="require_cookies" value="true" />
                         <table style="margin-bottom: 1em">
                             <tr>
@@ -210,7 +210,7 @@ function get_membership_entrance($properties = array()) {
                         <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em">
                             ' . get_token_field() . '
                             <input type="hidden" name="login" value="true">
-                            <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                             <input type="hidden" name="require_cookies" value="true" />
                             <table style="margin-bottom: 1em">
                                 <tr>
@@ -233,7 +233,7 @@ function get_membership_entrance($properties = array()) {
                         <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em">
                             ' . get_token_field() . '
                             <input type="hidden" name="register" value="true">
-                            <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                             <input type="hidden" name="require_cookies" value="true" />
                             <table style="margin-bottom: 1em">
                                 <tr>
@@ -307,14 +307,14 @@ function get_membership_entrance($properties = array()) {
         $login_system =
             get_token_field() . '
             <input type="hidden" name="login" value="true">
-            <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '">
+            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
             <input type="hidden" name="require_cookies" value="true">';
 
         if (FORGOT_PASSWORD_LINK) {
             $forgot_password_url = PATH . SOFTWARE_DIRECTORY . '/forgot_password.php';
 
-            if ($_GET['send_to'] != '') {
-                $forgot_password_url .= '?send_to=' . urlencode($_GET['send_to']);
+            if (($_GET['send_to'] ?? '') != '') {
+                $forgot_password_url .= '?send_to=' . urlencode(($_GET['send_to'] ?? ''));
             }
 
         } else {
@@ -344,7 +344,7 @@ function get_membership_entrance($properties = array()) {
         $register_system =
             get_token_field() . '
             <input type="hidden" name="register" value="true">
-            <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '">
+            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
             <input type="hidden" name="require_cookies" value="true">';
 
         $output = render_layout(array(

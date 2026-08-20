@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -31,7 +31,7 @@ function get_form_item_view($properties) {
     $submitted_form_editable_by_submitter = $properties['submitted_form_editable_by_submitter'];
 
     // If the style is set to collection b, then get page type properties for that collection.
-    if (COLLECTION == 'b') {
+    if (pg_render_collection() == 'b') {
 
         $properties = get_page_type_properties($page_id, 'form item view', 'b');
 
@@ -266,7 +266,7 @@ function get_form_item_view($properties) {
         }
         
         // if user has access to edit submitted form and chose to edit submitted form, then output form
-        if (($edit_access == true) && ($_GET['edit_submitted_form'] == 'true')) {
+        if (($edit_access == true) && ((isset($_GET['edit_submitted_form'])) && ($_GET['edit_submitted_form'] == 'true'))) {
             // assume that the visitor does not have access to edit office use only fields until we find out otherwise
             // we will use this below is several areas
             $office_use_only_access = FALSE;
@@ -796,7 +796,7 @@ function get_form_item_view($properties) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . $submitted_form['id'] . '" />
                     <input type="hidden" name="form_item_view_page_id" value="' . $page_id . '" />
-                    <input type="hidden" name="form_list_view_send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="form_list_view_send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
                     <table style="margin-bottom: 1em">
                         ' . $output_fields . '
@@ -1140,7 +1140,10 @@ function get_form_item_view($properties) {
                 // if the field name is valid, then replace conditional
                 if ($field_name_valid == TRUE) {
                     // if there is data to output, use first part of conditional
-                    if (($submitted_form[$field_name] != '') || ($custom_fields_with_data[$field_name] == TRUE)) {
+                    // $field_name comes from the layout and refers to a form field that the site
+                    // owner defined, so it can be any name at all.  Neither array is guaranteed to
+                    // have a matching key.
+                    if ((($submitted_form[$field_name] ?? '') != '') || (($custom_fields_with_data[$field_name] ?? false) == TRUE)) {
                         $output = str_replace($whole_string, $positive_string, $output);
                         
                     // else there is no data to output, so use second part of conditional
@@ -1218,7 +1221,7 @@ function get_form_item_view($properties) {
                     // get values differently based on the field group
                     switch ($field_group) {
                         case 'standard':
-                            $data = $submitted_form[$field_name];
+                            $data = $submitted_form[$field_name] ?? '';
                             break;
                         
                         case 'custom':
@@ -1329,7 +1332,7 @@ function get_form_item_view($properties) {
 
                 // If a user account was created via the auto-registration feature,
                 // then show user account info.
-                if ($_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['email_address'] != ''){
+                if (!empty($_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['email_address'])) {
                     $output_auto_registration =
                         '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>
                         <div class="account data">
@@ -1349,8 +1352,8 @@ function get_form_item_view($properties) {
                     $output_edit_button = '';
                     
                     // if there is a send to, then output the back button.
-                    if ((isset($_GET['send_to']) == TRUE) && ($_GET['send_to'] != '')) {
-                        $output_back_button = '<a href="' . h(escape_url($_GET['send_to'])) . '" class="software_button_primary back_button">' . lang('Back') . '</a>&nbsp;&nbsp;&nbsp;';
+                    if ((isset($_GET['send_to']) == TRUE) && (($_GET['send_to'] ?? '') != '')) {
+                        $output_back_button = '<a href="' . h(escape_url(($_GET['send_to'] ?? ''))) . '" class="software_button_primary back_button">' . lang('Back') . '</a>&nbsp;&nbsp;&nbsp;';
                     }
                     
                     // if visitor has access to edit submitted form, then output edit button
@@ -1389,8 +1392,8 @@ function get_form_item_view($properties) {
                 if (!$form_id) {
                     
                     // If there is a send to, then output the back button.
-                    if ($_GET['send_to']) {
-                        $back_button_url = escape_url($_GET['send_to']);
+                    if (($_GET['send_to'] ?? '')) {
+                        $back_button_url = escape_url(($_GET['send_to'] ?? ''));
                     }
                     
                     // If visitor has access to edit submitted form, then output edit button.

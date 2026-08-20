@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -238,7 +238,7 @@ if (!$_POST) {
                 <form action="edit_form_item_view.php" method="post">
                     ' . get_codemirror_includes() . '
                     ' . get_token_field() . '
-                    <input type="hidden" name="send_to" value="' . h($_GET['send_to']) . '" />
+                    <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="page_id" value="' . h($_GET['page_id']) . '" />
                     <div class="row">
                         <div class="col-12 col-md">
@@ -308,7 +308,7 @@ if (!$_POST) {
              SET
                 page_timestamp = UNIX_TIMESTAMP(),
                 page_user = '" . $user['id'] . "'
-             WHERE page_id = '" . escape($_POST['page_id']) . "'";
+             WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'page ({var:1}) was modified','vars'=>$page['name'])), $_SESSION['sessionusername']);

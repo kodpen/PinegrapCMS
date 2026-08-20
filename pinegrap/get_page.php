@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -71,8 +71,9 @@ if (isset($_GET['page']) && $_GET['page'])
 		$query = "SELECT page_id, page_type, layout_type FROM page WHERE page_name = '" . escape($page_name_before_slash) . "'";
 		$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 		$row = mysqli_fetch_assoc($result);
-		$page_id     = $row['page_id'];
-		$page_type   = $row['page_type'];
+		// $row is null when no page matches the segment before the slash.
+		$page_id     = isset($row['page_id']) ? $row['page_id'] : '';
+		$page_type   = isset($row['page_type']) ? $row['page_type'] : '';
 		$layout_type = isset($row['layout_type']) ? $row['layout_type'] : '';
 		// System-layout pages (Visual Pinegrap Editor) are page-type-agnostic:
 		// they may host any combination of widgets (catalog_item_view,
@@ -246,7 +247,7 @@ case 'login':
 break;
 case 'logout':
 	// if user did not come from the control panel, and if they are currently logged in, then send the user to the logout script
-	if (((isset($_GET['from']) == false) || ($_GET['from'] != 'control_panel')) && ($_GET['logged_out'] != true))
+	if (((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) && ($_GET['logged_out'] != true))
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/logout.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -319,7 +320,7 @@ case 'form item view':
 	// if the user has chosen to edit the submitted form,
 	// and the user is not logged in
 	// then determine if submitted form can be edited by a registered user, in order to see if we need to send user to registration entrance screen
-	if (($_GET['edit_submitted_form'] == 'true') && ((isset($_SESSION['sessionusername']) == false) || (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)))
+	if (((isset($_GET['edit_submitted_form'])) && ($_GET['edit_submitted_form'] == 'true')) && ((isset($_SESSION['sessionusername']) == false) || (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)))
 	{
 		$properties = get_page_type_properties($page_id, $page_type);
 		// if submitted form can be edited by a registered user, then send user to registration entrance screen
@@ -417,6 +418,16 @@ case 'membership':
 	}
 	break;
 }
+// Only the normal render branch below decides whether to draw the toolbar; the
+// PDF, RSS and iCalendar branches never touch it and all four fall through to
+// the same tail. Declared here so that tail can read it on every path.
+$toolbar = false;
+// True only on the branch that produces the HTML page a visitor sees. The
+// other three produce a PDF, a feed and a calendar file from the same URL, and
+// timing those is not timing the page: a reader polling ?rss=true every five
+// minutes would otherwise supply most of the measurements the speed score is
+// computed from.
+$rendered_html_page = false;
 // if a PDF is being requested, then output PDF instead of the page
 if (isset($_GET['pdf']) && $_GET['pdf'] == 'true')
 {
@@ -2636,6 +2647,7 @@ else
 	}
 	// assume that the toolbar should not be outputted until we find out otherwise
 	$toolbar = false;
+
 	$get_access_cp = '';
 	if(isset($_GET['edit'])){
 		$get_access_cp = $_GET['edit'];
@@ -2662,6 +2674,7 @@ else
 	}
 	require_once (dirname(__FILE__) . '/get_page_content.php');
 	$content = get_page_content($page_id, '', '', $view_page_mode, $email_mode, array() , $toolbar, $device_type);
+	$rendered_html_page = true;
 	// if the toolbar should be outputted, then output it
 	if ($toolbar == true)
 	{
@@ -3075,6 +3088,26 @@ if (function_exists('pg_version_assets')) {
 }
 
 echo $content;
+// Remember which page this was, for the performance monitor. It runs at
+// shutdown, after this file has finished, and binds its measurement to the
+// record the SEO score keeps. Outside the visitor tracking switch on purpose:
+// the two features are unrelated and turning statistics off should not take
+// the speed half of the score with it.
+//
+// Not while the toolbar is being drawn. That render carries the editing
+// wrappers and the toolbar itself, so it is measurably heavier than what a
+// visitor gets, and an operator working on one page would otherwise push
+// thirty of those measurements into it and score the page slow on traffic no
+// visitor produced.
+//
+// The flag is set as well as the page id, because the catalogue item was
+// registered from inside the render by pg_track_content(), which has no idea
+// who is looking. Without it an operator reloading a product page through the
+// toolbar would keep landing in that product's measurements.
+if (($rendered_html_page == true) && ($toolbar == false)) {
+	pg_measurable_render(true);
+	pg_rendered_page($page_id);
+}
 // if visitor tracking is on
 if (VISITOR_TRACKING == true)
 {
@@ -3643,7 +3676,7 @@ function init_tracking()
 
                 WHERE id = '" . e($_SESSION['software']['visitor_id']) . "'");
 		}
-		if ($_SESSION['ecommerce']['order_id'])
+		if (($_SESSION['ecommerce']['order_id'] ?? ''))
 		{
 			db("UPDATE orders
 
@@ -3659,7 +3692,7 @@ function init_tracking()
 
                     utm_content = '" . e($_SESSION['software']['utm_content']) . "'
 
-                WHERE id = '" . e($_SESSION['ecommerce']['order_id']) . "'");
+                WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
 		}
 	}
 }

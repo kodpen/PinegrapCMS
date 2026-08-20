@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -64,7 +64,7 @@ function get_form_list_view($properties) {
     $footer = $properties['footer'];
 
     // If the style is set to collection b, then get page type properties for that collection.
-    if (COLLECTION == 'b') {
+    if (pg_render_collection() == 'b') {
 
         $properties = get_page_type_properties($page_id, 'form list view', 'b');
 
@@ -441,12 +441,6 @@ function get_form_list_view($properties) {
             // Get all variables so they can be replaced with fields.
             preg_match_all('/{({.*?})}/', $search_advanced_content, $variables, PREG_SET_ORDER);
 
-            // include JSON library only if native json_decode is not available
-            if (!function_exists('json_decode')) {
-                include_once(__DIR__ . '/JSON.php');
-                $json = new Services_JSON(SERVICES_JSON_LOOSE_TYPE);
-            }
-
             // Loop through the variables in order to get advanced filter fields.
             foreach ($variables as $variable) {
 
@@ -458,11 +452,7 @@ function get_form_list_view($properties) {
                 $field_json = unhtmlspecialchars($variable[1]);
 
                 // Create PHP array for field from JSON string.
-                if (function_exists('json_decode')) {
-                    $field = json_decode($field_json, true);
-                } else {
-                    $field = $json->decode($field_json);
-                }
+                $field = json_decode($field_json, true);
 
 
                 // Check if 'name' key exists and is a string before applying mb_strtolower()
@@ -1311,6 +1301,11 @@ function get_form_list_view($properties) {
 
             // Loop through browse fields in order to prepare browse pick list and filters.
             foreach ($browse_fields as $key => $browse_field) {
+
+                // The layout templates always read this key, so it has to exist on every field.
+                if (isset($browse_field['current']) == false) {
+                    $browse_field['current'] = false;
+                }
 
                 $label = $browse_field['label'];
 
@@ -3208,7 +3203,7 @@ function get_form_list_view($properties) {
                     // get values differently based on the field group
                     switch ($field_group) {
                         case 'standard':
-                            $data = $form[$field_name];
+                            $data = $form[$field_name] ?? '';
                             break;
                         
                         case 'custom':

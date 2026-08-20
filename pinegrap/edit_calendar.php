@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -122,33 +122,33 @@ if (!$_POST) {
     validate_token_field();
     
     // if calendar was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // if there are no calendar events in this calendar, proceed with deleting calendar
         if ($number_of_calendar_events == 0) {
             // get calendar name for log
-            $query = "SELECT name FROM calendars WHERE id = '" . escape($_POST['id']) . "'";
+            $query = "SELECT name FROM calendars WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $calendar_name = $row['name'];
             
             // delete calendar
-            $query = "DELETE FROM calendars WHERE id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM calendars WHERE id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete users_calendars_xref records
-            $query = "DELETE FROM users_calendars_xref WHERE calendar_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM users_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete calendar_views_calendars_xref records
-            $query = "DELETE FROM calendar_views_calendars_xref WHERE calendar_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM calendar_views_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete calendar_event_views_calendars_xref records
-            $query = "DELETE FROM calendar_event_views_calendars_xref WHERE calendar_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM calendar_event_views_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // delete calendar_events_calendars_xref records
-            $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_id = '" . escape($_POST['id']) . "'";
+            $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('calendar'), $calendar_name) )), $_SESSION['sessionusername']);
 
@@ -188,7 +188,7 @@ if (!$_POST) {
             FROM calendars
             WHERE
                 (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($_POST['id']) . "')";
+                AND (id != '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if name is already in use by a different calendar, prepare error and forward user back to screen
@@ -207,7 +207,7 @@ if (!$_POST) {
                 name = '" . escape($liveform->get_field_value('name')) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('calendar'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);

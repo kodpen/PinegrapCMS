@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -103,15 +103,15 @@ if (!$_POST) {
     validate_token_field();
     
     // if calendar event location was selected for delete
-    if ($_POST['submit_delete'] == 'Delete') {
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // get calendar event location name for log
-        $query = "SELECT name FROM calendar_event_locations WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "SELECT name FROM calendar_event_locations WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $calendar_event_location_name = $row['name'];
         
         // delete calendar event location
-        $query = "DELETE FROM calendar_event_locations WHERE id = '" . escape($_POST['id']) . "'";
+        $query = "DELETE FROM calendar_event_locations WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event location'), $calendar_event_location_name) )), $_SESSION['sessionusername']);
@@ -140,7 +140,7 @@ if (!$_POST) {
             FROM calendar_event_locations
             WHERE
                 (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($_POST['id']) . "')";
+                AND (id != '" . escape($_POST['id'] ?? '') . "')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if name is already in use by a different calendar event location, prepare error and forward user back to screen
@@ -159,7 +159,7 @@ if (!$_POST) {
                 name = '" . escape($liveform->get_field_value('name')) . "',
                 last_modified_user_id = '" . $user['id'] . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id']) . "'";
+            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
       

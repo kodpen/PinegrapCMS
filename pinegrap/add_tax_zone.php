@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -131,8 +131,8 @@ if (!$_POST) {
 
     $query = "INSERT INTO tax_zones (name, tax_rate, user, timestamp)
               VALUES (
-                '" . escape($_POST['name']) . "',
-                '" . escape($_POST['tax_rate']) . "',
+                '" . escape($_POST['name'] ?? '') . "',
+                '" . escape($_POST['tax_rate'] ?? '') . "',
                 " . $user['id'] . ",
                 UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

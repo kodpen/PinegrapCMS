@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -61,6 +61,36 @@ function get_my_account($properties) {
             affiliate_commission_rate
          FROM contacts
          WHERE id = '" . USER_CONTACT_ID . "'");
+
+    // A user does not have to be linked to a contact, in which case there is no row here.
+    // Fall back to an empty value for every column that is read below.
+    if (is_array($contact) == false) {
+        $contact = array();
+    }
+
+    foreach (array(
+        'first_name',
+        'last_name',
+        'company',
+        'title',
+        'business_address_1',
+        'business_address_2',
+        'business_city',
+        'business_state',
+        'business_zip_code',
+        'business_country',
+        'business_phone',
+        'mobile_phone',
+        'home_phone',
+        'business_fax',
+        'affiliate_approved',
+        'affiliate_name',
+        'affiliate_code',
+        'affiliate_commission_rate') as $contact_field) {
+        if (isset($contact[$contact_field]) == false) {
+            $contact[$contact_field] = '';
+        }
+    }
 
     $first_name = $contact['first_name'];
     $last_name = $contact['last_name'];
@@ -259,7 +289,7 @@ function get_my_account($properties) {
                 }
 
                 // If this is the current active order, then prepare info for it.
-                if ($order['id'] == $_SESSION['ecommerce']['order_id']) {
+                if ($order['id'] == ($_SESSION['ecommerce']['order_id'] ?? '')) {
 
                     $order['active'] = true;
 

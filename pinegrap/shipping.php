@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2025 Kodpen
+ *              2016–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1168,6 +1168,12 @@ function calculate_delivery_date($properties) {
 
 function get_shipping_realtime_rate($properties) {
 
+    // Not every caller has a shipping address yet, so these can be missing.
+    $properties = $properties + array(
+        'ship_to_id' => '',
+        'state'      => '',
+        'zip_code'   => '');
+
     $ship_to_id = $properties['ship_to_id'];
     $service = $properties['service'];
     $realtime_rate = $properties['realtime_rate'];
@@ -2243,7 +2249,7 @@ function get_shipping_realtime_rate($properties) {
     log_activity(
         'Real-time shipping rate calculation' . "\n" .
         'Total Rate: ' . prepare_amount($rate / 100) . "\n" .
-        'Order ID: ' . $_SESSION['ecommerce']['order_id'] . "\n" .
+        'Order ID: ' . ($_SESSION['ecommerce']['order_id'] ?? '') . "\n" .
         'Ship To ID: ' . $ship_to_id . "\n" .
         'Service: ' . get_shipping_service_name($service) . "\n" .
         'State: ' . $state . "\n" .
@@ -2350,7 +2356,7 @@ function get_shipping_methods($properties) {
     $arrival_date_id = $properties['arrival_date_id'];
     $arrival_date = $properties['arrival_date'];
 
-    $order_id = $_SESSION['ecommerce']['order_id'];
+    $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 
     if (!$order_id or !$ship_to_id) {
         return array(
@@ -3088,6 +3094,12 @@ function check_shipping_method($properties) {
 
 function verify_address($properties) {
 
+    // These are optional depending on the screen that calls this.
+    $properties = $properties + array(
+        'prefix'               => '',
+        'old_address_verified' => '',
+        'ship_to_id'           => '');
+
     $liveform = $properties['liveform'];
     $address_type = $properties['address_type'];
 
@@ -3438,7 +3450,9 @@ function get_ship_date($properties) {
 
     $preparation_time = $properties['preparation_time'];
     $shipping_method = $properties['shipping_method'];
-    $excluded_transit_dates = $properties['excluded_transit_dates'];
+
+    // Only passed when the shipping method excludes specific transit dates.
+    $excluded_transit_dates = isset($properties['excluded_transit_dates']) ? $properties['excluded_transit_dates'] : '';
 
     // If there is not shipping method info that we need, then get info.
     if (!isset($shipping_method['handle_days'])) {
