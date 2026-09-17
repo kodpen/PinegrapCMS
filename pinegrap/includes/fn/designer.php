@@ -1040,8 +1040,11 @@ function _pg_sw_append_query($url, $key, $value)
 // This function decodes and evals the PHP at page-render time so the output reflects live state
 // (date(), DB queries, session, request params — anything PHP can see at render).
 //
-// Security model: only designers/admins can save a style tree, so only trusted authors can
-// plant these markers. The source never lives in style_code as executable text — it sits inside
+// Security model: a custom_php node can only be written by a designer/admin. A manager or
+// user save goes through pg_designer_merge_restricted_tree(), which restores every
+// custom_php node from the stored tree and drops any the submission added (see
+// _pg_dm_locked_kind in includes/designer_access.php), so only trusted authors can plant
+// these markers. The source never lives in style_code as executable text — it sits inside
 // an HTML comment until this expansion runs. Output is captured via ob_start/ob_get_clean so
 // echo'd HTML lands where the marker was.
 //
@@ -1823,6 +1826,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $stored_tree = ($stored_json !== '') ? json_decode($stored_json, true) : null;
         if (is_array($stored_tree)) {
             $tree = pg_designer_merge_restricted_tree($stored_tree, $tree);
+        } else {
+            // No stored tree to merge into (a page saved before the per-page
+            // tree existed). The submission is written, minus the nodes this
+            // level may never create: a custom_php node is eval()ed on every
+            // public render, so accepting one here would be code execution.
+            if (_pg_dm_locked_kind($tree) !== '') {
+                $tree = array('type' => 'root', 'props' => array(), 'children' => array());
+            }
+            pg_designer_drop_locked_nodes($tree);
         }
     }
 
@@ -3148,8 +3160,9 @@ function _render_content_html($props, $pad)
             // pipeline (`_expand_custom_php` in get_page_content.php) decodes and evals it
             // at page-render time so every request gets fresh output (date(), DB queries, etc.).
             // Raw PHP never lands in style_code as executable text — only inside a comment,
-            // neutralized for passive readers. A designer/admin role is required to save
-            // style trees, so only trusted authors can plant these markers.
+            // neutralized for passive readers. Only a designer/admin can write this node:
+            // a manager or user save is merged by pg_designer_merge_restricted_tree(), which
+            // keeps the stored custom_php nodes and drops any the submission added.
             $phpSrc = isset($props['php']) ? $props['php'] : '';
             $b64    = base64_encode($phpSrc);
             $html .= $pad . '<!--pg-custom-php:' . $b64 . '-->' . "\n";
