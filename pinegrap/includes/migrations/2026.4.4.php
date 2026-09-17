@@ -116,6 +116,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_settlements();        // 4.44
 
 	upgrade_2026_4_4_erp_return_series();      // 4.45
+
+	upgrade_2026_4_4_erp_invoice_document();   // 4.46
 }
 
 
@@ -2502,5 +2504,30 @@ function upgrade_2026_4_4_erp_return_series() {
 		"ENUM('sales_invoice','sales_return','purchase_invoice','proforma','waybill','collection','payment') NOT NULL DEFAULT 'sales_invoice'");
 
 	install_note('Returns and purchase invoices can now take their own document numbers.');
+
+}
+
+// 4.46 - what a printed invoice needs that the config row did not yet hold.
+//
+// A PDF invoice has to name the seller the way the tax office knows it: by tax
+// number and tax office. Neither had a home on the config row because the
+// Parasut integration carried them on the Parasut side; a locally rendered
+// document cannot reach across for them, so they live here.
+//
+// The template is admin-editable HTML and can run to tens of kilobytes, which
+// is why it is MEDIUMTEXT and not a constant read on every page. MySQL refuses
+// a DEFAULT on a TEXT column, so it is nullable: NULL or empty means "use the
+// built-in template".
+function upgrade_2026_4_4_erp_invoice_document() {
+
+	// Tax number (VKN, 10 digits) or ID number (TCKN, 11 digits) of the seller.
+	install_add_column('config', 'erp_seller_vkn', "VARCHAR(11) NOT NULL DEFAULT ''");
+
+	install_add_column('config', 'erp_seller_tax_office', "VARCHAR(100) NOT NULL DEFAULT ''");
+
+	// The HTML template the PDF invoice is rendered from; empty means built-in.
+	install_add_column('config', 'erp_invoice_template', "MEDIUMTEXT NULL");
+
+	install_note('Invoices can now be printed as PDF with the seller\'s tax number and tax office; the template can be edited in the panel.');
 
 }

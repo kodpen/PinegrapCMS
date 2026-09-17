@@ -485,6 +485,15 @@ $pg_settings_cards[] = '
                         <input type="text" class="form-control" id="erp_web_address" name="erp_web_address" value="' . h($erp_web_address) . '" maxlength="255" autocomplete="off" />
                         <div class="form-text">' . lang('Printed on invoices for internet sales, which have to name it. For example www.example.com.') . '</div>
                     </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="11" inputmode="numeric" autocomplete="off" />
+                        <div class="form-text">' . lang('Tax number (10 digits) or ID number (11 digits) of the company that issues the invoices') . '</div>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
+                    </div>
                 </div>
             </div>
         </div>

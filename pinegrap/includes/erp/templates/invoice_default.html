@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<!--
+  Pinegrap ERP - varsayılan fatura şablonu.
+
+  Bu belge yönetim panelinden (ERP Ayarları > Fatura Şablonu) düzenlenebilir.
+  Bir yer tutucu, çift küme parantezi içine yazılan addır (örneğin seller.title)
+  ve değeri HTML'den kaçırarak basar; üçlü parantez olduğu gibi basar. Adın
+  önüne # konularak açılan ve / ile kapatılan blok değer doluysa gösterilir
+  (değer listeyse her satır için yinelenir); ^ ile açılan blok değer boşsa
+  gösterilir. Bu yorum da şablonun parçasıdır, o yüzden örnekler kelimeyle
+  anlatılmıştır; yer tutucuların tam listesi aşağıdadır.
+
+  seller   .title .address_1 .address_2 .city .state .zip_code .country
+           .vkn .tax_office .web_address .email .logo_url .logo_data_uri
+  account  .title .is_person .tax_number .tax_office .address .district .city
+           .country .postcode .email .phone
+  invoice  .full_number .title .issue_date .due_date .doc_type .is_return
+           .status_label .order_number .against_number .currency
+           .is_internet_sale .payment_method_label .payment_date
+           .shipment_date .carrier_title .carrier_vkn .web_address .notes
+  lines    (liste) .no .description .quantity .unit_price .discount
+           .has_discount .base .tax_rate .tax .total
+  totals   .subtotal .discount_total .shipping_total .surcharge_total
+           .gift_card_total .tax_total .grand_total
+           .has_discount .has_shipping .has_surcharge .has_gift_card
+  generated_at
+-->
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>{{invoice.title}} {{invoice.full_number}}</title>
+<style>
+    @page { size: A4 portrait; margin: 14mm 14mm 18mm 14mm; }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 9.5pt; color: #222; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { vertical-align: top; }
+    .head td { padding: 0; }
+    .logo { max-height: 60px; max-width: 200px; margin-bottom: 6px; }
+    .seller { font-size: 9pt; line-height: 1.35; }
+    .seller .name { font-size: 12pt; font-weight: bold; margin-bottom: 3px; }
+    .doc { text-align: right; }
+    .doc .title { font-size: 18pt; font-weight: bold; letter-spacing: 1px; color: #333; }
+    .doc table { width: auto; margin-left: auto; margin-top: 6px; }
+    .doc td { padding: 2px 0 2px 12px; font-size: 9pt; white-space: nowrap; }
+    .doc td.k { color: #666; }
+    .doc td.v { font-weight: bold; text-align: right; }
+    .rule { border-top: 2px solid #333; margin: 12px 0; }
+    .party { font-size: 9.5pt; line-height: 1.4; }
+    .party .label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+    .party .name { font-weight: bold; font-size: 11pt; }
+    .lines { margin-top: 14px; }
+    .lines th { background: #efefef; border-bottom: 1px solid #999; padding: 6px 5px; font-size: 8.5pt; text-align: left; }
+    .lines td { border-bottom: 1px solid #ddd; padding: 5px; font-size: 9pt; }
+    .lines .n { text-align: right; white-space: nowrap; }
+    .lines .c { text-align: center; }
+    .totals { width: auto; margin-left: auto; margin-top: 12px; }
+    .totals td { padding: 3px 0 3px 20px; font-size: 9.5pt; }
+    .totals td.v { text-align: right; white-space: nowrap; }
+    .totals tr.grand td { border-top: 2px solid #333; font-weight: bold; font-size: 11pt; padding-top: 6px; }
+    .totals tr.muted td { color: #666; font-size: 8.5pt; }
+    .box { border: 1px solid #bbb; padding: 8px 10px; margin-top: 16px; font-size: 8.5pt; }
+    .box .label { font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .box td { padding: 1px 12px 1px 0; }
+    .box td.k { color: #666; white-space: nowrap; }
+    .notes { margin-top: 14px; font-size: 8.5pt; }
+    .foot { position: fixed; bottom: -8mm; left: 0; right: 0; font-size: 7.5pt; color: #777; border-top: 1px solid #ccc; padding-top: 4px; }
+    .foot td { padding: 0; }
+    .foot td.r { text-align: right; }
+</style>
+</head>
+<body>
+
+<table class="head">
+    <tr>
+        <td style="width:58%">
+            <div class="seller">
+                {{#seller.logo_data_uri}}<img class="logo" src="{{seller.logo_data_uri}}" alt=""><br>{{/seller.logo_data_uri}}
+                <div class="name">{{seller.title}}</div>
+                {{#seller.address_1}}{{seller.address_1}}<br>{{/seller.address_1}}
+                {{#seller.address_2}}{{seller.address_2}}<br>{{/seller.address_2}}
+                {{seller.zip_code}} {{seller.city}} {{seller.state}} {{seller.country}}<br>
+                {{#seller.vkn}}VKN / TCKN: <b>{{seller.vkn}}</b>{{/seller.vkn}}
+                {{#seller.tax_office}} &nbsp;Vergi Dairesi: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
+                {{#seller.web_address}}{{seller.web_address}}{{/seller.web_address}}
+                {{#seller.email}} &nbsp;{{seller.email}}{{/seller.email}}
+            </div>
+        </td>
+        <td class="doc">
+            <div class="title">{{invoice.title}}</div>
+            <table>
+                <tr><td class="k">Fatura No</td><td class="v">{{invoice.full_number}}</td></tr>
+                <tr><td class="k">Fatura Tarihi</td><td class="v">{{invoice.issue_date}}</td></tr>
+                {{#invoice.due_date}}<tr><td class="k">Vade Tarihi</td><td class="v">{{invoice.due_date}}</td></tr>{{/invoice.due_date}}
+                {{#invoice.against_number}}<tr><td class="k">İade Edilen Fatura</td><td class="v">{{invoice.against_number}}</td></tr>{{/invoice.against_number}}
+                {{#invoice.order_number}}<tr><td class="k">Sipariş No</td><td class="v">{{invoice.order_number}}</td></tr>{{/invoice.order_number}}
+                <tr><td class="k">Para Birimi</td><td class="v">{{invoice.currency}}</td></tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div class="rule"></div>
+
+<table>
+    <tr>
+        <td style="width:58%">
+            <div class="party">
+                <div class="label">Sayın</div>
+                <div class="name">{{account.title}}</div>
+                {{#account.address}}{{account.address}}<br>{{/account.address}}
+                {{account.postcode}} {{account.district}} {{account.city}} {{account.country}}<br>
+                {{#account.tax_number}}VKN / TCKN: <b>{{account.tax_number}}</b>{{/account.tax_number}}
+                {{#account.tax_office}} &nbsp;Vergi Dairesi: <b>{{account.tax_office}}</b>{{/account.tax_office}}<br>
+                {{#account.email}}{{account.email}}{{/account.email}}
+                {{#account.phone}} &nbsp;{{account.phone}}{{/account.phone}}
+            </div>
+        </td>
+        <td></td>
+    </tr>
+</table>
+
+<table class="lines">
+    <thead>
+        <tr>
+            <th class="c" style="width:4%">#</th>
+            <th>Açıklama</th>
+            <th class="n" style="width:9%">Miktar</th>
+            <th class="n" style="width:13%">Birim Fiyat</th>
+            <th class="n" style="width:11%">İskonto</th>
+            <th class="n" style="width:13%">Matrah</th>
+            <th class="n" style="width:7%">KDV</th>
+            <th class="n" style="width:12%">KDV Tutarı</th>
+            <th class="n" style="width:13%">Toplam</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#lines}}
+        <tr>
+            <td class="c">{{no}}</td>
+            <td>{{description}}</td>
+            <td class="n">{{quantity}}</td>
+            <td class="n">{{unit_price}}</td>
+            <td class="n">{{#has_discount}}&minus;{{discount}}{{/has_discount}}</td>
+            <td class="n">{{base}}</td>
+            <td class="n">{{tax_rate}}</td>
+            <td class="n">{{tax}}</td>
+            <td class="n">{{total}}</td>
+        </tr>
+        {{/lines}}
+        {{^lines}}
+        <tr><td colspan="9" class="c">Bu belgede satır yok.</td></tr>
+        {{/lines}}
+    </tbody>
+</table>
+
+<table class="totals">
+    <tr><td>Ara Toplam</td><td class="v">{{totals.subtotal}}</td></tr>
+    {{#totals.has_discount}}<tr><td>İskonto</td><td class="v">&minus;{{totals.discount_total}}</td></tr>{{/totals.has_discount}}
+    {{#totals.has_shipping}}<tr><td>Kargo</td><td class="v">{{totals.shipping_total}}</td></tr>{{/totals.has_shipping}}
+    {{#totals.has_surcharge}}<tr><td>Ek Ücret</td><td class="v">{{totals.surcharge_total}}</td></tr>{{/totals.has_surcharge}}
+    <tr><td>Hesaplanan KDV</td><td class="v">{{totals.tax_total}}</td></tr>
+    <tr class="grand"><td>Genel Toplam</td><td class="v">{{totals.grand_total}}</td></tr>
+    {{#totals.has_gift_card}}<tr class="muted"><td>Hediye kartı ile ödenen</td><td class="v">{{totals.gift_card_total}}</td></tr>{{/totals.has_gift_card}}
+</table>
+
+{{#invoice.is_internet_sale}}
+<div class="box">
+    <div class="label">İnternet Satışı Bilgileri</div>
+    <table>
+        <tr><td class="k">Satışın yapıldığı adres</td><td>{{invoice.web_address}}</td></tr>
+        <tr><td class="k">Ödeme şekli</td><td>{{invoice.payment_method_label}}</td></tr>
+        <tr><td class="k">Ödeme tarihi</td><td>{{invoice.payment_date}}</td></tr>
+        <tr><td class="k">Taşıyıcı</td><td>{{invoice.carrier_title}}{{#invoice.carrier_vkn}} &nbsp;VKN: {{invoice.carrier_vkn}}{{/invoice.carrier_vkn}}</td></tr>
+        <tr><td class="k">Gönderim tarihi</td><td>{{invoice.shipment_date}}</td></tr>
+    </table>
+</div>
+{{/invoice.is_internet_sale}}
+
+{{#invoice.notes}}
+<div class="notes"><b>Not:</b> {{invoice.notes}}</div>
+{{/invoice.notes}}
+
+<div class="foot">
+    <table>
+        <tr>
+            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{invoice.title}} {{invoice.full_number}}{{#invoice.order_number}} &nbsp;&middot;&nbsp; Sipariş {{invoice.order_number}}{{/invoice.order_number}}</td>
+            <td class="r">Oluşturulma: {{generated_at}}</td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

@@ -350,6 +350,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_enabled_checked = ($erp_enabled == 1) ? ' checked="checked"' : '';
     $erp_default_series = $row['erp_default_series'] ?? 'PGF';
     $erp_web_address = $row['erp_web_address'] ?? '';
+    $erp_seller_vkn = $row['erp_seller_vkn'] ?? '';
+    $erp_seller_tax_office = $row['erp_seller_tax_office'] ?? '';
     $parasut_default_product_id  = $row['parasut_default_product_id']  ?? '';
     $parasut_default_warehouse_id = $row['parasut_default_warehouse_id'] ?? '';
     $enable_iyzipay_protected_currency = $row['enable_iyzipay_protected_currency'];

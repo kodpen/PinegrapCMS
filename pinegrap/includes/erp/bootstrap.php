@@ -36,3 +36,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/numbering.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/settlement.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/returns.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/document.php');
