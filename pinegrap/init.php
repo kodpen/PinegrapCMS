@@ -119,7 +119,7 @@ if (!defined('OUTPUT_SOFTWARE_DIRECTORY')) {
 // if this request was made over the web (i.e. not a cron job),
 // then get the path (e.g. /~example) to the software root (i.e. the level above the software directory)
 // For cron jobs, we will set the path later from the value that we get from the database
-if ($_SERVER['HTTP_HOST'] != '') {
+if (($_SERVER['HTTP_HOST'] ?? '') != '') {
     // get the url path parts in order to get the file name
     $url_path_parts = explode('/', $_SERVER['SCRIPT_NAME']);
     $file_name = $url_path_parts[count($url_path_parts) - 1];
@@ -212,7 +212,7 @@ if (defined('HTACCESS_FILE_PATH') == false) {
     // and we still have some sites on PHP 5.1 (probably won't cause any utf-8 issue).
 
     // If the web server is IIS then set the htaccess file info to the httpd.ini location.
-    if (stristr($_SERVER['SERVER_SOFTWARE'], 'iis')) {
+    if (stristr($_SERVER['SERVER_SOFTWARE'] ?? '', 'iis')) {
         define('HTACCESS_FILE_PATH', dirname(__FILE__) . '/../httpd.ini');
         define('HTACCESS_FILE_NAME', 'httpd.ini');
 
