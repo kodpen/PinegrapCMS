@@ -11371,5 +11371,8 @@
     "The HTML the PDF invoice is rendered from. Saving it unchanged, or empty, keeps the built-in template.": "PDF faturanın üretildiği HTML. Değiştirmeden ya da boş kaydetmek yerleşik şablonu korur.",
     "INVOICE": "FATURA",
     "RETURN INVOICE": "İADE FATURASI",
-    "PROFORMA INVOICE": "PROFORMA FATURA"
+    "PROFORMA INVOICE": "PROFORMA FATURA",
+    "{var:1} could not be read as a list. Enter a JSON array such as [\"a\", \"b\"], or values separated by commas.": "{var:1} liste olarak okunamadı. [\"a\", \"b\"] gibi bir JSON dizisi ya da virgülle ayrılmış değerler girin.",
+    "OpenSSL is disabled": "OpenSSL devre dışı",
+    "The encryption key could not be reset, because the OpenSSL PHP extension is not enabled": "OpenSSL PHP uzantısı etkinleştirilmediğinden şifreleme anahtarı sıfırlanamadı"
 }

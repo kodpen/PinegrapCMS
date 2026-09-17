@@ -688,8 +688,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             // if encryption is enabled, then decrypt the credit card number
             if (
                 (defined('ENCRYPTION_KEY') == TRUE)
-                && (extension_loaded('mcrypt') == TRUE)
-                && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                && (extension_loaded('openssl') == TRUE)
             ) {
                 $card_number = decrypt_credit_card_number($card_number, ENCRYPTION_KEY);
                 
@@ -1652,8 +1651,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             // if encryption is enabled, then decrypt the credit card number
             if (
                 (defined('ENCRYPTION_KEY') == TRUE)
-                && (extension_loaded('mcrypt') == TRUE)
-                && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                && (extension_loaded('openssl') == TRUE)
             ) {
                 $card_number = decrypt_credit_card_number($card_number, ENCRYPTION_KEY);
                 
@@ -2292,7 +2290,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // if order was set, update session
     if (isset($_REQUEST['order'])) {
-        $_SESSION['software']['ecommerce']['view_orders']['order'] = $_REQUEST['order'];
+        $_SESSION['software']['ecommerce']['view_orders']['order'] = sql_order_direction($_REQUEST['order'], '');
     }
 
     // If a screen was passed and it is a positive integer, then use it.
@@ -2364,7 +2362,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     }
 
     if (!empty($_SESSION['software']['ecommerce']['view_orders']['order'])) {
-        $asc_desc = ($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '');
+        $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_orders']['order'] ?? '');
     } elseif ($sort_column == 'orders.order_date') {
         $asc_desc = 'desc';
         $_SESSION['software']['ecommerce']['view_orders']['order'] = 'desc';

@@ -1202,10 +1202,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_reset_encryption_key_disabled = '';
     $ecommerce_reset_encryption_key_disabled_message = '';
     
-    // if mcrypt is disabled, then disable reset encryption key
-    if ((extension_loaded('mcrypt') == FALSE) || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE)) {
+    // if OpenSSL is disabled, then disable reset encryption key
+    if (extension_loaded('openssl') == FALSE) {
         $ecommerce_reset_encryption_key_disabled = ' disabled="disabled"';
-        $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('MCrypt is disabled') . ')';
+        $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('OpenSSL is disabled') . ')';
     }
     
     if ($ecommerce_paypal_express_checkout == 1) {

@@ -51,7 +51,7 @@ if (!$_POST) {
 
     // if order was set, update session
     if (isset($_REQUEST['order'])) {
-        $_SESSION['software']['ecommerce']['view_products']['order'] = $_REQUEST['order'];
+        $_SESSION['software']['ecommerce']['view_products']['order'] = sql_order_direction($_REQUEST['order'], '');
     }
 
     // If the sort is not set, then set to default.
@@ -518,7 +518,7 @@ if (!$_POST) {
     }
 
     if (!empty($_SESSION['software']['ecommerce']['view_products']['order'])) {
-        $asc_desc = ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '');
+        $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_products']['order'] ?? '');
     } elseif ($sort_column == 'products.timestamp') {
         $asc_desc = 'desc';
         $_SESSION['software']['ecommerce']['view_products']['order'] = 'desc';

@@ -50,7 +50,7 @@ if (isset($_REQUEST['sort'])) {
 // if order was set, update session
 if (isset($_REQUEST['order'])) {
     // store sort in session
-    $_SESSION['software']['comments']['order'] = $_REQUEST['order'];
+    $_SESSION['software']['comments']['order'] = sql_order_direction($_REQUEST['order'], '');
 }
 
 // if the sort is not set yet (first visit to this screen), then default it to empty so the
@@ -83,7 +83,7 @@ switch (($_SESSION['software']['comments']['sort'] ?? ''))
 }
 
 if (!empty($_SESSION['software']['comments']['order'])) {
-    $asc_desc = ($_SESSION['software']['comments']['order'] ?? '');
+    $asc_desc = sql_order_direction($_SESSION['software']['comments']['order'] ?? '');
 } elseif ($sort_column == 'created_timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['comments']['order'] = 'desc';

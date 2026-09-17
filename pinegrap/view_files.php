@@ -65,7 +65,7 @@ if (isset($_REQUEST['sort'])) {
 // if order was set, update session
 if (isset($_REQUEST['order'])) {
     // store sort in session
-    $_SESSION['software']['files']['order'] = $_REQUEST['order'];
+    $_SESSION['software']['files']['order'] = sql_order_direction($_REQUEST['order'], '');
 }
 
 // if the sort is not set yet, then default it to empty so that the switch below falls
@@ -105,7 +105,7 @@ switch (($_SESSION['software']['files']['sort'] ?? '')) {
 }
 
 if (!empty($_SESSION['software']['files']['order'])) {
-    $asc_desc = ($_SESSION['software']['files']['order'] ?? '');
+    $asc_desc = sql_order_direction($_SESSION['software']['files']['order'] ?? '');
 } elseif ($sort_column == 'timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['files']['order'] = 'desc';

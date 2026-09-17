@@ -691,8 +691,7 @@ class liveform {
                 if (
                     ($field == 'card_number')
                     && (defined('ENCRYPTION_KEY') == TRUE)
-                    && (extension_loaded('mcrypt') == TRUE)
-                    && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                    && (extension_loaded('openssl') == TRUE)
                 ) {
                     $value = encrypt_credit_card_number($value, ENCRYPTION_KEY);
                 }
@@ -712,8 +711,7 @@ class liveform {
         if (
             ($field == 'card_number')
             && (defined('ENCRYPTION_KEY') == TRUE)
-            && (extension_loaded('mcrypt') == TRUE)
-            && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+            && (extension_loaded('openssl') == TRUE)
         ) {
             $value = encrypt_credit_card_number($value, ENCRYPTION_KEY);
         }
@@ -739,8 +737,7 @@ class liveform {
             if (
                 ($field == 'card_number')
                 && (defined('ENCRYPTION_KEY') == TRUE)
-                && (extension_loaded('mcrypt') == TRUE)
-                && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                && (extension_loaded('openssl') == TRUE)
             ) {
                 $value = encrypt_credit_card_number($value, ENCRYPTION_KEY);
             }
@@ -773,8 +770,7 @@ class liveform {
                 if (
                     ($field == 'card_number')
                     && (defined('ENCRYPTION_KEY') == TRUE)
-                    && (extension_loaded('mcrypt') == TRUE)
-                    && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                    && (extension_loaded('openssl') == TRUE)
                 ) {
                     $value = decrypt_credit_card_number($value, ENCRYPTION_KEY);
                 }
@@ -807,8 +803,7 @@ class liveform {
             if (
                 ($field == 'card_number')
                 && (defined('ENCRYPTION_KEY') == TRUE)
-                && (extension_loaded('mcrypt') == TRUE)
-                && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                && (extension_loaded('openssl') == TRUE)
             ) {
                 $value = decrypt_credit_card_number($value, ENCRYPTION_KEY);
             }
@@ -1344,8 +1339,7 @@ class liveform {
                         ($attribute == 'value')
                         && ($name == 'card_number')
                         && (defined('ENCRYPTION_KEY') == TRUE)
-                        && (extension_loaded('mcrypt') == TRUE)
-                        && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                        && (extension_loaded('openssl') == TRUE)
                     ) {
                         $value = decrypt_credit_card_number($value, ENCRYPTION_KEY);
                     }
