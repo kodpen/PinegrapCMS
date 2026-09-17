@@ -47,7 +47,7 @@ if (isset($_REQUEST['sort'])) {
 // if order was set, update session
 if (isset($_REQUEST['order'])) {
     // store sort in session
-    $_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] = $_REQUEST['order'];
+    $_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] = sql_order_direction($_REQUEST['order'], '');
 }
 
 // If a screen was passed and it is a positive integer, then use it.
@@ -93,7 +93,7 @@ switch (($_SESSION['software']['ecommerce']['view_orders_for_contact']['sort'] ?
         $sort_column = 'order_date';
 }
 if (!empty($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'])) {
-    $asc_desc = ($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] ?? '');
+    $asc_desc = sql_order_direction($_SESSION['software']['ecommerce']['view_orders_for_contact']['order'] ?? '');
 } else {
     $asc_desc = 'desc';
 }

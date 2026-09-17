@@ -1251,7 +1251,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
     // if order was set, update session
     if (isset($_REQUEST['order'])) {
-        $_SESSION['software']['view_contacts']['order'] = $_REQUEST['order'];
+        $_SESSION['software']['view_contacts']['order'] = sql_order_direction($_REQUEST['order'], '');
     }
 
     // If a screen was passed and it is a positive integer, then use it.
@@ -1438,7 +1438,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         
         // if the sort order is blank then set it to the order in the session
         if ($sort_order == '') {
-            $sort_order = ($_SESSION['software']['view_contacts']['order'] ?? '');
+            $sort_order = sql_order_direction($_SESSION['software']['view_contacts']['order'] ?? '');
         }
     }
     
@@ -1524,7 +1524,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $join_table
         $where
         GROUP BY contacts.id
-        ORDER BY $sort_column " . escape($sort_order) . " ";
+        ORDER BY $sort_column " . sql_order_direction($sort_order) . " ";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $contacts = array();
