@@ -72,9 +72,9 @@ function pg_parasut_credentials_for_save()
         && $_POST['ecommerce_reset_encryption_key'] == 1
     ){
     
-        // if MCrypt is disabled, then output error
-        if ((extension_loaded('mcrypt') == FALSE) || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE)) {
-            output_error(lang('The encryption key could not be reset, because the MCrypt PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        // if OpenSSL is disabled, then output error
+        if (extension_loaded('openssl') == FALSE) {
+            output_error(lang('The encryption key could not be reset, because the OpenSSL PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
         // get contents of config.php file in order to reset encryption key
@@ -88,7 +88,7 @@ function pg_parasut_credentials_for_save()
             output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
-        $old_encryption_key = ENCRYPTION_KEY;
+        $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
         $new_encryption_key = generate_encryption_key();
         
         // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
@@ -131,13 +131,13 @@ function pg_parasut_credentials_for_save()
                 
                 // if the decryption was successful, then encrypt it with new key and store it
                 if (is_numeric($order['card_number']) == TRUE) {
-                    $query = "UPDATE orders SET card_number = '" . encrypt_credit_card_number($order['card_number'], $new_encryption_key) . "' WHERE id = '" . $order['id'] . "'";
+                    $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 }
                 
             // else the credit card number is not already encrypted, so encrypt it for the first time
             } else {
-                $query = "UPDATE orders SET card_number = '" . encrypt_credit_card_number($order['card_number'], $new_encryption_key) . "' WHERE id = '" . $order['id'] . "'";
+                $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             }
         }
