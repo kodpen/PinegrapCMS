@@ -263,6 +263,7 @@ function pg_parasut_credentials_for_save()
             ecommerce_paypal_express_checkout_api_signature = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_signature'))) . "',
             ecommerce_offline_payment = '" . escape(post_value('ecommerce_offline_payment')) . "',
             ecommerce_offline_payment_only_specific_orders = '" . escape(post_value('ecommerce_offline_payment_only_specific_orders')) . "',
+            ecommerce_offline_payment_cancel_days = '" . min(255, max(0, (int) preg_replace('/\D/', '', (string) post_value('ecommerce_offline_payment_cancel_days')))) . "',
             ecommerce_private_folder_id = '" . e(post_value('ecommerce_private_folder_id')) . "',
             ecommerce_retrieve_order_next_page_id = '" . escape(post_value('ecommerce_retrieve_order_next_page_id')) . "',
             ecommerce_custom_product_field_1_label = '" . escape(post_value('ecommerce_custom_product_field_1_label')) . "',

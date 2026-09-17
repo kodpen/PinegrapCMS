@@ -11377,5 +11377,19 @@
     "The encryption key could not be reset, because the OpenSSL PHP extension is not enabled": "OpenSSL PHP uzantısı etkinleştirilmediğinden şifreleme anahtarı sıfırlanamadı",
     "There have been several failed sign-in attempts for this account or from this address. Please sign in first, then change your password.": "Bu hesap için veya bu adresten birkaç başarısız oturum açma denemesi yapıldı. Lütfen önce oturum açın, ardından şifrenizi değiştirin.",
     "The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.": "Ödeme doğrulanırken sipariş toplamı değişti. Ödeme iptal edildi. Lütfen siparişinizi kontrol edip tekrar deneyiniz.",
-    "The image could not be converted to WebP.": "Görsel WebP biçimine dönüştürülemedi."
+    "The image could not be converted to WebP.": "Görsel WebP biçimine dönüştürülemedi.",
+    "Please select a payment method.": "Lütfen bir ödeme yöntemi seçin.",
+    "Awaiting Bank Transfer": "Havale bekleyen",
+    "Awaiting Payment": "Ödeme bekleniyor",
+    "Awaiting bank transfer": "Havale bekleniyor",
+    "Record that the bank transfer for this order has arrived?": "Bu siparişin havalesinin geldiği kaydedilsin mi?",
+    "This order is not awaiting payment.": "Bu sipariş ödeme beklemiyor.",
+    "Cancel unpaid bank transfer orders after": "Ödenmemiş havale siparişlerini şu süre sonra iptal et",
+    "days; 0 keeps them open until you cancel by hand. Cancelled orders keep the reason on the order screen.": "gün; 0 siz elle iptal edene kadar açık bırakır. İptal edilen siparişlerde sebep sipariş ekranında kalır.",
+    "Cancelled automatically: bank transfer not received within {var:1} days.": "Otomatik iptal: havale {var:1} gün içinde alınmadı.",
+    "awaiting payment": "ödeme bekliyor",
+    "This order is still awaiting its bank transfer; the invoice has no payment date yet.": "Bu sipariş hâlâ havalesini bekliyor; faturanın henüz ödeme tarihi yok.",
+    "orders.payment_method does not exist, skipped": "orders.payment_method yok, atlandı",
+    "orders.payment_method already knows about Pay With Iyzico": "orders.payment_method zaten Pay With Iyzico değerini tanıyor",
+    "orders.payment_method is not an ENUM, skipped": "orders.payment_method ENUM değil, atlandı"
 }

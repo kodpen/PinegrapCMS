@@ -235,6 +235,71 @@ if (
 
 }
 
+
+// Bank transfer orders nobody paid for. An offline order is complete the
+// moment it is placed, so without this the ones that never get paid sit in
+// the list until somebody deletes them by hand. The setting gives the number
+// of days to wait; 0 turns the sweep off, and so does a schema that has not
+// been upgraded to carry paid_at.
+//
+// Two kinds of order are left alone: those that already carry an ERP invoice,
+// because cancelling them would leave a document with no order behind it and
+// the accountant decides those, and those that have shipped, because a
+// dispatched parcel means the operator saw the money somewhere this software
+// did not. The shipped check is done here because the admin flag passed to
+// process_order_cancellation() bypasses its own shipment guard.
+//
+// Idempotent: a cancelled order leaves the WHERE clause, and
+// process_order_cancellation() refuses an order that is already cancelled, so
+// two runs that overlap do no harm. The batch is capped so one tick of the
+// job never spends its whole budget here; the rest is picked up next time.
+
+if (
+    ECOMMERCE
+    and defined('ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS')
+    and (ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS > 0)
+    and db_item("SHOW COLUMNS FROM orders LIKE 'paid_at'")
+) {
+
+    $cancel_days = (int) ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS;
+
+    $cancel_before_timestamp = time() - ($cancel_days * 86400);
+
+    $unpaid_orders = db_items(
+        "SELECT id, order_number
+        FROM orders
+        WHERE
+            (payment_method = 'Offline Payment')
+            AND (paid_at = 0)
+            AND (status = 'complete')
+            AND (order_date < '" . $cancel_before_timestamp . "')
+            AND (COALESCE(erp_invoice_id, 0) = 0)
+        ORDER BY order_date ASC
+        LIMIT 50");
+
+    $cancel_reason = lang(array('string' => 'Cancelled automatically: bank transfer not received within {var:1} days.', 'vars' => array($cancel_days)));
+
+    foreach ((array) $unpaid_orders as $unpaid_order) {
+
+        if (_order_has_shipped($unpaid_order['id'])) {
+            continue;
+        }
+
+        // Admin context so the cancellation is logged as the shop's decision,
+        // no user because nobody clicked, and no refund attempt because no
+        // money was ever taken.
+        $response = process_order_cancellation($unpaid_order['id'], $cancel_reason, true, 0, false);
+
+        if (($response['status'] ?? '') != 'success') {
+            continue;
+        }
+
+        log_activity('general job cancelled unpaid bank transfer order #' . $unpaid_order['order_number'] . ' after ' . $cancel_days . ' days', 'UNKNOWN');
+
+    }
+
+}
+
 // Check to see if there are any old calendar events that need to be unpublished,
 // so that they do not appear on the calendar anymore or in the search.
 

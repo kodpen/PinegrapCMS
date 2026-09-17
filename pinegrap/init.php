@@ -594,6 +594,8 @@ define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_PASSWORD', $row['ecommerce_paypal_
 define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_SIGNATURE', $row['ecommerce_paypal_express_checkout_api_signature']);
 define('ECOMMERCE_OFFLINE_PAYMENT', $row['ecommerce_offline_payment']);
 define('ECOMMERCE_OFFLINE_PAYMENT_ONLY_SPECIFIC_ORDERS', $row['ecommerce_offline_payment_only_specific_orders']);
+// Days after which the periodic job cancels an unpaid bank transfer order; 0 disables the sweep.
+define('ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS', (int) ($row['ecommerce_offline_payment_cancel_days'] ?? 0));
 define('ECOMMERCE_PRIVATE_FOLDER_ID', $row['ecommerce_private_folder_id']);
 define('ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID', $row['ecommerce_retrieve_order_next_page_id']);
 define('ECOMMERCE_REWARD_PROGRAM', $row['ecommerce_reward_program']);

@@ -738,6 +738,58 @@ function _pg_order_status_stage($status)
 }
 
 /**
+ * Whether an order is still waiting for its bank transfer.
+ *
+ * Derived, not a status of its own: the order stays 'complete' (or 'exported')
+ * so every report, filter and export keyed on orders.status keeps working, and
+ * paid_at is the fact that says whether the money arrived. An offline order
+ * whose paid_at is still 0 is awaiting payment; a cancelled or incomplete one
+ * is not, whatever its payment method.
+ *
+ * @param array $order Row carrying payment_method, paid_at and status
+ * @return bool
+ */
+function pg_order_awaiting_payment(array $order): bool
+{
+    return ((string) ($order['payment_method'] ?? '') === 'Offline Payment')
+        && ((int) ($order['paid_at'] ?? 0) === 0)
+        && in_array((string) ($order['status'] ?? ''), array('complete', 'exported'), true);
+}
+
+/**
+ * Record that the payment for an order has arrived.
+ *
+ * Only the first recording sticks: the paid_at = 0 condition makes a repeated
+ * click, or an ERP receipt landing after the operator already pressed the
+ * button, a no-op instead of moving the payment date.
+ *
+ * @param int $order_id
+ * @param int $user_id Operator recording the payment; 0 for a system path
+ * @return bool True when this call marked the order paid
+ */
+function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
+{
+    if ($order_id <= 0) {
+        return false;
+    }
+
+    db("UPDATE orders SET paid_at = '" . time() . "' WHERE id = '" . e($order_id) . "' AND paid_at = 0");
+
+    if (mysqli_affected_rows(db::$con) <= 0) {
+        return false;
+    }
+
+    $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . e($order_id) . "'");
+
+    log_activity(
+        'Payment received for order (#' . $order_number . ')'
+        . ($user_id > 0 ? ' recorded by user_id=' . $user_id : ' recorded by the system')
+    );
+
+    return true;
+}
+
+/**
  * Resolve the CSS classes for an order-status badge.
  *
  * Designer-owned: each stage has its own widget setting, so the colour

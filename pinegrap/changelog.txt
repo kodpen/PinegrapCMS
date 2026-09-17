@@ -590,6 +590,30 @@
          davranışını korur ve mevcut dosyalara düğmeye
          basılmadıkça dokunulmaz.
 
+  E-TİCARET: SİPARİŞLER
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Havale ile ödenen siparişler artık "ödeme bekleniyor"
+         olarak görünüyor. Sipariş her zamanki gibi tamamlanmış
+         sayılır; para gelene kadar listede ve sipariş ekranında
+         havale beklediği yazar, müşteri de sipariş sayfasında aynı
+         ifadeyi görür. Sipariş listesine "Havale bekleyen" süzgeci
+         eklendi. Para geldiğinde sipariş ekranındaki "Ödeme Alındı"
+         düğmesine basmanız yeter; faturayı ERP tahsilatıyla
+         kapattığınızda sipariş kendiliğinden ödenmiş olur.
+
+         Ayarlar → E-Ticaret → Çevrimdışı ödeme altında bir gün sayısı
+         verirseniz, o süre içinde havalesi gelmeyen ve faturası
+         kesilmemiş siparişler zamanlanmış görevle iptal edilir;
+         iptal sebebi sipariş ekranında ve müşterinin sipariş
+         sayfasında görünür. 0 bırakırsanız hiçbir şey kendiliğinden
+         iptal edilmez.
+
+         Ödeme yöntemi de artık doğru kaydediliyor: Türkçe sipariş
+         önizleme sayfaları yöntemi çevrilmiş adıyla gönderdiği ve
+         "Iyzico ile Öde" veritabanı listesinde bulunmadığı için bu
+         siparişlerde ödeme yöntemi boş kalıyordu.
+
   PAZARYERLERİ
   --------------------------------------------------------
 

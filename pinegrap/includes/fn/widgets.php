@@ -2421,9 +2421,32 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // map. Previously the colour was hard-coded here, which made the one
     // visual decision the designer most wants to control the only one they
     // couldn't reach.
-    $status_stage      = _pg_order_status_stage((string)$order['status']);
+    //
+    // paid_at came with the 2026.4.4 upgrade, so it is probed like the other
+    // optional columns and read once here; the timeline below reuses it.
+    static $_order_view_has_paid_at_col = null;
+    if ($_order_view_has_paid_at_col === null) {
+        $_probe_pa = db_value("SHOW COLUMNS FROM orders LIKE 'paid_at'");
+        $_order_view_has_paid_at_col = ($_probe_pa !== '' && $_probe_pa !== null);
+    }
+    $paid_at_ts = 0;
+    if ($_order_view_has_paid_at_col) {
+        $paid_at_ts = (int)db_value("SELECT paid_at FROM orders WHERE id = '$oid_esc' LIMIT 1");
+    }
+    $order['paid_at'] = $paid_at_ts;
+
+    // A complete bank transfer order whose money has not arrived reads as
+    // "awaiting payment" to the customer, not as complete: the status text is
+    // replaced and the badge takes the pending colour, while orders.status
+    // itself stays what it is.
+    $status_text  = (string)$order['status'];
+    $status_stage = _pg_order_status_stage($status_text);
+    if ($_order_view_has_paid_at_col && pg_order_awaiting_payment($order)) {
+        $status_text  = lang('Awaiting Payment');
+        $status_stage = 'pending';
+    }
     $status_badge_cls  = _pg_order_status_badge_class($status_stage, $cfg);
-    $status_badge_html = '<span class="' . h($status_badge_cls) . '">' . h((string)$order['status']) . '</span>';
+    $status_badge_html = '<span class="' . h($status_badge_cls) . '">' . h($status_text) . '</span>';
 
     // Fetch order items — much richer column set. address_name lets designers
     // link to the product detail page; short/full description give them a
@@ -2599,8 +2622,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         $_order_view_has_cancelled_at_col = ($_probe_ca !== '' && $_probe_ca !== null);
     }
     $cancelled_at_ts = 0;
+    $cancellation_reason = '';
     if ($_order_view_has_cancelled_at_col) {
-        $cancelled_at_ts = (int)db_value("SELECT cancelled_at FROM orders WHERE id = '$oid_esc' LIMIT 1");
+        // cancellation_reason arrived in the same upgrade as cancelled_at, so
+        // one probe covers both.
+        $_cancel_row = db_item("SELECT cancelled_at, cancellation_reason FROM orders WHERE id = '$oid_esc' LIMIT 1");
+        if (is_array($_cancel_row)) {
+            $cancelled_at_ts     = (int)$_cancel_row['cancelled_at'];
+            $cancellation_reason = trim((string)($_cancel_row['cancellation_reason'] ?? ''));
+        }
     }
     $shipping_ts = 0;
     $delivery_ts = 0;
@@ -2647,12 +2677,21 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'ts'    => $_fmt_ts($order_date_ts, true),
         );
     }
-    // Paid — present when a transaction reference exists. The legacy
-    // schema has no paid_at column, so we proxy with order_date: every
-    // gateway-completed order sets transaction_id at the same instant
-    // the order_date is stamped (submit_order.php). Skip for
-    // Offline/Banka Havalesi where no auto-payment confirmation exists.
-    if (trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
+    // Paid — paid_at is stamped when the money is confirmed: by the gateway
+    // at checkout, by the operator for a bank transfer, or by an ERP receipt
+    // that settles the invoice. Orders from before the column existed carry
+    // paid_at = 0, so a transaction reference still stands in for it there,
+    // proxied to order_date because a gateway-completed order sets both at
+    // the same instant (submit_order.php). An unpaid bank transfer has
+    // neither and gets no event.
+    if ($paid_at_ts > 0) {
+        $timeline_events[] = array(
+            'icon'  => 'bi-credit-card',
+            'color' => 'success',
+            'label' => lang('Payment Received'),
+            'ts'    => $_fmt_ts($paid_at_ts, true),
+        );
+    } elseif (trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
         $timeline_events[] = array(
             'icon'  => 'bi-credit-card',
             'color' => 'success',
@@ -2677,10 +2716,12 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         );
     }
     if ($cancelled_at_ts > 0) {
+        // The reason is part of the event: a customer whose transfer order
+        // was cancelled by the timer should read why without asking.
         $timeline_events[] = array(
             'icon'  => 'bi-x-circle',
             'color' => 'danger',
-            'label' => lang('Cancelled'),
+            'label' => lang('Cancelled') . ($cancellation_reason !== '' ? ' — ' . $cancellation_reason : ''),
             'ts'    => $_fmt_ts($cancelled_at_ts, true),
         );
     }

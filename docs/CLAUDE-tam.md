@@ -992,6 +992,53 @@ faturadan **kopyalar**, yeniden türetmez.
 - **Bilinen boşluk:** havale gibi çevrimdışı siparişlerin `paid_at` kaynağı
   yok ve `orders.payment_method` onlarda boş kalıyor (önceden de öyleydi).
   Önerilen çözüm ayrı bir "ödeme bekleyen sipariş" akışı; yapılmadı.
+  → 2026-09-17'de yapıldı; bkz. hemen aşağıdaki "Ödeme Bekleyen Sipariş" bölümü.
+
+### Ödeme Bekleyen Sipariş — havale (2026-09-17, migration 4.48)
+
+- **Türetilmiş durum, yeni enum değeri değil.** `pg_order_awaiting_payment($order)`
+  (`includes/fn/ecommerce.php`, `_pg_order_status_stage`'in altında):
+  `payment_method === 'Offline Payment' && (int)paid_at === 0 && status IN
+  ('complete','exported')`. Sipariş `complete` kalır; raporlar ve
+  `IN ('complete','exported')` sorguları dokunulmadan çalışır. Liste süzgeci
+  `view_orders.php` `case 'awaiting_transfer'` aynı yüklemi SQL'de kurar ve
+  `refund_pending` gibi `paid_at` sütunu yoklanarak (`$paid_at_column_exists`)
+  sunulur; listede satıra ikinci bir "Ödeme bekleniyor" rozeti gelir.
+- **Ödemeyi kaydeden yer:** `pg_order_mark_paid(int $order_id, int $user_id): bool`
+  — `UPDATE orders SET paid_at = time() WHERE id = ? AND paid_at = 0`, ikinci
+  tıklama no-op, etkilenen satır varsa `log_activity`. Çağıran: `view_order.php`
+  `submit_mark_paid` (ortak `validate_token_field()` + `pg_order_awaiting_payment`
+  kapısı; düğme `#button_bar` içinde kendi formuyla, yalnız beklerken).
+  `erp_invoice_refresh_paid()` (`includes/erp/settlement.php`) fatura `paid`
+  olduğunda aynı UPDATE'i `erp_query` ile doğrudan, tahsilatın işlemi içinde
+  yapar — ERP tahsilatı havalenin onaylı ödeme anıdır.
+- **Süpürme:** `job.php`, terk edilmiş sipariş bloğundan hemen sonra.
+  `ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS > 0` iken
+  (`config.ecommerce_offline_payment_cancel_days`, `init.php`'de `?? 0`;
+  Ayarlar → E-Ticaret → çevrimdışı ödeme satırı, 0–255, kayıtta rakam dışı
+  atılır ve kırpılır) `order_date` eşiği geçmiş, `paid_at = 0`,
+  `status = 'complete'`, `COALESCE(erp_invoice_id,0) = 0` siparişler 50'lik
+  partilerle `process_order_cancellation($id, $reason, true, 0, false)` ile
+  iptal edilir. Faturalı sipariş muhasebeciye bırakılır; kargolanmış olan
+  (`_order_has_shipped`) atlanır — admin bayrağı fonksiyonun kendi kargo
+  kapısını aştığı için kontrol süpürmede yapılır. Sebep
+  `Cancelled automatically: bank transfer not received within {var:1} days.`
+  anahtarıyla `cancellation_reason`'a yazılır.
+- **İptal sebebi artık gösteriliyor:** `view_order.php` durum satırının altında
+  (`cancelled_at` tarihiyle) ve müşteri zaman çizelgesinde (`widgets.php`,
+  "Cancelled — sebep"). Zaman çizelgesinin "Ödeme Alındı" olayı `paid_at > 0`
+  ise onu okur, eski siparişlerde `transaction_id` → `order_date` proxy'si kalır;
+  beklerken durum rozeti `Awaiting Payment` metniyle `pending` rengini alır.
+- **`payment_method` normalizasyonu (`submit_order.php`):** gönderilen değer dört
+  sabitten (`Credit/Debit Card`, `PayPal Express Checkout`, `Offline Payment`,
+  `Pay With Iyzico`) biri değilse ve `lang($sabit)` ile (trim, büyük/küçük harf
+  duyarsız) eşleşiyorsa `assign_field_value` ile sabite çevrilir; eşleşmiyorsa
+  `Please select a payment method.` hatası. Sebep: eski Türkçe yerleşimler
+  (`data/backups/turkish_default/layouts/101.php`, `1077.php`) radyo değerini
+  çevrilmiş etiketle gönderiyordu; artık sabiti gönderirler. ENUM dışı değer
+  strict mode kapalı bağlantıda `''` olur — `'Pay With Iyzico'` bu yüzden 4.48
+  ile ENUM'a eklendi (mevcut liste `install_column_info` ile okunup sonuna
+  eklenir, `Null`/`Default` korunur; sütun ENUM değilse adım atlanır).
 
 ---
 
@@ -1769,6 +1816,7 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.48) | `_offline_payment_awaiting`: `orders.payment_method` ENUM'una `'Pay With Iyzico'` eklendi (mevcut liste `install_column_info` ile okunup korunur, ENUM değilse atlanır), `config.ecommerce_offline_payment_cancel_days TINYINT UNSIGNED NOT NULL DEFAULT 0` (0 = otomatik iptal yok) |
 | `2026.4.4` (4.47) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |
 | `2026.4.4` (4.46) | `_erp_return_series`: `erp_document_series.doc_kind` ENUM'una `'sales_return'` ve `'purchase_invoice'` eklendi (iade kendi serisinde koşar) |
 | `2026.4.4` (4.45) | `_erp_settlements`: `erp_settlements` tablosu (`UNIQUE (invoice_id, account_txn_id)` — hangi tahsilat hangi faturayı kapattı; para hareketi değil) |

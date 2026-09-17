@@ -118,6 +118,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_return_series();      // 4.46
 
 	upgrade_2026_4_4_erp_invoice_document();   // 4.47
+
+	upgrade_2026_4_4_offline_payment_awaiting(); // 4.48
 }
 
 
@@ -2529,5 +2531,54 @@ function upgrade_2026_4_4_erp_invoice_document() {
 	install_add_column('config', 'erp_invoice_template', "MEDIUMTEXT NULL");
 
 	install_note('Invoices can now be printed as PDF with the seller\'s tax number and tax office; the template can be edited in the panel.');
+
+}
+
+// 4.48 - a bank transfer order is not paid until the money is seen.
+//
+// orders.payment_method is an ENUM and the connection runs without strict
+// mode, so a value outside the list is stored as ''. 'Pay With Iyzico' was
+// never in the list, which blanked the method on every order paid that way.
+// The column is only rewritten when the value is missing, and the new value is
+// appended to the list the column already has: a MODIFY that dropped a value in
+// use would coerce those rows to '', the very damage this step repairs.
+//
+// The cancel-days setting drives the periodic job that cancels transfer orders
+// nobody paid for; 0 leaves them open until an operator acts. Whether an order
+// is awaiting payment is derived from payment_method and paid_at, so the status
+// column gains no value and every report keyed on it keeps working.
+function upgrade_2026_4_4_offline_payment_awaiting() {
+
+	$column = install_column_info('orders', 'payment_method');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('orders.payment_method does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'Pay With Iyzico'") !== false) {
+
+		install_skipped(lang('orders.payment_method already knows about Pay With Iyzico'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		// Nullability and default are copied from the column as it is, so the
+		// only change is the extra value at the end of the list.
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('orders', 'payment_method',
+			"ENUM(" . $enum_match[1] . ",'Pay With Iyzico') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		// Somebody already widened the column to a free-text type; nothing to add.
+		install_skipped(lang('orders.payment_method is not an ENUM, skipped'));
+
+	}
+
+	// 0 = never cancel automatically; the periodic job reads this once per run.
+	install_add_column('config', 'ecommerce_offline_payment_cancel_days', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Bank transfer orders show as awaiting payment until the payment is recorded, and unpaid ones can be cancelled automatically after a set number of days.');
 
 }

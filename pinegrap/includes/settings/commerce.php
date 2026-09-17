@@ -813,9 +813,14 @@ $pg_settings_cards[] = '
                                                                             <div class="form-check form-switch">
                                                                                 <input value="1"' . $ecommerce_offline_payment_only_specific_orders_checked . ' class="form-check-input" type="checkbox" id="ecommerce_offline_payment_only_specific_orders" name="ecommerce_offline_payment_only_specific_orders"/>
                                                                                 <label class="form-check-label" for="ecommerce_offline_payment_only_specific_orders">' . lang('Only on specific orders') . '</label>
-                                                                            </div> 
-                                                                        </div> 
-                                                                    </div> 
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-12 ">
+                                                                            <label class="form-label" for="ecommerce_offline_payment_cancel_days">' . lang('Cancel unpaid bank transfer orders after') . '</label>
+                                                                            <input type="number" min="0" max="255" step="1" class="form-control" id="ecommerce_offline_payment_cancel_days" name="ecommerce_offline_payment_cancel_days" value="' . (int) $ecommerce_offline_payment_cancel_days . '"/>
+                                                                            <div class="form-text">' . lang('days; 0 keeps them open until you cancel by hand. Cancelled orders keep the reason on the order screen.') . '</div>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div> 
                                                         </div>
