@@ -2265,8 +2265,19 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
          LIMIT 1"
     );
 
-    if (!$order || ($current_user_id > 0 && (int)$order['user_id'] !== $current_user_id)) {
-        // Order not found or does not belong to this user — return empty
+    if (!$order) {
+        // Order not found — return empty
+        return '';
+    }
+
+    // Order ids are sequential, so an arbitrary visitor must never see an order.
+    // Only the logged-in owner, or the visitor whose session just completed
+    // this order (guest checkout stores user_id = 0 and submit_order.php
+    // redirects to the thank-you page with ?order_id=N), may see it.
+    $is_owner = ($current_user_id > 0 && (int)$order['user_id'] === $current_user_id);
+    $just_completed = ((int)($_SESSION['ecommerce']['completed_order_id'] ?? 0) === (int)$order['id']);
+    if (!$is_owner && !$just_completed) {
+        // No logged-in owner and not the order this session just placed — return empty
         return '';
     }
 

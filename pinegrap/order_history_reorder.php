@@ -20,7 +20,7 @@ include('init.php');
 
 validate_token_field();
 
-$old_order_id = $_GET['id'];
+$old_order_id = (int) ($_GET['id'] ?? 0);
 
 // get order information
 $query =

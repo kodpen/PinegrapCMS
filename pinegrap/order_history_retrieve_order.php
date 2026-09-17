@@ -20,7 +20,8 @@ include('init.php');
 
 validate_token_field();
 
-$order_id = $_GET['id'];
+// The id is stored in the session and reused in later SQL, so keep it an integer.
+$order_id = (int) ($_GET['id'] ?? 0);
 
 // get order information
 $query =
@@ -69,11 +70,11 @@ $_SESSION['ecommerce']['order_id'] = $order_id;
 // set the ship tos so that they are incomplete, so that the customer will be required to complete the shipping screens again
 // this is the only retrieve order area where we do this.  we do not do this for the retrieve order feature for shopping cart and express order pages.
 // this is so someone can complete the ship tos for an order and then send the retrieve order link to someone else and the recipient won't have to complete the shipping
-$query = "UPDATE ship_tos SET complete = 0 WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+$query = "UPDATE ship_tos SET complete = 0 WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // remove applied gift cards, because they might not be valid anymore
-$query = "DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+$query = "DELETE FROM applied_gift_cards WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // If this visitor has a tracking code, then update tracking
@@ -127,7 +128,7 @@ $query =
         $sql_tracking_code
         $sql_utm
         ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-    WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+    WHERE id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if visitor tracking is on, update visitor record with order information, if visitor has not already created order or retrieved an order
@@ -135,7 +136,7 @@ if (VISITOR_TRACKING == true) {
     $query =
         "UPDATE visitors
         SET
-            order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
+            order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "',
             order_retrieved = '1',
             stop_timestamp = UNIX_TIMESTAMP()
         WHERE

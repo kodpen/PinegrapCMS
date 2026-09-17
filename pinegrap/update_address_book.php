@@ -82,10 +82,10 @@ if (!$_POST) {
     $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $user_id = $row['user_id'];
+    $user_id = (int) $row['user_id'];
 
     // check to see if ship to name is already in use
-    $query = "SELECT id FROM address_book WHERE (user = $user_id) AND (id != '" . escape($_POST['id'] ?? '') . "') AND (ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "')";
+    $query = "SELECT id FROM address_book WHERE (user = '$user_id') AND (id != '" . (int) ($_POST['id'] ?? 0) . "') AND (ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     if (mysqli_num_rows($result) > 0) {
         $liveform->mark_error('ship_to_name', 'That ship to name is already in use. Please enter a different ship to name.');
@@ -131,7 +131,7 @@ if (!$_POST) {
                         country = '" . escape($liveform->get_field_value('country')) . "',
                         $sql_address_type
                         phone_number = '" . escape($liveform->get_field_value('phone_number')) . "'
-                     WHERE id = " . escape($_POST['id'] ?? '') . " AND user = '$user_id'";
+                     WHERE id = '" . (int) $_POST['id'] . "' AND user = '$user_id'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // else an id was not supplied, so create new recipient in address book
@@ -180,6 +180,6 @@ if (!$_POST) {
     // else an error does exist
     } else {
         // send user back to previous form
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . $update_address_book_path . '?id=' . $_POST['id']);
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . $update_address_book_path . '?id=' . (int) ($_POST['id'] ?? 0));
     }
 }
