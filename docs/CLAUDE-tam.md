@@ -2,7 +2,11 @@
 
 ## Proje Hakkında
 
-Pinegrap, 2017'den beri Erdal Güral (Kodpen) tarafından geliştirilen PHP tabanlı bir CMS. LiveSite'dan fork edilmiş, 2019 LiveSite güncellemesi entegre edilmiş. Bootstrap 5 + jQuery kullanan monolitik bir yapı. PHP 7.0–8.5 uyumlu.
+Pinegrap, 2017'den beri Erdal Güral (Kodpen) tarafından geliştirilen PHP tabanlı bir CMS. LiveSite'dan fork edilmiş, 2019 LiveSite güncellemesi entegre edilmiş. Bootstrap 5 + jQuery kullanan monolitik bir yapı. PHP 7.0–8.5 uyumlu. Tek
+istisna ERP fatura PDF'i: dompdf zinciri PHP 7.1 ister (Erdal'ın kararı,
+2026-09-17). Daha eski PHP'de yalnız PDF düğmesi başarısız olur, panelin geri
+kalanı etkilenmez. Tabanı yükselten her karar Erdal'a aittir; bir kütüphane
+seçiminin yan etkisi olamaz (kural aşağıda, *Dosya Başlığı*).
 
 - Repo: `dev/pinegrap/`
 - Dil dosyası: `includes/local/tr.json`
@@ -159,7 +163,24 @@ yöneticisi (`view_folders.php`, `view_folder_and_files.php`,
 
 Yeni dosya açarken bunu kopyala; `PineGrap` değil `Pinegrap`. Üçüncü taraf
 kütüphanelerin (`includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`,
-`boxpacker`) başlıklarına dokunulmaz.
+`boxpacker`, `dompdf`) başlıklarına dokunulmaz.
+
+**Kütüphane gömerken PHP tabanı (2026-09-17).** `includes/` altına bir
+kütüphane almadan önce `composer.json`'daki `php` kısıtına bak ve sürümü ona
+göre **sabitle**: taban 7.1 ya da altında kalmalı. Tabanı yükseltmek Erdal'ın
+kararıdır, bir kütüphane seçiminin yan etkisi değil. Örnek: html5-php 2.11
+PHP 7.4 istiyor, bu yüzden 2.10.1'de sabitlendi.
+
+**`includes/dompdf/`** — dompdf 3.1.6 ve zinciri: php-font-lib 1.0.2,
+php-svg-lib 1.0.2, html5-php 2.10.1, PHP-CSS-Parser 8.9.0. Yerleşim dompdf'in
+sürüm arşivindeki gibi `vendor/` altında; yükleyici Pinegrap'in yazdığı
+`includes/dompdf/autoload.inc.php` (PSR-4 haritası, `PG_API_ENTRY` kapısı,
+Composer yok). `tools/lint.php` klasörü atlar. ~11 MB, 7,6 MB'ı DejaVu
+fontları. Çalışma anında yazdığı her şey (`fontCache`, `tempDir`)
+`data/cache/dompdf/` altına gider, `includes/` içine asla — `includes/`
+bütünlük özetine girer. dompdf HTML'i libxml ile yeniden ayrıştırır ve
+charset meta'sından önceki metni Latin-1 okur; `erp_invoice_pdf()` bu yüzden
+yorumları söker ve `<meta charset="utf-8">`'i en başa koyar.
 
 ### Dosya Yerleşimi (kural)
 
@@ -172,7 +193,7 @@ altına konur:
 | Birlikte bir altsistem oluşturan dosyalar | `includes/<altsistem>/` — örn. `includes/api/`, `includes/migrations/` |
 | O altsistemin içinde ayrı bir katman | `includes/<altsistem>/<katman>/` — örn. `includes/api/resources/` |
 | Tek başına duran, farklı yerlerden çağrılabilecek yardımcı | doğrudan `includes/` içinde — örn. `includes/authentication.php`, `includes/db_guard.php` |
-| Üçüncü taraf kütüphane | `includes/<kütüphane>/` — örn. `includes/phpmailer/` |
+| Üçüncü taraf kütüphane | `includes/<kütüphane>/` — örn. `includes/phpmailer/`, `includes/dompdf/` |
 
 **Her include dosyasının başında kapı olur.** Giriş noktasının tanımladığı
 sabit yoksa dosya hiçbir şey çalıştırmaz:
@@ -200,7 +221,10 @@ sistem klasörü eklendiğinde bütünlük kapsamı kendiliğinden genişler —
 klasör açılırsa, `_software_create_hash.php` içindeki
 `hashed_subdirectories()` dizisine eklenmediği sürece o klasör **hiç
 denetlenmez**. `data/` (yapılandırma, önbellek, yedek) ve `install/`
-(operatörler kurulumdan sonra siliyor) bilerek kapsam dışıdır.
+(operatörler kurulumdan sonra siliyor) bilerek kapsam dışıdır. Aynı sebeple
+gömülü bir kütüphane çalışma anında `includes/` içine yazamaz: dompdf'in
+font önbelleği ve geçici dosyaları `data/cache/dompdf/` altındadır; oraya
+yazan bir kütüphane her saat "kurcalanmış" görünür.
 
 ### `functions.php` Bölündü — `includes/fn/` (2026-09-12)
 
@@ -898,6 +922,64 @@ Demo verisi bu kuralı uygulamıyordu; `_seed_demo.php` düzeltildi ve mevcut
 satırlar `_seed_fix_discount_tax.php` ile onarıldı (yalnız hatanın imzasını
 taşıyanlar; tekrar koşturulabilir).
 
+### Fatura belgesi: şablon, HTML, PDF (2026-09-17, PR #4)
+
+Belge katmanı `includes/erp/document.php`:
+
+- `erp_template_render($template, $data)` — mustache tarzı: `{{alan}}`
+  kaçışlı, `{{{alan}}}` ham, `{{#bölüm}}…{{/bölüm}}` döngü / koşul,
+  `{{^bölüm}}…{{/bölüm}}` tersi, noktalı anahtar (`satici.vkn`).
+- `erp_invoice_document_data($invoice_id)` — şablonun gördüğü veri:
+  `seller` / `account` / `invoice` / `lines` / `totals` / `generated_at`.
+- `erp_invoice_template()` — `config.erp_invoice_template` doluysa o, yoksa
+  `includes/erp/templates/invoice_default.html`.
+- `erp_invoice_html($invoice_id)` ve `erp_invoice_pdf($invoice_id)` — ikincisi
+  dompdf'i `includes/dompdf/autoload.inc.php` ile yükler (PHP 7.1 ister, bkz.
+  *Proje Hakkında*).
+
+**Uç `get_erp_invoice_pdf.php`:** `?id=` PDF'i satır içi verir, `&download=1`
+indirir, `&html=1` HTML'i gösterir. POST `template` alanı **kaydedilmemiş**
+şablonu önizler; CSRF + `settings` hakkı ister. `edit_erp_invoice.php`'nin üst
+araç çubuğunda *PDF* ve *İndir* düğmeleri buraya gider.
+
+**`erp_settings.php` artık taslak değil:** şablon editörü — kaydet, önizle,
+yer tutucu başvurusu, varsayılana dön. Boş ya da varsayılana eşit şablon
+`NULL` olarak yazılır; "özelleştirilmiş" demek yalnız varsayılandan farklı
+olan demektir.
+
+**Satıcı kimliği** E-Ticaret'teki `pgset-erp` kartında: `config.erp_seller_vkn`
+/ `erp_seller_tax_office`, sabitler `ERP_SELLER_VKN` / `ERP_SELLER_TAX_OFFICE`
+(savunmacı okunur — eski kurulumda tanımsız olabilir). Ünvan ve adres
+`ORGANIZATION_NAME` / `merchant_*`'tan gelir.
+
+**Şablon metni yöneticiye dönük Türkçedir**, `lang()`'den geçmez — belgeyi
+operatör düzenler, yazılım dili onu değiştirmez. Şablon CSS'inde
+`text-transform: uppercase` **kullanılmaz**: dompdf noktasız/noktalı I'yı
+karıştırır (`i` → `I`). Büyük harf gerekiyorsa metin büyük harfle yazılır.
+
+### VUK 509 alanları: köprü ne türetir (2026-09-17, PR #2)
+
+e-Arşiv'in zorunlu saydığı alanlar `erp_invoices`'ta tutulur ve
+`erp_invoice_from_order()` siparişten türetir; iade belgesi beşini ana
+faturadan **kopyalar**, yeniden türetmez.
+
+| Alan | Kaynak |
+|---|---|
+| `is_internet_sale` | `orders.type` — `local` → 0, `online` / `marketplace` → 1 |
+| `web_address` | `ERP_WEB_ADDRESS`; boşsa `URL_SCHEME . HOSTNAME` |
+| `payment_method` | `erp_payment_method_code()` → GİB `OdemeSekli` kodu: `KREDIKARTI/BANKAKARTI`, `ODEMEARACISI`, `EFT/HAVALE` |
+| `payment_date` | `erp_order_payment_date()` → `orders.paid_at`; yoksa `transaction_id` doluysa `order_date` |
+| `shipment_date` / `carrier_title` / `carrier_vkn` | `erp_order_shipment()` → sıfır olmayan en erken `ship_tos.ship_date` (bugünden ileri değilse); taşıyıcı o alıcının kargo yönteminden, ünvan boşsa yöntemin adı |
+
+- `orders.paid_at` `submit_order.php` tarafından **yalnız ağ geçidi onaylı**
+  ödemede yazılır (`transaction_id` dolu); pazaryeri içe aktarımı `placed_at`
+  değerini yazar.
+- `shipping_methods.carrier_title` / `carrier_vkn` kargo yöntemi ekranlarında
+  düzenlenir; VKN yalnız rakam, en çok 11 hane.
+- **Bilinen boşluk:** havale gibi çevrimdışı siparişlerin `paid_at` kaynağı
+  yok ve `orders.payment_method` onlarda boş kalıyor (önceden de öyleydi).
+  Önerilen çözüm ayrı bir "ödeme bekleyen sipariş" akışı; yapılmadı.
+
 ---
 
 **Sipariş başlık tutarları kalem değildir.** `orders.shipping`, `orders.discount`,
@@ -1025,7 +1107,10 @@ bilmediği bağlamı vardır (müşteri aradı, kargo geri döndü, mükerrer si
 
 **`ship_date` bilerek yok sayılır.** Birçok kurulumda sipariş anında *planlanan*
 sevk tarihi olarak doldurulur; ona bakan eski kural, daha binadan çıkmamış
-siparişlerde müşteriye iptali kapatıyordu.
+siparişlerde müşteriye iptali kapatıyordu. ERP köprüsü ise aynı sütunu **sevk
+tarihi** olarak okur (`erp_order_shipment()`, 2026-09-17) — ama ileri tarih
+kapısıyla: sıfır olmayan en erken `ship_tos.ship_date`, bugünden ileri
+değilse. Planlanan bir tarih faturaya sevk tarihi olarak geçmez.
 
 **`$is_admin` artık yük taşıyan bir parametre** — log notunun yanında kargo
 kapısını da atlatır. Ziyaretçiye açık bir yoldan rolü doğrulamadan `true`
@@ -1102,7 +1187,7 @@ Yeni provider eklemek: `_eo_tracking_provider_url()` + `_eo_tracking_provider_la
 | Event | Icon | Renk | Veri kaynağı |
 |---|---|---|---|
 | Sipariş Oluşturuldu | bi-receipt | primary | `orders.order_date` |
-| Ödeme Alındı | bi-credit-card | success | `transaction_id` doluysa `order_date` proxy |
+| Ödeme Alındı | bi-credit-card | success | `transaction_id` doluysa `order_date` proxy (`orders.paid_at` 2026-09-17'den beri var ve ERP köprüsü onu okur; zaman çizelgesi hâlâ proxy'de) |
 | Kargoya Verildi | bi-truck | info | `MIN(ship_tos.ship_date)` |
 | Teslim Edildi | bi-box-seam | success | `MIN(ship_tos.delivery_date)` |
 | İptal Edildi | bi-x-circle | danger | `orders.cancelled_at` (probe — 2026.1.26+) |
@@ -1117,7 +1202,12 @@ Yeni provider eklemek: `_eo_tracking_provider_url()` + `_eo_tracking_provider_la
 - `order_id` parametresi zorunlu
 - **Ownership check:** `orders.user_id === USER_ID` veya admin (`USER_ROLE === 0`)
 - Sayfa yüklendiğinde otomatik `window.print()` çağrılır (Ctrl+P kaydet-as-PDF için)
-- Bağımlılık yok — tcpdf/mpdf/dompdf bundled değil; HTML print-CSS yaklaşımı bilinçli tercih
+- Bağımlılık yok — HTML print-CSS yaklaşımı bu uç ve imza makbuzu için bilinçli
+  tercih; müşteri tarayıcıdan yazdırır. **ERP faturası bu kuralın dışındadır**
+  (2026-09-17, PR #4): orada sunucu tarafı PDF gerekiyor — e-postaya eklenir,
+  arşivlenir, e-arşiv görselleştirmesinin zemini olur — ve şablon yöneticiye
+  açıktır; bu yüzden `includes/dompdf/` gömüldü (ERP bölümü, *Fatura belgesi*).
+  `order_invoice_print.php` ve imza makbuzu dompdf kullanmaz.
 
 ### EO Widget — Sipariş Notu (2026.1.28)
 **Yeni eo_field binding:** `notes` (input/textarea üzerinde `_bindings.eo_field='notes'`).
@@ -1634,6 +1724,12 @@ tek başına aranabilir değil; "tek bir adres için onlarca mükerrer yasak sat
 adres ise hiç engellenmiyor" aynı belirtiyi tekrar gören kişinin arayacağı
 cümledir.
 
+**Açık sürümün içinde bölüm ve sıra.** `changelog.txt`'de sürümler en yeni en
+üstte, ama açık sürümün içinde maddeler konu alt bölümlerine (PANO, ERP …)
+girer ve bir alt bölümün içinde **eskiden yeniye** sıralanır. VUK 509 alanları
+(PR #2) ve fatura PDF'i (PR #4) 2026.4.4'ün ERP alt bölümüne bu düzenle
+eklendi.
+
 ### Mevcut Değişiklikler
 
 | Versiyon | Değişiklik |
@@ -1660,6 +1756,11 @@ cümledir.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.46) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |
+| `2026.4.4` (4.45) | `_erp_return_series`: `erp_document_series.doc_kind` ENUM'una `'sales_return'` ve `'purchase_invoice'` eklendi (iade kendi serisinde koşar) |
+| `2026.4.4` (4.44) | `_erp_settlements`: `erp_settlements` tablosu (`UNIQUE (invoice_id, account_txn_id)` — hangi tahsilat hangi faturayı kapattı; para hareketi değil) |
+| `2026.4.4` (4.43) | `_order_tax_base`: `order_items.tax_total` (satır vergisi; birim `tax` artık yazılmıyor, 2026.5.0'da düşer) + backfill |
+| `2026.4.4` (4.42) | `_erp_core`: 11 tablo (`erp_accounts`, `erp_account_transactions`, `erp_cash_accounts`, `erp_cash_transactions`, `erp_invoices` — VUK 509 sütunları dahil —, `erp_invoice_items`, `erp_waybills`, `erp_waybill_items`, `erp_document_series`, `erp_edoc_queue`, `erp_parasut_log`), `config.erp_*` (enabled, parasut_enabled, default_series, auto_invoice_on, default_cash_account_id, einvoice_scenario, web_address), `user.manage_erp` / `manage_erp_cash` / `manage_erp_settings`, mevcut tablolara sütun: `orders.erp_invoice_id` / `erp_account_id` / `paid_at`, `contacts.erp_account_id`, `shipping_methods.carrier_title` / `carrier_vkn`, `products.vat_exemption_code` |
 | `2026.4.4` (4.40) | `_security_headers`: `config.security_headers` / `security_frame_protection` / `security_hsts` / `security_csp_mode` / `security_csp_policy` / `waf_text_log` / `waf_inflight_limit` / `waf_auto_ban_max_minutes` / `login_throttle_captcha_after` (güvenlik başlıkları + CSP raporlama, fail2ban günlüğü, iki güvenlik duvarı tavanı, giriş sorusu) |
 | `2026.4.4` (4.33) | `_push_signout`: `push_subscriptions.auth_selector` + index (çıkışta o tarayıcının aboneliği düşer; silme `pg_auth_token_revoke()` içinde, oturumun bittiği tek nokta) |
 | `2026.4.4` (4.30) | `_app_icon`: `config.app_icon` (kurulu uygulamanın simgesi; Ayarlar'da dosya adı seçilir, `manifest_icon.php` istenen boyutu çizip `data/temp/app_icon` altında saklar) |

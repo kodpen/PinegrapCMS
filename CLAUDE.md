@@ -11,7 +11,8 @@ duydukça, bölüm bölüm oku.
 
 - PHP tabanlı monolitik CMS. 2017'den beri Erdal Güral (Kodpen) geliştiriyor;
   LiveSite fork'u, 2019 LiveSite güncellemesi entegre edilmiş.
-- Bootstrap 5 + jQuery. PHP 7.0–8.5 uyumlu. Veritabanı MySQL/MariaDB, erişim `mysqli`.
+- Bootstrap 5 + jQuery. PHP 7.0–8.5 uyumlu (ERP fatura PDF'i dompdf nedeniyle
+  7.1 ister). Veritabanı MySQL/MariaDB, erişim `mysqli`.
 - **Bu depo yalnız ürünü içerir. Kod tabanı `pinegrap/` altındadır ve
   değişiklikler oraya yazılır.** Bu dosyadaki yollar o köke göredir:
   `includes/fn/core.php` demek `pinegrap/includes/fn/core.php` demektir.
