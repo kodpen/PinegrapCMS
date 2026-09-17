@@ -156,19 +156,28 @@ if (!$_POST) {
 
         include_once('liveform.class.php');
 
-        unlink(FILE_DIRECTORY_PATH . '/' . $_POST['name']);
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $_POST['name'], 'w');
+        // The path is taken from the stored row, never from the posted name:
+        // a posted name is under the caller's control and could point anywhere
+        // on the file system, past the neutralisation that uploads go through.
+        $file_row = db_item("SELECT id, name FROM files WHERE id = '" . (int)($_POST['id'] ?? 0) . "'");
+        $file_name = is_array($file_row) ? (string)$file_row['name'] : '';
+        if (($file_name === '') || ($file_name !== basename($file_name)) || (strpos($file_name, '..') !== false)) {
+            output_error(lang('Sorry, the file could not be found.'));
+        }
+
+        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
         fwrite($handle, $_POST['code']);
         fclose($handle);
 
         $query = "UPDATE files 
-            SET size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $_POST['name'])) . "',
+            SET size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
                 timestamp = UNIX_TIMESTAMP(),
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
+            WHERE id = '" . (int)$file_row['id'] . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-        log_activity(lang(array('string'=>'the file ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'the file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);
 
         if (($_POST['submit_save'] ?? '') == 'Save') {
             $liveform = new liveform('editor_edit_file');

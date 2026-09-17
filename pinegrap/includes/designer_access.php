@@ -157,6 +157,14 @@ function pg_designer_in_editable_area($ancestors)
  *
  * A shared_ref is copied from the stored tree untouched wherever it appears.
  * Its tree lives in `shared_components` and belongs to every page using it.
+ * A custom_php or custom_html content node is treated the same way: its
+ * source is code the public page runs (see _pg_dm_locked_kind), so it is
+ * never taken from the submission at this level.
+ *
+ * Every string that IS taken from the submission goes through
+ * _pg_dm_neutralise_markers(): the render pipeline recognises its own code
+ * nodes by an HTML comment in the generated page, and a text prop is emitted
+ * into that page raw, so the comment has to be defused at content level too.
  *
  * @return array the tree to store
  */
@@ -177,16 +185,22 @@ function _pg_dm_node($stored, $submitted, $in_editable)
 
     $editable_here = $in_editable || !empty($stored['props']['_editable']);
 
-    if ($editable_here && is_array($submitted)) {
+    // A code node is never theirs, editable mark or not; it falls through to
+    // the stored copy below, where only text, notes and an image address move.
+    if ($editable_here && is_array($submitted) && _pg_dm_locked_kind($stored) === '') {
         // The area is theirs — but the mark itself is not. Re-stamp it from
         // the stored node so a restricted operator cannot widen their own
         // permission by sending `_editable` on a node beside it.
         $out = $submitted;
+        // The stored node was an ordinary one; a submission that turns it into
+        // a code node is a code node the operator added, and is refused.
+        if (_pg_dm_locked_kind($out) !== '') return $stored;
         if (!isset($out['props']) || !is_array($out['props'])) $out['props'] = array();
         if (!empty($stored['props']['_editable'])) $out['props']['_editable'] = 1;
         else unset($out['props']['_editable']);
         _pg_dm_strip_editable_flags($out, true);
-        _pg_dm_restore_shared($out, $stored);
+        _pg_dm_restore_locked($out, $stored);
+        _pg_dm_neutralise_markers($out);
         return $out;
     }
 
@@ -197,6 +211,7 @@ function _pg_dm_node($stored, $submitted, $in_editable)
     if (is_array($submitted) && array_key_exists('text', (array)(isset($stored['props']) ? $stored['props'] : array()))
         && isset($submitted['props']) && array_key_exists('text', (array)$submitted['props'])) {
         $out['props']['text'] = (string)$submitted['props']['text'];
+        _pg_dm_neutralise_markers($out['props']['text']);
     }
 
     // A note is an annotation, not page content: the collaboration feature
@@ -298,58 +313,133 @@ function _pg_dm_strip_editable_flags(&$node, $skip_self = false)
 }
 
 /**
- * Put the stored shared_ref nodes back into an accepted subtree.
+ * The kind of node a content-level operator may never write, or '' for an
+ * ordinary node.
+ *
+ *   shared_ref   its tree belongs to every page that uses it
+ *   custom_php   its source is eval()ed on every public render
+ *   custom_html  raw markup, and with PHP_REGIONS on the page pass runs any
+ *                `<?` it contains as code
+ *
+ * The render side trusts these nodes because a designer put them there. A
+ * manager or user session must not be able to put one there by hand-editing
+ * the tree it POSTs, so all three are restored from the stored tree wherever
+ * they appear, inside a marked area or not.
+ */
+function _pg_dm_locked_kind($node)
+{
+    if (!is_array($node)) return '';
+    $type = isset($node['type']) ? (string)$node['type'] : '';
+    if ($type === 'shared_ref') return 'shared_ref';
+    if ($type === 'content') {
+        $ct = isset($node['props']['contentType']) ? (string)$node['props']['contentType'] : '';
+        if ($ct === 'custom_php' || $ct === 'custom_html') return $ct;
+    }
+    return '';
+}
+
+/**
+ * Put the stored locked nodes back into an accepted subtree.
  *
  * Inside a marked area the submission is taken wholesale, and a shared_ref
  * that travelled through the browser could come back pointing at a different
- * component. The nodes are matched by position among the subtree's
- * shared_refs, which is enough: a restricted operator cannot add or remove
- * them either (the editor refuses, and an added one simply has no stored
- * counterpart to restore, so it is dropped).
+ * component, or a code node with different source. The nodes are matched by
+ * position among the subtree's nodes of the same kind, which is enough: a
+ * restricted operator cannot add or remove them either (the editor refuses,
+ * and an added one simply has no stored counterpart to restore, so it is
+ * dropped).
  */
-function _pg_dm_restore_shared(&$accepted, $stored)
+function _pg_dm_restore_locked(&$accepted, $stored)
 {
-    $stored_refs = array();
-    _pg_dm_collect_shared($stored, $stored_refs);
-    if (empty($stored_refs)) {
-        _pg_dm_drop_shared($accepted);
-        return;
-    }
-    $i = 0;
-    _pg_dm_replace_shared($accepted, $stored_refs, $i);
+    $stored_nodes = array();
+    _pg_dm_collect_locked($stored, $stored_nodes);
+    $i = array();
+    _pg_dm_replace_locked($accepted, $stored_nodes, $i);
 }
 
-function _pg_dm_collect_shared($node, &$out)
+function _pg_dm_collect_locked($node, &$out)
 {
     if (!is_array($node)) return;
-    if ((isset($node['type']) ? $node['type'] : '') === 'shared_ref') { $out[] = $node; return; }
+    $kind = _pg_dm_locked_kind($node);
+    if ($kind !== '') { $out[$kind][] = $node; return; }
     if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as $c) _pg_dm_collect_shared($c, $out);
+        foreach ($node['children'] as $c) _pg_dm_collect_locked($c, $out);
     }
 }
 
-function _pg_dm_replace_shared(&$node, $refs, &$i)
-{
-    if (!is_array($node)) return;
-    if ((isset($node['type']) ? $node['type'] : '') === 'shared_ref') {
-        $node = isset($refs[$i]) ? $refs[$i] : $node;
-        $i++;
-        return;
-    }
-    if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as &$c) _pg_dm_replace_shared($c, $refs, $i);
-        unset($c);
-    }
-}
-
-function _pg_dm_drop_shared(&$node)
+// $i counts, per kind, how many locked nodes have been seen so far in the
+// accepted subtree; the n-th one of a kind takes the n-th stored one.
+function _pg_dm_replace_locked(&$node, $refs, &$i)
 {
     if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
     $kids = array();
     foreach ($node['children'] as $c) {
-        if (is_array($c) && (isset($c['type']) ? $c['type'] : '') === 'shared_ref') continue;
-        _pg_dm_drop_shared($c);
+        $kind = _pg_dm_locked_kind($c);
+        if ($kind !== '') {
+            $n = isset($i[$kind]) ? $i[$kind] : 0;
+            $i[$kind] = $n + 1;
+            if (!isset($refs[$kind][$n])) continue;   // added by the operator: dropped
+            $kids[] = $refs[$kind][$n];
+            continue;
+        }
+        _pg_dm_replace_locked($c, $refs, $i);
         $kids[] = $c;
     }
     $node['children'] = $kids;
+}
+
+/**
+ * Remove every locked node from a tree. Used where there is no stored tree
+ * to restore them from, so a restricted operator's submission is written
+ * without the nodes their level may not create.
+ */
+function pg_designer_drop_locked_nodes(&$node)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
+    $kids = array();
+    foreach ($node['children'] as $c) {
+        if (_pg_dm_locked_kind($c) !== '') continue;
+        pg_designer_drop_locked_nodes($c);
+        $kids[] = $c;
+    }
+    $node['children'] = $kids;
+}
+
+/**
+ * Defuse render-pipeline markers in everything taken from a restricted
+ * submission.
+ *
+ * generate_style_code_from_tree() writes a custom_php node into the page as
+ * the HTML comment `<!--pg-custom-php:BASE64-->`, and _expand_custom_php()
+ * later finds that comment anywhere in the rendered page and eval()s its
+ * payload; _expand_shared_refs() and _expand_system_widgets() resolve
+ * `<!--pg-shared-ref:ID-->` and `<!--pg-system-widget:ID-->` the same way.
+ * The renderers emit a heading's, a paragraph's or a link's `text` raw, so
+ * a node the operator may legitimately write is another way to put that
+ * comment into the page — the node-kind gate above stops the code NODE, this
+ * stops the code MARKER typed into ordinary text.
+ *
+ * Every string in the node is rewritten from `<!--pg-` to `<!-- pg-`, arrays
+ * such as `_attrs` included. The inserted space is what the software already
+ * uses for its inert diagnostic comments, and no expander matches it, while
+ * the operator's text is otherwise left exactly as typed. Nodes of a locked
+ * kind are skipped: they were restored from the stored tree, a designer wrote
+ * them, and their source may legitimately carry a marker (a loop slot in a
+ * custom_html node, for instance).
+ *
+ * `$value` is a node array or a bare string, so the same call serves the
+ * whole accepted subtree and a single copied `text`.
+ */
+function _pg_dm_neutralise_markers(&$value)
+{
+    if (is_string($value)) {
+        if (stripos($value, '<!--pg-') !== false) $value = str_ireplace('<!--pg-', '<!-- pg-', $value);
+        return;
+    }
+    if (!is_array($value)) return;
+    if (_pg_dm_locked_kind($value) !== '') return;
+    foreach ($value as &$v) {
+        _pg_dm_neutralise_markers($v);
+    }
+    unset($v);
 }

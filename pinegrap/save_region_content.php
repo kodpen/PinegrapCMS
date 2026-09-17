@@ -188,13 +188,25 @@ switch ($liveform->get_field_value('region_type')) {
     
     // if type is cregion
     case 'cregion':
+        $cregion_id = (int)$liveform->get_field_value('region_id');
+        $cregion_row = db_item("SELECT cregion_name, cregion_designer_type FROM cregion WHERE cregion_id = '" . $cregion_id . "'");
+
+        if (!is_array($cregion_row)) {
+            output_error(lang('Access denied.'));
+        }
+
+        // A designer region is design, not content. Every screen that opens one
+        // (edit_designer_region.php, edit_common_region.php) requires the
+        // designer role, and this endpoint has to apply the same gate: the
+        // request does not have to come from one of those screens.
+        if (($cregion_row['cregion_designer_type'] == 'yes') && ($user['role'] > 1)) {
+            log_activity("access denied because user does not have access to edit designer region (" . $cregion_row['cregion_name'] . ")", $_SESSION['sessionusername']);
+            output_error(lang('Access denied.'));
+        }
+
         // if user has a user role and if they do not have access to this common region, then user does not have access to edit region, so output error
-        if (($user['role'] == 3) && (in_array($liveform->get_field_value('region_id'), get_items_user_can_edit('common_regions', $user['id'])) == FALSE)) {
-            $query = "SELECT cregion_name FROM cregion WHERE cregion_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-            
-            log_activity("access denied because user does not have access to edit common region (" . $row['cregion_name'] . ")", $_SESSION['sessionusername']);
+        if (($user['role'] == 3) && (in_array($cregion_id, get_items_user_can_edit('common_regions', $user['id'])) == FALSE)) {
+            log_activity("access denied because user does not have access to edit common region (" . $cregion_row['cregion_name'] . ")", $_SESSION['sessionusername']);
             output_error('Access denied.');
         }
         
@@ -205,7 +217,7 @@ switch ($liveform->get_field_value('region_type')) {
                 cregion_content = '" . escape($liveform->get_field_value('region_content')) . "', 
                 cregion_user = '" . $user['id'] . "', 
                 cregion_timestamp = UNIX_TIMESTAMP()
-            WHERE cregion_id = '" . escape($liveform->get_field_value('region_id')) . "'";
+            WHERE cregion_id = '" . $cregion_id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         // A common region is shared: this one edit changes the markup of every
@@ -214,8 +226,7 @@ switch ($liveform->get_field_value('region_type')) {
         // rather than analyzed - rendering all of them inside a save request is
         // not a trade this can make - so the nightly pass takes them that
         // night instead of whenever the periodic full refresh next comes round.
-        $cregion_name = db_value(
-            "SELECT cregion_name FROM cregion WHERE cregion_id = '" . escape($liveform->get_field_value('region_id')) . "'");
+        $cregion_name = $cregion_row['cregion_name'];
 
         if ($cregion_name !== NULL) {
             require_once(dirname(__FILE__) . '/seo.php');
