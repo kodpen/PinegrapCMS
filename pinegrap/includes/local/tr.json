@@ -11286,5 +11286,20 @@
     "A design file can only be removed by a designer or an administrator.": "Tasarım dosyasını yalnız bir tasarımcı ya da yönetici kaldırabilir.",
     "This site has no recycle bin, so a file cannot be removed through the API.": "Bu sitede geri dönüşüm kutusu yok, bu yüzden API üzerinden dosya kaldırılamaz.",
     "This file is already in the recycle bin.": "Bu dosya zaten geri dönüşüm kutusunda.",
-    "File ({var:1}) was moved to the recycle bin through the API by the application {var:2} (key {var:3}).": "Dosya ({var:1}), {var:2} uygulaması tarafından API üzerinden geri dönüşüm kutusuna taşındı (anahtar {var:3})."
+    "File ({var:1}) was moved to the recycle bin through the API by the application {var:2} (key {var:3}).": "Dosya ({var:1}), {var:2} uygulaması tarafından API üzerinden geri dönüşüm kutusuna taşındı (anahtar {var:3}).",
+    "h:mm AM/PM": "h:mm AM/PM",
+    "New message": "Yeni mesaj",
+    "Yeterli stok yok. Mevcut: {var:1}": "Yeterli stok yok. Mevcut: {var:1}",
+    "Please enter a valid value for {var:1}": "{var:1} için geçerli bir değer girin",
+    "Resim merkezinden": "Resim merkezinden",
+    "Ön Ayar": "Ön Ayar",
+    "User Name": "Kullanıcı Adı",
+    "nginx": "nginx",
+    "Pinegrap Premium™": "Pinegrap Premium™",
+    "orphaned form was moved to page ({var:1})": "sahipsiz form ({var:1}) sayfasına taşındı",
+    "BCC": "BCC",
+    "Ara": "Ara",
+    "Ana Katalog": "Ana Katalog",
+    "Kategoriler": "Kategoriler",
+    "Birlikte sıkça satın alınanlar": "Birlikte sıkça satın alınanlar"
 }
