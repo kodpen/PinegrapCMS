@@ -486,9 +486,36 @@ function erp_invoice_pdf($html)
     $options->setLogOutputFile('');
 
     $dompdf = new \Dompdf\Dompdf($options);
-    $dompdf->loadHtml((string) $html, 'UTF-8');
+    $dompdf->loadHtml(erp_invoice_pdf_prepare_html((string) $html), 'UTF-8');
     $dompdf->setPaper('A4', 'portrait');
     $dompdf->render();
 
     return $dompdf->output();
+}
+
+/**
+ * Make the document safe for dompdf's second parse.
+ *
+ * dompdf parses the HTML once with html5-php and then again with libxml, and
+ * libxml reads HTML as ISO-8859-1 until it meets the charset declaration; once
+ * it has decoded a non-ASCII byte it no longer switches. A comment or a title
+ * written in Turkish above <meta charset> therefore turns every accented
+ * character of the whole document into two wrong ones. Comments never reach the
+ * page, so they are dropped, and the one charset declaration is put first in
+ * <head>, ahead of anything an edited template may carry there.
+ *
+ * @param string $html
+ * @return string
+ */
+function erp_invoice_pdf_prepare_html($html)
+{
+    $html = preg_replace('/<!--.*?-->/s', '', $html);
+    $html = preg_replace('/<meta\s[^>]*charset[^>]*>/i', '', $html);
+
+    if (preg_match('/<head\b[^>]*>/i', $html, $match, PREG_OFFSET_CAPTURE)) {
+        $position = $match[0][1] + strlen($match[0][0]);
+        return substr($html, 0, $position) . '<meta charset="utf-8">' . substr($html, $position);
+    }
+
+    return '<meta charset="utf-8">' . $html;
 }
