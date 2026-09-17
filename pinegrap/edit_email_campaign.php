@@ -101,7 +101,7 @@ if (!$_POST) {
     $output_button_bar = '';
     
     // if e-mail campaign job is off and e-mail campaign status is ready, then prepare to output button bar with send campaign button
-    if (((defined('EMAIL_CAMPAIGN_JOB') == false) || (EMAIL_CAMPAIGN_JOB == false)) && ($status == 'ready')) {
+    if ((email_campaign_job_enabled() == false) && ($status == 'ready')) {
         $output_button_bar =
             '<nav id="button_bar" class="navigation " aria-label="Button Bar">
                 <div class=" btn-group btn-group-sm flex-wrap">
@@ -136,7 +136,7 @@ if (!$_POST) {
                 break;
         }
         
-        if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB === true) {
+        if (email_campaign_job_enabled()) {
             $ready_label = lang('Scheduled');
         } else {
             $ready_label = lang('Ready to Send');
@@ -410,7 +410,7 @@ if (!$_POST) {
     }
     
     // if an e-mail campaign job is setup on the server, then allow e-mail campaign to be scheduled
-    if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB === true) {
+    if (email_campaign_job_enabled()) {
         $output_start_time_rows =
             '<div class="col-12">
                 <div class="card my-4">
