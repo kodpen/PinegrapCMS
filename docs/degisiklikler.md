@@ -435,6 +435,50 @@ yollarıdır; değer çıkışta liveform tarafından kaçışlandığı için d
 `widgets.php`'deki `order_view` widget'ının anonim ziyaretçiye sipariş
 gösterebilmesi (IDOR) ayrı bir konu, bu turda ele alınmadı.
 
+## 2026.4.4 — Sistem düzenli sipariş ekranlarında satır vergisi, katalog arama formu (2026-09-17)
+
+İki bağımsız kullanıcı hatası, ikisi de "ekran çalışıyor gibi görünüyor ama
+sonuç yanlış" sınıfından.
+
+### Vergi hiç seçilmeyen sütundan okunuyordu
+
+Sistem düzenli (system layout) hızlı sipariş ekranı, sipariş önizlemesi, fiş ve
+sipariş görüntüleme ekranı — `get_express_order.php`, `get_order_preview.php`,
+`get_order_receipt.php`, `get_view_order_screen_content.php` — kalem vergisini
+`$order_item['tax']` alanından okuyordu. `order_items` sorgusunun SELECT
+listesinde `tax` yok, `tax_total` var; alan tanımsız olduğundan vergi her
+zaman 0 görünüyordu. Vergili bir hızlı sipariş gönderildiğinde `submit_order.php`
+vergiyi `tax_total` üzerinden yeniden hesapladığı için ekrandaki toplam ile
+gizli `total` alanı uyuşmuyor ve sipariş, toplam kontrolünde reddediliyordu.
+
+Dört ekran da `tax_total`'ı okuyor ve `$total_tax`'ı doğrudan ona eşitliyor.
+Miktarla çarpma kaldırıldı: "Vergi tabanı: birimden satıra" (2026-09-16)
+bölümünün getirdiği gibi `tax_total` satırın tamamına aittir; çarpılsaydı vergi
+adet kadar katlanırdı. `get_order_receipt_in_plain_text.php` zaten böyle
+okuyordu, ölçüt oydu. SQL değişmedi, `tax_total` zaten çekiliyordu. Yinelenen
+ödemelerde dönem başına biriken vergi (`$payment_periods[..]['tax']`) düzeltilmiş
+satır değerini kendiliğinden alıyor.
+
+### Katalog şablonunda öznitelik değerleri bölünmüştü
+
+`includes/templates/catalog.php` içindeki arama formunun `name` öznitelikleri
+`<?=` etiketinden hemen önce satır sonu ve sekmelerle bölünmüştü; tarayıcı
+gönderdiği GET anahtarına o beyaz boşluğu da katıyor, `get_catalog.php`'nin
+beklediği `<page_id>_query` / `<page_id>_submit` / `<page_id>_clear` adlarıyla
+eşleşmiyordu. Arama ve temizle düğmeleri hiç işleyiciye ulaşmıyordu. Bölünmüş
+`name`, `href`, `src` ve `style` değerleri tek satıra alındı; şablonun çıktısı
+dışında hiçbir mantık değişmedi. Aynı kalıbı taşıyan diğer şablonlar
+(`change_password_system.php`, `form_list_view*.php`) bu turda dokunulmadı.
+
+### Doğrulama
+
+`php -l` beş dosyada temiz; `tools/lint.php` ve `tools/check_lang.php` temiz.
+Çalışan bir örnek kurulmadı: vergili hızlı sipariş uçtan uca gönderilmedi,
+katalog sayfası render edilip arama formu denenmedi. Doğrulama kod okumasıyla
+yapıldı — SELECT listelerinin `tax_total` çektiği, `tax` çekmediği ve
+`submit_order.php`'nin satır-bütünü anlamı; katalog şablonunda `cat -A` ile
+düzeltme öncesi satır sonu + sekme baytlarının görünmesi, sonrasında kalmaması.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
