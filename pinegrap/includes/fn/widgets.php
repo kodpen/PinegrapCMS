@@ -2248,8 +2248,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
          LIMIT 1"
     );
 
-    if (!$order || ($current_user_id > 0 && (int)$order['user_id'] !== $current_user_id)) {
-        // Order not found or does not belong to this user — return empty
+    // Order ids are sequential, so an anonymous visitor must never see an order:
+    // require a logged-in user who owns the order.
+    if (!$order || $current_user_id <= 0 || (int)$order['user_id'] !== $current_user_id) {
+        // Order not found, no logged-in user, or order does not belong to this user — return empty
         return '';
     }
 
