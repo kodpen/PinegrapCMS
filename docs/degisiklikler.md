@@ -624,6 +624,56 @@ dağıtım koşulundan alındı, render edilen forma karşı yeniden kontrol edi
 `EMAIL_CAMPAIGN_JOB` yazımı gerçek bir `config.php` üzerinde, ürün ve sayfa
 kayıt akışları çalışma zamanında koşturulmadı.
 
+## 2026.4.4 — Anonim girdi: şifre değiştirme kilidi, e-posta bağlantılarında alan adı, bildirim zili XSS (2026-09-17)
+
+Üç ayrı yerde oturum açmamış ziyaretçinin girdisi ayrıcalıklı bir yola
+ulaşıyordu. `change_password.php` anonim POST'u kabul edip mevcut şifreyi
+`validate_login()` ile hiçbir deneme sınırı olmadan sınıyordu: herhangi bir
+hesabın şifresi sınırsız denenebiliyor, doğru tahminde çağıran oturum açmış
+oluyordu. `HOSTNAME` sabiti doğrudan `Host` başlığından geldiği için şifre
+sıfırlama e-postasındaki bağlantı, yorum bildirim e-postaları ve "arkadaşına
+gönder" formu sahte bir başlıkla başka alan adına yöneltilebiliyor, sıfırlama
+jetonu saldırganın sunucusuna gidebiliyordu. Panelin bildirim zili ziyaretçi
+girdisinden türeyen başlık/açıklama/ayrıntıyı kaçırmadan basıyor ve hedef URL'yi
+satır içi `onclick`e gömüyordu (saklı XSS).
+
+### Şifre değiştirme, giriş ekranının sırasını izliyor
+
+`change_password.php` mevcut şifreyi karşılaştırmadan önce `index.php` ile aynı
+sırayı uyguluyor: yasaklı adres, kilit, başarısız deneme sayacı; eşik aşılınca
+form hatası dönüyor ve başarıda sayaç temizleniyor. Soru eşiğinde giriş sorusu
+ekranı yerine form hatası verilir, çünkü o ekran bu formun yeni-şifre alanlarını
+taşıyamaz. `tr.json`'a bir anahtar.
+
+### Postalanan bağlantı yapılandırılmış alan adından
+
+`forgot_password.php`, `includes/fn/mail.php` ve `email_a_friend.php` e-postaya
+giren bağlantıları `HOSTNAME` yerine `HOSTNAME_SETTING` ile kuruyor. `init.php`
+ayrımı yorumla belgeliyor: `HOSTNAME` isteğin adlandırdığı, istemcinin
+denetlediği host'tur ve ziyaretçiyi bulunduğu sayfaya geri yönlendirmek için
+doğrudur; isteği terk eden her şey (e-posta, kanonik URL, besleme)
+`HOSTNAME_SETTING`'den kurulmalıdır. **`Host` başlığının `HOSTNAME_SETTING` ile
+eşleşmesi bilerek zorunlu kılınmadı**: aynı kurulum birden çok alan adından ve
+geliştirme adresinden sunulabiliyor, zorunluluk bu kurulumları kırardı. Kapsam
+yalnız postalanan bağlantılardır.
+
+### Bildirim zili
+
+`pg_notification_display()` (`includes/notifications.php`) satır değerlerini
+kaçırıyor; `chat.php` başlığı artık ham saklıyor ki çift kaçırma olmasın.
+`backend.src.js` kalan ham alanları kaçırıyor, `onclick` yerine `data-url`
+özniteliğinden okuyan ve yalnız göreli panel yollarını kabul eden delegeli bir
+tıklama işleyicisi kullanıyor; sunucunun `get_relative_time()` ile ürettiği
+`<time>` işaretlemesi korunuyor. `backend.min.js` yoktur — `output.php` `.src.js`'i
+doğrudan yükler — dolayısıyla güncellenecek ikiz yok.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` ve `node --check backend.src.js`
+temiz. **Çalışan örnek kurulmadı**: kilit sayacı, e-posta bağlantıları ve zil
+açılır menüsü çalışma zamanında sınanmadı; zil düzeltmesi `api.php`
+`get_notifications` çıktısının okunmasıyla doğrulandı.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
