@@ -163,6 +163,7 @@ $group_labels = array(
 	'customers'      => lang('Customers'),
 	'pages'          => lang('Pages'),
 	'files'          => lang('Files'),
+	'offers'         => lang('Offers'),
 	'webhooks'       => lang('Webhooks')
 );
 
