@@ -161,6 +161,11 @@ function pg_designer_in_editable_area($ancestors)
  * source is code the public page runs (see _pg_dm_locked_kind), so it is
  * never taken from the submission at this level.
  *
+ * Every string that IS taken from the submission goes through
+ * _pg_dm_neutralise_markers(): the render pipeline recognises its own code
+ * nodes by an HTML comment in the generated page, and a text prop is emitted
+ * into that page raw, so the comment has to be defused at content level too.
+ *
  * @return array the tree to store
  */
 function pg_designer_merge_restricted_tree($stored, $submitted)
@@ -195,6 +200,7 @@ function _pg_dm_node($stored, $submitted, $in_editable)
         else unset($out['props']['_editable']);
         _pg_dm_strip_editable_flags($out, true);
         _pg_dm_restore_locked($out, $stored);
+        _pg_dm_neutralise_markers($out);
         return $out;
     }
 
@@ -205,6 +211,7 @@ function _pg_dm_node($stored, $submitted, $in_editable)
     if (is_array($submitted) && array_key_exists('text', (array)(isset($stored['props']) ? $stored['props'] : array()))
         && isset($submitted['props']) && array_key_exists('text', (array)$submitted['props'])) {
         $out['props']['text'] = (string)$submitted['props']['text'];
+        _pg_dm_neutralise_markers($out['props']['text']);
     }
 
     // A note is an annotation, not page content: the collaboration feature
@@ -396,4 +403,43 @@ function pg_designer_drop_locked_nodes(&$node)
         $kids[] = $c;
     }
     $node['children'] = $kids;
+}
+
+/**
+ * Defuse render-pipeline markers in everything taken from a restricted
+ * submission.
+ *
+ * generate_style_code_from_tree() writes a custom_php node into the page as
+ * the HTML comment `<!--pg-custom-php:BASE64-->`, and _expand_custom_php()
+ * later finds that comment anywhere in the rendered page and eval()s its
+ * payload; _expand_shared_refs() and _expand_system_widgets() resolve
+ * `<!--pg-shared-ref:ID-->` and `<!--pg-system-widget:ID-->` the same way.
+ * The renderers emit a heading's, a paragraph's or a link's `text` raw, so
+ * a node the operator may legitimately write is another way to put that
+ * comment into the page — the node-kind gate above stops the code NODE, this
+ * stops the code MARKER typed into ordinary text.
+ *
+ * Every string in the node is rewritten from `<!--pg-` to `<!-- pg-`, arrays
+ * such as `_attrs` included. The inserted space is what the software already
+ * uses for its inert diagnostic comments, and no expander matches it, while
+ * the operator's text is otherwise left exactly as typed. Nodes of a locked
+ * kind are skipped: they were restored from the stored tree, a designer wrote
+ * them, and their source may legitimately carry a marker (a loop slot in a
+ * custom_html node, for instance).
+ *
+ * `$value` is a node array or a bare string, so the same call serves the
+ * whole accepted subtree and a single copied `text`.
+ */
+function _pg_dm_neutralise_markers(&$value)
+{
+    if (is_string($value)) {
+        if (stripos($value, '<!--pg-') !== false) $value = str_ireplace('<!--pg-', '<!-- pg-', $value);
+        return;
+    }
+    if (!is_array($value)) return;
+    if (_pg_dm_locked_kind($value) !== '') return;
+    foreach ($value as &$v) {
+        _pg_dm_neutralise_markers($v);
+    }
+    unset($v);
 }

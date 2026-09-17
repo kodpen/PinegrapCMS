@@ -1831,10 +1831,13 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             // tree existed). The submission is written, minus the nodes this
             // level may never create: a custom_php node is eval()ed on every
             // public render, so accepting one here would be code execution.
+            // The same marker typed into an ordinary text prop is defused,
+            // since the renderers emit that text into the page raw.
             if (_pg_dm_locked_kind($tree) !== '') {
                 $tree = array('type' => 'root', 'props' => array(), 'children' => array());
             }
             pg_designer_drop_locked_nodes($tree);
+            _pg_dm_neutralise_markers($tree);
         }
     }
 
