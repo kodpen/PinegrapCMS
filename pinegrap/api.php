@@ -164,7 +164,6 @@ if (
     and ($action != 'update_dashboard_widgets')
     and ($action != 'software_backup')
     and ($action != 'software_update')
-    and ($action != 'user_pinned_app_update')
 
     and ($action != 'remove_notifications')
     and ($action != 'get_notifications')
@@ -8234,12 +8233,23 @@ switch ($action) {
         break;
 
     case 'user_pinned_app_update':
-        $list = $request['list'];
+        // The list is written straight into the operator's own user row, so it
+        // has to come from a signed-in session with a valid token, and the
+        // entries can only be menu item numbers.
+        $user = validate_user();
+        validate_token();
+
+        $list = array();
+        if (isset($request['list']) && is_array($request['list'])) {
+            foreach ($request['list'] as $list_item) {
+                $list[] = (int) $list_item;
+            }
+        }
         $list = implode(',', $list);
         $query =
             "UPDATE user
-            SET selected_appmenu_items_array = '" . $list . "'
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
+            SET selected_appmenu_items_array = '" . escape($list) . "'
+            WHERE user_id = '" . (int) $user['id'] . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         //return success json output
@@ -8720,11 +8730,32 @@ switch ($action) {
         //it is action to update software from software_update.php
         //used api because some slow servers connections down, timeout or somethings like this when do this one step.
 
+        // The steps below download a package and unpack it over the codebase.
+        // The action sits in the exemption list at the top of this file, so
+        // the general gate does not run for it: ask here for the same thing
+        // software_update.php asks at its own door - a signed-in manager with
+        // a valid token - before any step is looked at.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
+        $user = validate_user();
+        validate_area_access($user, 'manager');
+        validate_token();
+
         // This feature can take a long time to run for a large site,
         // so increase the allowed execution time for the PHP script.
         ini_set('max_execution_time', '9999');
 
-        $step = $request['step'];
+        $step = isset($request['step']) ? $request['step'] : '';
+        if (!in_array($step, array('check', 'download', 'replace'), true)) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid step.'
+            ));
+        }
         switch ($step) {
             case 'check':
                 //check if there is really have a software update, also software_update page check but may user open 2 page and update and update again.
@@ -13778,8 +13809,9 @@ switch ($action) {
         validate_token();
         $user = validate_user();
 
-        // Admin (0) and designer (2) only — symmetric with shared_component.
-        if ($user['role'] != 0 && $user['role'] != 2) {
+        // Admin (0) and designer (1) only — symmetric with shared_component.
+        // Manager is 2 and does not shape the design.
+        if ((int) $user['role'] > 1) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
         }
 
@@ -13809,12 +13841,12 @@ switch ($action) {
                 $df_base   = isset($request['name'])   ? trim($request['name'])             : '';
                 $df_folder = isset($request['folder']) ? (int) $request['folder']            : 0;
                 // Design flag (1 = design file). Only honoured for admin (0) /
-                // designer (2) — basic users in folder ACLs shouldn't be able
-                // to upload "design files" they cannot manage. Manager (1)
+                // designer (1) — basic users in folder ACLs shouldn't be able
+                // to upload "design files" they cannot manage. Manager (2)
                 // never reaches this endpoint via the assets panel anyway
                 // because they don't have designer-area access.
                 $df_design = !empty($request['design']) ? 1 : 0;
-                if ((int)$user['role'] !== 0 && (int)$user['role'] !== 2) {
+                if ((int) $user['role'] > 1) {
                     $df_design = 0;
                 }
                 // Optional file description — same column View Files surfaces.
@@ -14292,9 +14324,16 @@ function validate_token()
     // If the token does not exist in the session,
     // or the passed token does not match the token from the session,
     // then this might be a CSRF attack so respond with an error.
+    //
+    // The body is decoded json, so the token arrives with whatever type the
+    // sender gave it. A loose compare would take `true` (or, on PHP 7, `0`)
+    // as equal to the session's hex string; only a string compared byte for
+    // byte counts.
+    $session_token = isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '';
     if (
-        ($_SESSION['software']['token'] == '')
-        || ($token != $_SESSION['software']['token'])
+        ($session_token === '')
+        || (!is_string($token))
+        || (!hash_equals($session_token, $token))
     ) {
         respond(array(
             'status' => 'error',

@@ -599,48 +599,104 @@ function get_page_name($page_id)
 }
 
 
+// Marks a card number that was encrypted with the OpenSSL implementation below.
+// Values without this prefix are legacy mcrypt (Rijndael-256) blobs, which can
+// only be decrypted while the mcrypt extension is still present (PHP < 7.2).
+if (!defined('PG_CARD_NUMBER_CIPHER_PREFIX')) {
+    define('PG_CARD_NUMBER_CIPHER_PREFIX', 'pgc1:');
+}
+
+/**
+ * Whether stored card numbers can be encrypted and decrypted on this server:
+ * an ENCRYPTION_KEY is configured and the OpenSSL extension is loaded.
+ *
+ * @return bool
+ */
+function credit_card_encryption_is_available()
+{
+    return (defined('ENCRYPTION_KEY') == TRUE)
+        && (ENCRYPTION_KEY != '')
+        && (extension_loaded('openssl') == TRUE)
+        && (function_exists('openssl_encrypt') == TRUE);
+}
+
 function encrypt_credit_card_number($credit_card_number, $key)
 {
-    // if the key is too large, then someone has messed with it, so output error, in order to avoid PHP error
+    // if the key is too large, then someone has messed with it, so output error
     if (mb_strlen($key) > 32) {
         output_error(lang('Encryption key is too large.'));
     }
-    $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
-    // if this server is on Windows, then seed random number generator and use MCRYPT_RAND
-    if (mb_strtoupper(mb_substr(PHP_OS, 0, 3)) == 'WIN') {
-        srand((float) microtime() * 1000000);
-        $source = MCRYPT_RAND;
-        // else this server is not on Windows, so use MCRYPT_DEV_URANDOM
-        // we previously used MCRYPT_DEV_RANDOM, but we had to change to MCRYPT_DEV_URANDOM,
-        // because MCRYPT_DEV_RANDOM caused random delays of 5 seconds to several minutes
-    } else {
-        $source = MCRYPT_DEV_URANDOM;
+    $method = 'aes-256-cbc';
+    // derive a fixed-length binary key so the configured key length does not matter to the cipher
+    $binary_key = hash('sha256', $key, true);
+    $iv_size = openssl_cipher_iv_length($method);
+    $iv = function_exists('random_bytes') ? random_bytes($iv_size) : openssl_random_pseudo_bytes($iv_size);
+    $encrypted = openssl_encrypt($credit_card_number, $method, $binary_key, OPENSSL_RAW_DATA, $iv);
+    // if encryption failed, then return empty string so that the caller never stores the plain-text number by mistake
+    if ($encrypted === FALSE) {
+        return '';
     }
-    $iv = mcrypt_create_iv($iv_size, $source);
-    // prepend iv and encrypt credit card number
-    $encrypted_credit_card_number = $iv . mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $key, $credit_card_number, MCRYPT_MODE_CBC, $iv);
-    // base64 encode encrypted credit card number so that it does not contain binary characters and can be stored easily
-    $encrypted_credit_card_number = base64_encode($encrypted_credit_card_number);
-    return $encrypted_credit_card_number;
+    // prepend iv, then base64 encode so that the value does not contain binary characters and can be stored easily
+    return PG_CARD_NUMBER_CIPHER_PREFIX . base64_encode($iv . $encrypted);
 }
 function decrypt_credit_card_number($credit_card_number, $key)
 {
-    // if the key is too large, then someone has messed with it, so output error, in order to avoid PHP error
+    // if the key is too large, then someone has messed with it, so output error
     if (mb_strlen($key) > 32) {
         output_error(lang('Encryption key is too large.'));
     }
-    // base64 decode in order to get binary encrypted credit card number
+    $prefix_length = strlen(PG_CARD_NUMBER_CIPHER_PREFIX);
+    // if the value does not carry the OpenSSL prefix, then it is a legacy mcrypt value
+    if (substr($credit_card_number, 0, $prefix_length) !== PG_CARD_NUMBER_CIPHER_PREFIX) {
+        return _pg_decrypt_legacy_credit_card_number($credit_card_number, $key);
+    }
+    $method = 'aes-256-cbc';
+    $binary_key = hash('sha256', $key, true);
+    $iv_size = openssl_cipher_iv_length($method);
+    // base64 decode in order to get binary iv and encrypted credit card number
+    $binary = base64_decode(substr($credit_card_number, $prefix_length), true);
+    if (($binary === FALSE) || (strlen($binary) <= $iv_size)) {
+        return '';
+    }
+    $iv = substr($binary, 0, $iv_size);
+    $encrypted = substr($binary, $iv_size);
+    $decrypted = openssl_decrypt($encrypted, $method, $binary_key, OPENSSL_RAW_DATA, $iv);
+    // a wrong key fails the padding check; return empty string so that the caller's is_numeric() test reports a decryption error
+    if ($decrypted === FALSE) {
+        return '';
+    }
+    return $decrypted;
+}
+/**
+ * Decrypt a card number stored by the pre-OpenSSL implementation
+ * (Rijndael-256 CBC, IV prepended, base64). Only possible while the mcrypt
+ * extension is loaded; on PHP 7.2 and later the value cannot be recovered and
+ * an empty string is returned, which callers already treat as a decryption
+ * error.
+ *
+ * @param string $credit_card_number Stored value without the OpenSSL prefix
+ * @param string $key                Encryption key
+ * @return string                    Decrypted card number, or '' on failure
+ */
+function _pg_decrypt_legacy_credit_card_number($credit_card_number, $key)
+{
+    if (
+        (extension_loaded('mcrypt') == FALSE)
+        || (function_exists('mcrypt_decrypt') == FALSE)
+        || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE)
+    ) {
+        return '';
+    }
     $credit_card_number = base64_decode($credit_card_number);
     $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
-    // get iv from the front of the encrypted credit card number
+    if (strlen($credit_card_number) <= $iv_size) {
+        return '';
+    }
     $iv = substr($credit_card_number, 0, $iv_size);
-    // remove iv from the encrypted credit card number
     $credit_card_number = substr($credit_card_number, $iv_size);
-    // decrypt the credit card number
     $decrypted_credit_card_number = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $credit_card_number, MCRYPT_MODE_CBC, $iv);
-    // remove null values from the end
-    $decrypted_credit_card_number = rtrim($decrypted_credit_card_number, "\0");
-    return $decrypted_credit_card_number;
+    // remove null padding from the end
+    return rtrim((string) $decrypted_credit_card_number, "\0");
 }
 function protect_credit_card_number($card_number)
 {
@@ -730,9 +786,9 @@ function _pg_order_status_badge_class($stage, $cfg = array())
  * The resolution order below is copied from get_order_receipt.php:1265 and
  * get_view_order_screen_content.php:1409 so the customer-facing system widget
  * shows exactly what the legacy receipt shows — including refusing to show
- * anything when an encrypted value can't be decrypted. decrypt_credit_card_
- * number() needs mcrypt, which PHP dropped in 7.2, so on any modern install
- * the encrypted branch deliberately yields ''.
+ * anything when an encrypted value can't be decrypted. Values written by the
+ * old mcrypt implementation cannot be decrypted once PHP dropped mcrypt (7.2),
+ * so for those the encrypted branch deliberately yields ''.
  *
  * Output shape: the BIN prefix is preserved when we actually have it
  * (plaintext / decrypted → "4111********1111"). When the stored value was
@@ -751,13 +807,9 @@ function _pg_mask_order_card_number($stored)
     if (mb_substr($card, 0, 1) === '*') return $card;
 
     if (mb_strlen($card) > 16) {
-        // Encrypted blob. Only attempt when the legacy mcrypt stack is
-        // genuinely present; otherwise show nothing.
-        if (defined('ENCRYPTION_KEY')
-            && extension_loaded('mcrypt')
-            && function_exists('mcrypt_list_algorithms')
-            && in_array('rijndael-256', mcrypt_list_algorithms())
-        ) {
+        // Encrypted blob. Only attempt when encryption is genuinely
+        // available; otherwise show nothing.
+        if (credit_card_encryption_is_available()) {
             $card = decrypt_credit_card_number($card, ENCRYPTION_KEY);
             // A failed decrypt yields garbage, not digits — bail rather than
             // printing binary noise to the visitor.

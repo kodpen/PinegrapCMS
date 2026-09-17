@@ -414,10 +414,34 @@ echo pg_page_shell(array(
 		var html = "<div class=\'row g-2 mb-2\'>";
 		endpoint.querySelectorAll(".doc-params table tr").forEach(function (row) {
 			var name = row.querySelector("td code").textContent;
-			html += "<div class=\'col-6 col-lg-4\'><label class=\'form-label small mb-1\'>" + name + "</label>" +
-				"<input type=\'text\' class=\'form-control form-control-sm doc-field\' data-name=\'" + name + "\'></div>";
+			var typeCell = row.querySelector(".doc-type");
+			var type = typeCell ? typeCell.textContent.trim() : "string";
+			html += "<div class=\'col-6 col-lg-4\'><label class=\'form-label small mb-1\'>" + name + "</label>";
+			// The declared type travels with the field so send() knows which
+			// values need parsing. A list can run long, so it gets a textarea,
+			// and the placeholder shows the JSON form it expects.
+			if (type === "list") {
+				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\' data-name=\'" + name +
+					"\' data-type=\'list\' placeholder=\'[\"a\", \"b\"]\'></textarea></div>";
+			} else {
+				html += "<input type=\'text\' class=\'form-control form-control-sm doc-field\' data-name=\'" + name +
+					"\' data-type=\'" + type + "\'></div>";
+			}
 		});
 		return html + "</div>";
+	}
+
+	// A JSON array is taken as written; a plain line such as "a, b" is split
+	// on commas for a list of words. Anything else that opens a bracket is a
+	// broken JSON attempt and comes back as null so the caller can say so.
+	function parseList(text) {
+		try {
+			var parsed = JSON.parse(text);
+			if (Array.isArray(parsed)) { return parsed; }
+		} catch (e) {}
+		if (text.indexOf("[") > -1) { return null; }
+		return text.split(",").map(function (item) { return item.trim(); })
+			.filter(function (item) { return item !== ""; });
 	}
 
 	document.querySelectorAll(".doc-try-btn").forEach(function (button) {
@@ -460,6 +484,7 @@ echo pg_page_shell(array(
 		var path = endpoint.dataset.path;
 		var output = panel.querySelector("pre");
 		var body = {};
+		var problem = null;
 
 		panel.querySelectorAll(".doc-field").forEach(function (field) {
 			if (field.value === "") { return; }
@@ -468,10 +493,29 @@ echo pg_page_shell(array(
 				path = path.replace("{" + name + "}", encodeURIComponent(field.value));
 			} else if (method === "GET") {
 				path += (path.indexOf("?") > -1 ? "&" : "?") + name + "=" + encodeURIComponent(field.value);
+			} else if (field.dataset.type === "list") {
+				// The router casts booleans and integers from their string
+				// form, so those travel as typed; a list has to arrive as a
+				// JSON array or validation rejects it, hence the parsing here.
+				var list = parseList(field.value);
+				if (list === null) {
+					problem = ' . json_encode(lang(array(
+						'string' => '{var:1} could not be read as a list. Enter a JSON array such as ["a", "b"], or values separated by commas.',
+						'vars'   => '%NAME%'
+					)), JSON_UNESCAPED_UNICODE) . '.replace("%NAME%", name);
+					return;
+				}
+				body[name] = list;
 			} else {
 				body[name] = field.value;
 			}
 		});
+
+		if (problem !== null) {
+			output.classList.remove("d-none");
+			output.textContent = problem;
+			return;
+		}
 
 		button.disabled = true;
 		output.classList.remove("d-none");

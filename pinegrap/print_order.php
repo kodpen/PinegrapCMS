@@ -235,8 +235,7 @@ if ($payment_method == 'Credit/Debit Card') {
         // if encryption is enabled, then decrypt the credit card number
         if (
             (defined('ENCRYPTION_KEY') == TRUE)
-            && (extension_loaded('mcrypt') == TRUE)
-            && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+            && (extension_loaded('openssl') == TRUE)
         ) {
             $card_number = decrypt_credit_card_number($card_number, ENCRYPTION_KEY);
             
@@ -255,6 +254,15 @@ if ($payment_method == 'Credit/Debit Card') {
         } else {
             $card_number = '[decryption error]';
         }
+        
+    // else the credit card number is stored in plain text, so if the user does not
+    // have access to view card data, then protect it (the encrypted branch above
+    // already does this for decrypted numbers)
+    } else if (
+        (mb_substr($card_number, 0, 1) != '*')
+        && (($user['role'] == 3) && ($user['view_card_data'] == FALSE))
+    ) {
+        $card_number = protect_credit_card_number($card_number);
     }
     
     $expiration_month = $row['expiration_month'];
@@ -386,7 +394,7 @@ if ($payment_method != '') {
             ' . $cardholder_row . '
             <div class="row" >
                 <span class="translateable col text-muted">' . lang('Card Number') . ':</span>
-                <span class="col text-end">' . $card_number . '</span>
+                <span class="col text-end">' . h($card_number) . '</span>
             </div>
             ' . $expiration_row . '
             ' . $card_verification_number_row;

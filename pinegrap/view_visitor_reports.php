@@ -33,6 +33,11 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
+// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
+if (isset($_SESSION['software']['stats']['view_visitor_reports']['order'])) {
+    $_SESSION['software']['stats']['view_visitor_reports']['order'] = sql_order_direction($_SESSION['software']['stats']['view_visitor_reports']['order'], '');
+}
+
 $output_web_statistics_link = '';
 
 // if an external web stats link is supplied in the settings, then prepare link to web stats
@@ -105,7 +110,7 @@ $query =
     FROM visitor_reports
     LEFT JOIN user AS created_user ON visitor_reports.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON visitor_reports.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['stats']['view_visitor_reports']['order'] ?? ''));
+    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['stats']['view_visitor_reports']['order'] ?? '');
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 

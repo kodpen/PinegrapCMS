@@ -174,7 +174,7 @@ if (!$_POST) {
         $sort_column = 'log_timestamp';
     }
     if(isset($_GET['sort'])) {
-        $asc_desc = isset($_GET['order']) ? $_GET['order'] : '';
+        $asc_desc = strtoupper(sql_order_direction(isset($_GET['order']) ? $_GET['order'] : ''));
     } else {
         $asc_desc = 'DESC';
     }
