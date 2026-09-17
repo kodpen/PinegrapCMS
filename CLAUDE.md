@@ -27,22 +27,23 @@ duydukça, bölüm bölüm oku.
 
 ## Çalışma ortamı
 
-Sandbox'ta PHP 8.3 ve Composer hazır gelir. Projenin `composer.json` dosyası ve
-otomatik test takımı **yoktur** — kurulum gerektirmeyen işler doğrudan yapılır.
+Sandbox'ta PHP 8.3 hazır gelir. **Composer kullanılmaz**: üçüncü taraf
+kütüphaneler `includes/` altında gömülüdür, bağımlılık kurulumu yoktur. Kod
+okuma, düzenleme ve `tools/` altındaki denetimler için hiçbir hazırlık gerekmez.
 
-Çalışan bir örnek gerekiyorsa (yalnızca çalışma zamanı hatasını yeniden üretmek
-için):
+Çalışan bir örnek gerekiyorsa — yalnızca çalışma zamanı hatasını yeniden üretmek
+için — tek komut yeter:
 
 ```bash
-apt-get update
-apt-get install -y mariadb-server php-mysqli php-gd php-mbstring php-curl php-zip
-service mariadb start
-php -S 127.0.0.1:8000 -t pinegrap
+bash tools/setup_sandbox.sh
 ```
 
-Şema yalnız `install/index.php` kurulum sihirbazından geçerek oluşur; hazır SQL
-dökümü yoktur ve sihirbaz adımları elle geçilir. **Bu kurulum pahalıdır,
+MariaDB'yi kurup başlatır, veritabanını oluşturur, `data/config.php`'yi yazar,
+kurulum sihirbazını çalıştırır ve `127.0.0.1:8000`'de sunar; sonunda giriş
+bilgilerini basar. Şema yalnız kurulum sihirbazının sürdüğü migration
+runner'ından çıkar, hazır bir SQL dökümü yoktur. **Bu kurulum pahalıdır,
 gerekmedikçe yapma**; görevlerin çoğu kod okuma ve statik denetimle çözülür.
+Betik hata verirse sebebini yaz, etrafından dolaşma.
 
 ---
 
@@ -255,11 +256,17 @@ tahmin etme, legacy sayfayı aç ve karşılaştır.
 
 ## Bir iş ne zaman biter
 
-Otomatik test takımı ve CI kapısı **yoktur**; "testler geçti" denemez. Bunun
-yerine her değişiklikte şunlar doğrulanır:
+Birim test takımı ve CI kapısı **yoktur**; "testler geçti" denemez. Bunun yerine
+iki denetim betiği vardır ve ikisi de temiz çıkmadan iş bitmiş sayılmaz:
 
-1. Dokunulan her PHP dosyasında `php -l` temiz.
-2. Eklenen `lang()` / `_sdT()` anahtarlarının hepsi `tr.json`'da var.
+```bash
+php tools/lint.php         # tum agacta php -l
+php tools/check_lang.php   # lang() / _sdT() anahtarlari tr.json ile ortusuyor mu
+```
+
+1. `php tools/lint.php` temiz.
+2. `php tools/check_lang.php` temiz — eksik anahtar ve `_sdT()` literal kuralı
+   ihlali yok.
 3. Yeni dosyada başlık bloğu, include ise kapı sabiti var.
 4. Yeni ve dokunulan yorumlar İngilizce, süreç/AI izi taşımıyor.
 5. Şema değişikliği varsa migration üzerinden ve tekrar koşulabilir.
