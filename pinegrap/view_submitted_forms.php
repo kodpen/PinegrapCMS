@@ -617,6 +617,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
 // if mass deletion is allowed and user requested to delete forms, delete forms
 } elseif ((MASS_DELETION == true) && (($_GET['submit_data'] ?? '') == 'Delete Forms')) {
+    // Mass deletion is triggered by a GET form, so require the token to block forged links.
+    validate_token_field();
+
     // get all forms that match filters
     $query = "SELECT
                 forms.id,
@@ -1244,6 +1247,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
+                                ' . get_token_field() . '
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_submitted_forms.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                     <button type="submit" name="submit_data" value="Export Forms" class="btn btn-link link-secondary py-0 m-1" onclick="return export_forms()"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
