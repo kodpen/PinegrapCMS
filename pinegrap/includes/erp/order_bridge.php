@@ -204,6 +204,123 @@ function erp_order_lines($order, $items)
 }
 
 /**
+ * Map an order's payment method to the e-archive payment method vocabulary.
+ *
+ * The codes are the OdemeSekli values of the GIB e-Arsiv technical guide's
+ * internet sales section. PayPal and Iyzico are payment intermediaries: they
+ * collect the money and settle it later, so they are not reported as a card.
+ *
+ * @param string $order_payment_method  orders.payment_method
+ * @return string  Code, or '' when the method is unknown
+ */
+function erp_payment_method_code($order_payment_method)
+{
+    switch ((string) $order_payment_method) {
+        case 'Credit/Debit Card':
+            return 'KREDIKARTI/BANKAKARTI';
+        case 'PayPal Express Checkout':
+        case 'Pay With Iyzico':
+            return 'ODEMEARACISI';
+        case 'Offline Payment':
+            return 'EFT/HAVALE';
+    }
+
+    return '';
+}
+
+/**
+ * Display labels for the e-archive payment method codes.
+ *
+ * @return array  code => label
+ */
+function erp_payment_method_labels()
+{
+    return array(
+        'KREDIKARTI/BANKAKARTI' => lang('Credit / debit card'),
+        'EFT/HAVALE' => lang('Bank transfer'),
+        'KAPIDAODEME' => lang('Cash on delivery'),
+        'ODEMEARACISI' => lang('Payment intermediary'),
+        'DIGER' => lang('Other'),
+    );
+}
+
+/**
+ * When an order left and who carried it.
+ *
+ * An order can have several recipients, each with its own ship date and
+ * shipping method. The earliest ship date is the date the sale was shipped,
+ * and the carrier is the one of that recipient. When nothing has shipped yet
+ * the date stays zero, but the carrier is still reported from the first
+ * recipient with a shipping method: it is chosen at checkout, well before
+ * the goods leave. The carrier's registered title falls back to the name of
+ * the shipping method when it was not filled in.
+ *
+ * @param int $order_id
+ * @return array ['shipment_date' => 'Y-m-d' or '0000-00-00', 'carrier_title' => string, 'carrier_vkn' => string]
+ */
+function erp_order_shipment($order_id)
+{
+    $shipment = array('shipment_date' => '0000-00-00', 'carrier_title' => '', 'carrier_vkn' => '');
+
+    $recipients = (array) db_items("SELECT ship_tos.ship_date, ship_tos.shipping_method_id,
+            shipping_methods.name, shipping_methods.carrier_title, shipping_methods.carrier_vkn
+        FROM ship_tos
+        LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
+        WHERE ship_tos.order_id = '" . (int) $order_id . "' AND ship_tos.complete = 1
+        ORDER BY ship_tos.id ASC");
+
+    $shipped = null;
+    $with_method = null;
+
+    foreach ($recipients as $recipient) {
+        $ship_date = (string) ($recipient['ship_date'] ?? '');
+        if ($ship_date !== '' && $ship_date !== '0000-00-00'
+            && ($shipped === null || $ship_date < $shipped['ship_date'])) {
+            $shipped = $recipient;
+        }
+        if ($with_method === null && (int) ($recipient['shipping_method_id'] ?? 0) > 0) {
+            $with_method = $recipient;
+        }
+    }
+
+    $carrier = ($shipped !== null && (int) ($shipped['shipping_method_id'] ?? 0) > 0) ? $shipped : $with_method;
+
+    if ($shipped !== null) {
+        $shipment['shipment_date'] = (string) $shipped['ship_date'];
+    }
+    if ($carrier !== null) {
+        $title = trim((string) ($carrier['carrier_title'] ?? ''));
+        $shipment['carrier_title'] = ($title !== '') ? $title : trim((string) ($carrier['name'] ?? ''));
+        $shipment['carrier_vkn'] = trim((string) ($carrier['carrier_vkn'] ?? ''));
+    }
+
+    return $shipment;
+}
+
+/**
+ * The date the customer paid for an order.
+ *
+ * orders.paid_at is the record of it. Orders placed before that column was
+ * written have only the transaction reference: a gateway that returned one
+ * confirmed the payment at the moment the order was placed, so the order date
+ * is the payment date. Without either there is no confirmed payment to date.
+ *
+ * @param array $order  The orders row
+ * @return string  'Y-m-d', or '0000-00-00'
+ */
+function erp_order_payment_date($order)
+{
+    if ((int) ($order['paid_at'] ?? 0) > 0) {
+        return date('Y-m-d', (int) $order['paid_at']);
+    }
+    if (trim((string) ($order['transaction_id'] ?? '')) !== '' && (int) ($order['order_date'] ?? 0) > 0) {
+        return date('Y-m-d', (int) $order['order_date']);
+    }
+
+    return '0000-00-00';
+}
+
+/**
  * Raise the invoice for an order.
  *
  * Everything lands in one transaction: the number, the header, the lines and
@@ -289,6 +406,21 @@ function erp_invoice_from_order($order_id, $options = array())
 
     $totals = $built['totals'];
 
+    // A sale over the counter is not an internet sale, whatever else the order
+    // carries. Everything that came in over the wire (web checkout,
+    // marketplace, or the default type of an older row) is one, and only an
+    // internet sale states the address it was made at: the ERP setting, or
+    // failing that the site's own address.
+    $is_internet_sale = (($order['type'] ?? '') === 'local') ? 0 : 1;
+    $web_address = '';
+    if ($is_internet_sale === 1) {
+        $web_address = trim((string) (defined('ERP_WEB_ADDRESS') ? ERP_WEB_ADDRESS : ''));
+        if ($web_address === '' && defined('URL_SCHEME') && defined('HOSTNAME')) {
+            $web_address = URL_SCHEME . HOSTNAME;
+        }
+    }
+    $shipment = erp_order_shipment($order_id);
+
     $ok = erp_query("INSERT INTO erp_invoices SET
             direction = 'sales',
             doc_type = 'invoice',
@@ -311,8 +443,13 @@ function erp_invoice_from_order($order_id, $options = array())
             grand_total = '" . (int) $totals['grand_total'] . "',
             grand_total_try = '" . (int) $totals['grand_total'] . "',
             status = 'issued',
-            is_internet_sale = 1,
-            web_address = '" . escape(defined('ERP_WEB_ADDRESS') ? ERP_WEB_ADDRESS : '') . "',
+            is_internet_sale = '" . $is_internet_sale . "',
+            payment_method = '" . escape(erp_payment_method_code($order['payment_method'] ?? '')) . "',
+            payment_date = '" . escape(erp_order_payment_date($order)) . "',
+            shipment_date = '" . escape($shipment['shipment_date']) . "',
+            carrier_title = '" . escape($shipment['carrier_title']) . "',
+            carrier_vkn = '" . escape($shipment['carrier_vkn']) . "',
+            web_address = '" . escape($web_address) . "',
             created_by = '" . (int) ($options['created_by'] ?? 0) . "',
             created_at = '" . time() . "',
             updated_at = '" . time() . "'");

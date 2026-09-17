@@ -4106,6 +4106,8 @@ function submit_order($type) {
     // add data to orders table
     // We update the user id again below, in case we now have new user info
     // from the auto-registration feature that ran above.
+    // paid_at: a gateway-confirmed payment lands when the order is placed; an
+    // offline payment has no confirmed moment here, so it stays 0.
     $query = "UPDATE orders
              SET
                 payment_method = '" . escape($liveform->get_field_value('payment_method')) . "',
@@ -4125,6 +4127,7 @@ function submit_order($type) {
                 $sql_special_offer_code
                 last_modified_timestamp = '$order_date',
                 transaction_id = '" . escape($transaction_id) . "',
+                paid_at = '" . ($transaction_id != '' ? $order_date : 0) . "',
                 authorization_code = '" . escape($authorization_code) . "',
                 status = 'complete',
                 $sql_tracking_code

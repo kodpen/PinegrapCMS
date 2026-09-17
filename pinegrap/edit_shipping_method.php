@@ -30,6 +30,8 @@ if (!$_POST) {
     $name = h($row['name']);
     $description = h($row['description']);
     $code = h($row['code']);
+    $carrier_title = h($row['carrier_title'] ?? '');
+    $carrier_vkn = h($row['carrier_vkn'] ?? '');
     $status = $row['status'];
     $start_time = $row['start_time'];
     $end_time = $row['end_time'];
@@ -456,6 +458,16 @@ if (!$_POST) {
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             <input value="' . $code . '" type="text" name="code" id="code" class="form-control" maxlength="50" />
                                             <div class="form-text text-end">' . lang('Shipping Method Code for Order Reporting') . '</div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                            <label for="carrier_title" class="form-label">' . lang('Carrier Title') . '</label>
+                                            <input value="' . $carrier_title . '" type="text" name="carrier_title" id="carrier_title" class="form-control" maxlength="255" />
+                                            <div class="form-text text-end">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                            <label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
+                                            <input value="' . $carrier_vkn . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
+                                            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>
                                         </div>
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
@@ -1076,6 +1088,8 @@ if (!$_POST) {
                     name = '" . escape($_POST['name'] ?? '') . "',
                     description = '" . escape($_POST['description'] ?? '') . "',
                     code = '" . escape($_POST['code'] ?? '') . "',
+                    carrier_title = '" . escape($_POST['carrier_title'] ?? '') . "',
+                    carrier_vkn = '" . escape(substr(preg_replace('/[^0-9]/', '', (string) ($_POST['carrier_vkn'] ?? '')), 0, 11)) . "',
                     status = '" . escape($status) . "',
                     start_time = '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
                     end_time = '" . escape(prepare_form_data_for_input($_POST['end_time'], 'date and time')) . "',

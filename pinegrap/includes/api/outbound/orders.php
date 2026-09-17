@@ -447,6 +447,7 @@ function mp_order_write($account, $package, $map_id) {
 		type            = 'marketplace',
 		status          = 'complete',
 		order_date      = '" . e($placed_at) . "',
+		paid_at         = '" . e($placed_at) . "',
 		reference_code  = '" . e(generate_order_reference_code()) . "',
 		contact_id      = '" . e((int)$contact_id) . "',
 		user_id         = 0,
