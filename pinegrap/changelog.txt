@@ -749,6 +749,18 @@
          ödeme tarihi, ürüne KDV istisna kodu. Üçü de internet satışlarının
          e-arşiv faturasında zorunlu ve sistemde hiçbir yerde tutulmuyordu.
 
+  [YENİ] İnternet satışı faturasında VUK 509 alanları dolduruluyor. Siparişten
+         kesilen fatura artık ödeme şeklini ve tarihini, taşıyıcının unvanını
+         ve VKN'sini, gönderim tarihini ve satışın yapıldığı web adresini
+         taşıyor; fatura ekranında ayrı bir satırda görünür. Tezgah satışı
+         internet satışı sayılmaz. Gönderim tarihi alıcının sevk tarihinden
+         alınır ve henüz gelmemiş bir tarih yazılmaz.
+
+         Kargo yöntemlerine Taşıyıcı Unvanı ve Taşıyıcı VKN alanları eklendi
+         (Ayarlar → E-Ticaret → Kargo Yöntemleri); e-arşiv faturasında
+         taşıyıcı bilgisi buradan gelir. Ödeme geçidi onaylı siparişlerde ödeme
+         zamanı da kaydediliyor.
+
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
 
