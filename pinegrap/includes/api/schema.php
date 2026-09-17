@@ -338,7 +338,7 @@ function api_schema() {
 			'scope'   => 'webhooks:manage',
 			'handler' => 'api_webhooks_list',
 			'summary' => 'Your event subscriptions',
-			'description' => 'Only this application\'s own subscriptions. The answer also lists every event that can be subscribed to.',
+			'description' => 'Only this application\'s own subscriptions. The answer also lists every event that can be subscribed to, and reports for each subscription what is still queued and the last delivery error on file, so a receiver that stopped answering can be diagnosed without reading the server\'s tables.',
 			'params'  => array()
 		),
 

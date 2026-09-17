@@ -27,13 +27,38 @@ require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
 
 function api_webhook_present($row) {
 
+	// What the queue still holds for this subscription, and why the last
+	// attempt did not get through. last_failure alone is a timestamp; the
+	// reason lives on the queue row, and an integrator whose receiver stopped
+	// answering has no other way to read it than through this list.
+	//
+	// The dispatcher deletes a row the moment it is delivered, so the newest
+	// row with an attempt on it is the newest failure still on file - a
+	// subscription that is delivering cleanly has none, and reports null.
+	// pending counts rows that are waiting or scheduled for a retry; a row
+	// that has used up its attempts has next_attempt_at = 0 and is not pending.
+	$id = (int)$row['id'];
+
+	$queue = api_row("SELECT
+			(SELECT COUNT(*) FROM api_webhook_queue
+				WHERE webhook_id = '" . $id . "' AND next_attempt_at > 0) AS pending,
+			(SELECT last_error FROM api_webhook_queue
+				WHERE webhook_id = '" . $id . "' AND attempts > 0 ORDER BY id DESC LIMIT 1) AS last_error,
+			(SELECT last_status_code FROM api_webhook_queue
+				WHERE webhook_id = '" . $id . "' AND attempts > 0 ORDER BY id DESC LIMIT 1) AS last_status_code");
+
+	$attempted = ($queue !== null && $queue['last_error'] !== null);
+
 	return array(
-		'id'         => (int)$row['id'],
+		'id'         => $id,
 		'url'        => $row['url'],
 		'events'     => json_decode((string)$row['events'], true),
 		'status'     => $row['status'],
 		'last_success' => api_time($row['last_success']),
 		'last_failure' => api_time($row['last_failure']),
+		'pending'          => ($queue !== null) ? (int)$queue['pending'] : 0,
+		'last_status_code' => $attempted ? (int)$queue['last_status_code'] : null,
+		'last_error'       => $attempted ? (string)$queue['last_error'] : null,
 		'created_at'   => api_time($row['created_timestamp'])
 	);
 
