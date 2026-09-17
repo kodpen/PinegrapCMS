@@ -29,12 +29,10 @@ if (!defined('PG_INIT_LOADED')) {
 			<?php foreach($items as $item): ?> 
 			<div>
 				<?=$item['edit_start'] // Add edit button and grid around item in edit mode ?> <?php if ($item['url']): ?> 
-				<a href="
-					<?=h($item['url'])?>">
+				<a href="<?=h($item['url'])?>">
 					<?php endif ?> <?php if ($item['image_url']): ?> 
 					<div>
-						<img src="
-							<?=h($item['image_url'])?>" class="img-responsive">
+						<img src="<?=h($item['image_url'])?>" class="img-responsive">
 					</div>
 					<?php endif ?> <?php if ($item['short_description']): ?> 
 					<div> <?=h($item['short_description'])?> </div>
@@ -57,8 +55,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php endif ?> <?php endif ?>
 		<!-- HTML or JS from the product group's code field (e.g. tracking, remarketing) --> <?=$code?> <?=$edit_end // Close the edit grid ?> <?php if ($back_button_url): ?> 
 		<div class="form-group">
-			<a href="
-				<?=h($back_button_url)?>" class="btn btn-default btn-secondary"> <?=h($back_button_label)?> </a>
+			<a href="<?=h($back_button_url)?>" class="btn btn-default btn-secondary"> <?=h($back_button_label)?> </a>
 		</div>
 		<?php endif ?>
 	</div>
@@ -66,15 +63,12 @@ if (!defined('PG_INIT_LOADED')) {
 		<form <?=$search_attributes?>>
 			<div class="form-group input-group">
 				<span class="input-group-btn" title="Search">
-				<button type="submit" name="
-					<?=$page_id?>_submit" class="btn btn-default btn-secondary">
+				<button type="submit" name="<?=$page_id?>_submit" class="btn btn-default btn-secondary">
 				<span class="glyphicon glyphicon-search"></span>
 				</button>
 				</span>
-				<input type="search" name="
-					<?=$page_id?>_query" class="form-control" placeholder="Search"> <?php if ($query != ''): ?> <span class="input-group-btn" title="Clear">
-				<button type="submit" name="
-					<?=$page_id?>_clear" class="btn btn-default btn-secondary">
+				<input type="search" name="<?=$page_id?>_query" class="form-control" placeholder="Search"> <?php if ($query != ''): ?> <span class="input-group-btn" title="Clear">
+				<button type="submit" name="<?=$page_id?>_clear" class="btn btn-default btn-secondary">
 				<span class="glyphicon glyphicon-remove"></span>
 				</button>
 				</span> <?php endif ?>
@@ -86,9 +80,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<ul class="nav nav-pills nav-stacked">
 				<?php foreach($product_groups as $product_group): ?> 
 				<li <?php if ($product_group['current']): ?> class="active" <?php endif ?>>
-					<a href="
-						<?=h($product_group['url'])?>" <?php if ($product_group['level']): ?> style="padding-left: 
-						<?=(2*$product_group['level'])?>em" <?php endif ?>> <?=h($product_group['name'])?> </a>
+					<a href="<?=h($product_group['url'])?>" <?php if ($product_group['level']): ?> style="padding-left: <?=(2*$product_group['level'])?>em" <?php endif ?>> <?=h($product_group['name'])?> </a>
 				</li>
 				<?php endforeach ?> 
 			</ul>
