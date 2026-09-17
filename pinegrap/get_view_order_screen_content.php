@@ -1413,8 +1413,7 @@ function get_view_order_screen_content($properties)
                 // if encryption is enabled, then decrypt the credit card number
                 if (
                     (defined('ENCRYPTION_KEY') == TRUE)
-                    && (extension_loaded('mcrypt') == TRUE)
-                    && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                    && (extension_loaded('openssl') == TRUE)
                 ) {
                     $card_number = decrypt_credit_card_number($card_number, ENCRYPTION_KEY);
                     
@@ -2458,8 +2457,7 @@ function get_view_order_screen_content($properties)
                         // if encryption is enabled, then decrypt the credit card number
                         if (
                             (defined('ENCRYPTION_KEY') == TRUE)
-                            && (extension_loaded('mcrypt') == TRUE)
-                            && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                            && (extension_loaded('openssl') == TRUE)
                         ) {
                             $card_number = decrypt_credit_card_number($card_number, ENCRYPTION_KEY);
                             

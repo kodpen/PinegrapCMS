@@ -370,6 +370,20 @@ function e($string)
     return escape($string);
 }
 
+// Whitelists an ORDER BY direction that came from user input (?order= or a
+// session value filled from it). escape() cannot protect a bare keyword
+// position, so only the literals 'asc' and 'desc' are ever returned; anything
+// else becomes $default. Pass '' as $default when the caller keeps its own
+// "direction not set" fallback logic.
+function sql_order_direction($direction, $default = 'asc')
+{
+    $direction = strtolower(trim((string) $direction));
+    if (($direction === 'asc') || ($direction === 'desc')) {
+        return $direction;
+    }
+    return $default;
+}
+
 function escape_like($string)
 {
     $string = str_replace('%', '\%', $string);

@@ -89,7 +89,7 @@ switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
 }
 
 if (isset($_GET['sort']) && $_GET['sort']) {
-    $asc_desc = isset($_GET['order']) ? $_GET['order'] : '';
+    $asc_desc = sql_order_direction(isset($_GET['order']) ? $_GET['order'] : '');
 } else {
     $asc_desc = 'asc';
 }

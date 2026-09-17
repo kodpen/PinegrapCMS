@@ -109,6 +109,8 @@ function cf_graphql($body, $token) {
 
 // -------------------- ACTION HANDLERS --------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Every action below changes DNS or zone settings, so reject forged requests first.
+    validate_token_field();
     $action = isset($_POST['action']) ? $_POST['action'] : '';
     $type   = isset($_POST['type']) ? $_POST['type'] : '';
 

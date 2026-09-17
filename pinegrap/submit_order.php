@@ -4053,8 +4053,7 @@ function submit_order($type) {
             // if encryption is enabled then encrypt credit card number
             if (
                 (defined('ENCRYPTION_KEY') == TRUE)
-                && (extension_loaded('mcrypt') == TRUE)
-                && (in_array('rijndael-256', mcrypt_list_algorithms()) == TRUE)
+                && (extension_loaded('openssl') == TRUE)
             ) {
                 $processed_card_number = encrypt_credit_card_number($card_number, ENCRYPTION_KEY);
                 
