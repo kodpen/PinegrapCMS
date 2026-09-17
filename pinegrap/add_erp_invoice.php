@@ -48,7 +48,8 @@ if (!$_POST) {
             $who = trim($order['billing_first_name'] . ' ' . $order['billing_last_name']);
         }
 
-        $label = '#' . $order['order_number'] . ' - ' . $who . ' - ' . erp_money_out((int) $order['total']);
+        // liveform prints option labels as-is and the billing name was typed by the customer.
+        $label = h('#' . $order['order_number'] . ' - ' . $who . ' - ' . erp_money_out((int) $order['total']));
         $order_options[$label] = (string) (int) $order['id'];
     }
 

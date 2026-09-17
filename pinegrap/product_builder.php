@@ -4096,7 +4096,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $output_custom_product_fields .=
             '<div class="col-12 col-lg-6 my-2">
                 <label for="custom_field_' . $custom_field_number . '" class="form-label">' . h(constant($custom_field_constant)) . '</label>
-                <input class="form-control" type="text" id="custom_field_' . $custom_field_number . '" name="custom_field_' . $custom_field_number . '" maxlength="255" />
+                <input class="form-control" type="text" id="custom_field_' . $custom_field_number . '" name="custom_field_' . $custom_field_number . '" value="' . h($v('custom_field_' . $custom_field_number)) . '" maxlength="255" />
             </div>';
     }
 

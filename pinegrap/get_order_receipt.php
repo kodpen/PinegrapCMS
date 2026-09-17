@@ -277,7 +277,7 @@ function get_order_receipt($properties) {
                     $name = $order_item['product_name'];
                     $quantity = $order_item['quantity'];
                     $product_price = $order_item['price'] / 100;
-                    $product_tax = $order_item['tax'] / 100;
+                    $product_tax = $order_item['tax_total'] / 100;
                     $offer_id = $order_item['offer_id'];
                     $discounted_by_offer = $order_item['discounted_by_offer'];
                     $recurring_payment_period = $order_item['recurring_payment_period'];
@@ -346,7 +346,8 @@ function get_order_receipt($properties) {
                     }
 
                     $total_price = $product_price * $quantity;
-                    $total_tax = $product_tax * $quantity;
+                    // tax_total already covers the line, so no quantity here.
+                    $total_tax = $product_tax;
                     
                     // assume that we don't need to output a recurring schedule fieldset, until we find out otherwise
                     $output_recurring_schedule_fieldset = '';
@@ -1145,7 +1146,7 @@ function get_order_receipt($properties) {
         $output_number_of_installment = '';
         $output_installment_charges = '';
         if(($installment_charges != 0)&&($payment_installment >= 2)){
-            $grand_total = $grand_total + $output_installment_charges;
+            $grand_total = $grand_total + $installment_charges;
             
             $output_number_of_installment = 
                 '<tr class="order_totals data">
@@ -1480,6 +1481,8 @@ function get_order_receipt($properties) {
                 ' . $output_grand_shipping . '
                 ' . $output_gift_card_discount . '
                 ' . $output_surcharge . '
+                ' . $output_number_of_installment . '
+                ' . $output_installment_charges . '
                 <tr class="order_totals data">
                     <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total:</strong></td>
                     <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'html') . $output_unconverted_total . '</strong></td>

@@ -167,12 +167,21 @@ if (!$_POST) {
     // else, save the file
     } else {
         include_once('liveform.class.php');
-        
+
+        // The path is taken from the stored row, never from the posted name:
+        // a posted name is under the caller's control and could point anywhere
+        // on the file system, past the neutralisation that uploads go through.
+        $file_row = db_item("SELECT id, name FROM files WHERE id = '" . (int)($_POST['id'] ?? 0) . "'");
+        $file_name = is_array($file_row) ? (string)$file_row['name'] : '';
+        if (($file_name === '') || ($file_name !== basename($file_name)) || (strpos($file_name, '..') !== false)) {
+            output_error(lang('Sorry, the file could not be found.'));
+        }
+
         // delete the existing file. we have to do this in order to avoid permission errors in certain cirumstances
-        unlink(FILE_DIRECTORY_PATH . '/' . $_POST['name']);
+        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
         
         // update the content in the file
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $_POST['name'], 'w');
+        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
         fwrite($handle, $_POST['code']);
         fclose($handle);
         
@@ -180,14 +189,14 @@ if (!$_POST) {
         $query =
             "UPDATE files 
             SET 
-                size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $_POST['name'])) . "',
+                size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
+            WHERE id = '" . (int)$file_row['id'] . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // log the change that the file was modified
-        log_activity(lang(array('string'=>'the JavaScript for theme file ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'the JavaScript for theme file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);
 
         if (($_POST['submit_save'] ?? '') == 'Save') {
             // send the user back to reload this screen again

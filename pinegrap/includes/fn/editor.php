@@ -838,6 +838,229 @@ function prepare_rich_text_editor_content_for_input($content)
     return $content;
 }
 /**
+ * Reduce rich text that came from an untrusted browser to an allow-list of
+ * harmless HTML.
+ *
+ * A WYSIWYG text area on a custom form or a product form is filled in by an
+ * anonymous visitor or a shopper, and its value is stored with the form data
+ * type "html" so that the screens print it verbatim: the public form item and
+ * list views, the confirmation screen, the order screens in the panel, printed
+ * orders and receipts. Nothing a visitor typed may run there. The filter keeps
+ * the formatting the editor produces (paragraphs, inline styling, lists,
+ * tables, links, images) and removes everything that can execute or load
+ * code: script-like elements, event handler attributes, javascript:/data:
+ * URLs and CSS that pulls in resources.
+ *
+ * The markup is parsed and re-serialised, so entity-encoded tricks
+ * (`&#106;avascript:`) are judged on their decoded form. The filter runs both
+ * when a value is stored and when a stored value is printed unescaped, so
+ * records saved before it existed are covered as well.
+ */
+function pg_sanitize_rich_text($content)
+{
+    $content = (string) $content;
+
+    if (trim($content) === '') {
+        return $content;
+    }
+
+    // Without ext/dom the markup cannot be parsed reliably, so it is reduced
+    // to escaped text instead of being trusted.
+    if (!class_exists('DOMDocument')) {
+        return h(strip_tags($content));
+    }
+
+    $previous_setting = libxml_use_internal_errors(true);
+    $document = new DOMDocument('1.0', 'UTF-8');
+    // The processing instruction tells libxml the bytes are UTF-8; the
+    // wrapper keeps leading text out of the implied <p> the parser would
+    // otherwise add.
+    $loaded = $document->loadHTML('<?xml encoding="UTF-8"><html><body><div>' . $content . '</div></body></html>', LIBXML_NONET);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous_setting);
+
+    $body = $loaded ? $document->getElementsByTagName('body')->item(0) : null;
+
+    if (!$body) {
+        return h(strip_tags($content));
+    }
+
+    $wrapper = $body->firstChild;
+    _pg_sanitize_rich_text_children($body);
+
+    // A stray closing tag in the input ends the wrapper early and leaves the
+    // rest as siblings of it; both parts are kept.
+    $output = '';
+
+    foreach ($body->childNodes as $node) {
+        if ($wrapper && $node->isSameNode($wrapper)) {
+            foreach ($wrapper->childNodes as $child) {
+                $output .= $document->saveHTML($child);
+            }
+        } else {
+            $output .= $document->saveHTML($node);
+        }
+    }
+
+    // libxml percent-encodes the {path} placeholder that
+    // prepare_rich_text_editor_content_for_input() writes at the front of
+    // an address; the placeholder has to survive so the path is restored on
+    // output.
+    return str_replace(array('href="%7Bpath%7D', 'src="%7Bpath%7D'), array('href="{path}', 'src="{path}'), $output);
+}
+
+// Walk one level of the tree for pg_sanitize_rich_text() and recurse into the
+// elements that stay.
+function _pg_sanitize_rich_text_children($parent)
+{
+    // Elements whose content is code or a foreign document: removed with
+    // everything inside them.
+    static $dropped_tags = array(
+        'script' => 1, 'style' => 1, 'iframe' => 1, 'frame' => 1, 'frameset' => 1,
+        'object' => 1, 'embed' => 1, 'applet' => 1, 'noscript' => 1, 'noembed' => 1,
+        'noframes' => 1, 'template' => 1, 'svg' => 1, 'math' => 1, 'xmp' => 1,
+        'plaintext' => 1, 'meta' => 1, 'link' => 1, 'base' => 1, 'title' => 1,
+        'head' => 1, 'form' => 1, 'input' => 1, 'button' => 1, 'select' => 1,
+        'option' => 1, 'textarea' => 1,
+    );
+
+    // Formatting the rich-text editor produces. Anything else is unwrapped:
+    // the tag goes, its content stays.
+    static $allowed_tags = array(
+        'p' => 1, 'br' => 1, 'div' => 1, 'span' => 1, 'b' => 1, 'strong' => 1,
+        'i' => 1, 'em' => 1, 'u' => 1, 's' => 1, 'strike' => 1, 'del' => 1,
+        'ins' => 1, 'sub' => 1, 'sup' => 1, 'small' => 1, 'mark' => 1, 'abbr' => 1,
+        'cite' => 1, 'q' => 1, 'code' => 1, 'pre' => 1, 'blockquote' => 1,
+        'h1' => 1, 'h2' => 1, 'h3' => 1, 'h4' => 1, 'h5' => 1, 'h6' => 1,
+        'ul' => 1, 'ol' => 1, 'li' => 1, 'dl' => 1, 'dt' => 1, 'dd' => 1,
+        'a' => 1, 'img' => 1, 'hr' => 1, 'font' => 1, 'center' => 1,
+        'table' => 1, 'caption' => 1, 'thead' => 1, 'tbody' => 1, 'tfoot' => 1,
+        'tr' => 1, 'td' => 1, 'th' => 1, 'colgroup' => 1, 'col' => 1,
+    );
+
+    // Attributes kept on every allowed element. Event handlers, id and name
+    // (DOM clobbering) and data-* hooks are not on the list and so are removed.
+    static $allowed_attributes = array(
+        'class' => 1, 'style' => 1, 'title' => 1, 'dir' => 1, 'lang' => 1,
+        'align' => 1, 'valign' => 1, 'width' => 1, 'height' => 1, 'border' => 1,
+        'cellpadding' => 1, 'cellspacing' => 1, 'colspan' => 1, 'rowspan' => 1,
+        'color' => 1, 'face' => 1, 'size' => 1, 'start' => 1, 'alt' => 1,
+    );
+
+    // The live child list shifts while nodes are removed, so a copy is walked.
+    $children = array();
+
+    foreach ($parent->childNodes as $child) {
+        $children[] = $child;
+    }
+
+    foreach ($children as $child) {
+        if ($child->nodeType != XML_ELEMENT_NODE) {
+            // Text stays; comments, CDATA and processing instructions go.
+            if ($child->nodeType != XML_TEXT_NODE) {
+                $parent->removeChild($child);
+            }
+
+            continue;
+        }
+
+        $tag = strtolower($child->nodeName);
+
+        if (isset($dropped_tags[$tag])) {
+            $parent->removeChild($child);
+            continue;
+        }
+
+        if (!isset($allowed_tags[$tag])) {
+            _pg_sanitize_rich_text_children($child);
+
+            while ($child->firstChild) {
+                $parent->insertBefore($child->firstChild, $child);
+            }
+
+            $parent->removeChild($child);
+            continue;
+        }
+
+        $attributes = array();
+
+        foreach ($child->attributes as $attribute) {
+            $attributes[] = $attribute;
+        }
+
+        foreach ($attributes as $attribute) {
+            $name = strtolower($attribute->name);
+            $value = (string) $attribute->value;
+            $keep = false;
+
+            if (isset($allowed_attributes[$name])) {
+                $keep = ($name != 'style') || _pg_rich_text_style_is_safe($value);
+            } elseif (($name == 'href') && ($tag == 'a')) {
+                $keep = _pg_rich_text_url_is_safe($value);
+            } elseif (($name == 'src') && ($tag == 'img')) {
+                $keep = _pg_rich_text_url_is_safe($value);
+            } elseif ((($name == 'target') || ($name == 'rel')) && ($tag == 'a')) {
+                $keep = true;
+            } elseif (($name == 'type') && (($tag == 'ol') || ($tag == 'ul') || ($tag == 'li'))) {
+                $keep = true;
+            }
+
+            if (!$keep) {
+                $child->removeAttributeNode($attribute);
+            }
+        }
+
+        _pg_sanitize_rich_text_children($child);
+    }
+}
+
+// A link or image address may be relative, a {path} placeholder, or use one
+// of the schemes a browser only navigates with. Every other scheme
+// (javascript:, data:, vbscript:, ...) is rejected. Browsers skip control
+// characters and whitespace while reading the scheme, so they are skipped
+// here before the check; HTML5 entities the parser left in place (&colon;)
+// are decoded for the same reason.
+function _pg_rich_text_url_is_safe($url)
+{
+    $probe = html_entity_decode((string) $url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $probe = strtolower(preg_replace('/[\x00-\x20\x7f]+/', '', $probe));
+
+    if (($probe === '') || (strpos($probe, '{path}') === 0)) {
+        return true;
+    }
+
+    $colon = strpos($probe, ':');
+
+    // No scheme at all, or the colon belongs to the path or query part.
+    if (($colon === false) || (strcspn($probe, '/?#') < $colon)) {
+        return true;
+    }
+
+    return in_array(substr($probe, 0, $colon), array('http', 'https', 'mailto', 'tel'), true);
+}
+
+// Inline styles from the editor are colours, alignment and sizes. Anything
+// that can run code or fetch a resource from a style (legacy expression()
+// and behavior, bindings, url(), @import) is dropped; escapes and comments
+// are removed first because they can hide those words.
+function _pg_rich_text_style_is_safe($style)
+{
+    $probe = preg_replace('/\/\*.*?\*\//s', '', (string) $style);
+    $probe = strtolower(preg_replace('/[\x00-\x20\x7f]+/', '', $probe));
+
+    if (strpos($probe, '\\') !== false) {
+        return false;
+    }
+
+    foreach (array('expression', 'behavior', 'binding', 'url(', '@import', 'javascript', 'vbscript') as $needle) {
+        if (strpos($probe, $needle) !== false) {
+            return false;
+        }
+    }
+
+    return true;
+}
+/**
  * Flatten WYSIWYG rich text into inline-safe HTML.
  *
  * Fields edited through the rich-text editor (products.out_of_stock_message,

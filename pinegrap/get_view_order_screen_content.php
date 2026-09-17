@@ -18,7 +18,8 @@
 
 function get_view_order_screen_content($properties)
 {
-    $order_id = $_GET['id'] ?? '';
+    // The id is used in SQL, session comparisons and links below, so keep it an integer.
+    $order_id = (int) ($_GET['id'] ?? 0);
     $page_id = $properties['page_id'];
 
     // These are only added to / set further below under some conditions, but they are always
@@ -187,7 +188,7 @@ function get_view_order_screen_content($properties)
         $shipping = false;
         
         // get all ship tos
-        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '$order_id' ORDER BY ship_to_id";
+        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . e($order_id) . "' ORDER BY ship_to_id";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         $ship_tos = array();
@@ -249,7 +250,7 @@ function get_view_order_screen_content($properties)
                         ship_tos.offer_id
                     FROM ship_tos
                     LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
-                    WHERE ship_tos.id = $ship_to_id";
+                    WHERE ship_tos.id = '" . (int) $ship_to_id . "'";
                 
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
@@ -318,7 +319,7 @@ function get_view_order_screen_content($properties)
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '$order_id')
+                        (order_items.order_id = '" . e($order_id) . "')
                         AND (order_items.ship_to_id = '$ship_to_id')
                     ORDER BY order_items.id";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -348,7 +349,7 @@ function get_view_order_screen_content($properties)
                     $name = $order_item['product_name'];
                     $quantity = $order_item['quantity'];
                     $product_price = $order_item['price'] / 100;
-                    $product_tax = $order_item['tax'] / 100;
+                    $product_tax = $order_item['tax_total'] / 100;
                     $offer_id = $order_item['offer_id'];
                     $discounted_by_offer = $order_item['discounted_by_offer'];
                     $recurring_payment_period = $order_item['recurring_payment_period'];
@@ -435,7 +436,8 @@ function get_view_order_screen_content($properties)
                     }
 
                     $total_price = $product_price * $quantity;
-                    $total_tax = $product_tax * $quantity;
+                    // tax_total already covers the line, so no quantity here.
+                    $total_tax = $product_tax;
                     
                     // assume that we don't need to output a recurring schedule fieldset, until we find out otherwise
                     $output_recurring_schedule_fieldset = '';
@@ -1145,7 +1147,7 @@ function get_view_order_screen_content($properties)
             FROM order_items
             LEFT JOIN products ON order_items.product_id = products.id
             WHERE
-                (order_items.order_id = '$order_id')
+                (order_items.order_id = '" . e($order_id) . "')
                 AND (products.order_receipt_message != '')
                 AND (products.order_receipt_message != '<p />')
             ORDER BY ship_to_id";
@@ -1231,7 +1233,7 @@ function get_view_order_screen_content($properties)
                     new_balance,
                     givex
                 FROM applied_gift_cards
-                WHERE order_id = '$order_id'
+                WHERE order_id = '" . e($order_id) . "'
                 ORDER BY id ASC";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1627,14 +1629,14 @@ function get_view_order_screen_content($properties)
             ' . $output_payment_information;
 
         if($status != 'incomplete'){
-            $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_reorder.php?id=' . $order_id . get_token_query_string_field() . '" class="software_button_primary">Reorder</a>&nbsp;&nbsp;&nbsp;';
+            $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_reorder.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_primary">Reorder</a>&nbsp;&nbsp;&nbsp;';
         }else {
             // if this incomplete order is not the active order, then prepare to output retrieve button
             if ($order_id != ($_SESSION['ecommerce']['order_id'] ?? '')) {
-                $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_retrieve_order.php?id=' . $order_id . get_token_query_string_field() . '" class="software_button_primary">Retrieve</a>&nbsp;&nbsp;&nbsp;';
+                $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_retrieve_order.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_primary">Retrieve</a>&nbsp;&nbsp;&nbsp;';
             }
             // Example code desc.: Replaced custom confirm dialog with native browser confirm for link redirection
-            $output_delete_button = '&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_delete_order.php?id=' . $order_id . get_token_query_string_field() . '" class="software_button_secondary delete_button" onclick="return confirm(\'' . addslashes(lang('The order will be deleted.')) . '\');">Delete</a>';
+            $output_delete_button = '&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_delete_order.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_secondary delete_button" onclick="return confirm(\'' . addslashes(lang('The order will be deleted.')) . '\');">Delete</a>';
         }
 
         return

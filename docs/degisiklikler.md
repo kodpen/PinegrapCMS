@@ -206,7 +206,10 @@ açık duruyor.
 `api_upload_folder_id` ALTER'ını uyguladı, ikinci koşu sıfır DDL, şema farkı yok.
 Webhook kuyruğu: `page.updated`, `product_group.updated`, `file.created` satırları
 oluştu, imzalı deneme yapıldı, hata kaydedildi, 60 s → 300 s geri çekilme çalıştı;
-canlı teslimat dev'de herkese açık bir alıcıyla denenecek.
+canlı teslimat dev sunucusundan webhook.site'a doğrulandı (imzalı POST, doğru
+gövde); dev'de ilk denemeler PHP curl'ün CA paketi olmadığı için 'unable to get
+local issuer certificate' ile düşmüştü, `data/config.php`'de `CURL_CA_BUNDLE`
+yazılımla gelen `data/cacert.pem`'e yönlendirilince geçti.
 
 ## 2026.4.4 — Teklif uçları: dış API'ye okuma yüzeyi (2026-09-17)
 
