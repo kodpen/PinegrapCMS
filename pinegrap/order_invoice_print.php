@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Customer-facing printable order invoice.
+ * Pinegrap - Customer-facing printable order invoice.
  *
  * GET endpoint. Renders a print-friendly invoice/receipt HTML page that
  * the visitor can save as a PDF via the browser's "Print → Save as PDF"
@@ -99,13 +99,10 @@ $ship_to = db_item(
 );
 if (!is_array($ship_to)) $ship_to = array();
 
-// Site name — graceful fallback when the settings table or row is missing.
+// Site name from the boot-time config constants (init.php), hostname as a last resort.
 $site_name = '';
-try {
-    $site_name = (string)db_value("SELECT setting_value FROM settings WHERE setting_name = 'site_name' LIMIT 1");
-} catch (\Throwable $_e) {
-    $site_name = '';
-}
+if (defined('ORGANIZATION_NAME')) $site_name = trim((string)ORGANIZATION_NAME);
+if ($site_name === '' && defined('TITLE')) $site_name = trim((string)TITLE);
 if ($site_name === '' && defined('HOSTNAME')) $site_name = (string)HOSTNAME;
 
 // Currency + money formatter — mirror the widget so totals match exactly.
