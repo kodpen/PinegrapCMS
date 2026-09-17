@@ -524,6 +524,59 @@ tarayıcıda denenmedi; oturum işaretinin yönlendirmeden önce silinmediği ve
 misafirde `USER_ID`'nin `0`'a düştüğü statik okumayla doğrulandı. ShipWorks
 istemcisiyle gerçek `updateshipment` çağrısı yapılmadı.
 
+## 2026.4.4 — Tasarımcı alanı: gönderilen dosya adı yol olarak, Manager'ın tasarımcı bölgeleri, alt rolden `custom_php` (2026-09-17)
+
+Tasarımcı alanında üç yükseltme yolu vardı. `edit_javascript.php`,
+`edit_theme_css.php` ve `editor_edit_file.php` kayıt dalında `$_POST['name']`
+doğrudan dosya yolu olarak kullanılıyordu; `../` içeren bir adla gönderilen kod
+`files/` dışına, web kökü altındaki bir PHP dosyasına yazılabiliyordu.
+`save_region_content.php` ve `get_region_content.php` ortak bölgelerde yalnız
+rol 3'ü kısıtlıyordu; bir Manager (rol 2) kimlikle tasarımcı tipi
+(`cregion_designer_type = 'yes'`) bölgeyi okuyup üzerine yazabiliyordu,
+`PHP_REGIONS` açıksa bu doğrudan kod çalıştırmaydı. Kısıtlı tasarımcı
+kayıtlarında `pg_designer_merge_restricted_tree()` düzenlenebilir alan içindeki
+alt ağacı olduğu gibi kabul ediyordu: Manager/User bir `custom_php` düğümü
+ekleyebiliyor ya da paragraf metnine `<!--pg-custom-php:BASE64-->` yazabiliyordu;
+iki yol da `_expand_custom_php()` tarafından her herkese açık render'da `eval()`
+ediliyordu.
+
+### Dosya adı kayıttan, bölge kapısı rolden
+
+Dosya editörleri `$_POST['id']`'yi `(int)` alıp `files` satırını okuyor, kayıtlı
+adı `basename()` ve dizin kaçışı denetiminden geçiriyor ve yalnız o adla
+`unlink()`/`fopen()` yapıyor; `UPDATE` satır kimliğiyle. Gönderilen `name` yol
+üretiminde hiç kullanılmıyor. Bölge uçları `cregion` satırını yüklüyor, bilinmeyen
+kimliği reddediyor, tasarımcı tipi bölge için `$user['role'] < 2` istiyor —
+hiyerarşide Designer (1) Manager'ın (2) üstündedir.
+
+### Kod düğümleri kayıtlı ağaçtan geri yükleniyor, işaretler etkisizleştiriliyor
+
+`includes/designer_access.php` içinde `_pg_dm_restore_locked()` kod düğümlerini
+(`shared_ref`, `custom_php`, `custom_html`) tür ve konumuna göre kayıtlı ağaçtan
+geri yüklüyor; eklenenler düşürülüyor, kayıtlı bir düğüm kod düğümüne çevrilemiyor.
+Sonra `_pg_dm_neutralise_markers()` kabul edilen alt ağacın her string prop'unda
+(`text`, `_attrs`, `props`) `<!--pg-` önekini `<!-- pg-` biçimine çeviriyor;
+hiçbir genişletici regex'i eşleşmediği için içerik seviyesinden `eval()`
+tetiklenemiyor. Kilitli/geri yüklenen düğümler türüne göre atlanıyor, tasarımcının
+kayıtlı işaretleri korunuyor. Aynı dönüşüm alan dışına kopyalanan `text` için ve
+`pg_designer_save_page()` (`includes/fn/designer.php`) içindeki kayıtlı-ağaç-yok
+dalında `pg_designer_drop_locked_nodes()` sonrasında da uygulanıyor.
+Kopyalanan `_notes` metni bilerek dokunulmadı: açıklamalar herkese açık sayfada
+render edilmez.
+
+### Doğrulama
+
+`php tools/lint.php` ve `php tools/check_lang.php` temiz; şema, JS ve `tr.json`
+dokunulmadı. Merge fonksiyonları bağımsız bir senaryo betiğiyle sınandı (alan
+dışı işaret, alan içi başlık metni ve `_attrs`, büyük/küçük harf varyantı,
+kayıtlı `custom_html` işaretinin korunması, kayıtlı-ağaç-yok dalı, sıradan HTML
+yorumunun değişmemesi — 12/12 geçti). **Çalışan örnek kurulmadı**: dosya editörü
+ve bölge kapısı değişiklikleri yalnız statik okumayla doğrulandı; Manager
+kaydından herkese açık render'a uzanan yol tarayıcıda denenmedi.
+
+**Açık kalan:** Metin prop'larında `PHP_REGIONS` ile `<?` işlenmesi ayrı,
+önceden var olan bir konudur; bu değişikliğin kapsamı dışında bırakıldı.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
