@@ -11376,5 +11376,6 @@
     "OpenSSL is disabled": "OpenSSL devre dışı",
     "The encryption key could not be reset, because the OpenSSL PHP extension is not enabled": "OpenSSL PHP uzantısı etkinleştirilmediğinden şifreleme anahtarı sıfırlanamadı",
     "There have been several failed sign-in attempts for this account or from this address. Please sign in first, then change your password.": "Bu hesap için veya bu adresten birkaç başarısız oturum açma denemesi yapıldı. Lütfen önce oturum açın, ardından şifrenizi değiştirin.",
-    "The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.": "Ödeme doğrulanırken sipariş toplamı değişti. Ödeme iptal edildi. Lütfen siparişinizi kontrol edip tekrar deneyiniz."
+    "The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.": "Ödeme doğrulanırken sipariş toplamı değişti. Ödeme iptal edildi. Lütfen siparişinizi kontrol edip tekrar deneyiniz.",
+    "The image could not be converted to WebP.": "Görsel WebP biçimine dönüştürülemedi."
 }

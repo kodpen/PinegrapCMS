@@ -283,7 +283,7 @@ if (!$_POST) {
         if ($selector === '' || $domain === '') {
             $liveform_settings->add_warning(lang('DKIM domain and selector must be filled before generating key.'));
         } else {
-            // Eski kayıtları ve dosyaları sil
+            // Delete the old records and files
             db("DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
             @unlink(FILE_DIRECTORY_PATH . '/dkim.key');
             @unlink(FILE_DIRECTORY_PATH . '/dkim.pub');
@@ -301,13 +301,13 @@ if (!$_POST) {
                 $pub = trim($pub);
                 $txt_record = $selector . '._domainkey.' . $domain . ' IN TXT "v=DKIM1; k=rsa; p=' . $pub . '"';
 
-                // Private key dosyası
+                // Private key file
                 file_put_contents(FILE_DIRECTORY_PATH . '/dkim.key', $private_pem);
                 $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.key');
                 db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
                     VALUES ('dkim.key','" . escape(getPublicRootFolderId()) . "','" . escape($txt_record) . "','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");
 
-                // Public key dosyası
+                // Public key file
                 file_put_contents(FILE_DIRECTORY_PATH . '/dkim.pub', $public_pem);
                 $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.pub');
                 db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
@@ -355,7 +355,7 @@ if (!$_POST) {
         exit;
     }
 
-    // Test e-postası gönderimi
+    // Test e-mail sending
     if (isset($_POST['send_system_email']) && $_POST['send_system_email'] === 'Send System Test Email') {
         $result = email([
             'to' => EMAIL_ADDRESS,
@@ -381,7 +381,7 @@ if (!$_POST) {
         exit;
     }
 
-    // Ayarları kaydet
+    // Save the settings
     if (isset($_POST['submit_save']) && ($_POST['submit_save'] ?? '') === 'Save') {
         $config_file_content = '';
         $fd = fopen(CONFIG_FILE_PATH, "r");
@@ -403,8 +403,21 @@ if (!$_POST) {
             $field = strtolower($key);
             $value = isset($_POST[$field]) ? trim(str_replace("'", '', $_POST[$field])) : '';
 
+            // The job switch is stored as a real boolean. The quoted forms
+            // 'true' / 'false' written by older versions are removed first,
+            // because the string 'false' is truthy and could never switch
+            // the job off.
             if ($key === 'EMAIL_CAMPAIGN_JOB') {
                 $value = ($value === 'true') ? 'true' : 'false';
+                $config_file_content = preg_replace("/[ \t]*define\s*\(\s*'$key'\s*,\s*'[^']*'\s*\);\r?\n?/i", '', $config_file_content);
+
+                if (preg_match("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", $config_file_content)) {
+                    $config_file_content = preg_replace("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", "define('$key', $value);", $config_file_content);
+                } else {
+                    $config_file_content = str_replace('?>', "define('$key', $value);\r\n?>", $config_file_content);
+                }
+
+                continue;
             }
 
             if (defined($key)) {

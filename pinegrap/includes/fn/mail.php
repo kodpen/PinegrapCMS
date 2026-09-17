@@ -207,11 +207,32 @@ function add_recipient($ship_to_name)
     }
 }
 
+// Whether the scheduled e-mail campaign job is switched on in config.php.
+// The define is written as a real boolean, but older installers and settings
+// screens stored it as the quoted strings 'true' / 'false'; the string 'false'
+// is truthy in PHP, so every consumer goes through here instead of testing the
+// constant directly.
+function email_campaign_job_enabled()
+{
+    if (defined('EMAIL_CAMPAIGN_JOB') == false) {
+        return false;
+    }
+
+    $value = EMAIL_CAMPAIGN_JOB;
+
+    if (is_string($value) == true) {
+        $value = strtolower(trim($value));
+        return (($value === 'true') || ($value === '1'));
+    }
+
+    return ($value == true);
+}
+
 function get_email_campaign_status_name($status)
 {
     switch ($status) {
         case 'ready':
-            if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
+            if (email_campaign_job_enabled()) {
                 return lang('Scheduled');
             } else {
                 return lang('Ready to Send');

@@ -804,7 +804,7 @@ function pg_cron_dispatch_finished()
 function pg_cron_job_active($name)
 {
     if ($name === 'email_campaign_job') {
-        return defined('EMAIL_CAMPAIGN_JOB') && EMAIL_CAMPAIGN_JOB == true;
+        return email_campaign_job_enabled();
     }
 
     return true;
