@@ -2349,19 +2349,32 @@ function get_notifications($read_mark) {
                     // than we create notification by data.
                     output_notifications = '<ul class="list-group list-group-flush">';
 
-                    var output_target = 'location.href';
-                    if (window.location.href.indexOf("toolbar.php") > -1) {
-                        output_target = 'parent.document.location.href';
-                    }
                     var output_button_bar = '';
+                    // title, description and details arrive from the server as
+                    // ready-made HTML (pg_notification_display() escapes the
+                    // row's values and adds the markup). Everything else is a
+                    // raw value and is escaped here before it becomes markup.
+                    // The target URL travels in a data attribute and is read
+                    // by the delegated click handler below, never spliced into
+                    // an inline onclick.
+                    var notification_id;
+                    var notification_user;
+                    var notification_time;
+                    var notification_type;
+                    var notification_readed;
                     while (i < data_length) {
+                        notification_id = parseInt(response.data[i].id, 10) || 0;
+                        notification_user = h(String(response.data[i].user || ''));
+                        notification_time = h(String(response.data[i].time || ''));
+                        notification_type = h(String(response.data[i].type || ''));
+
                         response.data[i].description = '<div class="notification-description bg-body-secondary" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
                         response.data[i].details = '<div notification-details>' + response.data[i].details + '</div>';
                         if (response.data[i].action != 'custom') {
-                            output_button_bar = '<button type="button" class="dropdown-item bi bi-link bi-me-2 text-primary-emphasis" onclick="' + output_target + '=\'' + response.data[i].url + '\'">' + lang('Go to the relevant page') + '</button>';
+                            output_button_bar = '<button type="button" class="dropdown-item bi bi-link bi-me-2 text-primary-emphasis notification-go" data-url="' + h(String(response.data[i].url || '')) + '">' + lang('Go to the relevant page') + '</button>';
 
 
-                            output_button_bar += '<button type="button" class="fs-smaller dropdown-item bi bi-check-square bi-me-2 text-secondary-emphasis" onclick="edit_notification(\'' + response.data[i].id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
+                            output_button_bar += '<button type="button" class="fs-smaller dropdown-item bi bi-check-square bi-me-2 text-secondary-emphasis" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
 
                             output_data_title = '<small class="notification-title" title="' + response.data[i].title + '">' + response.data[i].title + '</small>';
                         } else {
@@ -2370,9 +2383,9 @@ function get_notifications($read_mark) {
 
 
                         if (response.data[i].readed != 1) {
-                            response.data[i].readed = 'new';
+                            notification_readed = 'new';
                         } else {
-                            response.data[i].readed = '';
+                            notification_readed = '';
                         }
 
                         $output_border_classes = '';
@@ -2384,7 +2397,7 @@ function get_notifications($read_mark) {
                         //we complete notification skeleton and output it before clear notification button.
                         // OUTPUT
                         output_notifications += '\
-                        <li notification-id="' + response.data[i].id + '" class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + response.data[i].readed + ' ' + response.data[i].type + '">\
+                        <li notification-id="' + notification_id + '" class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + '">\
                             <div class="container-fluid">\
                             <div class="row notification-card ' + $output_border_classes + '" style="--bs-border-opacity:0.08;">\
                                     <div class="col-12 ps-4 p-2 border-bottom border-secondary " style="--bs-border-opacity:0.04;">\
@@ -2393,8 +2406,8 @@ function get_notifications($read_mark) {
                                         </div>\
                                         <small>' + response.data[i].description + response.data[i].details + '</small>\
                                         <div class="d-flex w-100 justify-content-between">\
-                                            <span class="me-auto badge bg-transparent text-reset fw-light text-overflow-hidden">' + response.data[i].user + '</span>\
-                                            <span class="ms-auto badge bg-transparent text-reset fw-light">' + response.data[i].time + '</span>\
+                                            <span class="me-auto badge bg-transparent text-reset fw-light text-overflow-hidden">' + notification_user + '</span>\
+                                            <span class="ms-auto badge bg-transparent text-reset fw-light">' + notification_time + '</span>\
                                         </div>\
                                     </div>\
                                     ' + output_button_bar + '\
@@ -2430,6 +2443,25 @@ function get_notifications($read_mark) {
         }
     });
 };
+
+// Opens the page a notification points to. The URL sits in a data attribute
+// (see get_notifications()), so a notification title or comment that
+// contains quotes or markup cannot break out into script. Only a relative
+// panel path is accepted: the server builds these from a script name and an
+// integer id, anything else is ignored.
+$(document).on('click', '#notifications .notification-go', function () {
+    var url = String($(this).attr('data-url') || '');
+
+    if (url === '' || /^[a-z][a-z0-9+.-]*:/i.test(url) || url.indexOf('//') === 0 || url.indexOf('\\') !== -1) {
+        return;
+    }
+
+    if (window.location.href.indexOf('toolbar.php') > -1) {
+        parent.document.location.href = url;
+    } else {
+        location.href = url;
+    }
+});
 
 function edit_notification(notification_id, do_action) {
 
