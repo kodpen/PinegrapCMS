@@ -381,7 +381,7 @@ if (defined('HTACCESS_FILE_PATH') == false) {
 	
 
 	// If the web server is IIS then set the htaccess file info to the httpd.ini location.
-	if (stristr($_SERVER['SERVER_SOFTWARE'], 'iis')) {
+	if (stristr(isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : '', 'iis')) {
 
 		define('HTACCESS_FILE_PATH', dirname(__FILE__) . '/../../httpd.ini');
 

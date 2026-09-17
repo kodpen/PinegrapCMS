@@ -81,41 +81,41 @@ function upgrade_to_2026_4_4() {
 
 	upgrade_2026_4_4_api_upload_folder();       // 4.28
 
-	upgrade_2026_4_4_web_push();                // 4.28
+	upgrade_2026_4_4_web_push();                // 4.29
 
-	upgrade_2026_4_4_push_queue();              // 4.29
+	upgrade_2026_4_4_push_queue();              // 4.30
 
-	upgrade_2026_4_4_app_icon();                // 4.30
+	upgrade_2026_4_4_app_icon();                // 4.31
 
-	upgrade_2026_4_4_marketplaces();            // 4.31
+	upgrade_2026_4_4_marketplaces();            // 4.32
 
-	upgrade_2026_4_4_marketplace_orders();      // 4.32
+	upgrade_2026_4_4_marketplace_orders();      // 4.33
 
-	upgrade_2026_4_4_push_signout();            // 4.33
+	upgrade_2026_4_4_push_signout();            // 4.34
 
-	upgrade_2026_4_4_marketplace_listings();    // 4.34
+	upgrade_2026_4_4_marketplace_listings();    // 4.35
 
-	upgrade_2026_4_4_api_rate_limit();          // 4.35
+	upgrade_2026_4_4_api_rate_limit();          // 4.36
 
-	upgrade_2026_4_4_files_engine();            // 4.36
+	upgrade_2026_4_4_files_engine();            // 4.37
 
-	upgrade_2026_4_4_signature_field();         // 4.37
+	upgrade_2026_4_4_signature_field();         // 4.38
 
-	upgrade_2026_4_4_signature_stamp();         // 4.38
+	upgrade_2026_4_4_signature_stamp();         // 4.39
 
-	upgrade_2026_4_4_signature_tsa();           // 4.39
+	upgrade_2026_4_4_signature_tsa();           // 4.40
 
-	upgrade_2026_4_4_security_headers();       // 4.40
+	upgrade_2026_4_4_security_headers();       // 4.41
 
-	upgrade_2026_4_4_parasut_credentials();    // 4.41
+	upgrade_2026_4_4_parasut_credentials();    // 4.42
 
-	upgrade_2026_4_4_erp_core();               // 4.42
+	upgrade_2026_4_4_erp_core();               // 4.43
 
-	upgrade_2026_4_4_order_tax_base();         // 4.43
+	upgrade_2026_4_4_order_tax_base();         // 4.44
 
-	upgrade_2026_4_4_erp_settlements();        // 4.44
+	upgrade_2026_4_4_erp_settlements();        // 4.45
 
-	upgrade_2026_4_4_erp_return_series();      // 4.45
+	upgrade_2026_4_4_erp_return_series();      // 4.46
 }
 
 
@@ -658,9 +658,9 @@ function upgrade_2026_4_4_api_upload_folder() {
 	// set by the operator, is the whole answer. Zero keeps meaning "not chosen"
 	// and the code falls back to the top folder, the same way the chat and
 	// product upload settings do.
-	if (!db_item("SHOW COLUMNS FROM config LIKE 'api_upload_folder_id'")) {
-		db("ALTER TABLE config ADD api_upload_folder_id INT UNSIGNED NOT NULL DEFAULT 0");
-	}
+	install_add_column('config', 'api_upload_folder_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('The external API files its uploads in one folder chosen by the operator.');
 }
 
 function upgrade_2026_4_4_catalog_bin_and_sign_in() {
@@ -1839,7 +1839,7 @@ function upgrade_2026_4_4_signature_tsa() {
 
 
 // Security response headers, the plain-text block log, two firewall ceilings
-// and the sign-in question (4.40). Nine columns on config, no new table.
+// and the sign-in question (4.41). Nine columns on config, no new table.
 //
 // security_csp_mode is a VARCHAR rather than an ENUM so a fourth mode can be
 // added by code alone; the reader treats anything it does not know as
@@ -1868,7 +1868,7 @@ function upgrade_2026_4_4_security_headers() {
 }
 
 
-// 4.41 - Parasut credentials off the config row in clear text.
+// 4.42 - Parasut credentials off the config row in clear text.
 //
 // parasut_client_secret and parasut_password were VARCHAR columns holding the
 // values as typed, and the settings screen wrote them back into the form, so
@@ -1956,7 +1956,7 @@ function upgrade_2026_4_4_parasut_sandbox_off() {
 
 }
 
-// 4.42 - ERP module skeleton.
+// 4.43 - ERP module skeleton.
 //
 // Eleven tables, created whether or not the module is switched on. Tying schema
 // to a feature switch puts a site that enables it later on a schema the version
@@ -2407,7 +2407,7 @@ function upgrade_2026_4_4_erp_existing_tables() {
 }
 
 
-// 4.43 - order line tax moves from a unit amount to a line amount.
+// 4.44 - order line tax moves from a unit amount to a line amount.
 //
 // order_items.tax held the tax on ONE unit, and every total multiplied it by the
 // quantity. Three other places disagreed: the cart summary works the tax out on
@@ -2436,7 +2436,7 @@ function upgrade_2026_4_4_order_tax_base() {
 
 }
 
-// 4.44 - which receipt closed which invoice.
+// 4.45 - which receipt closed which invoice.
 //
 // The money movement is already in the ledger: a receipt credits the account and
 // the balance falls. What was missing is the allocation - THAT receipt paid THIS
@@ -2475,7 +2475,7 @@ function upgrade_2026_4_4_erp_settlements() {
 
 }
 
-// 4.45 - returns count on a series of their own.
+// 4.46 - returns count on a series of their own.
 //
 // erp_document_series.doc_kind was an ENUM that only knew about the documents
 // Faz 0 had planned for, so asking it for a return number silently produced no
