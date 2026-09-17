@@ -678,6 +678,9 @@ $liveform->remove_form('edit_file');
 
     $sql_size = '';
     $image = '';
+    // Set when the original image has already been replaced by its WebP
+    // conversion, so the rename step below must not move the old file onto it.
+    $webp_replaced_original = false;
 
 
     
@@ -807,16 +810,31 @@ $liveform->remove_form('edit_file');
     }
 
     // WEBP overwrite
-    if (!empty($_POST['convert_webp']) && empty($_POST['convert_webp_create_copy']) && $image) {
+    //
+    // Only for the save buttons: the original is deleted below, so this
+    // must run only when the row is about to be updated with the new name.
+    // Otherwise a Duplicate request would remove a file its record still
+    // points to.
+    if (!empty($_POST['convert_webp']) && empty($_POST['convert_webp_create_copy']) && $image && (!empty($_POST['submit_save']) || !empty($_POST['submit_save_and_return']))) {
         $name = prepare_file_name(pathinfo($name, PATHINFO_FILENAME) . '.webp');
         $file_path = FILE_DIRECTORY_PATH . '/' . $name;
         if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
             output_error(lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-        imagewebp($image, $file_path);
+        if (imagewebp($image, $file_path) == FALSE) {
+            imagedestroy($image);
+            output_error(lang('The image could not be converted to WebP.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        imagedestroy($image);
+        // The converted file replaces the original; remove the source so the
+        // rename below does not overwrite the WebP bytes with the old image.
+        $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+        if ($old_file_path !== $file_path) {
+            @unlink($old_file_path);
+        }
+        $webp_replaced_original = true;
         $file_extension = 'webp';
         $sql_size = "size = '" . escape(filesize($file_path)) . "',";
-        imagedestroy($image);
     }
 
     // WEBP copy
@@ -944,7 +962,7 @@ $liveform->remove_form('edit_file');
         // The database is only told about the new name if the file actually
         // moved. Updating it after a failed rename is what produces the broken
         // state this is here to prevent.
-        if ($name !== $row['name']) {
+        if (($name !== $row['name']) && ($webp_replaced_original == FALSE)) {
             $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
 
             if ((file_exists($old_file_path) == TRUE) && (@rename($old_file_path, $file_path) == FALSE)) {

@@ -3064,7 +3064,7 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
  * produces the same label/value pairs (as bare <tr> rows for the old
  * table layout). The value semantics are copied exactly:
  *   • multiple form_data rows for one field  → joined with ", "
- *   • wysiwyg field                          → NOT escaped (already HTML)
+ *   • wysiwyg field                          → filtered with pg_sanitize_rich_text(), not escaped
  *   • everything else                        → prepare_form_data_for_output(…, true)
  *   • type 'information'                     → label + info block, no value
  *
@@ -3147,10 +3147,13 @@ function _pg_render_order_item_form_data_readonly($order_item_id, $product_id, $
             }
 
             $data = isset($vals[$fid]) ? implode(', ', $vals[$fid]) : '';
-            // wysiwyg fields already hold markup — escaping them would show
-            // raw tags to the visitor (same branch as the legacy helper).
+            // wysiwyg fields hold markup typed by the shopper, so the value is
+            // filtered instead of escaped: escaping would show raw tags to
+            // the visitor, while printing it as-is would trust whatever was
+            // stored (rows saved before the store path filtered, or written
+            // by any other route). Same treatment as the other order views.
             $output_data = !empty($f['wysiwyg'])
-                ? prepare_form_data_for_output($data, $type, false)
+                ? prepare_form_data_for_output(pg_sanitize_rich_text($data), $type, false)
                 : prepare_form_data_for_output($data, $type, true);
 
             // No grid opinion here — label above, value below, full width.

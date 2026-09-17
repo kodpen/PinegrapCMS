@@ -19,7 +19,7 @@
 require('init.php');
 
 // if the e-mail campaign job is not activated, then output error
-if ((defined('EMAIL_CAMPAIGN_JOB') == false) || (EMAIL_CAMPAIGN_JOB != true)) {
+if (email_campaign_job_enabled() == false) {
     $error_message = 'The e-mail campaign job did not run because it is not activated in the config.php file.';
     log_activity($error_message, 'UNKNOWN');
     print 'Error: ' . $error_message;
