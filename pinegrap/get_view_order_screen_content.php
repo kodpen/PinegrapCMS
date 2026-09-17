@@ -348,7 +348,7 @@ function get_view_order_screen_content($properties)
                     $name = $order_item['product_name'];
                     $quantity = $order_item['quantity'];
                     $product_price = $order_item['price'] / 100;
-                    $product_tax = $order_item['tax'] / 100;
+                    $product_tax = $order_item['tax_total'] / 100;
                     $offer_id = $order_item['offer_id'];
                     $discounted_by_offer = $order_item['discounted_by_offer'];
                     $recurring_payment_period = $order_item['recurring_payment_period'];
@@ -435,7 +435,8 @@ function get_view_order_screen_content($properties)
                     }
 
                     $total_price = $product_price * $quantity;
-                    $total_tax = $product_tax * $quantity;
+                    // tax_total already covers the line, so no quantity here.
+                    $total_tax = $product_tax;
                     
                     // assume that we don't need to output a recurring schedule fieldset, until we find out otherwise
                     $output_recurring_schedule_fieldset = '';
