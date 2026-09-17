@@ -871,6 +871,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		<div class="flex-grow-1"></div>
 		<a class="btn btn-sm btn-outline-secondary" href="api_docs.php">
 			<i class="bi bi-file-earmark-text me-1"></i>' . lang('API Documentation') . '</a>
+		<a class="btn btn-sm btn-outline-secondary" href="settings_api.php">
+			<i class="bi bi-sliders me-1"></i>' . lang('API Settings') . '</a>
 		<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#api_new">
 			<i class="bi bi-key me-1"></i>' . lang('New Application') . '</button>
 	</div>

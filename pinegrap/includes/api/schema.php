@@ -544,6 +544,39 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
+		),
+
+		/* ----- Offers ------------------------------------------------------- */
+
+		array(
+			'id'      => 'offers.list',
+			'method'  => 'GET',
+			'path'    => '/offers',
+			'scope'   => 'offers:read',
+			'handler' => 'api_offers_list',
+			'summary' => 'List offers',
+			'description' => 'An offer is a campaign rule applied to the cart at checkout - a discount, a gift product, free shipping - and not a sales quote; this resource is read only. offer_status is what the offer is doing today, derived from the enabled switch and the date range; incomplete marks a saved offer that cannot do anything at checkout yet. The conditions and the results are on the single-offer endpoint. Cursor paged.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'scheduled', 'expired', 'disabled'), 'description' => 'Offers in one derived status: running today, not started yet, past their end date, or switched off.'),
+				array('name' => 'code',          'in' => 'query', 'type' => 'string', 'max_length' => 50, 'description' => 'Exact match on the offer code.'),
+				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only offers saved at or after this moment.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
+			)
+		),
+
+		array(
+			'id'      => 'offers.get',
+			'method'  => 'GET',
+			'path'    => '/offers/{id}',
+			'scope'   => 'offers:read',
+			'handler' => 'api_offers_get',
+			'summary' => 'One offer, with its conditions and results',
+			'description' => 'Adds the conditions the cart has to meet and what the offer then does, each flattened into readable objects: products and groups are named, amounts are minor units, percentages are 0-100, and an open-ended offer reports end_date null.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
 		)
 
 	);

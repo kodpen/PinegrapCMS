@@ -115,6 +115,17 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $chat_upload_folder_id = isset($row['chat_upload_folder_id']) ? (int) $row['chat_upload_folder_id'] : 0;
     $product_upload_folder_id = isset($row['product_upload_folder_id']) ? (int) $row['product_upload_folder_id'] : 0;
 
+    // ── Application API ─────────────────────────────────────────────────
+    // The five columns arrive with the 2026.4.4 upgrade. Until it has run the
+    // card shows a note instead of its switches; the defaults here are the
+    // ones includes/api/bootstrap.php falls back to without the columns.
+    $api_settings_ready     = isset($row['api_enabled']);
+    $api_enabled            = isset($row['api_enabled']) ? (int) $row['api_enabled'] : 1;
+    $api_require_https      = isset($row['api_require_https']) ? (int) $row['api_require_https'] : 1;
+    $api_openapi_public     = isset($row['api_openapi_public']) ? (int) $row['api_openapi_public'] : 0;
+    $api_log_retention_days = isset($row['api_log_retention_days']) ? (int) $row['api_log_retention_days'] : 30;
+    $api_upload_folder_id   = isset($row['api_upload_folder_id']) ? (int) $row['api_upload_folder_id'] : 0;
+
     // ── Image limits ────────────────────────────────────
     // Read through pg_image_settings() rather than straight from $row, so the
     // screen shows exactly the numbers the engine will use — including on an
