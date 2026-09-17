@@ -944,36 +944,56 @@ function submit_order($type) {
     $order_receipt_email_page_id = $row['order_receipt_email_page_id'];
     $next_page_id = $row['next_page_id'];
     
+    // The order preview layouts shipped with the turkish_default install seed post the
+    // translated label of the offline payment option as the field value instead of the
+    // canonical name. Normalize it before validation so that the allow-list below, the
+    // payment method switches and the stored orders.payment_method all see the canonical
+    // value. Whether offline payment is actually offered is still decided by the allow-list.
+    // The compared string is the UTF-8 byte sequence of the Turkish label "Cevrimdisi Odeme"
+    // (with the Turkish characters), written as escapes to keep this file ASCII-only.
+    if ($liveform->get_field_value('payment_method') === "\xc3\x87evrimd\xc4\xb1\xc5\x9f\xc4\xb1 \xc3\x96deme") {
+        $liveform->assign_field_value('payment_method', 'Offline Payment');
+    }
+
     // if the mode is not paypal_express_checkout_return, then validate the rest of the fields
     if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         // if a nonrecurring transaction or recurring transaction is required, then require a payment method
         if (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE)) {
             $liveform->validate_required_field('payment_method', lang('A payment method is required.'));
-            
-            // if there is not already an error for the payment method field and the selected payment method is not valid, then prepare error
-            if (
-                ($liveform->check_field_error('payment_method') == FALSE)
-                &&
-                (
-                    (($liveform->get_field_value('payment_method') == 'Credit/Debit Card') && (ECOMMERCE_CREDIT_DEBIT_CARD == FALSE))
-                    || (($liveform->get_field_value('payment_method') == 'PayPal Express Checkout') && (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == FALSE))
-                    || (($liveform->get_field_value('payment_method') == 'PayPal Express Checkout') && ($recurring_transaction == TRUE))
-                    ||
+
+            // If there is not already an error for the payment method field, then require the
+            // selected payment method to be one that is offered for this order. This is an
+            // allow-list on purpose: an unknown value would fall through the payment switches
+            // further below and complete the order without a charge.
+            if ($liveform->check_field_error('payment_method') == FALSE) {
+                $allowed_payment_methods = array();
+
+                if (ECOMMERCE_CREDIT_DEBIT_CARD == TRUE) {
+                    $allowed_payment_methods[] = 'Credit/Debit Card';
+                }
+
+                if ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE)) {
+                    $allowed_payment_methods[] = 'PayPal Express Checkout';
+                }
+
+                if ((defined('ECOMMERCE_PAY_WITH_IYZICO') == TRUE) && (ECOMMERCE_PAY_WITH_IYZICO == TRUE) && ($recurring_transaction == FALSE)) {
+                    $allowed_payment_methods[] = 'Pay With Iyzico';
+                }
+
+                if (
+                    (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
+                    &&
                     (
-                        ($liveform->get_field_value('payment_method') == 'Offline Payment')
-                        &&
-                        (
-                            (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
-                            ||
-                            (
-                                ($offline_payment_allowed == '0')
-                                && ($offline_payment_always_allowed == 0)
-                            )
-                        )
+                        ($offline_payment_allowed == '1')
+                        || ($offline_payment_always_allowed == 1)
                     )
-                )
-            ) {
-                $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                ) {
+                    $allowed_payment_methods[] = 'Offline Payment';
+                }
+
+                if (in_array($liveform->get_field_value('payment_method'), $allowed_payment_methods, TRUE) == FALSE) {
+                    $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                }
             }
             
             // if there is not already an error for the payment method field and the credit/debit card payment method was selected, then validate credit/debit card fields
@@ -1666,6 +1686,18 @@ function submit_order($type) {
                 }
                 
                 break;
+
+            // Nothing needs to be prepared for these payment methods.
+            case 'Pay With Iyzico':
+            case 'Offline Payment':
+                break;
+
+            // The allow-list above already rejects any other value; refuse to continue rather than
+            // completing the order without a charge.
+            default:
+                $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+                exit();
         }
     }
     
@@ -2960,8 +2992,9 @@ function submit_order($type) {
                         
                         } elseif (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') {
                             // 3DS return: confirm payment (state from DB)
-                            $conversationId = $_POST["conversationId"];
-                            $paymentId = $_POST["paymentId"];
+                            $conversationId = isset($_POST['conversationId']) ? (string)$_POST['conversationId'] : '';
+                            $paymentId = isset($_POST['paymentId']) ? (string)$_POST['paymentId'] : '';
+                            $session_order_id = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
                         
                             $query = "
                                 SELECT *
@@ -2972,9 +3005,35 @@ function submit_order($type) {
                             $result = mysqli_query(db::$con, $query) or output_error(lang('3DS state select failed.'));
                             $state  = mysqli_fetch_assoc($result);
                         
-                            if (!$state) {
+                            // The state row must belong to the order in this session, otherwise a
+                            // conversation id taken from another order could complete this one.
+                            if (
+                                !$state
+                                || ($session_order_id <= 0)
+                                || ((int)$state['order_id'] !== $session_order_id)
+                                || ($paymentId === '')
+                            ) {
                                 $liveform->mark_error('payment_gateway', lang('Session could not be verified. Please try again.'));
-                                log_activity("Iyzipay 3DS callback: state not found for conversationId=$conversationId");
+                                log_activity("Iyzipay 3DS callback: state not found or order mismatch for conversationId=$conversationId, order_id=$session_order_id");
+                                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+                                exit();
+                            }
+
+                            // Claim the state row before talking to the gateway. payment_id doubles as
+                            // the consumed marker, so a replayed callback cannot complete the order twice.
+                            $query = "
+                                UPDATE iyzipay_3ds_state
+                                SET payment_id = '" . mysqli_real_escape_string(db::$con, $paymentId) . "'
+                                WHERE
+                                    (id = '" . (int)$state['id'] . "')
+                                    AND ((payment_id IS NULL) OR (payment_id = ''))
+                                LIMIT 1
+                            ";
+                            mysqli_query(db::$con, $query) or output_error('3DS state update failed.');
+
+                            if (mysqli_affected_rows(db::$con) !== 1) {
+                                $liveform->mark_error('payment_gateway', lang('Session could not be verified. Please try again.'));
+                                log_activity("Iyzipay 3DS callback: state already used for conversationId=$conversationId");
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                                 exit();
                             }
@@ -2983,14 +3042,14 @@ function submit_order($type) {
                             $req3ds->setLocale(strtoupper(lang(array('info'=>''))));
                             $req3ds->setConversationId($conversationId);
                             $req3ds->setPaymentId($paymentId);
-                            $req3ds->setConversationData($_POST["conversationData"]);
+                            $req3ds->setConversationData(isset($_POST['conversationData']) ? $_POST['conversationData'] : '');
                         
                             $threedsPayment = \Iyzipay\Model\ThreedsPayment::create($req3ds, $options);
                         
                             $status = $threedsPayment->getStatus();
                             $errorCode = $threedsPayment->getErrorCode();
                             $errorMessage = $threedsPayment->getErrorMessage();
-                            $Payment_ID = $threedsPayment->getPaymentId();
+                            $Payment_ID = (string)$threedsPayment->getPaymentId();
                             $Installment = $threedsPayment->getInstallment();
                             $BasketId = $threedsPayment->getBasketId();
                             $card_type = $threedsPayment->getCardAssociation();
@@ -2998,26 +3057,14 @@ function submit_order($type) {
                             $lastFourDigits = $threedsPayment->getLastFourDigits();
                             $cardFamily = $threedsPayment->getCardFamily();
                             $FraudStatus = $threedsPayment->getFraudStatus();
+                            $gateway_paid_cents = (int)round((float)$threedsPayment->getPaidPrice() * 100);
                         
-                            // Totals recompute from DB state (not GET).
-                            // base_total_cents = full total with tax/shipping, before installment (saved since 2026.1.14).
-                            // Falls back to subtotal-discount for older records without this column.
+                            // Totals come from the DB state that was written when the 3DS flow started.
+                            // base_total_cents = full total with tax/shipping/surcharge, before installment.
                             $payment_installment      = (int)$Installment;
                             $discount_cents           = (int)$state['discount_cents'];
                             $installment_charge_cents = (int)$state['installment_charge_cents'];
                             $base_total_cents         = (int)$state['base_total_cents'];
-
-                            if ($base_total_cents > 0) {
-                                $total = $base_total_cents;
-                            } else {
-                                $subtotal_cents = (int)$state['subtotal_cents'];
-                                $total = max(0, $subtotal_cents - $discount_cents);
-                            }
-
-                            if ($installment_charge_cents > 0) {
-                                $total_witout_installment_charge = $total;
-                                $total += $installment_charge_cents;
-                            }
                         
                             // error flow
                             if ($errorCode === '5002') {
@@ -3043,17 +3090,46 @@ function submit_order($type) {
                                 log_activity("Iyzipay 3DS fraud pending review: paymentId=$Payment_ID");
                                 // You may optionally mark the order as 'review'
                             }
+
+                            // Verify the amount before completing the order. The total recomputed
+                            // above from the items that are in the order right now must equal the
+                            // total the 3DS flow was started with, and the gateway must have charged
+                            // exactly that total plus the installment charge. Otherwise the cart was
+                            // changed while the shopper was at the bank, so cancel the payment
+                            // instead of completing the order.
+                            $current_base_total_cents = (int)$total - (int)$installment_charge;
+                            $expected_paid_cents = $base_total_cents + $installment_charge_cents;
+                            $expected_gateway_cents = $expected_paid_cents;
+                            $paid_tolerance_cents = 0;
+
+                            if ($protected_currency_exchange_rate > 0) {
+                                // The gateway amount is in the protected currency and was converted
+                                // with the exchange rate that was current when the flow started, so
+                                // allow the rate to have moved slightly since then.
+                                $expected_gateway_cents = (int)round(($expected_paid_cents / 100.0) * $protected_currency_exchange_rate * 100);
+                                $paid_tolerance_cents = (int)ceil($expected_gateway_cents * 0.01);
+                            }
+
+                            if (
+                                ($base_total_cents <= 0)
+                                || ($current_base_total_cents !== $base_total_cents)
+                                || (abs($gateway_paid_cents - $expected_gateway_cents) > $paid_tolerance_cents)
+                            ) {
+                                log_activity("Iyzipay 3DS amount mismatch: paymentId=$Payment_ID, order_id=$session_order_id, current_total=$current_base_total_cents, stored_total=$base_total_cents, gateway_paid=$gateway_paid_cents, expected_paid=$expected_gateway_cents");
+                                iyzipay_cancel_payment($options, $Payment_ID, $conversationId, 'Order total changed during 3D Secure verification');
+                                $liveform->mark_error('payment_gateway', lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'));
+                                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+                                exit();
+                            }
+
+                            $total = $base_total_cents;
+
+                            if ($installment_charge_cents > 0) {
+                                $total_witout_installment_charge = $total;
+                                $total += $installment_charge_cents;
+                            }
                             
-                            $transaction_id = $paymentId;
-                        
-                            // Optional: state'i paymentId ile güncelle
-                            $query = "
-                                UPDATE iyzipay_3ds_state
-                                SET payment_id = '" . mysqli_real_escape_string(db::$con, $paymentId) . "'
-                                WHERE conversation_id = '" . mysqli_real_escape_string(db::$con, $conversationId) . "'
-                                LIMIT 1
-                            ";
-                            mysqli_query(db::$con, $query) or output_error('3DS state update failed.');
+                            $transaction_id = ($Payment_ID !== '') ? $Payment_ID : $paymentId;
                         
                             log_activity(lang(array(
                                 'string'=>'The 3D Security process has been completed by {var:1} {var:2} ({var:3}).',
@@ -3489,13 +3565,12 @@ function submit_order($type) {
                         exit();
                     }
 
-                    // Store token + totals in session for verification on return.
-                    // base_total = full order total including tax/shipping/surcharge, before any installment charge.
-                    // subtotal = raw basket total sent to iyzico as setPrice() — used to calculate installment delta on return.
+                    // Store token, order and total in session for verification on return.
+                    // base_total = full order total including tax/shipping, before any installment charge,
+                    // which is what was sent to iyzico as setPaidPrice().
                     $_SESSION['ecommerce']['pay_with_iyzico_token']            = $result->getToken();
                     $_SESSION['ecommerce']['pay_with_iyzico_conversation_id']  = $conversationid;
-                    $_SESSION['ecommerce']['pay_with_iyzico_subtotal_cents']   = (int)$subtotal;
-                    $_SESSION['ecommerce']['pay_with_iyzico_discount_cents']   = (int)$discount;
+                    $_SESSION['ecommerce']['pay_with_iyzico_order_id']         = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
                     $_SESSION['ecommerce']['pay_with_iyzico_base_total_cents'] = (int)$total;
 
                     log_activity(lang(array(
@@ -3508,27 +3583,30 @@ function submit_order($type) {
 
                 } else {
                     // Return from Iyzico
-                    $pwi_token      = isset($_POST['token']) ? $_POST['token'] : '';
-                    $stored_token   = isset($_SESSION['ecommerce']['pay_with_iyzico_token']) ? $_SESSION['ecommerce']['pay_with_iyzico_token'] : '';
+                    $pwi_token      = isset($_POST['token']) ? (string)$_POST['token'] : '';
+                    $stored_token   = isset($_SESSION['ecommerce']['pay_with_iyzico_token']) ? (string)$_SESSION['ecommerce']['pay_with_iyzico_token'] : '';
                     $conversationid = isset($_SESSION['ecommerce']['pay_with_iyzico_conversation_id']) ? $_SESSION['ecommerce']['pay_with_iyzico_conversation_id'] : '';
+                    $stored_order_id  = (int)($_SESSION['ecommerce']['pay_with_iyzico_order_id'] ?? 0);
+                    $session_order_id = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
 
-                    // Validate token
-                    if (empty($pwi_token) || $pwi_token !== $stored_token) {
+                    // Validate the token and make sure the payment was started for the order in this session.
+                    if (
+                        ($pwi_token === '')
+                        || ($pwi_token !== $stored_token)
+                        || ($session_order_id <= 0)
+                        || ($stored_order_id !== $session_order_id)
+                    ) {
                         $liveform->mark_error('payment_gateway', lang('Session could not be verified. Please try again.'));
-                        log_activity("Pay with Iyzico callback: token mismatch");
+                        log_activity("Pay with Iyzico callback: token or order mismatch (order_id=$session_order_id, stored_order_id=$stored_order_id)");
                         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                         exit();
                     }
 
-                    // Restore totals from session.
-                    // base_total = full total with tax/shipping (no installment) — what we sent as setPaidPrice().
-                    // subtotal   = raw basket total we sent as setPrice() to iyzico.
-                    // iyzico's getPaidPrice() on return = setPrice() value + installment charge (no tax).
-                    // So: installment_charge = getPaidPrice_cents - (subtotal - discount).
-                    $subtotal   = (int)$_SESSION['ecommerce']['pay_with_iyzico_subtotal_cents'];
-                    $discount   = (int)$_SESSION['ecommerce']['pay_with_iyzico_discount_cents'];
-                    $base_total = (int)($_SESSION['ecommerce']['pay_with_iyzico_base_total_cents'] ?? max(0, $subtotal - $discount));
-                    $total      = $base_total;
+                    // base_total = full total with tax/shipping (no installment), what we sent as setPaidPrice().
+                    // The total recomputed above from the items that are in the order right now must still
+                    // equal it; otherwise the cart was changed while the shopper was at iyzico.
+                    $base_total = (int)($_SESSION['ecommerce']['pay_with_iyzico_base_total_cents'] ?? 0);
+                    $current_base_total_cents = (int)$total;
 
                     $retrieveRequest = new \Iyzipay\Request\RetrievePayWithIyzicoRequest();
                     $retrieveRequest->setLocale(strtoupper(lang(array('info'=>''))));
@@ -3545,8 +3623,7 @@ function submit_order($type) {
                     unset(
                         $_SESSION['ecommerce']['pay_with_iyzico_token'],
                         $_SESSION['ecommerce']['pay_with_iyzico_conversation_id'],
-                        $_SESSION['ecommerce']['pay_with_iyzico_subtotal_cents'],
-                        $_SESSION['ecommerce']['pay_with_iyzico_discount_cents'],
+                        $_SESSION['ecommerce']['pay_with_iyzico_order_id'],
                         $_SESSION['ecommerce']['pay_with_iyzico_base_total_cents']
                     );
 
@@ -3563,6 +3640,27 @@ function submit_order($type) {
                     // So: installment_charge = getPaidPrice_cents - base_total.
                     $pwi_installment = (int)$payWithIyzico->getInstallment();
                     $pwi_paid_cents  = (int)round((float)$payWithIyzico->getPaidPrice() * 100);
+                    $pwi_payment_id  = (string)$pwi_payment_id;
+
+                    // Verify the amount before completing the order: the current order total must
+                    // equal the total the payment was started with, and iyzico must have charged at
+                    // least that total (more only as an installment charge). Otherwise cancel the
+                    // payment instead of completing the order.
+                    if (
+                        ($pwi_payment_id === '')
+                        || ($base_total <= 0)
+                        || ($current_base_total_cents !== $base_total)
+                        || ($pwi_paid_cents < $base_total)
+                        || (($pwi_installment <= 1) && ($pwi_paid_cents !== $base_total))
+                    ) {
+                        log_activity("Pay with Iyzico amount mismatch: paymentId=$pwi_payment_id, order_id=$session_order_id, current_total=$current_base_total_cents, stored_total=$base_total, gateway_paid=$pwi_paid_cents, installment=$pwi_installment");
+                        iyzipay_cancel_payment($options, $pwi_payment_id, $conversationid, 'Order total changed during Pay with Iyzico checkout');
+                        $liveform->mark_error('payment_gateway', lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'));
+                        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+                        exit();
+                    }
+
+                    $total = $base_total;
 
                     if ($pwi_installment > 1) {
                         $payment_installment = $pwi_installment;
@@ -3584,6 +3682,16 @@ function submit_order($type) {
 
                 break;
 
+            // An offline payment is not charged here.
+            case 'Offline Payment':
+                break;
+
+            // The allow-list above already rejects any other value; refuse to continue rather than
+            // completing the order without a charge.
+            default:
+                $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+                exit();
         }
     }
 

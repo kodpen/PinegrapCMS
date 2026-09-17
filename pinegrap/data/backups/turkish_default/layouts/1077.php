@@ -1417,7 +1417,7 @@
                     <div class="radio">
                         <div class="radio-option">
                             <div class="inner"></div>
-                            <input type="radio" name="payment_method" value="Çevrimdışı Ödeme">
+                            <input type="radio" name="payment_method" value="Offline Payment">
                             <span><h5 class="mb8"><?=h($offline_payment_label)?></h5></span>
                         </div>
                     </div>
