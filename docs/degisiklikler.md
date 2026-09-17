@@ -41,6 +41,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Ziyaretçi form verisinde depolanmış XSS: zengin metin izin listesi (2026-09-17)
+
+Özel formdaki ya da ürün formundaki WYSIWYG metin alanı anonim bir ziyaretçi
+veya alışveriş yapan müşteri tarafından doldurulur ve değeri `html` tipiyle
+saklanır — yani ekranlar onu **kaçışsız** basar: herkese açık form öğesi ve
+form listesi görünümleri, onay ekranı, form bildirim e-postaları, panel sipariş
+ekranları, yazdırılan sipariş ve imza fişleri, `form_item_view` /
+`form_list_view` widget'ları. Alana `<script>`, `<img onerror>` veya
+`javascript:` bağlantısı yazan biri hem diğer ziyaretçilerin hem de panel
+personelinin tarayıcısında kod çalıştırıyordu. İki widget WYSIWYG olmayan
+alanları da (gönderen adı, adres adı, takip kodu, alan etiketleri) `h()`
+olmadan basıyordu. Ayrı bir yol: `add_erp_invoice.php` ve `add_erp_receipt.php`
+seçim listeleri, müşterinin ödeme sırasında yazdığı fatura adını `<option>`
+etiketine ham koyuyordu; `liveform::output_field()` etiketleri kaçışlamaz.
+
+### Kaçışlamak değil, filtrelemek
+
+Bu alanın amacı biçimli metin taşımak; `h()` ile kaçışlansa editörün ürettiği
+her şey kaybolur. Bunun yerine `includes/fn/editor.php`'ye DOM tabanlı bir izin
+listesi filtresi eklendi: `pg_sanitize_rich_text()`. İçerik `DOMDocument` ile
+ayrıştırılır, listede olmayan elemanlar ve öznitelikler (özellikle `on*`
+işleyiciler, `id`/`name`) atılır, `href`/`src` ve `style` değerleri ayrı
+denetimden geçer, sonuç yeniden serileştirilir. Ayrıştırıp yeniden yazmak
+şu yüzden önemli: varlık kodlu hileler (`&#106;avascript:`) çözülmüş hâlleriyle
+değerlendirilir, düzenli ifadeyle yakalanamayan biçimler de yakalanır.
+Paragraf, liste, tablo, bağlantı, resim ve satır içi stil kalır; script benzeri
+elemanlar, olay işleyiciler, `javascript:`/`data:` adresler ve kaynak yükleyen
+CSS gider. `ext/dom` yoksa içerik güvenilmeyip kaçışlanmış düz metne iner.
+
+### İki katman
+
+Filtre hem kaydederken (`custom_form.php`, `express_order.php`,
+`shopping_cart.php`, `submit_custom_form()`) hem de kaçışsız basılan her
+noktada uygulanır: `prepare_form_data_for_output()` içindeki `html` dalı,
+`get_submitted_*_content_with_form_fields()`, `get_form_review_info()`, form
+öğesi/liste görünümleri, onay ekranı, imza fişi, `order_view` widget'ı. Çıkışta
+da filtrelemenin nedeni eski kayıtlar: filtreden önce saklanmış satırlar
+böylece hiç göç gerektirmeden kapsanıyor. Sistem widget'larında ölçüt tek:
+yalnız `text area` + `wysiwyg = 1` alanı HTML taşıyabilir, gönderenin yazdığı
+geri kalan her değer `h()` ile basılır. `widgets_catalog.php`'deki salt-okunur
+form verisi yolu alan tipini `'text area'` olarak geçtiği için `html` dalına
+düşmüyordu; WYSIWYG dalı filtreyi açıkça çağırıyor. ERP seçenek etiketleri
+oluşturuldukları yerde `h()` ile sarıldı.
+
+### Doğrulama
+
+`php -l`, `tools/lint.php`, `tools/check_lang.php` temiz; yeni dil anahtarı yok.
+Filtre zinciri bir deneme betiğinde koşturuldu: `<p>Hoşgeldiniz <b>Ali</b></p>`
+korunuyor, `<img src=x onerror=alert(1)>` → `<img src="x">`, `<script>` bloğu
+düşüyor, `<a href="javascript:…">` adressiz `<a>` kalıyor. Canlı veritabanı ve
+tarayıcı üzerinde denenmedi.
+
+**Açık kalan:** `get_shipping_address_and_arrival.php`, `get_billing_information.php`,
+`get_express_order.php` ve `includes/fn/custom_form.php` içindeki kalan
+`prepare_form_data_for_output(…, false)` çağrıları liveform ön doldurma
+yollarıdır; değer çıkışta liveform tarafından kaçışlandığı için dokunulmadı.
+`widgets.php`'deki `order_view` widget'ının anonim ziyaretçiye sipariş
+gösterebilmesi (IDOR) ayrı bir konu, bu turda ele alınmadı.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
