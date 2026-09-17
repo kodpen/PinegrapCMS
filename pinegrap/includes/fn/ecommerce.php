@@ -6582,3 +6582,55 @@ function _send_order_cancellation_email($order, $reason, $refund_status)
         'type'               => 'system',
     ));
 }
+
+/**
+ * Cancels (voids) an Iyzipay payment that must not complete an order, for example when the
+ * amount confirmed by the gateway no longer matches the order. Returns true when the gateway
+ * accepted the cancel. The outcome is always written to the activity log, so a cancel that the
+ * gateway refused can be refunded by hand.
+ *
+ * @param \Iyzipay\Options $options         Configured gateway options.
+ * @param string           $payment_id      Gateway payment id to cancel.
+ * @param string           $conversation_id Conversation id of the payment.
+ * @param string           $reason          Short English reason for the log and the gateway.
+ * @return bool
+ */
+function iyzipay_cancel_payment($options, $payment_id, $conversation_id, $reason)
+{
+    $payment_id = (string) $payment_id;
+    $reason = (string) $reason;
+
+    if ($payment_id === '') {
+        log_activity('Iyzipay payment could not be cancelled because the payment id is empty (' . $reason . ').');
+        return false;
+    }
+
+    try {
+        require_once(PG_FUNCTIONS_DIR . '/includes/iyzipay-php/IyzipayBootstrap.php');
+        IyzipayBootstrap::init();
+
+        $request = new \Iyzipay\Request\CreateCancelRequest();
+        $request->setLocale(\Iyzipay\Model\Locale::TR);
+        $request->setConversationId((string) $conversation_id);
+        $request->setPaymentId($payment_id);
+        $request->setIp(isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1');
+        $request->setDescription(mb_substr($reason, 0, 240));
+
+        $cancel = \Iyzipay\Model\Cancel::create($request, $options);
+
+        if ($cancel->getStatus() == 'success') {
+            log_activity('Iyzipay payment ' . $payment_id . ' was cancelled: ' . $reason . '.');
+            return true;
+        }
+
+        $error_message = method_exists($cancel, 'getErrorMessage') ? (string) $cancel->getErrorMessage() : '';
+        log_activity(
+            'Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' .
+            'Gateway message: ' . ($error_message !== '' ? $error_message : '(no message)')
+        );
+    } catch (\Throwable $e) {
+        log_activity('Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' . $e->getMessage());
+    }
+
+    return false;
+}

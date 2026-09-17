@@ -11374,5 +11374,6 @@
     "PROFORMA INVOICE": "PROFORMA FATURA",
     "{var:1} could not be read as a list. Enter a JSON array such as [\"a\", \"b\"], or values separated by commas.": "{var:1} liste olarak okunamadı. [\"a\", \"b\"] gibi bir JSON dizisi ya da virgülle ayrılmış değerler girin.",
     "OpenSSL is disabled": "OpenSSL devre dışı",
-    "The encryption key could not be reset, because the OpenSSL PHP extension is not enabled": "OpenSSL PHP uzantısı etkinleştirilmediğinden şifreleme anahtarı sıfırlanamadı"
+    "The encryption key could not be reset, because the OpenSSL PHP extension is not enabled": "OpenSSL PHP uzantısı etkinleştirilmediğinden şifreleme anahtarı sıfırlanamadı",
+    "The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.": "Ödeme doğrulanırken sipariş toplamı değişti. Ödeme iptal edildi. Lütfen siparişinizi kontrol edip tekrar deneyiniz."
 }
