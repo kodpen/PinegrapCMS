@@ -944,6 +944,17 @@ function submit_order($type) {
     $order_receipt_email_page_id = $row['order_receipt_email_page_id'];
     $next_page_id = $row['next_page_id'];
     
+    // The order preview layouts shipped with the turkish_default install seed post the
+    // translated label of the offline payment option as the field value instead of the
+    // canonical name. Normalize it before validation so that the allow-list below, the
+    // payment method switches and the stored orders.payment_method all see the canonical
+    // value. Whether offline payment is actually offered is still decided by the allow-list.
+    // The compared string is the UTF-8 byte sequence of the Turkish label "Cevrimdisi Odeme"
+    // (with the Turkish characters), written as escapes to keep this file ASCII-only.
+    if ($liveform->get_field_value('payment_method') === "\xc3\x87evrimd\xc4\xb1\xc5\x9f\xc4\xb1 \xc3\x96deme") {
+        $liveform->assign_field_value('payment_method', 'Offline Payment');
+    }
+
     // if the mode is not paypal_express_checkout_return, then validate the rest of the fields
     if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
         // if a nonrecurring transaction or recurring transaction is required, then require a payment method
