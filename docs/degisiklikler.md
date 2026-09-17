@@ -41,6 +41,200 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
+
+Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
+API'nin site ayarları, API devir temizliği, teklif uçları, ERP fatura PDF'i ve
+VUK 509 alanları. Bölümleri aşağıda, yeniden eskiye.
+
+**Birleştirmede elle çözülen iki çakışma.** Her dal `tr.json`'un sonuna anahtar
+eklediği için dosya her merge'de çakıştı; iki tarafın anahtarları korunarak
+birleştirildi ve iki dalın aynı çeviriyle eklediği beş anahtar (`Carrier`,
+`Carrier VKN`, `Payment Date`, `Shipment Date`, `API Settings`) tekilleştirildi.
+`changelog.txt`'te VUK 509 ve fatura PDF girdileri aynı sürüm bloğuna
+yazılmıştı; ikisi de korundu, PDF girdisi VUK 509'a atıf yaptığı için sonra
+geliyor.
+
+**Doğrulama.** `php tools/lint.php` ve `php tools/check_lang.php` birleştirilmiş
+ağaçta temiz. **Çalışan bir örnek kurulmadı**: PDF çıktısı, ayar ekranları ve
+teklif uçları birleştirme sonrası halleriyle koşturulmadı. Dalların kendi
+içindeki doğrulamalar (varsa) ajanların PR açıklamalarındadır; bu dosyaya
+aktarılmadı.
+
+**Rebase tuzağı.** `feature/api-settings-screen` bir kez de main'in eski
+halinden rebase edilip ayrı bir dal olarak açıldı. O kopya, fatura PDF'inin
+`settings/prep.php`'ye eklediği iki satırı (`erp_seller_vkn`,
+`erp_seller_tax_office`) taşımıyordu; birleştirme sırası yanlış olsaydı iki alan
+ayar ekranından sessizce düşecekti. Eşzamanlı ajan çalışmasında dal, çıktığı
+main'den değil, **birleşeceği** main'den güncellenir.
+
+## 2026.4.4 — API'nin site ayarları: Site Bilgileri'nde kendi kategorisi (2026-09-17)
+
+Uygulama API'sinin beş site düzeyi ayarı — ana anahtar (`api_enabled`), HTTPS
+zorunluluğu (`api_require_https`), tanımın herkese açıklığı
+(`api_openapi_public`), günlük saklama süresi (`api_log_retention_days`) ve
+yükleme klasörü (`api_upload_folder_id`) — yalnız config sütunu olarak vardı.
+Dosya uçları bölümünde "açık kalan" diye not düşülen madde buydu; beşi birden
+Site Bilgileri'nde **API** kategorisine girdi.
+
+### Yeni ekran değil, ortak kategori akışı
+
+`includes/settings/api.php` + `api.save.php`, `registry.php` girdisi,
+`prep.php`'de okuma, `settings_api.php` giriş noktası — bölünmüş ayarların
+kalıbının aynısı. Hub kartı durumunu diğerleri gibi config satırından okuyor
+(API açık/kapalı, HTTPS zorunlu / HTTP'ye izin veriliyor).
+
+### Yükseltmesini çalıştırmamış siteye boş form gösterilmiyor
+
+Ayarlar 2026.4.4 ile geliyor; sürümü geçmemiş kurulumda sütunlar yok. Ekran bunu
+ayrı bir cümleyle söylüyor ("Bu ayarlar 2026.4.4 yükseltmesiyle gelir; bu site o
+yükseltmeyi henüz çalıştırmadı") — doldurulamayacak bir form yerine.
+
+### Ayrıca
+
+- Anahtar ve izin yönetimi `api_settings.php`'de kaldı; ayar ekranı oraya
+  bağlantı veriyor. İki ekranın konusu ayrı: biri sitenin API duruşu, diğeri
+  uygulama hesapları.
+- `tr.json`'a 25 dizge.
+
+## 2026.4.4 — API devri: migration yardımcısı, sürüm alanı, CLI uyarıları, eksik anahtarlar (2026-09-17)
+
+İçerik API'si dış geliştiriciye devredilmeden önceki temizlik turu. Dördü de
+küçük; üçü kod tabanının kendi sözleşmesine dönüş.
+
+### Ham `ALTER` migration yardımcısına alındı
+
+Yükleme klasörü adımı sütununu elle `SHOW COLUMNS` + `ALTER` çiftiyle ekliyordu;
+runner böyle bir adımı **sayamıyor ve raporlayamıyor**. `install_add_column()`
+ile yeniden yazıldı, diğer adımlar gibi `install_note()` bırakıyor.
+
+Aynı dosyada iki adım 4.28 numarasını paylaşıyordu. Yükleme klasörü adımı
+4.28'de kaldı, sonraki her adım bir yukarı kaydı; numaralara atıf yapan yorumlar
+da düzeltildi. `CLAUDE-tam.md`'deki alt adım zinciri ayrı bir commit'le eşitlendi.
+
+### API sürümü tam sayı
+
+Integration ucunun yolunda sürüm parçası yok, dolayısıyla sürüm düz bir tam
+sayı: `1`. `meta` kaynağı olduğu gibi döndürüyor; OpenAPI belgesi dize istediği
+için yalnız orada cast ediliyor.
+
+### Komut satırında uyarı basmayan init
+
+Cron ve otomatik yükseltme web sunucusu olmadan koşuyor; `SERVER_SOFTWARE` ve
+`HTTP_HOST` tanımsız oluyor ve PHP 8 her koşuda uyarı basıyordu. Üç okuma boş
+dizeye düşüyor — karşılaştırmaların zaten "web isteği değil" saydığı değer.
+
+### Eksik çeviri anahtarları — yarısı kapatıldı
+
+`check_lang.php`'nin bulduğu 15 anahtarın `tr.json` karşılığı yoktu. Sekizi
+İngilizce kaynak dizge, Türkçe değer aldı. **Yedisi doğrudan Türkçe metnin
+anahtar olarak kullanıldığı yerler**; çağrı çözülsün diye aynı metinle girildi.
+Asıl düzeltme — o yedi çağrının anahtarını İngilizceye çevirmek — yapılmadı ve
+açık duruyor.
+
+## 2026.4.4 — Teklif uçları: dış API'ye okuma yüzeyi (2026-09-17)
+
+`GET /offers` ve `GET /offers/{id}`, yeni `offers:read` kapsamı altında. Yazma
+yok: teklif kurmak panelin yedi tablo üzerinde yürüttüğü bir iş ve dışarıdan
+kurulacak bir yüzeyi yok — uçtan beklenen okumaydı.
+
+### Panelin kendi yükleyicisi kullanıldı
+
+Uç, teklif ekranının yükleyicisini yeniden kullanıyor; koşullar ve sonuçlar
+adlandırılmış nesnelere düzleştiriliyor. İkinci bir okuma yolu yazılmadı: teklif
+mantığı yedi tabloya yayılı, iki yerde tutulsa ilk ayrışacak şey o olurdu.
+
+### Sözleşme ayrıntıları
+
+- Tutarlar minor unit (kuruş) — API'nin geri kalanıyla aynı.
+- Süresiz teklifte `end_date` null.
+- `offer_status` saklanan bir alan değil, **türetiliyor**: etkin anahtarı artı
+  tarih aralığı, teklif ekranının türettiği kuralın aynısı. İki yerde iki farklı
+  "aktif" tanımı olmaması için.
+
+## 2026.4.4 — ERP: fatura PDF'i ve düzenlenebilir şablon (2026-09-17)
+
+Fatura yalnız kendi ekranında görülebiliyordu. Artık fatura ekranının araç
+çubuğundan A4 PDF olarak açılıyor veya indiriliyor. Belge, yer tutuculu bir HTML
+şablonundan üretiliyor; yazılımla gelen şablon ERP → Ayarlar'dan düzenlenebiliyor,
+son fatura üzerinde önizlenebiliyor ve varsayılana döndürülebiliyor.
+
+Şema adımı **4.46**: satıcının VKN/TCKN'si ve vergi dairesi — basılı faturanın
+taşıması zorunlu, hiçbir yerde tutulmuyordu — ve şablon sütunu. İki satıcı alanı
+Ayarlar → E-Ticaret → ERP kartında.
+
+### dompdf gömüldü, Composer yok
+
+`includes/dompdf/`: dompdf 3.1.6 ve zinciri (php-font-lib 1.0.2, php-svg-lib
+1.0.2, html5-php 2.10.1, PHP-CSS-Parser 8.9.0). Yerleşim sürüm arşivindeki gibi
+`vendor/` altında, yükleyici Pinegrap'in yazdığı `autoload.inc.php`. DejaVu
+fontlarını taşıdığı için Türkçe metin ek kurulum istemiyor; ~11 MB'ın 7,6 MB'ı
+o fontlar. `tools/lint.php` klasörü diğer gömülü kütüphaneler gibi atlıyor.
+
+### PHP tabanını kütüphane seçmez
+
+İlk alınan html5-php 2.11, zincirin tabanını tek başına PHP 7.4'e çekiyordu;
+dompdf, php-font-lib ve php-svg-lib 7.1'de koşuyor. **Tabanı yükseltmek bir
+kütüphane seçiminin yan etkisi olamaz**, o yüzden html5-php aynı belgeleri
+ayrıştıran en yeni uyumlu sürüme (2.10.1) sabitlendi. Ürünün desteklediği aralık
+korundu; PDF özelliği PHP 7.1 istiyor, daha eskisinde yalnız PDF düğmesi
+çalışmıyor, panelin geri kalanı etkilenmiyor.
+
+Kural olarak `CLAUDE-tam.md`'ye yazıldı: `includes/` altına kütüphane almadan
+önce `composer.json`'daki `php` kısıtına bakılır ve sürüm ona göre sabitlenir.
+
+### Çalışma anında `includes/` içine yazılmaz
+
+dompdf'in font önbelleği ve geçici dosyaları `data/cache/dompdf/` altına gidiyor.
+`includes/` bütünlük özetine giriyor; oraya yazan bir kütüphane her denetimde
+"kurcalanmış" görünürdü.
+
+### UTF-8: charset bildirimi `<head>`'in en başında
+
+dompdf belgeyi libxml ile bir kez daha ayrıştırıyor. libxml, HTML'i charset
+bildirimini görene kadar ISO-8859-1 okuyor ve **ASCII dışı ilk baytı çözdükten
+sonra artık geçiş yapmıyor.** Yerleşik şablon Türkçe bir açıklama yorumuyla
+açılıyordu, dolayısıyla PDF'teki her aksanlı harf iki yanlış harfe dönüşüyordu.
+`erp_invoice_pdf()` artık yorumları söküyor — sayfaya zaten hiç ulaşmıyorlar — ve
+tek charset bildirimini `<head>`'in en başına koyuyor, böylece başlığı ya da
+yorumu Türkçe olan düzenlenmiş bir şablon da kodlamayı çeviremiyor.
+
+Aynı turda internet satışı başlığı CSS `text-transform` yerine doğrudan büyük
+harfle yazıldı: dönüşüm noktalı İ'yi üretemiyor.
+
+## 2026.4.4 — ERP: internet satışı faturasında VUK 509 alanları (2026-09-17)
+
+İnternet satışının e-arşiv faturası müşterinin **nasıl ve ne zaman** ödediğini,
+malı **kimin** taşıdığını ve **ne zaman** çıktığını, bir de satışın yapıldığı
+adresi bildirmek zorunda. Sütunlar ERP şemasıyla birlikte gelmişti ama yalnız
+web adresi yazılıyordu ve **her sipariş internet satışı sayılıyordu.**
+
+### Köprünün türettikleri
+
+- İnternet satışı bayrağı sipariş türünden geliyor; tezgah satışı internet
+  satışı değil.
+- Web adresi, ERP ayarı boşsa site adresine düşüyor.
+- Siparişin ödeme yöntemi GİB'in ödeme şekli sözlüğüne eşleniyor.
+- Ödeme tarihi `orders.paid_at`'ten; geçit onaylı bir siparişte o alan yoksa
+  sipariş tarihinden.
+- Gönderim tarihi ve taşıyıcı, siparişin alıcılarından ve onların kargo
+  yönteminden.
+- İade belgeleri aynı alanları ana faturasından kopyalıyor.
+
+### Tahmini sevk tarihi gönderim tarihi değildir
+
+Ödeme adımı, sipariş verilirken her alıcıya bir tahmini sevk tarihi yazıyor.
+**Henüz gelmemiş bir tarih, malın çıktığı gün olamaz**; köprü, alıcının sevk
+tarihi bugün veya daha erken olana kadar gönderim tarihini boş bırakıyor.
+
+### Tutulmayan veri toplandı
+
+- Kargo yöntemlerine **Taşıyıcı Unvanı** ve **Taşıyıcı VKN** alanları eklendi
+  (Ayarlar → E-Ticaret → Kargo Yöntemleri); faturadaki taşıyıcı bilgisi buradan
+  geliyor.
+- Ödeme adımı, geçit onaylı ödemelerde `orders.paid_at`'i kaydediyor.
+- Fatura ekranı internet satışı bloğunu ayrı bir satırda gösteriyor.
+
 ## 2026.4.4 — Dosya uçları: dar bir yükleme kapısı (2026-09-16)
 
 Dış API'nin sunucuya **bir şey bırakabildiği** tek yer burası, o yüzden API'nin
