@@ -220,6 +220,8 @@ function pg_parasut_credentials_for_save()
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
             erp_default_series = '" . escape(trim(post_value('erp_default_series'))) . "',
             erp_web_address = '" . escape(trim(post_value('erp_web_address'))) . "',
+            erp_seller_vkn = '" . escape(substr(preg_replace('/\D/', '', (string) post_value('erp_seller_vkn')), 0, 11)) . "',
+            erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',

@@ -27,6 +27,7 @@ $skip_directories = array(
 	'includes/iyzipay-php',
 	'includes/phpexcel',
 	'includes/boxpacker',
+	'includes/dompdf',
 	'assets/lib',
 	'data/backups',
 	'data/temp',

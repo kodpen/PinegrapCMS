@@ -650,6 +650,8 @@ define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
 define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id']) ? (int) $row['erp_default_cash_account_id'] : 0);
 define('ERP_EINVOICE_SCENARIO', $row['erp_einvoice_scenario'] ?? 'basic');
 define('ERP_WEB_ADDRESS', $row['erp_web_address'] ?? '');
+define('ERP_SELLER_VKN', $row['erp_seller_vkn'] ?? '');
+define('ERP_SELLER_TAX_OFFICE', $row['erp_seller_tax_office'] ?? '');
 define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');

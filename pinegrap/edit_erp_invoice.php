@@ -256,6 +256,15 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
+            <div class="row mb-2 flex-wrap">
+                <div class="col-12 text-center text-md-start">
+                    <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                        <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-2"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-2"></i>' . lang('Download') . '</a>
+                    </nav>
+                </div>
+            </div>
+
             <div class="card my-4">
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                     ' . ($is_return ? lang('Return') : lang('Invoice')) . '
