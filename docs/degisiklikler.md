@@ -41,6 +41,51 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Sipariş ve adres kimlikleri SQL'e ham giriyordu; `order_view` widget'ı herkese açıktı (2026-09-17)
+
+Ön yüz sipariş ekranlarında `?id=` ve ShipWorks'ün gönderdiği sipariş numarası
+SQL'e olduğu gibi giriyordu. Giriş yapmış herhangi bir üye "Siparişi görüntüle"
+(`get_view_order_screen_content.php`) ekranındaki sahiplik denetiminden
+**sonraki** sorgularla, "Siparişi geri getir" (`order_history_retrieve_order.php`)
+akışındaki dört `UPDATE`/`DELETE` ile ve adres defteri güncellemesindeki
+(`update_address_book.php`) tırnaksız `WHERE id = ...` ile enjeksiyon
+yapabiliyordu; aynı `id` Reorder/Retrieve/Delete bağlantılarına kaçırılmadan
+basıldığı için yansıtılmış XSS de mümkündü. `shipworks.php` `updateshipment`
+çağrısında sipariş numarasını doğrudan sorguya ekliyordu. `order_view` widget'ı
+ise oturum açmamış ziyaretçiye ardışık sipariş kimlikleriyle herkesin siparişini
+gösteriyordu.
+
+### Kimlik okunduğu satırda tam sayı
+
+Her giriş noktasında kimlik okunduğu yerde `(int)`'e çevriliyor; böylece
+sahiplik denetimi, oturuma yazılan değer, sonraki SQL ifadeleri ve HTML
+bağlantıları aynı tam sayıyla çalışıyor. SQL'e girerken yine `e()` ile
+sarmalanıyor — tip ileride değişse de sözleşme korunsun diye — bağlantılara
+`h()` ile basılıyor. Aynı `$_GET['id']`'yi okuyan `order_history_reorder.php` ve
+`order_history_delete_order.php` de aynı cast'i aldı. ShipWorks sipariş numarası
+bigint olduğu için çok alıcılı tire eki ayrıldıktan sonra `ctype_digit()` ile
+doğrulanıyor; geçersiz değer sorguya ulaşmadan ShipWorks'ün beklediği
+`<Error><Code>4</Code>` XML cevabıyla reddediliyor (metin makineye döndüğü için
+çeviriden geçmiyor, dosyadaki diğer hatalarla aynı biçimde).
+
+### `order_view`: sahip ya da bu oturumda tamamlayan
+
+Widget (`includes/fn/widgets.php`) artık yalnız siparişin sahibi olan üyeye ya da
+siparişi bu oturumda tamamlamış misafire içerik veriyor; diğer her durumda boş
+dönüyor. Misafir izni `submit_order.php`'nin her başarılı siparişte oturuma
+yazdığı `completed_order_id` işaretine dayanıyor — `get_page_content.php` ve
+`get_order_receipt.php` de aynı işarete güveniyor — bu yüzden misafirin teşekkür
+sayfası çalışmaya devam ediyor, başka bir kimlik boş dönüyor. Genel bir anonim
+istisna açılmadı, şema değişmedi.
+
+### Doğrulama
+
+`php tools/lint.php` ve `php tools/check_lang.php` temiz; `tr.json` ve JS
+dokunulmadı. **Çalışan örnek kurulmadı**: misafir ödeme sonrası teşekkür sayfası
+tarayıcıda denenmedi; oturum işaretinin yönlendirmeden önce silinmediği ve
+misafirde `USER_ID`'nin `0`'a düştüğü statik okumayla doğrulandı. ShipWorks
+istemcisiyle gerçek `updateshipment` çağrısı yapılmadı.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
