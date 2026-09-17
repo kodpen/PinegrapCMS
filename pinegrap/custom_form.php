@@ -496,7 +496,7 @@ if ($liveform->check_form_errors() == false) {
         } elseif (($field['type'] == 'text area') && ($field['wysiwyg'] == 1)) {
             $form_data_type = 'html';
             
-            $liveform->assign_field_value($field['id'], prepare_rich_text_editor_content_for_input($liveform->get_field_value($field['id'])));
+            $liveform->assign_field_value($field['id'], prepare_rich_text_editor_content_for_input(pg_sanitize_rich_text($liveform->get_field_value($field['id']))));
         }
         
         // if this is a quiz custom form and this is a quiz field, then increase number of quiz questions and initialize variable for correct answer

@@ -159,7 +159,7 @@ if (!$_POST) {
     $output_start_time = '';
 
     // if an e-mail campaign job is setup on the server, then allow e-mail campaign to be scheduled
-    if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB === true) {
+    if (email_campaign_job_enabled()) {
         $output_start_time =
             '<div class="col-12">
                 <div class="card my-4">
@@ -780,7 +780,7 @@ if (!$_POST) {
     $liveform = new liveform('view_email_campaigns');
     
     // if email campaign job is active
-    if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB === true) {
+    if (email_campaign_job_enabled()) {
         $liveform->add_notice(lang('The campaign has been created, and it will be sent at the scheduled time.'));
         
     // else email campaign job is not active

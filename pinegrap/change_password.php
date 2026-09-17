@@ -48,10 +48,34 @@ if ($pg_set_password_mode) {
 
 // if there is not already an error for email_address and current password fields, validate login
 } elseif (($liveform->check_field_error('email_address') == false) && ($liveform->check_field_error('current_password') == false)) {
+    $pg_login_identifier = $liveform->get_field_value('email_address');
+
+    // Verifying the current password is a sign-in in everything but name, and
+    // this form is reachable without a session, so it is counted against the
+    // same address and account limits as index.php. Without them this handler
+    // is an unthrottled oracle for any account's password.
+    check_banned_ip_addresses('login');
+    pg_login_throttle_guard($pg_login_identifier);
+
+    // The sign-in question screen cannot stand in for this form (it carries
+    // no new-password fields), so once the failures reach the question
+    // threshold the attempt is refused outright, before the password is
+    // looked at. Signing in at the login form clears the account's counter.
+    if (pg_login_captcha_required($pg_login_identifier)) {
+        log_activity('access denied to change password (too many failed attempts) (email or username: ' . $pg_login_identifier . ')', 'UNKNOWN');
+        $liveform->mark_error('current_password', lang('There have been several failed sign-in attempts for this account or from this address. Please sign in first, then change your password.'));
+        $liveform->assign_field_value('current_password', '');
+        go(get_page_type_url('change password'));
+    }
+
     // if login is not valid, check which part of login is invalid. Raw password
     // now; validate_login() returns the user id, which we reuse below.
-    $change_user_id = validate_login($liveform->get_field_value('email_address'), $liveform->get_field_value('current_password'));
+    $change_user_id = validate_login($pg_login_identifier, $liveform->get_field_value('current_password'));
     if ($change_user_id === false) {
+        // A wrong password is counted before the visitor is told which half
+        // was wrong, so the counter cannot be avoided by reading the message.
+        pg_login_record_failure($pg_login_identifier);
+
         // if email_address exists, password is incorrect, so output error about password being incorrect
         if (validate_username($liveform->get_field_value('email_address')) == true) {
             log_activity('access denied to change password (password invalid) (email or username: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
@@ -63,6 +87,11 @@ if ($pg_set_password_mode) {
             log_activity('access denied to change password (email or username invalid: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
             $liveform->mark_error('email_address', lang('The email address or username you entered could not be found.'));
         }
+
+    // The current password is right: forget this account's failures, as a
+    // successful sign-in does.
+    } else {
+        pg_login_throttle_pass($pg_login_identifier);
     }
 }
 

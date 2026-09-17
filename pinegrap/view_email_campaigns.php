@@ -33,7 +33,7 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
+if (email_campaign_job_enabled()) {
     $output_subheading_ready_status = lang('scheduled');
 } else {
     $output_subheading_ready_status = lang('ready-to-send');
@@ -81,7 +81,7 @@ switch (($_SESSION['software']['view_email_campaigns']['sort'] ?? '')) {
 
     default:
         // If the email campaign job is enabled, then set the default sort column to Scheduled Time
-        if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
+        if (email_campaign_job_enabled()) {
             $sort_column = 'email_campaigns.start_time';
             $_SESSION['software']['view_email_campaigns']['sort'] = lang('Scheduled Time');
             $_SESSION['software']['view_email_campaigns']['order'] = 'asc';
@@ -101,7 +101,7 @@ if (isset($_SESSION['software']['view_email_campaigns']['order']) == false) {
     $_SESSION['software']['view_email_campaigns']['order'] = 'asc';
 }
 
-if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
+if (email_campaign_job_enabled()) {
     $output_start_time_heading = '<th>' . get_column_heading(lang('Scheduled Time'), ($_SESSION['software']['view_email_campaigns']['sort'] ?? ''), ($_SESSION['software']['view_email_campaigns']['order'] ?? '')) . '</th>';
 } else {
     $output_start_time_heading = '';
@@ -165,7 +165,7 @@ if ($email_campaigns) {
         $output_link_url = 'edit_email_campaign.php?id=' . $email_campaign['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
         
         // if the e-mail campaign job is enabled, then prepare to show start time cell
-        if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
+        if (email_campaign_job_enabled()) {
             // if start time was not set, then clear start time
             if ($email_campaign['start_time'] == '0000-00-00 00:00:00') {
                 $start_time = '';

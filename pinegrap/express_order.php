@@ -1288,7 +1288,7 @@ foreach ($order_items as $order_item) {
                     } elseif (($form_field['type'] == 'text area') && ($form_field['wysiwyg'] == 1)) {
                         $form_data_type = 'html';
                         
-                        $liveform->assign_field_value($html_field_name, prepare_rich_text_editor_content_for_input($liveform->get_field_value($html_field_name)));
+                        $liveform->assign_field_value($html_field_name, prepare_rich_text_editor_content_for_input(pg_sanitize_rich_text($liveform->get_field_value($html_field_name))));
                     }
                     
                     // if this field has multiple values (i.e. check box group or pick list)

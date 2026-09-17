@@ -2518,7 +2518,7 @@ if (!$_POST) {
                 'shopping_cart_label' => $_POST['express_order_shopping_cart_label'],
                 'quick_add_label' => $_POST['express_order_quick_add_label'],
                 'quick_add_product_group_id' => $_POST['express_order_quick_add_product_group_id'],
-                'product_description_type' => $_POST['product_description_type'],
+                'product_description_type' => (isset($_POST['express_order_product_description_type']) ? $_POST['express_order_product_description_type'] : 'full_description'),
                 'shipping_form' => $_POST['express_order_shipping_form'],
                 'special_offer_code_label' => $_POST['express_order_special_offer_code_label'],
                 'special_offer_code_message' => $_POST['express_order_special_offer_code_message'],
@@ -2577,7 +2577,7 @@ if (!$_POST) {
                 'shopping_cart_label' => $_POST['shopping_cart_shopping_cart_label'],
                 'quick_add_label' => $_POST['shopping_cart_quick_add_label'],
                 'quick_add_product_group_id' => $_POST['shopping_cart_quick_add_product_group_id'],
-                'product_description_type' => $_POST['product_description_type'],
+                'product_description_type' => (isset($_POST['shopping_cart_product_description_type']) ? $_POST['shopping_cart_product_description_type'] : 'full_description'),
                 'special_offer_code_label' => $_POST['shopping_cart_special_offer_code_label'],
                 'special_offer_code_message' => $_POST['shopping_cart_special_offer_code_message'],
                 'update_button_label' => $_POST['shopping_cart_update_button_label'],
@@ -2610,7 +2610,7 @@ if (!$_POST) {
         case 'shipping method':
             $properties = array(
                 'page_id' => $page_id,
-                'product_description_type' => $_POST['product_description_type'],
+                'product_description_type' => (isset($_POST['shipping_method_product_description_type']) ? $_POST['shipping_method_product_description_type'] : 'full_description'),
                 'submit_button_label' => $_POST['shipping_method_submit_button_label'],
                 'next_page_id' => $_POST['shipping_method_next_page_id']
             );
@@ -2637,7 +2637,7 @@ if (!$_POST) {
         case 'order preview':
             $properties = array(
                 'page_id' => $page_id,
-                'product_description_type' => $_POST['product_description_type'],
+                'product_description_type' => (isset($_POST['order_preview_product_description_type']) ? $_POST['order_preview_product_description_type'] : 'full_description'),
                 'card_verification_number_page_id' => $_POST['order_preview_card_verification_number_page_id'],
                 'terms_page_id' => $_POST['order_preview_terms_page_id'],
                 'submit_button_label' => $_POST['order_preview_submit_button_label'],

@@ -390,10 +390,10 @@ switch ($_REQUEST['action']) {
         break;
 
     case 'updateshipment':
-        $order_number = $_REQUEST['order'];
+        $order_number = (string) ($_REQUEST['order'] ?? '');
 
         // Remember the requested order number, for error messages further below.
-        $requested_order_number = $_REQUEST['order'];
+        $requested_order_number = $order_number;
 
         // If there is a dash in the order number, then this is a multi-recipient order,
         // so remove dash and number, to get actual order number.
@@ -427,12 +427,29 @@ switch ($_REQUEST['action']) {
             $recipient_number = 1;
         }
 
+        // The order number must be a positive integer (orders.order_number is a bigint);
+        // reject anything else before it reaches the query below.
+        if (($order_number === '') || (ctype_digit($order_number) == false)) {
+            echo
+                '<?xml version="1.0" standalone="yes" ?>
+                <ShipWorks moduleVersion="3.0.0" schemaVersion="1.0.0">
+                    <Error>
+                        <Code>4</Code>
+                        <Description>The order number is not valid (' . h($requested_order_number) . '), so the shipment could not be updated.</Description>
+                    </Error>
+                </ShipWorks>';
+
+            exit();
+        }
+
+        $recipient_number = (int) $recipient_number;
+
         // Try to find an order for the order number.
         $order_id = db_value(
             "SELECT id
             FROM orders
             WHERE
-                (order_number = '$order_number')
+                (order_number = '" . e($order_number) . "')
                 AND (status != 'incomplete')");
 
         // If an order was not found, then output error.

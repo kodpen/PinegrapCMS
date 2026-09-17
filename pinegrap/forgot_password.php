@@ -157,6 +157,10 @@ db(
 // Send reset password email to user. We use a short query string parameter ("k") for the token, to
 // prevent the link from from being too long and breaking in email clients.  We use "k" instead of
 // "t" for the token, because "t" is already used for tracking codes.
+//
+// The link is built from the configured hostname, never from the request's
+// Host header: this endpoint takes anonymous posts, so a spoofed header would
+// otherwise mail the victim a reset link that hands the token to another host.
 
 email(array(
     'to' => $email,
@@ -166,7 +170,7 @@ email(array(
     'body' =>
         lang('We received a request to reset your password. You can reset your password by clicking the link below.') . "\n" .
         "\n" .
-        URL_SCHEME . HOSTNAME . get_page_type_url('set password') . '?k=' . $token['token'] . "\n" .
+        URL_SCHEME . HOSTNAME_SETTING . get_page_type_url('set password') . '?k=' . $token['token'] . "\n" .
         "\n" .
         lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.') ));
 
