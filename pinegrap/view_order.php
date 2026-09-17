@@ -137,6 +137,28 @@ if (!$_POST) {
     // additions, hence the defaults.
     $order_refund_status    = isset($row['refund_status']) ? (string) $row['refund_status'] : '';
     $order_refunded_at      = isset($row['refunded_at']) ? (int) $row['refunded_at'] : 0;
+
+    // paid_at exists from 2026.4.4 on; without it nothing here can tell an
+    // unpaid bank transfer from a paid one, so the awaiting state is simply off.
+    $order_awaiting_payment    = isset($row['paid_at']) && pg_order_awaiting_payment($row);
+    $order_cancelled_at        = isset($row['cancelled_at']) ? (int) $row['cancelled_at'] : 0;
+    $order_cancellation_reason = isset($row['cancellation_reason']) ? trim((string) $row['cancellation_reason']) : '';
+
+    $output_awaiting_badge = $order_awaiting_payment
+        ? ' <span class="badge bg-warning text-dark">' . lang('Awaiting bank transfer') . '</span>'
+        : '';
+
+    // The reason is typed when the order is cancelled and was stored without
+    // ever being shown; it belongs next to the status it explains.
+    $output_cancellation_rows = '';
+    if (($status == 'cancelled') && (($order_cancellation_reason !== '') || ($order_cancelled_at > 0))) {
+        $output_cancellation_rows =
+            '<div class="row" >
+                <span class="translateable col text-muted">' . lang('Cancellation reason') . ':</span>
+                <span class="col text-end">' . (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
+                . (($order_cancelled_at > 0) ? '<br><small class="text-muted">' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . '</small>' : '') . '</span>
+            </div>';
+    }
     $order_refund_reference = isset($row['refund_reference']) ? (string) $row['refund_reference'] : '';
     $commission = number_format($row['commission'] / 100, 2, '.', ',');
     $transaction_id = $row['transaction_id'];
@@ -2140,6 +2162,21 @@ if (!$_POST) {
     $output_cancel_button = '';
     $output_cancel_modal  = '';
 
+    // Bank transfer that has not arrived yet: the operator records the money
+    // when they see it on the statement. The button carries its own form,
+    // because the button bar sits outside the order form and a nested form
+    // would not post.
+    $output_mark_paid_button = '';
+    if ($order_awaiting_payment) {
+        $output_mark_paid_button =
+            '<form method="post" class="d-inline-block me-2 mb-2">
+                ' . get_token_field() . '
+                <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
+                <button type="submit" name="submit_mark_paid" value="paid" class="btn btn-primary btn-sm" data-confirm-content="' . lang('Record that the bank transfer for this order has arrived?') . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Payment Received') . '</button>
+            </form>';
+    }
+
     // ── Manual refund state ─────────────────────────────────────────────
     //
     // process_order_cancellation() writes refund_status = 'manual_required'
@@ -2406,6 +2443,7 @@ if (!$_POST) {
                     <div class="col-12 col-sm-12 text-center text-md-start">
 
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                            ' . $output_mark_paid_button . '
                             ' . $output_gateway_buttons . '
                             ' . $output_cancel_button . '
                             ' . $output_parasut_buttons . '
@@ -2434,8 +2472,9 @@ if (!$_POST) {
                                     </div>
                                     <div class="row" >
                                         <span class="translateable col text-muted">' . lang('Status') . ':</span>
-                                        <span class="translateable col text-end">' . lang(h(ucwords($status))) . '</span>
+                                        <span class="translateable col text-end">' . lang(h(ucwords($status))) . $output_awaiting_badge . '</span>
                                     </div>
+                                    ' . $output_cancellation_rows . '
                                     <div class="row" >
                                         <span class="translateable col text-muted">' . lang('Order Number') . ':</span>
                                         <span class="col text-end" style="font-size: 120%;font-weight:500">' . $order_number . '</span>
@@ -2753,6 +2792,33 @@ if (!$_POST) {
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
 
         $liveform->add_notice(lang('The refund has been processed.'));
+        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+
+    // if the operator recorded that the bank transfer for this order arrived
+    } elseif ($liveform->get_field_value('submit_mark_paid') == 'paid') {
+
+        $order_id = (int) $liveform->get('id');
+
+        $paid_row = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
+
+        if (!$paid_row) {
+            output_error(lang('Order not found.'));
+        }
+
+        // Only an order that is still waiting: a card order, a cancelled order
+        // or one already marked paid has nothing to record, and refusing keeps
+        // paid_at meaning what it says. The column check covers a schema that
+        // has not been upgraded, where the button is never shown anyway.
+        if (!isset($paid_row['paid_at']) || !pg_order_awaiting_payment($paid_row)) {
+            $liveform->mark_error('_error', lang('This order is not awaiting payment.'));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+        }
+
+        // The helper writes paid_at and the activity log entry; it is a no-op
+        // when another path recorded the payment in the meantime.
+        pg_order_mark_paid($order_id, (int) (isset($user['id']) ? $user['id'] : 0));
+
+        $liveform->add_notice(lang('Payment recorded.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
     // if the operator confirmed that they processed the refund themselves

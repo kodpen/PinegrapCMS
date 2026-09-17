@@ -282,6 +282,50 @@ halde git'te izleniyor.
 
 ---
 
+## 2026.4.4 — Havale siparişleri: ödeme bekleyen durumu ve süreli otomatik iptal (2026-09-17, alt adım 4.48)
+
+Çevrimdışı ödeme (havale) ile verilen sipariş ödenmiş sipariş gibi `complete`
+oluyordu; paranın geldiğine dair kayıt yoktu, gelmeyenler elle siliniyordu.
+Durum sütununa yeni değer **eklenmedi**: "ödeme bekleyen",
+`payment_method='Offline Payment' AND paid_at=0 AND status IN ('complete','exported')`
+koşulundan türetilir (`pg_order_awaiting_payment()`), böylece `orders.status`
+üzerine kurulu rapor, dışa aktarma ve filtreler olduğu gibi çalışır.
+
+- Sipariş listesinde **Havale bekleyen** filtresi (`awaiting_transfer`,
+  `refund_pending` gibi türetilmiş) ve satırda "Ödeme bekleniyor" rozeti; sipariş
+  ekranında "Havale bekleniyor" rozeti ve **Ödeme Alındı** düğmesi
+  (`submit_mark_paid` → `pg_order_mark_paid()`, `paid_at = 0` koşuluyla tek
+  seferlik, etkinlik günlüğüne yazar).
+- E-Ticaret ayarlarına `ecommerce_offline_payment_cancel_days` (0 = kapalı).
+  `job.php` süresi dolan, faturalanmamış ve sevk edilmemiş havale siparişlerini
+  `process_order_cancellation()` ile iptal eder; sebep ("Otomatik iptal: havale
+  N gün içinde alınmadı.") sipariş ekranında ve müşteri zaman çizelgesinde
+  görünür — iptal nedeni daha önce hiç gösterilmiyordu.
+- `submit_order.php` gönderilen ödeme yöntemini çevirisinden sabitine eşler
+  ve tanınmayan değeri hata ile geri çevirir; `turkish_default` önizleme
+  şablonlarındaki (`101.php`, `1077.php`) `Çevrimdışı Ödeme` değeri
+  `Offline Payment` yapıldı.
+- Migration 4.48: `orders.payment_method` ENUM'una `'Pay With Iyzico'` eklendi
+  (mevcut liste `install_column_info` ile okunup korunur, ENUM değilse
+  atlanır; strict mode kapalı bağlantıda listede olmayan değer `''` olarak
+  yazılıyordu) ve `config.ecommerce_offline_payment_cancel_days TINYINT
+  UNSIGNED NOT NULL DEFAULT 0`.
+- ERP: `add_erp_invoice.php` seçicisinde ödenmemiş havale siparişi "— ödeme
+  bekliyor" ile işaretli, fatura kesildiğinde uyarı bildirimi; faturayı tam
+  kapatan tahsilat (`erp_invoice_refresh_paid()`, alıcının işlemi içinde)
+  siparişin `paid_at` alanını doldurur.
+- Müşteri zaman çizelgesi (`order_view` widget'ı) "Ödeme Alındı" olayını
+  `paid_at`'ten okur; ödenmemiş havalede rozet "Ödeme bekleniyor".
+
+### Doğrulama
+
+Sandbox'ta (turkish_default) uçtan uca koşturuldu: migration iki kez (ikincide
+her adım atlandı), havale ile sipariş (çevrili değer → `Offline Payment`,
+bozuk değer → hata), filtre/rozet/düğme, `job.php` ile otomatik iptal (faturalı
+ve taze sipariş dokunulmadı, 0 gün → sessiz), ERP fatura + tahsilat →
+`paid_at`. `lint.php` ve `check_lang.php` temiz. Mevcut `payment_method=''`
+satırları onarılmadı.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:

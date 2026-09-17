@@ -30,9 +30,13 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    // Orders that are paid for, belong to somebody, and carry no invoice yet.
+    // Orders that are complete, belong to somebody, and carry no invoice yet.
+    // A bank transfer order may be complete without being paid; the picker
+    // says so on the option rather than hiding the order, because an invoice
+    // is sometimes what the customer needs before they pay.
     $open_orders = (array) db_items("SELECT orders.id, orders.order_number, orders.total, orders.order_date,
-            orders.billing_first_name, orders.billing_last_name, orders.billing_company
+            orders.billing_first_name, orders.billing_last_name, orders.billing_company,
+            orders.status, orders.payment_method, orders.paid_at
         FROM orders
         WHERE orders.status = 'complete'
           AND orders.contact_id > 0
@@ -50,6 +54,11 @@ if (!$_POST) {
 
         // liveform prints option labels as-is and the billing name was typed by the customer.
         $label = h('#' . $order['order_number'] . ' - ' . $who . ' - ' . erp_money_out((int) $order['total']));
+
+        if (pg_order_awaiting_payment($order)) {
+            $label .= h(' — ' . lang('awaiting payment'));
+        }
+
         $order_options[$label] = (string) (int) $order['id'];
     }
 
@@ -143,6 +152,15 @@ if (!$_POST) {
     $liveform->remove_form();
     $liveform_document = new liveform('edit_erp_invoice');
     $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $result['full_number'])));
+
+    // The invoice was raised from an order whose bank transfer has not
+    // arrived; its payment date stays empty until the receipt is posted, and
+    // the operator should hear that now rather than find it on the document.
+    $invoiced_order = db_item("SELECT status, payment_method, paid_at FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
+
+    if (is_array($invoiced_order) && pg_order_awaiting_payment($invoiced_order)) {
+        $liveform_document->add_notice(lang('This order is still awaiting its bank transfer; the invoice has no payment date yet.'));
+    }
 
     go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . (int) $result['invoice_id']);
 }

@@ -293,6 +293,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_paypal_express_checkout_api_signature = $row['ecommerce_paypal_express_checkout_api_signature'];
     $ecommerce_offline_payment = $row['ecommerce_offline_payment'];
     $ecommerce_offline_payment_only_specific_orders = $row['ecommerce_offline_payment_only_specific_orders'];
+    $ecommerce_offline_payment_cancel_days = (int) ($row['ecommerce_offline_payment_cancel_days'] ?? 0);
     $ecommerce_private_folder_id = $row['ecommerce_private_folder_id'];
     $ecommerce_retrieve_order_next_page_id = $row['ecommerce_retrieve_order_next_page_id'];
     $ecommerce_reward_program = $row['ecommerce_reward_program'];

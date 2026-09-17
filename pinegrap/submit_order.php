@@ -961,6 +961,34 @@ function submit_order($type) {
         if (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE)) {
             $liveform->validate_required_field('payment_method', lang('A payment method is required.'));
 
+            // Legacy checkout layouts post the translated label as the value, so a
+            // value that matches the translation of a known method is mapped back
+            // to its constant before anything downstream reads it. Anything else
+            // is refused here: orders.payment_method is an ENUM and the connection
+            // runs without strict mode, so an unknown value would be stored as ''
+            // and the order would be saved with no payment method at all.
+            if ($liveform->check_field_error('payment_method') == FALSE) {
+                $known_payment_methods = array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico');
+                $posted_payment_method = trim((string) $liveform->get_field_value('payment_method'));
+
+                if (in_array($posted_payment_method, $known_payment_methods, true) == FALSE) {
+                    $matched_payment_method = '';
+
+                    foreach ($known_payment_methods as $known_payment_method) {
+                        if (mb_strtolower($posted_payment_method, 'UTF-8') == mb_strtolower(trim((string) lang($known_payment_method)), 'UTF-8')) {
+                            $matched_payment_method = $known_payment_method;
+                            break;
+                        }
+                    }
+
+                    if ($matched_payment_method != '') {
+                        $liveform->assign_field_value('payment_method', $matched_payment_method);
+                    } else {
+                        $liveform->mark_error('payment_method', lang('Please select a payment method.'));
+                    }
+                }
+            }
+
             // If there is not already an error for the payment method field, then require the
             // selected payment method to be one that is offered for this order. This is an
             // allow-list on purpose: an unknown value would fall through the payment switches

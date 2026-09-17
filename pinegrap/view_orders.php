@@ -98,6 +98,10 @@ if (isset($_SESSION['software']['ecommerce']['view_orders']['type']) == false) {
 // work.
 $refund_columns_exist = (bool) db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
 
+// paid_at arrives with the 2026.4.4 upgrade and is what tells a bank transfer
+// order that is still unpaid from one whose money came in. Probed the same way.
+$paid_at_column_exists = (bool) db_item("SHOW COLUMNS FROM orders LIKE 'paid_at'");
+
 $sql_status = "";
 
 // Prepare SQL status filter differently based on the selected status.
@@ -140,6 +144,17 @@ switch (($_SESSION['software']['ecommerce']['view_orders']['status'] ?? '')) {
         // Column not present, which means a filter kept in the session from a
         // newer build. Falls through to the default view rather than quietly
         // listing something that means something else.
+        // no break
+
+    case 'awaiting_transfer':
+        // Bank transfer orders whose money has not arrived. Also not a value of
+        // orders.status: the order is complete, the payment is what is missing,
+        // so this is the same predicate pg_order_awaiting_payment() applies to a
+        // single row. Falls through to the default view on an older schema.
+        if ($paid_at_column_exists) {
+            $sql_status = "AND (orders.payment_method = 'Offline Payment') AND (orders.paid_at = 0) AND (orders.status IN ('complete', 'exported'))";
+            break;
+        }
         // no break
 
     case 'complete_or_exported':
@@ -2216,6 +2231,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $statuses[] = array('label' => lang('Refund Pending'), 'value' => 'refund_pending');
     }
 
+    if ($paid_at_column_exists) {
+        $statuses[] = array('label' => lang('Awaiting Bank Transfer'), 'value' => 'awaiting_transfer');
+    }
+
     $output_status_options = '';
 
     // Loop through the statuses in order to prepare pick list options.
@@ -2411,6 +2430,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 orders.billing_first_name,
                 orders.billing_last_name,
                 orders.status,
+                orders.payment_method,
+                " . ($paid_at_column_exists ? "orders.paid_at" : "0 AS paid_at") . ",
                 orders.parasut_exported,
                 orders.parasut_invoice_id,
                 orders.order_number,
@@ -2537,6 +2558,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_status = '<span class="badge bg-success bg-gradient fw-light">' . lang(ucwords($status)) . '</span>';
         }else if($status == 'canceled' || $status == 'cancelled'){
             $output_status = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+        }
+        // A bank transfer order whose money has not arrived is complete but not
+        // paid; a second badge says so without changing the status itself.
+        if ($paid_at_column_exists && pg_order_awaiting_payment($row)) {
+            $output_status .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
         }
         // parasut_exported is set by two different things: the spreadsheet export
         // and an invoice raised through the API. Only parasut_invoice_id tells

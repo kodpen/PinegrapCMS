@@ -81,7 +81,7 @@ function erp_invoice_refresh_paid($invoice_id)
 {
     $invoice_id = (int) $invoice_id;
 
-    $invoice = db_item("SELECT grand_total, status FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
+    $invoice = db_item("SELECT grand_total, status, order_id FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 
     if (!is_array($invoice)) {
         return false;
@@ -102,11 +102,26 @@ function erp_invoice_refresh_paid($invoice_id)
         }
     }
 
-    return (erp_query("UPDATE erp_invoices
+    $updated = (erp_query("UPDATE erp_invoices
         SET paid_total = '" . $paid . "',
             status = '" . escape($status) . "',
             updated_at = '" . time() . "'
         WHERE id = '" . $invoice_id . "'") !== false);
+
+    // A receipt that settles the invoice is the confirmed payment moment for a
+    // bank transfer, so the order learns its payment date here. Runs inside the
+    // caller's transaction, so it rolls back with the receipt, and only touches
+    // an offline order still unpaid: a card order already carries the gateway's
+    // date, and an operator who pressed Payment Received first keeps theirs.
+    if ($updated && ($status === 'paid') && ((int) $invoice['order_id'] > 0)) {
+        erp_query("UPDATE orders
+            SET paid_at = '" . time() . "'
+            WHERE id = '" . (int) $invoice['order_id'] . "'
+              AND payment_method = 'Offline Payment'
+              AND paid_at = 0");
+    }
+
+    return $updated;
 }
 
 /**
