@@ -76,7 +76,9 @@ planı, (3) hata raporlaması. Her görev kendi dalında; push'tan hemen önce
 `includes/migrations/2026.4.4.php`, `init.php`, `docs/CLAUDE-tam.md`) **yalnız
 ekleme** yap ve kendi alanının bölümüne yaz. Göç alt adımı numarasını push'tan
 hemen önce `origin/main`'e bakarak al; iki PR aynı numarayı almışsa birleşmeden
-önce yeniden numaralandır.
+önce yeniden numaralandır. Alt adım numaraları yalnız yorum etiketidir ve zincir
+düzeltildiğinde kayar (2026-09-17'de PR #6 hepsini +1 kaydırdı); güncel numarayı
+her zaman `main`'deki `2026.4.4.php`'den oku, notlardan değil.
 
 ### Kod İçi Yorum Kuralları (YASAK LİSTESİ — istisnasız)
 
@@ -1767,11 +1769,11 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
-| `2026.4.4` (4.46) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |
-| `2026.4.4` (4.45) | `_erp_return_series`: `erp_document_series.doc_kind` ENUM'una `'sales_return'` ve `'purchase_invoice'` eklendi (iade kendi serisinde koşar) |
-| `2026.4.4` (4.44) | `_erp_settlements`: `erp_settlements` tablosu (`UNIQUE (invoice_id, account_txn_id)` — hangi tahsilat hangi faturayı kapattı; para hareketi değil) |
-| `2026.4.4` (4.43) | `_order_tax_base`: `order_items.tax_total` (satır vergisi; birim `tax` artık yazılmıyor, 2026.5.0'da düşer) + backfill |
-| `2026.4.4` (4.42) | `_erp_core`: 11 tablo (`erp_accounts`, `erp_account_transactions`, `erp_cash_accounts`, `erp_cash_transactions`, `erp_invoices` — VUK 509 sütunları dahil —, `erp_invoice_items`, `erp_waybills`, `erp_waybill_items`, `erp_document_series`, `erp_edoc_queue`, `erp_parasut_log`), `config.erp_*` (enabled, parasut_enabled, default_series, auto_invoice_on, default_cash_account_id, einvoice_scenario, web_address), `user.manage_erp` / `manage_erp_cash` / `manage_erp_settings`, mevcut tablolara sütun: `orders.erp_invoice_id` / `erp_account_id` / `paid_at`, `contacts.erp_account_id`, `shipping_methods.carrier_title` / `carrier_vkn`, `products.vat_exemption_code` |
+| `2026.4.4` (4.47) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |
+| `2026.4.4` (4.46) | `_erp_return_series`: `erp_document_series.doc_kind` ENUM'una `'sales_return'` ve `'purchase_invoice'` eklendi (iade kendi serisinde koşar) |
+| `2026.4.4` (4.45) | `_erp_settlements`: `erp_settlements` tablosu (`UNIQUE (invoice_id, account_txn_id)` — hangi tahsilat hangi faturayı kapattı; para hareketi değil) |
+| `2026.4.4` (4.44) | `_order_tax_base`: `order_items.tax_total` (satır vergisi; birim `tax` artık yazılmıyor, 2026.5.0'da düşer) + backfill |
+| `2026.4.4` (4.43) | `_erp_core`: 11 tablo (`erp_accounts`, `erp_account_transactions`, `erp_cash_accounts`, `erp_cash_transactions`, `erp_invoices` — VUK 509 sütunları dahil —, `erp_invoice_items`, `erp_waybills`, `erp_waybill_items`, `erp_document_series`, `erp_edoc_queue`, `erp_parasut_log`), `config.erp_*` (enabled, parasut_enabled, default_series, auto_invoice_on, default_cash_account_id, einvoice_scenario, web_address), `user.manage_erp` / `manage_erp_cash` / `manage_erp_settings`, mevcut tablolara sütun: `orders.erp_invoice_id` / `erp_account_id` / `paid_at`, `contacts.erp_account_id`, `shipping_methods.carrier_title` / `carrier_vkn`, `products.vat_exemption_code` |
 | `2026.4.4` (4.40) | `_security_headers`: `config.security_headers` / `security_frame_protection` / `security_hsts` / `security_csp_mode` / `security_csp_policy` / `waf_text_log` / `waf_inflight_limit` / `waf_auto_ban_max_minutes` / `login_throttle_captcha_after` (güvenlik başlıkları + CSP raporlama, fail2ban günlüğü, iki güvenlik duvarı tavanı, giriş sorusu) |
 | `2026.4.4` (4.33) | `_push_signout`: `push_subscriptions.auth_selector` + index (çıkışta o tarayıcının aboneliği düşer; silme `pg_auth_token_revoke()` içinde, oturumun bittiği tek nokta) |
 | `2026.4.4` (4.30) | `_app_icon`: `config.app_icon` (kurulu uygulamanın simgesi; Ayarlar'da dosya adı seçilir, `manifest_icon.php` istenen boyutu çizip `data/temp/app_icon` altında saklar) |
