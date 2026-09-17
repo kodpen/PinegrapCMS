@@ -1104,9 +1104,9 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
                     $data .= $row['data'];
                 }
             }
-            // if this form field is wysiwyg, then do not prepare for html
+            // if this form field is wysiwyg, then do not prepare for html; the markup is filtered instead
             if ($form_field['wysiwyg'] == 1) {
-                $data = prepare_form_data_for_output($data, $form_field['type'], $prepare_for_html = false);
+                $data = prepare_form_data_for_output(pg_sanitize_rich_text($data), $form_field['type'], $prepare_for_html = false);
                 // else this form field is not wysiwyg, so prepare for html
             } else {
                 $data = prepare_form_data_for_output($data, $form_field['type'], $prepare_for_html = true);
@@ -1394,9 +1394,9 @@ function get_submitted_form_content_with_form_fields($properties)
                     $data .= $row['data'];
                 }
             }
-            // If this form field is wysiwyg, then do not prepare for html.
+            // If this form field is wysiwyg, then do not prepare for html; the markup is filtered instead.
             if ($field['wysiwyg'] == 1) {
-                $data = prepare_form_data_for_output($data, $field['type'], $prepare_for_html = false);
+                $data = prepare_form_data_for_output(pg_sanitize_rich_text($data), $field['type'], $prepare_for_html = false);
                 // Otherwise this form field is not wysiwyg, so prepare for html.
             } else {
                 $data = prepare_form_data_for_output($data, $field['type'], $prepare_for_html = true);
@@ -1633,9 +1633,9 @@ function get_form_review_info($properties)
             if ($field['data'] != '') {
                 $data = true;
             }
-            // If this form field is wysiwyg, then do not prepare for html.
+            // If this form field is wysiwyg, then do not prepare for html; the markup is filtered instead.
             if ($field['wysiwyg'] == 1) {
-                $field['data_info'] = prepare_form_data_for_output($field['data'], $field['type'], $prepare_for_html = false);
+                $field['data_info'] = prepare_form_data_for_output(pg_sanitize_rich_text($field['data']), $field['type'], $prepare_for_html = false);
                 // Otherwise this form field is not wysiwyg, so prepare for html.
             } else {
                 $field['data_info'] = prepare_form_data_for_output($field['data'], $field['type'], $prepare_for_html = true);
