@@ -326,6 +326,56 @@ ve taze sipariş dokunulmadı, 0 gün → sessiz), ERP fatura + tahsilat →
 `paid_at`. `lint.php` ve `check_lang.php` temiz. Mevcut `payment_method=''`
 satırları onarılmadı.
 
+## 2026.4.4 — Altı ekranda PHP fatal hatası (2026-09-17)
+
+Belirli bir yola girildiğinde sayfayı tamamen çökerten altı hata. Hiçbiri yeni
+yardımcı ya da şema istemedi; her düzeltme çöken satırın yerine kod tabanında
+zaten kullanılan doğru çağrıyı, sabiti veya sütunu koyar.
+
+- **Yorum eki silme** (`edit_comment.php`): iki yerde `aray(` yazım hatası.
+  Tanımsız fonksiyon çağrısı olduğu için ek silinmek istendiğinde sayfa ölüyordu.
+- **Üyelik klasöründen dosya indirme** (`get_file.php`): `check_view_access()`
+  `USER_MEMBER` sabitini okuyor ama `get_file.php` kendi hafif `initialize_user()`
+  kopyasını taşıdığından sabit orada hiç tanımlanmıyordu. Tanım, `includes/fn/auth.php`
+  ile birebir aynı aktif-üye kuralıyla eklendi (üye numarası dolu; bitiş tarihi
+  boş, `0000-00-00` veya bugünden ileri). Oturumsuz dal tanım istemiyor,
+  `check_view_access()` önce `USER_LOGGED_IN`'e bakıp kesiyor.
+- **Taksitli siparişin fişi** (`get_order_receipt.php`): genel toplama sayısal
+  `$installment_charges` yerine boş `$output_installment_charges` dizesi
+  ekleniyordu; PHP 8'de `float + ''` TypeError. Toplam artık sayısal değeri
+  alıyor. Kurulup hiç basılmayan taksit sayısı ve taksit farkı satırları da ek
+  ücret satırının altına konuldu.
+- **Takvim RSS istisna döngüsü** (`get_page.php`): tırnaksız dizi anahtarları
+  (`calendar_event_id`, `recurrence_number`) PHP 8'de tanımsız sabit hatası.
+  Tırnaklandı.
+- **Fatura yazdırma** (`order_invoice_print.php`): site adı var olmayan
+  `settings` tablosundan sorgulanıyordu; sorgu hatası `false` döner, istisna
+  fırlatmaz (sözleşme bu), dolayısıyla etrafındaki `try/catch` ölü koddu ve sayfa
+  hiç render edilmiyordu. Ad artık `ORGANIZATION_NAME` → `TITLE` → `HOSTNAME`
+  sırasıyla alınıyor; ilk ikisini `init.php` koşulsuz tanımlar. Dosya
+  başlığındaki `PineGrap` de aynı dokunuşta düzeltildi.
+- **Takvim Görünümü sistem widget'ı** (`includes/fn/widgets.php`):
+  `_render_system_widget_calendar_view()` `calendar_events`'ta bulunmayan dört
+  sütun seçiyordu ve başarısız sorgu widget'ın bulunduğu **herkese açık
+  sayfayı** öldürüyordu. Sorgu gerçek şemaya çekildi (`id`, `name`, `start_time`,
+  `all_day`, `short_description`; `published = 1`; ay aralığı). Geçersiz sayfa
+  join'i atıldı; etkinlik bağlantısı `calendar_view_pages` üzerinden ilk
+  yapılandırılmış görünüm sayfasına `?id=<etkinlik>` şeklinde kuruluyor —
+  widget'ın sayfa bağlamı olmadığından bu bir sezgi, bağlantı istenmezse
+  `$event_page_name` araması kaldırılır. Tablo yokluğu `@db_value('SELECT 1 …')`
+  ile yoklanıyordu, oysa `db_value()` hatada çıkar; `SHOW TABLES LIKE` ile
+  değiştirildi ki mevcut `$table_error` geri dönüşü gerçekten devreye girsin.
+  `'d M Y'` biçimindeki tanımsız `$month_names_tr` yerine `pg_widget_month_name()`.
+
+### Doğrulama
+
+`php -l` değişen dosyalarda temiz; `tools/lint.php` ve `tools/check_lang.php`
+temiz. Çalışan bir örnek kurulmadı; hiçbir düzeltme çalışma zamanında
+denenmedi. Widget sorgusu ve `calendar_view_pages` join'i yalnız
+`data/backups/*/sql.sql` içindeki şemaya ve `get_page.php`'deki eski takvim
+sorgularına karşı okundu. Taksitli fiş toplamı ve üyelik klasörü yolu statik
+incelendi.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
