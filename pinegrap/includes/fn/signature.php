@@ -742,8 +742,8 @@ function pg_signature_receipt_html($record)
 
                 // A rich text answer is stored as markup and was written by the
                 // person signing; it is printed the way every other screen in
-                // this software prints it.
-                $values[] = $answer['html'] ? $value : nl2br(h($value));
+                // this software prints it, filtered against the allow-list.
+                $values[] = $answer['html'] ? pg_sanitize_rich_text($value) : nl2br(h($value));
             }
 
             $printed = implode('<br>', $values);

@@ -2216,7 +2216,7 @@ function submit_custom_form($properties)
                 // Otherwise if the form field is a wysiwyg text area, then set type to html and prepare content for input.
             } elseif (($field['type'] == 'text area') && ($field['wysiwyg'] == 1)) {
                 $form_data_type = 'html';
-                $form->assign_field_value($html_field_name, prepare_rich_text_editor_content_for_input($form->get_field_value($html_field_name)));
+                $form->assign_field_value($html_field_name, prepare_rich_text_editor_content_for_input(pg_sanitize_rich_text($form->get_field_value($html_field_name))));
             }
             // If this field has multiple values (i.e. check box group or pick list),
             // then loop through values in order to add them to database.

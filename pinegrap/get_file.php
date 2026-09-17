@@ -1191,6 +1191,14 @@ function initialize_user()
         define('USER_MEMBER_ID', $user['member_id']);
         define('USER_EXPIRATION_DATE', $user['expiration_date']);
 
+        // check_view_access() reads USER_MEMBER for membership folders; mirror the
+        // active-member rule used by initialize_user() in includes/fn/auth.php.
+        if ((USER_MEMBER_ID != '') && ((USER_EXPIRATION_DATE == '') || (USER_EXPIRATION_DATE == '0000-00-00') || (USER_EXPIRATION_DATE >= date('Y-m-d')))) {
+            define('USER_MEMBER', true);
+        } else {
+            define('USER_MEMBER', false);
+        }
+
         if ((USER_ROLE < 3) || ($user['manage_forms'] == 'yes')) {
             define('USER_MANAGE_FORMS', true);
         } else {

@@ -26,8 +26,11 @@ initialize_order();
 $query =
     "SELECT
         order_id,
+        address_1,
         state,
-        country
+        zip_code,
+        country,
+        arrival_date
     FROM ship_tos
     WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -47,6 +50,9 @@ if ($row['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
 // set state and country for ship to for later when we check to see if there are any invalid products
 $state_code = $row['state'];
 $country_code = $row['country'];
+$ship_to_address_1 = $row['address_1'];
+$ship_to_zip_code = $row['zip_code'];
+$ship_to_arrival_date = $row['arrival_date'];
 
 include_once('liveform.class.php');
 $liveform = new liveform('shipping_method');
@@ -58,6 +64,27 @@ $liveform->validate_required_field('shipping_method', 'Please select a shipping 
 // if an error does not exist
 if ($liveform->check_form_errors() == false) {
     /* begin: calculate shipping cost for selected shipping method */
+
+    require_once(dirname(__FILE__) . '/shipping.php');
+
+    // The method id comes from the shopper, so apply the same eligibility rules as the shipping
+    // method screen: enabled, within its start/end time, not protected for this visitor, valid
+    // for the address type, today's availability and the recipient's zones and arrival date.
+    $shipping_method_check = check_shipping_method(array(
+        'shipping_method_id' => $liveform->get_field_value('shipping_method'),
+        'ship_to_id' => $_POST['ship_to_id'],
+        'address_1' => $ship_to_address_1,
+        'state' => $state_code,
+        'zip_code' => $ship_to_zip_code,
+        'country' => $country_code,
+        'arrival_date' => $ship_to_arrival_date));
+
+    if ($shipping_method_check['status'] != 'success') {
+        log_activity($shipping_method_check['message'] . ' (Order ID: ' . ($_SESSION['ecommerce']['order_id'] ?? '') . ', Ship To ID: ' . $_POST['ship_to_id'] . ', Shipping Method ID: ' . $liveform->get_field_value('shipping_method') . ')');
+        output_error(h($shipping_method_check['message']) . ' <a href="javascript:history.go(-1)">Go back</a>.');
+    }
+
+    $shipping_method_id = (int)$shipping_method_check['shipping_method']['id'];
 
     // get shipping method info
     $query =
@@ -81,7 +108,7 @@ if ($liveform->check_form_errors() == false) {
             item_rate,
             item_rate_first_item_excluded
         FROM shipping_methods
-        WHERE id = '" . escape($liveform->get_field_value('shipping_method')) . "'";
+        WHERE id = '" . $shipping_method_id . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     // if shipping method cannot be found, then shipping method was recently deleted or someone is trying to hack, so output error
@@ -109,29 +136,27 @@ if ($liveform->check_form_errors() == false) {
     $shipping_method_item_rate = $row['item_rate'];
     $shipping_method_item_rate_first_item_excluded = $row['item_rate_first_item_excluded'];
 
-    $zones = get_valid_zones($_POST['ship_to_id'], $country_code, $state_code);
+    // check_shipping_method() returns the recipient's zone that is allowed for this method. A method
+    // that is forced because no methods intersect for the destination has no zone, so no zone rates.
+    $zone_id = '';
+    $zone_base_rate = 0;
+    $zone_primary_weight_rate = 0;
+    $zone_secondary_weight_rate = 0;
+    $zone_item_rate = 0;
 
-    // loop through all valid zones in order to find a zone that is allowed for this shipping method
-    foreach ($zones as $zone_id) {
-        $query = "SELECT shipping_method_id
-                 FROM shipping_methods_zones_xref
-                 WHERE (shipping_method_id = '" . escape($liveform->get_field_value('shipping_method')) . "') AND (zone_id = '$zone_id')";
+    if (!empty($shipping_method_check['zone']['id'])) {
+        $zone_id = (int)$shipping_method_check['zone']['id'];
+
+        // get zone info
+        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = '" . $zone_id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
 
-        // if this zone is allowed for selected shipping method, get zone info
-        if (mysqli_num_rows($result) > 0) {
-            // get zone info
-            $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = '$zone_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-
+        if ($row) {
             $zone_base_rate = $row['base_rate'];
             $zone_primary_weight_rate = $row['primary_weight_rate'];
             $zone_secondary_weight_rate = $row['secondary_weight_rate'];
             $zone_item_rate = $row['item_rate'];
-
-            // we have found a zone, so we need to break out of this loop
-            break;
         }
     }
 
@@ -156,8 +181,6 @@ if ($liveform->check_form_errors() == false) {
         ORDER BY order_items.id ASC");
 
     $shipping_cost = 0;
-
-    require_once(dirname(__FILE__) . '/shipping.php');
 
     $realtime_rate = get_shipping_realtime_rate(array(
         'ship_to_id' => $_POST['ship_to_id'],
@@ -249,7 +272,7 @@ if ($liveform->check_form_errors() == false) {
     
     // if there is at least one active shipping discount offer, then continue with check
     if (check_if_active_shipping_discount_offer_exists() == TRUE) {
-        $offer = get_best_shipping_discount_offer($_POST['ship_to_id'], $liveform->get_field_value('shipping_method'));
+        $offer = get_best_shipping_discount_offer($_POST['ship_to_id'], $shipping_method_id);
         
         // if a shipping discount offer was found, then discount shipping
         if ($offer != FALSE) {
@@ -273,9 +296,9 @@ if ($liveform->check_form_errors() == false) {
     $query =
         "UPDATE ship_tos
         SET
-            shipping_method_id = '" . escape($liveform->get_field_value('shipping_method')) . "',
+            shipping_method_id = '" . $shipping_method_id . "',
             shipping_method_code = '" . escape($shipping_method) . "',
-            zone_id = '$zone_id',
+            zone_id = '" . $zone_id . "',
             shipping_cost = '$shipping_cost',
             original_shipping_cost = '$original_shipping_cost',
             offer_id = '" . ($offer['id'] ?? '') . "',

@@ -137,8 +137,9 @@ function get_custom_form_confirmation_screen_content($properties)
                 $field['data'] = mb_substr($field['data'], 0, -2);
             }
             
+            // Markup from a WYSIWYG field is printed unescaped, so it is filtered first.
             if ($field['wysiwyg'] == 1) {
-                $data = prepare_form_data_for_output($field['data'], $field['type'], $prepare_for_html = false);
+                $data = prepare_form_data_for_output(pg_sanitize_rich_text($field['data']), $field['type'], $prepare_for_html = false);
             } else {
                 $data = prepare_form_data_for_output($field['data'], $field['type'], $prepare_for_html = true);
             }

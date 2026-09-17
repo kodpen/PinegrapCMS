@@ -53,21 +53,27 @@ switch ($_GET['region_type']) {
     
     // if type is cregion
     case 'cregion':
+        $cregion_id = (int)(isset($_GET['region_id']) ? $_GET['region_id'] : 0);
+        $row = db_item("SELECT cregion_name, cregion_content, cregion_designer_type FROM cregion WHERE cregion_id = '" . $cregion_id . "'");
+
+        if (!is_array($row)) {
+            output_error(lang('Access denied.'));
+        }
+
+        // A designer region is design, not content: the screens that open one
+        // require the designer role, so does reading it here for the inline editor.
+        if (($row['cregion_designer_type'] == 'yes') && ($user['role'] > 1)) {
+            log_activity("access denied because user does not have access to edit designer region (" . $row['cregion_name'] . ")", $_SESSION['sessionusername']);
+            output_error(lang('Access denied.'));
+        }
+
         // if user has a user role and if they do not have access to this common region, then user does not have access to edit region, so output error
-        if (($user['role'] == 3) && (in_array($_GET['region_id'], get_items_user_can_edit('common_regions', $user['id'])) == FALSE)) {
-            $query = "SELECT cregion_name FROM cregion WHERE cregion_id = '" . escape($_GET['region_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-            
+        if (($user['role'] == 3) && (in_array($cregion_id, get_items_user_can_edit('common_regions', $user['id'])) == FALSE)) {
             log_activity("access denied because user does not have access to edit common region (" . $row['cregion_name'] . ")", $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
         
         // else the user has access to output the content
         } else {
-            // get common region content
-            $query = "SELECT cregion_content FROM cregion WHERE cregion_id = '" . escape($_GET['region_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
             $output = $row['cregion_content'];
         }
         break;

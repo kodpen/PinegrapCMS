@@ -398,6 +398,12 @@ $original_software_update_available = $row['software_update_available'];
 define('URL_SCHEME', $row['url_scheme']);
 
 // if script was requested from a browser, then define $_SERVER['HTTP_HOST'] for hostname
+//
+// HOSTNAME is the host the REQUEST named, taken verbatim from the Host header,
+// which the client controls. It is right for redirects back to the page the
+// visitor is on. Anything that leaves the request - a link in an e-mail, a
+// canonical URL, a feed - must be built from HOSTNAME_SETTING below, or a
+// spoofed header decides where the recipient is sent.
 if (isset($_SERVER['HTTP_HOST']) == true) {
     define('HOSTNAME', $_SERVER['HTTP_HOST']);
 
