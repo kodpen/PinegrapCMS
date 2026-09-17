@@ -186,6 +186,56 @@ $output_account = ((int) $invoice['account_id'] > 0)
     ? '<a href="edit_erp_account.php?id=' . (int) $invoice['account_id'] . '">' . h($invoice['account_title']) . '</a>'
     : h($invoice['account_title']);
 
+// The internet sale block: an e-archive invoice for a sale made over the
+// internet has to state how and when it was paid, who carried the goods and
+// when they left, and the address it was sold at. Only shown for such a sale.
+$output_internet_sale = '';
+if ((int) ($invoice['is_internet_sale'] ?? 0) === 1) {
+    $empty = '<span class="text-body-secondary">&mdash;</span>';
+
+    $date_out = function ($date) use ($empty) {
+        $date = (string) $date;
+        return ($date !== '' && $date !== '0000-00-00') ? h(prepare_form_data_for_output($date, 'date')) : $empty;
+    };
+
+    $payment_code = (string) ($invoice['payment_method'] ?? '');
+    $payment_labels = erp_payment_method_labels();
+    $output_payment_method = ($payment_code !== '') ? h($payment_labels[$payment_code] ?? $payment_code) : $empty;
+
+    $carrier_title = (string) ($invoice['carrier_title'] ?? '');
+    $carrier_vkn = (string) ($invoice['carrier_vkn'] ?? '');
+    $output_carrier = ($carrier_title !== '' || $carrier_vkn !== '')
+        ? h($carrier_title) . (($carrier_vkn !== '') ? ' <span class="text-body-secondary">' . h($carrier_vkn) . '</span>' : '')
+        : $empty;
+
+    $web_address = (string) ($invoice['web_address'] ?? '');
+    $output_web_address = ($web_address !== '') ? h($web_address) : $empty;
+
+    $output_internet_sale = '
+                    <div class="row border-top mt-2 pt-2">
+                        <div class="col-12 col-sm-6 col-lg-3 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Payment Method') . '</div>
+                            <div>' . $output_payment_method . '</div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Payment Date') . '</div>
+                            <div>' . $date_out($invoice['payment_date'] ?? '') . '</div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Shipment Date') . '</div>
+                            <div>' . $date_out($invoice['shipment_date'] ?? '') . '</div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Carrier') . '</div>
+                            <div>' . $output_carrier . '</div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-2 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Web Address') . '</div>
+                            <div>' . $output_web_address . '</div>
+                        </div>
+                    </div>';
+}
+
 echo
 pg_page_shell([
         'title' => $is_return ? lang('Return') : lang('Invoice'),
@@ -239,6 +289,7 @@ pg_page_shell([
                         </div>'
                             : '') . '
                     </div>
+                    ' . $output_internet_sale . '
                 </div>
             </div>
 

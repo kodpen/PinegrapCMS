@@ -79,6 +79,16 @@ if (!$_POST) {
                                             <div class="form-text text-end">' . lang('Shipping Method Code for Order Reporting') . '</div>
                                         </div>
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                            <label for="carrier_title" class="form-label">' . lang('Carrier Title') . '</label>
+                                            <input type="text" name="carrier_title" id="carrier_title" class="form-control" maxlength="255" />
+                                            <div class="form-text text-end">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                            <label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
+                                            <input type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
+                                            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
                                             ' . render(array('template' => 'shipping_method_service.php')) . '
                                             <div class="form-text text-end">' . lang('Service for Real-Time Rate & Delivery') . '</div>
@@ -665,6 +675,8 @@ if (!$_POST) {
                 name,
                 description,
                 code,
+                carrier_title,
+                carrier_vkn,
                 status,
                 start_time,
                 end_time,
@@ -727,6 +739,8 @@ if (!$_POST) {
                 '" . escape($_POST['name'] ?? '') . "',
                 '" . escape($_POST['description'] ?? '') . "',
                 '" . escape($_POST['code'] ?? '') . "',
+                '" . escape($_POST['carrier_title'] ?? '') . "',
+                '" . escape(substr(preg_replace('/[^0-9]/', '', (string) ($_POST['carrier_vkn'] ?? '')), 0, 11)) . "',
                 '" . escape($status) . "',
                 '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
                 '" . escape(prepare_form_data_for_input($_POST['end_time'], 'date and time')) . "',
