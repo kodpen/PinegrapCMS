@@ -58,8 +58,8 @@ geliyor.
 **Doğrulama.** `php tools/lint.php` ve `php tools/check_lang.php` birleştirilmiş
 ağaçta temiz. **Çalışan bir örnek kurulmadı**: PDF çıktısı, ayar ekranları ve
 teklif uçları birleştirme sonrası halleriyle koşturulmadı. Dalların kendi
-içindeki doğrulamalar (varsa) ajanların PR açıklamalarındadır; bu dosyaya
-aktarılmadı.
+içindeki doğrulamalar ajanların PR açıklamalarındaydı; API turunun üç bölümüne
+`Doğrulama` alt başlığı olarak aktarıldı.
 
 **Rebase tuzağı.** `feature/api-settings-screen` bir kez de main'in eski
 halinden rebase edilip ayrı bir dal olarak açıldı. O kopya, fatura PDF'inin
@@ -97,6 +97,12 @@ yükseltmeyi henüz çalıştırmadı") — doldurulamayacak bir form yerine.
   uygulama hesapları.
 - `tr.json`'a 25 dizge.
 
+### Doğrulama
+
+Form kaydı config satırına yazıyor; API kapalıyken `/meta` → 503 `api_disabled`;
+OpenAPI herkese açıkken anahtarsız 200, kapalıyken 401; saklama 0 → 1'e
+kırpıldı. "Yükseltme koşmadı" dalı denenmedi.
+
 ## 2026.4.4 — API devri: migration yardımcısı, sürüm alanı, CLI uyarıları, eksik anahtarlar (2026-09-17)
 
 İçerik API'si dış geliştiriciye devredilmeden önceki temizlik turu. Dördü de
@@ -132,6 +138,20 @@ anahtar olarak kullanıldığı yerler**; çağrı çözülsün diye aynı metin
 Asıl düzeltme — o yedi çağrının anahtarını İngilizceye çevirmek — yapılmadı ve
 açık duruyor.
 
+### Ayrıca
+
+- `api_docs.php` "Dene" konsolu liste parametrelerini düz metin gönderiyordu; her
+  `list` alanı 422 alıyordu. JSON dizi ya da virgülle ayrılmış değer kabul
+  ediliyor, bozuk girişte istek gitmiyor.
+
+### Doğrulama
+
+2026.4.4 yükseltmesi yerelde 2026.4.3'ten yeniden koşturuldu: ilk koşu yalnız
+`api_upload_folder_id` ALTER'ını uyguladı, ikinci koşu sıfır DDL, şema farkı yok.
+Webhook kuyruğu: `page.updated`, `product_group.updated`, `file.created` satırları
+oluştu, imzalı deneme yapıldı, hata kaydedildi, 60 s → 300 s geri çekilme çalıştı;
+canlı teslimat dev'de herkese açık bir alıcıyla denenecek.
+
 ## 2026.4.4 — Teklif uçları: dış API'ye okuma yüzeyi (2026-09-17)
 
 `GET /offers` ve `GET /offers/{id}`, yeni `offers:read` kapsamı altında. Yazma
@@ -151,6 +171,15 @@ mantığı yedi tabloya yayılı, iki yerde tutulsa ilk ayrışacak şey o olurd
 - `offer_status` saklanan bir alan değil, **türetiliyor**: etkin anahtarı artı
   tarih aralığı, teklif ekranının türettiği kuralın aynısı. İki yerde iki farklı
   "aktif" tanımı olmaması için.
+
+### Doğrulama
+
+Yerel kurulumda (2026.4.4): liste ve tekil 200, tutarlar int, dört durum filtresi,
+süresizde `end_date: null`, `POST /offers` → 405 (Allow: GET), kapsamsız uygulama
+→ 403, imleç sayfalama (aynı saniyede id kırılımı), OpenAPI'de iki yol,
+`status=bogus` → 422, olmayan id → 404. Örnek veride bulunmayan koşul tipleri,
+kademeler ve grup hedefli ürün indirimi geçici bir teklifle denendi. Dev sitede
+denenmedi.
 
 ## 2026.4.4 — ERP: fatura PDF'i ve düzenlenebilir şablon (2026-09-17)
 
