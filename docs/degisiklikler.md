@@ -41,6 +41,184 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
+
+Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve
+bir kısmı bunu oturumda saklar. 15 ekranda bu değer ya doğrudan
+`$_GET`/`$_REQUEST`'ten ya da oturumdaki kopyasından `ORDER BY` ifadesine ham
+ekleniyordu. Birkaç ekran değeri `escape()` ile sarıyordu ama `ORDER BY` içinde
+tırnak yok; tırnaksız bağlamda `escape()` hiçbir şey korumaz. Yönetici oturumu
+olan biri `?order=` parametresine SQL yazabiliyor, hata mesajı veya sıralama
+farkından veri sızdırabiliyordu. Oturuma bir kez yazılan bozuk değer aynı
+anahtarı paylaşan ekranlara da taşınıyordu: `duplicate_products.php`
+`view_products` ile aynı oturum anahtarını kullanıyor.
+
+### Tek yardımcı, iki nokta
+
+`includes/fn/core.php`'ye `sql_order_direction($value, $default = 'asc')`
+eklendi: değeri kırpar, küçük harfe çevirir, yalnız `asc`/`desc` ise onu, aksi
+hâlde `$default`'u döndürür. `$default` da aynı listeden geçer; boş dize
+verilirse boş döner ki eski "MySQL varsayılanı" davranışı koruyan ekranlar
+(`view_arrival_dates`, `view_log`) aynı kalsın. Yardımcı her ekranda **iki**
+yerde çağrılır: değer oturuma yazılırken ve sorgudan hemen önce okunurken.
+Yalnız yazma noktası korunsaydı önceden zehirlenmiş oturumlar okunur okunmaz
+SQL'e ulaşırdı; okuma anındaki normalleştirme onları da temizler.
+
+Ekranlar: `duplicate_products`, `view_arrival_dates`, `view_comments`,
+`view_contacts`, `view_countries`, `view_files`, `view_log`, `view_orders`,
+`view_orders_for_contact`, `view_shipping_methods`, `view_states`,
+`view_submitted_forms`, `view_users`, `view_visitor_reports`, `view_zones`.
+`escape()` ile sarılmış yönler `sql_order_direction()` ile değiştirildi;
+`view_log` büyük harfli `ASC`/`DESC` literallerini koruduğu için sonucu
+`strtoupper()`'a veriyor. asc/desc/boş davranışı hiçbir ekranda değişmedi.
+
+### Doğrulama
+
+`php -l` 16 dosyada temiz; `tools/lint.php` ve `tools/check_lang.php` temiz.
+Yardımcı için asc/desc/ASC/boş/rastgele SQL/varsayılan girdileriyle küçük bir
+deneme elle koşturuldu. Çalışan bir örnek kurulmadı; ekranlar tarayıcıda
+denenmedi.
+
+**Açık kalan:** aynı zafiyet sınıfı başka ekranlarda da var ve bu turda
+bilerek dokunulmadı — oturuma ham `$_REQUEST['order']` yazan `view_styles`,
+`view_design_files`, `view_themes`, `view_regions`; `escape()` ile sarılmış yön
+kullanan `view_email_campaigns`, `view_containers`, `view_contact_groups`,
+`view_ads`, `view_calendars`, `view_tax_zones`,
+`view_recurring_commission_profiles`, `view_ship_date_adjustments`,
+`view_gift_cards`. Yardımcı hazır, bağlamak kalıyor. `duplicate_products.php`'nin
+silinmesi düşünüldü ve **yapılmadı**: ekran yerinde kalıyor, yalnız oturum
+anahtarını zehirleyemiyor.
+
+## 2026.4.4 — Toplu işlemler ve Cloudflare sayfasında CSRF (2026-09-17)
+
+`view_contacts.php`'deki toplu **Sil** ve **Birleştir**, `view_submitted_forms.php`'deki
+toplu **Sil** yalnız GET parametreleriyle tetikleniyor ve hiçbir belirteç
+denetlemiyordu. Yönetici oturumu açık birine hazırlanmış bir bağlantı
+göstermek — e-postada, başka bir sitedeki gizli resim ya da iframe'de — seçili
+kişileri silmeye veya birleştirmeye, gönderilmiş formları toplu silmeye
+yetiyordu. `cloudflare.php`'nin POST işlemleri (DNS kaydı silme, bölge
+ayarlarını açma/kapatma, kayıt ekleme/düzenleme) de belirteç doğrulamıyordu;
+başka bir siteden otomatik gönderilen form onları çalıştırabilirdi.
+
+### Mevcut kalıp, yeni kod değil
+
+Üç sayfada da hassas dal ilk iş `validate_token_field()` çağırıyor. Yardımcı
+hem `$_POST['token']` hem `$_GET['token']` okur; bu yüzden toplu işlem
+düğmelerini taşıyan `method="get"` formlarına yalnız `get_token_field()` gizli
+alanı eklendi, formlar POST'a çevrilmedi. Belirteç sorgu dizesiyle taşınır; iki
+dal da iş bitince yönlendirdiği için adres çubuğunda kalmaz. Dışa aktarma aynı
+formda ama etkilenmez (fazladan bir gizli alan). Cloudflare sayfasının dokuz
+POST formu belirteç alanını zaten basıyordu, eksik olan yalnız sunucu tarafı
+denetimdi; `fetch`/XHR ile POST yok, meşru kullanım değişmedi. Belirteçsiz
+istek standart "oturum süresi doldu" hatasını alır. Şema, dil dosyası ve JS
+değişikliği yok.
+
+### Doğrulama
+
+`php -l` üç dosyada temiz; `tools/lint.php` ve `tools/check_lang.php` temiz.
+Tarayıcıda ya da Cloudflare kimlik bilgileriyle denenmedi; `init.php`'deki
+`initialize_token()`'ın bu yönetici sayfalarında koştuğu varsayıldı — kod
+tabanındaki diğer her `validate_token_field()` çağrısının yaptığı varsayım.
+
+## 2026.4.4 — Kart verisi: mcrypt yerine openssl, print_order maskesi (2026-09-17)
+
+Kart numarası şifrelemesi PHP 7.2 ile kaldırılan **mcrypt** uzantısına bağlıydı.
+Kart verisine dokunan her dosya iki satırlık bir "mcrypt var mı" kapısı taşıyor
+ve uzantı yoksa şifrelemeyi sessizce atlıyordu. Modern PHP'de sonuç: ödeme
+sırasında girilen kart numarası (manuel işlenen siparişlerde CVV ile birlikte)
+`orders` tablosuna **düz metin** yazılıyordu; ayarlardaki "şifreleme anahtarını
+sıfırla" ekranı ise fatal hata veriyordu. Üstüne, düz metin duran bir numara
+`print_order.php`'de `view_card_data` yetkisi olmayan rol-3 kullanıcısına
+maskesiz gösteriliyordu — diğer sipariş ekranlarında bulunan koruma dalı orada
+yoktu.
+
+### Yeni biçim, eski veriyi tanıyan çözücü
+
+`encrypt_credit_card_number()` / `decrypt_credit_card_number()`
+(`includes/fn/ecommerce.php`) openssl `aes-256-cbc` ile yeniden yazıldı:
+anahtar sha256 ile 32 bayta indirilir, her kayıt rastgele IV alır, IV + şifreli
+metin base64'lenip `pgc1:` öneki (`PG_CARD_NUMBER_CIPHER_PREFIX`) ile saklanır.
+Önek çözücüye "hangi yol" sorusunu yanıtlatır: öneksiz değer eski mcrypt yoluna
+gider ve yalnız uzantı gerçekten yüklüyse çözülür, değilse boş döner — ekranlar
+zaten bildikleri `[decryption error]` / boş çıktıyı gösterir. 18 mcrypt kapısı
+(`submit_order`, `liveform` ×6, `print_order`, `get_order_receipt` ×2,
+`get_view_order_screen_content` ×2, `view_order`, `view_orders` ×2,
+`view_order_report`, `edit_orders`, `get_order_receipt_in_plain_text`)
+`extension_loaded('openssl')` oldu. Ayarlar (`settings/prep.php`,
+`commerce.save.php`) aynı kapıya geçti; ilk anahtar oluşturma artık tanımsız
+`ENCRYPTION_KEY` sabitini okumuyor (PHP 8 fatal), yeniden anahtarlama döngüsü
+`e()`/`(int)` kullanıyor ve daha önce düz metin kaydedilmiş numaraları da
+şifreliyor. `print_order.php` diğer ekranlardaki `else` dalını aldı: maskesiz
+duran numara yetkisiz rol-3 için `protect_credit_card_number()`'dan geçer,
+çıktı `h()` ile sarılır.
+
+### Bilerek yapılmayanlar
+
+- **CVV saklanmaya devam ediyor.** Manuel (çevrim dışı / posta-telefon) işlenen
+  siparişlerde ödemeyi personel sonradan çekiyor ve CVV'siz çekim yapılamıyor;
+  alan bu iş akışının parçası. Kaldırmak ürün kararı, güvenlik düzeltmesi
+  değil.
+- **Mevcut düz metin kart verisi olduğu gibi bırakıldı.** Toplu bir göç
+  yazılmadı; yöneticiler bu kayıtları kendileri siler ya da çalışır hâle gelen
+  anahtar sıfırlama ekranıyla şifreler.
+- Eski mcrypt biçimiyle şifrelenmiş kayıtlar PHP ≥ 7.2'de çözülemez kalır
+  (öncekiyle aynı `[decryption error]`); dağıtım anında yarıda olan bir ödeme
+  oturumu kart numarasının yeniden girilmesini ister.
+
+### Doğrulama
+
+`php -l` değişen dosyalarda, `tools/lint.php` ve `tools/check_lang.php` temiz.
+Komut satırında gidiş-dönüş: şifrele → çöz aynı değer, yanlış anahtar → boş,
+mcrypt'siz eski blob → boş, bozuk önekli değer → boş. Ödeme akışı, yeniden
+anahtarlama döngüsü ve `print_order` ekranı çalışan bir sitede denenmedi; eski
+mcrypt yolu PHP 8'de uzantı olmadığından koşturulamadı.
+
+## 2026.4.4 — api.php: anonim eylemler, gevşek belirteç karşılaştırması, ters rol kontrolü (2026-09-17)
+
+Panelin iç uç noktası `api.php`'de dört bulgu; ikisi oturumsuz istekle
+sonuçlanıyor.
+
+- **`user_pinned_app_update` oturum açmadan çağrılabiliyordu** ve gelen diziyi
+  doğrudan SQL'e yazıp `WHERE` koşulunda oturum kullanıcı adını kullanıyordu:
+  anonim bir istek SQL enjeksiyonuyla hesap ele geçirebiliyordu. Eylem oturum
+  muafiyet listesinden çıkarıldı (genel kapı artık uygulanıyor), dalın içinde
+  `validate_user()` + `validate_token()` var; liste yalnız `(int)` değerlerden
+  yeniden kurulup `escape()` ediliyor ve güncelleme `WHERE user_id = (int) $user['id']`
+  ile oturumdaki kullanıcıya yapılıyor. Ağaçta bu eylemi çağıran istemci yok.
+- **`software_update`** (check/download/replace adımları) oturum ve belirteç
+  denetimi olmadan çalışıyordu; anonim biri güncellemeyi tetikleyip dosyaları
+  değiştirebiliyordu. Dal `software_backup` ile aynı kalıba bağlandı: oturum
+  yoksa JSON `Invalid login.`, sonra `validate_user()`,
+  `validate_area_access($user, 'manager')`, `validate_token()`. `$step` yalnız
+  üç adımlık beyaz listeden geçer, gerisi `Invalid step.`. Eylem muafiyet
+  listesinde **kaldı**: genel kapı manager'ı (rol 2) reddeder, oysa
+  `software_update.php`'nin hedef operatörü o; denetim bu yüzden dalın içinde.
+- **`validate_token()` gevşek `!=` kullanıyordu**; JSON gövdesinde `token: true`
+  göndermek CSRF korumasını atlatıyordu. Artık belirtecin dize olması ve
+  `hash_equals()` ile birebir eşleşmesi zorunlu — `true`, sayı veya eksik
+  belirteç her PHP sürümünde reddedilir, karşılaştırma sabit zamanlı.
+  `API_AUTHENTICATED` dalı dokunulmadı.
+- **`designer_file` rol kontrolü tersti**: tasarımcı (1) reddedilip manager (2)
+  kabul ediliyordu. İki kontrol de `(int) $user['role'] > 1` oldu; yönetici ve
+  tasarımcı girer, manager ve kullanıcı girmez.
+
+Şema değişikliği ve yeni dil anahtarı yok.
+
+### Doğrulama
+
+`php -l pinegrap/api.php`, `tools/lint.php` ve `tools/check_lang.php` temiz.
+Canlı PHP + MySQL örneğine karşı HTTP testi yapılmadı. Bilinen pürüz:
+`validate_area_access()` ret durumunda HTML yanıt verir (`software_backup` ile
+paylaşılan davranış); `software_update.php` zaten manager kapısı koyduğu için
+normal akışta buraya düşülmez, ama daha düşük bir rol ucu doğrudan çağırırsa
+JSON yerine HTML ret alır.
+
+**Açık kalan — bilerek yapılmadı:** `init.php` `HOSTNAME`'i tarayıcı isteğinde
+doğrudan `Host` başlığından tanımlar; başlığı ayarlardaki `hostname` ile
+zorlamak bu inceleme turunda görüldü ve **yapılmadı**. Çok alanlı kurulumlar ve
+ters vekil arkasındaki siteler için davranış değişikliği olur; ayrı bir karar
+ister.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
