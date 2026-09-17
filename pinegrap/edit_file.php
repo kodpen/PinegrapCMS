@@ -678,6 +678,9 @@ $liveform->remove_form('edit_file');
 
     $sql_size = '';
     $image = '';
+    // Set when the original image has already been replaced by its WebP
+    // conversion, so the rename step below must not move the old file onto it.
+    $webp_replaced_original = false;
 
 
     
@@ -813,10 +816,20 @@ $liveform->remove_form('edit_file');
         if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
             output_error(lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-        imagewebp($image, $file_path);
+        if (imagewebp($image, $file_path) == FALSE) {
+            imagedestroy($image);
+            output_error(lang('The image could not be converted to WebP.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        imagedestroy($image);
+        // The converted file replaces the original; remove the source so the
+        // rename below does not overwrite the WebP bytes with the old image.
+        $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+        if ($old_file_path !== $file_path) {
+            @unlink($old_file_path);
+        }
+        $webp_replaced_original = true;
         $file_extension = 'webp';
         $sql_size = "size = '" . escape(filesize($file_path)) . "',";
-        imagedestroy($image);
     }
 
     // WEBP copy
@@ -944,7 +957,7 @@ $liveform->remove_form('edit_file');
         // The database is only told about the new name if the file actually
         // moved. Updating it after a failed rename is what produces the broken
         // state this is here to prevent.
-        if ($name !== $row['name']) {
+        if (($name !== $row['name']) && ($webp_replaced_original == FALSE)) {
             $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
 
             if ((file_exists($old_file_path) == TRUE) && (@rename($old_file_path, $file_path) == FALSE)) {
