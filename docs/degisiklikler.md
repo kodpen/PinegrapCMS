@@ -674,6 +674,62 @@ temiz. **Çalışan örnek kurulmadı**: kilit sayacı, e-posta bağlantıları 
 açılır menüsü çalışma zamanında sınanmadı; zil düzeltmesi `api.php`
 `get_notifications` çıktısının okunmasıyla doğrulandı.
 
+## 2026.4.4 — Ödeme adımı: ödeme yöntemi izin listesi, Iyzipay dönüş doğrulaması, kargo yöntemi uygunluğu (2026-09-17)
+
+`submit_order.php` ödeme yöntemini **yasak listesiyle** denetliyordu:
+`payment_method` bilinen değerlerden biri değilse hiçbir ödeme dalına girmiyor,
+`switch` bloklarından düşüp siparişi tahsilat yapılmadan "ödendi" olarak
+tamamlıyordu. Iyzipay 3DS ve Pay With Iyzico dönüşleri siparişi ödeme
+başlatılırken dondurulan tutarla kapatıyordu: dönüş sırasında sepet değişse
+gateway'in gerçekten çektiği tutar sipariş toplamıyla karşılaştırılmıyor,
+`conversationId`/token'ın bu oturumun siparişine ait olduğu doğrulanmıyor, aynı
+3DS dönüşü yeniden gönderilerek tekrar tüketilebiliyordu. Kargo adımı
+(`shipping_method.php`) ise POST edilen her `shipping_methods.id`'yi kabul
+ediyordu; yönetici-özel, kapalı, süresi dolmuş veya adresin bölgesinde geçersiz
+yöntem siparişe yazılabiliyordu.
+
+### İzin listesi ve `default` dalı
+
+Ödeme yöntemi artık bu sipariş için gerçekten sunulan yöntemlerden kurulan
+`$allowed_payment_methods` dizisine `in_array(..., TRUE)` ile bakılarak
+doğrulanıyor (`ECOMMERCE_*` sabitleri, `$recurring_transaction`,
+`$offline_payment_allowed`). Ödeme hazırlığı `switch`'ine `Pay With Iyzico` /
+`Offline Payment` için açık `case`'ler ve bilinmeyen değeri geri yönlendiren bir
+`default` eklendi; iki kapı birden var, çünkü ileride eklenen bir yöntemin
+`switch`'te unutulmasını yalnız izin listesi yakalamaz.
+
+### Iyzipay dönüşü: sipariş eşlemesi, tek kullanım, tutar doğrulaması
+
+3DS dönüşünde `iyzipay_3ds_state` satırı oturumdaki siparişe ait olmalı ve
+`payment_id IS NULL` koşullu tek `UPDATE` ile talep ediliyor; `affected_rows` 1
+değilse dönüş tekrar oynatılmış sayılıyor. Sepetten yeniden hesaplanan toplam
+saklanan `base_total_cents` ile, gateway'in `getPaidPrice()` değeri beklenen
+tutarla (korumalı para biriminde %1 kur toleransıyla) karşılaştırılıyor;
+uyumsuzlukta yeni `iyzipay_cancel_payment()` (`includes/fn/ecommerce.php`)
+ödemeyi iptal ediyor ve sonucu etkinlik günlüğüne yazıyor — iptal de başarısızsa
+"MANUAL REFUND REQUIRED". Pay With Iyzico dönüşü token'ın yanında sipariş
+kimliğini de doğruluyor.
+
+### Kargo yöntemi ve `turkish_default` etiketi
+
+`shipping_method.php` seçilen yöntemi kargo yöntemi ekranıyla aynı
+`check_shipping_method()` kurallarından geçiriyor ve bölge oranını bu denetimin
+döndürdüğü bölgeden alıyor; müşteri girdisi doğrudan SQL'e girmiyor. Tohumdaki
+sipariş önizleme düzenleri (`layouts/101.php`, `layouts/1077.php`) çevrimdışı
+ödeme radyosunda değer olarak Türkçe etiketi gönderiyordu; izin listesi bunu
+reddederdi. Tohum kanonik `Offline Payment` değerine çevrildi, bu tohumdan daha
+önce kurulmuş siteler için doğrulamadan hemen önce eski etiketi kanonik değere
+çeviren bir normalizasyon eklendi.
+
+### Doğrulama
+
+`php tools/lint.php` ve `php tools/check_lang.php` temiz; `tr.json`'a bir
+anahtar. **Çalışan örnek kurulmadı**: ödeme ve kargo akışı çalışma zamanında
+denenmedi, `iyzipay_cancel_payment()` gerçek gateway'e karşı çağrılmadı.
+
+**Açık kalan:** İptal de başarısız olduğunda iade elle yapılmak zorunda; günlük
+satırı bunu işaret ediyor ama panelde ayrı bir uyarı yok.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
