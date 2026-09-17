@@ -483,6 +483,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             form_fields.name    AS field_name,
             form_fields.label   AS field_label,
             form_fields.type    AS field_type,
+            form_fields.wysiwyg AS field_wysiwyg,
             files.name          AS file_name
          FROM form_data
          LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -526,6 +527,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             if ($field_type === 'file upload' && !empty($r['file_name'])) {
                 $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
                 $value = $output_base . $r['file_name'];
+            }
+            // The value is spliced into the rendered markup as-is, and it was typed
+            // by the submitter. Only a WYSIWYG text area may carry markup, and that
+            // goes through the allow-list filter; everything else is escaped.
+            if ($field_type === 'text area' && !empty($r['field_wysiwyg'])) {
+                $value = pg_sanitize_rich_text($value);
+            } else {
+                $value = h($value);
             }
 
             // Collect every identifier string we might want to match against
@@ -845,6 +854,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.name    AS field_name,
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
+                form_fields.wysiwyg AS field_wysiwyg,
                 files.name          AS file_name
              FROM form_data
              LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -864,11 +874,11 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__id'             => (string)$form_row['id'],
             '__reference'      => (string)$form_row['reference_code'],
             '__submitted_at'   => !empty($form_row['submitted_timestamp']) ? date('Y-m-d H:i', (int)$form_row['submitted_timestamp']) : '',
-            '__submitted_by'   => $submitter_username,
+            '__submitted_by'   => h($submitter_username),
             '__user'           => (string)$form_row['user_id'],
             '__detail_url'     => $self_url !== '' ? $self_url : '#',
-            '__address_name'   => isset($form_row['address_name']) ? (string)$form_row['address_name'] : '',
-            '__tracking_code'  => isset($form_row['tracking_code']) ? (string)$form_row['tracking_code'] : '',
+            '__address_name'   => isset($form_row['address_name']) ? h((string)$form_row['address_name']) : '',
+            '__tracking_code'  => isset($form_row['tracking_code']) ? h((string)$form_row['tracking_code']) : '',
             '__not_found'      => '',  // empty when found — designer's not_found region renders empty
         );
 
@@ -897,6 +907,13 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                     $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
                     $value = $output_base . $r['file_name'];
                 }
+                // Same rule as form_list_view: submitter-typed values are escaped,
+                // WYSIWYG markup is filtered.
+                if ($field_type === 'text area' && !empty($r['field_wysiwyg'])) {
+                    $value = pg_sanitize_rich_text($value);
+                } else {
+                    $value = h($value);
+                }
                 $keys = array();
                 if (!empty($r['field_name']))  $keys[] = (string)$r['field_name'];
                 if (!empty($r['data_name']))   $keys[] = (string)$r['data_name'];
@@ -918,7 +935,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 }
                 // Optional label tokens: __label suffix when toggled on.
                 if ($show_field_labels && !empty($r['field_name'])) {
-                    $values[(string)$r['field_name'] . '__label'] = isset($r['field_label']) ? (string)$r['field_label'] : '';
+                    $values[(string)$r['field_name'] . '__label'] = isset($r['field_label']) ? h((string)$r['field_label']) : '';
                 }
             }
         }
