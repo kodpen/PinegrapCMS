@@ -256,11 +256,11 @@ if (!$_POST) {
             if (preg_match("/define\('LOGO_URL', '(.*?)'\);/si", $config_file_content)) {
                 // If the post value for logo_url was not empty
                 if ($logo_url != '') {
-                    $config_file_content = preg_replace("/define\('LOGO_URL', '(.*?)'\);/si", "define('LOGO_URL', '" . $logo_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'LOGO_URL', $logo_url);
                     
                 // Else, the post value was empty so remove logo url line from config file
                 } else {
-                    $config_file_content = preg_replace("/define\('LOGO_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                    $config_file_content = remove_config_define($config_file_content, 'LOGO_URL');
                 }
 
             // Else if the post value for the logo_url was not empty, then add the define statement after all of the other define statements.
@@ -277,14 +277,14 @@ if (!$_POST) {
             if ($control_panel_stylesheet_url != '') {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (preg_match("/define\('CONTROL_PANEL_STYLESHEET_URL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('CONTROL_PANEL_STYLESHEET_URL', '(.*?)'\);/si", "define('CONTROL_PANEL_STYLESHEET_URL', '" . $control_panel_stylesheet_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'CONTROL_PANEL_STYLESHEET_URL', $control_panel_stylesheet_url);
                 // Else, add the define statement after all of the other define statements.
                 } else {
                     $config_file_content = str_replace('?>', "define('CONTROL_PANEL_STYLESHEET_URL', '" . $control_panel_stylesheet_url . "');\r\n?>", $config_file_content);
                 }
             // Remove the CONTROL_PANEL_STYLESHEET_URL define statement
             } else {
-                $config_file_content = preg_replace("/\\r\\ndefine\('CONTROL_PANEL_STYLESHEET_URL', '(.*?)'\);/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'CONTROL_PANEL_STYLESHEET_URL');
             }
         }
 
@@ -294,11 +294,11 @@ if (!$_POST) {
             if (!empty($footer_link_1_label)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_1_LABEL != $footer_link_1_label && preg_match("/define\('FOOTER_LINK_1_LABEL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_1_LABEL', '(.*?)'\);/si", "define('FOOTER_LINK_1_LABEL', '" . $footer_link_1_label . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_1_LABEL', $footer_link_1_label);
                 }
             }else{
                 // Remove the FOOTER_LINK_1_LABEL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_1_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_1_LABEL');
             }
         }else{
             if (!empty($footer_link_1_label)) {
@@ -311,11 +311,11 @@ if (!$_POST) {
             if (!empty($footer_link_1_url)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_1_URL != $footer_link_1_url && preg_match("/define\('FOOTER_LINK_1_URL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_1_URL', '(.*?)'\);/si", "define('FOOTER_LINK_1_URL', '" . $footer_link_1_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_1_URL', $footer_link_1_url);
                 }
             }else{
                 // Remove the FOOTER_LINK_1_URL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_1_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_1_URL');
             }
         }else{
             if (!empty($footer_link_1_url)) {
@@ -329,11 +329,11 @@ if (!$_POST) {
             if (!empty($footer_link_2_label)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_2_LABEL != $footer_link_2_label && preg_match("/define\('FOOTER_LINK_2_LABEL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_2_LABEL', '(.*?)'\);/si", "define('FOOTER_LINK_2_LABEL', '" . $footer_link_2_label . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_2_LABEL', $footer_link_2_label);
                 }
             }else{
                 // Remove the FOOTER_LINK_2_LABEL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_2_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_2_LABEL');
             }
         }else{
             if (!empty($footer_link_2_label)) {
@@ -346,11 +346,11 @@ if (!$_POST) {
             if (!empty($footer_link_2_url)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_2_URL != $footer_link_2_url && preg_match("/define\('FOOTER_LINK_2_URL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_2_URL', '(.*?)'\);/si", "define('FOOTER_LINK_2_URL', '" . $footer_link_2_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_2_URL', $footer_link_2_url);
                 }
             }else{
                 // Remove the FOOTER_LINK_2_URL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_2_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_2_URL');
             }
         }else{
             if (!empty($footer_link_2_url)) {
@@ -364,11 +364,11 @@ if (!$_POST) {
             if (!empty($footer_link_3_label)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_3_LABEL != $footer_link_3_label && preg_match("/define\('FOOTER_LINK_3_LABEL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_3_LABEL', '(.*?)'\);/si", "define('FOOTER_LINK_3_LABEL', '" . $footer_link_3_label . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_3_LABEL', $footer_link_3_label);
                 }
             }else{
                 // Remove the FOOTER_LINK_3_LABEL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_3_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_3_LABEL');
             }
         }else{
             if (!empty($footer_link_3_label)) {
@@ -381,11 +381,11 @@ if (!$_POST) {
             if (!empty($footer_link_3_url)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_3_URL != $footer_link_3_url && preg_match("/define\('FOOTER_LINK_3_URL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_3_URL', '(.*?)'\);/si", "define('FOOTER_LINK_3_URL', '" . $footer_link_3_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_3_URL', $footer_link_3_url);
                 }
             }else{
                 // Remove the FOOTER_LINK_3_URL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_3_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_3_URL');
             }
         }else{
             if (!empty($footer_link_3_url)) {
@@ -399,11 +399,11 @@ if (!$_POST) {
             if (!empty($footer_link_4_label)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_4_LABEL != $footer_link_4_label && preg_match("/define\('FOOTER_LINK_4_LABEL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_4_LABEL', '(.*?)'\);/si", "define('FOOTER_LINK_4_LABEL', '" . $footer_link_4_label . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_4_LABEL', $footer_link_4_label);
                 }
             }else{
                 // Remove the FOOTER_LINK_4_LABEL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_4_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_4_LABEL');
             }
         }else{
             if (!empty($footer_link_4_label)) {
@@ -416,11 +416,11 @@ if (!$_POST) {
             if (!empty($footer_link_4_url)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_4_URL != $footer_link_4_url && preg_match("/define\('FOOTER_LINK_4_URL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_4_URL', '(.*?)'\);/si", "define('FOOTER_LINK_4_URL', '" . $footer_link_4_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_4_URL', $footer_link_4_url);
                 }
             }else{
                 // Remove the FOOTER_LINK_4_URL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_4_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_4_URL');
             }
         }else{
             if (!empty($footer_link_4_url)) {
@@ -434,11 +434,11 @@ if (!$_POST) {
             if (!empty($footer_link_5_label)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_5_LABEL != $footer_link_5_label && preg_match("/define\('FOOTER_LINK_5_LABEL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_5_LABEL', '(.*?)'\);/si", "define('FOOTER_LINK_5_LABEL', '" . $footer_link_5_label . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_5_LABEL', $footer_link_5_label);
                 }
             }else{
                 // Remove the FOOTER_LINK_5_LABEL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_5_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_5_LABEL');
             }
         }else{
             if (!empty($footer_link_5_label)) {
@@ -451,11 +451,11 @@ if (!$_POST) {
             if (!empty($footer_link_5_url)) {
                 // If the define statement is found inside the config file content, replace the define statement
                 if (FOOTER_LINK_5_URL != $footer_link_5_url && preg_match("/define\('FOOTER_LINK_5_URL', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('FOOTER_LINK_5_URL', '(.*?)'\);/si", "define('FOOTER_LINK_5_URL', '" . $footer_link_5_url . "');", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_5_URL', $footer_link_5_url);
                 }
             }else{
                 // Remove the FOOTER_LINK_5_URL define statement
-                $config_file_content = preg_replace("/define\('FOOTER_LINK_5_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+                $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_5_URL');
             }
         }else{
             if (!empty($footer_link_5_url)) {
@@ -466,18 +466,18 @@ if (!$_POST) {
         
     // else private label is disabled, so remove lines from config.php file
     } else {
-        $config_file_content = preg_replace("/define\('LOGO_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('CONTROL_PANEL_STYLESHEET_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_1_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_1_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_2_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_2_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_3_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_3_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_4_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_4_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_5_LABEL', '(.*?)'\);\r\n/si", '', $config_file_content);
-        $config_file_content = preg_replace("/define\('FOOTER_LINK_5_URL', '(.*?)'\);\r\n/si", '', $config_file_content);
+        $config_file_content = remove_config_define($config_file_content, 'LOGO_URL');
+        $config_file_content = remove_config_define($config_file_content, 'CONTROL_PANEL_STYLESHEET_URL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_1_LABEL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_1_URL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_2_LABEL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_2_URL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_3_LABEL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_3_URL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_4_LABEL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_4_URL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_5_LABEL');
+        $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_5_URL');
     }
     
     // Rewrite the config files contents.

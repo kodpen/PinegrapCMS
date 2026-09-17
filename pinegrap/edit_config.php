@@ -83,64 +83,8 @@ function parse_config_file($file_path) {
 $config_raw     = @file_get_contents(CONFIG_FILE_PATH);
 $config_parsed  = parse_config_file(CONFIG_FILE_PATH);
 
-// ── Update or insert a define() line ──────────────────────────────────────
-function update_config_define($content, $key, $value, $type = 'string') {
-    $safe_key = preg_quote($key, '/');
-
-    if ($type === 'boolean') {
-        $bool_val = ($value === 'true' || $value === true || $value === '1') ? 'true' : 'false';
-        // Always remove any malformed string-quoted boolean defines first (e.g. define('KEY', 'false'))
-        $content = preg_replace(
-            "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*'(?:true|false)'\s*\);\r?\n?/i",
-            '',
-            $content
-        );
-        // Now update existing proper boolean define, or append a new one
-        if (preg_match("/define\s*\(\s*'" . $safe_key . "'\s*,\s*(?:true|false)\s*\);/i", $content)) {
-            return preg_replace(
-                "/define\s*\(\s*'" . $safe_key . "'\s*,\s*(?:true|false)\s*\);/i",
-                "define('" . $key . "', " . $bool_val . ");",
-                $content
-            );
-        }
-        return str_replace('?>', "define('" . $key . "', " . $bool_val . ");\r\n?>", $content);
-    }
-
-    $safe_value = str_replace("'", "\\'", $value);
-    if (preg_match("/define\s*\(\s*'" . $safe_key . "'\s*,\s*'.*?'\s*\);/si", $content)) {
-        return preg_replace(
-            "/define\s*\(\s*'" . $safe_key . "'\s*,\s*'.*?'\s*\);/si",
-            "define('" . $key . "', '" . $safe_value . "');",
-            $content
-        );
-    }
-    return str_replace('?>', "define('" . $key . "', '" . $safe_value . "');\r\n?>", $content);
-}
-
-// ── Remove a define() line entirely (called when value is empty) ───────────
-function remove_config_define($content, $key, $type = 'string') {
-    $safe_key = preg_quote($key, '/');
-    if ($type === 'boolean') {
-        // Remove proper boolean define
-        $content = preg_replace(
-            "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*(?:true|false)\s*\);\r?\n?/i",
-            '',
-            $content
-        );
-        // Also remove malformed string-quoted boolean define
-        $content = preg_replace(
-            "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*'(?:true|false)'\s*\);\r?\n?/i",
-            '',
-            $content
-        );
-        return $content;
-    }
-    return preg_replace(
-        "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*'.*?'\s*\);\r?\n?/si",
-        '',
-        $content
-    );
-}
+// update_config_define() / remove_config_define() live in includes/fn/core.php
+// (loaded through functions.php) and are shared with the other config writers.
 
 // ── Field group definitions ────────────────────────────────────────────────
 // [KEY, input_type, label, hint, readonly, default]

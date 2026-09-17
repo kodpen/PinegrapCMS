@@ -219,6 +219,69 @@ zorlamak bu inceleme turunda görüldü ve **yapılmadı**. Çok alanlı kurulum
 ters vekil arkasındaki siteler için davranış değişikliği olur; ayrı bir karar
 ister.
 
+## 2026.4.4 — Ayar ekranları config.php'de komşu satırları siliyordu (2026-09-17)
+
+**Belirti.** Cloudflare tüneli arkasındaki bir kurulumda SMTP Ayarları
+kaydedildikten sonra `data/config.php` içindeki
+`define('TRUST_PROXY_SSL_HEADERS', true);` satırı kayboldu. Güvenli Mod
+(`REQUIRE_SECURE_MODE`) artık proxy'nin `X-Forwarded-Proto` başlığına
+güvenmediği için her isteği HTTP sanıp yönlendirmeye/reddetmeye başladı;
+panel ve site bir anda erişilmez oldu. Kayıt yalnız SMTP alanlarına
+dokunmuş görünüyordu.
+
+**Mekanizma.** `smtp_settings.php` boş gelen bir alanın satırını
+`preg_replace("/define\('$key', '(.*?)'\);\r\n/si", '', …)` ile
+siliyordu. Üç etken birleşince desen tek satırda kalmaz: `/s` ile `.`
+satır sonunu da eşler, `(.*?)` tembel olduğu için gerektiği kadar uzar,
+sondaki `\r\n` ise zorunludur. Anahtarın kendi satırı elle yazılmış ve
+yalnız LF ile bitiyorsa `\r\n` orada bulunmaz; motor eşleşmeyi bir
+sonraki `');\r\n` dizisine kadar uzatır ve aradaki her `define` satırını
+tek seferde yutar. Elle eklenen LF'li satırlarla panelin yazdığı CRLF'li
+satırlar aynı dosyada karışık durduğu için tehlike her kurulumda vardır.
+İki parola kutusu her yüklemede boş geldiğinden, parola yazılmadan
+yapılan her SMTP kaydı bu dalı çalıştırıyordu. `private_label.php` aynı
+deseni 24 yerde taşıyordu; `edit_config.php` ise zaten güvenli yardımcı
+fonksiyonlarla yazılmıştı.
+
+**Düzeltme.**
+- `update_config_define()` ve `remove_config_define()` `edit_config.php`
+  içinden `includes/fn/core.php`'ye taşındı; üç ayar ekranı da aynı
+  yardımcıları kullanıyor. `edit_config.php`'deki yerel tanımlar
+  kaldırıldı (yeniden tanımlama hatası olmasın).
+- Değer deseni `'(?:[^'\\\r\n]|\\.)*'` oldu: kaçışsız tırnakta ve satır
+  sonunda durur, `/s` yok, sondaki satır sonu `\r?\n?` ile isteğe bağlı.
+  Bir eşleşme artık anahtarın kendi satırının dışına çıkamaz; LF ve CRLF
+  dosyalarda aynı davranır.
+- `smtp_settings.php`: string anahtarlar için silme/güncelleme yardımcılara
+  devredildi. `SYSTEM_SMTP_PASSWORD` ve `CAMPAIGN_SMTP_PASSWORD` için boş
+  kutu "kayıtlı değeri koru" demektir (CLAUDE.md §10); boş gönderimde ne
+  güncelleme ne silme yapılır. `EMAIL_CAMPAIGN_JOB` boolean dalı olduğu
+  gibi bırakıldı.
+- `private_label.php`: 24 silme ve 12 güncelleme çağrısı yardımcılara
+  çevrildi; yazılan anahtar kümesi değişmedi. `CONTROL_PANEL_STYLESHEET_URL`
+  silme deseni başa `\r\n` koyduğu için LF dosyada hiç eşleşmiyordu, artık
+  siliyor.
+
+### Doğrulama
+
+- Yardımcılar üzerinde betik: LF'li satırlar arasında elle yazılmış
+  `TRUST_PROXY_SSL_HEADERS`/`REQUIRE_SECURE_MODE` ve CRLF'li DKIM/PORT
+  satırları içeren karışık bir içerikte eski desen komşu iki `define`'ı
+  sildi (hata yeniden üretildi); yeni `remove_config_define()` yalnız
+  hedef satırı kaldırıyor, kalan içerik bayt bayt aynı. LF ve CRLF anahtar,
+  eksik anahtar, mevcut anahtar güncelleme, `?>` öncesine ekleme, değerde
+  `\'`, boolean dal, boş parolalı SMTP kaydı simülasyonu ve private label
+  kapatma senaryoları geçti.
+- `php -l` dokunulan dört dosyada temiz; `php tools/lint.php` ve
+  `php tools/check_lang.php` temiz.
+- Canlı panelde SMTP Ayarları ve Private Label formu gönderilerek
+  doğrulanmadı; çalışan örnek kurulmadı.
+
+**Açık kalan:** `pinegrap/data/config.php` kuruluma özel bir dosya olduğu
+halde git'te izleniyor.
+
+---
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
