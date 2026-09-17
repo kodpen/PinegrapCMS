@@ -3071,3 +3071,79 @@ function get_short_version()
 
     return $major_short;
 }
+
+// Editing define() lines in data/config.php. Shared by the settings screens
+// that rewrite the file in place (edit_config.php, smtp_settings.php,
+// private_label.php).
+//
+// The patterns avoid the /s modifier and a lazy '(.*?)'. A hand-edited config
+// file mixes LF and CRLF line endings; a lazy value match followed by a
+// mandatory "\r\n" runs past an LF-terminated line and swallows every define
+// up to the next CRLF one. Here the value class stops at the first unescaped
+// quote and never crosses a line break, and the trailing line ending is
+// optional, so a match is always confined to the key's own line.
+function pg_config_define_value_pattern() {
+    // A single-quoted PHP string literal: no bare quote, no line break,
+    // backslash escapes allowed (update_config_define() writes \' for quotes).
+    return "'(?:[^'\\\\\r\n]|\\\\.)*'";
+}
+
+// Update or insert a define() line
+function update_config_define($content, $key, $value, $type = 'string') {
+    $safe_key = preg_quote($key, '/');
+
+    if ($type === 'boolean') {
+        $bool_val = ($value === 'true' || $value === true || $value === '1') ? 'true' : 'false';
+        // Always remove any malformed string-quoted boolean defines first (e.g. define('KEY', 'false'))
+        $content = preg_replace(
+            "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*'(?:true|false)'\s*\);\r?\n?/i",
+            '',
+            $content
+        );
+        // Now update existing proper boolean define, or append a new one
+        if (preg_match("/define\s*\(\s*'" . $safe_key . "'\s*,\s*(?:true|false)\s*\);/i", $content)) {
+            return preg_replace(
+                "/define\s*\(\s*'" . $safe_key . "'\s*,\s*(?:true|false)\s*\);/i",
+                "define('" . $key . "', " . $bool_val . ");",
+                $content
+            );
+        }
+        return str_replace('?>', "define('" . $key . "', " . $bool_val . ");\r\n?>", $content);
+    }
+
+    $safe_value = str_replace("'", "\\'", $value);
+    $line = "/define\s*\(\s*'" . $safe_key . "'\s*,\s*" . pg_config_define_value_pattern() . "\s*\);/i";
+    if (preg_match($line, $content)) {
+        return preg_replace(
+            $line,
+            "define('" . $key . "', '" . $safe_value . "');",
+            $content
+        );
+    }
+    return str_replace('?>', "define('" . $key . "', '" . $safe_value . "');\r\n?>", $content);
+}
+
+// Remove a define() line entirely (called when value is empty)
+function remove_config_define($content, $key, $type = 'string') {
+    $safe_key = preg_quote($key, '/');
+    if ($type === 'boolean') {
+        // Remove proper boolean define
+        $content = preg_replace(
+            "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*(?:true|false)\s*\);\r?\n?/i",
+            '',
+            $content
+        );
+        // Also remove malformed string-quoted boolean define
+        $content = preg_replace(
+            "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*'(?:true|false)'\s*\);\r?\n?/i",
+            '',
+            $content
+        );
+        return $content;
+    }
+    return preg_replace(
+        "/[ \t]*define\s*\(\s*'" . $safe_key . "'\s*,\s*" . pg_config_define_value_pattern() . "\s*\);\r?\n?/i",
+        '',
+        $content
+    );
+}

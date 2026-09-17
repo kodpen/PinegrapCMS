@@ -420,16 +420,21 @@ if (!$_POST) {
                 continue;
             }
 
-            if (defined($key)) {
-                if ($value !== '' && constant($key) !== $value && preg_match("/define\('$key', '(.*?)'\);/si", $config_file_content)) {
-                    $config_file_content = preg_replace("/define\('$key', '(.*?)'\);/si", "define('$key', '$value');", $config_file_content);
-                } elseif ($value === '') {
-                    $config_file_content = preg_replace("/define\('$key', '(.*?)'\);\r\n/si", '', $config_file_content);
-                }
+            // A blank password box means "keep the saved value": the screen never
+            // renders a stored secret back, so an empty box is not a request to
+            // clear it.
+            if ($value === '' && ($key === 'SYSTEM_SMTP_PASSWORD' || $key === 'CAMPAIGN_SMTP_PASSWORD')) {
+                continue;
+            }
+
+            // The shared helpers confine every match to the key's own line. A
+            // hand-edited config.php mixes LF and CRLF endings, and a pattern
+            // anchored on "\r\n" ran past an LF line and deleted the defines
+            // that followed it.
+            if ($value === '') {
+                $config_file_content = remove_config_define($config_file_content, $key, 'string');
             } else {
-                if ($value !== '') {
-                    $config_file_content = str_replace('?>', "define('$key', '$value');\r\n?>", $config_file_content);
-                }
+                $config_file_content = update_config_define($config_file_content, $key, $value, 'string');
             }
         }
 
