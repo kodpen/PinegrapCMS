@@ -255,6 +255,12 @@ function erp_payment_method_labels()
  * the goods leave. The carrier's registered title falls back to the name of
  * the shipping method when it was not filled in.
  *
+ * Checkout stores an estimated ship date for each recipient when the order is
+ * placed, and the order screen is where it is corrected once the goods have
+ * actually left. A date that has not arrived yet cannot be the day the goods
+ * left, so it is not reported and the invoice carries no shipment date until
+ * then.
+ *
  * @param int $order_id
  * @return array ['shipment_date' => 'Y-m-d' or '0000-00-00', 'carrier_title' => string, 'carrier_vkn' => string]
  */
@@ -271,10 +277,11 @@ function erp_order_shipment($order_id)
 
     $shipped = null;
     $with_method = null;
+    $today = date('Y-m-d');
 
     foreach ($recipients as $recipient) {
         $ship_date = (string) ($recipient['ship_date'] ?? '');
-        if ($ship_date !== '' && $ship_date !== '0000-00-00'
+        if ($ship_date !== '' && $ship_date !== '0000-00-00' && $ship_date <= $today
             && ($shipped === null || $ship_date < $shipped['ship_date'])) {
             $shipped = $recipient;
         }
