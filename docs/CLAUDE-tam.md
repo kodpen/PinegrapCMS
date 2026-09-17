@@ -67,6 +67,17 @@ içeriği de. Gerekçe `docs/degisiklikler.md`, plan ve araç
   (`'Kayıt bulunamadı.'`, `'Faz 1'`). Palet bileşeninin örnek içeriği —
   örnek ad, adres, e-posta, fiyat — `skip` **değildir**, çevrilir.
 
+### Eşzamanlı Ajanlar (2026-09-17)
+
+Bu depoda aynı anda üç ajan çalışır: (1) dış API erişimi geliştirmesi, (2) ERP
+planı, (3) hata raporlaması. Her görev kendi dalında; push'tan hemen önce
+`main` üzerine rebase. Yalnız kendi alanının dosyalarına dokun. Ortak dosyalarda
+(`includes/local/tr.json`, `pinegrap/changelog.txt`,
+`includes/migrations/2026.4.4.php`, `init.php`, `docs/CLAUDE-tam.md`) **yalnız
+ekleme** yap ve kendi alanının bölümüne yaz. Göç alt adımı numarasını push'tan
+hemen önce `origin/main`'e bakarak al; iki PR aynı numarayı almışsa birleşmeden
+önce yeniden numaralandır.
+
 ### Kod İçi Yorum Kuralları (YASAK LİSTESİ — istisnasız)
 
 Ürün dosyaları müşteriye dağıtılır; yorumlar ürünün parçasıdır.
