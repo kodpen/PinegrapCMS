@@ -108,9 +108,11 @@ $send_me_a_copy = $liveform->get_field_value('send_me_a_copy');
 // parse the link url in order to get host
 $link_url_parsed_url = parse_url($link_url);
 
-// if the http referer does not have a hostname or the hostname is different from the website's hostname, then set the link URL to the home page
-if ((isset($link_url_parsed_url['host']) == false) || ($link_url_parsed_url['host'] != HOSTNAME)) {
-    $link_url = URL_SCHEME . HOSTNAME . PATH;
+// if the http referer does not have a hostname or the hostname is different from the website's hostname, then set the link URL to the home page.
+// The configured hostname is the reference: this form is anonymous, and the
+// request's own Host header would let the sender mail a link to any host.
+if ((isset($link_url_parsed_url['host']) == false) || ($link_url_parsed_url['host'] != HOSTNAME_SETTING)) {
+    $link_url = URL_SCHEME . HOSTNAME_SETTING . PATH;
 }
 
 $to = array();
@@ -136,7 +138,7 @@ $body .=
     "\n" .
     $link_url . "\n" .
     "\n" .
-    'This e-mail was sent to you by ' . $from_email_address . ' via the website for ' . ORGANIZATION_NAME . ' (' . URL_SCHEME . HOSTNAME . '). For your privacy, your e-mail address has not been stored.';
+    'This e-mail was sent to you by ' . $from_email_address . ' via the website for ' . ORGANIZATION_NAME . ' (' . URL_SCHEME . HOSTNAME_SETTING . '). For your privacy, your e-mail address has not been stored.';
 
 // In the past we would set the from info to the submitter's address
 // however this caused issues with mail providers using DMARC (e.g. Yahoo, AOL),
