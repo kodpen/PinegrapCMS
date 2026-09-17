@@ -130,4 +130,4 @@ Pinegrap, hayatına 2001'den itibaren Camelback Web Architects tarafından geli�
 
 [MIT Lisansı](license.txt) ile yayınlanmıştır.
 
-Telif Hakkı © 2001–2019 Camelback Consulting, Inc. · © 2016–2026 Kodpen
+Telif Hakkı © 2001–2019 Camelback Consulting, Inc. · © 2017–2026 Kodpen

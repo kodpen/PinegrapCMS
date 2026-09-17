@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -116,19 +116,16 @@ if (!$_POST) {
         'title'=> lang('Edit Featured & New Items'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('Edit Featured & New Items')
-    ]) . get_date_picker_format() . '
+        'heading'=>lang('Edit Featured & New Items'),
+        'heading_description' => lang('Update the featured and new product groups and products that should appear on catalog pages.'),
+    ]) . '<main id="content" class="container-fluid">' . get_date_picker_format() . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('Update the featured and new product groups and products that should appear on catalog pages.') . '" title="' . lang('Edit Featured & New Items') . '">' . lang('Edit Featured & New Items') . '</h2>
-                    </div>
-                </div>
+                
                 <form name="form"  action="edit_featured_and_new_items.php" method="post"> 
                     <div class="card my-4">
                         <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
@@ -160,7 +157,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
         
     $liveform->remove_form('edit_featured_and_new_items');

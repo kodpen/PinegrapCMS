@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -306,7 +306,7 @@ function get_my_account_profile($properties = array()) {
                 </table>
                 <input type="submit" name="submit" value="Update" class="software_input_submit_primary update_button" />&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="Cancel" onclick="javascript:window.location.href=\'' . h(escape_javascript(get_page_type_url('my account'))) . '\'" class="software_input_submit_secondary cancel_button">
                 ' . $system . '
-            </form>';
+            </form>' . pg_account_security_section();
 
     // Otherwise the layout is custom.
     } else {
@@ -361,6 +361,11 @@ function get_my_account_profile($properties = array()) {
             'tax_number' => true,
             'tax_office' => true,
             'system' => $system,
+            // The system screen appends this after its form; a custom layout
+            // has to be able to print it too, or the member's own "sign out of
+            // all devices" and "disconnect Google" controls exist only on the
+            // default design.
+            'account_security' => pg_account_security_section(),
             'my_account_url' => get_page_type_url('my account')));
 
         $output = $form->prepare($output);

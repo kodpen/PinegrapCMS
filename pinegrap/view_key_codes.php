@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -212,10 +212,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('All Key Codes'),
-        'auto_main'=>false,
+        'heading_description' => lang('Discount and access key codes'),
     ]);
 
-    require('assets/templates/view_key_codes.php');
+    require('includes/templates/view_key_codes.php');
 
     echo output_footer();
 

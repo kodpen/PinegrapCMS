@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -271,19 +271,17 @@ print
             'extra classes'=>'page',
             'icon'=>'page', 
             'heading'=>lang('Comments'),
+            'heading_description' => lang('All site-wide comments and reviews that I can edit.'),
 
         )
     ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('All site-wide comments and reviews that I can edit.') . '" title="' . lang('Comments') . '">' . lang('Comments') . '</h2>
-                </div>
-            </div>
+            
             <form action="delete_comment.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
                 <div class="card my-4">
@@ -310,6 +308,7 @@ print
             </form>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 $liveform->remove_form('view_comments');

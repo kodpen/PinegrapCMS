@@ -12,14 +12,13 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
-license_check(array('output'=>'validate'));
 
 include_once('liveform.class.php');
 
@@ -35,7 +34,7 @@ if (defined('CLOUDFLARE_API_TOKEN') && defined('CLOUDFLARE_ZONE_ID')) {
         $liveformsettings = new liveform('settings');
 
         $liveformsettings->mark_error('', 'Cloudflare API Token or Zone ID is empty.');
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
         exit();
     }
 } else {
@@ -43,7 +42,7 @@ if (defined('CLOUDFLARE_API_TOKEN') && defined('CLOUDFLARE_ZONE_ID')) {
     $liveformsettings = new liveform('settings');
 
     $liveformsettings->mark_error('', 'Cloudflare API Token or Zone ID is not defined.');
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
     exit();
 }
 
@@ -723,6 +722,7 @@ print pg_page_shell([
     'heading' => 'Cloudflare Tools',
     'cancel'  => ['enable'=>true,'title'=>'Cancel']
 ]) . '
+<main id="content" class="container-fluid">
 
   <div class="row"><div class="col-12">
 
@@ -911,7 +911,6 @@ print pg_page_shell([
     </div>
 
   </div></div>
-</main>
 
 <!-- Add Record Modal -->
 <div class="modal fade" id="addModal" tabindex="-1">
@@ -1079,6 +1078,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+</main>
 '. output_footer();
 
 $liveform->remove_form();

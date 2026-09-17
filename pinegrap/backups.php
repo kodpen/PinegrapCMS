@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
@@ -71,9 +71,11 @@ if (!$_POST) {
 	            'extra classes'  => 'setting',
 	            'icon'           => 'setting',
 	            'heading'        => lang('Backup Manager'),
+	            'heading_description' => lang('Add, Edit, Delete or Download Website Backups.'),
 	            'cancel'         => true,
 	        )
 	    ) . '
+<main id="content" class="container-fluid">
 
 	    	        ' . get_codemirror_includes() . '
 	        <div class="row">
@@ -84,11 +86,7 @@ if (!$_POST) {
 
 	                <div class="row mb-2 flex-wrap">
 	                    <div class="col-12 col-sm-12 text-center text-md-start">
-	                        <h2 class="d-inline-block"
-	                            data-bs-content="' . lang('Add, Edit, Delete or Download Website Backups.') . '"
-	                            title="' . lang('Backup Manager') . '">'
-	                            . lang('Backup Manager') . '
-	                        </h2>
+	                        
 	                        <p>' . lang('Disk Usage') . ': ' 
 	                            . h(convert_bytes_to_string(folderSize('data/backups'), 2)) . '
 	                        </p>
@@ -170,7 +168,8 @@ if (!$_POST) {
 	                </form>
 	            </div>
 	        </div>
-	    </main>' . output_footer();
+	    
+</main>' . output_footer();
 
 	print $output;
 	$liveform->remove_form('backups');

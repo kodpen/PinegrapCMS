@@ -12,9 +12,15 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
+
+// Shared sign-in primitives (pg_auth_token_verify, pg_load_user_row and the
+// token revoke). This file still never loads functions.php; the token check
+// moved to includes/authentication.php so both sides run the same one, and
+// our local db()/db_item()/escape() below are exactly what it needs.
+require_once(dirname(__FILE__) . '/includes/authentication.php');
 
 // Get config settings.
 $query =
@@ -116,7 +122,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if the file does not exist, then output error
 if (mysqli_num_rows($result) == 0) {
-    output_error(lang('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+    output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -137,7 +143,7 @@ if (defined('FILE_DIRECTORY_PATH') == false) {
 
 // if the file does not exist on the file system, then output error
 if (file_exists(FILE_DIRECTORY_PATH . '/' . $file['name']) == FALSE) {
-    output_error(lang('Sorry, a record of the file exists in the database, but the actual file does not exist on the file system.  The administrator should restore the file on the file system or delete the file in the control panel and re-upload the file.'), 404);
+    output_error(get_file_text('Sorry, a record of the file exists in the database, but the actual file does not exist on the file system.  The administrator should restore the file on the file system or delete the file in the control panel and re-upload the file.'), 404);
 }
 
 $access_control_type = get_access_control_type($file['folder_id']);
@@ -160,13 +166,13 @@ if (
                 if ($access_check['expired'] == true) {
                     log_activity('access denied to private file (' . $file['name'] . ') because user\'s access had expired', $_SESSION['sessionusername']);
 
-                    output_error(lang('Sorry, you do not have access to view this file because your access has expired.'), 403);
+                    output_error(get_file_text('Sorry, you do not have access to view this file because your access has expired.'), 403);
 
                 // Otherwise if the user just doesn't have private access to this folder, then log activity and output error.
                 } else if ($access_check['access'] == false) {
                     log_activity('access denied to private file (' . $file['name'] . ')', $_SESSION['sessionusername']);
 
-                    output_error(lang('Sorry, you do not have access to view this file.'), 403);
+                    output_error(get_file_text('Sorry, you do not have access to view this file.'), 403);
                 }
 
             // else the user is not logged in, so forward user to login screen
@@ -225,7 +231,7 @@ if (
                     $row = mysqli_fetch_assoc($result);
                     $member_id_label = $row['member_id_label'];
 
-                    output_error(lang(array('string' => 'Sorry, the file that you requested requires membership. Your {var:1} could not be found. You can view your membership status in your account area. Please contact us for more information.', 'vars' => array($member_id_label))), 403);
+                    output_error(get_file_text(array('string' => 'Sorry, the file that you requested requires membership. Your {var:1} could not be found. You can view your membership status in your account area. Please contact us for more information.', 'vars' => array($member_id_label))), 403);
                 }
 
                 $expiration_date = USER_EXPIRATION_DATE;
@@ -242,7 +248,7 @@ if (
 
                 // if the user's membership has expired, then output error
                 if ($expiration_date < date('Y-m-d')) {
-                    output_error(lang('Sorry, the file that you requested requires membership. Your membership could not be verified.  You can view your membership status in your account area. Please contact us for more information.'), 403);
+                    output_error(get_file_text('Sorry, the file that you requested requires membership. Your membership could not be verified.  You can view your membership status in your account area. Please contact us for more information.'), 403);
                 }
             }
             
@@ -652,7 +658,7 @@ if ($file['attachment'] == 1) {
         } else {
             log_activity('access denied to file attachment (' . $file['name'] . ')', $_SESSION['sessionusername']);
 
-            output_error(lang('Sorry, you do not have access to view this file attachment.'), 403);
+            output_error(get_file_text('Sorry, you do not have access to view this file attachment.'), 403);
         }
     }
 }
@@ -829,6 +835,33 @@ $mimetype = array(
     'webp' => 'image/webp'
 );
 
+// Everything this request needs from the session and the database has now
+// been read: who is asking, whether they may have the file, what its access
+// control type is. Both are let go here, before a byte of the file is sent,
+// because both used to be held for the whole transfer, and the transfer is
+// the slow part of serving a picture.
+//
+// The session lock is the one that serialised a folder of thumbnails: PHP
+// holds a user's session file exclusively from session_start() to the end
+// of the script, so a user's second picture request waited behind their
+// first one's readfile(), the third behind the second, and a screen of
+// three hundred pictures loaded one at a time. Every request in that queue
+// was also sitting on a database connection it no longer needed -- which,
+// on a busy site, is how one open folder exhausted the pool and took the
+// storefront down with it for the breaker's full window.
+//
+// $_SESSION stays readable after session_write_close(); only writes stop,
+// and the one write this script makes (initialize_user() adopting a
+// remember-me token) has already happened by this point.
+if (function_exists('session_status') && (session_status() === PHP_SESSION_ACTIVE)) {
+    session_write_close();
+}
+
+if (isset(db::$con) && db::$con) {
+    @mysqli_close(db::$con);
+    db::$con = null;
+}
+
 $file['path'] = FILE_DIRECTORY_PATH . '/' . $file['name'];
 
 $if_modified_since = '';
@@ -934,6 +967,47 @@ if ($if_modified_since == $last_modified) {
     header('Content-length: ' . filesize($file['path']));
     readfile($file['path']);
     exit();
+}
+
+/**
+ * Translate when the translator is loaded, and fall back to English when it is not.
+ *
+ * router.php dispatches this file without going through init.php - deliberately,
+ * because functions.php is megabytes and every image request would otherwise pay
+ * for loading it - so lang() does not exist on the path that actually serves the
+ * site's files. Every error message below used to call it anyway, which turned an
+ * ordinary "this file is missing" into an uncaught Error and a blank HTTP 500,
+ * hiding the real problem from whoever was trying to fix it. Mirrors waf_text(),
+ * which exists for the same reason.
+ */
+function get_file_text($string)
+{
+    if (function_exists('lang')) {
+        return lang($string);
+    }
+
+    if (!is_array($string)) {
+        return $string;
+    }
+
+    // The array form carries the sentence plus the values that fill its
+    // {var:n} placeholders. Left unsubstituted the fallback would print the
+    // placeholder at the visitor.
+    $text = isset($string['string']) ? $string['string'] : '';
+    $vars = isset($string['vars']) ? $string['vars'] : array();
+
+    if (!is_array($vars)) {
+        $vars = array($vars);
+    }
+
+    $number = 1;
+
+    foreach ($vars as $value) {
+        $text = str_replace('{var:' . $number . '}', $value, $text);
+        $number++;
+    }
+
+    return $text;
 }
 
 function output_error($error_message, $response_code = 0) {
@@ -1074,72 +1148,38 @@ function initialize_user()
     $row = mysqli_fetch_assoc($result);
     $remember_me = $row['remember_me'];
 
-    // if remember me is on and there is cookie login information,
-    // and there is not session login information,
-    // then add cookie login information to session if login info is valid
+    // Remember-me via the software[auth] token, but only when no session user is
+    // set yet. Same shape as initialize_user(): verify the token, load the row by
+    // id, adopt it into the session. This used to be a second copy of the cookie
+    // auto-login; it now shares pg_load_user_row() with initialize_user().
     if (
         ($remember_me == 1)
-        && (isset($_COOKIE['software']['username']) == TRUE)
-        && (isset($_COOKIE['software']['password']) == TRUE)
-        && (isset($_SESSION['sessionusername']) == FALSE)
+        && (isset($_COOKIE['software']['auth']) == TRUE)
+        && (isset($_SESSION['sessionuserid']) == FALSE)
     ) {
-        // check to see if the login information is valid by trying to find a user
-        $query =
-            "SELECT
-                user.user_id AS id,
-                user.user_email AS email_address,
-                user.user_role AS role,
-                user.user_manage_forms AS manage_forms,
-                contacts.member_id AS member_id,
-                contacts.expiration_date AS expiration_date
-            FROM user
-            LEFT JOIN contacts ON user.user_contact = contacts.id
-            WHERE
-                (user.user_username = '" . escape($_COOKIE['software']['username']) . "')
-                AND (user.user_password = '" . escape($_COOKIE['software']['password']) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // if the login information in the cookie is valid,
-        // then add login information to session, log activity, and store user info
-        if (mysqli_num_rows($result) > 0) {
-            $_SESSION['sessionusername'] = $_COOKIE['software']['username'];
-            $_SESSION['sessionpassword'] = $_COOKIE['software']['password'];
-            
-            // create log entry to note that user logged in
-            log_activity('user logged in', $_SESSION['sessionusername']);
+        $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
-            $user = mysqli_fetch_assoc($result);
-            
-        // else the login information in the cookie is not valid, so delete cookie
+        if ($token_user_id) {
+
+            $user = pg_load_user_row($token_user_id);
+
+            if (is_array($user) && isset($user['id'])) {
+                $_SESSION['sessionuserid']  = $user['id'];
+                $_SESSION['sessionusername'] = $user['username'];
+                log_activity('user logged in', $user['username']);
+            } else {
+                $user = null;
+            }
+
+        // else the token is not valid, so delete the cookie
         } else {
-            $current_timestamp = time();
-
-            setcookie('software[username]', '', $current_timestamp - 1000, '/');
-            setcookie('software[password]', '', $current_timestamp - 1000, '/');
+            setcookie('software[auth]', '', time() - 1000, '/');
         }
 
-    // else if there is login info in the session,
-    // then check if login info is valid by trying to find a user
-    } else if (isset($_SESSION['sessionusername']) == TRUE) {
-        $query =
-            "SELECT
-                user.user_id AS id,
-                user.user_email AS email_address,
-                user.user_role AS role,
-                user.user_manage_forms AS manage_forms,
-                contacts.member_id AS member_id,
-                contacts.expiration_date AS expiration_date
-            FROM user
-            LEFT JOIN contacts ON user.user_contact = contacts.id
-            WHERE
-                (user.user_username = '" . escape($_SESSION['sessionusername']) . "')
-                AND (user.user_password = '" . escape($_SESSION['sessionpassword']) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    // else if there is a signed-in user id in the session, load that row
+    } else if (isset($_SESSION['sessionuserid']) == TRUE) {
 
-        // if the login is valid, then store user info
-        if (mysqli_num_rows($result) > 0) {
-            $user = mysqli_fetch_assoc($result);
-        }
+        $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
     }
 
     // if the user is logged in, then store user info in global constants to be used later

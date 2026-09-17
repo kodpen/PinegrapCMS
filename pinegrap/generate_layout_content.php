@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -22,7 +22,7 @@ function generate_layout_content($page_id) {
 
     $template_name = str_replace(' ', '_', $page_type) . '.php';
 
-    $content = file_get_contents(dirname(__FILE__) . '/assets/templates/' . $template_name);
+    $content = file_get_contents(dirname(__FILE__) . '/includes/templates/' . $template_name);
 
     switch ($page_type) {
 
@@ -115,7 +115,7 @@ function replace_render($content) {
             continue;
         }
 
-        $render_content = @file_get_contents(dirname(__FILE__) . '/assets/templates/' . $template_name);
+        $render_content = @file_get_contents(dirname(__FILE__) . '/includes/templates/' . $template_name);
 
         // If a template file could not be found for that template name,
         // then skip to the next render call.
@@ -144,7 +144,7 @@ function replace_render($content) {
 function generate_form_layout_content($properties) {
 
     $page_id = $properties['page_id'];
-    $form_type = $properties['form_type'];
+    $form_type = $properties['form_type'] ?? '';
 
     // If an indent was passed, then use that.
     if (isset($properties['indent'])) {
@@ -345,6 +345,16 @@ function generate_form_layout_content($properties) {
             case 'information':
                 $content .=
                     $indent . '<?=' . $array_name . '[\'' . $field['id'] . '\'][\'information\']?>' . "\n";
+
+                break;
+            // A call rather than markup: the pad is a canvas, a hidden input and
+            // a button that have to agree with each other and with the script,
+            // and a layout generated today would otherwise keep one version of
+            // all three forever.
+            case 'signature':
+                $content .=
+                    $indent . '<?=pg_signature_field(' . $array_name . '[\'' . $field['id'] . '\'])?>' . "
+";
 
                 break;
         }

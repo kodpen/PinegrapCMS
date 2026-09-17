@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -59,10 +59,9 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>lang('Edit Key Code'),
         'cancel'=>array('enable'=>'true','url'=>'view_key_codes.php'),
-        'auto_main'=>false,
     ]);
 
-    require('assets/templates/edit_key_code.php');
+    require('includes/templates/edit_key_code.php');
 
     echo output_footer();
     

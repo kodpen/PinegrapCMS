@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -85,11 +85,10 @@ if (!$_POST) {
             'icon'=>'page',
             'heading'=>lang('Edit Auto Dialog'),
             'cancel'=>array('enable'=>'true','url'=>'view_auto_dialogs.php'),
-            'auto_main'=>false,
         )
     );
 
-    require('assets/templates/edit_auto_dialog.php');
+    require('includes/templates/edit_auto_dialog.php');
 
     echo output_footer();
     

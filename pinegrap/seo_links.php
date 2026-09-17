@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -404,7 +404,7 @@ function pg_seo_process_links($type, $id, $raw_links, $context = array())
 // Returns the number of pages whose graph findings were rewritten.
 function pg_seo_build_link_graph()
 {
-    // pg_seo_link_schema_ready() as well: upgrade 2026.4.13 creates seo_link
+    // pg_seo_link_schema_ready() as well: upgrade 2026.4.2 creates seo_link
     // before it adds seo_link_score, so a run interrupted between the two
     // leaves the table present and the column missing - and this function both
     // reads and writes that column.

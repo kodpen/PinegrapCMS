@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -108,8 +108,8 @@ if (!$_POST)
 
     echo 
     output_header_secure(array('title'=>lang('Image Editor') . ' | Pintura | ' . h($file_name),'icon'=>'file')) . ' 
-    <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/image_editor/packages/doka/doka.css">
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/image_editor/packages/jquery_doka/doka.js"></script>
+    <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/doka/doka.css">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/jquery_doka/doka.js"></script>
     <style>
         img {
             max-width: 100%;
@@ -883,7 +883,7 @@ else
                                         }
             
                                         // wait a little bit to make sure that the iframe(s) have reloaded and then send the user to the original page that they came from
-                                        setTimeout("window.parent.location = \'' . URL_SCHEME . HOSTNAME . escape_javascript($send_to) . '\';", 1000);
+                                        setTimeout("window.parent.location = \'' . URL_SCHEME . HOSTNAME . escape_javascript(pg_safe_redirect_path($send_to)) . '\';", 1000);
                                     }
             
                                     window.onload = init; 
@@ -909,7 +909,7 @@ else
                                 <script type="text/javascript">
                                     function init()
                                     {
-                                        window.parent.location = "' . URL_SCHEME . HOSTNAME . escape_javascript($send_to) . '";
+                                        window.parent.location = "' . URL_SCHEME . HOSTNAME . escape_javascript(pg_safe_redirect_path($send_to)) . '";
                                     }
             
                                     window.onload = init; 

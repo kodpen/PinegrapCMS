@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -246,9 +246,11 @@ pg_page_shell(
         'extra classes'=>'designer',
         'icon'=>'design', 
         'heading'=> lang('Design Files'),
+        'heading_description' => lang('All design files that can be referenced by any theme, page style, or region, and managed only by site designers.'),
         'cancel'=> false
     )
 )  . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -256,7 +258,7 @@ pg_page_shell(
             ' . $liveform->output_notices() . '
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('All design files that can be referenced by any theme, page style, or region, and managed only by site designers.') . '" title="' . lang('All Design Files') . '">' . lang('All Design Files') . '</h2>
+                    
                     <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_design_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
@@ -307,7 +309,8 @@ pg_page_shell(
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 
 $liveform->remove_form('view_design_files');

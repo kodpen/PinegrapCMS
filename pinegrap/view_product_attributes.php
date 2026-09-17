@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -172,8 +172,10 @@ echo
         'title'=> lang('All Product Attributes'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('All Product Attributes')
+        'heading'=>lang('All Product Attributes'),
+        'heading_description' => lang('All attributes that can be assigned to products.'),
     ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -182,7 +184,7 @@ echo
                
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('All attributes that can be assigned to products.') . '" title="' . lang('All Product Attributes') . '">' . lang('All Product Attributes') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_product_attribute.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         </nav>
@@ -207,7 +209,8 @@ echo
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 $liveform->remove_form();

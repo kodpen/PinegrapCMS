@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -380,6 +380,7 @@ function get_my_account($properties) {
         'form' => $form,
         'logout_url' => get_page_type_url('logout'),
         'change_password_url' => get_page_type_url('change password'),
+        'google_account_notice' => pg_google_account_notice(),
         'email_preferences_url' => get_page_type_url('email preferences'),
         'start_page_name' => $start_page_name,
         'start_page_url' => $start_page_url,

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -86,6 +86,15 @@ if (
             exit();
         }
     }
+}
+
+// A name the web server would run or read as its own settings is refused,
+// and the editor is told why in the same way it is told about a folder it
+// may not write to.
+if (pg_upload_name_blocked($_FILES['upload']['name'])) {
+    log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $_FILES['upload']['name'])), $_SESSION['sessionusername']);
+    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . escape_javascript(pg_upload_blocked_message($_FILES['upload']['name'])) . '")</script>';
+    exit();
 }
 
 $file_name = prepare_file_name($_FILES['upload']['name']);

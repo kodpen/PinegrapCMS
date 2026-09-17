@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -48,20 +48,18 @@ if (!$_POST) {
             'extra classes'=>'calendar',
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Event Location'))),
+            'heading_description' => lang('View or rename this common event location.'),
             'cancel'=>array('enable'=>'true','url'=>'view_calendar_event_locations.php'),
         
             'breadcrumb' => array(array('label' => lang('All Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event Location'))))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View or rename this common event location.') . '" title="' . lang(array('string'=>'Edit {var:1}','vars'=>lang('Event Location'))) . '">[' . h($liveform->get_field_value('name')) . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="edit_calendar_event_location.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
@@ -75,7 +73,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-6 my-2">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event Location'))) . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                     </div>
@@ -94,7 +92,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

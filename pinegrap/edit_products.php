@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
@@ -54,7 +54,12 @@ if (!$_POST) {
         lang('Increase Current Inventory Quantity(+)')=>'increase',
         lang('Decrease Current Inventory Quantity(-)')=>'decrease',
     );
-    require('assets/templates/edit_products.php');
+    $tax_rate_method_options = array(
+        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Process')) ))=>'',
+        lang('Set the tax rate to the value below')=>'set',
+        lang('Follow the tax zone (clear the product rate)')=>'zone',
+    );
+    require('includes/templates/edit_products.php');
 
 // Otherwise the form has been submitted, so process it.
 } else {
@@ -88,6 +93,7 @@ if (!$_POST) {
                     || ($_POST['edit_inventory'] != '')
                     || ($_POST['edit_inventory_quantity'] != '')
 					|| ($_POST['edit_change_price_method'] != '')
+                    || (($_POST['edit_tax_rate_method'] ?? '') != '')
                 ) {
                     if ($_POST['edit_allowed_zones']) {
                         $allowed_zones = explode(',', $_POST['edit_allowed_zones']);
@@ -233,9 +239,36 @@ if (!$_POST) {
                         if($_POST['edit_inventory'] != ''){
                             $sql_inventory = "inventory = '" . e($_POST['edit_inventory'] ?? '') . "',";
                         }                        
+                        // The tax rate is set or cleared, never nudged: a rate is
+                        // a statement about what the article is, not a quantity to
+                        // step up and down. Clearing writes NULL rather than zero,
+                        // because the two mean different things - follow the zone,
+                        // versus zero-rated.
+                        $sql_tax_rate = '';
+                        $tax_rate_method = $_POST['edit_tax_rate_method'] ?? '';
+
+                        if ($tax_rate_method === 'zone') {
+                            $sql_tax_rate = "tax_rate = NULL,";
+                        } elseif ($tax_rate_method === 'set') {
+                            $new_tax_rate = parse_tax_rate($_POST['edit_tax_rate_value'] ?? '');
+
+                            if ($new_tax_rate !== NULL) {
+                                $sql_tax_rate = "tax_rate = '" . e($new_tax_rate) . "',";
+                            } else {
+                                // Asking to set a rate and giving none is a mistake, not an
+                                // instruction to clear: clearing has its own option.
+                                $liveform->mark_error('Update Error', lang('Enter a tax rate, or choose to follow the tax zone.'));
+                            }
+                        }
+
                         // if inventroy tracking is (0/1) disabled or new quantity is bigger than 0 we remove out_of_stock status
                         $sql_out_of_stock = '';
-                        if ($_POST['edit_inventory'] == 0 || ($new_inventory_quantity != '' && $new_inventory_quantity > 0) ) {
+                        // The first test is deliberately strict about emptiness: on PHP 7
+                        // '' == 0 is true, so an untouched inventory field used to read as
+                        // "tracking switched off" and cleared out_of_stock on every product
+                        // in the selection.
+                        if ((($_POST['edit_inventory'] ?? '') !== '' && (int)$_POST['edit_inventory'] === 0)
+                            || ($new_inventory_quantity != '' && $new_inventory_quantity > 0) ) {
                             $sql_out_of_stock = "out_of_stock = '0',";
                         }
 
@@ -279,9 +312,17 @@ if (!$_POST) {
                                 $sql_inventory_quantity
                                 $sql_inventory
                                 $sql_out_of_stock
+                                $sql_tax_rate
                                 timestamp = UNIX_TIMESTAMP(),
                                 user = '" . USER_ID . "'
                             WHERE id = '" . escape($product_id) . "'");
+
+                        // Price or stock may have moved on this row. Queued per
+                        // product rather than once for the selection, because
+                        // the queue is keyed on the product and folds repeats.
+                        if (function_exists('pg_marketplace_product_changed')) {
+                            pg_marketplace_product_changed((int)$product_id);
+                        }
 
                         $number_of_products++;
 						
@@ -372,6 +413,20 @@ if (!$_POST) {
                             }
                             $log_message .= lang(' had price changed');
 
+                        }
+
+                        // If the tax rate was set or cleared then set message for log.
+                        if ($sql_tax_rate != '') {
+                            // If the log message is not blank, then add separator.
+                            if ($log_message != '') {
+                                $log_message .= ',';
+                            }
+
+                            if ($tax_rate_method === 'zone') {
+                                $log_message .= lang(' had the tax rate cleared');
+                            } else {
+                                $log_message .= lang(' had the tax rate changed');
+                            }
                         }
 
                         // If there is a log message, then log it and add notice.

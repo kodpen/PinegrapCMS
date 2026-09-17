@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -22,6 +22,11 @@ function get_express_order($properties) {
     $editable = $properties['editable'];
     $device_type = $properties['device_type'];
     $folder_id_for_default_value = $properties['folder_id_for_default_value'];
+
+    // Only ever appended to, inside loops that do not run for every order,
+    // so they have to start out empty.
+    $output_ship_tos = '';
+    $output_recurring_ship_tos = '';
 
     $properties = get_page_type_properties($page_id, 'express order');
 
@@ -466,7 +471,7 @@ function get_express_order($properties) {
 
         // If there is only one recipient or this is the myself recipient, then store ship to id,
         // so we know which recipient to copy info from for billing same as shipping.
-        if ($number_of_recipients == 1 or $recipient['ship_to_name'] == 'myself') {
+        if ($number_of_recipients == 1 or $recipient['ship_to_name'] == 'myself' or $recipient['ship_to_name'] == lang('myself')) {
             $billing_same_as_shipping = true;
             $billing_same_as_shipping_id = $recipient['id'];
         }
@@ -610,7 +615,7 @@ function get_express_order($properties) {
                         
                         $recipient_options = array();
                         $recipient_options[''] = '';
-                        $recipient_options['myself'] = 'myself';
+                        $recipient_options[lang('myself')] = lang('myself');
 
                         // if there is at least one recipient stored in session
                         if ($_SESSION['ecommerce']['recipients']) {
@@ -893,7 +898,7 @@ function get_express_order($properties) {
                     
                     $quick_add_ship_to_options = array();
                     $quick_add_ship_to_options[''] = '';
-                    $quick_add_ship_to_options['myself'] = 'myself';
+                    $quick_add_ship_to_options[lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
                     if ($_SESSION['ecommerce']['recipients']) {
@@ -1103,7 +1108,7 @@ function get_express_order($properties) {
                         order_items.product_name,
                         order_items.quantity,
                         order_items.price,
-                        order_items.tax,
+                        order_items.tax_total,
                         order_items.offer_id,
                         order_items.added_by_offer,
                         order_items.discounted_by_offer,
@@ -1296,7 +1301,9 @@ function get_express_order($properties) {
                         $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . number_format(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE), 2, '.', ',') . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
                     }
                     
-                    $output_remove = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_item_from_cart.php?order_item_id=' . $order_item_id . '&screen=express_order&send_to=' . h(urlencode(REQUEST_URL)) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button">X</a>';
+                    // Destructive action link; see the same line in
+                    // get_shopping_cart.php.
+                    $output_remove = '<a rel="nofollow" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_item_from_cart.php?order_item_id=' . $order_item_id . '&screen=express_order&send_to=' . h(urlencode(REQUEST_URL)) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button">X</a>';
                     
                     // assume that we don't need to output a recurring schedule fieldset, until we find out otherwise
                     $output_recurring_schedule_fieldset = '';
@@ -2520,17 +2527,17 @@ function get_express_order($properties) {
             if ($applied_offers) {
                 $output_applied_offers =
                     '<div class="applied_offers" style="margin-bottom: 1em">
-                        <div class="heading">Applied Offers</div>
+                        <div class="heading">' . h(lang('Applied Offers')) . '</div>
                         <div class="data">
                         <ul style="margin-top: 0em">';
                 
                 // loop through each applied offer
                 foreach ($applied_offers as $offer_id) {
                     // get offer data
-                    $query = "SELECT description FROM offers WHERE id = '$offer_id'";
+                    $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
-                    $offer_description = $row['description'];
+                    $offer_description = pg_offer_public_label($row);
                     
                     $output_applied_offers .= '<li class="software_highlight"><em>' . h($offer_description) . '</em></li>';
                 }
@@ -3267,7 +3274,7 @@ function get_express_order($properties) {
                                         </td>
                                     </tr>
                                 </table>
-                                <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery.payment.min.js"></script>
+                                <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.payment.min.js"></script>
                                 ' . $output_surcharge_message . '
                             </div>
                         </div>';
@@ -3778,7 +3785,7 @@ function get_express_order($properties) {
                             
                             $recipient_options = array();
                             $recipient_options[''] = '';
-                            $recipient_options['myself'] = 'myself';
+                            $recipient_options[lang('myself')] = lang('myself');
 
                             // if there is at least one recipient stored in session
                             if ($_SESSION['ecommerce']['recipients']) {
@@ -3978,7 +3985,7 @@ function get_express_order($properties) {
 
                     $quick_add['ship_to_options'] = array();
                     $quick_add['ship_to_options'][''] = '';
-                    $quick_add['ship_to_options']['myself'] = 'myself';
+                    $quick_add['ship_to_options'][lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
                     if ($_SESSION['ecommerce']['recipients']) {
@@ -4270,7 +4277,7 @@ function get_express_order($properties) {
                         order_items.product_name AS name,
                         order_items.quantity,
                         order_items.price / 100 AS price,
-                        order_items.tax / 100 AS tax,
+                        order_items.tax_total / 100 AS tax,
                         order_items.offer_id,
                         order_items.added_by_offer,
                         order_items.discounted_by_offer,
@@ -4449,7 +4456,7 @@ function get_express_order($properties) {
                         $item['in_nonrecurring'] = true;
 
                         $subtotal += $item['amount'];
-                        $tax += $item['tax'] * $item['quantity'];
+                        $tax += $item['tax'];
                         
                         if ($item['selection_type'] == 'donation') {
                             $recipient['donations_in_nonrecurring'] = true;
@@ -4957,7 +4964,7 @@ function get_express_order($properties) {
 
                         $payment_periods[$item['payment_period']]['exists'] = true;
                         $payment_periods[$item['payment_period']]['subtotal'] += $item['amount'];
-                        $payment_periods[$item['payment_period']]['tax'] += $item['tax'] * $item['quantity'];
+                        $payment_periods[$item['payment_period']]['tax'] += $item['tax'];
 
                     }
 
@@ -5183,6 +5190,7 @@ function get_express_order($properties) {
                     FROM offers WHERE id = '" . e($offer_id) . "'");
 
                 if ($offer) {
+                    $offer['description'] = pg_offer_public_label($offer);
                     $applied_offers[$key] = $offer;
                 } else {
                     unset($applied_offers[$key]);
@@ -5769,7 +5777,7 @@ function get_express_order($properties) {
                                 $iyzipay_total = $total;
                             }
 
-						    require_once('assets/iyzipay-php/IyzipayBootstrap.php');
+						    require_once('includes/iyzipay-php/IyzipayBootstrap.php');
                             IyzipayBootstrap::init();
                             //to get all cart type installment prices foreach them.
                             foreach($card_numbers as $key => $card_number){
@@ -5911,7 +5919,7 @@ function get_express_order($properties) {
 
 
                     // Use jQuery.payment library to enhance payment card fields
-                    $system .= '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery.payment.min.js"></script>';
+                    $system .= '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.payment.min.js"></script>';
                 }
 
                 // If PayPal Express Checkout payment method should be shown, then prepare.
@@ -6051,7 +6059,7 @@ function get_express_order($properties) {
                 if ($date_and_time_fields) {
                     // Include JS file for timepicker.
                     $system .=
-                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
+                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
 
                     foreach ($date_and_time_fields as $date_and_time_field) {
                         $system .=

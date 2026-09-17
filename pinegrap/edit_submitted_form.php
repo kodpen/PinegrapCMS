@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -38,6 +38,13 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
+// The id comes straight from the query string, so it can point at a form that
+// was deleted (or never existed). Without this the 17 reads below all run
+// against null.
+if (!$row) {
+    output_error(lang('Sorry, the item could not be found.'), 404);
+}
+
 $folder_id = $row['folder_id'];
 $custom_form_page_id = $row['page_id'];
 $submitter_id = $row['user_id'];
@@ -51,7 +58,7 @@ $contact_id = $row['contact_id'];
 // If there is a form_item_view_page_id submitted in the post,
 // then get properties for that page.  We will use these properties
 // in several places further below.
-if ($_POST['form_item_view_page_id']) {
+if (!empty($_POST['form_item_view_page_id'])) {
     $query =
         "SELECT 
             custom_form_page_id,
@@ -80,7 +87,7 @@ if (
     $submitted_forms_manager = FALSE;
     
     // If there is a form_item_view_page_id submitted in the post
-    if ($_POST['form_item_view_page_id']) {
+    if (!empty($_POST['form_item_view_page_id'])) {
         // If the form_item_view page does not belong to the custom form being submitted, output error
         if ($form_item_view_custom_form_page_id != $custom_form_page_id) {
             log_activity(lang('access denied to edit form submission'), $_SESSION['sessionusername']);
@@ -154,6 +161,12 @@ if (!$_POST) {
         WHERE forms.id = '" . escape($_GET['id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // Same as above: a stale id gives null here, and the 17 reads that follow
+    // would each warn and then render blank.
+    if (!$row) {
+        output_error(lang('Sorry, the item could not be found.'), 404);
+    }
 
     $form_name = $row['form_name'];
     $quiz = $row['quiz'];
@@ -250,6 +263,7 @@ if (!$_POST) {
                  WHERE
                     (form_data.form_id = '" . escape($_GET['id']) . "')
                     AND (form_fields.type != 'file upload')
+                    AND (form_fields.type != 'signature')
                  GROUP BY form_data.form_field_id";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -530,6 +544,26 @@ if (!$_POST) {
                     
                     break;
 
+                // A signature is shown here, never offered. Once drawn it is
+                // evidence, and a control that could redraw or clear it would
+                // make the record worth less than the paper it replaces. The
+                // row is checked against its seal because this screen is where
+                // someone would look after suspecting the database was edited.
+                case 'signature':
+                    $signature_record = function_exists('pg_signature_record')
+                        ? pg_signature_record($_GET['id'], $field['id'])
+                        : false;
+
+                    $output_fields .=
+                    '<div class="col-12 border py-2 my-2 ' . $row_class . '">
+                        <label class="form-label">' . $field['label'] . '</label>
+                        ' . ($signature_record
+                            ? pg_signature_display($signature_record)
+                            : '<div class="text-body-secondary">' . lang('Not signed') . '</div>') . '
+                    </div>';
+
+                    break;
+
                 case 'file upload':
                     // Get file name and size for file if a file exists.
                     $file = db_item(
@@ -685,6 +719,7 @@ if (!$_POST) {
             'extra classes'=>'form',
             'icon'=>'form',
             'heading'=>lang('Edit Submitted Form'),
+            'heading_description' => lang('View or update this submitted form. Office use only fields are also visible.'),
             'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
             'breadcrumb' => array(
                 array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
@@ -692,7 +727,8 @@ if (!$_POST) {
             ),
         )
     ) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             ' . $output_wysiwyg_javascript . '
         <div class="row">
             <div class="col-12">
@@ -703,7 +739,7 @@ if (!$_POST) {
                     <div class="col-12 col-sm-12 text-center text-md-start">
                         <div class="row mb-2">
                             <div class="col-12 col-md">
-                                <h2 class="d-inline-block text-break" data-bs-content="' . lang('View or update this submitted form. Office use only fields are also visible.') . '" title="' . lang('Edit Submitted Form') . '">[' . h($form_name) . ']</h2>
+                                
                                 <p class="p-0 m-0">' . lang('Reference Code') . ': ' . $reference_code . '</p>
                                 <p class="p-0 m-0">' . lang('Submitted') . ': ' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</p>
                             </div>
@@ -796,8 +832,8 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
-    </main>
-    ' . output_footer();
+    
+</main>' . output_footer();
     
     $liveform->remove_form();
     
@@ -819,8 +855,8 @@ if (!$_POST) {
         if (
             ($user['role'] < 3)
             || ((check_edit_access($folder_id) == true) && ($user['manage_forms'] == true))
-            || (($_POST['form_item_view_page_id']) && ($submitted_form_editable_by_registered_user == '1'))
-            || (($_POST['form_item_view_page_id']) && ($user['id'] == $submitter_id) && ($submitted_form_editable_by_submitter == '1'))
+            || ((!empty($_POST['form_item_view_page_id'])) && ($submitted_form_editable_by_registered_user == '1'))
+            || ((!empty($_POST['form_item_view_page_id'])) && ($user['id'] == $submitter_id) && ($submitted_form_editable_by_submitter == '1'))
         ) {
             $delete_access = TRUE;
         }
@@ -890,7 +926,7 @@ if (!$_POST) {
                 $liveform_form_list_view->add_notice(lang('The submitted form has been deleted.'));
             }
             
-            header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['form_list_view_send_to']);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['form_list_view_send_to'] ?? '')));
             
         // else forward user to view submitted forms in backend
         } else {
@@ -1023,7 +1059,20 @@ if (!$_POST) {
                     }
                 }
             }
-            
+
+            // A file the web server would run or read as its own settings is
+            // refused at validation, so the form comes back with the field
+            // marked rather than a renamed file quietly replacing the old one.
+            if (
+                ($field['type'] == 'file upload')
+                && ($liveform->check_field_error($field['id']) == false)
+                && (isset($_FILES[$field['id']]) == true)
+                && ($_FILES[$field['id']]['name'] != '')
+                && pg_upload_name_blocked($_FILES[$field['id']]['name'])
+            ) {
+                $liveform->mark_error($field['id'], pg_upload_blocked_message($_FILES[$field['id']]['name']));
+            }
+
             // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
             if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
                 $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>$field['label'])) );
@@ -1066,7 +1115,7 @@ if (!$_POST) {
         // and there is hook code, then run it.
         if (
             (defined('PHP_REGIONS') and PHP_REGIONS === true)
-            && ($_POST['form_item_view_page_id'])
+            && (!empty($_POST['form_item_view_page_id']))
             && ($hook_code != '')
         ) {
             eval(prepare_for_eval($hook_code));
@@ -1391,7 +1440,7 @@ if (!$_POST) {
                 $send_to = str_replace('&edit_submitted_form=true', '', $send_to);
                 $send_to = str_replace('?edit_submitted_form=true', '', $send_to);
                 
-                header('Location: ' . URL_SCHEME . HOSTNAME . $send_to);
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to));
                 
             // else forward user to view submitted forms in backend
             } else {
@@ -1410,7 +1459,7 @@ if (!$_POST) {
         } else {
             // if there is a send to, then forward user to send
             if ((isset($_POST['send_to']) == TRUE) && ($_POST['send_to'] != '')) {
-                header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
                 
             // else forward user to edit submitted form in backend
             } else {

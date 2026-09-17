@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -318,12 +318,14 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
+        'heading_description' => $output_form_designer_content_subheading,
         'cancel'=>array('enable'=>'true','url'=>'view_fields.php'),
         'breadcrumb' => array(
             $pg_breadcrumb_parent,
             array('label' => $output_form_designer_content_heading),
         ),
     ]) . '
+<main id="content" class="container-fluid">
             ' . get_wysiwyg_editor_code(array('information')) . '
         <div class="row">
             ' . $liveform->output_errors() . '
@@ -331,7 +333,7 @@ if (!$_POST) {
             <div class="col-12">
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . lang('Field Name') . ']</h2>
+
                         <p class="p-0 m-0">' . ucwords($form_type_name) . ': ' . h($form_name) . '</p>
                     </div>
                 </div>
@@ -369,7 +371,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name','required'=>'required', 'placeholder'=>lang('Field Name'), 'class'=>'form-control add-header-content-updater ')) . '
+                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name','required'=>'required', 'placeholder'=>lang('Field Name'), 'class'=>'form-control ')) . '
                                         </div>
                                         ' . $output_rss_field_row . '
                                         <div class="col-12 col-md-12 col-lg-4 my-2 collapse" id="label_row">
@@ -540,7 +542,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
 
@@ -602,7 +605,9 @@ if (!$_POST) {
     if ($form_type == 'custom') {
         // If this is a file upload field, then check access to selected folder,
         // and prepare to add folder info to SQL.
-        if ($_POST['type'] == 'file upload') {
+        // A signature is written into that folder as well, so it answers to the
+        // same check: the operator must be able to write there.
+        if (($_POST['type'] == 'file upload') || ($_POST['type'] == 'signature')) {
             // validate user's access to upload folder id
             if (check_edit_access($_POST['upload_folder_id']) == false) {
                 log_activity(lang('access denied to set upload folder for custom form field because user does not have edit rights to folder'), $_SESSION['sessionusername']);

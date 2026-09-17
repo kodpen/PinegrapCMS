@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -57,7 +57,7 @@ $query = "SELECT
             custom_form_pages.form_name
          FROM page
          LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-         WHERE page.page_type = 'custom form'
+         WHERE " . pg_form_page_sql('page') . "
          ORDER BY custom_form_pages.form_name, page.page_name";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -293,6 +293,11 @@ $output_date_range_time .= ' - ';
 
 // Output end date range time
 $output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? ''));
+
+// Both are built up inside the loops below, one clause at a time, so they
+// have to start out empty.
+$where_custom_forms = '';
+$conditions_for_all_forms = '';
 
 // if advanced filters are on, prepare SQL for checked custom forms
 if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
@@ -687,6 +692,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     }
 
     // prepare list of custom forms for log
+    $custom_form_list = '';
 
     $count = 1;
 
@@ -847,6 +853,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     $number_of_screens = ceil($number_of_results / $max);
 
     // if there are more than one screen
+    $output_screen_links = '';
+
     if ($number_of_screens > 1) {
 
         $output_screen_links .= '
@@ -997,6 +1005,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             $status_complete_selected = ' selected="selected"';
         }
 
+        // Both are appended to inside the loop below, under conditions that do
+        // not hold for every custom form, so they have to start out empty.
+        $output_form_fields = '';
+        $output_custom_forms = '';
+
         foreach ($custom_forms as $custom_form) {
             // get number of forms for custom form
             $query = "SELECT COUNT(id)
@@ -1026,7 +1039,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                     $output_form_fields .=
                     '<div class="col-12 col-sm-6 col-md-12 my-1">
                         <label for="form_field_' . $field_id . '" class="form-label">' . h($custom_form['name']) . ' :: ' . h($field_name) . '</label>
-                        <input type="text" id="form_field_' . $field_id . '" name="form_field_' . $field_id . '" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id]) . '" />
+                        <input type="text" id="form_field_' . $field_id . '" name="form_field_' . $field_id . '" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id] ?? '') . '" />
                     </div>';
                 }
             } else {
@@ -1181,9 +1194,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             'extra classes'=>'form',
             'icon'=>'form', 
             'heading'=>lang('Forms'),
+            'heading_description' => lang('All submitted form data that I can view, edit, or export.'),
 
         )
-    ) . '  
+    ) . '
+<main id="content" class="container-fluid">  
     ' . $output_advanced_filters . '
     <script>
         function export_forms() {
@@ -1225,7 +1240,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('All submitted form data that I can view, edit, or export.') . '" title="' . lang('My Submitted Forms') . '">' . lang('My Submitted Forms') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
@@ -1312,7 +1327,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     print $output;
     $liveform->unmark_errors();

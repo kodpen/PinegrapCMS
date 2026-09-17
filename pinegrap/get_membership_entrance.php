@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -25,6 +25,27 @@ function get_membership_entrance($properties = array()) {
     $layout_type = get_layout_type($page_id);
 
     $form = new liveform('membership_entrance');
+
+    // A Google sign-in that matched no account is sent back to this screen to
+    // prove its membership. The identity is verified; what is still missing is
+    // the membership number, which only this site can check. Prefill what
+    // Google told us and let the notice explain the step. Nothing here creates
+    // an account - the form's own validation still decides.
+    $google_membership = $_SESSION['software']['google_membership_pending'] ?? null;
+    $google_signup = (is_array($google_membership)
+        && ((time() - ((int) ($google_membership['time'] ?? 0))) <= 900));
+
+    if ($google_signup) {
+        $form->add_notice(lang('Your Google account is verified. Enter your membership details to finish - a password is optional, because you can keep signing in with Google.'));
+
+        if ($form->is_empty()) {
+            $form->set('first_name', (string) ($google_membership['first_name'] ?? ''));
+            $form->set('last_name', (string) ($google_membership['last_name'] ?? ''));
+            $form->set('email_address', (string) ($google_membership['email'] ?? ''));
+            $form->set('email_address_verify', (string) ($google_membership['email'] ?? ''));
+            $form->set('username', get_unique_username(strtok((string) ($google_membership['email'] ?? ''), '@')));
+        }
+    }
 
     // if software is in secure mode, then make sure that form is submitted to a secure URL
     if (URL_SCHEME == 'https://') {
@@ -42,7 +63,7 @@ function get_membership_entrance($properties = array()) {
         if (REMEMBER_ME) {
             // If the visitor checked remember me during the last login,
             // then check the remember me check box by default
-            if ($_COOKIE['software']['remember_me'] == 'true') {
+            if (($_COOKIE['software']['remember_me'] ?? '') == 'true') {
                 $form->assign_field_value('login_remember_me', '1');
                 $form->assign_field_value('register_remember_me', '1');
             }
@@ -196,6 +217,7 @@ function get_membership_entrance($properties = array()) {
 
                         </table>
                         <button type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button">' . lang('Register') . '</button><br />
+                        ' . pg_google_signin_button(($_GET['send_to'] ?? ''), 'membership') . '
                     </form>
                 </div>
                 <div style="clear: both"></div>';
@@ -327,8 +349,15 @@ function get_membership_entrance($properties = array()) {
         $form->set('username', 'required', true);
         $form->set('email_address', 'required', true);
         $form->set('email_address_verify', 'required', true);
-        $form->set('password', 'required', true);
-        $form->set('password_verify', 'required', true);
+
+        // A password is required for a typed sign-up, but not when Google has
+        // already proved who this is (see the pending record below). The
+        // fields stay on the screen either way, so no layout has to change:
+        // filling them in simply adds a second way to sign in.
+        if (!$google_signup) {
+            $form->set('password', 'required', true);
+            $form->set('password_verify', 'required', true);
+        }
         
         // If strong password is enabled, then display password requirements.
         if (STRONG_PASSWORD) {
@@ -356,7 +385,8 @@ function get_membership_entrance($properties = array()) {
             'forgot_password_url' => $forgot_password_url,
             'strong_password_help' => $strong_password_help,
             'opt_in_label' => OPT_IN_LABEL,
-            'register_system' => $register_system));
+            'register_system' => $register_system,
+            'google_signin' => pg_google_signin_button(($_GET['send_to'] ?? ''), 'membership')));
 
         $output = $form->prepare($output);
         

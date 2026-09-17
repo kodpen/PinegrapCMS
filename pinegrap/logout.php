@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,8 +26,8 @@ if (($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
 logout();
 
 // if there is a send to value, then send the user to that page
-if ($_REQUEST['send_to'] != '') {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to'] . '?logged_out=true');
+if (($_REQUEST['send_to'] ?? '') != '') {
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')) . '?logged_out=true');
 
 // else, print a default logout page
 } else {

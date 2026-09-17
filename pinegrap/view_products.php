@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -46,6 +46,12 @@ $output_private_folder_access_headers = '';
 $output_add_membership_header = '';
 $output_all_product_actions_headers = '';
 $output_out_of_stock_timestamp_header = '';
+$output_recurring_header = '';
+$output_inventory_headers = '';
+$output_tax_header = '';
+$output_product_form_header = '';
+$output_all_products_headers = '';
+$output_price_header = '';
 $liveform = new liveform('view_products');
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -721,407 +727,25 @@ if (!empty($_SESSION['software']['ecommerce']['view_products']['order'])) {
 
 // if user requested to export products, then export them
 if (($_GET['submit_data'] ?? '') == 'Export Products') {
-    // force download dialog
-    header("Content-type: text/csv; charset=utf-8");
-    header("Content-disposition: attachment; filename=products.csv");
 
-    $output_custom_field_1_heading = '';
+    // The whole of this used to be written out here: ninety columns of
+    // headings, then the same ninety again as values, and the two had to be
+    // kept in step by hand. It now lives in export_products_f.php, which is
+    // also what the File Manager and the spreadsheet writer call -- so a
+    // column added once is added everywhere, and a workbook and a CSV of the
+    // same products cannot disagree.
+    require_once(dirname(__FILE__) . '/export_products_f.php');
 
-    // If the first custom product field is active, then output heading for it.
-    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-        $output_custom_field_1_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '",';
-    }
+    $export_table = pg_products_export_table(
+        $where,
+        (($sort_column == 'seo_impact') ? 'products.timestamp' : $sort_column) . ' ' . $asc_desc);
 
-    $output_custom_field_2_heading = '';
-
-    // If the second custom product field is active, then output heading for it.
-    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-        $output_custom_field_2_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '",';
-    }
-
-    $output_custom_field_3_heading = '';
-
-    // If the third custom product field is active, then output heading for it.
-    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-        $output_custom_field_3_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '",';
-    }
-
-    $output_custom_field_4_heading = '';
-
-    // If the fourth custom product field is active, then output heading for it.
-    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-        $output_custom_field_4_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '",';
-    }
-
-    // Get all of the submit form fields, so we can figure out all of the necessary columns.
-    $submit_form_fields = db_items(
-        "SELECT
-            product_submit_form_fields.product_id,
-            product_submit_form_fields.action,
-            product_submit_form_fields.value,
-            form_fields.name
-        FROM product_submit_form_fields
-        LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
-        ORDER BY
-            product_submit_form_fields.product_id,
-            product_submit_form_fields.action,
-            product_submit_form_fields.id");
-
-    $submit_form_create_fields = array();
-    $submit_form_update_fields = array();
-    $product_submit_form_fields = array();
-
-    foreach ($submit_form_fields as $submit_form_field) {
-        switch ($submit_form_field['action']) {
-            case 'create':
-                if (in_array($submit_form_field['name'], $submit_form_create_fields) == false) {
-                    $submit_form_create_fields[] = $submit_form_field['name'];
-                }
-
-                break;
-            
-            case 'update':
-                if (in_array($submit_form_field['name'], $submit_form_update_fields) == false) {
-                    $submit_form_update_fields[] = $submit_form_field['name'];
-                }
-
-                break;
-        }
-
-        $product_submit_form_fields[$submit_form_field['product_id']][$submit_form_field['action']][$submit_form_field['name']] = $submit_form_field['value'];
-    }
-
-    // output column headings for CSV data
-    echo
-        '"name",' .
-        '"enabled",' .
-        '"short_description",' .
-        '"full_description",' .
-        '"details",' .
-        '"code",' .
-        '"keywords",' .
-        '"image_name",' .
-        '"price",' .
-        '"taxable",' .
-        '"selection_type",' .
-        '"default_quantity",' .
-        '"address_name",' .
-        '"title",' .
-        '"meta_description",' .
-        '"meta_keywords",' .
-        '"inventory",' .
-        '"inventory_quantity",' .
-        '"backorder",' .
-        '"out_of_stock_message",' .
-        '"required_product_id",' .
-        '"form",' .
-        '"form_name",' .
-        '"form_label_column_width",' .
-        '"form_quantity_type",' .
-        '"shippable",' .
-        '"weight",' .
-        '"primary_weight_points",' .
-        '"secondary_weight_points",' .
-        '"length",' .
-        '"width",' .
-        '"height",' .
-        '"container_required",' .
-        '"preparation_time",' .
-        '"free_shipping",' .
-        '"extra_shipping_cost",' .
-        '"commissionable",' .
-        '"commission_rate_limit",' .
-        '"order_receipt_message",' .
-        '"order_receipt_bcc_email_address",' .
-        '"email_page_id",' .
-        '"email_bcc_email_address",' .
-        '"recurring",' .
-        '"recurring_schedule_editable_by_customer",' .
-        '"recurring_days_before_start",' .
-        '"recurring_number_of_payments",' .
-        '"recurring_payment_period",' .
-        '"recurring_profile_disabled_perform_actions",' .
-        '"recurring_profile_disabled_expire_membership",' .
-        '"recurring_profile_disabled_revoke_private_access",' .
-        '"recurring_profile_disabled_email",' .
-        '"recurring_profile_disabled_email_subject",' .
-        '"recurring_profile_disabled_email_page_id",' .
-        '"recurring_sage_group_id",' .
-        '"contact_group_id",' .
-        '"membership_renewal",' .
-        '"grant_private_access",' .
-        '"private_folder_id",' .
-        '"private_days",' .
-        '"start_page_id",' .
-        '"reward_points",' .
-        '"gift_card",' .
-        '"gift_card_email_subject",' .
-        '"gift_card_email_format",' .
-        '"gift_card_email_body",' .
-        '"gift_card_email_page_id",' .
-        '"submit_form",' .
-        '"submit_form_custom_form_page_id",' .
-        '"submit_form_create",' .
-        '"submit_form_update",' .
-        '"submit_form_update_where_field",' .
-        '"submit_form_update_where_value",' .
-        '"submit_form_quantity_type",' .
-        '"add_comment",' .
-        '"add_comment_page_id",' .
-        '"add_comment_message",' .
-        '"add_comment_name",' .
-        '"add_comment_only_for_submit_form_update",' .
-        $output_custom_field_1_heading .
-        $output_custom_field_2_heading .
-        $output_custom_field_3_heading .
-        $output_custom_field_4_heading .
-        '"notes",' .
-        '"google_product_category",' .
-        '"gtin",' .
-        '"brand",' .
-        '"mpn"';
-
-    foreach ($submit_form_create_fields as $field) {
-        echo ',"sfc_' . escape_csv($field) . '"';
-    }
-
-    foreach ($submit_form_update_fields as $field) {
-        echo ',"sfu_' . escape_csv($field) . '"';
-    }
-
-    echo "\n";
-
-    // get all products in order to export them
-    $query =
-        'SELECT
-            id,
-            name,
-            enabled,
-            short_description,
-            full_description,
-            details,
-            code,
-            keywords,
-            image_name,
-            price,
-            taxable,
-            selection_type,
-            default_quantity,
-            address_name,
-            title,
-            meta_description,
-            meta_keywords,
-            inventory,
-            inventory_quantity,
-            backorder,
-            out_of_stock_message,
-            required_product,
-            form,
-            form_name,
-            form_label_column_width,
-            form_quantity_type,
-            shippable,
-            weight,
-            primary_weight_points,
-            secondary_weight_points,
-            length,
-            width,
-            height,
-            container_required,
-            preparation_time,
-            free_shipping,
-            extra_shipping_cost,
-            commissionable,
-            commission_rate_limit,
-            order_receipt_message,
-            order_receipt_bcc_email_address,
-            email_page,
-            email_bcc,
-            recurring,
-            recurring_schedule_editable_by_customer,
-            start,
-            number_of_payments,
-            payment_period,
-            recurring_profile_disabled_perform_actions,
-            recurring_profile_disabled_expire_membership,
-            recurring_profile_disabled_revoke_private_access,
-            recurring_profile_disabled_email,
-            recurring_profile_disabled_email_subject,
-            recurring_profile_disabled_email_page_id,
-            sage_group_id,
-            contact_group_id,
-            membership_renewal,
-            grant_private_access,
-            private_folder,
-            private_days,
-            send_to_page,
-            reward_points,
-            gift_card,
-            gift_card_email_subject,
-            gift_card_email_format,
-            gift_card_email_body,
-            gift_card_email_page_id,
-            submit_form,
-            submit_form_custom_form_page_id,
-            submit_form_create,
-            submit_form_update,
-            submit_form_update_where_field,
-            submit_form_update_where_value,
-            submit_form_quantity_type,
-            add_comment,
-            add_comment_page_id,
-            add_comment_message,
-            add_comment_name,
-            add_comment_only_for_submit_form_update,
-            custom_field_1,
-            custom_field_2,
-            custom_field_3,
-            custom_field_4,
-            notes,
-            google_product_category,
-            gtin,
-            brand,
-            mpn
-        FROM products
-        ' . $where . '
-        ORDER BY ' . (($sort_column == 'seo_impact') ? 'products.timestamp' : $sort_column) . ' ' . $asc_desc;
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $products = mysqli_fetch_items($result);
-
-    // loop through the products in order to output CSV data
-    foreach ($products as $product) {
-        $output_custom_field_1 = '';
-
-        // If the first custom product field is active, then output value for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-            $output_custom_field_1 = '"' . escape_csv($product['custom_field_1']) . '",';
-        }
-
-        $output_custom_field_2 = '';
-
-        // If the second custom product field is active, then output value for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-            $output_custom_field_2 = '"' . escape_csv($product['custom_field_2']) . '",';
-        }
-
-        $output_custom_field_3 = '';
-
-        // If the third custom product field is active, then output value for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-            $output_custom_field_3 = '"' . escape_csv($product['custom_field_3']) . '",';
-        }
-
-        $output_custom_field_4 = '';
-
-        // If the fourth custom product field is active, then output value for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-            $output_custom_field_4 = '"' . escape_csv($product['custom_field_4']) . '",';
-        }
-
-        echo
-            '"' . escape_csv($product['name']) . '",' .
-            '"' . $product['enabled'] . '",' .
-            '"' . escape_csv($product['short_description']) . '",' .
-            '"' . escape_csv($product['full_description']) . '",' .
-            '"' . escape_csv($product['details']) . '",' .
-            '"' . escape_csv($product['code']) . '",' .
-            '"' . escape_csv($product['keywords']) . '",' .
-            '"' . escape_csv($product['image_name']) . '",' .
-            '"' . sprintf('%01.2lf', $product['price'] / 100) . '",' .
-            '"' . $product['taxable'] . '",' .
-            '"' . $product['selection_type'] . '",' .
-            '"' . $product['default_quantity'] . '",' .
-            '"' . escape_csv($product['address_name']) . '",' .
-            '"' . escape_csv($product['title']) . '",' .
-            '"' . escape_csv($product['meta_description']) . '",' .
-            '"' . escape_csv($product['meta_keywords']) . '",' .
-            '"' . $product['inventory'] . '",' .
-            '"' . $product['inventory_quantity'] . '",' .
-            '"' . $product['backorder'] . '",' .
-            '"' . escape_csv($product['out_of_stock_message']) . '",' .
-            '"' . $product['required_product'] . '",' .
-            '"' . $product['form'] . '",' .
-            '"' . escape_csv($product['form_name']) . '",' .
-            '"' . escape_csv($product['form_label_column_width']) . '",' .
-            '"' . $product['form_quantity_type'] . '",' .
-            '"' . $product['shippable'] . '",' .
-            '"' . $product['weight'] . '",' .
-            '"' . $product['primary_weight_points'] . '",' .
-            '"' . $product['secondary_weight_points'] . '",' .
-            '"' . $product['length'] . '",' .
-            '"' . $product['width'] . '",' .
-            '"' . $product['height'] . '",' .
-            '"' . $product['container_required'] . '",' .
-            '"' . $product['preparation_time'] . '",' .
-            '"' . $product['free_shipping'] . '",' .
-            '"' . sprintf('%01.2lf', $product['extra_shipping_cost'] / 100) . '",' .
-            '"' . $product['commissionable'] . '",' .
-            '"' . $product['commission_rate_limit'] . '",' .
-            '"' . escape_csv($product['order_receipt_message']) . '",' .
-            '"' . escape_csv($product['order_receipt_bcc_email_address']) . '",' .
-            '"' . $product['email_page'] . '",' .
-            '"' . escape_csv($product['email_bcc']) . '",' .
-            '"' . $product['recurring'] . '",' .
-            '"' . $product['recurring_schedule_editable_by_customer'] . '",' .
-            '"' . $product['start'] . '",' .
-            '"' . $product['number_of_payments'] . '",' .
-            '"' . $product['payment_period'] . '",' .
-            '"' . $product['recurring_profile_disabled_perform_actions'] . '",' .
-            '"' . $product['recurring_profile_disabled_expire_membership'] . '",' .
-            '"' . $product['recurring_profile_disabled_revoke_private_access'] . '",' .
-            '"' . $product['recurring_profile_disabled_email'] . '",' .
-            '"' . escape_csv($product['recurring_profile_disabled_email_subject']) . '",' .
-            '"' . $product['recurring_profile_disabled_email_page_id'] . '",' .
-            '"' . $product['sage_group_id'] . '",' .
-            '"' . $product['contact_group_id'] . '",' .
-            '"' . $product['membership_renewal'] . '",' .
-            '"' . $product['grant_private_access'] . '",' .
-            '"' . $product['private_folder'] . '",' .
-            '"' . $product['private_days'] . '",' .
-            '"' . $product['send_to_page'] . '",' .
-            '"' . $product['reward_points'] . '",' .
-            '"' . $product['gift_card'] . '",' .
-            '"' . escape_csv($product['gift_card_email_subject']) . '",' .
-            '"' . $product['gift_card_email_format'] . '",' .
-            '"' . escape_csv($product['gift_card_email_body']) . '",' .
-            '"' . $product['gift_card_email_page_id'] . '",' .
-            '"' . $product['submit_form'] . '",' .
-            '"' . $product['submit_form_custom_form_page_id'] . '",' .
-            '"' . $product['submit_form_create'] . '",' .
-            '"' . $product['submit_form_update'] . '",' .
-            '"' . $product['submit_form_update_where_field'] . '",' .
-            '"' . $product['submit_form_update_where_value'] . '",' .
-            '"' . $product['submit_form_quantity_type'] . '",' .
-            '"' . $product['add_comment'] . '",' .
-            '"' . $product['add_comment_page_id'] . '",' .
-            '"' . escape_csv($product['add_comment_message']) . '",' .
-            '"' . escape_csv($product['add_comment_name']) . '",' .
-            '"' . $product['add_comment_only_for_submit_form_update'] . '",' .
-            $output_custom_field_1 .
-            $output_custom_field_2 .
-            $output_custom_field_3 .
-            $output_custom_field_4 .
-            '"' . escape_csv($product['notes']) . '",' .
-            '"' . escape_csv($product['google_product_category']) . '",' .
-            '"' . escape_csv($product['gtin']) . '",' .
-            '"' . escape_csv($product['brand']) . '",' .
-            '"' . escape_csv($product['mpn']) . '"';
-
-        foreach ($submit_form_create_fields as $field) {
-            echo ',"' . escape_csv($product_submit_form_fields[$product['id']]['create'][$field]) . '"';
-        }
-
-        foreach ($submit_form_update_fields as $field) {
-            echo ',"' . escape_csv($product_submit_form_fields[$product['id']]['update'][$field]) . '"';
-        }
-
-        echo "\n";
-    }
+    pg_products_export_csv($export_table);
 
     // if at least 1 product was exported, then log activity
-    if (count($products) > 0) {
+    if (count($export_table['rows']) > 0) {
         // if only 1 product was exported, then prepare message phrasing in a certain way
-        if (count($products) == 1) {
+        if (count($export_table['rows']) == 1) {
             $plural_suffix = '';
             $was_or_were = 'was';
 
@@ -1132,7 +756,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         }
 
         // add log message about products being exported
-        log_activity(count($products) . ' product' . $plural_suffix . ' ' . $was_or_were . ' exported', $_SESSION['sessionusername']);
+        log_activity(count($export_table['rows']) . ' product' . $plural_suffix . ' ' . $was_or_were . ' exported', $_SESSION['sessionusername']);
     }
 
 // else the user did not select to export products, so just list products
@@ -1492,6 +1116,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $output_private_folder_access_columns = '';
         $output_add_membership_column = '';
         $output_out_of_stock_timestamp_column = '';
+        $output_tax_column = '';
+        $output_recurring_column = '';
+        $output_inventory_columns = '';
+        $output_product_form_column = '';
+        $output_all_products_columns = '';
+        $output_image_column = '';
 
         $product_id = $row['id'];
         $name = h($row['name']);
@@ -1500,12 +1130,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $price = $row['price'] / 100;
         $form_name = $row['form_name'];
         $seo_score = $row['seo_score'];
-        $selection_type = $row['selection_type'];
-        $default_quantity = $row['default_quantity'];
+        $selection_type = isset($row['selection_type']) ? $row['selection_type'] : '';
+        $default_quantity = isset($row['default_quantity']) ? $row['default_quantity'] : '';
         $required_product = isset($row['required_product_name']) ? $row['required_product_name'] : '';
-        $shippable = $row['shippable'];
+        $shippable = isset($row['shippable']) ? $row['shippable'] : '';
         $commissionable = isset($row['commissionable']) ? $row['commissionable'] : '';
-        $recurring = $row['recurring'];
+        $recurring = isset($row['recurring']) ? $row['recurring'] : '';
         $recurring_start = isset($row['recurring_start']) ? $row['recurring_start'] : '';
         $number_of_payments = isset($row['number_of_payments']) ? $row['number_of_payments'] : '';
         $payment_period = isset($row['payment_period']) ? $row['payment_period'] : '';
@@ -1519,10 +1149,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $email_page = isset($row['email_page']) ? $row['email_page'] : '';
         $email_bcc = isset($row['email_bcc']) ? $row['email_bcc'] : '';
         $contact_group_name = isset($row['contact_group_name']) ? $row['contact_group_name'] : '';
-        $custom_field_1 = $row['custom_field_1'];
-        $custom_field_2 = $row['custom_field_2'];
-        $custom_field_3 = $row['custom_field_3'];
-        $custom_field_4 = $row['custom_field_4'];
+        $custom_field_1 = isset($row['custom_field_1']) ? $row['custom_field_1'] : '';
+        $custom_field_2 = isset($row['custom_field_2']) ? $row['custom_field_2'] : '';
+        $custom_field_3 = isset($row['custom_field_3']) ? $row['custom_field_3'] : '';
+        $custom_field_4 = isset($row['custom_field_4']) ? $row['custom_field_4'] : '';
         $inventory = $row['inventory'];
 		$inventory_quantity = $row['inventory_quantity'];
 		$image_name = $row['image_name'];
@@ -1548,6 +1178,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         }
         
         // if tax is on, prepare tax data
+
         if ((ECOMMERCE_TAX == true) && ($filter != 'all_product_actions')) {
             $taxable = $row['taxable'];
 
@@ -1954,7 +1585,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_product.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=variant_sets" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-grid me-2"></span>' . lang('Variant Sets') . '</a>
@@ -1989,6 +1620,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                             <input type="hidden" name="edit_price_value">
                             <input type="hidden" name="edit_inventory">
                             <input type="hidden" name="edit_inventory_quantity_process">
+                            <input type="hidden" name="edit_tax_rate_method">
+                            <input type="hidden" name="edit_tax_rate_value">
                             <input type="hidden" name="edit_inventory_quantity">
                             <table class="chart table-hover table" style="width:100%;display:none">
                                 <thead>
@@ -2038,7 +1671,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             </div>
         </div>
         ' . pg_seo_render_detail_offcanvas() . '
-    </main>';
+    ';
 
     $barcode_print_js = '';
     if (defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
@@ -2059,10 +1692,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             'title'=> lang('Products'),
             'extra classes'=>'products',
             'icon'=>'store',
-            'heading'=>lang('Products'),
+            'heading'=>($heading ?? lang('Products')),
+            'heading_description' => ($subheading ?? lang('Your catalogue, stock and prices')),
             'head' => (defined('BARCODE_ENABLED') && BARCODE_ENABLED ?
-                '<script src="assets/jsbarcode/JsBarcode.all.min.js"></script>' : '')
+                '<script src="assets/lib/JsBarcode/JsBarcode.all.min.js"></script>' : '')
         )
-    ) . $output . $barcode_print_js . output_footer();
+    ) . '<main id="content" class="container-fluid">' . $output . $barcode_print_js . '</main>' . output_footer();
     $liveform->remove_form('view_products');
 }

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -618,18 +618,11 @@ if (!$_POST) {
             'extra classes'=>'setting',
             'icon'=>'setting',
             'heading'=> lang('Site Log'),
-            'cancel'=>array(
-                'enable'=>'true',
-                'title'=>lang('Return to Settings'),
-                'url'=>'settings.php'
-            ),
-            'breadcrumb' => array(
-                array('label' => lang('Settings'), 'url' => 'settings.php'),
-                array('label' => lang('Site Log')),
-            ),
+            'heading_description' => lang('Audit all website events and changes by any site visitor or user.'),
             'pre_main_html' => $output_advanced_filters,
         )
     ) . '
+<main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -637,7 +630,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('Audit all website events and changes by any site visitor or user.') . '" title="' . lang('Site Log') . '">' . lang('Site Log') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $output_control_buttons . '
                         </nav>
@@ -671,7 +664,6 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
-    </main>
     <style>
         /* Clipped log messages: show the first few lines and fade out the rest. */
         .pg-log-msg { white-space: normal; }
@@ -771,7 +763,8 @@ if (!$_POST) {
                 table.DataTable().column(1).search(type_filter.getAttribute("data-token")).draw();
             }
         });
-    </script>' . output_footer();
+    </script>
+</main>' . output_footer();
 
      $liveform->remove_form('settings');
 } else {

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,7 +39,7 @@ function get_login($properties = array()) {
         if (REMEMBER_ME) {
             // If the visitor checked remember me during the last login,
             // then check the remember me check box by default
-            if ($_COOKIE['software']['remember_me'] == 'true') {
+            if ((($_COOKIE['software']['remember_me'] ?? '')) == 'true') {
                 $form->assign_field_value('remember_me', '1');
             }
         }
@@ -130,6 +130,7 @@ function get_login($properties = array()) {
                 <br />
                 <br />
                 ' . $output_forgot_password_link . '
+                ' . pg_google_signin_button(($_GET['send_to'] ?? ''), false) . '
             </form>';
 
     // Otherwise the layout is custom.
@@ -176,7 +177,8 @@ function get_login($properties = array()) {
             'form' => $form,
             'attributes' => $attributes,
             'system' => $system,
-            'forgot_password_url' => $forgot_password_url));
+            'forgot_password_url' => $forgot_password_url,
+            'google_signin' => pg_google_signin_button(($_GET['send_to'] ?? ''), false)));
 
         $output = $form->prepare($output);
         

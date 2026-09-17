@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -56,7 +56,7 @@ if (!$_POST) {
     $output_header = pg_page_shell( array(
         'cancel'=>array('enable'=>'true','url'=>pg_safe_back_url(isset($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', 'view_themes.php')),
         'breadcrumb' => $pg_breadcrumb_items,
-    ) );
+    ) ) . '<main id="content" class="container-fluid">';
 
 
     // output the page
@@ -110,7 +110,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' . output_footer();
+        
+</main>' . output_footer();
 
         $liveform->remove_form('edit_theme_css');
 // else process the file

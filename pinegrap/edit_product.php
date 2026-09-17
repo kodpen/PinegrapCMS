@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -52,6 +52,12 @@ $liveform = new liveform('edit_product');
 $product_id = isset($_REQUEST['id']) ? (int) $_REQUEST['id'] : 0;
 $product    = pg_pb_load_product($product_id);
 
+// Where to land after saving or deleting: the screen that opened this one when
+// it said so, the product list otherwise. Read before the POST branch so that
+// both halves of the file agree, and re-read from the posted value because a
+// save is a fresh request with no query string on it.
+$send_to = pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+
 if (!$product) {
     output_error(
         lang('Page not found.')
@@ -85,7 +91,7 @@ if ($_POST) {
         $liveform_target->add_notice(
             lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name))));
 
-        go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        go($send_to);
     }
 
     // Contact group access for contributors, and the two e-mail addresses.
@@ -96,7 +102,7 @@ if ($_POST) {
 
     if ($name === '') {
         $liveform->mark_error('name', lang(array('string' => '{var:1|c} is required', 'vars' => lang('Product ID / SKU'))));
-        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id);
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
     }
 
     $result = pg_pb_update_product($product_id);
@@ -112,10 +118,10 @@ if ($_POST) {
     // operator asked to stay — editing a photo and a price in one sitting is
     // two visits otherwise.
     if (!empty($_POST['submit_save_and_stay'])) {
-        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id);
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+    go($send_to);
 }
 
 

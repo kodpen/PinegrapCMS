@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1453,6 +1453,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
    
 
     // if there are more than one screen
+    $output_screen_links = '';
+
     if ($number_of_screens > 1) {
 
         $output_screen_links .= '
@@ -2350,9 +2352,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             'extra classes'=>'contact',
             'icon'=>'contact', 
             'heading'=>lang($heading),
+            'heading_description' => ($subheading ?? lang('Everyone in the contact database')),
                     
         )
-    ) . '  
+    ) . '
+<main id="content" class="container-fluid">  
     ' . $output_advanced_filters . '
             <div class="row">
             <div class="col-12">
@@ -2361,7 +2365,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <a class="btn btn-sm btn-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
@@ -2441,8 +2445,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 </div>
             </div>
         </div>
-    </main>
-    ' . output_footer();
+    
+</main>' . output_footer();
 
     echo $output;
 

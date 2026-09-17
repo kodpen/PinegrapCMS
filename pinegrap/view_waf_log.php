@@ -1,6 +1,8 @@
 <?php
 /**
- * PineGrap - Firewall event log
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Firewall event log
  *
  * Backend view of the waf_log table written by waf.php.
  *
@@ -14,7 +16,7 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2016–2026 Kodpen
+ * @copyright   2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -67,12 +69,91 @@ if (isset($_POST['submit_release'])) {
              WHERE ip_address = '" . escape($release_ip) . "' AND source = 'auto'"
         ) or output_error(lang('Query failed.'));
 
+        // The pre-database mirror is rewritten at most every five minutes on
+        // its own; a release has to reach it now, or the address stays shut
+        // out at the door while this screen says it was let back in.
+        if (function_exists('waf_ban_shield_refresh')) {
+            waf_ip_lists(true);
+            waf_ban_shield_refresh(true);
+        }
+
         log_activity(
             lang(array('string' => 'released the automatic firewall ban on {var:1}', 'vars' => $release_ip)),
             $_SESSION['sessionusername']
         );
 
         $liveform->add_notice(lang(array('string' => 'The ban on {var:1} has been released.', 'vars' => $release_ip)));
+    }
+
+    go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
+}
+
+// Put a flagged address on the allowed list. Written as the same row the
+// Settings screen writes (source 'manual'), so it appears in - and survives
+// saves of - the Allowed IP Addresses field there. Any automatic ban covering
+// the address is released in the same movement: the allow list wins inside
+// the firewall, but the pre-database mirror carries block lines only and
+// would go on turning the address away.
+if (isset($_POST['submit_allow'])) {
+    validate_token_field();
+
+    $allow_ip = isset($_POST['allow_ip']) ? trim((string) $_POST['allow_ip']) : '';
+
+    if ($allow_ip !== ''
+        && function_exists('waf_is_ip') && waf_is_ip($allow_ip)
+        && waf_table_has_column('banned_ip_addresses', 'list_type')
+    ) {
+        mysqli_query(
+            db::$con,
+            "INSERT INTO banned_ip_addresses
+                (ip_address, list_type, source, created_at)
+             VALUES
+                ('" . escape($allow_ip) . "', 'allow', 'manual', " . time() . ")
+             ON DUPLICATE KEY UPDATE created_at = VALUES(created_at)"
+        ) or output_error(lang('Query failed.'));
+
+        $auto_result = mysqli_query(
+            db::$con,
+            "SELECT ip_address FROM banned_ip_addresses
+             WHERE source = 'auto' AND list_type = 'block'"
+        );
+
+        if ($auto_result) {
+            foreach (mysqli_fetch_items($auto_result) as $auto_row) {
+                if (waf_ip_matches($allow_ip, $auto_row['ip_address'])) {
+                    mysqli_query(
+                        db::$con,
+                        "DELETE FROM banned_ip_addresses
+                         WHERE ip_address = '" . escape($auto_row['ip_address']) . "' AND source = 'auto'"
+                    );
+                }
+            }
+        }
+
+        waf_ip_lists(true);
+        waf_ban_shield_refresh(true);
+
+        log_activity(
+            lang(array('string' => 'allowed the address {var:1} from the firewall log', 'vars' => $allow_ip)),
+            $_SESSION['sessionusername']
+        );
+
+        $liveform->add_notice(lang(array('string' => 'The address {var:1} has been added to the allowed list.', 'vars' => $allow_ip)));
+    }
+
+    go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
+}
+
+// Forget the policy reports. They live in a file, not the log table, so the
+// Clear Log button above does not reach them; after a policy change an
+// operator wants a clean slate to see what the new policy still refuses.
+if (isset($_POST['submit_csp_clear'])) {
+    validate_token_field();
+
+    if (function_exists('waf_csp_report_clear')) {
+        waf_csp_report_clear();
+        log_activity(lang('cleared the content security policy reports'), $_SESSION['sessionusername']);
+        $liveform->add_notice(lang('The policy reports have been cleared.'));
     }
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
@@ -86,15 +167,10 @@ if (!$table_exists) {
         'extra classes' => 'setting',
         'icon'          => 'setting',
         'heading'       => lang('Firewall Log'),
-        'cancel'        => array(
-            'enable' => 'true',
-            'title'  => lang('Return to Settings'),
-            'url'    => 'settings.php',
-        ),
-        'auto_main' => false,
+        'heading_description' => lang('Requests the firewall blocked or flagged'),
     ));
 
-    echo '<main id="content" class="container">
+    echo '<main id="content" class="container-fluid">
         <div class="alert alert-warning my-4">
             <i class="bi bi-exclamation-triangle me-2"></i>'
             . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.')
@@ -126,6 +202,7 @@ $category_options = array(
     'bot'      => lang('Bots'),
     'tool'     => lang('Scanners'),
     'rate'     => lang('Rate Limit'),
+    'login'    => lang('Sign-in Lockouts'),
     'iplist'   => lang('IP List'),
     'ban'      => lang('Bans'),
 );
@@ -171,22 +248,181 @@ $summary = mysqli_fetch_assoc(mysqli_query(
 
 $mode = function_exists('waf_mode') ? waf_mode() : 'off';
 
+// ---- Possible false positives ----------------------------------------------
+//
+// A flagged address that also turns out to be a real person is the one thing
+// an operator has to know before switching from Monitor to Block, and the one
+// thing a list of raw events cannot show. Four signs are checked, cheapest
+// first:
+//
+//   - the firewall event itself carried a signed-in user id;
+//   - a "remember me" token was issued to the address (auth_tokens keeps the
+//     resolved visitor address);
+//   - an activity log entry with a named user came from the address;
+//   - a completed order came from the address.
+//
+// The activity log and orders store REMOTE_ADDR rather than the resolved
+// visitor address, so behind a CDN those two signs go quiet rather than
+// wrong: the edge address never appears among the flagged ones. Both tables
+// can be large and neither is indexed by address, so each is read only from
+// its most recent rows, bounded by primary key the way waf_enforce_log_cap()
+// bounds its own work.
+//
+// Filtered by period only, not by the category or search box: a verdict on
+// whether blocking is safe has to consider everything that was flagged.
+
+$suspects      = array();
+$suspect_count = 0;
+$flagged       = array();
+
+$flag_result = mysqli_query(
+    db::$con,
+    "SELECT ip_address,
+            SUM(hit_count) AS hits,
+            MAX(last_seen) AS last_seen,
+            MAX(CASE WHEN user_id > 0 THEN 1 ELSE 0 END) AS signed_in,
+            GROUP_CONCAT(DISTINCT rule_id ORDER BY rule_id SEPARATOR ', ') AS rules
+     FROM waf_log
+     WHERE log_timestamp >= " . (int) $start_timestamp . "
+       AND action IN ('block', 'rate', 'would-block', 'would-rate')
+     GROUP BY ip_address
+     ORDER BY hits DESC
+     LIMIT 300"
+);
+
+if ($flag_result) {
+    $flagged = mysqli_fetch_items($flag_result);
+}
+
+if ($flagged) {
+    $quoted = array();
+    $quoted_v4 = array();
+
+    foreach ($flagged as $row) {
+        $quoted[] = "'" . escape($row['ip_address']) . "'";
+
+        if (strpos($row['ip_address'], ':') === false) {
+            $quoted_v4[] = "INET_ATON('" . escape($row['ip_address']) . "')";
+        }
+    }
+
+    $in_list = implode(',', $quoted);
+    $seen    = array('token' => array(), 'activity' => array(), 'order' => array());
+
+    // Silenced: the table arrived in 2026.4.4 and an install that has not run
+    // the upgrade simply contributes no sign.
+    $token_result = @mysqli_query(
+        db::$con,
+        "SELECT DISTINCT ip_address FROM auth_tokens
+         WHERE created_at >= " . (int) $start_timestamp . " AND ip_address IN (" . $in_list . ")"
+    );
+
+    if ($token_result) {
+        foreach (mysqli_fetch_items($token_result) as $row) {
+            $seen['token'][$row['ip_address']] = true;
+        }
+    }
+
+    // Anonymous activity is recorded under the translated word for unknown,
+    // so both the source string and its current translation are excluded.
+    $top_row = mysqli_fetch_assoc(mysqli_query(db::$con, "SELECT MAX(log_id) AS top FROM log"));
+    $floor   = max(0, (int) $top_row['top'] - 20000);
+
+    $activity_result = mysqli_query(
+        db::$con,
+        "SELECT DISTINCT log_ip FROM log
+         WHERE log_id > " . $floor . "
+           AND log_timestamp >= " . (int) $start_timestamp . "
+           AND log_user NOT IN ('', 'UNKNOWN', '" . escape(lang('UNKNOWN')) . "')
+           AND log_ip IN (" . $in_list . ")"
+    );
+
+    if ($activity_result) {
+        foreach (mysqli_fetch_items($activity_result) as $row) {
+            $seen['activity'][$row['log_ip']] = true;
+        }
+    }
+
+    // orders.ip_address is INET_ATON() of the address, so IPv4 only.
+    if (defined('ECOMMERCE') && ECOMMERCE && $quoted_v4) {
+        $top_row = mysqli_fetch_assoc(mysqli_query(db::$con, "SELECT MAX(id) AS top FROM orders"));
+        $floor   = max(0, (int) $top_row['top'] - 20000);
+
+        $order_result = @mysqli_query(
+            db::$con,
+            "SELECT DISTINCT INET_NTOA(ip_address) AS ip FROM orders
+             WHERE id > " . $floor . "
+               AND order_date >= " . (int) $start_timestamp . "
+               AND status IN ('complete', 'exported')
+               AND ip_address IN (" . implode(',', $quoted_v4) . ")"
+        );
+
+        if ($order_result) {
+            foreach (mysqli_fetch_items($order_result) as $row) {
+                $seen['order'][$row['ip']] = true;
+            }
+        }
+    }
+
+    foreach ($flagged as $row) {
+        // An address already on the allow list is a case the operator has
+        // settled - usually from this very table. Listing it again is noise.
+        if (function_exists('waf_ip_is_allowed') && waf_ip_is_allowed($row['ip_address'])) {
+            continue;
+        }
+
+        $signs = array();
+
+        if ((int) $row['signed_in']) {
+            $signs[] = 'user';
+        }
+
+        foreach (array('token', 'activity', 'order') as $sign) {
+            if (isset($seen[$sign][$row['ip_address']])) {
+                $signs[] = $sign;
+            }
+        }
+
+        if ($signs) {
+            $row['signs'] = $signs;
+            $suspects[]   = $row;
+        }
+    }
+
+    $suspect_count = count($suspects);
+    $suspects      = array_slice($suspects, 0, 50);
+}
+
+$verdict = '';
+
+if ($suspect_count > 0) {
+    $verdict = ($mode === 'block')
+        ? lang(array('string' => '{var:1} blocked addresses also show signed-in activity or a completed order. See Possible False Positives below.', 'vars' => number_format($suspect_count)))
+        : lang(array('string' => '{var:1} of the flagged addresses also show signed-in activity or a completed order. Review them below before switching to Block.', 'vars' => number_format($suspect_count)));
+} elseif ($flagged && $mode === 'monitor') {
+    $verdict = lang(array('string' => 'None of the {var:1} flagged addresses in this period shows signed-in activity or a completed order.', 'vars' => number_format(count($flagged))));
+}
+
+if ($verdict !== '') {
+    $verdict = ' <strong class="ms-1">' . $verdict . '</strong>';
+}
+
 $mode_banner = '';
 
 if ($mode === 'off') {
     $mode_banner = '<div class="alert alert-secondary d-flex align-items-center">'
         . '<i class="bi bi-shield-slash me-2"></i>'
         . lang('The firewall is currently off. Nothing new is being recorded.')
-        . ' <a class="ms-2" href="settings.php">' . lang('Site Settings') . '</a></div>';
+        . ' <a class="ms-2" href="' . pg_settings_link('firewall', 'pgset-waf') . '">' . lang('Site Settings') . '</a></div>';
 } elseif ($mode === 'monitor') {
     $mode_banner = '<div class="alert alert-info d-flex align-items-center">'
         . '<i class="bi bi-eye me-2"></i>'
-        . lang('Monitor mode: these requests were recorded but allowed through. Review them, and when nothing legitimate appears here, switch the firewall to Block.')
+        . '<span>' . lang('Monitor mode: these requests were recorded but allowed through, except addresses on the ban list, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.') . $verdict . '</span>'
         . '</div>';
 } else {
-    $mode_banner = '<div class="alert alert-success d-flex align-items-center">'
+    $mode_banner = '<div class="alert alert-' . ($suspect_count > 0 ? 'warning' : 'success') . ' d-flex align-items-center">'
         . '<i class="bi bi-shield-check me-2"></i>'
-        . lang('Blocking mode: attacking requests are being rejected.')
+        . '<span>' . lang('Blocking mode: attacking requests are being rejected.') . $verdict . '</span>'
         . '</div>';
 }
 
@@ -208,6 +444,16 @@ if (waf_table_has_column('banned_ip_addresses', 'source')) {
         $auto_bans = mysqli_fetch_items($ban_result);
     }
 }
+
+// ---- Content Security Policy reports -------------------------------------
+//
+// Read from the file the report endpoint aggregates into; see
+// waf_csp_report_store(). Shown whatever the period filter says: the file
+// keeps fourteen days and an operator deciding whether to enforce wants all
+// of it.
+
+$csp_entries = function_exists('waf_csp_report_read') ? waf_csp_report_read() : array();
+$csp_mode    = function_exists('waf_setting') ? (string) waf_setting('security_csp_mode', 'report') : 'off';
 
 // ---- Events ----------------------------------------------------------------
 
@@ -232,15 +478,9 @@ echo pg_page_shell(array(
     'extra classes' => 'setting',
     'icon'          => 'setting',
     'heading'       => lang('Firewall Log'),
-    'cancel'        => array(
-        'enable' => 'true',
-        'title'  => lang('Return to Settings'),
-        'url'    => 'settings.php',
-    ),
-    'auto_main' => false,
 ));
 
-echo '<main id="content" class="container">';
+echo '<main id="content" class="container-fluid">';
 
 echo $liveform->output_errors();
 echo $liveform->output_notices();
@@ -309,6 +549,60 @@ echo '<div class="row g-3 mb-4">
     'vars'   => array(number_format((int) $summary['total']), number_format((int) $summary['rows_stored'])),
 )) . '</p>';
 
+// Possible false positives.
+if ($suspects) {
+    $sign_badges = array(
+        'user'     => array('bg-danger-subtle text-danger-emphasis border-danger-subtle', lang('Signed-in user')),
+        'token'    => array('bg-primary-subtle text-primary-emphasis border-primary-subtle', lang('Remember-me sign-in')),
+        'activity' => array('bg-primary-subtle text-primary-emphasis border-primary-subtle', lang('Activity log')),
+        'order'    => array('bg-success-subtle text-success-emphasis border-success-subtle', lang('Completed order')),
+    );
+
+    echo '<div class="card mb-4 border-warning-subtle">
+        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+            <span class="text-uppercase h6 text-warning-emphasis fw-bold mb-0"><i class="bi bi-person-exclamation me-1"></i>' . lang('Possible False Positives') . '</span>
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">' . number_format($suspect_count) . '</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">' . lang('These addresses were flagged by the firewall in this period and also look like real people: a signed-in user, a "remember me" sign-in, a named entry in the activity log or a completed order came from the same address. Check them before switching the firewall to Block. Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.') . '</p>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead><tr>
+                    <th>' . lang('IP Address') . '</th>
+                    <th>' . lang('Flagged') . '</th>
+                    <th>' . lang('Rules') . '</th>
+                    <th>' . lang('Evidence') . '</th>
+                    <th>' . lang('Last seen') . '</th>
+                    <th class="text-end">' . lang('Action') . '</th>
+                </tr></thead><tbody>';
+
+    foreach ($suspects as $suspect) {
+        $badges = '';
+
+        foreach ($suspect['signs'] as $sign) {
+            $badges .= '<span class="badge border ' . h($sign_badges[$sign][0]) . ' me-1">' . h($sign_badges[$sign][1]) . '</span>';
+        }
+
+        echo '<tr>
+            <td class="font-monospace small text-nowrap">' . h($suspect['ip_address']) . '</td>
+            <td class="small"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">&times;' . number_format((int) $suspect['hits']) . '</span></td>
+            <td class="small"><code>' . h($suspect['rules']) . '</code></td>
+            <td class="small">' . $badges . '</td>
+            <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $suspect['last_seen'])) . '</td>
+            <td class="text-end">
+                <form method="post" action="view_waf_log.php" class="d-inline">'
+                    . get_token_field() . '
+                    <input type="hidden" name="allow_ip" value="' . h($suspect['ip_address']) . '"/>
+                    <button type="submit" name="submit_allow" value="1" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-check-circle me-1"></i>' . lang('Allow') . '
+                    </button>
+                </form>
+            </td>
+        </tr>';
+    }
+
+    echo '</tbody></table></div></div></div>';
+}
+
 // Active automatic bans.
 if ($auto_bans) {
     echo '<div class="card mb-4">
@@ -343,6 +637,63 @@ if ($auto_bans) {
     }
 
     echo '</tbody></table></div></div></div>';
+}
+
+// Content Security Policy reports.
+if ($csp_entries || $csp_mode !== 'off') {
+    $csp_mode_badges = array(
+        'off'     => array('bg-secondary-subtle text-secondary-emphasis border-secondary-subtle', lang('Off')),
+        'report'  => array('bg-info-subtle text-info-emphasis border-info-subtle', lang('Report Only')),
+        'enforce' => array('bg-success-subtle text-success-emphasis border-success-subtle', lang('Enforce')),
+    );
+
+    $csp_mode_badge = isset($csp_mode_badges[$csp_mode]) ? $csp_mode_badges[$csp_mode] : $csp_mode_badges['report'];
+
+    echo '<div class="card mb-4">
+        <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="d-flex align-items-center gap-2">
+                <span class="text-uppercase h6 text-primary fw-bold mb-0">' . lang('Content Security Policy Reports') . '</span>
+                <span class="badge border fw-normal ' . h($csp_mode_badge[0]) . '">' . h($csp_mode_badge[1]) . '</span>
+            </span>
+            <span class="d-flex align-items-center gap-2">
+                <a href="' . pg_settings_link('firewall', 'pgset-headers') . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-sliders me-1"></i>' . lang('Policy Settings') . '</a>'
+                . ($csp_entries ? '<form method="post" action="view_waf_log.php" class="d-inline">'
+                    . get_token_field() . '
+                    <button type="submit" name="submit_csp_clear" value="1" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>' . lang('Clear Reports') . '
+                    </button>
+                </form>' : '') . '
+            </span>
+        </div>
+        <div class="card-body">';
+
+    if (!$csp_entries) {
+        echo '<p class="text-muted mb-0">' . lang('No policy violations have been reported in the last fourteen days. Browsers report a violation when a page loads something the policy does not allow; an empty list after real visits means the policy fits the site.') . '</p>';
+    } else {
+        echo '<p class="text-muted small">' . lang('What browsers reported the policy would refuse, grouped by directive and source and kept for fourteen days. A source the site needs belongs in the policy; one you do not recognise is worth a look. Counts are reports, not visitors.') . '</p>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead><tr>
+                    <th>' . lang('Directive') . '</th>
+                    <th>' . lang('Blocked Source') . '</th>
+                    <th>' . lang('Page') . '</th>
+                    <th>' . lang('Reports') . '</th>
+                    <th>' . lang('Last seen') . '</th>
+                </tr></thead><tbody>';
+
+        foreach (array_slice($csp_entries, 0, 100) as $entry) {
+            echo '<tr>
+                <td class="small"><code>' . h($entry['d']) . '</code></td>
+                <td class="font-monospace small text-break" style="max-width:20rem;">' . h($entry['b']) . '</td>
+                <td class="small text-break" style="max-width:18rem;">' . h($entry['p']) . '</td>
+                <td class="small"><span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . number_format((int) $entry['n']) . '</span></td>
+                <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $entry['l'])) . '</td>
+            </tr>';
+        }
+
+        echo '</tbody></table></div>';
+    }
+
+    echo '</div></div>';
 }
 
 // Event table.

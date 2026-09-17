@@ -12,14 +12,13 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request'] != 'action'){
     include('init.php');
     $user = validate_user();
     validate_ecommerce_access($user);
-    license_check(array('output'=>'validate'));
     echo   
     pg_page_shell(
         array(
@@ -27,8 +26,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
             'extra classes'=>'products',
             'icon'=>'store',
             'heading'=>lang('Product Inventory Quantity Decrease'),
+            'heading_description' => lang('You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click anywhere on this page before scanning the barcode. Also, do not use the keyboard on this page, otherwise it will detect it as a barcode.'),
             'cancel' => true,
-            'auto_main' => false,
         
             'breadcrumb' => array(array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'), array('label' => lang('Product Inventory Quantity Decrease'))),
         )
@@ -36,12 +35,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
         <main class="container mb-5" style="min-height:calc(100vh - 175px)" id="content">
             <div class="row">
                 <div class="col-12">
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click anywhere on this page before scanning the barcode. Also, do not use the keyboard on this page, otherwise it will detect it as a barcode.') . '" title="' . lang('Product Inventory Quantity Decrease') . '">' . lang('Product Inventory Quantity Decrease') . '</h2>
-                            
-                        </div>
-                    </div>
+                    
                 </div>
             </div>
             <div class="row">
@@ -267,6 +261,11 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
                     timestamp = UNIX_TIMESTAMP()
                 WHERE name = '" . escape($barcode) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+
+            if (function_exists('pg_marketplace_product_changed')) {
+                pg_marketplace_product_changed((int) $id);
+            }
+
             // we get data to use
             $data = array(
                 'id' => $id,
@@ -309,7 +308,10 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
         // If the user passed a username and password in this request
         // and did not login via a session, then token validation is not
         // necessary, so return true.
-        if (defined('API_USERNAME')) {
+        //
+        // API_AUTHENTICATED, not API_USERNAME: see the same check in api.php.
+        // Sending a user name is not proof of anything; a verified password is.
+        if (defined('API_AUTHENTICATED')) {
             return true;
         }
 

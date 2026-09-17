@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -44,18 +44,16 @@ if (!$_POST) {
             'extra classes'=>'products',
             'icon'=>'store',
             'heading'=>lang('Create Verified Shipping Address'),
+            'heading_description' => lang('Create a new verified shipping address and assign it to any existing state.'),
             'cancel'=>array('enable'=>'true','url'=>'view_verified_shipping_addresses.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Verified Shipping Addresses'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_verified_shipping_addresses.php'), array('label' => lang('Create Verified Shipping Address'))),
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new verified shipping address and assign it to any existing state.') . '" title="' . lang('Create Verified Shipping Address') . '">[' . lang('Verified Shipping Address') . ']</h2>
-                        </div>
-                    </div>
+                    
                     <form action="add_verified_shipping_address.php" method="post">
                         ' . get_token_field() . '
                         <div class="row">
@@ -68,7 +66,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 my-2">
                                                 <label for="company" class="form-label">' . lang('Company') . '</label>
-                                                <input type="text" name="company" id="company" maxlength="50" value="' . h($liveform->get_field_value('company')) . '" class="form-control' . ($liveform->check_field_error('company') ? ' is-invalid' : '') . ' add-header-content-updater" />
+                                                <input type="text" name="company" id="company" maxlength="50" value="' . h($liveform->get_field_value('company')) . '" class="form-control' . ($liveform->check_field_error('company') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 my-2">
                                                 <label for="address_1" class="form-label">' . lang('Address 1') . '</label>
@@ -105,7 +103,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
     $liveform->remove_form();

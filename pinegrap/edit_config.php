@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -21,6 +21,20 @@ $user = validate_user();
 validate_area_access($user, 'administrator');
 include_once('liveform.class.php');
 $liveform = new liveform('edit_config');
+
+// The version numbers the upgrade runner knows, read as text. versions.php is
+// gated behind INSTALL_OR_UPDATE and defining that constant on a panel request
+// would let the installer's helpers load; pg_code_version() reads the same file
+// the same way.
+function pg_config_known_versions() {
+    $list = @file_get_contents(dirname(__FILE__) . '/includes/migrations/versions.php');
+
+    if (!is_string($list) || !preg_match_all("/^\s*'([0-9][0-9.]*)'\s*,?\s*$/m", $list, $found)) {
+        return [];
+    }
+
+    return $found[1];
+}
 
 // ── Config parser: reads only what is physically in config.php ─────────────
 function parse_config_file($file_path) {
@@ -184,6 +198,8 @@ $config_groups = [
             lang('Force HTTPS for all requests.'), false, false],
         ['TRUST_PROXY_SSL_HEADERS', 'boolean', lang('Trust Proxy SSL Headers'),
             lang('Required when SSL is terminated by a proxy or CDN before reaching this server (for example Cloudflare Flexible SSL). Only enable it if this server is not reachable directly, because these headers can be forged.'), false, false],
+        ['ALLOW_INSECURE_UPDATE_TLS', 'boolean', lang('Allow Insecure Update TLS'),
+            lang('Last resort for a host with no usable CA store. While true, update packages are accepted without proof of where they came from. Point CURL_CA_BUNDLE at a cacert.pem in the config file instead whenever that is possible.'), false, false],
         ['MIG', 'boolean', lang('Migration'),
             lang('Enable migration feature.'), false, true],
     ],
@@ -354,39 +370,61 @@ if (!$_POST) {
         </div>
     </div>';
 
+    // The schema version is the one control on this screen that is not in
+    // config.php: it lives in config.version and the upgrade runner reads it to
+    // decide where to start. Writing an earlier number is how an upgrade is made
+    // to run again on an installation that already recorded it - every step is
+    // written to be repeatable - and there is no other way to ask for that.
+    $schema_current = (string) db_value("SELECT version FROM config LIMIT 1");
+    $schema_options = '';
+
+    foreach (array_reverse(pg_config_known_versions()) as $schema_known) {
+        $schema_options .= '<option value="' . h($schema_known) . '"></option>';
+    }
+
+    $schema_card = '
+    <div class="col-12 col-lg-6 mb-5">
+        <div class="card h-100 border-warning">
+            <div class="card-header bg-reset border-0 text-uppercase h6 text-warning fw-bold">
+                ' . lang('Database Schema Version') . '
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 my-2">
+                        <label for="schema_version" class="form-label">' . lang('Version') . '</label>
+                        <input type="text" id="schema_version" name="schema_version"
+                            class="form-control" value="' . h($schema_current) . '"
+                            list="schema_version_options" autocomplete="off">
+                        <datalist id="schema_version_options">' . $schema_options . '</datalist>
+                        <div class="form-text text-muted small">'
+                            . h(lang('Recorded in the database, not in the config file. The upgrade applies every version after this one, so an earlier number here makes those steps run again; saving takes you straight to the upgrade screen.')) . '</div>
+                        <div class="form-text text-secondary small fst-italic">'
+                            . lang('Code version') . ': ' . h(pg_code_version()) . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+
     print pg_page_shell([
         'title'         => lang('Edit Config'),
         'extra classes' => 'setting',
         'icon'          => 'setting',
         'heading'       => lang('Edit Config'),
-        'cancel'        => [
-            'enable'  => 'true',
-            'title'   => lang('Return to Settings'),
-            'url'     => 'settings.php'
-        ],
-        'breadcrumb'    => [
-            ['label' => lang('Settings'), 'url' => 'settings.php'],
-            ['label' => lang('Edit Config')],
-        ],
+        'heading_description' => lang('Update the configuration file settings.'),
     ]) . '
+<main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors()
                 . $liveform->get_warnings()
                 . $liveform->output_notices() . '
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 text-center text-md-start">
-                        <h2 class="d-inline-block"
-                            data-bs-content="' . lang('Update the configuration file settings.') . '"
-                            title="' . lang('Edit Config') . '">'
-                            . lang('Edit Config') . '</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="edit_config.php" method="post"
                     autocomplete="off" submitshortcut="submit_save">
                     ' . get_token_field() . '
                     <div class="row">
-                        ' . $groups_html . $smtp_notice . '
+                        ' . $groups_html . $smtp_notice . $schema_card . '
                     </div>
                     <nav class="buttons navigation text-center position-sticky mb-4"
                         style="bottom:.5rem;">
@@ -404,7 +442,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' . output_footer();
+    
+</main>' . output_footer();
 
     $liveform->remove_form();
     exit;
@@ -489,6 +528,27 @@ foreach ($config_groups as $fields) {
         } else {
             $config_content = update_config_define($config_content, $key, $val, 'string');
         }
+    }
+}
+
+// The schema version is stored in the database, so it is written whether or not
+// the config file changed. An unknown number is refused: the upgrade screen looks
+// this value up in the version list and, when it is not there, refuses to offer
+// an upgrade at all and asks for the config table to be corrected by hand. A
+// field whose point is to save a trip to the database must not be able to force
+// one.
+$posted_version = isset($_POST['schema_version']) ? trim($_POST['schema_version']) : '';
+$stored_version = (string) db_value("SELECT version FROM config LIMIT 1");
+
+if (($posted_version !== '') && ($posted_version !== $stored_version)) {
+
+    if (!in_array($posted_version, pg_config_known_versions(), true)) {
+        $liveform->add_error(lang(['string' => '{var:1} is not a version this installation knows. The schema version was not changed.', 'vars' => $posted_version]));
+    } elseif (db("UPDATE config SET version = '" . e($posted_version) . "'") === false) {
+        $liveform->add_error(lang('The database schema version could not be updated.'));
+    } else {
+        log_activity(lang(['string' => 'Database schema version changed from {var:1} to {var:2}', 'vars' => [$stored_version, $posted_version]]), $_SESSION['sessionusername']);
+        $liveform->add_notice(lang(['string' => 'Database schema version set to {var:1}.', 'vars' => $posted_version]));
     }
 }
 

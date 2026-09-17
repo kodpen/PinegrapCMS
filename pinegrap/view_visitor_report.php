@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,6 +34,10 @@ $liveform = new liveform('view_visitor_report');
 if (defined('BASE_CURRENCY_SYMBOL') == false) {
     define('BASE_CURRENCY_SYMBOL', '$');
 }
+
+// Only set below when an existing report is loaded; a new report leaves it
+// blank and the heading falls back to "[new visitor report]".
+$output_visitor_report_name = '';
 
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
@@ -452,7 +456,7 @@ if (!$_POST) {
             'field_options[' . $count . '] = new Array();
             field_options[' . $count . ']["name"] = "' . escape_javascript($field_option['name']) . '";
             field_options[' . $count . ']["value"] = "' . escape_javascript($field_option['value']) . '";
-            field_options[' . $count . ']["type"] = "' . escape_javascript($field_option['type']) . '";' . "\n";
+            field_options[' . $count . ']["type"] = "' . escape_javascript($field_option['type'] ?? '') . '";' . "\n";
         
         // if there are value options, then add value options to javascript array
         if (isset($field_option['value_options']) == true) {
@@ -1140,11 +1144,13 @@ if (!$_POST) {
             'extra classes'=>'visitor',
             'icon'=>'visitor', 
             'heading'=> lang('Visitor Report'),
+            'heading_description' => lang('View or update this real-time visitor report.'),
             'cancel'=>array('enable'=>'true','url'=>'view_visitor_reports.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Visitor Reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'), array('label' => lang('Visitor Report'))),
         )
     ) . '
+<main id="content" class="container-fluid">
 
 
 
@@ -1156,7 +1162,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View or update this real-time visitor report.') . '" title="' . lang('Visitor Report') . '">' . h($output_visitor_report_name) . '</h2>
+
                         ' . $output_edit_button . '
                     </div>
                 </div>
@@ -1171,7 +1177,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-sm-4 my-2">
                                             <label for="name" class="form-label">' . lang('Visitor Report Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>
                                         <div class="col-12 my-2">
                                             <h4 class="fw-bold text-muted">' . lang('Visitor Report Layout') . '</h4>
@@ -1681,7 +1687,8 @@ if (!$_POST) {
         </div>
     </div>
 </div>
-</main>' .
+</main>
+' .
         output_footer();
     
     $liveform->remove_form();

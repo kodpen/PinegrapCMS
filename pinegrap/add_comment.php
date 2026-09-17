@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -118,9 +118,16 @@ if (CAPTCHA == TRUE) {
     validate_captcha_answer($liveform);
 }
 
+// An attachment the web server would run or read as its own settings is
+// refused at validation, so the visitor is told rather than a renamed file
+// quietly landing in the upload folder.
+if (isset($_FILES['file']) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
+    $liveform->mark_error('file', pg_upload_blocked_message($_FILES['file']['name']));
+}
+
 // if an error exists, then send user back to previous screen
 if ($liveform->check_form_errors() == true) {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to') . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
     exit();
 }
 
@@ -898,7 +905,7 @@ $row = mysqli_fetch_row($result);
 // If there are featured comments, then add comments parameter to query string.
 if ($row[0] > 0) {
     // Get current URL parts in order to prepare URL to send visitor to.
-    $url_parts = parse_url($send_to);
+    $url_parts = parse_url(pg_safe_redirect_path($send_to));
 
     // Put query string parameters into an array in order to prepare new query string.
     parse_str($url_parts['query'], $query_string_parameters);
@@ -939,7 +946,7 @@ if ($row[0] > 0) {
 
 } else  {
     // Send user back to view comment on page.
-    header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#c-' . $comment_id);
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#c-' . $comment_id);
 }
 
 // remove liveform

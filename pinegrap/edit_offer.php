@@ -12,429 +12,164 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
+
+// The offer editor: one screen for the offer, its conditions and its results.
+// Without an id it creates; with ?duplicate=N it opens a copy of offer N that
+// is not written until saved. Saving goes through api.php (action
+// "offer_editor"), so this file only draws the screen.
 
 include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
-include_once('liveform.class.php');
-$liveform = new liveform('edit_offer');
+require_once('edit_offer_f.php');
 
-// get all offer actions (we will use this in several places below)
-$query =
-    "SELECT
-        id,
-        name
-    FROM offer_actions
-    ORDER BY name ASC";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$offer_actions = mysqli_fetch_items($result);
+$offer_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$duplicate_of = isset($_GET['duplicate']) ? (int) $_GET['duplicate'] : 0;
+$is_new = ($offer_id <= 0);
 
-if (!$_POST) {
-    // get offer data
-    $query = "SELECT * FROM offers WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-
-    $code = $row['code'];
-    $description = $row['description'];
-    $require_code = $row['require_code'];
-    $status = $row['status'];
-    $start_date = $row['start_date'];
-    $end_date = $row['end_date'];
-    $offer_rule_id = $row['offer_rule_id'];
-    $upsell = $row['upsell'];
-    $upsell_message = $row['upsell_message'];
-    $upsell_trigger_subtotal = sprintf("%01.2lf", $row['upsell_trigger_subtotal'] / 100);
-    $upsell_trigger_quantity = $row['upsell_trigger_quantity'];
-    $upsell_action_button_label = $row['upsell_action_button_label'];
-    $upsell_action_page_id = $row['upsell_action_page_id'];
-    $scope = $row['scope'];
-    $multiple_recipients = $row['multiple_recipients'];
-    $only_apply_best_offer = $row['only_apply_best_offer'];
-    
-    // get selected offer actions for this offer
-    $query =
-        "SELECT
-            offer_actions.id,
-            offer_actions.name
-        FROM offers_offer_actions_xref
-        LEFT JOIN offer_actions ON offers_offer_actions_xref.offer_action_id = offer_actions.id
-        WHERE offers_offer_actions_xref.offer_id = '" . escape($_GET['id']) . "'
-        ORDER BY offer_actions.name ASC";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    $offer_actions_for_output = array();
-    $selected_offer_action_ids = array();
-    
-    // loop through the selected offers in order to add them to arrays (we are doing this so that the selected actions appear first in the list)
-    while ($row = mysqli_fetch_assoc($result)) {
-        $offer_actions_for_output[] = $row;
-        $selected_offer_action_ids[] = $row['id'];
+if (!$is_new) {
+    $state = _pg_offer_load($offer_id);
+    if (!$state) {
+        output_error(lang('The offer could not be found.') . ' <a href="view_offers.php">' . lang('Go back') . '</a>.');
     }
-    
-    // loop through all offer actions, in order to add unselected actions to array
-    foreach ($offer_actions as $offer_action) {
-        // if this offer action was not selected (i.e. has not already been added), then add it to array
-        if (in_array($offer_action['id'], $selected_offer_action_ids) == FALSE) {
-            $offer_actions_for_output[] = $offer_action;
-        }
-    }
-    
-    $output_offer_actions = '';
-    
-    // loop through actions in order to output check boxes for each one
-    foreach ($offer_actions_for_output as $offer_action) {
-        $checked = '';
-        
-        // if this action is selected for this offer, then check it
-        if (in_array($offer_action['id'], $selected_offer_action_ids) == TRUE) {
-            $checked = ' checked="checked"';
-        }
-        
-        $output_offer_actions .= '<div class="form-check"><input type="checkbox" id="offer_action_' . $offer_action['id'] . '" name="offer_action_' . $offer_action['id'] . '" value="1"' . $checked . ' class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="offer_action_' . $offer_action['id'] . '">' . h($offer_action['name']) . '</label></div>';
-    }
-
-    // prepare checked status for require code checkbox
-    if ($require_code == 1) {
-        $require_code_checked = ' checked="checked"';
-    } else {
-        $require_code_checked = '';
-    }
-
-    $status_enabled_checked = '';
-    // prepare checked status for status radio buttons
-    if ($status == 'enabled') {
-        $status_enabled_checked = ' checked="checked"';
-       
-    }
-    $upsell_checked = '';
-    // prepare checked status for upsell checkbox
-    if ($upsell == 1) {
-        $upsell_checked = ' checked="checked"';
-
-    }
-    
-    // prepare checked status for scope radio buttons
-    if ($scope == 'order') {
-        $scope_order_checked = ' checked="checked"';
-        $scope_recipient_checked = '';
-    } else {
-        $scope_order_checked = '';
-        $scope_recipient_checked = ' checked="checked"';
-    }
-    
-    // prepare checked status for multiple recipients checkbox
-    if ($multiple_recipients == 1) {
-        $multiple_recipients_checked = ' checked="checked"';
-    } else {
-        $multiple_recipients_checked = '';
-    }
-    
-    // prepare checked status for only apply best offer checkbox
-    if ($only_apply_best_offer == 1) {
-        $only_apply_best_offer_checked = ' checked="checked"';
-    } else {
-        $only_apply_best_offer_checked = '';
-    }
-
-    $output =
-    pg_page_shell([
-        'title'=> lang('Edit Offer'),
-        'extra classes'=>'products',
-        'icon'=>'store',
-        'heading'=>lang('Edit Offer'),
-        'cancel'=>array('enable'=>'true','url'=>'view_offers.php')
-    ,
-            'breadcrumb' => array(array('label' => lang('All Offers'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_offers.php'), array('label' => lang('Edit Offer'))),
-        ]) . get_date_picker_format() . '
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<div class="row mb-2">
-                            <div class="col-12 col-md">
-                                <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Edit an offer to calculate discounts based on a promotion code entered or a product combination found during checkout.') . '" title="' . lang('Edit Offer') . '">[' . h($code) . ']</h2>
-                            </div>
-                        </div>
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_offer.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
-                <form name="form" action="edit_offer.php" method="post">
-                    ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('Offer Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 col-sm-4 my-2">
-                                            <label for="code" class="form-label">' . lang('Offer Code') . '</label>
-                                            <input value="' . h($code) . '" type="text" name="code" id="code" class="form-control add-header-content-updater" maxlength="50" />
-                                            <div class="form-text text-end">' . lang('New Offer Code for Redemption & Order Reporting') . '</div>
-                                        </div>
-                                        <div class="col-12 col-sm-8 my-2">
-                                            <label for="description" class="form-label">' . lang('Message') . '</label>
-                                            <input value="' . h($description) . '" type="text" name="description" placeholder="' . lang('Offer Name') . '" maxlength="255" id="description" class="form-control " />
-                                            <div class="form-text text-end">' . lang('Description to appear on Commerce pages') . '</div>
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="status" name="status" value="1"' . $status_enabled_checked . ' />
-                                                <label class="form-check-label" for="status">' . lang('Enabled this offer') . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('Offer Terms & Conditions') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 col-sm-6 col-lg-6 my-2">
-                                            <div class="row">
-                                                <div class="col-12 col-sm-12 col-lg-8 ">
-                                                    <label for="offer_rule_id" class="form-label">' . lang('Offer Rule') . '</label>
-                                                    <select name="offer_rule_id" id="offer_rule_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('offer rule')) )) . '-</option>' .  select_offer_rule($offer_rule_id) . '</select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-2 collapse show" id="common_regions_access_row">
-                                            <h5>' . lang('Offer Actions') . '</h5>
-                                            <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                <div class="card-header border-0 bg-reset">
-                                                    <div class="form-check form-switch">
-                                                        <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                        <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="card-body overflow-auto" style="max-height:300px">
-                                                    ' . $output_offer_actions . '
-                                                </div>
-                                            </div>
-                                            <div class="form-check my-2 form-switch">
-                                                <input class="form-check-input" type="checkbox" id="require_code" name="require_code" value="1"' . $require_code_checked . ' />
-                                                <label class="form-check-label" for="require_code">' . lang('Require Code') . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('Advanced Offer Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input collapse-switcher" type="checkbox" id="upsell" name="upsell" value="1"' . $upsell_checked . ' data-bs-target="#upsell_message_row" />
-                                                <label class="form-check-label" for="upsell">' . lang('Display Up-sell Message') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="upsell_message_row">
-                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                            <div class="popover-body">
-                                                <div class="row">
-                                                    <div class="col-12 col-md-6 col-lg-4 my-1">
-                                                        <label class="form-label" for="upsell_message">'. lang('Up-sell Message') . '</label>
-                                                        <input value="' . h($upsell_message) . '" type="text" id="upsell_message" name="upsell_message" class="form-control" maxlength="255" >
-                                                    </div>
-                                                    <div class="col-12 my-1">
-                                                        <label class="form-label">' . lang('Triggers') . '</label>
-                                                        <div class="input-group number-controls">
-                                                            <label for="upsell_trigger_subtotal" class="input-group-text">' . lang('Subtotal within of required subtotal.') . '</label>
-                                                            <input value="' . $upsell_trigger_subtotal . '" type="text" name="upsell_trigger_subtotal" id="upsell_trigger_subtotal" class="form-control number-controls-disabled" style="min-width:100px" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
-                                                            <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                            <span class="input-group-text">' . lang('and/or') . '</span>
-                                                            <label for="upsell_trigger_quantity" class="input-group-text">' . lang('Quantity within of required quantity.') . '</label>
-                                                            <button class="btn material-icons minus border border-end-0" type="button">remove</button>
-                                                            <input value="' . $upsell_trigger_quantity . '" class="form-control text-center border-start-0 border-end-0" type="text" name="upsell_trigger_quantity" id="upsell_trigger_quantity" style="min-width:100px" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"/>
-                                                            <button class="btn material-icons plus border border-start-0" type="button">add</button>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-12 col-md-6 col-lg-4 my-1">
-                                                        <label class="form-label" for="upsell_action_button_label">'. lang('Action Button Label') . '</label>
-                                                        <input value="' . h($upsell_action_button_label) . '" type="text" id="upsell_action_button_label" name="upsell_action_button_label" class="form-control" maxlength="50" >
-                                                    </div>
-                                                    <div class="col-12 col-md-6 col-lg-4 my-1">
-                                                        <label for="upsell_action_page_id" class="form-label">' . lang('Action Page') . '</label>
-                                                        <select name="upsell_action_page_id" id="upsell_action_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page($upsell_action_page_id) . '</select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-1">
-                                            <label class="form-label" for="">'. lang('Scope') . '</label>
-                                            <div class="form-check">
-                                                <input value="order"' . $scope_order_checked . ' class="form-check-input collapse-switcher" type="radio" id="order" name="scope" checked>
-                                                <label class="form-check-label" for="order">'. lang('Order') . '</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input value="recipient"' . $scope_recipient_checked . ' class="form-check-input collapse-switcher" type="radio" id="recipient" name="scope" data-bs-target="#multiple_recipients_row">
-                                                <label class="form-check-label" for="recipient">'. lang('Recipient') . '</label>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="multiple_recipients_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-1">
-                                                            <div class="form-check form-switch">
-                                                                <input class="form-check-input" type="checkbox" id="multiple_recipients" name="multiple_recipients" value="1"' . $multiple_recipients_checked . ' />
-                                                                <label class="form-check-label" for="multiple_recipients">' . lang('Allow offer to be applied to multiple recipients') . '</label>
-                                                                <div class="form-text">' . lang('only used if offer action adds a product') . '</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-lg-8 my-3">
-                                            <div class="row">
-                                                <div class="col-12 col">
-                                                    <h5 class="text-muted">' . lang('Offer Availability') . '</h5>
-                                                </div>
-                                                <div class="col-12 col-md">
-                                                    <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
-                                                    <input value="' . prepare_form_data_for_output($start_date, 'date') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off"/>
-                                                </div>
-                                                <div class="col-12 col-md">
-                                                    <label for="end_date" class="form-label">' . lang('End Date') . '</label>
-                                                    <input value="' . prepare_form_data_for_output($end_date, 'date') . '" type="text" name="end_date" id="end_date" class="form-control " maxlength="10" autocomplete="off"/>
-                                                </div>
-                                            <script>
-                                                $("#start_date,#end_date").datepicker(datetimepicker_options);
-                                            </script>
-                                        </div>
-
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="only_apply_best_offer" name="only_apply_best_offer" value="1"' . $only_apply_best_offer_checked . ' />
-                                                <label class="form-check-label" for="only_apply_best_offer">' . lang('Only Apply Best Offer') . '</label>
-                                                <div class="form-text">' . lang('For Offers that Share this Offer\'s Code') . '</div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('offer')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                </form>
-            </div>
-        </div>
-    </main>' .
-    output_footer();
-
-    print $output;
-    
-    $liveform->clear_notices();
-
 } else {
-    validate_token_field();
-    
-    // delete records for selected offer actions (we do this regardless of whether we are deleting the offer or updating it)
-    $query = "DELETE FROM offers_offer_actions_xref WHERE offer_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    // if offer was selected for delete
-    if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // delete offer
-        $query = "DELETE FROM offers WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-        log_activity(lang(array('string'=>'offer ({var:1}) was deleted','vars'=>$_POST['code'])), $_SESSION['sessionusername']);
-    // else offer was not selected for delete
-    } else {
-        // If the offer code is blank, then output error.
-        if (trim($_POST['code']) == '') {
-            output_error(lang('Please enter an offer code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-        
-        if($_POST['upsell_trigger_subtotal']){
-            // remove commas and spaces from price
-            $price = str_replace(',', '', $_POST['upsell_trigger_subtotal']);
-            $price = str_replace(' ', '',$price); 
-            // convert price from dollars to cents
-            $upsell_trigger_subtotal = $price * 100;
-        }else{
-            $upsell_trigger_subtotal = 0;
-        }
-        
-        if($_POST['status'] == 1){
-            $status = 'enabled';
-        }else{
-            $status = 'disabled';
-        }
-
-        // update offer
-        $query = "UPDATE offers SET
-                    code = '" . escape($_POST['code'] ?? '') . "',
-                    description = '" . escape($_POST['description'] ?? '') . "',
-                    require_code = '" . escape($_POST['require_code'] ?? '') . "',
-                    status = '" . escape($status) . "',
-                    start_date = '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
-                    end_date = '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-                    offer_rule_id = '" . escape($_POST['offer_rule_id'] ?? '') . "',
-                    upsell = '" . escape($_POST['upsell'] ?? '') . "',
-                    upsell_message = '" . escape($_POST['upsell_message'] ?? '') . "',
-                    upsell_trigger_subtotal = '" . escape($upsell_trigger_subtotal) . "',
-                    upsell_trigger_quantity = '" . escape($_POST['upsell_trigger_quantity'] ?? '') . "',
-                    upsell_action_button_label = '" . escape($_POST['upsell_action_button_label'] ?? '') . "',
-                    upsell_action_page_id = '" . escape($_POST['upsell_action_page_id'] ?? '') . "',
-                    scope = '" . escape($_POST['scope'] ?? '') . "',
-                    multiple_recipients = '" . escape($_POST['multiple_recipients'] ?? '') . "',
-                    only_apply_best_offer = '" . escape($_POST['only_apply_best_offer'] ?? '') . "',
-                    user = '" . $user['id'] . "',
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // loop through actions in order to add records to database for selected actions
-        foreach ($offer_actions as $offer_action) {
-            // if the action was checked, then insert record
-            if (($_POST['offer_action_' . $offer_action['id']] ?? '') == 1) {
-                $query =
-                    "INSERT INTO offers_offer_actions_xref (
-                        offer_id,
-                        offer_action_id)
-                    VALUES (
-                        '" . escape($_POST['id'] ?? '') . "',
-                        '" . $offer_action['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            }
-        }
-
-        log_activity(lang(array('string'=>'offer ({var:1}) was modified','vars'=>$_POST['code'])), $_SESSION['sessionusername']);
-    }
-
-    // forward user to view offers screen
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_offers.php');
+    $state = _pg_offer_new_state($duplicate_of);
 }
-?>
+
+// Everything offer_editor.js needs, handed over once as JSON. The script
+// cannot call lang(), so every string it shows is translated here.
+$editor = array(
+    'token'            => $_SESSION['software']['token'],
+    'state'            => $state,
+    'context'          => _pg_offer_editor_context($state),
+    'products'         => _pg_offer_products(),
+    'shipping_methods' => _pg_offer_shipping_methods(),
+    'product_groups'   => _pg_offer_product_groups(),
+    'condition_types'  => _pg_offer_condition_types(),
+    'action_types'     => _pg_offer_action_types(),
+    'pages_html'       => select_page($state['offer']['upsell']['page_id']),
+    'labels'           => array(
+        'save'                   => lang('Save'),
+        'create'                 => lang('Create'),
+        'saveIncomplete'         => lang('Save · {var:1} to fix'),
+        'incomplete'             => lang('{var:1} to fix'),
+        'saved'                  => lang('The offer has been saved.'),
+        'notSaved'               => lang('Not saved yet'),
+        'unsavedChanges'         => lang('unsaved changes'),
+        'statusActive'           => lang('Active'),
+        'statusScheduled'        => lang('Planned'),
+        'statusExpired'          => lang('Expired'),
+        'statusDisabled'         => lang('Disabled'),
+        'automatic'              => lang('Automatic'),
+        'whenCode'               => lang('When the customer enters {var:1}'),
+        'everyOrder'             => lang('every order'),
+        'and'                    => lang('and'),
+        'nothingHappens'         => lang('nothing happens'),
+        'openEnded'              => lang('open-ended'),
+        'enabledWord'            => lang('enabled'),
+        'disabledWord'           => lang('disabled'),
+        'upsellOn'               => lang('up-sell message on'),
+        'upsellOff'              => lang('up-sell message off'),
+        'bestOffer'              => lang('best offer only'),
+        'subtotalText'           => lang('cart is {var:1} or more'),
+        'productsText'           => lang('cart has at least {var:1} of {var:2}'),
+        'orderText'              => lang('{var:1} off the order'),
+        'tiersText'              => lang('off the order, by tier: {var:1}'),
+        'flatRate'               => lang('single rate'),
+        'tiered'                 => lang('tiered'),
+        'tierFrom'               => lang('from'),
+        'addTier'                => lang('+ tier'),
+        'tierHint'               => lang('the highest tier the cart reaches wins'),
+        'tierPercent'            => lang('Please enter a percentage between 1 and 100 for every tier.'),
+        'productText'            => lang('{var:1} off {var:2}'),
+        'giftFree'               => lang('{var:1} × {var:2} added as a gift'),
+        'giftFull'               => lang('{var:1} × {var:2} added to the cart'),
+        'giftDiscount'           => lang('{var:1} × {var:2} added with {var:3} off'),
+        'shippingText'           => lang('%{var:1} off shipping ({var:2})'),
+        'noConditions'           => lang('No conditions — the offer applies to every order. Add a condition on the right to narrow it down.'),
+        'noActions'              => lang('No results yet — this offer does nothing. Add one on the right.'),
+        'requireCodeOn'          => lang('applies to customers who enter this code at checkout'),
+        'requireCodeOff'         => lang('off: the offer applies by itself once the conditions are met'),
+        'keyCodes'               => lang('{var:1} key code(s) linked to this code'),
+        'orderCount'             => lang('{var:1} order(s) placed with this code'),
+        'groupsText'             => lang('cart has at least {var:1} from {var:2}'),
+        'cartQuantityText'       => lang('cart holds at least {var:1} item(s)'),
+        'usageTotalText'         => lang('used at most {var:1} time(s) in total'),
+        'usageCustomerText'      => lang('at most {var:1} time(s) per customer'),
+        'noUsageLimit'           => lang('no usage limit'),
+        'usageTotalLabel'        => lang('in total'),
+        'usageCustomerLabel'     => lang('per customer'),
+        'usageHint'              => lang('counts finished orders the offer discounted — by code, by key code or automatically; leave a box empty for no limit'),
+        'enterLimit'             => lang('Please enter at least one limit.'),
+        'targetProduct'          => lang('product'),
+        'targetGroup'            => lang('group'),
+        'targetCheapest'         => lang('cheapest'),
+        'cheapestFree'           => lang('the cheapest item in the cart is free'),
+        'cheapestText'           => lang('{var:1} off the cheapest item in the cart'),
+        'cheapestHint'           => lang('the least expensive line the customer is paying for; a gift an offer added does not count'),
+        'groupProductText'       => lang('{var:1} off everything in {var:2}'),
+        'selectGroup'            => lang('Please select a product group.'),
+        'selectGroupPlaceholder' => '– ' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('group')))) . ' –',
+        'addGroup'               => lang('+ group'),
+        'selectGroups'           => lang('Please select at least one product group.'),
+        'noGroups'               => lang('No product groups have been created yet.'),
+        'newCustomerNever'       => lang('the customer has never ordered'),
+        'newCustomerDays'        => lang('the customer registered in the last {var:1} day(s)'),
+        'newCustomerBoth'        => lang('the customer registered in the last {var:1} day(s) and has never ordered'),
+        'newCustomerModes'       => array(
+            'no_orders'  => lang('has never ordered'),
+            'registered' => lang('registered recently'),
+            'both'       => lang('both')),
+        'days'                   => lang('days'),
+        'enterDays'              => lang('Please enter a number of days of at least 1.'),
+        'maxDays'                => lang('Please enter at most 3650 days.'),
+        'atLeast'                => lang('at least'),
+        'pieces'                 => lang('pcs'),
+        'quantity'               => lang('quantity'),
+        'discount'               => lang('discount'),
+        'giftHint'               => lang('100% = gift'),
+        'methods'                => lang('methods:'),
+        'addProduct'             => lang('+ product'),
+        'addMethod'              => lang('+ method'),
+        'selectProductPlaceholder' => '– ' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('product')))) . ' –',
+        'disabledProduct'        => lang('DISABLED'),
+        'added'                  => lang('added'),
+        'remove'                 => lang('Remove'),
+        'removeCondition'        => lang('Remove condition'),
+        'removeResult'           => lang('Remove result'),
+        'enterSubtotal'          => lang('Please enter a subtotal.'),
+        'selectProducts'         => lang('Please select at least one product.'),
+        'enterQuantity'          => lang('Please enter a quantity of at least 1.'),
+        'selectProduct'          => lang('Please select a product.'),
+        'enterValue'             => lang('Please enter a value.'),
+        'percentMax'             => lang('A percentage cannot be more than 100.'),
+        'selectMethod'           => lang('Please select at least one shipping method.'),
+        'enterDates'             => lang('Please enter a start date and an end date.'),
+        'dateOrder'              => lang('The end date must not be before the start date.'),
+        'requestFailed'          => lang('Sorry, we could not accept your request.'),
+        'keyCodesDeleteTitle'    => lang('Delete Key Codes'),
+        'keyCodesDeleteConfirm'  => lang('WARNING: The {var:1} key code(s) of this offer will be permanently deleted.'),
+        'deleteTitle'            => lang('Delete Offer'),
+        'deleteConfirm'          => lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('offer')))),
+        'deleteButton'           => lang('Delete'),
+        'cancelButton'           => lang('Cancel')));
+
+$heading = $is_new ? lang('Create Offer') : lang('Edit Offer');
+
+echo pg_page_shell(array(
+    'title'               => $heading,
+    'extra classes'       => 'products',
+    'icon'                => 'store',
+    'heading'             => $heading,
+    'heading_description' => lang('One screen: the offer, the conditions the cart must meet and the results that apply.'),
+    'cancel'              => array('enable' => 'true', 'url' => 'view_offers.php'),
+    'breadcrumb'          => array(
+        array('label' => lang('All Offers'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_offers.php'),
+        array('label' => $heading))));
+
+require('includes/templates/edit_offer.php');
+
+echo output_footer();

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 // This feature can take a long time to run for a large site,
@@ -40,7 +40,7 @@ require_once(dirname(__FILE__) . '/get_page_content.php');
 // Also, verify that user has access to run this.
 if (isset($_SERVER['HTTP_HOST']) == true) {
     $username = $_SESSION['sessionusername'];
-    $password = $_SESSION['sessionpassword'];
+    $userid = $_SESSION['sessionuserid'] ?? '';
 
     // This command allows us to purely unset the session variables,
     // without destroying the actual saved session data.  This is important,
@@ -49,14 +49,10 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
     unset($_SESSION);
 
     // Try to find a user with the same login info and has a role of manager or above.
+    // The session id is trusted; just confirm it is a manager-or-above account.
     $user_id = db_value(
-        "SELECT
-            user_id
-        FROM user
-        WHERE
-            (user_username = '" . escape($username) . "')
-            AND (user_password = '" . escape($password) . "')
-            AND (user_role < '3')");
+        "SELECT user_id FROM user
+        WHERE (user_id = '" . (int) $userid . "') AND (user_role < '3')");
 
     // If a user was not found, then output error.
     if ($user_id == '') {

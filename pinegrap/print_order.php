@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -177,7 +177,7 @@ if ($tracking_code or $http_referer or $referral_source_code or $utm_source) {
         $source .=
             '<hr/>
             <div class="row" >
-                <span class="col-12"><h6 class="text-muted">' . lang('UTF') . '</h6></span>
+                <span class="col-12"><h6 class="text-muted">' . lang('UTM') . '</h6></span>
             </div>
             <div class="row">
                 <span class="translateable col text-muted">' . lang('Source') . ':</span>

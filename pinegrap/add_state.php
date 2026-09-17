@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -27,17 +27,15 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('State'))),
+        'heading_description' => lang('Add a new state/province that can be included in any shipping zone or tax zone.'),
         'cancel'=>array('enable'=>'true','url'=>'view_states.php')
     ,
             'breadcrumb' => array(array('label' => lang('All States'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_states.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('State'))))),
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Add a new state/province that can be included in any shipping zone or tax zone.') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('State'))) . '">[' . lang(array('string'=>'new {var:1} name','vars'=>lang('state'))) . ']</h2>
-                        </div>
-                    </div>
+                    
                     <form name="form" action="add_state.php" method="post">
                         ' . get_token_field() . '
                         <div class="row">
@@ -50,7 +48,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('State'))) . '</label>
-                                                <input name="name" id="name" type="text" class="form-control add-header-content-updater" maxlength="50" />
+                                                <input name="name" id="name" type="text" class="form-control" maxlength="50" />
                                             </div>
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="code" class="form-label">' . lang('State Code') . '</label>
@@ -76,7 +74,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
     print $output;

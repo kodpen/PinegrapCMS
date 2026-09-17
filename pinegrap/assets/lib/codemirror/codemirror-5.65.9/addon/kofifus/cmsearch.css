@@ -1,0 +1,100 @@
+.CodeMirror .cm-spell-error { 
+	background-image: url('images/red-wavy-underline.gif');
+	background-position: bottom;
+	background-repeat: repeat-x;
+}
+
+.cmsearchBox {
+	display: inline-block; 
+	line-height: 0em;
+	border: 2px solid grey; 
+	padding: 10px 4px 4px 6px; 
+	z-index:1000; 
+	position: relative; 
+	font-size: 9px;
+}
+
+.cmsearchCombo {
+	height:18px;
+	width:137px; 
+	font-size: 13px;
+	display: inline-block;
+}
+
+.cmsearchCloseBtn {
+	display:block;
+	top:0px;
+	right:0px;
+	height: 12px;
+	width: 11px;
+	padding: 0px 1px 0px 1px;
+	font-family: monospace;
+	position: absolute;
+	line-height: 0px;
+	font-size: 11px;
+}
+
+.cmsearchBigBtns {
+	height:18px;
+	width: 20px;
+	margin: 0px 7px 0px 0px;
+	padding: 1px 1px 2px 1px;
+	position: relative;
+	line-height: 0px;
+	font-size: 14px;
+}
+
+.cmsearchBigBtns:focus {
+	width: 21px;
+	border-color: black;
+	border-width: 1px;
+}
+
+.cmsearchSmallBtns {
+	height:14px;
+	margin: 1px 0px 0px 3px;
+	padding: 0px 1px 0px 1px;
+	font-family: monospace;
+	position: relative;
+	line-height: 0px;
+	font-size: 12px;
+}
+
+.cmsearchFloatedSmallBtns {
+	float:right;
+	height:14px;
+	margin: 6px 1px 0px 3px;
+	padding: 0px 1px 0px 1px;
+	font-family: monospace;
+	position: relative;
+	line-height: 0px;
+	font-size: 12px;
+}
+
+/* setting a selection background color to prevent selection color changing when moving to search widget */
+.CodeMirror-selected  { 
+	background-color: #B0C4DE !important; 
+}
+
+/* searchMatch is colored as selected text, this is needed inputStyle: contenteditable where selection is hidden when focus is on the search box */
+.cm-searchMatch {
+	background-color: #B0C4DE; 
+}
+
+/* bg color for search highlight overlay not in selection */
+.cm-searchHighlight {
+	/*background-color: rgba(255, 255, 180, 1);*/
+	border: 1px solid olive;
+}
+
+/* search in selection - bg color for search highlight overlay */
+.CodeMirror-selectedtext.cm-inSelectionSearchHighlight {
+	/*background-color: rgba(228, 228, 186, 1) !important;*/
+	border: 1px solid gray;
+}
+
+/* search in selection - bg color for search match */
+.CodeMirror-selectedtext.cm-inSelectionSearchHighlight.cm-searchMatch {
+	/*background-color: rgba(220, 220, 67, 1) !important;*/
+	background-color: rgba(255, 255, 180, 1);
+}

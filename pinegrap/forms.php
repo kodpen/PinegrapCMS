@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -37,7 +37,7 @@ function get_forms($request) {
             FROM page
             WHERE
                 page_name = '" . e($request['custom_form']) . "'
-                AND page_type = 'custom form'");
+                AND " . pg_form_page_sql('page'));
 
         if (!$custom_form) {
             return error_response('The custom form ("' . $request['custom_form'] . '") could not be found.');
@@ -53,7 +53,7 @@ function get_forms($request) {
             FROM page
             WHERE
                 page_id = '" . e($request['custom_form_page_id']) . "'
-                AND page_type = 'custom form'");
+                AND " . pg_form_page_sql('page'));
 
         if (!$custom_form) {
             return error_response('The custom form (ID: ' . $request['custom_form_page_id'] . ') could not be found.');

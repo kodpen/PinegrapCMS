@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1333,7 +1333,7 @@ function get_shipping_realtime_rate($properties) {
             // out how the items should be packed in containers.
             if ($container_items) {
 
-                require_once(dirname(__FILE__) . '/boxpacker/init.php');
+                require_once(dirname(__FILE__) . '/includes/boxpacker/init.php');
 
                 $packer = new \DVDoug\BoxPacker\Packer();
 

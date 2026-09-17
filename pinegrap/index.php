@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,6 +23,11 @@ define('NON_ROOT_INDEX', TRUE);
 include('init.php');
 
 $liveform = new liveform('login');
+
+// Database behind the code (files just landed, upgrade not run yet): the
+// upgrade comes first. Signing in here would run on tables the upgrade has
+// not created - see pg_require_current_schema().
+pg_require_current_schema();
 
 // If the request used the old u & p field names, then store those values in new field names.
 // We do this for backwards compatibility reasons so if someone bookmarked a login url or has a
@@ -48,9 +53,7 @@ if (!isset($_REQUEST['email'])) {
     // to get into the backed of the system when they are already logged in.
     if (
         ($liveform->check_form_errors() == FALSE)
-        && (isset($_SESSION['sessionusername']) == true)
-        && (isset($_SESSION['sessionpassword']) == true)
-        && (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true)
+        && pg_session_signed_in()
     ) {
         send_user_to_login_home();
     }
@@ -71,7 +74,23 @@ if (!isset($_REQUEST['email'])) {
     $liveform->add_fields_to_session();
     
     $username = $liveform->get_field_value('email');
-    $password = md5($liveform->get_field_value('password'));
+    // Raw password now; validate_login() checks it against the stored hash.
+    $password = $liveform->get_field_value('password');
+
+    // Refuse straight away while this address or account is locked out, so a
+    // password list never reaches the credential comparison.
+    pg_login_throttle_guard($username);
+
+    // From a few failures on, the attempt must also answer a question; see
+    // pg_login_captcha_gate(). The request ends on the question screen when
+    // it owes an answer.
+    $pg_login_screen = array(
+        'action'     => PATH . SOFTWARE_DIRECTORY . '/index.php',
+        'identifier' => 'email',
+        'password'   => 'password',
+    );
+
+    pg_login_captcha_gate($username, $liveform, $pg_login_screen);
     
     $liveform->validate_required_field('email', lang('Email or username is required.'));
     $liveform->validate_required_field('password', lang('Password is required.'));
@@ -79,7 +98,12 @@ if (!isset($_REQUEST['email'])) {
     // if there is not already an error, validate login
     if ($liveform->check_form_errors() == false) {
         // if login is not valid, check which part of login is invalid
-        if (validate_login($username, $password) == false) {
+        $login_user_id = validate_login($username, $password);
+        if ($login_user_id === false) {
+            // A wrong password is counted before the visitor is told which half was
+            // wrong, so the counter cannot be avoided by reading the message.
+            pg_login_record_failure($username);
+
             // If email/username exists, password is incorrect, so tell visitor that
             if (validate_username($username) == true) {
                 log_activity(lang(array('string'=>'access denied (password invalid) (email or username: {var:1})','vars'=>$username)), lang('UNKNOWN') );
@@ -113,11 +137,26 @@ if (!isset($_REQUEST['email'])) {
         }
     }
     
+    // A refused password that brings the account or the address up to the
+    // question threshold is answered with the question screen now, rather
+    // than a bounce to the plain form that would only stop the visitor again.
+    if (isset($login_user_id) && $login_user_id === false) {
+        pg_login_captcha_after_failure($username, $liveform, $pg_login_screen);
+    }
+
     // if there is an error with the form, then send user back to form
     if ($liveform->check_form_errors() == true) {
+        // A designed login page (the login_form widget) names itself in
+        // return_to: the refused attempt goes back to the form the visitor
+        // filled in, where its Messages block prints this liveform's errors.
+        // send_to stays what it is - where a successful sign-in lands.
+        if (isset($_POST['return_to']) && is_scalar($_POST['return_to']) && (string) $_POST['return_to'] !== '') {
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path((string) $_POST['return_to']));
+            exit();
+        }
         // if this post came from a login_region, send user to send to
         if ((isset($_POST['login_region'])) && ($_POST['login_region'] == 'true')) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
             exit();
         } else {
             // send user back to standard login page
@@ -126,60 +165,33 @@ if (!isset($_REQUEST['email'])) {
         }
     }
 
+    // Signed in: forget this account's failures. Done before $username is
+    // replaced below, because the counter was opened under whatever the
+    // visitor typed, which may have been their email address.
+    pg_login_throttle_pass($username);
+
     // Get the actual username for the user, because the user probably entered
     // an email address for the username field.  We need the actual username
     // because it is important that we store the actual username in the session and cookies.
+    // We already have the verified user id; read the canonical username by id
+    // (the visitor may have typed their email address into the username field).
     $username = db_value(
-        "SELECT user_username
-        FROM user
-        WHERE
-            (
-                (user_username = '" . escape($username) . "')
-                OR (user_email = '" . escape($username) . "')
-            )
-            AND (user_password = '" . escape($password) . "')");
+        "SELECT user_username FROM user WHERE user_id = '" . (int) $login_user_id . "'");
     
-    // if remember me feature is enabled then deal with it
+    // Sign the visitor in and, when the device limit is on, count this device.
+    // The gate fires for every login (no-op when the limit is off); a remembered
+    // login keeps a persistent cookie, a non-remembered one gets a session cookie
+    // only while the limit is on.
+    $pg_remember = (REMEMBER_ME == TRUE && $liveform->get_field_value('remember_me') == 1);
+    pg_device_limit_gate($login_user_id, $username, ($_REQUEST['send_to'] ?? ''), $pg_remember);
+    pg_login_set_device_cookie($login_user_id, $pg_remember);
+
     if (REMEMBER_ME == TRUE) {
-        // if the user selected to be remembered, then add cookies for that
-        if ($liveform->get_field_value('remember_me') == 1) {
-            $secure = false;
-
-            // If secure mode is enabled, then prepare secure cookie values.
-            if (URL_SCHEME == 'https://') {
-                $secure = true;
-            }
-
-            // If PHP version is greater than or equal to 5.2.0 then add cookies
-            // for login info so that user will be logged in automatically and also
-            // use httponly cookie, in order to prevent hacking methods.  PHP before 5.2.0
-            // does not support setting httponly cookies.
-            if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
-                setcookie('software[username]', $username, time() + 315360000, '/', '', $secure, true);
-                setcookie('software[password]', $password, time() + 315360000, '/', '', $secure, true);
-
-            // Otherwise store login info in cookies without httponly cookie.
-            } else {
-                setcookie('software[username]', $username, time() + 315360000, '/', '', $secure);
-                setcookie('software[password]', $password, time() + 315360000, '/', '', $secure);
-            }
-
-            // add cookie to remember that the user checked the remember me check box,
-            // so that if the user logs out we can check the check box the next time by default for the user
-            setcookie('software[remember_me]', 'true', time() + 315360000, '/');
-
-        // else the user did not select to be remembered, so add a different cookie
-        } else {
-            // add cookie to remember the the user did not check the remember me check box,
-            // so that the remember me check box will not be checked by default next time
-            setcookie('software[remember_me]', 'false', time() + 315360000, '/');
-        }
+        setcookie('software[remember_me]', $pg_remember ? 'true' : 'false', time() + 315360000, '/');
     }
-    
-    log_activity(lang('user logged in'), $username);
-    
+
+    $_SESSION['sessionuserid']  = $login_user_id;
     $_SESSION['sessionusername'] = $username;
-    $_SESSION['sessionpassword'] = $password;
 
     require_once(dirname(__FILE__) . '/connect_user_to_order.php');
     connect_user_to_order();

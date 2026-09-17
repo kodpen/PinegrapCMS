@@ -2451,21 +2451,6 @@ CREATE TABLE `user` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `user`
---
-
-LOCK TABLES `user` WRITE;
-/*!40000 ALTER TABLE `user` DISABLE KEYS */;
-SET autocommit=0;
-INSERT INTO `user` VALUES (73,'adminpinegrapdefault','nomail@pinegrap.com','447ce78286fe5a8e406a3c5f6804ac22',0,294,'no','no',NULL,1621257506,NULL,'no','no','no','','no','yes',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'','',0,NULL,0,'0000',1621257787,'','');
-/*!40000 ALTER TABLE `user` ENABLE KEYS */;
-UNLOCK TABLES;
-COMMIT;
-
--- Dumped table `user` with 1 row(s)
---
-
---
 -- Table structure for table `email_a_friend_pages`
 --
 

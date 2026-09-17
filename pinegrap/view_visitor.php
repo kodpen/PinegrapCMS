@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -232,6 +232,7 @@ pg_page_shell(
         'extra classes'=>'visitor',
         'icon'=>'visitor',
         'heading'=> lang('Visit Details'),
+        'heading_description' => lang('View this computer\'s visit to the website.'),
         'cancel'=>array('enable'=>'true','url'=>'view_visitor_reports.php'),
         'breadcrumb' => array(
             array('label' => lang('All Visitor Reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'),
@@ -240,11 +241,12 @@ pg_page_shell(
         ),
     )
 ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             <div class="row mb-2  flex-wrap d-print-none">
                 <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View this computer\'s visit to the website.') . '" title="' . lang('Visit Details') . '">[' . lang('Visitor') . ' #' . $id . ']</h2>
+
                     <p class="p-0 m-0">' . lang('Visitor\'s IP Address') . ': ' . $ip_address . '</p>
                 </div>
             </div>

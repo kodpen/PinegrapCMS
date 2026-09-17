@@ -20,12 +20,113 @@
 
 //required for software backup mysql dumb
 use Ifsnop\Mysqldump as IMysqldump;
-$request = json_decode(@file_get_contents('php://input'), true);
+
+// A file dragged into the file manager arrives as one large json body, base64 encoded.  Reading
+// it and parsing it leaves two copies of it in memory at once, and memory_limit is sized for
+// ordinary page requests, so a file well inside what the server could carry used to end the
+// request with "Allowed memory size exhausted" halfway through.
+//
+// The room has to be made here, before the body is read: by the time a handler could ask for it
+// the allocation that fails has already been attempted.  Only a request that is actually
+// carrying something large is lifted, only as far as that body needs, and never below what the
+// server was already set to.  functions.php has the same ceiling under
+// pg_upload_memory_ceiling(), which is what the file manager quotes as its limit; if you change
+// one, change the other.  ini_set is allowed to fail: a host that forbids it simply keeps the
+// behaviour we had before.
+$request_content_length = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+
+if ($request_content_length > (4 * 1024 * 1024)) {
+
+    $memory_setting = trim((string) @ini_get('memory_limit'));
+    $memory_unit    = strtolower(substr($memory_setting, -1));
+    $memory_current = (float) $memory_setting;
+
+    if ($memory_unit == 'g') { $memory_current = $memory_current * 1024 * 1024 * 1024; }
+    elseif ($memory_unit == 'm') { $memory_current = $memory_current * 1024 * 1024; }
+    elseif ($memory_unit == 'k') { $memory_current = $memory_current * 1024; }
+
+    $memory_ceiling = defined('UPLOAD_MEMORY_CEILING') ? trim((string) UPLOAD_MEMORY_CEILING) : '512M';
+    $ceiling_unit   = strtolower(substr($memory_ceiling, -1));
+    $ceiling_bytes  = (float) $memory_ceiling;
+
+    if ($ceiling_unit == 'g') { $ceiling_bytes = $ceiling_bytes * 1024 * 1024 * 1024; }
+    elseif ($ceiling_unit == 'm') { $ceiling_bytes = $ceiling_bytes * 1024 * 1024; }
+    elseif ($ceiling_unit == 'k') { $ceiling_bytes = $ceiling_bytes * 1024; }
+
+    // Two copies of the body, plus room for the software itself and the work around it.
+    $memory_needed = (2 * $request_content_length) + (48 * 1024 * 1024);
+
+    if ($memory_needed > $ceiling_bytes) {
+        $memory_needed = $ceiling_bytes;
+    }
+
+    // -1 (unlimited) reads as 0 here, and there is nothing to raise in that case.
+    if (($memory_current > 0) && ($memory_needed > $memory_current)) {
+        @ini_set('memory_limit', (int) $memory_needed);
+    }
+
+}
+
+$raw_request = @file_get_contents('php://input');
+
+$request = json_decode($raw_request, true);
+
+// PHP throws the whole body away when the request is larger than post_max_size, and the script then
+// runs with nothing in it.  Without this the answer would be "Invalid token", which sends everybody
+// looking in the wrong place; the real reason is the size of the request.  We cannot look at
+// CONTENT_LENGTH here, because PHP sets it to zero when it discards the body, so we go by the fact
+// that a json request without a body never happens on purpose.
+if (($request === null) && ($raw_request === '') && ($_SERVER['REQUEST_METHOD'] == 'POST') &&
+    (isset($_SERVER['CONTENT_TYPE'])) && (stripos($_SERVER['CONTENT_TYPE'], 'json') !== false)) {
+
+    header('Content-Type: application/json');
+
+    // work out what this server would have taken, so the screen can lower its own limit to match
+    $post_setting = trim((string) @ini_get('post_max_size'));
+
+    $post_unit = strtolower(substr($post_setting, -1));
+
+    $post_bytes = (float) $post_setting;
+
+    if ($post_unit == 'g') { $post_bytes = $post_bytes * 1024 * 1024 * 1024; }
+    elseif ($post_unit == 'm') { $post_bytes = $post_bytes * 1024 * 1024; }
+    elseif ($post_unit == 'k') { $post_bytes = $post_bytes * 1024; }
+
+    $upload_limit_bytes = ($post_bytes > 0) ? (int) floor(max(0, $post_bytes - 65536) * 0.74) : 0;
+
+    print json_encode(array(
+        'status' => 'error',
+        'upload_limit_bytes' => $upload_limit_bytes,
+        'post_max_size' => $post_setting,
+        'message' => 'The request was larger than this server accepts in one request (post_max_size ' . $post_setting . '). Raise post_max_size and upload_max_filesize, or send a smaller file.'));
+
+    exit();
+
+}
+
+// The body has been parsed, so the raw copy is nothing but weight.  It matters on uploads,
+// where the JSON carries a base64 payload of tens of megabytes: holding the raw text and the
+// decoded JSON at the same time is already two copies of the file before anything is written.
+//
+// The size is kept because pg_upload_limits() works the upload allowance out from the memory
+// peak, and by this point that peak holds both of those copies.  Without knowing how much of
+// it belongs to the body, the allowance would shrink as the file grows -- the bigger the file,
+// the smaller the limit it is measured against -- and a file that uploaded yesterday would be
+// turned away as too large today.
+$GLOBALS['pg_request_body_bytes'] = strlen($raw_request);
+
+unset($raw_request);
 
 // If login info was included in the request, then store it, so that initialize_user() can login user.
-if ((isset($request['username'])) && ($request['username'] != '')) {
+//
+// Both halves or neither. A body carrying a name and no password used to define
+// the pair anyway, with the password reading as null, which turned a malformed
+// request into a sign-in attempt against a password nobody sent.
+if (isset($request['username']) && is_string($request['username']) && ($request['username'] !== '')
+    && isset($request['password']) && is_string($request['password'])) {
     define('API_USERNAME', $request['username']);
-    define('API_PASSWORD', md5($request['password']));
+    // Raw password; initialize_user() verifies it against the stored hash.
+    define('API_PASSWORD', $request['password']);
 }
 
 include('init.php');
@@ -74,6 +175,12 @@ if (
 
     and ($action != 'file_explorer')
 
+    // Noting that someone has watched a guided tour is theirs to do whatever
+    // their role, and the case block below checks the session and the token
+    // for itself.  The general gate here wants role 1 or better, which would
+    // leave a basic user watching the same tour on every visit.
+    and ($action != 'tour_seen')
+
     and ($action != 'backend_search')
 
     and ($action != 'sort_menu_items')
@@ -97,6 +204,29 @@ if (
     and ($action != 'shared_component')
 
     and ($action != 'designer_file')
+
+    // The visual editor is no longer designer-only. A manager or a user with
+    // content rights opens it to edit text, images and the areas marked for
+    // them, and the editor needs its endpoints to do that — presence, page
+    // load, the SEO check. The `designer` case has its own allow-list and
+    // refuses everything that shapes the design, so the general gate here
+    // would only be a second, blunter copy of a decision made properly one
+    // switch below.
+    and ($action != 'designer')
+    // The offer editor belongs to whoever manages the store (roles 0-2, or a
+    // basic user with manage_ecommerce); the handler checks that itself.
+    and ($action != 'offer_editor')
+
+    // The System Status widget's three jobs. Each checks the role it needs for
+    // itself -- the table scan and the cache purge stand at manager, the rule
+    // writer at administrator -- while the general gate here wants role 1 or
+    // better and would turn away the manager the widget draws the tiles for. A
+    // tile offered to somebody the endpoint then refuses is worse than a tile
+    // that was never drawn.
+    and ($action != 'database_deep_check')
+    and ($action != 'server_config_repair')
+    and ($action != 'write_permissions_repair')
+    and ($action != 'purge_cache')
 
 ) {
 
@@ -217,6 +347,227 @@ switch ($action) {
         respond($response);
         break;
 
+    case 'database_deep_check':
+        // The full CHECK TABLE sweep, on request instead of on every dashboard
+        // load. The routine sweep behind the System Status widget uses the
+        // cheap MyISAM flags and leaves alone the engines that ignore them;
+        // the thorough pass lives here, where an operator decides when the
+        // site can afford it.
+        $user = validate_user();
+
+        // Same gate as the widget that reports the result.
+        if ((int) $user['role'] >= 3) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+            break;
+        }
+
+        // This reads every row and every index of every table. On a large
+        // database that is minutes, so it releases the session lock first --
+        // otherwise the operator's own next page load queues behind it -- and
+        // lifts the execution limit, because a sweep killed halfway leaves the
+        // report it was building unwritten.
+        session_write_close();
+
+        if (function_exists('set_time_limit')) { // disable_functions on some hosts
+            @set_time_limit(0);
+        }
+
+        $deep_report = check_and_repair_database_tables(true);
+
+        $deep_issues = 0;
+        $deep_repairs = 0;
+
+        foreach ($deep_report as $deep_messages) {
+            foreach ($deep_messages as $deep_message) {
+                if ($deep_message === 'error') {
+                    $deep_issues++;
+                }
+                if ($deep_message === 'repaired') {
+                    $deep_repairs++;
+                }
+            }
+        }
+
+        // The status widget renders from a cache of its own, and would keep
+        // showing what the routine sweep found until it expired.
+        $deep_status_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
+
+        if (file_exists($deep_status_cache)) {
+            @unlink($deep_status_cache);
+        }
+
+        respond(array(
+            'status' => 'success',
+            'message' => lang(array(
+                'string' => '{var:1} table(s) checked, {var:2} issue(s) found, {var:3} repaired.',
+                'vars' => array(
+                    number_format(count($deep_report)),
+                    number_format($deep_issues),
+                    number_format($deep_repairs),
+                ),
+            )),
+            // The tile that starts this is one of the health tiles and has a
+            // health tile's room -- a couple of words. The sentence above goes
+            // in the row beneath it; this is what fits on the tile itself.
+            'summary' => lang(array(
+                'string' => '{var:1} issue(s)',
+                'vars' => array(number_format($deep_issues)),
+            )),
+        ));
+        break;
+
+    case 'server_config_repair':
+        // Write the missing rules into the web.config / .htaccess in the web
+        // root. What gets written and how is in includes/server_config.php;
+        // this is the door.
+        //
+        // Administrator only. The general gate above lets a designer through,
+        // and a designer is trusted with the look of the site, not with the
+        // file that decides what the whole server will and will not hand out.
+        // The rest of the widget stands behind role < 3, so the tile that
+        // starts this is drawn for role 0 alone rather than being offered to
+        // people it would refuse.
+        $user = validate_user();
+
+        if ((int) $user['role'] !== 0) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+            break;
+        }
+
+        $server_config_result = pg_server_config_repair(true);
+
+        // The status widget renders from a ten-minute cache and would keep
+        // reporting the rules as missing until it expired -- which reads as
+        // the button having done nothing.
+        $server_config_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
+
+        if (file_exists($server_config_cache)) {
+            @unlink($server_config_cache);
+        }
+
+        if ($server_config_result['status'] !== 'success') {
+            respond(array(
+                'status' => 'error',
+                'message' => $server_config_result['message'],
+                'summary' => lang('Failed'),
+            ));
+            break;
+        }
+
+        // Shown relative to the web root: an absolute path names the account and
+        // the folder the site lives in, and the operator going after the file
+        // over FTP starts at the web root anyway. Separators are normalised
+        // first -- on Windows dirname() answers in backslashes while the backup
+        // path was built with forward ones, and the two never match.
+        $server_config_backup = str_replace('\\', '/', $server_config_result['backup']);
+        $server_config_root   = rtrim(str_replace('\\', '/', dirname(dirname(__FILE__))), '/') . '/';
+
+        if (strpos($server_config_backup, $server_config_root) === 0) {
+            $server_config_backup = substr($server_config_backup, strlen($server_config_root));
+        }
+
+        respond(array(
+            'status' => 'success',
+            'message' => $server_config_result['message']
+                . ($server_config_result['backup'] !== ''
+                    ? ' ' . lang(array(
+                        'string' => 'The previous file was kept as {var:1}.',
+                        'vars'   => $server_config_backup,
+                    ))
+                    : ''),
+            'summary' => lang('Done'),
+        ));
+        break;
+
+    case 'write_permissions_repair':
+        // Open the folders and files of the software the web server cannot
+        // write to, from the System Status widget. The scan and the chmod are
+        // pg_write_permission_scan() / pg_write_permission_repair() in
+        // functions.php; this is the door.
+        //
+        // Administrator only, like the rules file: this changes who may write
+        // into the software directory, which is not the same authority as
+        // clearing a cache.
+        $user = validate_user();
+
+        if ((int) $user['role'] !== 0) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+            break;
+        }
+
+        $permissions_result = pg_write_permission_repair();
+
+        log_activity(
+            lang(array('string' => 'Write permissions repaired from the dashboard ({var:1}).', 'vars' => array($permissions_result['message']))),
+            $_SESSION['sessionusername']
+        );
+
+        // The widget renders from a ten-minute cache and would keep reporting
+        // the folders as closed until it expired -- which reads as the button
+        // having done nothing.
+        $permissions_cache = dirname(__FILE__) . '/data/temp/system_status_cache.json';
+
+        if (file_exists($permissions_cache)) {
+            @unlink($permissions_cache);
+        }
+
+        respond(array(
+            'status' => ($permissions_result['status'] === 'error') ? 'error' : 'success',
+            'message' => $permissions_result['message'],
+            'summary' => ($permissions_result['status'] === 'success') ? lang('Done') : (($permissions_result['status'] === 'partial') ? lang('Partly') : lang('Failed')),
+        ));
+        break;
+
+    case 'purge_cache':
+        // Clearing the caches from the System Status widget, without leaving
+        // the dashboard.
+        //
+        // purge_cache.php does the same work and then redirects to
+        // settings.php. That is the right ending for a link pressed on the
+        // settings screen and the wrong one for a tile on a card: the operator
+        // pressed a button on the dashboard and landed on another page, with
+        // the widget they were reading left behind. Both doors call
+        // pg_purge_caches(), so the two cannot come to clear different things.
+        //
+        // Manager and above, matching purge_cache.php's own
+        // validate_area_access($user, 'manager') -- written here as a role test
+        // because that function answers in HTML, and an HTML refusal reaches a
+        // caller expecting JSON as "unexpected token <".
+        $user = validate_user();
+
+        if ((int) $user['role'] >= 3) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+            break;
+        }
+
+        $purge_result = pg_purge_caches();
+
+        log_activity(
+            lang(array('string' => 'Cache purged ({var:1}).', 'vars' => array($purge_result['message']))),
+            $_SESSION['sessionusername']
+        );
+
+        respond(array(
+            'status'  => 'success',
+            'message' => lang(array('string' => 'Cache cleared: {var:1}', 'vars' => array($purge_result['message']))),
+            // Two words is what the row's own state line holds; the sentence
+            // above goes in the panel that opens under it.
+            'summary' => lang('Cleared'),
+        ));
+        break;
+
     case 'get_widget_data':
         $user = validate_user();
         // Release the session file lock immediately after authentication so that
@@ -245,33 +596,598 @@ switch ($action) {
                 break;
 
             case '1':
-                // empty widget slot
-                $response = array(
-                    'status' => 'success',
-                    'message' => lang('Data Received successfully.'),
-                    'data' => '',
-                );
-                echo encode_json($response);
-                exit();
-                break;
+                // ── Sales map ───────────────────────────────────────────
+                //
+                // Where the money came from. The dashboard could say how much
+                // was sold and what was sold, never where from: that question
+                // needed a report to be built in view_order_report.php and run,
+                // which is not something anyone does while glancing at a panel.
+                //
+                // Two views over one set of numbers. The world map answers
+                // "which countries", a country's own map answers "which parts
+                // of it", and the list beside either one always names regions:
+                // the map is the scale, the list is the detail. The card opens
+                // on whichever view its own data calls for -- see
+                // pg_sales_map_collect().
+                //
+                // The figures come from the same columns and the same status
+                // filter as the Sales Report's "Billing State" summary, so the
+                // card and the report cannot disagree. Everything about the
+                // data is in includes/sales_map.php; what is left here is the
+                // markup, as it is for every other widget on this screen.
+                //
+                // Gated on commerce REPORTS, the permission view_order_report.php
+                // asks for, rather than on commerce: this is a sales report, and
+                // a user can hold one of those two without the other.
+                if ((ECOMMERCE === true) && USER_MANAGE_ECOMMERCE_REPORTS) {
 
+                    require_once PG_FUNCTIONS_DIR . '/includes/sales_map.php';
+
+                    $sales_map = pg_sales_map_collect();
+
+                    if ($sales_map['status'] !== 'ok') {
+
+                        respond(array(
+                            'status'  => 'success',
+                            'message' => lang('Data Received successfully.'),
+                            'data'    => '<div class="card-body p-0">'
+                                . pg_widget_empty('bi-map', lang(array(
+                                    'string' => 'There is no {var:1} right now.',
+                                    'vars'   => lang('Order'))))
+                                . '</div>'));
+                    }
+
+                    // Separators given explicitly, as everywhere else in this
+                    // file: number_format() with only a precision falls back to
+                    // the English ones and puts "9,986" on the same line as
+                    // "798.380,70".
+                    // Every place on this card links to the orders screen, and
+                    // that screen asks for commerce, not for commerce reports.
+                    // Somebody who may read the report but not work the orders
+                    // gets the same card without the links -- rather than a row
+                    // that lands on "Access denied".
+                    $sm_can_open = (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE);
+
+                    $sm_url = function ($country_name, $state, $from) use ($sm_can_open, $sales_map) {
+
+                        if (!$sm_can_open) {
+                            return '';
+                        }
+
+                        return pg_sales_map_orders_url($country_name, $state, $from, $sales_map['first']);
+                    };
+
+                    $sm_money = function ($cents) {
+                        return BASE_CURRENCY_SYMBOL . number_format($cents / 100, 2, ',', '.');
+                    };
+
+                    $sm_count = function ($number) {
+                        return number_format($number, 0, ',', '.');
+                    };
+
+                    $sm_orders = function ($number) use ($sm_count) {
+                        return lang(array(
+                            'string' => '{var:1} order{suffix:1}',
+                            'vars'   => $sm_count($number),
+                            'suffix' => ($number == 1) ? '' : 's'));
+                    };
+
+                    // The world is always on offer; a country joins it only
+                    // where we ship outlines for it. One market and one map
+                    // means no switch at all.
+                    $sm_views = array('world' => lang('World'));
+                    $sm_files = array('world' => 'assets/maps/world-countries.svg');
+
+                    if ($sales_map['home_map'] !== '') {
+                        // Through lang(), because the countries table holds one
+                        // spelling per installation and it is whatever was typed
+                        // into it. The value that filters the orders screen is
+                        // the stored one and stays untranslated.
+                        $sm_views[$sales_map['home']] = lang($sales_map['home_name']);
+                        $sm_files[$sales_map['home']] = 'assets/maps/' . $sales_map['home_map'];
+                    }
+
+                    $sm_view = (($sales_map['default'] === 'home') && ($sales_map['home_map'] !== ''))
+                        ? $sales_map['home']
+                        : 'world';
+
+                    // Versioned by the file's own timestamp, the way the rest of
+                    // the panel's assets are: the outlines are cached hard, and
+                    // a regenerated map has to reach a browser that already has
+                    // the old one.
+                    $sm_maps = array();
+
+                    foreach ($sm_files as $sm_key => $sm_file) {
+                        $sm_maps[$sm_key] = $sm_file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $sm_file);
+                    }
+
+                    $sm_country_rows = db_items("SELECT code, name FROM countries", 'code');
+
+                    $sm_heads = '';
+                    $sm_lists = '';
+                    $sm_tabs = '';
+                    $sm_switch = '';
+
+                    $sm_payload = array(
+                        'view'  => $sm_view,
+                        'mode'  => $sales_map['period'],
+                        'maps'  => $sm_maps,
+                        'rows'  => array(),
+                        'names' => array(),
+                        'none'  => '<span class="text-muted">' . h(lang('No sales')) . '</span>');
+
+                    foreach ($sm_views as $sm_view_key => $sm_view_label) {
+
+                        $sm_is_world = ($sm_view_key === 'world');
+
+                        // Names for the places that sold nothing: hovering one
+                        // still has to say which place it is.
+                        $sm_names = array();
+
+                        if ($sm_is_world) {
+
+                            foreach ($sm_country_rows as $sm_code => $sm_row) {
+                                $sm_names[strtoupper($sm_code)] = h(lang($sm_row['name']));
+                            }
+
+                        } else {
+
+                            foreach (call_user_func(pg_sales_map_region_maps()[$sm_view_key]['names']) as $sm_code => $sm_name) {
+                                $sm_names[$sm_code] = h($sm_name);
+                            }
+                        }
+
+                        $sm_payload['names'][$sm_view_key] = $sm_names;
+                        $sm_payload['rows'][$sm_view_key] = array();
+
+                        $sm_switch .=
+                            '<li><button type="button" class="dropdown-item'
+                            . (($sm_view_key === $sm_view) ? ' active' : '') . '" data-smap-view="' . h($sm_view_key) . '">'
+                            . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_view_label) . '</button></li>';
+
+                        foreach ($sales_map['periods'] as $sm_period_key => $sm_period) {
+
+                            $sm_slot = $sm_view_key . '|' . $sm_period_key;
+                            $sm_hidden = (($sm_view_key === $sm_view) && ($sm_period_key === $sales_map['period']))
+                                ? ''
+                                : ' d-none';
+
+                            // A view answers for what it draws: the world for
+                            // every order, a country for its own. Showing the
+                            // shop's whole revenue over a map of one country
+                            // would invite the reader to add the map up and get
+                            // a different number.
+                            $sm_regions = array();
+
+                            foreach ($sm_period['regions'] as $sm_region_key => $sm_region) {
+
+                                if (($sm_is_world) || ($sm_region['country'] === $sm_view_key)) {
+                                    $sm_regions[$sm_region_key] = $sm_region;
+                                }
+                            }
+
+                            if ($sm_is_world) {
+                                $sm_total = $sm_period['total'];
+                                $sm_orders_count = $sm_period['count'];
+                            } else {
+                                $sm_total = $sm_period['countries'][$sm_view_key]['total'] ?? 0;
+                                $sm_orders_count = $sm_period['countries'][$sm_view_key]['count'] ?? 0;
+                            }
+
+                            // ── Head ─────────────────────────────────────────
+                            $sm_places = $sm_is_world ? count($sm_period['countries']) : count($sm_regions);
+
+                            $sm_heads .=
+                                '<div class="pg-head' . $sm_hidden . '" data-smap-head="' . $sm_slot . '">'
+                                . '<div class="pg-head-line">'
+                                . '<span class="pg-head-num">' . $sm_money($sm_total) . '</span>'
+                                . '<span class="pg-head-unit text-muted">' . h($sm_period['label']) . '</span>'
+                                . '<span class="pg-head-total text-muted">'
+                                . $sm_orders($sm_orders_count)
+                                . ' &middot; '
+                                . lang(array(
+                                    'string' => $sm_is_world ? '{var:1} countr{suffix:1}' : '{var:1} region{suffix:1}',
+                                    'vars'   => $sm_count($sm_places),
+                                    'suffix' => $sm_is_world
+                                        ? (($sm_places == 1) ? 'y' : 'ies')
+                                        : (($sm_places == 1) ? '' : 's')))
+                                . '</span>'
+                                . '</div></div>';
+
+                            // ── Regions, ranked ──────────────────────────────
+                            //
+                            // Built here rather than in the browser so that a
+                            // row on this card is the same row as on every
+                            // other one: pg_widget_row() stays the single
+                            // description of what a dashboard list line looks
+                            // like.
+                            $sm_rows = '';
+                            $sm_rank = 0;
+
+                            foreach ($sm_regions as $sm_region) {
+
+                                $sm_rank++;
+
+                                if ($sm_rank > 8) {
+                                    break;
+                                }
+
+                                $sm_share = ($sm_total > 0)
+                                    ? round(($sm_region['total'] / $sm_total) * 100)
+                                    : 0;
+
+                                $sm_meta = $sm_orders($sm_region['count'])
+                                    . ' &middot; ' . lang(array('string' => '{var:1}% share', 'vars' => $sm_share));
+
+                                // On the world view the region's country is
+                                // half of its identity: there is a Sivas in
+                                // Turkey and a Georgia in two places.
+                                if (($sm_is_world) && ($sm_region['country_name'] !== '')) {
+                                    $sm_meta = h(lang($sm_region['country_name'])) . ' &middot; ' . $sm_meta;
+                                }
+
+                                $sm_rows .= pg_widget_row(array(
+                                    'href'  => h($sm_url(
+                                        $sm_region['country_name'], $sm_region['state'], $sm_period['from'])),
+                                    'badge' => $sm_rank,
+                                    'name'  => h($sm_region['name']),
+                                    'aside' => $sm_money($sm_region['total']),
+                                    'meta'  => $sm_meta));
+                            }
+
+                            if ($sm_rows === '') {
+                                $sm_rows = pg_widget_empty('bi-map', lang('There are no sales in this period.'));
+                            }
+
+                            $sm_lists .=
+                                '<div class="pg-list' . $sm_hidden . '" data-smap-list="' . $sm_slot . '">'
+                                . $sm_rows . '</div>';
+
+                            // ── What the map colours ─────────────────────────
+                            //
+                            // Countries on the world view, regions on a
+                            // country's own. The tooltip is composed here for
+                            // the same reason the rows are: money formatting,
+                            // plurals and the translation table all live on
+                            // this side.
+                            $sm_entries = $sm_is_world ? $sm_period['countries'] : $sm_regions;
+                            $sm_steps = pg_sales_map_steps($sm_entries);
+                            $sm_tips = array();
+
+                            foreach ($sm_entries as $sm_entry_key => $sm_entry) {
+
+                                if ($sm_entry['code'] === '') {
+                                    continue;
+                                }
+
+                                $sm_share = ($sm_total > 0)
+                                    ? round(($sm_entry['total'] / $sm_total) * 100)
+                                    : 0;
+
+                                // A country names its own best regions, a region
+                                // names its best cities: one level further down
+                                // than whatever is being pointed at.
+                                $sm_detail = array();
+
+                                if ($sm_is_world) {
+
+                                    foreach ($sm_period['regions'] as $sm_region) {
+
+                                        if (($sm_region['country'] === $sm_entry['code']) && (count($sm_detail) < 3)) {
+                                            $sm_detail[] = h($sm_region['name']);
+                                        }
+                                    }
+
+                                } else {
+
+                                    foreach ($sm_entry['cities'] as $sm_city) {
+
+                                        if ($sm_city['name'] !== '') {
+                                            $sm_detail[] = h($sm_city['name']);
+                                        }
+                                    }
+                                }
+
+                                $sm_tips[$sm_entry['code']] = array(
+                                    'b' => (int) ($sm_steps[$sm_entry_key] ?? 0),
+                                    'u' => $sm_url(
+                                        $sm_is_world ? $sm_entry['name'] : $sm_entry['country_name'],
+                                        $sm_is_world ? '' : $sm_entry['state'],
+                                        $sm_period['from']),
+                                    'p' => '<b>' . h($sm_is_world ? lang($sm_entry['name']) : $sm_entry['name']) . '</b>'
+                                        . '<span>' . $sm_money($sm_entry['total']) . ' &middot; '
+                                        . $sm_orders($sm_entry['count']) . '</span>'
+                                        . '<span>' . lang(array('string' => '{var:1}% share', 'vars' => $sm_share)) . '</span>'
+                                        . (!empty($sm_detail)
+                                            ? '<span class="text-muted">' . implode(', ', $sm_detail) . '</span>'
+                                            : ''));
+                            }
+
+                            $sm_payload['rows'][$sm_view_key][$sm_period_key] = $sm_tips;
+                        }
+                    }
+
+                    // ── Period switch ────────────────────────────────────────
+                    foreach ($sales_map['periods'] as $sm_period_key => $sm_period) {
+
+                        $sm_tabs .=
+                            '<li><button type="button" class="dropdown-item'
+                            . (($sm_period_key === $sales_map['period']) ? ' active' : '') . '"'
+                            . ' data-smap="' . $sm_period_key . '">'
+                            . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_period['label']) . '</button></li>';
+                    }
+
+                    // ── The switches, as a menu ──────────────────────────────
+                    //
+                    // A strip of buttons under the map cost it a band of its own
+                    // height, and a .btn-group stretched across the panel gives
+                    // every button an equal share of it whatever its label says
+                    // -- three period labels wrapped to two lines apiece there.
+                    // A menu in the corner costs one icon, and the head beside
+                    // the revenue already names the period on show.
+                    //
+                    // The map section only appears where there is a second map
+                    // to switch to.
+                    $sm_menu =
+                        '<div class="dropdown pg-smap-menu">'
+                        . '<button type="button" class="btn btn-sm btn-ghost pg-smap-menu-btn" id="pg_smap_menu"'
+                        . ' data-bs-toggle="dropdown" aria-expanded="false" aria-label="' . h(lang('Filter')) . '">'
+                        . '<i class="bi bi-sliders"></i></button>'
+                        . '<ul class="dropdown-menu dropdown-menu-end">'
+                        . '<li><h6 class="dropdown-header">' . h(lang('Period')) . '</h6></li>'
+                        . $sm_tabs
+                        . ((count($sm_views) > 1)
+                            ? '<li><hr class="dropdown-divider"></li>'
+                                . '<li><h6 class="dropdown-header">' . h(lang('Map')) . '</h6></li>' . $sm_switch
+                            : '')
+                        . '</ul></div>';
+
+                    // ── Map panel ────────────────────────────────────────────
+                    //
+                    // The outlines are static files so the browser can cache
+                    // them: the dashboard rebuilds its widgets once a minute and
+                    // the paths do not need to come back with every rebuild.
+                    // Fetched rather than pointed at with an <img>, because a
+                    // path inside an <img> cannot be coloured.
+                    $output_data =
+                        '<div class="card-body p-0 pg-split" id="pg_smap">'
+                        . '<div class="pg-split-half pg-smap-main">'
+                        . $sm_heads
+                        . '<div class="pg-smap-canvas' . ($sm_can_open ? '' : ' is-static') . '" id="pg_smap_canvas" role="img" aria-label="' . h(lang('Sales Map')) . '">'
+                        . '<div class="pg-smap-tip" id="pg_smap_tip"></div>'
+                        . $sm_menu
+                        . '</div>'
+                        . '</div>'
+                        . '<div class="pg-split-half">' . $sm_lists . '</div>'
+                        . '</div>
+                        <script>(function(){
+
+                            var root = document.getElementById("pg_smap");
+
+                            if (!root) { return; }
+
+                            var data = ' . encode_json($sm_payload) . ';
+                            var view = data.view;
+                            var mode = data.mode;
+                            var canvas = document.getElementById("pg_smap_canvas");
+                            var tip = document.getElementById("pg_smap_tip");
+
+                            // One layer per view, fetched once and then kept:
+                            // switching back and forth must not go to the
+                            // network, and the browser cache is not a promise.
+                            var layers = {};
+
+                            function rows() {
+                                return (data.rows[view] || {})[mode] || {};
+                            }
+
+                            function hide() {
+                                if (tip) { tip.classList.remove("is-on"); }
+                            }
+
+                            // Painting is separate from loading: switching the
+                            // period recolours the paths that are already there
+                            // rather than fetching anything.
+                            function paint() {
+
+                                var layer = layers[view];
+
+                                if (!layer) { return; }
+
+                                var current = rows();
+                                var paths = layer.querySelectorAll("path[id]");
+
+                                for (var i = 0; i < paths.length; i++) {
+                                    var row = current[paths[i].id];
+                                    paths[i].setAttribute("class", "pg-smap-s" + (row ? row.b : 0));
+                                }
+                            }
+
+                            function reveal() {
+                                for (var key in layers) {
+                                    layers[key].classList.toggle("d-none", key !== view);
+                                }
+                            }
+
+                            function ensure() {
+
+                                if (!canvas) { return; }
+
+                                reveal();
+
+                                if (layers[view]) { paint(); return; }
+
+                                var url = data.maps[view];
+
+                                if (!url) { return; }
+
+                                fetch(url, { credentials: "same-origin" })
+                                    .then(function(response){
+                                        if (!response.ok) { throw new Error(response.status); }
+                                        return response.text();
+                                    })
+                                    .then(function(markup){
+                                        var layer = document.createElement("div");
+                                        layer.className = "pg-smap-layer";
+                                        layer.innerHTML = markup;
+                                        canvas.appendChild(layer);
+                                        layers[view] = layer;
+                                        reveal();
+                                        paint();
+                                    })
+                                    .catch(function(){
+                                        // The outlines are a presentation
+                                        // layer: every number they carry is
+                                        // already written in the list beside
+                                        // them, so a missing file costs the
+                                        // picture and nothing else.
+                                        canvas.classList.add("d-none");
+                                    });
+                            }
+
+                            function show() {
+
+                                var slot = view + "|" + mode;
+
+                                root.querySelectorAll("[data-smap-head],[data-smap-list]").forEach(function(el){
+                                    var owner = el.getAttribute("data-smap-head") || el.getAttribute("data-smap-list");
+                                    el.classList.toggle("d-none", owner !== slot);
+                                });
+
+                                root.querySelectorAll("[data-smap]").forEach(function(btn){
+                                    btn.classList.toggle("active", btn.getAttribute("data-smap") === mode);
+                                });
+
+                                root.querySelectorAll("[data-smap-view]").forEach(function(btn){
+                                    btn.classList.toggle("active", btn.getAttribute("data-smap-view") === view);
+                                });
+
+                                ensure();
+                                hide();
+                            }
+
+                            function place(target) {
+                                return (target && target.closest) ? target.closest("path[id]") : null;
+                            }
+
+                            if (canvas) {
+
+                                canvas.addEventListener("mousemove", function(event){
+
+                                    var path = place(event.target);
+
+                                    if ((!path) || (!tip)) { hide(); return; }
+
+                                    var row = rows()[path.id];
+                                    var names = data.names[view] || {};
+                                    var body = row
+                                        ? row.p
+                                        : (names[path.id] ? ("<b>" + names[path.id] + "</b>" + data.none) : "");
+
+                                    if (!body) { hide(); return; }
+
+                                    var box = canvas.getBoundingClientRect();
+
+                                    tip.innerHTML = body;
+                                    tip.classList.add("is-on");
+
+                                    // Kept inside the card: a tooltip that hangs
+                                    // off the right edge is clipped by the split
+                                    // panel, not by the window.
+                                    var x = event.clientX - box.left + 14;
+                                    var y = event.clientY - box.top + 14;
+
+                                    x = Math.min(x, Math.max(0, box.width - tip.offsetWidth - 4));
+                                    y = Math.min(y, Math.max(0, box.height - tip.offsetHeight - 4));
+
+                                    tip.style.left = x + "px";
+                                    tip.style.top = y + "px";
+                                });
+
+                                canvas.addEventListener("mouseleave", hide);
+
+                                canvas.addEventListener("click", function(event){
+
+                                    var path = place(event.target);
+                                    var row = path ? rows()[path.id] : null;
+
+                                    if (row && row.u) { window.location.href = row.u; }
+                                });
+                            }
+
+                            root.querySelectorAll("[data-smap]").forEach(function(btn){
+                                btn.addEventListener("click", function(){
+                                    mode = btn.getAttribute("data-smap");
+                                    show();
+                                });
+                            });
+
+                            root.querySelectorAll("[data-smap-view]").forEach(function(btn){
+                                btn.addEventListener("click", function(){
+                                    view = btn.getAttribute("data-smap-view");
+                                    canvas.classList.remove("d-none");
+                                    show();
+                                });
+                            });
+
+                            // Popper in fixed strategy. The menu lives inside
+                            // the map panel, and that panel is a scroll box:
+                            // absolutely positioned, the menu is cut off at its
+                            // edge. Fixed takes it out of that box entirely.
+                            var menu = document.getElementById("pg_smap_menu");
+
+                            if ((menu) && (window.bootstrap) && (window.bootstrap.Dropdown)) {
+
+                                new window.bootstrap.Dropdown(menu, {
+                                    popperConfig: function (config) {
+                                        config.strategy = "fixed";
+                                        return config;
+                                    }
+                                });
+                            }
+
+                            show();
+                        })();</script>';
+
+                    respond(array(
+                        'status'  => 'success',
+                        'message' => lang('Data Received successfully.'),
+                        'data'    => $output_data));
+
+                } else {
+
+                    respond(array(
+                        'status'  => 'error',
+                        'message' => 'Access denied'));
+                }
+                break;
 
             case '2':
                 // ── System status ───────────────────────────────────────
                 //
-                // One score for "is this installation healthy", drawn as a
-                // gauge, over one tile per check. It absorbed the maintenance
-                // card that used to live at this id: backup age, pending
-                // update and scheduled tasks are now scored checks rather than
-                // a separate list, because an operator reading a health number
-                // that ignores a month-old backup is reading a number that
-                // lies.
+                // Two panels across a double-width card. On the left one score
+                // for "is this installation healthy", drawn as a gauge, over a
+                // tile per reading. On the right the things an operator can
+                // actually do about it, one to a line.
+                //
+                // The split is the point. This was a single grid in which
+                // "SSL · Tamam" and "Önbellek · Temizle" were the same shape --
+                // a reading and a button drawn identically, four characters
+                // wide. A reading is read; a job is pressed, and a job needs
+                // room for a verb and for the sentence that says what pressing
+                // it will do.
+                //
+                // Order on the right is by state, not by run order: whatever
+                // has a problem is the first line. Anything that opens -- a
+                // per-job run list, the answer from a sweep -- opens directly
+                // under its own line and pushes the rest down, instead of in a
+                // box at the foot of the card that several rows pointed at.
                 //
                 // The checks themselves are in functions.php and are cached
                 // there for ten minutes -- several of them stat the filesystem
                 // or open a socket. This case only renders.
                 //
-                // Role gate matches the screens the tiles link to: backups.php
+                // Role gate matches the screens the rows link to: backups.php
                 // and software_update.php both require manager or above.
                 if ($user['role'] < 3) {
 
@@ -294,172 +1210,1059 @@ switch ($action) {
                     // it is one number instead of two arc endpoints in PHP.
                     $health_arc = 163.36;
 
-                    // The number carries the verdict, the arc carries the
-                    // magnitude. Same thresholds the old status bar used, so a
-                    // site does not change colour just because the widget did.
-                    if ($health_score < 70) {
-                        $health_color = 'text-danger';
+                    // ── Colour band ─────────────────────────────────────
+                    //
+                    // Same gauge, same three-stop gradient, same glow. What
+                    // moves with the score is the hue: an arc that is the
+                    // identical violet at 12% and at 98% makes the reader work
+                    // the verdict out from the digits, and the colour is the
+                    // half that can be read across a room.
+                    //
+                    // Bands: red under 25, amber under 50, blue under 80,
+                    // green from 90. Eighty to ninety is the crossing between
+                    // the last two and is drawn as teal rather than lumped in
+                    // with either -- a site at 85 is neither "still wrong" nor
+                    // "finished".
+                    //
+                    // Each band is three stops of one family, light to dark,
+                    // plus one flat ink that the score, the caption and the
+                    // matrix behind them all take. The ink is an RGB triple
+                    // rather than a hex string because the matrix needs it at
+                    // several alphas.
+                    // ── Colour band, and where the gradient is laid ─────
+                    //
+                    // Four hues a band, and every band is a neon sweep in its
+                    // own right. What the score moves is the weight, not the
+                    // idea: the healthy end is cool -- lime into emerald into
+                    // cyan -- and the failing end is hot -- orange into rose
+                    // into violet. Deliberately not a traffic light. A flat
+                    // green arc and a flat red one would say what the number
+                    // already says, and would say it by throwing the gradient
+                    // away.
+                    //
+                    // All four sit at the same weight, and it matters. A pastel
+                    // first stop (#a7f3d0 was one) reads as washed-out white on
+                    // a dark card and a 600-weight last stop sinks into it, so
+                    // the bar came out bleached at one end and swallowed at the
+                    // other -- lightness doing the travelling instead of hue,
+                    // which is the one thing a gradient this small cannot
+                    // afford. Every stop is a 400: bright, saturated, and only
+                    // its hue different from its neighbour's.
+                    //
+                    // TWO sets of the four, because the same colours cannot
+                    // serve both themes. On a black card the arc has to be
+                    // bright to be seen; those same stops on a white one are
+                    // pastel, and a lime-into-mint sweep on white is barely a
+                    // sweep at all -- the four hues collapse into one wash.
+                    //
+                    // The light set is NOT the dark one darkened. Darkening
+                    // alone keeps the four hues as close together as they were
+                    // and merely makes them all deep, which on white reads as
+                    // one navy arc with a slight lean at each end. It is the
+                    // same journey travelled WIDER -- cyan to blue to violet to
+                    // fuchsia rather than cyan to sky to indigo to violet -- at
+                    // the 600/700 weights, where every stop clears three to one
+                    // against the page and no two neighbours are the same hue.
+                    //
+                    // Both are handed to CSS and the stylesheet picks; PHP has
+                    // no idea which theme it is rendering into.
+                    //
+                    // The ink is the flat colour the number takes, and it has
+                    // the same problem: a 32px amber number on white is under
+                    // three to one against the page.
+                    if ($health_score < 25) {
+                        $health_ink       = '236, 72, 153';
+                        $health_ink_text  = '190, 24, 93';
+                        $health_stops     = array('#fb923c', '#f43f5e', '#e879f9', '#a78bfa');
+                        $health_stops_lt  = array('#c2410c', '#be123c', '#a21caf', '#6d28d9');
+                    } elseif ($health_score < 50) {
+                        $health_ink       = '251, 146, 60';
+                        $health_ink_text  = '180, 83, 9';
+                        $health_stops     = array('#fde047', '#fb923c', '#fb7185', '#e879f9');
+                        $health_stops_lt  = array('#a16207', '#c2410c', '#be123c', '#9333ea');
+                    } elseif ($health_score < 80) {
+                        $health_ink       = '59, 130, 246';
+                        $health_ink_text  = '29, 78, 216';
+                        $health_stops     = array('#22d3ee', '#38bdf8', '#818cf8', '#c084fc');
+                        $health_stops_lt  = array('#0e7490', '#1d4ed8', '#6d28d9', '#a21caf');
                     } elseif ($health_score < 90) {
-                        $health_color = 'text-warning';
+                        $health_ink       = '45, 212, 191';
+                        $health_ink_text  = '13, 148, 136';
+                        $health_stops     = array('#4ade80', '#2dd4bf', '#22d3ee', '#818cf8');
+                        $health_stops_lt  = array('#0d9488', '#0891b2', '#2563eb', '#6d28d9');
                     } else {
-                        $health_color = 'text-success';
+                        $health_ink       = '52, 211, 153';
+                        $health_ink_text  = '4, 120, 87';
+                        $health_stops     = array('#a3e635', '#34d399', '#22d3ee', '#818cf8');
+                        $health_stops_lt  = array('#65a30d', '#059669', '#0891b2', '#3730a3');
                     }
 
-                    // Two grids, not one. The three checks flagged in
-                    // functions.php lead at three across, the rest follow at
-                    // four. Row count is unchanged either way -- three plus
-                    // twelve is one row plus three, same as fifteen over four
-                    // -- so leading them costs no height.
-                    $output_lead_tiles = '';
-                    $output_tiles = '';
-                    $output_detail = '';
+                    // The gradient is laid ALONG the drawn arc, not across the
+                    // circle's box. Across the box a site at 20% saw only the
+                    // first stop -- one flat colour, on exactly the card that
+                    // most needs to say something -- and even at 70% the last
+                    // hue never reached the bar. Anchored to the bar, the whole
+                    // sweep is on it at every score.
+                    //
+                    // Worked in the path's own space: an SVG circle starts at
+                    // three o'clock and runs clockwise, and the half turn in the
+                    // stylesheet is what puts the visible start at nine. So the
+                    // ends are computed here untransformed and rotate with
+                    // everything else.
+                    //
+                    // Clamped at a quarter turn: below it the two ends close on
+                    // each other, and a gradient whose axis has no length paints
+                    // as a single flat stop -- the very thing this prevents.
+                    $health_span  = max($health_score / 100, 0.25);
+                    $health_angle = M_PI * $health_span;
+                    $health_x2    = round(70 + (52 * cos($health_angle)), 2);
+                    $health_y2    = round(70 + (52 * sin($health_angle)), 2);
+
+                    // ── Where the stops go ──────────────────────────────
+                    //
+                    // Not evenly. A linear gradient changes colour evenly along
+                    // its AXIS, and the axis is the straight line between the
+                    // two ends of the arc -- so the arc is read by projecting
+                    // it onto that chord, and the projection is not even at
+                    // all. Near the ends of a half turn the arc runs almost
+                    // parallel to the chord and barely advances along it, so a
+                    // long stretch of bar gets a sliver of the gradient; at the
+                    // top it advances fastest and gets most of it. On a nearly
+                    // full arc that is exactly what you see: two flat legs and
+                    // every hue crammed into the crown.
+                    //
+                    // So each stop is placed at the axis position its own point
+                    // on the arc actually projects to. The four then arrive at
+                    // equal steps of ARC LENGTH, which is the thing being
+                    // looked at.
+                    $health_bx    = $health_x2 - 122;
+                    $health_by    = $health_y2 - 70;
+                    $health_len2  = ($health_bx * $health_bx) + ($health_by * $health_by);
+                    $health_marks = array();
+
+                    foreach (array(0, 1 / 3, 2 / 3, 1) as $health_u) {
+
+                        $health_t = $health_angle * $health_u;
+                        $health_qx = 70 + (52 * cos($health_t));
+                        $health_qy = 70 + (52 * sin($health_t));
+
+                        $health_o = ($health_len2 > 0)
+                            ? (((($health_qx - 122) * $health_bx) + (($health_qy - 70) * $health_by)) / $health_len2)
+                            : $health_u;
+
+                        if ($health_o < 0) { $health_o = 0; }
+                        if ($health_o > 1) { $health_o = 1; }
+
+                        $health_marks[] = round($health_o * 100, 2);
+                    }
+
+                    // The same axis mirrored through the centre, for the layer
+                    // that is written already turned. Rotating a point half a
+                    // turn about (70,70) is (140 - x, 140 - y).
+                    $health_mx2 = round(140 - $health_x2, 2);
+                    $health_my2 = round(140 - $health_y2, 2);
+
+                    // Everything the gauge is coloured from, in one place.
+                    $health_vars = '--pg-health-ink:' . $health_ink
+                        . ';--pg-health-ink-text:' . $health_ink_text;
+
+                    foreach (array(1, 2, 3, 4) as $health_stop) {
+                        $health_vars .= ';--pg-health-d' . $health_stop . ':' . $health_stops[$health_stop - 1]
+                            . ';--pg-health-l' . $health_stop . ':' . $health_stops_lt[$health_stop - 1];
+                    }
+
+
+                    // ── Which side a check lands on ─────────────────────
+                    //
+                    // functions.php marks the four that are jobs rather than
+                    // readings ($job_titles there): the rules file, the backup,
+                    // the update and the scheduled tasks. Each has somewhere to
+                    // go or something to press, so each becomes a line on the
+                    // right. Everything else is a reading and stays a tile.
+                    $reading_checks = array();
+                    $job_checks     = array();
 
                     foreach ($health_checks as $health_check) {
+                        if (!empty($health_check['job'])) {
+                            $job_checks[] = $health_check;
+                        } else {
+                            $reading_checks[] = $health_check;
+                        }
+                    }
 
-                        $tile_href = isset($health_check['href']) ? $health_check['href'] : '';
-                        $tile_detail = (isset($health_check['detail']) && is_array($health_check['detail']))
+                    // ── Readings ────────────────────────────────────────
+                    //
+                    // A chip each, not a tile each. Twelve tiles across half a
+                    // card put the label at nine pixels with the value at nine
+                    // more underneath, and at that size "Veritabanı" and
+                    // "Güncelleme" were both an ellipsis -- a grid of boxes
+                    // whose labels had to be hovered to be read.
+                    //
+                    // The chip gets that width back by dropping the half that
+                    // was not information. A check that is fine says so with
+                    // its colour; printing "Tamam" nine times under nine green
+                    // labels is the colour said twice, in the space the label
+                    // needed. Only a check with something to report keeps its
+                    // value, which is also what makes those rows the ones the
+                    // eye lands on.
+                    //
+                    // Order is by state and then by weight: what is broken,
+                    // what is uncertain, then the three security checks that
+                    // lead when nothing is wrong, then the rest. usort() is
+                    // stable only from PHP 8.0, so position is carried into the
+                    // comparison -- without it the chips could reshuffle
+                    // between two draws of the same card.
+                    $check_ranks = array('fail' => 0, 'warn' => 1, 'info' => 3, 'ok' => 3);
+                    $check_order = array();
+
+                    foreach ($reading_checks as $check_index => $reading_check) {
+
+                        $check_rank = isset($check_ranks[$reading_check['state']])
+                            ? $check_ranks[$reading_check['state']]
+                            : 3;
+
+                        if (($check_rank === 3) && !empty($reading_check['priority'])) {
+                            $check_rank = 2;
+                        }
+
+                        $check_order[] = array($check_rank, (int) $check_index);
+                    }
+
+                    usort($check_order, function ($a, $b) {
+                        if ($a[0] === $b[0]) {
+                            return ($a[1] < $b[1]) ? -1 : 1;
+                        }
+                        return ($a[0] < $b[0]) ? -1 : 1;
+                    });
+
+                    // Bootstrap's own four, so a chip is the same red as every
+                    // other red on the screen.
+                    $check_tones = array('ok' => 'success', 'warn' => 'warning', 'fail' => 'danger', 'info' => 'secondary');
+
+                    $output_checks = '';
+                    $check_slot = 0;
+
+                    foreach ($check_order as $check_entry) {
+
+                        $health_check = $reading_checks[$check_entry[1]];
+                        $check_slot++;
+
+                        $check_tone = isset($check_tones[$health_check['state']])
+                            ? $check_tones[$health_check['state']]
+                            : 'secondary';
+
+                        $check_detail = (isset($health_check['detail']) && is_array($health_check['detail']))
                             ? $health_check['detail']
                             : array();
 
-                        // The popover is the only place the full explanation
-                        // fits, and welcome.php and settings.php both bind it
-                        // by delegation from document, so it survives the
-                        // markup being injected after page load.
-                        $tile_attributes =
-                            ' class="pg-health-tile status-popover"'
-                            . ' title="' . h($health_check['title']) . '"'
-                            . ' data-bs-toggle="popover"'
-                            . ' data-bs-trigger="hover focus"'
-                            . ' data-bs-content="' . h($health_check['message']) . '"';
+                        // The value only when the check said it. "Tamam",
+                        // "Uyarı", "Sorun" and "Uygulanmaz" are the four words
+                        // functions.php puts in a check's mouth when it has
+                        // none of its own -- they are the colour spelled out,
+                        // and a red chip does not need to be told it is red.
+                        // What survives is what the check actually reported:
+                        // "3 eksik", "2026.4.4", "4.2 MB".
+                        $check_value = !empty($health_check['generic'])
+                            ? ''
+                            : '<span class="pg-check-value">' . h($health_check['value']) . '</span>';
 
-                        // Three kinds of tile, and the marker in the corner says
-                        // which: an arrow for one that navigates, a chevron for
-                        // one that opens in place, nothing for one that is only
-                        // a reading.
-                        $tile_marker = '';
+                        $check_body = '
+                            <i class="bi ' . h($health_check['icon']) . '"></i>
+                            <span class="pg-check-name">' . h($health_check['label']) . '</span>' . $check_value;
 
-                        if ($tile_detail) {
+                        $check_panel = '';
 
+                        if ($check_detail) {
+
+                            // Rows the check brought with it. They exist nowhere
+                            // else, so the chip has to be able to show them
+                            // rather than point at a screen that does not have
+                            // the answer. The panel is a full-width child of the
+                            // same wrapping row, so it opens on the line under
+                            // its own chip instead of in a box at the foot of
+                            // the card that several chips would point at.
+                            //
                             // Bootstrap's collapse data-api is delegated from
                             // document, so it binds to markup this widget
-                            // injects after page load. Widget 24 is
-                            // deliberately absent from welcome.php's periodic
-                            // refresh list, so nothing re-renders the card and
-                            // closes the panel under the operator's hand.
-                            //
-                            // The popover would fire on the same hover that
-                            // opens the panel, so this tile carries the
-                            // collapse attributes instead and its explanation
-                            // is the panel itself.
-                            $tile_open = '<a role="button" data-bs-toggle="collapse" href="#system_status_detail"'
-                                . ' aria-expanded="false" aria-controls="system_status_detail"'
-                                . ' class="pg-health-tile pg-health-tile-marked" title="' . h($health_check['title']) . '">';
-                            $tile_close = '</a>';
-                            $tile_marker = '<i class="bi bi-chevron-down pg-health-tile-go"></i>';
+                            // injects after page load. Widget 2 is deliberately
+                            // absent from welcome.php's periodic refresh list,
+                            // so nothing re-renders the card and closes the
+                            // panel under the operator's hand.
+                            $check_id = 'system_status_detail_' . $check_slot;
 
-                            foreach ($tile_detail as $detail_row) {
-                                $output_detail .= '
-                                <div class="pg-health-detail-row">
+                            $check_rows = '';
+
+                            foreach ($check_detail as $detail_row) {
+                                $check_rows .= '
+                                <div class="pg-job-panel-row">
                                     <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot text-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
                                     <span class="text-muted flex-shrink-0">' . h($detail_row['when']) . '</span>
                                 </div>';
                             }
 
-                        } elseif ($tile_href !== '') {
-                            // pg-health-tile-marked earns the name line a
-                            // little right padding, because the marker is
-                            // positioned over the corner rather than sitting in
-                            // either line. In the flow it was costing the value
-                            // its last few characters -- "10 saat önce" became
-                            // "10 saat ö...".
-                            $tile_open  = '<a href="' . h($tile_href) . '"' . str_replace('class="pg-health-tile ', 'class="pg-health-tile pg-health-tile-marked ', $tile_attributes) . '>';
-                            $tile_close = '</a>';
-                            $tile_marker = '<i class="bi bi-arrow-right pg-health-tile-go"></i>';
-                        } else {
-                            $tile_open  = '<div' . $tile_attributes . '>';
-                            $tile_close = '</div>';
-                        }
+                            // The popover would fire on the same hover that
+                            // opens the panel, so a chip that expands carries
+                            // the collapse attributes instead and its
+                            // explanation is the panel.
+                            $output_checks .= '
+                            <button type="button" class="pg-check pg-check-' . $check_tone . '"
+                                    data-bs-toggle="collapse" data-bs-target="#' . $check_id . '"
+                                    aria-expanded="false" aria-controls="' . $check_id . '"
+                                    title="' . h($health_check['title']) . '">' . $check_body . '
+                                <i class="bi bi-chevron-down pg-check-caret"></i>
+                            </button>
+                            <div class="collapse pg-job-slot" id="' . $check_id . '">
+                                <div class="pg-job-panel">' . $check_rows . '</div>
+                            </div>';
 
-                        // The marker rides the value line rather than the name
-                        // line. "Tamam" leaves room for an arrow; "Veritabanı"
-                        // does not, and the label is the half worth reading.
-                        $output_tile = $tile_open . '
-                            <span class="pg-health-tile-name ' . h($health_check['color']) . '">
-                                <i class="bi ' . h($health_check['icon']) . '"></i><span>' . h($health_check['label']) . '</span>
-                            </span>
-                            <span class="pg-health-tile-value text-muted">
-                                <span>' . h($health_check['value']) . '</span>
-                            </span>' . $tile_marker . '
-                        ' . $tile_close;
-
-                        if (!empty($health_check['priority'])) {
-                            $output_lead_tiles .= $output_tile;
                         } else {
-                            $output_tiles .= $output_tile;
+
+                            // The popover is the only place the full
+                            // explanation fits, and welcome.php binds it by
+                            // delegation from document, so it survives the
+                            // markup being injected after page load.
+                            $check_open = ($health_check['href'] !== '')
+                                ? '<a href="' . h($health_check['href']) . '"'
+                                : '<div';
+
+                            $output_checks .= $check_open . ' class="pg-check pg-check-' . $check_tone . ' status-popover"'
+                                . ' title="' . h($health_check['title']) . '"'
+                                . ' data-bs-toggle="popover"'
+                                . ' data-bs-trigger="hover focus"'
+                                . ' data-bs-content="' . h($health_check['message']) . '">' . $check_body
+                                . (($health_check['href'] !== '') ? '</a>' : '</div>');
                         }
                     }
 
-                    if ($output_lead_tiles !== '') {
-                        $output_lead_tiles = '<div class="pg-health-grid pg-health-grid-lead">' . $output_lead_tiles . '</div>';
+                    // ── The jobs column ─────────────────────────────────
+                    //
+                    // Four checks that are jobs, plus three tools that are
+                    // always available. One record each, so that sorting them
+                    // by state is one pass over one list rather than a decision
+                    // repeated at every point a row is emitted.
+                    //
+                    // 'rank' orders the column: a failing check first, then a
+                    // warning, then the tools, then whatever has nothing to
+                    // report, and last the storage readings. Tools sit above
+                    // the healthy checks because a tool is why the operator
+                    // opened the column; a green backup row is confirmation and
+                    // can wait. Storage is last because it is the only row here
+                    // with nothing to act on at all.
+                    $health_jobs = array();
+
+                    $job_ranks = array('fail' => 0, 'warn' => 1, 'ok' => 3, 'info' => 3);
+
+                    // Read once for the row and for the button beside it. The
+                    // ten-minute status cache is deliberately not the source
+                    // here: the operator presses Fix and expects the next draw
+                    // to reflect what they just did. pg_server_config_scan()
+                    // memoizes per request, so the check above and this share
+                    // one read of a file a few kilobytes long.
+                    $server_rules_scan = pg_server_config_scan();
+                    $server_rules_todo = count($server_rules_scan['missing'])
+                        + ($server_rules_scan['stale_path'] ? 1 : 0);
+
+                    foreach ($job_checks as $job_check) {
+
+                        $job_key = isset($job_check['key']) ? $job_check['key'] : '';
+                        $job_action = '';
+                        $job_panel = '';
+
+                        // Rows the check brought with it -- per-job run times,
+                        // the list of rules that are not in the file. They exist
+                        // nowhere else, which is why the row expands instead of
+                        // pointing at a screen.
+                        $job_rows = '';
+
+                        if (isset($job_check['detail']) && is_array($job_check['detail'])) {
+                            foreach ($job_check['detail'] as $detail_row) {
+                                $job_rows .= '
+                                <div class="pg-job-panel-row">
+                                    <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot text-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
+                                    <span class="text-muted flex-shrink-0">' . h($detail_row['when']) . '</span>
+                                </div>';
+                            }
+                        }
+
+                        if ($job_key === 'Web Server Rules') {
+
+                            // The repair the row is about. Offered only when
+                            // there is something to write: the file has a
+                            // finite list of blocks and is finished once they
+                            // are all in it, so leaving the button afterwards
+                            // would be a control whose only answer is "nothing
+                            // to do".
+                            //
+                            // Administrator only, matching the endpoint. This
+                            // writes the file that decides what the whole site
+                            // will and will not hand out, which is not the same
+                            // authority as clearing a cache.
+                            if (($server_rules_todo > 0) && $server_rules_scan['valid'] && ((int) $user['role'] === 0)) {
+
+                                $job_action = '
+                                <button type="button" class="pg-job-btn pg-job-btn-fix" id="server_config_repair"
+                                        title="' . h(lang('Adds the missing rules to the web server configuration file in the web root. Nothing already in the file is changed, and a copy is kept first.')) . '"
+                                        data-busy-label="' . h(lang('Writing')) . '"
+                                        data-idle-label="' . h(lang('Fix')) . '"
+                                        data-confirm-content="' . h(lang('The missing rules will be added to the web server configuration file. A copy of the current file is kept first.')) . '"
+                                        data-failed-label="' . h(lang('The rules could not be written.')) . '">
+                                    <i class="bi bi-wrench-adjustable"></i><span id="server_config_repair_state">' . h(lang('Fix')) . '</span>
+                                </button>';
+
+                                $job_panel = '
+                                <div class="pg-job-panel pg-job-result d-none" id="server_config_repair_result">
+                                    <div class="pg-job-panel-row"><span id="server_config_repair_message"></span></div>
+                                </div>';
+                            }
+
+                        } elseif ($job_key === 'Write Permissions') {
+
+                            // Offered only while something refuses, and only to
+                            // an administrator: it changes who may write into the
+                            // software directory. The confirmation says what the
+                            // modes will be, because 0777 on a shared server is a
+                            // decision the operator makes, not the button.
+                            if (($job_check['state'] !== 'ok') && ((int) $user['role'] === 0)) {
+
+                                $job_action = '
+                                <button type="button" class="pg-job-btn pg-job-btn-fix" id="write_permissions_repair"
+                                        title="' . h(lang('Sets every folder the web server cannot write into to 0777 and every such file to 0666, so that both the web server and your FTP or file manager user can replace them during an update. Entries that belong to another system user cannot be changed from here and are listed afterwards.')) . '"
+                                        data-busy-label="' . h(lang('Fixing')) . '"
+                                        data-idle-label="' . h(lang('Fix')) . '"
+                                        data-confirm-content="' . h(lang('The folders and files the web server cannot write to will be set to 0777 / 0666. On a server shared with other accounts this lets them write there too; on a server that is yours alone it costs nothing.')) . '"
+                                        data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
+                                    <i class="bi bi-wrench-adjustable"></i><span id="write_permissions_repair_state">' . h(lang('Fix')) . '</span>
+                                </button>';
+
+                                $job_panel = '
+                                <div class="pg-job-panel pg-job-result d-none" id="write_permissions_repair_result">
+                                    <div class="pg-job-panel-row"><span id="write_permissions_repair_message"></span></div>
+                                </div>';
+                            }
+
+                        } elseif (isset($job_check['href']) && ($job_check['href'] !== '')) {
+
+                            // The verb belongs to the state, not to the row.
+                            // "Yazılım Güncelleme · 2026.4.4 · Güncelle" says
+                            // an update is waiting when the middle of that line
+                            // says the opposite -- the button is the loudest
+                            // part of a row and it was contradicting the row.
+                            // With nothing to do, the row still opens its
+                            // screen, and the word for that is neutral.
+                            if (($job_check['state'] == 'ok') || ($job_check['state'] == 'info')) {
+                                $job_label = lang('View');
+                            } elseif ($job_key === 'Last Backup') {
+                                $job_label = lang('Backup');
+                            } elseif ($job_key === 'Software Update') {
+                                $job_label = lang('Update');
+                            } else {
+                                $job_label = lang('Go');
+                            }
+
+                            $job_action = '
+                            <a href="' . h($job_check['href']) . '" class="pg-job-btn">
+                                <span>' . h($job_label) . '</span><i class="bi bi-arrow-right"></i>
+                            </a>';
+                        }
+
+                        $health_jobs[] = array(
+                            'rank'   => isset($job_ranks[$job_check['state']]) ? $job_ranks[$job_check['state']] : 3,
+                            'icon'   => $job_check['icon'],
+                            'color'  => $job_check['color'],
+                            // The full title, not the tile's short label. The
+                            // column has the width for "Web Sunucusu Kuralları"
+                            // and the point of moving these rows here was that
+                            // "Sunucu kuralları" in nine pixels was not telling
+                            // anybody what the row was about.
+                            'name'   => $job_check['title'],
+                            'note'   => $job_check['value'],
+                            'hint'   => $job_check['message'],
+                            'detail' => $job_rows,
+                            'action' => $job_action,
+                            'panel'  => $job_panel,
+                        );
                     }
 
-                    if ($output_detail !== '') {
-                        $output_detail = '
-                        <div class="collapse" id="system_status_detail">
-                            <div class="pg-health-detail">' . $output_detail . '</div>
+                    // ── Tools ───────────────────────────────────────────
+                    //
+                    // Three jobs rather than three readings. They used to be
+                    // reachable only through settings.php: the table scan was a
+                    // tile that screen injected into this card after load, cache
+                    // purge and clean-up were rows in the Settings menu. The
+                    // card is no longer on that screen, so the widget renders
+                    // them itself -- which is what makes them permanent: every
+                    // screen that draws widget 2 gets them, and nothing has to
+                    // know to inject anything.
+                    //
+                    // No extra role gate. purge_cache.php and clean_up.php both
+                    // call validate_area_access($user, 'manager'), and the two
+                    // endpoints refuse role >= 3, which is the same bar this
+                    // case already stands behind.
+                    //
+                    // Labels ride on the control as data-* rather than going
+                    // into the global `translate` object: the only script that
+                    // needs them is the one handling that control, and it has
+                    // the control.
+                    $health_jobs[] = array(
+                        'rank'   => 2,
+                        'icon'   => 'bi-database-gear',
+                        'color'  => 'text-primary',
+                        'name'   => lang('Database table scan'),
+                        'note'   => lang('All tables'),
+                        'hint'   => lang('A full scan of every table. This can take several minutes on a large database.'),
+                        'detail' => '',
+                        'action' => '
+                            <button type="button" class="pg-job-btn" id="database_deep_check"
+                                    data-busy-label="' . h(lang('Running')) . '"
+                                    data-idle-label="' . h(lang('Run')) . '"
+                                    data-failed-label="' . h(lang('The deep check could not be completed.')) . '">
+                                <i class="bi bi-arrow-repeat"></i><span id="database_deep_check_state">' . h(lang('Run')) . '</span>
+                            </button>',
+                        'panel'  => '
+                            <div class="pg-job-panel pg-job-result d-none" id="database_deep_check_result">
+                                <div class="pg-job-panel-row"><span id="database_deep_check_message"></span></div>
+                            </div>',
+                    );
+
+                    // The purge answers in place. It used to be a link to
+                    // purge_cache.php, which clears the caches and then lands
+                    // the operator on settings.php -- so pressing a button on a
+                    // dashboard card took the card away and left the one number
+                    // the purge had just invalidated unread. api.php runs the
+                    // same pg_purge_caches() and the widget redraws itself.
+                    $health_jobs[] = array(
+                        'rank'   => 2,
+                        'icon'   => 'bi-trash3',
+                        'color'  => 'text-primary',
+                        'name'   => lang('Server caches'),
+                        'note'   => lang('OPcache and file caches'),
+                        'hint'   => lang('All server-side caches will be cleared.'),
+                        'detail' => '',
+                        'action' => '
+                            <button type="button" class="pg-job-btn" id="purge_cache"
+                                    data-busy-label="' . h(lang('Clearing')) . '"
+                                    data-idle-label="' . h(lang('Clear')) . '"
+                                    data-confirm-content="' . h(lang('All server-side caches will be cleared.')) . '"
+                                    data-failed-label="' . h(lang('The cache could not be cleared.')) . '">
+                                <i class="bi bi-trash3"></i><span id="purge_cache_state">' . h(lang('Clear')) . '</span>
+                            </button>',
+                        'panel'  => '
+                            <div class="pg-job-panel pg-job-result d-none" id="purge_cache_result">
+                                <div class="pg-job-panel-row"><span id="purge_cache_message"></span></div>
+                            </div>',
+                    );
+
+                    // ── Storage ─────────────────────────────────────────
+                    //
+                    // Three figures that are readings and not checks: there is
+                    // no size at which a database, a backup folder or a file
+                    // library is wrong -- a busy shop's are large because the
+                    // shop works. Database size used to sit among the status
+                    // chips as the one entry that could be neither right nor
+                    // wrong, and the two figures it belongs with were nowhere
+                    // on the card.
+                    //
+                    // The total is on the line and the breakdown is under it,
+                    // because the question is nearly always "how much is this
+                    // installation holding" and only sometimes "which part of
+                    // it". Ranked last: it is the one row on this side with
+                    // nothing to act on.
+                    //
+                    // Cached for six hours inside pg_storage_usage(), on its
+                    // own clock rather than the status cache's ten minutes --
+                    // the backup folder is a recursive walk and the dashboard
+                    // must not pay for it dozens of times a day.
+                    $storage = (isset($status['storage']) && is_array($status['storage']))
+                        ? $status['storage']
+                        : array();
+
+                    $storage_lines = array(
+                        'database' => lang('Database'),
+                        'files'    => lang('Files'),
+                        'backups'  => lang('Backups'),
+                    );
+
+                    $storage_rows = '';
+
+                    foreach ($storage_lines as $storage_key => $storage_label) {
+
+                        // A null is "could not be read" -- information_schema
+                        // closed on this host, no backup folder, a files table
+                        // older than its size column. Printing a confident zero
+                        // for any of those would be worse than the line being
+                        // absent.
+                        if (!isset($storage[$storage_key]) || ($storage[$storage_key] === null)) {
+                            continue;
+                        }
+
+                        $storage_rows .= '
+                        <div class="pg-job-panel-row">
+                            <span class="text-truncate">' . h($storage_label) . '</span>
+                            <span class="text-muted flex-shrink-0">' . h(convert_bytes_to_string((float) $storage[$storage_key], 1)) . '</span>
                         </div>';
                     }
 
+                    if ($storage_rows !== '') {
+                        $health_jobs[] = array(
+                            'rank'   => 4,
+                            'icon'   => 'bi-hdd-stack',
+                            'color'  => 'text-primary',
+                            'name'   => lang('Storage'),
+                            'note'   => convert_bytes_to_string((float) $storage['total'], 1),
+                            'hint'   => lang('How much this installation is holding: the database, the file library and the backup folder.'),
+                            'detail' => $storage_rows,
+                            'action' => '',
+                            'panel'  => '',
+                        );
+                    }
+
+                    // Clean-up only lists what it found and waits for a second
+                    // press on its own screen, so this row asks nothing.
+                    $health_jobs[] = array(
+                        'rank'   => 2,
+                        'icon'   => 'bi-eraser',
+                        'color'  => 'text-primary',
+                        'name'   => lang('Clean Up'),
+                        'note'   => lang('Obsolete files'),
+                        'hint'   => lang('Tool to remove obsolete files and folders inside the software folder.'),
+                        'detail' => '',
+                        'action' => '
+                            <a href="' . h(PATH . SOFTWARE_DIRECTORY . '/clean_up.php') . '" class="pg-job-btn">
+                                <span>' . h(lang('Go')) . '</span><i class="bi bi-arrow-right"></i>
+                            </a>',
+                        'panel'  => '',
+                    );
+
+                    // Stable sort by rank. usort() is only guaranteed stable
+                    // from PHP 8.0 and this file runs on 7.0, so the original
+                    // position is carried into the comparison: without it the
+                    // three tools -- which share a rank -- could swap places
+                    // between two draws of the same card.
+                    $job_order = array();
+
+                    foreach ($health_jobs as $job_index => $health_job) {
+                        $job_order[] = array((int) $health_job['rank'], (int) $job_index);
+                    }
+
+                    usort($job_order, function ($a, $b) {
+                        if ($a[0] === $b[0]) {
+                            return ($a[1] < $b[1]) ? -1 : 1;
+                        }
+                        return ($a[0] < $b[0]) ? -1 : 1;
+                    });
+
+                    $output_jobs = '';
+                    $job_slot = 0;
+
+                    foreach ($job_order as $job_entry) {
+
+                        $health_job = $health_jobs[$job_entry[1]];
+                        $job_slot++;
+
+                        // A row that can expand is a button and the whole name
+                        // side of it is the target; a row that cannot is a plain
+                        // box. The action beside it is a sibling, never a child:
+                        // a control inside the collapse toggle would fire the
+                        // toggle on its way out, and the fix button would open a
+                        // panel every time it was pressed.
+                        if ($health_job['detail'] !== '') {
+
+                            $job_id = 'system_status_job_' . $job_slot;
+
+                            $job_open = '<button type="button" class="pg-job-open" data-bs-toggle="collapse"'
+                                . ' data-bs-target="#' . $job_id . '" aria-expanded="false" aria-controls="' . $job_id . '"'
+                                . ' title="' . h($health_job['hint']) . '">';
+                            $job_close = '</button>';
+                            $job_caret = '<i class="bi bi-chevron-down pg-job-caret"></i>';
+                            $job_detail = '
+                                <div class="collapse pg-job-slot" id="' . $job_id . '">
+                                    <div class="pg-job-panel">' . $health_job['detail'] . '</div>
+                                </div>';
+
+                        } else {
+                            $job_open = '<div class="pg-job-open" title="' . h($health_job['hint']) . '">';
+                            $job_close = '</div>';
+                            $job_caret = '';
+                            $job_detail = '';
+                        }
+
+                        $output_jobs .= '
+                        <div class="pg-job">
+                            ' . $job_open . '
+                                <i class="bi ' . h($health_job['icon']) . ' pg-job-icon ' . h($health_job['color']) . '"></i>
+                                <span class="pg-job-name">' . h($health_job['name']) . '</span>
+                                <span class="pg-job-note text-muted">' . h($health_job['note']) . '</span>
+                                ' . $job_caret . '
+                            ' . $job_close . '
+                            ' . $health_job['action'] . '
+                            ' . $job_detail . '
+                            ' . $health_job['panel'] . '
+                        </div>';
+                    }
+
+                    // Turning notifications on is the browser's business, not
+                    // the site's: two operators looking at this dashboard on two
+                    // computers get two different answers, and the server has no
+                    // way to know either of them. So the row is written once,
+                    // hidden, and the panel fills it in and reveals it - the
+                    // same code that draws the button under the bell.
+                    $output_jobs .= '
+                        <div class="pg-job d-none" id="push_widget_row">
+                            <div class="pg-job-open" title="' . h(lang('Notifications reach this browser even while the panel is closed. Every device decides for itself.')) . '">
+                                <i class="bi bi-bell pg-job-icon text-primary"></i>
+                                <span class="pg-job-name">' . h(lang('Notifications on this device')) . '</span>
+                                <span class="pg-job-note text-muted" id="push_widget_note"></span>
+                            </div>
+                            <button type="button" class="pg-job-btn pg-push-toggle" id="push_widget_toggle">
+                                <i class="bi bi-bell"></i><span class="pg-push-label">' . h(lang('Turn on')) . '</span>
+                            </button>
+                        </div>';
+
+                    // ── The cells ───────────────────────────────────────
+                    //
+                    // Real elements in the drawing, animated where they are
+                    // drawn. Nothing about the animation lives in <defs>: a
+                    // browser rasterises pattern and mask CONTENT into a cached
+                    // texture and stops refreshing it, so an animation put in
+                    // there goes on running while the picture sits still. What
+                    // IS in <defs> here is the clip, and a clip that never
+                    // changes is free to cache.
+                    //
+                    // Written in FINAL coordinates -- the half turn that used to
+                    // be done with a CSS transform on the group is done here, in
+                    // the numbers. The transform was not wrong, but it made the
+                    // group a different user space from everything else on the
+                    // gauge, and a clip or a mask on a transformed element is
+                    // resolved in the space the element was WRITTEN in, not the
+                    // space it ends up in. That cost two rounds of a bar with
+                    // squares only at its tips. With the rotation folded into
+                    // the coordinates there is one space and no question. The
+                    // gradient comes along: pg_health_gradient_m is the same
+                    // gradient with its axis mirrored through the centre, which
+                    // is what the rotation used to do to it.
+                    //
+                    // The squares are CUT by the bar rather than fitted inside
+                    // it. Whole squares chosen by their centres read as tiles
+                    // laid on top of an arc; squares clipped by the arc read as
+                    // a field of them showing THROUGH it, which is the picture
+                    // this is after -- and it lets the grid run right to both
+                    // rims instead of stopping a square short of each.
+                    $health_step = 2.6;
+                    $health_size = 2.05;
+                    $health_half = $health_size / 2;
+
+                    // The drawn half, in final coordinates: an SVG circle starts
+                    // at three o'clock and the stylesheet turns the arcs half a
+                    // turn, so the fill runs from nine o'clock over the top.
+                    $health_reach = M_PI * ($health_score / 100);
+                    $health_t0    = M_PI;
+                    $health_t1    = M_PI + $health_reach;
+
+                    $health_p0x = 70 + (52 * cos($health_t0));
+                    $health_p0y = 70 + (52 * sin($health_t0));
+                    $health_p1x = 70 + (52 * cos($health_t1));
+                    $health_p1y = 70 + (52 * sin($health_t1));
+
+                    // Wider than the ten units the arc is drawn with, so the
+                    // clip has whole squares to cut into halves at both rims.
+                    // The halo layer is NOT clipped, so this margin is also how
+                    // far the light spills past the bar.
+                    $health_edge = 6.6;
+
+                    $health_cells      = '';
+                    $health_glow_cells = '';
+                    $health_index      = 0;
+
+                    for ($health_gy = 8.0; $health_gy <= 76.0; $health_gy += $health_step) {
+                        for ($health_gx = 6.0; $health_gx <= 134.0; $health_gx += $health_step) {
+
+                            $health_cx = $health_gx + $health_half;
+                            $health_cy = $health_gy + $health_half;
+                            $health_dx = $health_cx - 70;
+                            $health_dy = $health_cy - 70;
+                            $health_rr = sqrt(($health_dx * $health_dx) + ($health_dy * $health_dy));
+
+                            // atan2 answers between -pi and pi; the fill runs
+                            // from pi to pi + reach, so the negative half is
+                            // brought round first.
+                            $health_ang = atan2($health_dy, $health_dx);
+                            if ($health_ang < 0) {
+                                $health_ang += 2 * M_PI;
+                            }
+
+                            if (($health_ang >= $health_t0) && ($health_ang <= $health_t1)) {
+
+                                $health_on = (abs($health_rr - 52) <= $health_edge);
+
+                            } else {
+
+                                // Past an end: inside the half disc the round
+                                // cap paints there.
+                                $health_c0x = $health_cx - $health_p0x;
+                                $health_c0y = $health_cy - $health_p0y;
+                                $health_c1x = $health_cx - $health_p1x;
+                                $health_c1y = $health_cy - $health_p1y;
+
+                                $health_on = ((($health_c0x * $health_c0x) + ($health_c0y * $health_c0y)) <= ($health_edge * $health_edge))
+                                    || ((($health_c1x * $health_c1x) + ($health_c1y * $health_c1y)) <= ($health_edge * $health_edge));
+                            }
+
+                            if (!$health_on) {
+                                continue;
+                            }
+
+                            $health_index++;
+
+                            // Slow, and no two squares the same length, so the
+                            // field never comes back round to a configuration it
+                            // has already been in.
+                            //
+                            // Two and a half to five and a half seconds for one
+                            // breath. It was four to nine, then three to seven:
+                            // both ends have come down each time the layers
+                            // under the squares got quieter, because the slower
+                            // a square breathes the more contrast it needs for
+                            // the change to be seen at all, and there is no
+                            // reason to spend contrast on it now that the
+                            // squares are the bar. Still slow enough that the
+                            // eye reads a surface quietly alive rather than a
+                            // thing blinking at it.
+                            $health_cell_time = round(2.6 + (fmod($health_index * 0.75488, 1) * 3.0), 2);
+
+                            // NEGATIVE delay. A positive one is a wait: until it
+                            // elapses the square has no animated value and sits
+                            // at full opacity, so the first seconds after a draw
+                            // were a cascade of squares dropping in one after
+                            // another -- a burst that has nothing to do with the
+                            // animation, and that made everything after it look
+                            // like the animation had died down. A negative delay
+                            // starts the cycle already part-way through: every
+                            // square is mid-breath from the first frame, and the
+                            // phases are spread from the first frame too.
+                            $health_cell_phase = round(fmod($health_index * 0.61803, 1) * $health_cell_time, 2);
+
+                            $health_box = ' x="' . round($health_gx, 2) . '" y="' . round($health_gy, 2) . '"'
+                                . ' width="' . $health_size . '" height="' . $health_size . '" rx="0.45"';
+
+                            // No class on the square: the animation is selected
+                            // through the group, which is a class name saved on
+                            // each of three hundred elements.
+                            $health_cells .= '<rect' . $health_box
+                                . ' style="animation-delay:-' . $health_cell_phase . 's;animation-duration:' . $health_cell_time . 's"/>';
+
+                            // The same square again for the halo below, without
+                            // the style, so the animation selector cannot reach
+                            // it -- see the note on that group.
+                            $health_glow_cells .= '<rect' . $health_box . '/>';
+                        }
+                    }
+
+                    // ── The shape that cuts them ────────────────────────
+                    //
+                    // The exact outline of the drawn bar: the outer rim, the
+                    // round cap at the far end, the inner rim back, the round
+                    // cap at the near end. A clipPath clips to the FILL of its
+                    // contents, so a stroked circle is no use here -- that would
+                    // clip to the disc, not to the band -- and the band has to be
+                    // written out as a closed path.
+                    $health_ax = round(70 + (57 * cos($health_t0)), 3);
+                    $health_ay = round(70 + (57 * sin($health_t0)), 3);
+                    $health_bx = round(70 + (57 * cos($health_t1)), 3);
+                    $health_by = round(70 + (57 * sin($health_t1)), 3);
+                    $health_ix = round(70 + (47 * cos($health_t1)), 3);
+                    $health_iy = round(70 + (47 * sin($health_t1)), 3);
+                    $health_jx = round(70 + (47 * cos($health_t0)), 3);
+                    $health_jy = round(70 + (47 * sin($health_t0)), 3);
+
+                    $health_clip = 'M' . $health_ax . ' ' . $health_ay
+                        . 'A57 57 0 0 1 ' . $health_bx . ' ' . $health_by
+                        . 'A5 5 0 0 1 ' . $health_ix . ' ' . $health_iy
+                        . 'A47 47 0 0 0 ' . $health_jx . ' ' . $health_jy
+                        . 'A5 5 0 0 1 ' . $health_ax . ' ' . $health_ay . 'Z';
+
+                    // ── The groove ─────────────────────────────────────
+                    //
+                    // The unfilled half only. It used to be the WHOLE half turn,
+                    // with the fill drawn over the top of it, and on a dark card
+                    // that is invisible -- black under a lit bar is nothing. On a
+                    // white one it is the theme's pale grey under every square,
+                    // and on white, opacity is also loss of SATURATION: a square
+                    // at the bottom of its breath was settling onto grey instead
+                    // of onto the page and giving up its colour, taking the
+                    // quieter half of the animation with it.
+                    //
+                    // A negative dash offset walks the pattern along the path, so
+                    // the groove starts where the fill stops. The round cap it
+                    // starts with reaches back under the fill's own cap, which
+                    // covers it.
+                    //
+                    // At a hundred there is nothing to groove, and a zero-length
+                    // dash with a round cap paints a dot -- so nothing is drawn.
+                    $health_dash   = round($health_arc * $health_score / 100, 2);
+                    $health_empty  = round($health_arc - $health_dash, 2);
+                    $health_groove = ($health_empty > 0.5)
+                        ? '<circle class="pg-health-track" cx="70" cy="70" r="52" stroke-width="10"'
+                            . ' stroke-dasharray="' . $health_empty . ' 326.73"'
+                            . ' stroke-dashoffset="-' . $health_dash . '"></circle>'
+                        : '';
+
                     $output_data = '
-                    <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
-                        <div class="pg-health">
-                            <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . (int) $health_score . '%">
-                                <defs>
-                                    <linearGradient id="pg_health_gradient" x1="0" y1="1" x2="1" y2="0">
-                                        <stop offset="0%" stop-color="#22d3ee"/>
-                                        <stop offset="50%" stop-color="#a855f7"/>
-                                        <stop offset="100%" stop-color="#ec4899"/>
-                                    </linearGradient>
-                                    <!--
-                                        The glow is a blurred copy of the arc
-                                        rather than a drop-shadow, because a
-                                        drop-shadow takes one colour and the arc
-                                        has three: blurring the stroke itself
-                                        keeps the glow the colour of whatever it
-                                        is under. .pg-health-gauge is
-                                        overflow:visible so the blur is not
-                                        clipped at the viewBox edge.
-                                    -->
-                                    <filter id="pg_health_glow" x="-50%" y="-50%" width="200%" height="200%">
-                                        <feGaussianBlur stdDeviation="4.5"/>
-                                    </filter>
-                                </defs>
-                                <circle class="pg-health-track" cx="70" cy="70" r="52" stroke-width="10"
-                                        stroke-dasharray="' . $health_arc . ' 326.73"></circle>
-                                <circle class="pg-health-glow" cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
-                                        filter="url(#pg_health_glow)"
-                                        stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
-                                <circle cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
-                                        stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
-                                <!--
-                                    A second, hairline arc inside the thick one.
-                                    Its own radius means its own circumference,
-                                    so the fraction is recomputed rather than
-                                    reused: 2*pi*42 = 263.89, half of it 131.95.
-                                -->
-                                <circle class="pg-health-inner" cx="70" cy="70" r="42" stroke-width="2" stroke="url(#pg_health_gradient)"
-                                        stroke-dasharray="' . round(131.95 * $health_score / 100, 2) . ' 263.89"></circle>
-                            </svg>
-                            <div class="pg-health-readout">
-                                <div class="pg-health-score ' . $health_color . '">' . (int) $health_score . '<span>%</span></div>
-                                <div class="pg-health-label text-muted">' . lang('Overall System Health') . '</div>
+                    <div class="card-body p-0 pg-split">
+                        <div class="pg-split-half pg-split-pinned">
+                            <div class="pg-health" style="' . $health_vars . '">
+                                <div class="pg-health-dial">
+                                    <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . (int) $health_score . '%">
+                                        <defs>
+                                            <!--
+                                                userSpaceOnUse so the axis can sit
+                                                on the drawn arc rather than on
+                                                the circle, which is what keeps
+                                                the whole sweep on the bar at
+                                                every score. Every arc below --
+                                                the wash, the two blurs, the
+                                                hairline and the masked cells --
+                                                is stroked with this one
+                                                gradient, so all of them agree
+                                                about what colour the bar is at
+                                                any point along it.
+
+                                                The stops arrive through custom
+                                                properties instead of being
+                                                written here: the same score
+                                                needs different colours on a
+                                                black card and a white one, and
+                                                12P does not know which one it is
+                                                rendering into. Both sets are
+                                                declared on .pg-health and the
+                                                stylesheet picks.
+                                            -->
+                                            <linearGradient id="pg_health_gradient" gradientUnits="userSpaceOnUse"
+                                                            x1="122" y1="70" x2="' . $health_x2 . '" y2="' . $health_y2 . '">
+                                                <stop offset="' . $health_marks[0] . '%" stop-color="var(--pg-health-s1)"/>
+                                                <stop offset="' . $health_marks[1] . '%" stop-color="var(--pg-health-s2)"/>
+                                                <stop offset="' . $health_marks[2] . '%" stop-color="var(--pg-health-s3)"/>
+                                                <stop offset="' . $health_marks[3] . '%" stop-color="var(--pg-health-s4)"/>
+                                            </linearGradient>
+                                            <!--
+                                                The same gradient with its axis
+                                                mirrored through the centre of
+                                                the dial. The arcs are turned
+                                                half a turn by the stylesheet and
+                                                take their gradient round with
+                                                them; the squares are written
+                                                already turned, so theirs has to
+                                                be turned here instead. Same
+                                                colours, same stops, same
+                                                direction on screen.
+                                            -->
+                                            <linearGradient id="pg_health_gradient_m" gradientUnits="userSpaceOnUse"
+                                                            x1="18" y1="70" x2="' . $health_mx2 . '" y2="' . $health_my2 . '">
+                                                <stop offset="' . $health_marks[0] . '%" stop-color="var(--pg-health-s1)"/>
+                                                <stop offset="' . $health_marks[1] . '%" stop-color="var(--pg-health-s2)"/>
+                                                <stop offset="' . $health_marks[2] . '%" stop-color="var(--pg-health-s3)"/>
+                                                <stop offset="' . $health_marks[3] . '%" stop-color="var(--pg-health-s4)"/>
+                                            </linearGradient>
+                                            <!--
+                                                The bar itself, as a shape rather
+                                                than as a stroke, so the grid of
+                                                squares can be cut by it.
+                                            -->
+                                            <clipPath id="pg_health_cell_clip" clipPathUnits="userSpaceOnUse">
+                                                <path d="' . $health_clip . '"/>
+                                            </clipPath>
+                                            <!--
+                                                The glow is a blurred copy of the arc
+                                                rather than a drop-shadow, because a
+                                                drop-shadow takes one colour and the arc
+                                                has four: blurring the stroke itself
+                                                keeps the glow the colour of whatever it
+                                                is under. .pg-health-gauge is
+                                                overflow:visible so the blur is not
+                                                clipped at the viewBox edge.
+                                            -->
+                                            <filter id="pg_health_glow" x="-50%" y="-50%" width="200%" height="200%">
+                                                <feGaussianBlur stdDeviation="4.5"/>
+                                            </filter>
+                                            <!--
+                                                And a wider one under it. One blur
+                                                gives an outline; two, at different
+                                                radii, give the falloff that reads
+                                                as light.
+                                            -->
+                                            <filter id="pg_health_bloom" x="-70%" y="-70%" width="240%" height="240%">
+                                                <feGaussianBlur stdDeviation="9"/>
+                                            </filter>
+                                            <!--
+                                                And a tight one for the squares
+                                                themselves. The two above are the
+                                                light AROUND the bar and are cut
+                                                off by the panel; this is the
+                                                light BETWEEN the squares, which
+                                                is what makes a lit panel of them
+                                                rather than a row of tiles with
+                                                the card showing through the
+                                                gaps. Small radius on purpose: at
+                                                the radius the arc glows use, the
+                                                squares merge and the matrix is
+                                                gone.
+                                            -->
+                                            <filter id="pg_health_cell_glow" x="-40%" y="-40%" width="180%" height="180%">
+                                                <feGaussianBlur stdDeviation="2.1"/>
+                                            </filter>
+                                        </defs>
+                                        ' . $health_groove . '
+                                        <circle class="pg-health-bloom" cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
+                                                filter="url(#pg_health_bloom)"
+                                                stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
+                                        <circle class="pg-health-glow" cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
+                                                filter="url(#pg_health_glow)"
+                                                stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
+                                        <!--
+                                            The halo, and it is NOT clipped: this is
+                                            the light the squares throw PAST the bar,
+                                            which is what makes them read as a field
+                                            showing through it rather than as tiles
+                                            sitting on it.
+
+                                            It does not breathe with them either. A
+                                            filter is recomputed whenever what it
+                                            filters changes, so a blurred copy of
+                                            three hundred animating squares would
+                                            re-run a blur over the whole bar every
+                                            frame. Held still, the blur is computed
+                                            once and reused, and what it gives --
+                                            light in the gaps -- is ambient anyway:
+                                            it is the panel being lit, not the pixel.
+                                        -->
+                                        <g class="pg-health-cell-glow" fill="url(#pg_health_gradient_m)"
+                                           filter="url(#pg_health_cell_glow)">' . $health_glow_cells . '</g>
+                                        <g class="pg-health-cells" fill="url(#pg_health_gradient_m)"
+                                           clip-path="url(#pg_health_cell_clip)">' . $health_cells . '</g>
+                                        <!--
+                                            A second, hairline arc inside the thick one.
+                                            Its own radius means its own circumference,
+                                            so the fraction is recomputed rather than
+                                            reused: 2*pi*42 = 263.89, half of it 131.95.
+                                        -->
+                                        <circle class="pg-health-inner" cx="70" cy="70" r="42" stroke-width="2" stroke="url(#pg_health_gradient)"
+                                                stroke-dasharray="' . round(131.95 * $health_score / 100, 2) . ' 263.89"></circle>
+                                    </svg>
+                                    <div class="pg-health-readout">
+                                        <div class="pg-health-score">' . (int) $health_score . '<span>%</span></div>
+                                        <div class="pg-health-label">' . lang('Overall System Health') . '</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pg-checks pg-split-scroll">
+                                ' . $output_checks . '
                             </div>
                         </div>
-                        ' . $output_lead_tiles . '
-                        <div class="pg-health-grid">
-                            ' . $output_tiles . '
+                        <div class="pg-split-half pg-split-pinned">
+                            <div class="pg-jobs-heading">' . lang('Maintenance and tools') . '</div>
+                            <div class="pg-jobs pg-split-scroll">
+                                ' . $output_jobs . '
+                            </div>
                         </div>
-                        ' . $output_detail . '
                     </div>';
 
                     $response = array(
@@ -481,137 +2284,150 @@ switch ($action) {
                 }
             case '3':
                 if ((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS)) {
-                    $orders = array();
-                    $query = "SELECT
-                            orders.id,
-                            orders.order_number,
-                            orders.total as total,
-                            orders.order_date as timestamp
+
+                    // ── Orders ───────────────────────────────────────────────
+                    //
+                    // One aggregate rather than the whole table. The body that
+                    // stood here selected every completed order and bucketed
+                    // them in a PHP foreach, so a shop with fifty thousand
+                    // orders moved fifty thousand rows across the wire on every
+                    // dashboard load in order to arrive at eight numbers.
+                    //
+                    // The buckets are anchored to midnight rather than to
+                    // time(). "Today" was (time() - order_date) < 86400 -- the
+                    // last twenty-four hours -- so at three in the afternoon it
+                    // counted yesterday afternoon as today. Anchoring also
+                    // keeps the rows nested: today always sits inside the week
+                    // and the week inside the month, which is what a reader
+                    // assumes when four periods are stacked.
+                    $midnight   = strtotime(date('Y-m-d'));
+                    $from_week  = $midnight - (6 * 86400);
+                    $from_month = $midnight - (29 * 86400);
+
+                    $order_summary = db_item(
+                        "SELECT
+                            COUNT(*) AS all_count,
+                            COALESCE(SUM(orders.total), 0) AS all_total,
+                            COALESCE(MAX(orders.order_date), 0) AS last_order_date,
+                            COALESCE(SUM(CASE WHEN orders.order_date >= $midnight THEN 1 ELSE 0 END), 0) AS today_count,
+                            COALESCE(SUM(CASE WHEN orders.order_date >= $midnight THEN orders.total ELSE 0 END), 0) AS today_total,
+                            COALESCE(SUM(CASE WHEN orders.order_date >= $from_week THEN 1 ELSE 0 END), 0) AS week_count,
+                            COALESCE(SUM(CASE WHEN orders.order_date >= $from_week THEN orders.total ELSE 0 END), 0) AS week_total,
+                            COALESCE(SUM(CASE WHEN orders.order_date >= $from_month THEN 1 ELSE 0 END), 0) AS month_count,
+                            COALESCE(SUM(CASE WHEN orders.order_date >= $from_month THEN orders.total ELSE 0 END), 0) AS month_total
                         FROM orders
-                        WHERE status IN ('complete', 'exported')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        WHERE orders.status IN ('complete', 'exported')"
+                    );
 
-                    // loop through the result in order to prepare array of items
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $orders[] = $row;
+                    // ── Stock ────────────────────────────────────────────────
+                    //
+                    // Same treatment: the old body read every inventory-tracked
+                    // product in order to add up three numbers.
+                    //
+                    // The out-of-stock count deliberately does not filter on
+                    // inventory, so that it agrees with the Out of Stock
+                    // Products card, which does not filter on it either. A
+                    // product can be marked out of stock without inventory
+                    // tracking, and the operator who reads both cards should
+                    // not have to know that.
+                    $stock_summary = db_item(
+                        "SELECT
+                            COALESCE(SUM(CASE WHEN products.inventory = 1 THEN 1 ELSE 0 END), 0) AS product_count,
+                            COALESCE(SUM(CASE WHEN products.inventory = 1 THEN products.inventory_quantity ELSE 0 END), 0) AS quantity_total,
+                            COALESCE(SUM(CASE WHEN products.inventory = 1 THEN products.price * products.inventory_quantity ELSE 0 END), 0) AS stock_value,
+                            COALESCE(SUM(CASE WHEN products.out_of_stock = '1' THEN 1 ELSE 0 END), 0) AS out_of_stock_count
+                        FROM products"
+                    );
+
+                    $all_count          = (int) ($order_summary['all_count'] ?? 0);
+                    $all_total          = (float) ($order_summary['all_total'] ?? 0);
+                    $last_order_date    = (int) ($order_summary['last_order_date'] ?? 0);
+                    $product_count      = (int) ($stock_summary['product_count'] ?? 0);
+                    $quantity_total     = (int) ($stock_summary['quantity_total'] ?? 0);
+                    $stock_value        = (float) ($stock_summary['stock_value'] ?? 0);
+                    $out_of_stock_count = (int) ($stock_summary['out_of_stock_count'] ?? 0);
+
+                    // Separators are given explicitly. number_format() with
+                    // only a precision falls back to English ones, which is how
+                    // the piece count used to read "9,986" on the same line as
+                    // a stock value of "798.380,70". The rest of this file
+                    // passes ',' and '.' the same way.
+                    $pg_money = function ($cents) {
+                        return BASE_CURRENCY_SYMBOL . number_format($cents / 100, 2, ',', '.');
+                    };
+                    $pg_count = function ($number) {
+                        return number_format($number, 0, ',', '.');
+                    };
+
+                    // ── Head: stock on one line, two facts under it ──────────
+                    $output_stock_sub = $pg_count($product_count) . ' ' . lang('Product(s)')
+                        . ' <span class="pg-ec-dot">&middot;</span> '
+                        . $pg_count($quantity_total) . ' ' . lang('Piece(s)');
+
+                    // Only when there is something to act on. A steady "0
+                    // tükendi" is a word the eye learns to skip, and then the
+                    // day it says 3 it gets skipped too.
+                    if ($out_of_stock_count > 0) {
+                        $output_stock_sub .= ' <span class="pg-ec-dot">&middot;</span> '
+                            . '<span class="pg-ec-warn">'
+                            . lang(array(
+                                'string' => '{var:1} out of stock',
+                                'vars' => $pg_count($out_of_stock_count),
+                            ))
+                            . '</span>';
                     }
 
-                    $order_totals = 0;
-                    $this_year_totals = 0;
-                    $this_month_totals = 0;
-                    $this_week_totals = 0;
-                    $today_totals = 0;
+                    // Average basket and the age of the last order: the two
+                    // questions the removed tiles could not answer. The second
+                    // one is the cheapest "is this shop still trading?" signal
+                    // on the card -- a period row reading zero cannot tell a
+                    // quiet Tuesday from a checkout that has been broken since
+                    // Friday. get_relative_time() switches to a plain date past
+                    // a month, which is the right answer at that distance.
+                    $output_average_order = ($all_count > 0)
+                        ? $pg_money($all_total / $all_count)
+                        : '&mdash;';
+                    $output_last_order = ($last_order_date > 0)
+                        ? h(get_relative_time(array('timestamp' => $last_order_date, 'format' => 'plain_text')))
+                        : '&mdash;';
 
-                    $number_of_order = 0;
-                    $this_year_number_of_order = 0;
-                    $this_month_number_of_order = 0;
-                    $this_week_number_of_order = 0;
-                    $today_number_of_order = 0;
-
-                    // loop through the orders, in order to output rows
-                    foreach ($orders as $order) {
-
-                        $order_totals = $order_totals + $order['total'];
-                        $number_of_order++;
-
-                        if ((time() - $order['timestamp']) < 31556926) { //365days
-                            $this_year_totals = $this_year_totals + $order['total'];
-                            $this_year_number_of_order++;
-                        }
-                        if ((time() - $order['timestamp']) < 2629743) { //30days
-                            $this_month_totals = $this_month_totals + $order['total'];
-                            $this_month_number_of_order++;
-                        }
-                        if ((time() - $order['timestamp']) < 604800) { //7days
-                            $this_week_totals = $this_week_totals + $order['total'];
-                            $this_week_number_of_order++;
-                        }
-                        if ((time() - $order['timestamp']) < 86400) { //24 hours
-                            $today_totals = $today_totals + $order['total'];
-                            $today_number_of_order++;
-                        }
-
-                    }
-
-
-                    $order_total = sprintf("%01.2lf", $order_totals / 100);
-                    $this_year_total = sprintf("%01.2lf", $this_year_totals / 100);
-                    $this_month_total = sprintf("%01.2lf", $this_month_totals / 100);
-                    $this_week_total = sprintf("%01.2lf", $this_week_totals / 100);
-                    $today_total = sprintf("%01.2lf", $today_totals / 100);
-
-                    $order_total = number_format($order_total, 2, ',', '.');
-                    $this_year_total = number_format($this_year_total, 2, ',', '.');
-                    $this_month_total = number_format($this_month_total, 2, ',', '.');
-                    $this_week_total = number_format($this_week_total, 2, ',', '.');
-                    $today_total = number_format($today_total, 2, ',', '.');
-
-
-                    $query = "SELECT
-                                id,
-                                name,
-                                price,
-                                inventory,
-                                inventory_quantity
-                            FROM products
-                            WHERE inventory = 1";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $products = 0;
-                    $quantities = 0;
-                    $in_stock_product_total_price = 0;
-                    $prices = 0;
-                    $all_items = '';
-                    $all_products = '';
-
-                    // loop through the products in order to output CSV data
-                    while ($row = mysqli_fetch_assoc($result)) {
-
-                        $prices = $row['price'] / 100 * $row['inventory_quantity'] + $prices;
-                        $products++;
-                        $quantities = $row['inventory_quantity'] + $quantities;
-                    }
-                    $in_stock_product_total_price = BASE_CURRENCY_SYMBOL . number_format($prices, 2, ',', '.');
-                    $all_items = number_format($quantities);
-                    $all_products = number_format($products);
-
-                    // if there order output informations
-                    if ($number_of_order != 0) {
-                        $output_all_time_number_of_orders_title = 'title="' . lang(array('string' => '{var:1} orders for a total of {var:2} {var:3}.', 'vars' => array($number_of_order, BASE_CURRENCY_SYMBOL . $order_total, lang('Until Now')))) . '"';
-                    } else {
-                        //else output no order message
-                        $output_all_time_number_of_orders_title = 'title="' . lang('No orders yet') . '"';
-                    }
-
-
-                    // ── Period rows (today / week / month / year) ─────────────
+                    // ── Period rows ──────────────────────────────────────────
+                    //
+                    // "Last 1 Year" is gone. On any shop older than a year it
+                    // says the same thing as the all-time figure, and on a shop
+                    // whose trade stopped a year ago it said 0 while the card
+                    // above it showed a lifetime total -- the state this dev
+                    // install is in. All Time carries the order count and the
+                    // lifetime total that used to need a tile of their own.
                     $periods = array(
                         array(
                             'label' => lang('Today'),
                             'icon' => 'bi-sun-fill',
                             'color' => '#f59e0b',
-                            'count' => $today_number_of_order,
-                            'total' => BASE_CURRENCY_SYMBOL . $today_total,
+                            'count' => (int) ($order_summary['today_count'] ?? 0),
+                            'total' => (float) ($order_summary['today_total'] ?? 0),
                         ),
                         array(
                             'label' => lang('Last 1 Week'),
                             'icon' => 'bi-calendar-week',
                             'color' => '#3b82f6',
-                            'count' => $this_week_number_of_order,
-                            'total' => BASE_CURRENCY_SYMBOL . $this_week_total,
+                            'count' => (int) ($order_summary['week_count'] ?? 0),
+                            'total' => (float) ($order_summary['week_total'] ?? 0),
                         ),
                         array(
                             'label' => lang('Last 1 Month'),
                             'icon' => 'bi-calendar-month',
                             'color' => '#8b5cf6',
-                            'count' => $this_month_number_of_order,
-                            'total' => BASE_CURRENCY_SYMBOL . $this_month_total,
+                            'count' => (int) ($order_summary['month_count'] ?? 0),
+                            'total' => (float) ($order_summary['month_total'] ?? 0),
                         ),
                         array(
-                            'label' => lang('Last 1 Year'),
-                            'icon' => 'bi-calendar2-check',
+                            'label' => lang('All Time'),
+                            'icon' => 'bi-infinity',
                             'color' => '#10b981',
-                            'count' => $this_year_number_of_order,
-                            'total' => BASE_CURRENCY_SYMBOL . $this_year_total,
+                            'count' => $all_count,
+                            'total' => $all_total,
+                            'total_row' => true,
                         ),
                     );
 
@@ -622,36 +2438,37 @@ switch ($action) {
                         // accent, so they keep it.
                         $output_period_rows .= pg_widget_row(array(
                             'small' => true,
-                            'muted' => ($p['count'] == 0),
+                            'muted' => (($p['count'] == 0) && empty($p['total_row'])),
+                            'class' => (!empty($p['total_row']) ? 'pg-row-total' : ''),
                             'color' => $p['color'],
                             'badge' => '<i class="bi ' . $p['icon'] . '"></i>',
                             'name'  => $p['label'],
-                            'aside' => '<span class="badge rounded-pill me-1" style="background:' . $p['color'] . '22;color:' . $p['color'] . '">' . $p['count'] . '</span>'
-                                . '<span class="fw-semibold">' . ($p['count'] > 0 ? $p['total'] : '&mdash;') . '</span>',
+                            'aside' => '<span class="badge rounded-pill me-1" style="background:' . $p['color'] . '22;color:' . $p['color'] . '">' . $pg_count($p['count']) . '</span>'
+                                . '<span class="fw-semibold">' . ($p['count'] > 0 ? $pg_money($p['total']) : '&mdash;') . '</span>',
                         ));
                     }
 
-                    $output_rows = '
-                    <div class="d-flex gap-2 p-2">
-                        <div class="flex-fill rounded p-2 text-center" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2)" title="' . lang('Total value of products in stock') . ' (' . $all_products . ' ' . lang('Product(s)') . ' · ' . $all_items . ' ' . lang('Piece(s)') . ')">
-                            <i class="bi bi-boxes d-block" style="color:#10b981;font-size:20px"></i>
-                            <span class="fw-bold d-block" style="font-size:13px">' . $in_stock_product_total_price . '</span>
-                            <small class="text-muted">' . lang('Stock Value') . '</small>
-                            <small class="text-muted d-block" style="font-size:10px">' . $all_products . ' ' . lang('Product(s)') . ' · ' . $all_items . ' ' . lang('Piece(s)') . '</small>
-                        </div>
-                        <div class="flex-fill rounded p-2 text-center" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2)" ' . $output_all_time_number_of_orders_title . '>
-                            <i class="bi bi-credit-card-fill d-block" style="color:#3b82f6;font-size:20px"></i>
-                            <span class="fw-bold d-block" style="font-size:13px">' . BASE_CURRENCY_SYMBOL . $order_total . '</span>
-                            <small class="text-muted">' . lang('Total Sales Amount') . '</small>
-                            <small class="text-muted d-block" style="font-size:10px">' . $number_of_order . ' ' . lang('Order(s)') . '</small>
-                        </div>
-                    </div>
-                    <div class="border-top mx-2 mb-1"></div>
-                    <div class="pg-list">' . $output_period_rows . '</div>';
-
                     $output_data = '
                     <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
-                        ' . $output_rows . '
+                        <div class="pg-ec-head">
+                            <div class="pg-ec-line">
+                                <span class="pg-ec-val">' . $pg_money($stock_value) . '</span>
+                                <span class="pg-ec-lbl text-muted">' . lang('Stock Value') . '</span>
+                            </div>
+                            <div class="pg-ec-sub text-muted">' . $output_stock_sub . '</div>
+                        </div>
+                        <div class="pg-ec-facts">
+                            <div class="pg-ec-fact">
+                                <span class="text-muted">' . lang('Average order') . '</span>
+                                <b>' . $output_average_order . '</b>
+                            </div>
+                            <div class="pg-ec-fact">
+                                <span class="text-muted">' . lang('Last order') . '</span>
+                                <b>' . $output_last_order . '</b>
+                            </div>
+                        </div>
+                        <div class="border-top mx-2 mb-1"></div>
+                        <div class="pg-list">' . $output_period_rows . '</div>
                     </div>';
 
                     //return success json output
@@ -950,22 +2767,38 @@ switch ($action) {
                         </div>';
                     };
 
-                    $eg_sections = '';
+                    // Two panels rather than one column: the counts and the
+                    // conversations still owed an answer are what the operator
+                    // acts on, and who happens to be connected is context. They
+                    // were competing for the same scroll before. .pg-split lays
+                    // them side by side once the card is wide enough and stacks
+                    // them again when it is not, so a one-track card still works.
+                    $eg_chats_panel = '';
 
                     if ($eg_waiting_html !== '') {
-                        $eg_sections .= $eg_heading(lang('Waiting for a reply'), count($eg_chat_rows)) . $eg_waiting_html;
+                        $eg_chats_panel = $eg_heading(lang('Waiting for a reply'), count($eg_chat_rows)) . $eg_waiting_html;
                     }
 
+                    if ($eg_chats_panel === '') {
+                        $eg_chats_panel = '
+                        <div class="text-center py-3">
+                            <i class="bi bi-chat-left-dots d-block mb-2" style="font-size:20px;opacity:.35"></i>
+                            <p class="text-muted mb-0" style="font-size:12px">' . lang('Nobody is waiting for a reply.') . '</p>
+                        </div>';
+                    }
+
+                    $eg_people_panel = '';
+
                     if ($eg_online_html !== '') {
-                        $eg_sections .= $eg_heading(lang('Online'), $eg_online_shown) . $eg_online_html;
+                        $eg_people_panel .= $eg_heading(lang('Online'), $eg_online_shown) . $eg_online_html;
                     }
 
                     if ($eg_offline_html !== '') {
-                        $eg_sections .= $eg_heading(lang('Offline'), $eg_offline_shown) . $eg_offline_html;
+                        $eg_people_panel .= $eg_heading(lang('Offline'), $eg_offline_shown) . $eg_offline_html;
                     }
 
-                    if ($eg_sections === '') {
-                        $eg_sections = '
+                    if ($eg_people_panel === '') {
+                        $eg_people_panel = '
                         <div class="text-center py-4">
                             <i class="bi bi-person-dash d-block mb-2" style="font-size:22px;opacity:.35"></i>
                             <p class="text-muted mb-0" style="font-size:12px">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Online User'))) . '</p>
@@ -973,23 +2806,28 @@ switch ($action) {
                     }
 
                     $output_data = '
-                    <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                        <div class="d-flex gap-2 p-2">
-                            <div class="flex-fill rounded p-2 text-center" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2)">
-                                <i class="bi bi-people-fill d-block" style="color:#10b981;font-size:20px"></i>
-                                <span class="fw-bold d-block" style="font-size:15px">' . number_format($eg_active_visitors) . '</span>
-                                <small class="text-muted">' . lang('Active Visitors') . '</small>
-                                <small class="text-muted d-block" style="font-size:10px">' . lang('Last 20 min') . '</small>
+                    <div class="card-body p-0 pg-split">
+                        <div class="pg-split-half">
+                            <div class="d-flex flex-column gap-1 p-2">
+                                <div class="pg-eg-stat" style="--pg-eg-ink:#10b981">
+                                    <i class="bi bi-people-fill"></i>
+                                    <span class="pg-eg-stat-value">' . number_format($eg_active_visitors) . '</span>
+                                    <span class="pg-eg-stat-label">' . lang('Active Visitors') . '</span>
+                                    <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
+                                </div>
+                                <div class="pg-eg-stat" style="--pg-eg-ink:#3b82f6">
+                                    <i class="bi bi-person-gear"></i>
+                                    <span class="pg-eg-stat-value">' . number_format($eg_online_users_count) . '</span>
+                                    <span class="pg-eg-stat-label">' . lang('Online Users') . '</span>
+                                    <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
+                                </div>
                             </div>
-                            <div class="flex-fill rounded p-2 text-center" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2)">
-                                <i class="bi bi-person-gear d-block" style="color:#3b82f6;font-size:20px"></i>
-                                <span class="fw-bold d-block" style="font-size:15px">' . number_format($eg_online_users_count) . '</span>
-                                <small class="text-muted">' . lang('Online Users') . '</small>
-                                <small class="text-muted d-block" style="font-size:10px">' . lang('Last 20 min') . '</small>
+                            <div class="border-top mx-2 mb-1">
+                                ' . $eg_chats_panel . '
                             </div>
                         </div>
-                        <div class="border-top mx-2 mb-1">
-                            ' . $eg_sections . '
+                        <div class="pg-split-half">
+                            ' . $eg_people_panel . '
                         </div>
                     </div>';
 
@@ -1022,8 +2860,7 @@ switch ($action) {
                     // Get current hour (0-23) to limit today's data display
                     $current_hour = (int) date('G');
 
-                    $vs5_no_data = '<p class="position-absolute top-50 start-50 translate-middle text-center text-muted px-3" style="font-size:11px;width:90%">'
-                        . lang('There is not enough data yet.') . '</p>';
+                    $vs5_no_data = pg_widget_empty('bi-graph-up', lang('There is not enough data yet.'));
 
                     // Every figure below is read from the hourly rollups
                     // rather than counted out of the raw visitors table.
@@ -1814,6 +3651,15 @@ switch ($action) {
                                 'aside' => number_format($pr['qty'], 0, ',', '.'),
                             ));
                         }
+                    }
+
+                    // Neither list had anything in it. Without this the card
+                    // drew an empty .pg-list and read as a card that had failed
+                    // to load rather than as a site with no traffic yet.
+                    if ($output_rows === '') {
+                        $output_rows = pg_widget_empty(
+                            'bi-fire',
+                            lang('There is not enough data yet.'));
                     }
 
                     // --- Final HTML for widget body
@@ -2634,7 +4480,7 @@ switch ($action) {
                     }
 
                 } else {
-                    $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Recent Update'))) . '</p>';
+                    $output_rows = pg_widget_empty('bi-clock-history', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Recent Update'))));
                 }
                 $output_data = '
                     <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
@@ -2744,7 +4590,7 @@ switch ($action) {
                             ));
                         }
                     } else {
-                        $output_order_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Order'))) . '</p>';
+                        $output_order_rows = pg_widget_empty('bi-cart4', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Order'))));
                     }
 
                     $carts = array();
@@ -2817,8 +4663,14 @@ switch ($action) {
                             }
 
 
+                            // Amber tile, not the card accent. Orders and carts
+                            // sit side by side now, and two lists of identically
+                            // green rows read as one list split down the middle.
+                            // The colour is the difference between what sold and
+                            // what did not, so it carries the distinction.
                             $output_cart_rows .= pg_widget_row(array(
                                 'href'  => $output_link_url,
+                                'color' => '#f59e0b',
                                 'badge' => '<i class="bi bi-cart"></i>',
                                 'name'  => h($name),
                                 'aside' => $total,
@@ -2827,7 +4679,7 @@ switch ($action) {
                             ));
                         }
                     } else {
-                        $output_cart_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Shopping Cart'))) . '</p>';
+                        $output_cart_rows = pg_widget_empty('bi-basket', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Shopping Cart'))));
                     }
 
                     // Orders per day for the last eight -- the figure the
@@ -2841,11 +4693,21 @@ switch ($action) {
                         'series' => pg_activity_daily('orders', 'orders.order_date', " AND (orders.status = 'complete')"),
                     ));
 
+                    // Orders and carts side by side rather than behind tabs. They
+                    // are read together - an abandoned cart is only interesting
+                    // next to what did convert - and a tab hides half the card
+                    // behind a click that most operators never make. The fixed
+                    // 240px panes are gone with them: each half now fills the
+                    // card, so the widget matches every other one on the grid.
                     $output_data = '
-                        <div class="card-body px-0 pt-1 pb-0">                           
-                            <div class="tab-content" id="visitor_report_tabs">
-                                <div style="height:240px;overflow-x:hidden;overflow-y:auto" class="tab-pane fade show active" id="tab-order" role="tabpanel" tabindex="0">' . $output_headline . '<div class="pg-list">' . $output_order_rows . '</div></div>
-                                <div style="height:240px;overflow-x:hidden;overflow-y:auto" class="tab-pane fade"             id="tab-card" role="tabpanel" tabindex="0"><div class="pg-list">' . $output_cart_rows . '</div></div>
+                        <div class="card-body p-0 pg-split">
+                            <div class="pg-split-half">
+                                ' . $output_headline . '
+                                <div class="pg-list">' . $output_order_rows . '</div>
+                            </div>
+                            <div class="pg-split-half">
+                                ' . pg_widget_row_heading(lang('Carts')) . '
+                                <div class="pg-list">' . $output_cart_rows . '</div>
                             </div>
                         </div>';
 
@@ -2916,6 +4778,29 @@ switch ($action) {
                         $sql_saved_for_later = " AND (order_items.saved_for_later = 0)";
                     }
 
+                    // How far back to look
+                    // --------------------
+                    // A site that stops filling in shipping information does
+                    // not stop taking orders. On those installs every untouched
+                    // order stays outstanding for ever, the card fills with
+                    // three to five hundred of them, and this week's real work
+                    // is buried under last year's. An order that has sat here a
+                    // month is not a shipment waiting to leave -- it is a site
+                    // that does not use this screen -- and a card nobody can
+                    // read is worse than a card that admits a horizon.
+                    //
+                    // The cut is on orders.order_date, the date the order was
+                    // placed. An order nobody ever touched has nothing else to
+                    // date it by; a shipping column would only date the orders
+                    // that were already being handled.
+                    //
+                    // Anchored to midnight rather than "now minus thirty days",
+                    // so a row does not drop off mid-morning as the clock
+                    // passes the hour its order was placed at.
+                    $pending_window_days = 30;
+                    $pending_since = strtotime(date('Y-m-d')) - ($pending_window_days * 86400);
+                    $sql_pending_window = " AND (orders.order_date >= " . $pending_since . ")";
+
                     // Headline figures, grouped per order rather than per
                     // recipient: the package count is the same either way, but
                     // orders.total must be summed once per order or a
@@ -2938,6 +4823,7 @@ switch ($action) {
                             WHERE
                                 (orders.status IN ('complete', 'exported'))
                                 AND (orders.type = 'online')
+                                $sql_pending_window
                                 $sql_saved_for_later
                             GROUP BY orders.id
                             HAVING pending_quantity > 0
@@ -2971,6 +4857,7 @@ switch ($action) {
                             (orders.status IN ('complete', 'exported'))
                             AND (orders.type = 'online')
                             AND (ship_tos.complete = '1')
+                            $sql_pending_window
                             $sql_saved_for_later
                         GROUP BY ship_tos.id, orders.id
                         HAVING pending_quantity > 0
@@ -3045,9 +4932,17 @@ switch ($action) {
                             </div>';
                         }
                     } else {
-                        $output_rows = '<div class="pg-row-empty text-muted small">'
-                            . '<i class="bi bi-check-circle text-success"></i>'
-                            . lang('All orders have been shipped.') . '</div>';
+                        // Not "everything has been shipped": outside the
+                        // window this card has not looked, and on the very
+                        // installs the window exists for there are hundreds
+                        // sitting there. Say what was actually checked.
+                        $output_rows = pg_widget_empty(
+                            'bi-check2-circle',
+                            lang(array(
+                                'string' => 'Nothing waiting from the last {var:1} days.',
+                                'vars' => $pending_window_days,
+                            )),
+                            'good');
                     }
 
                     // Package meter. Twelve slots is a readable width at the
@@ -3208,7 +5103,7 @@ switch ($action) {
                             ));
                         }
                     } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Contact'))) . '</p>';
+                        $output_rows = pg_widget_empty('bi-person-lines-fill', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Contact'))));
                     }
                     $output_data = '
                         <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
@@ -3285,7 +5180,7 @@ switch ($action) {
                             ));
                         }
                     } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('User'))) . '</p>';
+                        $output_rows = pg_widget_empty('bi-people', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('User'))));
                     }
 
                     $output_data = '
@@ -3364,7 +5259,7 @@ switch ($action) {
                         }
 
                     } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Out of Stock Product'))) . '</p>';
+                        $output_rows = pg_widget_empty('bi-check2-circle', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Out of Stock Product'))), 'good');
                     }
 
 
@@ -3432,7 +5327,7 @@ switch ($action) {
                                 page_id,
                                 page_folder as folder_id
                             FROM page
-                            WHERE page_type = 'custom form'";
+                            WHERE " . pg_form_page_sql('page') . "";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
                         // loop through the result in order to prepare array of items
@@ -3530,7 +5425,7 @@ switch ($action) {
                             ));
                         }
                     } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Form'))) . '</p>';
+                        $output_rows = pg_widget_empty('bi-file-earmark-text', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Form'))));
                     }
 
                     $output_data = '
@@ -3570,7 +5465,7 @@ switch ($action) {
                         $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
                         $request['version'] = VERSION;
                         $request['edition'] = EDITION;
-                        $request['uname'] = php_uname();
+                        $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
                         $request['os'] = PHP_OS;
                         $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
                         $request['php_version'] = phpversion();
@@ -3791,10 +5686,8 @@ switch ($action) {
                     // Single query: fetch all relevant offers ordered by end_date
                     $all_offers = db_items(
                         "SELECT offers.id, offers.code, offers.description, offers.status,
-                                offers.start_date, offers.end_date,
-                                offer_rules.name AS rule_name
+                                offers.start_date, offers.end_date
                          FROM offers
-                         LEFT JOIN offer_rules ON offers.offer_rule_id = offer_rules.id
                          ORDER BY offers.end_date ASC
                          LIMIT 60"
                     );
@@ -3828,6 +5721,17 @@ switch ($action) {
                         return strcmp($b['end_date'], $a['end_date']);
                     });
 
+                    // "Automatic - cart is 100.00 or more -> %100 off shipping":
+                    // the same sentence the offer list and the editor show, so
+                    // an offer reads the same wherever it appears. Built for
+                    // every row at once - a load per offer would be four
+                    // queries times sixty.
+                    require_once(dirname(__FILE__) . '/edit_offer_f.php');
+                    $offer_sentences = _pg_offer_sentences(array_merge(
+                        array_column($expiring, 'id'),
+                        array_column($active, 'id'),
+                        array_column($expired, 'id')));
+
                     $output_rows = '';
 
                     // ── Section: Expiring Soon (only shown when non-empty) ────
@@ -3845,7 +5749,7 @@ switch ($action) {
                                 'badge' => '<i class="bi bi-alarm"></i>',
                                 'name'  => h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')),
                                 'aside' => $days_left,
-                                'meta'  => h($offer['rule_name'] ?: '—'),
+                                'meta'  => h(isset($offer_sentences[(int) $offer['id']]) ? $offer_sentences[(int) $offer['id']] : '—'),
                             ));
                         }
                     }
@@ -3861,7 +5765,7 @@ switch ($action) {
                                 'badge' => '<i class="bi bi-tag-fill"></i>',
                                 'name'  => h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')),
                                 'aside' => $days_left,
-                                'meta'  => h($offer['rule_name'] ?: '—'),
+                                'meta'  => h(isset($offer_sentences[(int) $offer['id']]) ? $offer_sentences[(int) $offer['id']] : '—'),
                             ));
                         }
                     }
@@ -3876,17 +5780,16 @@ switch ($action) {
                                 'badge' => '<i class="bi bi-tag"></i>',
                                 'name'  => h($offer['code'] !== '' ? $offer['code'] : lang('(no code)')),
                                 'aside' => h($offer['end_date']),
-                                'meta'  => h($offer['rule_name'] ?: '—'),
+                                'meta'  => h(isset($offer_sentences[(int) $offer['id']]) ? $offer_sentences[(int) $offer['id']] : '—'),
                             ));
                         }
                     }
 
                     // ── Global empty state ────────────────────────────────────
                     if ($output_rows === '') {
-                        $output_rows = '<div class="pg-row-empty text-muted small">
-                            <i class="bi bi-tag"></i>'
-                            . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Offer'))) .
-                            '</div>';
+                        $output_rows = pg_widget_empty(
+                            'bi-tag',
+                            lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Offer'))));
                     }
 
                     $output_data = '
@@ -3954,7 +5857,7 @@ switch ($action) {
                             }
                         }
                     } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Currency'))) . '</p>';
+                        $output_rows = pg_widget_empty('bi-currency-exchange', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Currency'))));
                     }
 
                     $output_data = '
@@ -4020,7 +5923,7 @@ switch ($action) {
 
                         }
                     } else {
-                        $output_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Site Log'))) . '</p>';
+                        $output_rows = pg_widget_empty('bi-journal-text', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Site Log'))));
                     }
 
 
@@ -4110,6 +6013,10 @@ switch ($action) {
                 // then failing.
                 $fm_optimizer_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
+                // Printed in the shrink button's tooltip.
+                $fm_image_settings = pg_image_settings();
+                $fm_resize_target  = $fm_image_settings['file_max_dimension'];
+
                 $fm_where = "(folder.folder_archived = '0')";
 
                 // Design files belong to designers and administrators.
@@ -4193,6 +6100,8 @@ switch ($action) {
                             files.size,
                             files.optimized,
                             files.optimization_percent,
+                            files.image_width,
+                            files.image_height,
                             files.design
                          FROM files
                          LEFT JOIN folder ON files.folder = folder.folder_id
@@ -4275,33 +6184,58 @@ switch ($action) {
                         $fm_percent = '<span class="ps-1" style="font-size:10px">' . (int) $fm_item['optimization_percent'] . '%</span>';
                     }
 
+                    // Whether the row can be made narrower rather than only
+                    // lighter. Read from the cached dimension columns, never
+                    // measured here: this widget loads on every visit to the
+                    // dashboard, and opening ten image headers to draw a
+                    // button is exactly the kind of work that does not belong
+                    // on that path. An unmeasured row simply does not get the
+                    // button until some file screen has measured it.
+                    $fm_can_resize = ($fm_optimizer_available
+                        && in_array(mb_strtolower($fm_item['type']), $fm_optimizable_types)
+                        && ($fm_item['image_width'] !== null) && ($fm_item['image_width'] !== '')
+                        && pg_image_can_be_resized($fm_item['image_width'], $fm_item['image_height']));
+
                     $fm_action = '';
 
+                    // send_to is a fixed keyword rather than a URL: optimize.php
+                    // turns it into a hard-coded address, so nothing a visitor
+                    // puts in the query string can become a redirect target.
                     if ($fm_can_run) {
 
-                        // send_to is a fixed keyword rather than a URL:
-                        // optimize.php turns it into a hard-coded address, so
-                        // nothing a visitor puts in the query string can
-                        // become a redirect target.
-                        $fm_action = '
+                        $fm_action .= '
                         <a class="btn btn-sm btn-outline-success border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                            title="' . lang('Optimize this image') . '"
                            href="optimize.php?id=' . h($fm_item['id']) . get_token_query_string_field() . '&amp;send_to=welcome"><i class="bi bi-fast-forward-circle"></i>' . $fm_percent . '</a>';
+                    }
 
-                    } elseif ($fm_too_large && (!$fm_item['design'])) {
+                    // Both buttons can appear on the same row, and that is the
+                    // point: compressing and shrinking are different jobs, and
+                    // an image can want one, the other or both. The shrink is
+                    // offered even when the row is already flagged optimized,
+                    // because compression never made anything narrower.
+                    if ($fm_can_resize) {
 
-                        // Already optimized and still heavy, so compression
-                        // has nothing left to give and only resizing will.
+                        $fm_action .= '
+                        <a class="btn btn-sm btn-outline-warning border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+                           title="' . lang(array('string' => 'Resize to {var:1} pixels and optimize', 'vars' => array($fm_resize_target))) . '"
+                           href="optimize.php?id=' . h($fm_item['id']) . get_token_query_string_field() . '&amp;mode=resize&amp;send_to=welcome"><i class="bi bi-arrows-angle-contract"></i></a>';
+
+                    } elseif (!$fm_can_run && $fm_too_large && (!$fm_item['design'])) {
+
+                        // Heavy, already compressed, and not wide enough for
+                        // the shrink to help — so the only thing left is a
+                        // person deciding what to do with it.
                         //
                         // Design files are excluded even for administrators:
                         // image_editor_edit.php refuses to save over one at
                         // any role, so the link would open an editor whose
                         // save button always fails. The row still carries the
                         // size warning, it just has nothing to offer.
-                        $fm_action = '
+                        $fm_action .= '
                         <a class="btn btn-sm btn-outline-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                            title="' . lang(array('string' => 'Edit this image with {var:1}', 'vars' => array(lang('Image Editor')))) . '"
-                           href="image_editor_edit.php?file_name=' . rawurlencode($fm_item['name']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '"><i class="bi bi-arrows-angle-contract"></i></a>';
+                           href="image_editor_edit.php?file_name=' . rawurlencode($fm_item['name']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '"><i class="bi bi-brush"></i></a>';
                     }
 
                     $fm_note = '';
@@ -4552,10 +6486,10 @@ switch ($action) {
                         }
 
                     } else {
-                        $output_campaign_rows = '<p class="position-absolute top-50 start-50 translate-middle w-75 text-center">' . lang(array(
+                        $output_campaign_rows = pg_widget_empty('bi-megaphone', lang(array(
                             'string' => 'There is no {var:1} right now.',
                             'vars' => lang('Email Campaign')
-                        )) . '</p>';
+                        )));
                     }
 
                     $output_data = '
@@ -4600,6 +6534,31 @@ switch ($action) {
                         }
                     }
 
+                    // No calendar this user may see. get_calendar() answers
+                    // that case with a bare sentence and no wrapper, which
+                    // arrived flush against the top left corner of the card --
+                    // the one card on the dashboard whose empty state was not
+                    // centred. Answering it here keeps get_calendar() alone,
+                    // since calendars.php prints that same sentence into a
+                    // full page where a widget-sized empty state would be
+                    // wrong.
+                    if (empty($calendars)) {
+
+                        $output_data = '
+                        <div class="card-body p-0 d-flex flex-column">
+                            ' . pg_widget_empty('bi-calendar3', lang('There are no calendars, so no calendar events could be displayed.')) . '
+                        </div>';
+
+                        $response = array(
+                            'status' => 'success',
+                            'message' => 'Action Success',
+                            'data' => $output_data,
+                        );
+                        echo encode_json($response);
+                        exit();
+                        break;
+                    }
+
                     $output_data = '
                     <div class="card-body p-0 overflow-auto">
                         ' . get_calendar('', $calendars, '', '', $user, '', '', $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = true) . '
@@ -4631,6 +6590,15 @@ switch ($action) {
                 // Contributors are excluded — firewall events expose raw
                 // attack payloads and visitor addresses.
                 if ($user['role'] < 3) {
+
+                    // Piggyback for the AI bot range lists, the same ride the
+                    // visitor backfill takes on the dashboard: staff traffic
+                    // keeps them fresh on sites where the cron job was never
+                    // switched on. Throttled inside to one attempt per six
+                    // hours, so this is a no-op on almost every load.
+                    if (function_exists('pg_waf_refresh_ai_ranges')) {
+                        pg_waf_refresh_ai_ranges();
+                    }
 
                     $waf_available = (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'waf_log'")) > 0);
                     $waf_current_mode = function_exists('waf_mode') ? waf_mode() : 'off';
@@ -4831,27 +6799,66 @@ switch ($action) {
                         }
                     }
 
-                    if ($waf_rows === '') {
-                        $waf_rows = '
-                        <div class="d-flex align-items-center justify-content-center text-center py-4">
-                            <div>
-                                <i class="bi bi-shield-check d-block mb-2" style="font-size:22px;opacity:.35"></i>
-                                <p class="text-muted mb-0" style="font-size:12px">' . lang('No firewall events were recorded in this period.') . '</p>
-                            </div>
+                    // Whether the feed had anything in it, asked before the
+                    // empty state takes its place. The mode strip below needs
+                    // to know: an off firewall wants the same nudge either way,
+                    // but where it goes depends on whether there is a list to
+                    // put it under.
+                    $waf_had_rows = ($waf_rows !== '');
+
+                    // Off, and nothing recorded at all. Both halves of this card
+                    // read waf_log, so an empty event feed means an empty threat
+                    // digest too -- there is no second panel to show and no
+                    // figures to put above it.
+                    //
+                    // What the card was drawing instead: a mode strip, then
+                    // Blocked 0 / Addresses 0 / Bans 0, then the message, then a
+                    // divider, then a second empty panel, then a link to a log
+                    // with nothing in it. Every one of those says the same thing
+                    // the badge already said, and three zeros under an Off badge
+                    // are not a measurement -- nothing counted them.
+                    //
+                    // So the card collapses to the one thing worth saying and
+                    // the one thing worth doing.
+                    if (($waf_current_mode === 'off') && (!$waf_had_rows)) {
+
+                        $output_data = '
+                        <div class="card-body p-0 d-flex flex-column">'
+                            . pg_widget_empty(
+                                'bi-shield-slash',
+                                lang('The firewall is off, so nothing is being watched or recorded.'),
+                                '',
+                                lang('Turn on the firewall'),
+                                OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('firewall', 'pgset-waf')) . '
                         </div>';
+
+                        $response = array(
+                            'status' => 'success',
+                            'message' => 'Action Success',
+                            'data' => $output_data,
+                        );
+                        echo encode_json($response);
+                        exit();
                     }
 
-                    // The detailed log is administrator-only, so managers are
-                    // not shown a link into a screen that would reject them.
-                    $waf_footer = '';
+                    if ($waf_rows === '') {
 
-                    // The log screen now admits staff roles, so the link does too.
-                    if ($user['role'] < 3) {
-                        $waf_footer = '
-                        <div class="card-footer border-0 bg-reset py-1 text-center">
-                            <a href="view_waf_log.php" class="text-decoration-none" style="font-size:11px">'
-                            . lang('Firewall Log') . ' <i class="bi bi-arrow-right-short"></i></a>
-                        </div>';
+                        // An empty feed means two different things and the card
+                        // has to say which. With the firewall on, nothing
+                        // happened -- that is the good outcome and the card
+                        // reports it. With the firewall off, nothing was
+                        // WATCHING, and an empty feed under a grey "Off" badge
+                        // reads as the quiet one unless the card says
+                        // otherwise. So the off state names the cause and
+                        // offers the switch, rather than leaving the operator
+                        // to work out that the reassuring empty list is the
+                        // symptom.
+                        // Only reachable with the firewall on: off with an
+                        // empty feed returned above.
+                        $waf_rows = pg_widget_empty(
+                            'bi-shield-check',
+                            lang('No firewall events were recorded in this period.'),
+                            'good');
                     }
 
                     // Reassurance, but only when it is true.
@@ -4873,12 +6880,29 @@ switch ($action) {
                         </div>';
                     }
 
-                    $output_data = '
-                        <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
+                    // Off with events to show: the empty state is not on
+                    // screen to carry the nudge, so it rides the mode strip
+                    // instead -- right beside the badge that says Off, which is
+                    // the thing it answers. Off with nothing to show puts it in
+                    // the empty state instead, so only ever one of the two.
+                    $waf_turn_on = '';
+
+                    if (($waf_current_mode === 'off') && ($waf_had_rows)) {
+
+                        $waf_turn_on = '<a class="btn btn-sm btn-outline-secondary position-relative py-0 px-2" style="font-size:10px" href="'
+                            . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('firewall', 'pgset-waf') . '">'
+                            . lang('Turn on') . '</a>';
+                    }
+
+                    $waf_panel = '
+                        <div class="pg-split-half d-flex flex-column">
                             ' . $waf_shield . '
                             <div class="d-flex align-items-center justify-content-between px-2 py-2 border-bottom">
-                                <span class="badge rounded-pill bg-' . h($waf_mode_class) . '-subtle text-' . h($waf_mode_class) . '-emphasis border border-' . h($waf_mode_class) . '-subtle" style="font-size:10px">
-                                    <i class="bi ' . h($waf_mode_icon) . ' me-1"></i>' . h($waf_mode_label) . '
+                                <span class="d-flex align-items-center gap-2">
+                                    <span class="badge rounded-pill bg-' . h($waf_mode_class) . '-subtle text-' . h($waf_mode_class) . '-emphasis border border-' . h($waf_mode_class) . '-subtle" style="font-size:10px">
+                                        <i class="bi ' . h($waf_mode_icon) . ' me-1"></i>' . h($waf_mode_label) . '
+                                    </span>
+                                    ' . $waf_turn_on . '
                                 </span>
                                 <span class="text-muted" style="font-size:10px">' . lang('Last 24 hours') . '</span>
                             </div>
@@ -4897,17 +6921,16 @@ switch ($action) {
                                 </div>
                             </div>
                             ' . $waf_rows . '
-                        </div>' . $waf_footer;
+                        </div>';
 
-                    //return success json output
-                    $response = array(
-                        'status' => 'success',
-                        'message' => 'Action Success',
-                        'data' => $output_data,
-                    );
-                    echo encode_json($response);
-                    exit();
-                    break;
+                    // Deliberate fall-through into case '22'.
+                    //
+                    // The two used to be separate cards asking related questions
+                    // - what happened, and who is generating it - and reading one
+                    // without the other was half an answer. They are the two
+                    // halves of one card now, so this case holds its panel and
+                    // the threat case below builds its own and emits both. Only
+                    // one query pass either way; nothing is computed twice.
                 } else {
                     $response = array(
                         'status' => 'error',
@@ -5096,20 +7119,26 @@ switch ($action) {
                     // filler rather than information. This widget answers a
                     // different question — who is generating the load — and
                     // the ranked list is the answer.
-                    $output_data = '
-                        <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
-                            <div class="d-flex border-bottom">
-                                <div class="flex-fill px-3 py-2">
-                                    <div class="fw-semibold text-' . h($td_headline_color) . '" style="font-size:20px;line-height:1">' . number_format($td_headline) . '</div>
-                                    <div class="text-muted text-truncate" style="font-size:11px">' . h($td_headline_label) . '</div>
-                                </div>
-                                <div class="flex-fill px-3 py-2 border-start">
-                                    <div class="fw-semibold" style="font-size:20px;line-height:1">' . number_format((int) $td_totals['addresses']) . '</div>
-                                    <div class="text-muted text-truncate" style="font-size:11px">' . lang('Addresses') . '</div>
-                                </div>
-                            </div>
+                    // No totals row. The firewall half beside this one already
+                    // carries blocked, addresses and bans across the top, and the
+                    // same three figures twice on one card reads as a rendering
+                    // fault rather than as emphasis. This half answers the other
+                    // question - who is generating the load - so the ranked list
+                    // starts straight away.
+                    $td_panel = '
+                        <div class="pg-split-half d-flex flex-column">
                             <div class="px-3 pt-2 pb-1 text-muted" style="font-size:11px">' . lang('Top sources') . '</div>
                             <div class="px-3 pb-2">' . $td_rows . '</div>
+                        </div>';
+
+                    // $waf_panel is set only when execution arrived through case
+                    // '21', which is how the dashboard asks for this card. A
+                    // direct request for widget 22 still answers with the threat
+                    // half alone rather than an error.
+                    $output_data = '
+                        <div class="card-body p-0 pg-split">'
+                            . (isset($waf_panel) ? $waf_panel : '')
+                            . $td_panel . '
                         </div>' . $td_footer;
 
                     $response = array(
@@ -5905,53 +7934,19 @@ switch ($action) {
         break;
     case 'check_unread_notifications':
         $user = validate_user();
-        $notifications = array();
-        // get number of unreaded notifications (accessable) to show at Notification button.
-        $number_of_unread = 0;
-        $query = "SELECT action,comment_id,readed FROM notifications WHERE readed = 0";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        while ($row = mysqli_fetch_assoc($result)) {
-            $notifications[] = $row;
-        }
-        if ($notifications) {
-            foreach ($notifications as $notification) {
-                if ($notification['action'] == 'new_order' || $notification['action'] == 'out_stock') {
-                    if (((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS))) {
-                        if (USER_MANAGE_ECOMMERCE) {
-                            // user is accessable to orders
-                            $number_of_unread++;
-                        }
-                    }
-                } elseif ($notification['action'] == 'form_submited') {
-                    if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
-                        // user is accessable to forms
-                        $number_of_unread++;
-                    }
-                } elseif ($notification['action'] == 'software_update') {
-                    if (($user['role'] < 3)) {
-                        $number_of_unread++;
-                    }
-                } elseif ($notification['action'] == 'new_comment') {
-                    // get comment information
-                    $query =
-                        "SELECT
-                            comments.page_id,
-                            page.page_folder as page_folder
-                        FROM comments
-                        LEFT JOIN page ON page.page_id = comments.page_id
-                        WHERE comments.id = '" . escape($notification['comment_id']) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $folder_id = $row['page_folder'];
-                    if (check_edit_access($folder_id) == true) {
-                        $number_of_unread++;
-                    }
-                } else {
-                    $number_of_unread++;
-                }
-            }
+        include_once(dirname(__FILE__) . '/includes/notifications.php');
 
+        // Read state is per person, so the unread filter is a join rather than a
+        // column test; the visibility ladder then drops what is not this
+        // person's to see.
+        $number_of_unread = 0;
+
+        foreach (pg_notification_unread_rows($user['id']) as $notification) {
+            if (pg_notification_visible_to($notification, $user)) {
+                $number_of_unread++;
+            }
         }
+
         //return success json output
         $response = array(
             'status' => 'success',
@@ -5963,77 +7958,28 @@ switch ($action) {
         break;
 
     case 'edit_notifications':
-        $id = $request['id'];
+        $id = (int) $request['id'];
         $do_action = $request['do_action'];
 
         validate_token();
         $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/notifications.php');
 
-        $query = "SELECT action FROM notifications WHERE id = '" . escape($id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+        $notification = db_item("SELECT id, action, comment_id FROM notifications WHERE id = '" . $id . "'");
 
-        // check if user has access.
-        if ($row['action'] == 'new_order' || $row['action'] == 'out_stock') {
-            if (((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS))) {
-                if (USER_MANAGE_ECOMMERCE) {
-                    if ($do_action === 'remove') {
-                        //delete requested notifications
-                        $query = "DELETE FROM notifications WHERE id = '" . escape($id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    } elseif ($do_action == 'mark_unread') {
-                        //mark unreaded requested notifications
-                        $query = "UPDATE notifications SET readed = '" . escape(0) . "' WHERE id = '" . escape($id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    }
-                }
-            }
-        } elseif ($row['action'] == 'form_submited') {
-            if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
-                if ($do_action === 'remove') {
-                    //delete requested notifications
-                    $query = "DELETE FROM notifications WHERE id = '" . escape($id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                } elseif ($do_action == 'mark_unread') {
-                    //mark unreaded requested notifications
-                    $query = "UPDATE notifications SET readed = '" . escape(0) . "' WHERE id = '" . escape($id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                }
-            }
-        } elseif ($row['action'] == 'software_update') {
-            if (($user['role'] < 3)) {
-                if ($do_action === 'remove') {
-                    //delete requested notifications
-                    $query = "DELETE FROM notifications WHERE id = '" . escape($id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                } elseif ($do_action == 'mark_unread') {
-                    //mark unreaded requested notifications
-                    $query = "UPDATE notifications SET readed = '" . escape(0) . "' WHERE id = '" . escape($id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                }
-            }
-        } elseif ($row['action'] == 'new_comment') {
-            if ($do_action == 'remove') {
-                //delete requested notifications
-                $query = "DELETE FROM notifications WHERE id = '" . escape($id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            } elseif ($do_action == 'mark_unread') {
-                //mark unreaded requested notifications
-                $query = "UPDATE notifications SET readed = '" . escape(0) . "' WHERE id = '" . escape($id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            }
-        } else {
+        // Acting on a notification requires being allowed to see it. The
+        // branches this replaced agreed on that everywhere except comments,
+        // where the test was missing and any signed-in account could delete
+        // one.
+        if (($notification) && (pg_notification_visible_to($notification, $user))) {
 
             if ($do_action === 'remove') {
-                //delete requested notifications
-                $query = "DELETE FROM notifications WHERE id = '" . escape($id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                pg_notification_delete($id);
             } elseif ($do_action == 'mark_unread') {
-                //mark unreaded requested notifications
-                $query = "UPDATE notifications SET readed = '" . escape(0) . "' WHERE id = '" . escape($id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                pg_notification_mark_unread($id, $user['id']);
             }
         }
+
         //return success json output
         $response = array(
             'status' => 'success',
@@ -6045,193 +7991,45 @@ switch ($action) {
 
     case 'get_notifications':
         $array = array();
-        $read_mark = $request['read_mark'];
+        $read_mark = $request['read_mark'] ?? '';
 
         validate_token();
         $user = validate_user();
-        $notifications = array();
-        // get all notifications
-        $query = "SELECT * FROM notifications ORDER BY timestamp DESC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        include_once(dirname(__FILE__) . '/includes/notifications.php');
 
-        while ($row = mysqli_fetch_assoc($result)) {
-            $notifications[] = $row;
-        }
+        $mark_read = array();
+        $notifications = db_items("SELECT * FROM notifications ORDER BY timestamp DESC");
+
         foreach ($notifications as $notification) {
 
-            if ($notification['action'] == 'new_order') {
-                if (((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS))) {
-                    if (USER_MANAGE_ECOMMERCE) {
-                        // user is accessable to orders
-                        $NotificationArray = array(
-                            'id' => $notification['id'],
-                            'type' => $notification['type'],
-                            'title' => lang('Congratulations! There is a new successful order.'),
-                            'description' => '',
-                            'details' => lang('Order Number') . ': #' . $notification['title'] . '<br/>' . lang('Total') . ':' . $notification['order_total'],
-                            'user' => $notification['user'],
-                            'readed' => $notification['readed'],
-                            'url' => 'view_order.php?id=' . $notification['order_id'],
-                            'action' => $notification['action'],
-                            'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
-                        );
-                        array_push($array, $NotificationArray);
-                        $NotificationArray = '';
-                        if ($read_mark == true) {
-                            // we mark readed all notifications we can access.
-                            $query = "UPDATE notifications SET readed = '" . escape(1) . "' WHERE id = '" . escape($notification['id']) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        }
-                    }
-                }
-            } elseif ($notification['action'] == 'out_stock') {
-                if (((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS))) {
-                    if (USER_MANAGE_ECOMMERCE) {
-                        // user is accessable to orders
-                        $NotificationArray = array(
-                            'id' => $notification['id'],
-                            'type' => $notification['type'],
-                            'title' => lang('A product out of stock by purchased.'),
-                            'description' => '',
-                            'details' => $notification['title'],
-                            'user' => $notification['user'],
-                            'readed' => $notification['readed'],
-                            'url' => 'edit_product.php?id=' . $notification['product_id'],
-                            'action' => $notification['action'],
-                            'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
-                        );
-                        array_push($array, $NotificationArray);
-                        $NotificationArray = '';
-                        if ($read_mark == true) {
-                            // we mark readed all notifications we can access.
-                            $query = "UPDATE notifications SET readed = '" . escape(1) . "' WHERE id = '" . escape($notification['id']) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        }
-                    }
-                }
-            } elseif ($notification['action'] == 'form_submited') {
-                if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
-                    // user is accessable to forms
-                    $NotificationArray = array(
-                        'id' => $notification['id'],
-                        'type' => $notification['type'],
-                        'title' => lang('A custom form was submitted.'),
-                        'description' => '',
-                        'details' => lang('Reference Code') . ':' . $notification['title'],
-                        'user' => $notification['user'],
-                        'readed' => $notification['readed'],
-                        'url' => 'edit_submitted_form.php?id=' . $notification['form_id'],
-                        'action' => $notification['action'],
-                        'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
-                    );
-                    array_push($array, $NotificationArray);
-                    $NotificationArray = '';
-                    if ($read_mark == true) {
-                        // we mark readed all notifications we can access.
-                        $query = "UPDATE notifications SET readed = '" . escape(1) . "' WHERE id = '" . escape($notification['id']) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    }
-
-                }
-            } elseif ($notification['action'] == 'software_update') {
-                if (($user['role'] < 3)) {
-                    $NotificationArray = array(
-                        'id' => $notification['id'],
-                        'type' => $notification['type'],
-                        'title' => lang('Software update available'),
-                        'description' => lang('A new security and development update is available for your software.'),
-                        'details' => '',
-                        'user' => $notification['user'],
-                        'readed' => $notification['readed'],
-                        'url' => 'software_update.php',
-                        'action' => $notification['action'],
-                        'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
-                    );
-
-                    array_push($array, $NotificationArray);
-                    $NotificationArray = '';
-                    if ($read_mark == true) {
-                        // we mark readed all notifications we can access.
-                        $query = "UPDATE notifications SET readed = '" . escape(1) . "' WHERE id = '" . escape($notification['id']) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    }
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                }
-            } elseif ($notification['action'] == 'new_comment') {
-
-                $folder_id = '';
-                // get comment information
-                $query =
-                    "SELECT
-                        comments.id as id,
-                        comments.page_id,
-                        page.page_type,
-                        page.page_folder
-                    FROM comments
-                    LEFT JOIN page ON page.page_id = comments.page_id
-                    WHERE comments.id = '" . escape($notification['comment_id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                $folder_id = $row['page_folder'];
-                $page_id = $row['page_id'];
-                $comment_id = $row['id'];
-                if (check_edit_access($folder_id) == true) {
-
-
-                    // get comment label from page
-                    $query =
-                        "SELECT
-                            page_id,
-                            page.comments_label as comments_label
-                        FROM page
-                        WHERE page.page_id = '" . escape($page_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $comments_label = $row['comments_label'];
-
-                    // user is accessable to comment
-                    $NotificationArray = array(
-                        'id' => $notification['id'],
-                        'type' => $notification['type'],
-                        'title' => lang(array('string' => 'There is a new {var:1} exist.', 'vars' => array($comments_label))),
-                        'description' => $comments_label . ': ' . $notification['title'],
-                        'details' => '',
-                        'user' => $notification['user'],
-                        'readed' => $notification['readed'],
-                        'url' => 'edit_comment.php?id=' . $comment_id,
-                        'action' => $notification['action'],
-                        'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
-                    );
-                    array_push($array, $NotificationArray);
-                    $NotificationArray = '';
-                    if ($read_mark == true) {
-                        // we mark readed all notifications we can access.
-                        $query = "UPDATE notifications SET readed = '" . escape(1) . "' WHERE id = '" . escape($notification['id']) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    }
-                }
-            } else {
-                $NotificationArray = array(
-                    'id' => $notification['id'],
-                    'type' => $notification['type'],
-                    'title' => $notification['title'],
-                    'description' => '',
-                    'details' => '',
-                    'user' => $notification['user'],
-                    'readed' => $notification['readed'],
-                    'url' => '#!',
-                    'action' => 'custom',
-                    'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
-                );
-                array_push($array, $NotificationArray);
-                $NotificationArray = '';
-                if ($read_mark == true) {
-                    // we mark readed all notifications we can access.
-                    $query = "UPDATE notifications SET readed = '" . escape(1) . "' WHERE id = '" . escape($notification['id']) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                }
+            if (!pg_notification_visible_to($notification, $user)) {
+                continue;
             }
 
+            $display = pg_notification_display($notification);
+
+            $item = array(
+                'id' => $notification['id'],
+                'type' => $notification['type'],
+                'title' => $display['title'],
+                'description' => $display['description'],
+                'details' => $display['details'],
+                'user' => $notification['user'],
+                'readed' => (pg_notification_is_read($notification, $user['id']) ? 1 : 0),
+                'url' => $display['url'],
+                'action' => $display['action'],
+                'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
+            );
+
+            array_push($array, $item);
+            $mark_read[] = $notification['id'];
+        }
+
+        // One write for the whole list. Marking each row as it was drawn cost a
+        // query per notification, and on a site with more than one operator it
+        // marked the row read for all of them at once.
+        if (($read_mark == true) && ($mark_read)) {
+            pg_notification_mark_read($mark_read, $user['id']);
         }
 
         //return success json output
@@ -6248,78 +8046,20 @@ switch ($action) {
 
         validate_token();
         $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/notifications.php');
 
         // returned in the response below; this branch never fills it
         $array = array();
-        // get all notifications
-        $query = "SELECT * FROM notifications ORDER BY timestamp DESC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-        // stays empty when there are no notifications
-        $notifications = array();
-
-        while ($row = mysqli_fetch_assoc($result)) {
-            $notifications[] = $row;
-        }
         $i = 0;
+
+        $notifications = db_items("SELECT id, action, comment_id FROM notifications ORDER BY timestamp DESC");
+
         foreach ($notifications as $notification) {
 
-            if ($notification['action'] == 'new_order' || $notification['action'] == 'out_stock') {
-                if (((ECOMMERCE === true) and (($user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS))) {
-                    if (USER_MANAGE_ECOMMERCE) {
-                        // user is accessable to orders
-
-                        // we remove all notifications we can access.
-                        $query = "DELETE FROM notifications WHERE id = '" . escape($notification['id']) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        $i++;
-                    }
-                }
-            } elseif ($notification['action'] == 'form_submited') {
-                if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
-                    // user is accessable to forms
-
-                    // we remove all notifications we can access.
-                    $query = "DELETE FROM notifications WHERE id = '" . escape($notification['id']) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $i++;
-                }
-            } elseif ($notification['action'] == 'software_update') {
-                if (($user['role'] < 3)) {
-                    // we remove all notifications we can access.
-                    $query = "DELETE FROM notifications WHERE id = '" . escape($notification['id']) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $i++;
-                }
-            } elseif ($notification['action'] == 'new_comment') {
-
-                // get comment information
-                $query =
-                    "SELECT
-                        comments.page_id,
-                        page.page_type,
-                        page.page_folder
-                    FROM comments
-                    LEFT JOIN page ON page.page_id = comments.page_id
-                    WHERE comments.id = '" . escape($notification['comment_id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                $folder_id = $row['page_folder'];
-                if (check_edit_access($folder_id) == true) {
-
-                    // we remove all notifications we can access.
-                    $query = "DELETE FROM notifications WHERE id = '" . escape($notification['id']) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $i++;
-                }
-
-            } else {
-                // we remove all notifications we can access.
-                $query = "DELETE FROM notifications WHERE id = '" . escape($notification['id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            if (pg_notification_visible_to($notification, $user)) {
+                pg_notification_delete($notification['id']);
                 $i++;
             }
-
         }
 
         log_activity(lang(array('string' => '{var:1} notifications have been deleted.', 'vars' => $i)), $_SESSION['sessionusername']);
@@ -6329,6 +8069,165 @@ switch ($action) {
             'status' => 'success',
             'data' => $array,
             'message' => 'Delete Notifications Success'
+        );
+        echo encode_json($response);
+        exit();
+        break;
+
+    case 'push_config':
+        validate_token();
+        $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/push.php');
+
+        // The public key is what a browser needs to ask its push service for a
+        // subscription. It is made on the first request that wants it, so a
+        // site that never turns notifications on never grows a key pair.
+        $public_key = pg_push_vapid_public_key();
+
+        // The browser holds its own subscription and would go on reporting
+        // itself subscribed after an operator ended it from the sessions
+        // screen. It asks here whether this site still knows the endpoint.
+        $known = false;
+
+        if ((isset($request['endpoint'])) && ($request['endpoint'] != '')) {
+            $known = pg_push_subscription_exists($request['endpoint']);
+        }
+
+        //return success json output
+        $response = array(
+            'status' => 'success',
+            'data' => array(
+                'available'  => (($public_key != '') ? true : false),
+                'public_key' => $public_key,
+                'known'      => $known
+            ),
+            'message' => 'Push Config Success'
+        );
+        echo encode_json($response);
+        exit();
+        break;
+
+    case 'push_subscribe':
+        validate_token();
+        $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/push.php');
+
+        $subscription = isset($request['subscription']) ? $request['subscription'] : array();
+        $endpoint     = isset($subscription['endpoint']) ? $subscription['endpoint'] : '';
+        $p256dh       = isset($subscription['keys']['p256dh']) ? $subscription['keys']['p256dh'] : '';
+        $auth         = isset($subscription['keys']['auth']) ? $subscription['keys']['auth'] : '';
+
+        // A browser that rotated its subscription reports what it had before;
+        // the old row would otherwise sit there until a send failed on it.
+        if ((isset($request['old_endpoint'])) && ($request['old_endpoint'] != '')) {
+            pg_push_subscription_delete($request['old_endpoint']);
+        }
+
+        $saved = pg_push_subscription_save(
+            $user['id'],
+            $endpoint,
+            $p256dh,
+            $auth,
+            (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '')
+        );
+
+        //return success json output
+        $response = array(
+            'status' => (($saved) ? 'success' : 'error'),
+            'message' => (($saved) ? 'Push Subscribe Success' : 'Push Subscribe Failed')
+        );
+        echo encode_json($response);
+        exit();
+        break;
+
+    case 'push_unsubscribe':
+        validate_token();
+        $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/push.php');
+
+        pg_push_subscription_delete(isset($request['endpoint']) ? $request['endpoint'] : '');
+
+        //return success json output
+        $response = array(
+            'status' => 'success',
+            'message' => 'Push Unsubscribe Success'
+        );
+        echo encode_json($response);
+        exit();
+        break;
+
+    case 'push_test':
+        validate_token();
+        $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/push.php');
+
+        // Wakes this person's own devices and nobody else's. What each one then
+        // shows is whatever the bell would show it, because the worker asks for
+        // that itself - the push carries no text.
+        $sent = pg_push_notify_user($user['id']);
+
+        //return success json output
+        $response = array(
+            'status' => 'success',
+            'data' => $sent,
+            'message' => 'Push Test Success'
+        );
+        echo encode_json($response);
+        exit();
+        break;
+
+    case 'push_pending':
+        // Asked by the service worker, which has the session cookie but no way
+        // to hold a form token: it is woken by the operating system, with no
+        // page of its own to have been handed one. The request only reads, and
+        // it reads exactly what the bell would have shown the same person.
+        $user = validate_user();
+        include_once(dirname(__FILE__) . '/includes/notifications.php');
+
+        $array = array();
+
+        foreach (pg_notification_unread_rows($user['id'], true) as $notification) {
+
+            if (!pg_notification_visible_to($notification, $user)) {
+                continue;
+            }
+
+            $display = pg_notification_display($notification);
+
+            $array[] = array(
+                'id'        => $notification['id'],
+                'title'     => $display['title'],
+                'body'      => pg_notification_body($display),
+                'url'       => $display['url'],
+                'icon'      => $display['icon'],
+                'badge'     => $display['badge'],
+                'tag'       => 'pg-notification-' . $notification['id'],
+                'timestamp' => (int) $notification['timestamp']
+            );
+
+            // A device banner is not a list. Three is what the worker will show.
+            if (count($array) >= 3) {
+                break;
+            }
+        }
+
+        // Conversations nobody has answered belong in the same list: the worker
+        // is woken by both kinds and shows whatever is waiting, oldest concern
+        // first.
+        if (count($array) < 3) {
+
+            include_once(dirname(__FILE__) . '/chat.php');
+
+            foreach (pg_chat_unread_for_push($user['id'], 3 - count($array)) as $conversation) {
+                $array[] = $conversation;
+            }
+        }
+
+        //return success json output
+        $response = array(
+            'status' => 'success',
+            'data' => $array,
+            'message' => 'Push Pending Success'
         );
         echo encode_json($response);
         exit();
@@ -6358,12 +8257,33 @@ switch ($action) {
         validate_token();
         $user = validate_user();
         $data = $request['data'];
-        $file_name = $request['name'];
+        $file_name = isset($request['name']) ? trim((string) $request['name']) : '';
         if (isset($request['folder'])) {
             $folder = $request['folder'];
         } else {
             $folder = ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '');
         }
+
+        // This door is open to every backend role, so it keeps the same three
+        // rules as the upload screens: a folder the caller may write to, no
+        // name the web server would run or read as its own settings, and the
+        // same name preparation every other upload gets. Before this it wrote
+        // whatever name it was handed, "shell.php" included, into any folder.
+        if (($file_name == '') || ($data == '')) {
+            respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+        }
+
+        if (((int) $folder <= 0) || (check_edit_access((int) $folder) == false)) {
+            log_activity(lang('access denied to upload file because user does not have access to folder'), $_SESSION['sessionusername']);
+            respond(array('status' => 'error', 'message' => lang('You do not have access to upload files to this folder.')));
+        }
+
+        if (pg_upload_name_blocked($file_name)) {
+            log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $file_name)), $_SESSION['sessionusername']);
+            respond(array('status' => 'error', 'message' => pg_upload_blocked_message($file_name)));
+        }
+
+        $file_name = prepare_file_name($file_name);
 
         // get file name with and without file extension
         $file_name_without_extension = mb_substr($file_name, 0, mb_strrpos($file_name, '.'));
@@ -6426,15 +8346,61 @@ switch ($action) {
         break;
 
     case 'update_dashboard_widgets':
-        $message_text = $request['message_text'];
-        $widgets = $request['widgets'];
-        $widgets = implode(',', $widgets);
-        $query =
-            "UPDATE dashboard
-            SET
-            order_widgets = '$widgets'
-        ";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // What the dashboard stores is positions: one widget id per position,
+        // in order, hidden cards included. The only other value the screen
+        // sends is the word "default", which Reset Widgets writes to mean
+        // "factory order" -- welcome.php reads it as an empty arrangement and
+        // falls back to its registry order.
+        //
+        // Hidden ids are part of the list on purpose. A card that a setting has
+        // switched off still owns a position, and welcome.php merges it back in
+        // before saving; dropping it here would put it back at square one.
+        //
+        // The list is filtered to those two shapes rather than stored as it
+        // arrives. It used to be joined and interpolated into the UPDATE
+        // straight out of the request body, and no validation stood between the
+        // browser and the statement.
+        $message_text = (((string) ($request['message_text'] ?? '')) == 'restart') ? 'restart' : 'repositioning';
+
+        $widgets = (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array();
+
+        if ((count($widgets) == 1) && (((string) reset($widgets)) == 'default')) {
+
+            $order_widgets = 'default';
+
+        } else {
+
+            $widget_ids = array();
+
+            foreach ($widgets as $widget_id) {
+
+                $widget_id = (int) $widget_id;
+
+                if (($widget_id > 0) && (!in_array($widget_id, $widget_ids, true))) {
+                    $widget_ids[] = $widget_id;
+                }
+            }
+
+            // An empty list is refused rather than written. An empty column
+            // reads as "no positions at all", and every load afterwards would
+            // have to invent an arrangement -- which is a silent way to lose
+            // one somebody built.
+            if (empty($widget_ids)) {
+
+                $response = array(
+                    'status' => 'error',
+                    'message' => 'No widget positions received.'
+                );
+                echo encode_json($response);
+                exit();
+            }
+
+            $order_widgets = implode(',', $widget_ids);
+        }
+
+        db("UPDATE dashboard SET order_widgets = '" . escape($order_widgets) . "'");
+
         //return success json output
         $response = array(
             'status' => 'success',
@@ -6445,7 +8411,76 @@ switch ($action) {
         break;
 
 
+    case 'update_dashboard_appearance':
+
+        // How the dashboard looks: which of the four treatments the cards wear,
+        // and what sits behind them. Both are site-wide, both live on the
+        // dashboard row beside the widget order, and both are picked from the
+        // Panel entry's context menu on the dashboard itself.
+        //
+        // Deliberately not in the exemption list at the top of this file, so the
+        // general gate applies: signed in, and role 1 or better. That is the
+        // same reach as the menu the selects are drawn in.
+        //
+        // Field and value are whitelisted rather than validated. One of them
+        // becomes a column name and the other a stored slug, and neither has a
+        // legitimate free-text form, so a table of the accepted pairs is both
+        // the check and the documentation.
+        $appearance_fields = array(
+            'widget_theme'   => array('flat', 'neon', 'glass', 'aurora'),
+            'panel_backdrop' => array('auto', 'none', 'mesh', 'dusk', 'ember'));
+
+        $appearance_field = (string) ($request['field'] ?? '');
+        $appearance_value = (string) ($request['value'] ?? '');
+
+        if ((!isset($appearance_fields[$appearance_field]))
+            || (!in_array($appearance_value, $appearance_fields[$appearance_field], true))) {
+
+            $response = array(
+                'status' => 'error',
+                'message' => 'Unknown appearance setting.'
+            );
+            echo encode_json($response);
+            exit();
+        }
+
+        // The columns arrive with 2026.4.4. An installation whose files are
+        // ahead of its database is told to run the upgrade rather than handed a
+        // failed query -- the menu that sent this is drawn from the same row, so
+        // it will have offered the choice quite happily.
+        if (!db_item("SHOW COLUMNS FROM dashboard LIKE '" . $appearance_field . "'")) {
+
+            $response = array(
+                'status' => 'error',
+                'message' => lang('Run the upgrade to use this setting.')
+            );
+            echo encode_json($response);
+            exit();
+        }
+
+        db("UPDATE dashboard SET " . $appearance_field . " = '" . escape($appearance_value) . "'");
+
+        //return success json output
+        $response = array(
+            'status' => 'success',
+            'message' => 'dashboard appearance updated.'
+        );
+        echo encode_json($response);
+        exit();
+        break;
+
     case 'software_backup':
+
+        // A backup writes the whole database out to disk and copies every file
+        // beside it.  The action sits in the exemption list at the top of this
+        // file and had nothing of its own in the general gate's place, so the
+        // steps ran for whoever could reach the address.  Manager and a valid
+        // token is the same reach backups.php asks for at its own door, and
+        // now the door the Backups view knocks on asks the same.
+        $user = validate_user();
+        validate_area_access($user, 'manager');
+        validate_token();
+
         // This feature can take a long time to run for a large site,
         // so increase the allowed execution time for the PHP script.
         ini_set('memory_limit', '512M');
@@ -6702,7 +8737,7 @@ switch ($action) {
                 $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
                 $request['version'] = VERSION;
                 $request['edition'] = EDITION;
-                $request['uname'] = php_uname();
+                $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
                 $request['os'] = PHP_OS;
                 $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
                 $request['php_version'] = phpversion();
@@ -6711,7 +8746,8 @@ switch ($action) {
                 $request['private_label'] = PRIVATE_LABEL;
                 $data = encode_json($request);
                 $API = '59593DS72233483322T669223344';
-                $REQUEST = 'latest_version';
+                // Beta sites ask their own question; see pg_update_channel().
+                $REQUEST = pg_update_request_key();
 
                 $ch = curl_init();
                 // Identify this installation on outgoing requests. Sent with no
@@ -6846,7 +8882,12 @@ switch ($action) {
                 break;
             case 'download':
                 //Step 2: download update file from curl
-                $ch = curl_init("https://www.kodpen.com/pinegrap_software_update.zip");
+                // The package of this installation's channel. The name is asked for
+                // once and reused below, so the file the replace step opens is the
+                // file this step wrote.
+                $update_package = pg_update_package_file();
+
+                $ch = curl_init("https://www.kodpen.com/" . $update_package);
                 // Identify this installation on outgoing requests. Sent with no
                 // User-Agent, a request looks like an anonymous client to the receiving
                 // server's firewall and gets rejected — which is how Pinegrap ended up
@@ -6926,7 +8967,7 @@ switch ($action) {
                 }
 
                 // Zip file name
-                $filename = 'pinegrap_software_update.zip';
+                $filename = $update_package;
                 if (file_exists($filename)) {
                     unlink($filename);
                 }
@@ -6972,14 +9013,17 @@ switch ($action) {
             case 'replace':
                 //Step 3: replace files.
                 define('_PATH', dirname(__FILE__));
-                // Zip file name
-                $filename = 'pinegrap_software_update.zip';
+                // Zip file name — the channel's package, the same name the download step used.
+                $filename = pg_update_package_file();
                 // Unzip path
                 $path = _PATH . "/../";
 
                 // pg_extract_archive() checks archive consistency BEFORE
-                // touching anything, then proves every entry actually landed
-                // on disk afterwards.
+                // touching anything, refuses to start while a file on disk
+                // cannot be replaced (another owner, read-only), then proves
+                // every entry landed on disk with the archive's own size and
+                // CRC afterwards - not merely that a file of that name exists,
+                // which an old copy the server kept would satisfy.
                 //
                 // The previous code called extractTo() and discarded its
                 // return value. Extraction stops at the first entry it cannot
@@ -6991,7 +9035,9 @@ switch ($action) {
 
                 if (!$extract['ok']) {
                     log_activity('software update extraction failed: ' . $extract['message']
-                        . ($extract['missing'] ? ' Missing: ' . implode(', ', array_slice($extract['missing'], 0, 10)) : ''));
+                        . (!empty($extract['missing']) ? ' Missing: ' . implode(', ', array_slice($extract['missing'], 0, 10)) : '')
+                        . (!empty($extract['stale']) ? ' Not replaced: ' . implode(', ', array_slice($extract['stale'], 0, 10)) : '')
+                        . (!empty($extract['blocked']) ? ' Cannot be replaced: ' . implode(', ', array_slice($extract['blocked'], 0, 10)) : ''));
 
                     $response = array(
                         'status' => 'error',
@@ -7002,6 +9048,72 @@ switch ($action) {
                 }
 
                 unlink($filename);
+
+                // The bytecode cache still holds the OLD files. Two reasons
+                // this has to be dropped here rather than left to the cache's
+                // own timestamp check:
+                //
+                //  • The screen sends the browser to install/index.php as
+                //    soon as this returns. Between the new files landing and
+                //    the cache noticing them (opcache.revalidate_freq, two
+                //    seconds by default) the upgrade would run the PREVIOUS
+                //    version's code against the new schema — the exact
+                //    window the upgrade bridge exists to survive, entered on
+                //    purpose for no reason.
+                //  • Where the host turned timestamp validation off
+                //    (opcache.validate_timestamps = 0, common on tuned
+                //    production boxes) the old code keeps running until
+                //    someone restarts PHP. The operator sees "update
+                //    complete" and no change whatsoever.
+                //
+                // Also reclaims the memory the replaced files occupied:
+                // every superseded copy stays in the cache as waste until
+                // it is invalidated, and this software's largest file is
+                // several megabytes of compiled opcodes on its own.
+                //
+                // Failure is not fatal — purge_cache.php exists for the
+                // hosts that refuse the API — but it is worth a log line,
+                // because "I updated and nothing changed" starts here.
+                // extension_loaded() is not the question, and neither is
+                // function_exists(): the extension can be compiled in while
+                // opcache.enable is off, in which case the functions all
+                // exist, every call returns false and emits a warning. Ask
+                // the cache whether it is running.
+                //
+                // A host that blocks opcache.restrict_api answers nothing at
+                // all — status is unreadable there but a reset may still be
+                // allowed, so "unknown" tries anyway and stays quiet about
+                // the outcome. Only a cache that says it is enabled AND
+                // refuses every attempt is worth a log line.
+                $pg_opcache_status  = function_exists('opcache_get_status') ? @opcache_get_status(false) : null;
+                $pg_opcache_running = is_array($pg_opcache_status) ? !empty($pg_opcache_status['opcache_enabled']) : null;
+
+                if ($pg_opcache_running !== false) {
+                    $pg_update_opcache_cleared = false;
+
+                    if (function_exists('opcache_reset')) {
+                        $pg_update_opcache_cleared = (bool) @opcache_reset();
+                    }
+
+                    // opcache.restrict_api blocks reset() from a script
+                    // outside its directory; per-file invalidation is still
+                    // allowed on some of those hosts. The paths are the ones
+                    // the archive just wrote, so nothing else is walked.
+                    if (!$pg_update_opcache_cleared && function_exists('opcache_invalidate')) {
+                        $pg_update_files = (isset($extract['files']) && is_array($extract['files'])) ? $extract['files'] : array();
+                        foreach ($pg_update_files as $pg_update_file) {
+                            if (substr($pg_update_file, -4) === '.php') {
+                                if (@opcache_invalidate($pg_update_file, true)) {
+                                    $pg_update_opcache_cleared = true;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!$pg_update_opcache_cleared && $pg_opcache_running === true) {
+                        log_activity('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect');
+                    }
+                }
 
                 $query = "DELETE FROM notifications WHERE action = 'software_update'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -8041,7 +10153,7 @@ switch ($action) {
         // ── Sayfalar / Pages ──────────────────────────────────────────────────
         $actions[] = array('label' => lang('Pages'), 'icon' => 'bi-file-earmark-text', 'url' => $base_url . '/view_pages.php', 'keys' => array('sayfa', 'sayfalar', 'page', 'pages', 'say'));
         $actions[] = array('label' => lang('Add Page'), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'page add', 'yeni sayfa', 'add page', 'sayfaekle'));
-        $actions[] = array('label' => lang('Folders'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla'));
+        $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
         $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
         $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
         $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
@@ -8095,7 +10207,46 @@ switch ($action) {
             $actions[] = array('label' => lang('Submitted Forms'), 'icon' => 'bi-ui-checks', 'url' => $base_url . '/view_submitted_forms.php', 'keys' => array('form', 'gonderilen', 'submitted', 'frm', 'gon'));
             $actions[] = array('label' => lang('Menus'), 'icon' => 'bi-menu-button', 'url' => $base_url . '/view_menus.php', 'keys' => array('menu', 'men'));
             $actions[] = array('label' => lang('Ads'), 'icon' => 'bi-badge-ad', 'url' => $base_url . '/view_ads.php', 'keys' => array('reklam', 'ad', 'ads', 'rek'));
-            $actions[] = array('label' => lang('Settings'), 'icon' => 'bi-gear', 'url' => $base_url . '/settings.php', 'keys' => array('ayar', 'ayarlar', 'setting', 'settings', 'set', 'aya'));
+
+            // Every settings section, from the one list the hub and the sidebar
+            // of the dialog draw from (includes/settings/registry.php).
+            // Registering them is what answers "where is that setting": the
+            // operator types the thing itself (ssl, waf, cron, kargo) and the
+            // settings open on the card holding it instead of on a long page.
+            // The keywords are the field names of the section, not just its
+            // title, because nobody searches for "Feature Options" when they
+            // are looking for the cart.
+            if (!defined('PG_SETTINGS_MENU')) {
+                define('PG_SETTINGS_MENU', true);
+            }
+
+            include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+            // Plain "Settings" opens on the category last used; the eight
+            // below each name one.
+            $actions[] = array('label' => lang('Settings'), 'icon' => 'bi-gear', 'url' => $base_url . '/' . pg_settings_link(), 'keys' => array('ayar', 'ayarlar', 'setting', 'settings', 'set', 'aya'));
+
+            foreach (pg_settings_categories() as $settings_key => $settings_category) {
+
+                $actions[] = array(
+                    'label' => lang('Settings') . ' - ' . $settings_category['label'],
+                    'icon'  => $settings_category['icon'],
+                    'url'   => $base_url . '/' . pg_settings_url($settings_key),
+                    'keys'  => array_merge(
+                        array(mb_strtolower($settings_category['label'], 'UTF-8')),
+                        call_user_func_array('array_merge', array_values($settings_category['keywords']))));
+
+                foreach ($settings_category['sections'] as $settings_section_id => $settings_section_label) {
+
+                    $actions[] = array(
+                        'label' => lang('Settings') . ' - ' . $settings_section_label,
+                        'icon'  => $settings_category['icon'],
+                        'url'   => $base_url . '/' . pg_settings_url($settings_key) . '#' . $settings_section_id,
+                        'keys'  => isset($settings_category['keywords'][$settings_section_id])
+                            ? $settings_category['keywords'][$settings_section_id]
+                            : array());
+                }
+            }
             $actions[] = array('label' => lang('Log'), 'icon' => 'bi-journal-text', 'url' => $base_url . '/view_log.php', 'keys' => array('log', 'kayit', 'journal', 'akt'));
             $actions[] = array('label' => lang('Backups'), 'icon' => 'bi-database', 'url' => $base_url . '/backups.php', 'keys' => array('yedek', 'backup', 'bak', 'yed'));
             $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
@@ -8225,7 +10376,7 @@ switch ($action) {
             $rows = db_items(
                 "SELECT page_id AS id, page_name AS name
                  FROM page
-                 WHERE page_type = 'custom form'
+                 WHERE " . pg_form_page_sql('page') . "
                    AND page_name LIKE '$s'
                  LIMIT $per_limit"
             );
@@ -8788,11 +10939,11 @@ switch ($action) {
 
         $sql_where = "";
 
-        if ($request['type'] != '') {
+        if (($request['type'] ?? '') != '') {
             $sql_where .= "WHERE (style_type = '" . escape($request['type']) . "')";
         }
 
-        if ($request['search'] != '') {
+        if (($request['search'] ?? '') != '') {
             if ($sql_where == '') {
                 $sql_where .= "WHERE ";
             } else {
@@ -9222,10 +11373,46 @@ switch ($action) {
         break;
 
 
+    // A guided tour has been watched, or skipped -- which is the same answer to
+    // the only question stored: do not open it by itself again.  The key is
+    // checked against a pattern in pg_tour_mark() before it reaches the row.
+    case 'tour_seen':
+
+        $user = validate_user();
+        validate_token();
+
+        pg_tour_mark($user['id'], (isset($request['key']) ? (string) $request['key'] : ''));
+
+        respond(array('status' => 'success'));
+
+        break;
+
+
     case 'file_explorer':
         $user = validate_user();
         validate_token();
-        validate_area_access($user, 'user');
+
+        // The catalog rides this same action but is not part of the folder
+        // tree, so it is gated on commerce rights instead of folder edit
+        // rights.  Asking a basic user for folder rights here would turn away
+        // exactly the person "manage all commerce" was granted to, at the door
+        // of a store the menu had just offered them.  Every explorer_catalog_*
+        // sub-action re-checks the same rule for itself in
+        // view_folder_and_files_f.php; this only keeps the shared preamble
+        // from answering first.
+        $explorer_catalog_request = (strpos((string) ($request['type'] ?? ''), 'explorer_catalog_') === 0);
+
+        if ($explorer_catalog_request == true) {
+            if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+                log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+                respond(array(
+                    'status' => 'error',
+                    'request' => (string) ($request['type'] ?? ''),
+                    'message' => lang('Access denied')));
+            }
+        } else {
+            validate_area_access($user, 'user');
+        }
 
 
         if (isset($request['folder_id']) && ($_SESSION['software']['explorer']['folder']['folder_id'] ?? '') != $request['folder_id']) {
@@ -9248,7 +11435,9 @@ switch ($action) {
             $folder_table_view_type = 'list';
         }
 
-        if (check_view_access($folder_id) == false) {
+        // A catalog request never carries a folder, so the folder the session
+        // happens to have open is none of its business.
+        if (($explorer_catalog_request == false) && (check_view_access($folder_id) == false)) {
             $response = array(
                 'status' => 'error',
                 'request' => $request['type'],
@@ -9260,7 +11449,7 @@ switch ($action) {
 
         $folders_that_user_has_access_to = array();
         // prepare expanded folders array from cookie
-        $expanded_folders = explode(',', $_COOKIE['software']['view_folders']['expanded_folders']);
+        $expanded_folders = isset($_COOKIE['software']['view_folders']['expanded_folders']) ? explode(',', $_COOKIE['software']['view_folders']['expanded_folders']) : array();
 
         // if user is a basic user, then get folders that user has access to
         if ($user['role'] == 3) {
@@ -9268,6 +11457,76 @@ switch ($action) {
         }
 
         switch ($request['type']) {
+
+            // Combined folder/page/file explorer (view_folder_and_files.php).
+            // These sub-actions return structured JSON and live in their own
+            // include; pg_explorer_handle() responds and exits.
+            case 'explorer_list':
+            case 'explorer_tree':
+            case 'explorer_create_folder':
+            case 'explorer_create_file':
+            case 'explorer_rename':
+            case 'explorer_move':
+            case 'explorer_paste':
+            case 'explorer_delete_files':
+            case 'explorer_upload':
+            case 'explorer_folder_options':
+            case 'explorer_folder_access_get':
+            case 'explorer_folder_access_set':
+            case 'explorer_delete_check':
+            case 'explorer_recycle_delete':
+            case 'explorer_recycle_restore':
+            case 'explorer_hard_delete':
+            case 'explorer_optimize':
+            case 'explorer_webp':
+            case 'explorer_folder_settings_get':
+            case 'explorer_folder_settings_set':
+            case 'explorer_bulk_page_options':
+            case 'explorer_pages_bulk_edit':
+            case 'explorer_bulk_file_options':
+            case 'explorer_files_bulk_edit':
+            case 'explorer_shared_list':
+            case 'explorer_files_design':
+            case 'explorer_file_get':
+            case 'explorer_file_usage':
+            case 'explorer_file_save':
+            case 'explorer_rotate':
+            case 'explorer_backups_list':
+            case 'explorer_backup_zip':
+            case 'explorer_backup_rename':
+            case 'explorer_backup_copy':
+            case 'explorer_backup_delete':
+            case 'explorer_backup_upload':
+            case 'explorer_backup_extract':
+            case 'explorer_backup_chmod':
+            case 'explorer_zip_create':
+            case 'explorer_zip_extract':
+            case 'explorer_short_links_list':
+            case 'explorer_short_link_options':
+            case 'explorer_short_link_create':
+            case 'explorer_short_link_rename':
+            case 'explorer_short_link_update':
+            case 'explorer_short_link_duplicate':
+            case 'explorer_short_link_delete':
+            case 'explorer_catalog_list':
+            case 'explorer_catalog_tree':
+            case 'explorer_catalog_pages':
+            case 'explorer_catalog_recycle':
+            case 'explorer_catalog_restore':
+            case 'explorer_catalog_purge':
+            case 'explorer_catalog_enable':
+            case 'explorer_bulk_product_options':
+            case 'explorer_products_bulk_edit':
+            case 'explorer_catalog_quick_edit':
+            case 'explorer_catalog_access_get':
+            case 'explorer_catalog_access_set':
+            case 'explorer_catalog_membership_remove':
+            case 'explorer_catalog_create_group':
+            case 'explorer_catalog_rename':
+            case 'explorer_catalog_paste':
+                require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
+                pg_explorer_handle($request, $user, $folders_that_user_has_access_to);
+                break;
             case 'delete_file':
                 $query =
                     "SELECT 
@@ -10325,12 +12584,631 @@ switch ($action) {
     // ========================= SHARED COMPONENTS =========================
     // Internal visual-designer endpoint — session + token auth, admin/designer only.
     // shared_ref node: { type:'shared_ref', props:{ sharedId:N, sharedName:'...' }, children:[] }
+    case 'offer_editor':
+        // Offer editor (edit_offer.php): load, save, toggle, delete, cleanup.
+        // The sub-actions live in their own include and respond themselves.
+        require_once(dirname(__FILE__) . '/edit_offer_f.php');
+        pg_offer_editor_handle($request);
+        break;
+
+    // ========================= VISUAL DESIGNER — PAGE TABS =========================
+    // Internal endpoint for the multi-page designer. Session + token auth,
+    // same gate as the editor screens themselves (designer = role <= 1).
+    case 'designer':
+        validate_token();
+        $user = validate_user();
+        require_once(dirname(__FILE__) . '/includes/designer_access.php');
+
+        $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
+
+        // A content-level operator (manager, user) gets the endpoints the
+        // editor needs to READ a page and to work inside it. Everything that
+        // shapes the design — adding, detaching or deleting pages, saving a
+        // theme, rewriting a shared component — stays with designers.
+        //
+        // The list is an allow-list on purpose: a new endpoint is closed
+        // until somebody decides it is safe, which is the right default for
+        // a file that grows an action a month.
+        // The refusal is JSON, not validate_area_access(): that answers with
+        // an HTML error page, and every caller here is waiting for JSON — it
+        // would read the page as "unexpected token <" and show the operator
+        // nothing about why the button did nothing.
+        if (!pg_designer_is_full($user)) {
+            $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
+                                'page_load', 'seo_check', 'import_fragment',
+                                'form_fields');
+            if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
+                || !in_array($sub, $content_ok, true)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+        }
+
+        // Collaboration endpoints all speak the same two parameters, so they
+        // are resolved once rather than in each branch.
+        if (in_array($sub, array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch'), true)) {
+            require_once(dirname(__FILE__) . '/includes/designer_collab.php');
+        }
+
+        switch ($sub) {
+
+            // ── PRESENCE ─────────────────────────────────────────────────
+            // One call does everything the editor needs on a heartbeat: says
+            // this tab is alive, claims (or renews) the lock on the page it
+            // is showing, and reports back who else is here and whether this
+            // tab may edit. One round trip because it runs every twenty
+            // seconds in every open editor — three would be three times the
+            // load for the same answer.
+            case 'presence':
+                $co_key   = isset($request['session_key']) ? (string)$request['session_key'] : '';
+                $co_style = isset($request['style_id'])    ? (int)$request['style_id']       : 0;
+                $co_page  = isset($request['page_id'])     ? (int)$request['page_id']        : 0;
+                if (!pg_collab_ready()) {
+                    // No schema yet: the editor behaves exactly as it did
+                    // before this feature existed.
+                    respond(array('status' => 'success', 'ready' => false,
+                                  'may_edit' => true, 'peers' => array(), 'holder' => null));
+                }
+                pg_collab_beat($co_key, $co_style, $co_page, $user['id']);
+                // `takeover`: this person's OTHER tab holds the page and they
+                // asked for it here. The claim evicts a holder only when it
+                // is the same user — the flag cannot take a page from
+                // somebody else.
+                $co_take = !empty($request['takeover']);
+                $co_lock = ($co_page > 0)
+                    ? pg_collab_claim_page($co_key, $co_page, $co_style, $user['id'], $co_take)
+                    : array('held' => true, 'holder' => null);
+                $co_holder = null;
+                if (!$co_lock['held'] && is_array($co_lock['holder'])) {
+                    $co_brief  = pg_collab_user_brief($co_lock['holder']['user_id']);
+                    $co_holder = array(
+                        'user_id' => (int)$co_lock['holder']['user_id'],
+                        'name'    => $co_brief['name'],
+                        'avatar'  => $co_brief['avatar'],
+                        'since'   => (int)$co_lock['holder']['acquired_at'],
+                    );
+                }
+                respond(array(
+                    'status'   => 'success',
+                    'ready'    => true,
+                    'may_edit' => (bool)$co_lock['held'],
+                    'holder'   => $co_holder,
+                    'peers'    => pg_collab_peers($co_key, $co_style),
+                    'beat'     => PG_COLLAB_BEAT,
+                    // page_id => when a note was last written there. The
+                    // editor compares this with what it already has and only
+                    // asks for the notes of a page whose number moved.
+                    'notes'    => pg_collab_note_stamps($co_style),
+                ));
+                break;
+
+            // Closing the editor. Explicit so the next person does not have to
+            // wait out the staleness window; a crash still resolves on its own.
+            case 'leave':
+                pg_collab_leave(isset($request['session_key']) ? (string)$request['session_key'] : '');
+                respond(array('status' => 'success'));
+                break;
+
+            // Switching to another tab inside the editor: drop the lock on the
+            // page being left before claiming the next one, so a colleague can
+            // pick it up immediately.
+            case 'lock_release':
+                pg_collab_release_page(
+                    isset($request['session_key']) ? (string)$request['session_key'] : '',
+                    isset($request['page_id']) ? (int)$request['page_id'] : 0);
+                respond(array('status' => 'success'));
+                break;
+
+            // The one write a view-mode session may make. Notes live on the
+            // node, in the page tree — which is exactly what a locked-out
+            // session cannot save — so writing one has its own endpoint and
+            // is deliberately NOT gated on the lock. Bounded to one property
+            // on one node, so it cannot become a way around the lock.
+            case 'note_save':
+                if (!pg_collab_note_save(
+                        isset($request['page_id']) ? (int)$request['page_id'] : 0,
+                        isset($request['node_id']) ? (string)$request['node_id'] : '',
+                        isset($request['note']) ? (string)$request['note'] : '',
+                        $user)) {
+                    respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
+                }
+                respond(array('status' => 'success'));
+                break;
+
+            // The notes on one page, and nothing else.
+            //
+            // Asked for when the heartbeat says the page's note stamp moved.
+            // Not the tree: the person asking has the page open and is
+            // part-way through their own edits, so returning a tree would
+            // force a choice between discarding their work and merging two
+            // layouts. A notification should never be making that choice.
+            case 'notes_fetch':
+                $nf_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+                if ($nf_page <= 0) {
+                    respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+                }
+                // Same visibility rule as opening the page: a folder whose
+                // pages this operator may not even know about does not leak
+                // its notes either.
+                $nf_row = db_item("SELECT page_id, page_folder FROM page WHERE page_id = '" . e($nf_page) . "' LIMIT 1");
+                if (!is_array($nf_row) || pg_designer_page_access($nf_row, $user) === 'hidden') {
+                    respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+                }
+                respond(array(
+                    'status'  => 'success',
+                    'page_id' => $nf_page,
+                    'notes'   => pg_collab_page_notes($nf_page),
+                ));
+                break;
+
+            // One form, whole: every column the field editor can set, plus
+            // the options. Asked for when the widget points at a form that is
+            // not this page's own — the boot payload only carries the pages
+            // that are open as tabs.
+            case 'form_fields':
+                $cf_pid = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+                if ($cf_pid <= 0 || !function_exists('pg_cf_load_page_fields')) {
+                    respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+                }
+                respond(array(
+                    'status'   => 'success',
+                    'fields'   => pg_cf_load_page_fields($cf_pid),
+                    'settings' => pg_cf_load_page_form_settings($cf_pid),
+                ));
+                break;
+
+            // Adopt an orphaned form: its own page is gone, so the page that
+            // renders it becomes its page. Refused for a form whose page is
+            // alive — see pg_cf_form_is_orphaned().
+            case 'form_adopt':
+                $cf_from = isset($request['from_page_id']) ? (int)$request['from_page_id'] : 0;
+                $cf_to   = isset($request['to_page_id'])   ? (int)$request['to_page_id']   : 0;
+                if (!function_exists('pg_cf_adopt_form') || !pg_cf_adopt_form($cf_from, $cf_to, $user)) {
+                    respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
+                }
+                respond(array(
+                    'status'   => 'success',
+                    'fields'   => pg_cf_load_page_fields($cf_to),
+                    'settings' => pg_cf_load_page_form_settings($cf_to),
+                ));
+                break;
+
+            // Pages the "Sayfa Seç" picker may offer: every visual-designer
+            // page not already on this design, with the design it belongs to
+            // now so the picker can say what attaching it will change.
+            case 'selectable_pages':
+                $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+                respond(array(
+                    'status' => 'success',
+                    'pages'  => pg_designer_selectable_pages($style_id),
+                ));
+                break;
+
+            // One page, shaped exactly like the entries the screen embeds at
+            // load time, so a picked page opens as a tab with no special
+            // casing. Its page_style is left alone here — the page only moves
+            // to the design when the operator saves.
+            case 'page_load':
+                $page_id = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+                if ($page_id <= 0) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                $owner = (int)db_value(
+                    "SELECT page_style FROM page
+                     WHERE page_id = '$page_id' AND layout_type = 'system' LIMIT 1");
+                if ($owner <= 0) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                $found = null;
+                foreach (pg_designer_load_pages($owner) as $p) {
+                    if ((int)$p['page_id'] === $page_id) { $found = $p; break; }
+                }
+                if ($found === null) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                $tree = null;
+                if ($found['tree_json'] !== '') {
+                    $tree = json_decode($found['tree_json']);
+                }
+                unset($found['tree_json']);
+                $found['tree'] = $tree;
+                $found['key']  = 'p' . $page_id;
+                // The page's form-level settings come with it; its fields are
+                // the controls in its widget tree.
+                $found['formSettings'] = function_exists('pg_cf_load_page_form_settings')
+                                             ? pg_cf_load_page_form_settings($page_id) : array();
+                respond(array('status' => 'success', 'page' => $found));
+                break;
+
+            // Take a page OUT of its design. The page is not deleted — it
+            // becomes a design of its own, carrying a copy of the shared
+            // assets and theme so it keeps rendering exactly as before. This
+            // is the reversible move: "Sayfa Seç" brings it back. Deleting a
+            // page is the pages list's job.
+            //
+            // Refused for the design's last page: a design with no pages is a
+            // style row nothing renders, and the operator almost certainly
+            // meant "delete the design" — which the toolbar offers once the
+            // pages are gone.
+            case 'page_detach':
+                $page_id  = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+                $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+                if ($page_id <= 0 || $style_id <= 0) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                $page = db_item(
+                    "SELECT page_id, page_name, page_style FROM page
+                     WHERE page_id = '$page_id' AND page_style = '$style_id' AND layout_type = 'system' LIMIT 1");
+                if (!$page) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                $siblings = (int)db_value(
+                    "SELECT COUNT(*) FROM page WHERE page_style = '$style_id' AND layout_type = 'system'" . pg_designer_not_binned_sql('page_folder'));
+                if ($siblings <= 1) {
+                    respond(array('status' => 'error', 'message' => lang('The last page cannot be detached from its design. Delete the design instead.')));
+                }
+                $src = db_item("SELECT * FROM style WHERE style_id = '$style_id' LIMIT 1");
+                if (!$src) {
+                    respond(array('status' => 'error', 'message' => lang('The style could not be found.')));
+                }
+
+                $new_name = get_unique_name(array('name' => (string)$page['page_name'], 'type' => 'style'));
+                $new_style_id = (int)save_system_style(array(
+                    'style_id'                          => 0,
+                    'name'                              => $new_name,
+                    'theme_id'                          => $src['theme_id'],
+                    'additional_body_classes'           => $src['additional_body_classes'],
+                    'collection'                        => $src['collection'],
+                    'social_networking_position'        => $src['social_networking_position'],
+                    'style_head'                        => $src['style_head'],
+                    'style_empty_cell_width_percentage' => $src['style_empty_cell_width_percentage'],
+                    'user_id'                           => $user['id'],
+                    'style_custom_css'                  => isset($src['style_custom_css'])   ? $src['style_custom_css']   : '',
+                    'style_custom_js'                   => isset($src['style_custom_js'])    ? $src['style_custom_js']    : '',
+                    'style_custom_fonts'                => isset($src['style_custom_fonts']) ? $src['style_custom_fonts'] : '',
+                ));
+                if ($new_style_id <= 0) {
+                    respond(array('status' => 'error', 'message' => lang('The style could not be created.')));
+                }
+                db("UPDATE page SET page_style = '$new_style_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "'
+                    WHERE page_id = '$page_id'");
+                // Un-migrated database: the page has no tree column, so the new
+                // style must carry the layout itself.
+                if (!pg_multi_page_design_ready()) {
+                    db("UPDATE style dst, style s
+                        SET dst.style_tree_json = s.style_tree_json, dst.style_code = s.style_code
+                        WHERE dst.style_id = '$new_style_id' AND s.style_id = '$style_id'");
+                }
+                log_activity(lang(array('string' => 'page ({var:1}) was detached into its own style ({var:2})', 'vars' => array($page['page_name'], $new_name))), $_SESSION['sessionusername']);
+                respond(array(
+                    'status'       => 'success',
+                    'new_style_id' => $new_style_id,
+                    'new_style_name' => $new_name,
+                    'edit_url'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?id=' . $new_style_id,
+                ));
+                break;
+
+            // Send a page to the recycle bin. This IS the file explorer's
+            // delete, called with a single page, so the rules are the same
+            // ones the operator meets there: folder edit access, the
+            // delete-pages right for a basic user, name parked while the page
+            // waits in the bin. The page keeps its page_style, so restoring it
+            // from the bin puts it back on this design's tab strip.
+            case 'page_delete':
+                $page_id  = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+                $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+                if ($page_id <= 0 || $style_id <= 0) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                $page = db_item(
+                    "SELECT page_id, page_name, page_folder FROM page
+                     WHERE page_id = '$page_id' AND page_style = '$style_id' AND layout_type = 'system' LIMIT 1");
+                if (!$page) {
+                    respond(array('status' => 'error', 'message' => lang('Page not found.')));
+                }
+                if (($user['role'] == 3) && !$user['delete_pages']) {
+                    respond(array('status' => 'error', 'message' => lang('You do not have access to delete pages.')));
+                }
+                // The last page may go too: the design then has no pages,
+                // the editor returns to its home screen, and the design is
+                // listed there as empty (open it to add a page, or delete
+                // it). Keeping the style row is what lets the binned page
+                // come back with its assets.
+                require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
+                if (pg_recycle_ready() == false) {
+                    respond(array('status' => 'error', 'message' => lang('The recycle bin is not available. Delete the page from the pages list instead.')));
+                }
+                $folders_that_user_has_access_to = ($user['role'] == 3) ? get_folders_that_user_has_access_to($user['id']) : array();
+                // Replies on its own: {status, binned, errors, message}.
+                pg_explorer_handle(
+                    array('type' => 'explorer_recycle_delete', 'items' => array(array('kind' => 'page', 'id' => $page_id))),
+                    $user,
+                    $folders_that_user_has_access_to);
+                break;
+
+            // Pasted HTML, as a whole page. Same parser and the same reply
+            // shape as designer_import.php, which cannot serve this: it
+            // reads multipart because it carries a file, and there is no
+            // file here — the markup arrives as text in the JSON body.
+            case 'import_paste':
+                include_once(dirname(__FILE__) . '/includes/designer_import.php');
+                $paste_html = isset($request['html']) ? (string)$request['html'] : '';
+                if (strlen($paste_html) > 4000000) {
+                    respond(array('status' => 'error', 'message' => lang('The pasted content is too large.')));
+                }
+                if (trim($paste_html) === '') {
+                    respond(array('status' => 'error', 'message' => lang('Paste some HTML first.')));
+                }
+                $paste_name = isset($request['page_name']) ? trim((string)$request['page_name']) : '';
+                if ($paste_name === '') $paste_name = 'page';
+                $paste_name = mb_substr(preg_replace('/[\/\\:*?"<>|]+/', '-', $paste_name), 0, 60);
+                $paste_skip = array();
+                if (!empty($request['skip_names']) && is_array($request['skip_names'])) {
+                    foreach ($request['skip_names'] as $sn) {
+                        if (is_string($sn) && $sn !== '') $paste_skip[] = $sn;
+                    }
+                }
+                $paste_res = pg_designer_import_single_html(
+                    $paste_html, $paste_name . '.html', $user, array('skip_names' => $paste_skip));
+                if (!empty($paste_res['errors'])) {
+                    respond(array('status' => 'error', 'message' => implode(' ', $paste_res['errors'])));
+                }
+                log_activity(lang(array('string' => 'HTML import ({var:1}): {var:2} page(s)',
+                    'vars' => array($paste_name, count($paste_res['pages'])))), $_SESSION['sessionusername']);
+                $paste_res['status'] = 'success';
+                respond($paste_res);
+                break;
+
+            // Pasted HTML, as a fragment dropped into the page being edited.
+            // Writes nothing and touches no design asset — see
+            // pg_designer_import_fragment() for why that is not an omission.
+            case 'import_fragment':
+                include_once(dirname(__FILE__) . '/includes/designer_import.php');
+                $frag_html = isset($request['html']) ? (string)$request['html'] : '';
+                if (strlen($frag_html) > 2000000) {
+                    respond(array('status' => 'error', 'message' => lang('The pasted content is too large.')));
+                }
+                $frag = pg_designer_import_fragment($frag_html, $user);
+                respond(array(
+                    'status'   => 'success',
+                    'children' => $frag['children'],
+                    'warnings' => $frag['warnings'],
+                ));
+                break;
+
+            // Live SEO check for the page open in the editor — the same two
+            // halves the site-wide score is made of, run on what is on the
+            // canvas RIGHT NOW rather than on the saved row:
+            //   meta      pg_seo_evaluate_meta on the settings-panel fields
+            //   structure pg_seo_analyze_html on the markup the editor
+            //             generates (fragment mode: the <head> the renderer
+            //             adds at request time is not there to judge)
+            // Nothing is stored; the stored score is refreshed on save.
+            case 'seo_check':
+                require_once(dirname(__FILE__) . '/seo.php');
+                require_once(dirname(__FILE__) . '/seo_structure.php');
+                if (!pg_seo_schema_ready()) {
+                    respond(array('status' => 'error', 'message' => lang('SEO scoring is not available on this installation.')));
+                }
+                $page_id = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+                $folder_id = isset($request['page_folder']) ? (int)$request['page_folder'] : 0;
+                $folder = $folder_id > 0 ? db_item("SELECT folder_access_control_type, folder_archived FROM folder WHERE folder_id = '$folder_id' LIMIT 1") : null;
+                $row = array(
+                    'page_id'               => $page_id,
+                    'page_name'             => isset($request['page_name']) ? (string)$request['page_name'] : '',
+                    'page_title'            => isset($request['page_title']) ? (string)$request['page_title'] : '',
+                    'page_meta_description' => isset($request['page_meta_description']) ? (string)$request['page_meta_description'] : '',
+                    'page_search_keywords'  => isset($request['page_search_keywords']) ? (string)$request['page_search_keywords'] : '',
+                    'page_search'           => !empty($request['page_search']) ? '1' : '0',
+                    'page_type'             => 'standard',
+                    'sitemap'               => (!empty($request['page_sitemap']) && empty($request['page_noindex'])) ? '1' : '0',
+                    'folder_public'         => ($folder ? ($folder['folder_access_control_type'] == 'public' || $folder['folder_access_control_type'] == '') : true),
+                    'folder_archived'       => ($folder ? !empty($folder['folder_archived']) : false),
+                );
+                $entity  = pg_seo_normalize_entity('page', $row);
+                $context = pg_seo_build_context('page', $page_id > 0 ? array($page_id) : array());
+                $meta    = pg_seo_evaluate_meta($entity, $context);
+                $checks  = array();
+                foreach ((isset($meta['analysis']['checks']) ? $meta['analysis']['checks'] : array()) as $c) {
+                    $checks[] = array('code' => $c['c'], 'status' => $c['s'], 'weight' => (int)$c['w'], 'earned' => (int)$c['e'], 'label' => pg_seo_check_label($c));
+                }
+
+                $html = isset($request['html']) ? (string)$request['html'] : '';
+                if (strlen($html) > 2000000) $html = substr($html, 0, 2000000);
+                $findings = array();
+                $structure_score = null;
+                if (trim($html) !== '') {
+                    $raw = pg_seo_analyze_html($html, 'fragment', array(
+                        'title'         => $row['page_title'],
+                        'in_sitemap'    => ($row['sitemap'] === '1'),
+                        'open_graph'    => false,
+                        'expect_jsonld' => false,
+                    ));
+                    foreach ($raw as $code => $f) {
+                        $findings[] = array(
+                            'code'        => $code,
+                            'severity'    => $f['severity'],
+                            'occurrences' => (int)$f['occurrences'],
+                            'detail'      => (string)$f['detail'],
+                            'label'       => pg_seo_issue_label($code, (int)$f['occurrences'], (string)$f['detail']),
+                        );
+                    }
+                    // A fragment cannot answer the document-level checks, so
+                    // pg_seo_analyze_html() skips them and the fragment scores
+                    // against a shorter rule set than the stored score did. Carry
+                    // the stored answers over - the same thing this endpoint
+                    // already does for the link and speed groups - so the canvas
+                    // and the pages list report the same number, and the ones the
+                    // operator can act on from here (the title and description in
+                    // Page Settings, a missing <main>) are listed rather than
+                    // silently priced in.
+                    if ($page_id > 0 && function_exists('pg_seo_document_only_codes') && function_exists('pg_seo_load_issues')) {
+                        $carried = pg_seo_document_only_codes();
+                        foreach (pg_seo_load_issues('page', $page_id) as $issue) {
+                            if (!in_array($issue['code'], $carried, TRUE)) continue;
+                            if (isset($raw[$issue['code']])) continue;
+                            $raw[$issue['code']] = array(
+                                'severity'    => $issue['severity'],
+                                'occurrences' => (int) $issue['occurrences'],
+                                'detail'      => (string) $issue['detail'],
+                            );
+                            $findings[] = array(
+                                'code'        => $issue['code'],
+                                'severity'    => $issue['severity'],
+                                'occurrences' => (int) $issue['occurrences'],
+                                'detail'      => (string) $issue['detail'],
+                                'label'       => pg_seo_issue_label($issue['code'], (int) $issue['occurrences'], (string) $issue['detail']),
+                                'stored'      => TRUE,
+                            );
+                        }
+                    }
+                    $structure_score = pg_seo_structure_score($raw);
+                }
+                // The stored score is composed from FOUR groups, not two:
+                // meta, structure, links and speed. Composing only the first
+                // two here gave the editor a different arithmetic from the
+                // pages list - the designer read 48 on the canvas and 46 in
+                // the list, with nothing on screen to explain the gap.
+                //
+                // Meta and structure come from what is on the canvas right
+                // now; links and speed cannot - links are counted from the
+                // saved markup and speed from measurements that arrive with
+                // traffic - so those two are read exactly as the stored
+                // score read them. The number therefore moves on save only
+                // when the save itself changed the link graph.
+                $link_score = null;
+                if ($page_id > 0 && pg_seo_link_schema_ready()) {
+                    $stored = db_value("SELECT seo_link_score FROM page WHERE page_id = '$page_id' LIMIT 1");
+                    if ($stored !== null && $stored !== '') $link_score = (int)$stored;
+                }
+                $speed_score = null;
+                if ($page_id > 0) {
+                    $speed = pg_seo_evaluate_speed(
+                        isset($context['speed'][$page_id]) ? $context['speed'][$page_id] : null);
+                    $speed_score = $speed['score'];
+                }
+                respond(array(
+                    'status'          => 'success',
+                    'score'           => pg_seo_compose($meta['score'], $structure_score, $link_score, $speed_score),
+                    'meta_score'      => $meta['score'],
+                    'structure_score' => $structure_score,
+                    'link_score'      => $link_score,
+                    'speed_score'     => $speed_score,
+                    'weights'         => pg_seo_group_weights($structure_score, $link_score, $speed_score),
+                    'checks'          => $checks,
+                    'findings'        => $findings,
+                ));
+                break;
+
+            // Delete a design from the home screen list: its live pages go
+            // to the recycle bin (each keeps its own tree, so it can be
+            // restored and attached to another design with "Select Page"),
+            // pages already in the bin stay there, then the style row goes.
+            case 'design_delete':
+                $style_id = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+                $style = $style_id > 0 ? db_item("SELECT style_id, style_name, style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
+                if (!$style) {
+                    respond(array('status' => 'error', 'message' => lang('The style could not be found.')));
+                }
+                if ($style['style_layout'] !== 'visual_designer') {
+                    respond(array('status' => 'error', 'message' => lang('Only designs made with the visual editor can be deleted here.')));
+                }
+                if (($user['role'] == 3) && !$user['delete_pages']) {
+                    respond(array('status' => 'error', 'message' => lang('You do not have access to delete pages.')));
+                }
+                $folders_using = (int)db_value("SELECT COUNT(folder_id) FROM folder WHERE folder_style = '$style_id' OR mobile_style_id = '$style_id'");
+                if ($folders_using > 0) {
+                    respond(array('status' => 'error', 'message' => lang('You may not delete this page style because it is being used by at least one folder or page.')));
+                }
+                require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
+                $binned = 0;
+                if (pg_recycle_ready()) {
+                    $bin_id = (int)pg_recycle_folder_id(true);
+                    $live = db_items("SELECT page_id, page_folder FROM page WHERE page_style = '$style_id'" . pg_designer_not_binned_sql('page_folder'));
+                    foreach ((is_array($live) ? $live : array()) as $lp) {
+                        $pid = (int)$lp['page_id'];
+                        db("UPDATE page SET page_folder = '$bin_id', page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "' WHERE page_id = '$pid'");
+                        pg_recycle_park_name('page', $pid, $user);
+                        db("DELETE FROM recycle_bin WHERE item_type = 'page' AND item_id = '$pid'");
+                        db("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+                            VALUES ('page', '$pid', '" . (int)$lp['page_folder'] . "', UNIX_TIMESTAMP(), '" . (int)$user['id'] . "')");
+                        $binned++;
+                    }
+                } else {
+                    $live_count = (int)db_value("SELECT COUNT(page_id) FROM page WHERE page_style = '$style_id'");
+                    if ($live_count > 0) {
+                        respond(array('status' => 'error', 'message' => lang('The recycle bin is not available. Delete the page from the pages list instead.')));
+                    }
+                }
+                db("DELETE FROM style WHERE style_id = '$style_id'");
+                db("DELETE FROM system_style_cells WHERE style_id = '$style_id'");
+                db("DELETE FROM preview_styles WHERE style_id = '$style_id'");
+                log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($style['style_name']))), $_SESSION['sessionusername']);
+                respond(array('status' => 'success', 'binned' => $binned,
+                    'message' => $binned > 0
+                        ? lang(array('string' => 'The design was deleted; {var:1} page(s) were moved to the Recycle Bin.', 'vars' => $binned))
+                        : lang('The style has been deleted.')));
+                break;
+
+            // Save a stylesheet as a theme: a design CSS file in the file
+            // manager (design = 1 is what get_theme_options() lists), written
+            // from the Themes panel's light/dark variable blocks. Nothing is
+            // changed on the design itself — the editor selects the new
+            // file in the theme list and the operator saves as usual.
+            case 'theme_save':
+                $name = isset($request['name']) ? trim((string)$request['name']) : '';
+                $css  = isset($request['css'])  ? (string)$request['css'] : '';
+                if ($name === '' || trim($css) === '') {
+                    respond(array('status' => 'error', 'message' => lang('A theme name and some CSS are required.')));
+                }
+                if (strlen($css) > 512000) {
+                    respond(array('status' => 'error', 'message' => lang('The stylesheet is too large.')));
+                }
+                if (!preg_match('/\.css$/i', $name)) $name .= '.css';
+                $file_name = prepare_file_name($name);
+                if ($file_name === '' || $file_name === '.css') {
+                    respond(array('status' => 'error', 'message' => lang('Please enter a valid theme name.')));
+                }
+                if (check_name_availability(array('name' => $file_name)) == false) {
+                    respond(array('status' => 'error', 'message' => lang(array('string' => 'The Theme ({var:1}) already exists.', 'vars' => $file_name))));
+                }
+                if (@file_put_contents(FILE_DIRECTORY_PATH . '/' . $file_name, $css) === false) {
+                    respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $file_name))));
+                }
+                $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+                db("INSERT INTO files (name, folder, description, type, size, user, design, theme, timestamp)
+                    VALUES ('" . e($file_name) . "', '$folder_id', '', 'css', '" . (int)strlen($css) . "', '" . (int)$user['id'] . "', '1', '0', UNIX_TIMESTAMP())");
+                $theme_id = (int)mysqli_insert_id(db::$con);
+                log_activity(lang(array('string' => 'theme ({var:1}) was created', 'vars' => $file_name)), $_SESSION['sessionusername']);
+                respond(array('status' => 'success', 'id' => $theme_id, 'name' => $file_name));
+                break;
+
+            default:
+                respond(array('status' => 'error', 'message' => lang('Unknown action.')));
+        }
+        break;
+
     case 'shared_component':
         validate_token();
         $user = validate_user();
 
-        // Only admin (role 0) and designer (role 2) may manage shared components.
-        if ($user['role'] != 0 && $user['role'] != 2) {
+        // Shared components and system widgets belong to the design: their
+        // tree is used by every page that references them, so an edit here
+        // is never an edit to "this page". WRITING is administrator (0) and
+        // designer (1) only.
+        //
+        // The check read `role != 0 && role != 2`, written against the old
+        // role table where 2 was thought to be the designer. It let MANAGERS
+        // rewrite shared components and refused DESIGNERS — the two roles it
+        // exists to tell apart.
+        //
+        // READING stays open to anyone who may open the editor. A page that
+        // carries a widget cannot be drawn without the widget's tree: closing
+        // the read left a content-level operator looking at a two-line page
+        // where the whole layout used to be.
+        $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
+        $_sc_read_only = array('list', 'usage_all', 'prefetch', 'get',
+                               'list_custom_forms', 'list_form_item_view_pages', 'list_product_groups');
+        if (((int)$user['role'] > 1) && !in_array($sub, $_sc_read_only, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
         }
 
@@ -10343,8 +13221,6 @@ switch ($action) {
                 'message' => 'shared_components table is missing — please run the software upgrade at install/index.php',
             ));
         }
-
-        $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
 
         switch ($sub) {
 
@@ -10377,13 +13253,34 @@ switch ($action) {
                 $usage_map = array();
                 foreach ($sc_ids as $sid) { $usage_map[$sid] = array(); }
 
-                // Scan every non-empty tree_json once; for each shared id found,
-                // append this style's display name to its usage list.
-                $style_rows = db_items(
-                    "SELECT style_id, style_name, style_tree_json
-                     FROM style
-                     WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
-                );
+                // Scan every non-empty tree once; for each shared id found,
+                // append the owning page — and the design it belongs to — to
+                // its usage list.
+                //
+                // Trees live on the PAGE since the multi-page designer (one
+                // style, several pages, each with its own layout). One row per
+                // page with a tree; the style's own tree is the fallback for
+                // pages saved before the swap. Both ids travel: the page name
+                // is what the operator sees in tabs, the style id is how the
+                // editor tells "used in this design" from "used elsewhere on
+                // the site". On an un-migrated database this collapses to the
+                // old per-style scan and page_id is 0.
+                if (pg_multi_page_design_ready()) {
+                    $style_rows = db_items(
+                        "SELECT page.page_id, page.page_name, style.style_id, style.style_name,
+                                " . pg_page_tree_sql_expr() . " AS style_tree_json
+                         FROM page
+                         INNER JOIN style ON page.page_style = style.style_id
+                         WHERE page.layout_type = 'system'
+                         HAVING style_tree_json IS NOT NULL AND style_tree_json != ''"
+                    );
+                } else {
+                    $style_rows = db_items(
+                        "SELECT 0 AS page_id, style_name AS page_name, style_id, style_name, style_tree_json
+                         FROM style
+                         WHERE style_tree_json IS NOT NULL AND style_tree_json != ''"
+                    );
+                }
                 if (is_array($style_rows)) {
                     foreach ($style_rows as $sr) {
                         $json = $sr['style_tree_json'];
@@ -10403,8 +13300,10 @@ switch ($action) {
                             }
                             if ($found) {
                                 $usage_map[$sid][] = array(
+                                    'page_id'    => (int)$sr['page_id'],
+                                    'page_name'  => (string)$sr['page_name'],
                                     'style_id'   => (int)$sr['style_id'],
-                                    'style_name' => $sr['style_name'],
+                                    'style_name' => (string)$sr['style_name'],
                                 );
                             }
                         }
@@ -10476,7 +13375,7 @@ switch ($action) {
                 $sc_cfg_sql = ($sc_src_cfg !== null) ? "'" . e($sc_src_cfg) . "'" : 'NULL';
                 db("INSERT INTO shared_components (name, description, tree_json, system_region_config, created_by, created_at, updated_at)
                     VALUES ('" . e($sc_name) . "', '" . e($sc_desc) . "', '" . e($sc_tree) . "',
-                            $sc_cfg_sql, '" . (int)$user['user_id'] . "', '$sc_now', '$sc_now')");
+                            $sc_cfg_sql, '" . (int)$user['id'] . "', '$sc_now', '$sc_now')");
                 $sc_new_id = mysqli_insert_id(db::$con);
                 respond(array('status' => 'success', 'id' => $sc_new_id, 'name' => $sc_name));
                 break;
@@ -10573,7 +13472,7 @@ switch ($action) {
                         custom_form_pages.form_name
                      FROM page
                      LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id
-                     WHERE page.page_type = 'custom form'
+                     WHERE " . pg_form_page_sql('page') . "
                      ORDER BY custom_form_pages.form_name ASC, page.page_name ASC"
                 );
                 respond(array('status' => 'success', 'forms' => $sc_form_rows));
@@ -10673,8 +13572,8 @@ switch ($action) {
                     foreach ($sc_cl_civ_ids as $sc_cl_r) {
                         $sc_cl_cid = (int)$sc_cl_r['id'];
                         if ($sc_cl_cid <= 0) continue;
-                        $sc_cl_likes[] = "style.style_tree_json LIKE '%\"sharedId\":" . $sc_cl_cid . ",%'"
-                                       . " OR style.style_tree_json LIKE '%\"sharedId\":" . $sc_cl_cid . "}%'";
+                        $sc_cl_likes[] = pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sc_cl_cid . ",%'"
+                                       . " OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sc_cl_cid . "}%'";
                     }
                     if (!empty($sc_cl_likes)) {
                         $sc_cl_where = '(' . implode(' OR ', $sc_cl_likes) . ')';
@@ -10737,8 +13636,8 @@ switch ($action) {
                     foreach ($sc_cd_civ_ids as $sc_cd_r) {
                         $sc_cd_cid = (int)$sc_cd_r['id'];
                         if ($sc_cd_cid <= 0) continue;
-                        $sc_cd_likes[] = "style.style_tree_json LIKE '%\"sharedId\":" . $sc_cd_cid . ",%'"
-                                       . " OR style.style_tree_json LIKE '%\"sharedId\":" . $sc_cd_cid . "}%'";
+                        $sc_cd_likes[] = pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sc_cd_cid . ",%'"
+                                       . " OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sc_cd_cid . "}%'";
                     }
                     if (!empty($sc_cd_likes)) {
                         $sc_cd_where = '(' . implode(' OR ', $sc_cd_likes) . ')';
@@ -10803,8 +13702,8 @@ switch ($action) {
                     foreach ($sc_sc_ids as $sc_sc_r) {
                         $sc_sc_cid = (int)$sc_sc_r['id'];
                         if ($sc_sc_cid <= 0) continue;
-                        $sc_sc_likes[] = "style.style_tree_json LIKE '%\"sharedId\":" . $sc_sc_cid . ",%'"
-                                       . " OR style.style_tree_json LIKE '%\"sharedId\":" . $sc_sc_cid . "}%'";
+                        $sc_sc_likes[] = pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sc_sc_cid . ",%'"
+                                       . " OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sc_sc_cid . "}%'";
                     }
                     if (!empty($sc_sc_likes)) {
                         $sc_sc_where = '(' . implode(' OR ', $sc_sc_likes) . ')';
@@ -10937,7 +13836,7 @@ switch ($action) {
                 }
                 // Role-3 (contributor) must actually have access to the folder.
                 if ((int)$user['role'] === 3) {
-                    $df_acl = get_folders_that_user_has_access_to($user['user_id']);
+                    $df_acl = get_folders_that_user_has_access_to($user['id']);
                     if (!in_array($df_folder, $df_acl)) {
                         respond(array('status' => 'error', 'message' => lang('Permission denied.')));
                     }
@@ -10982,7 +13881,7 @@ switch ($action) {
                         '" . e($df_type) . "',
                         '" . (int)$df_size . "',
                         '" . (int)$df_design . "',
-                        '" . (int)$user['user_id'] . "',
+                        '" . (int)$user['id'] . "',
                         UNIX_TIMESTAMP()
                     )");
 
@@ -11048,7 +13947,7 @@ switch ($action) {
                 $df_row = mysqli_fetch_assoc($df_row_q);
                 // Role-3 (contributor) needs explicit access to the file's folder.
                 if ((int)$user['role'] === 3) {
-                    $df_acl = get_folders_that_user_has_access_to($user['user_id']);
+                    $df_acl = get_folders_that_user_has_access_to($user['id']);
                     if (!in_array($df_row['folder'], $df_acl)) {
                         respond(array('status' => 'error', 'message' => lang('Permission denied.')));
                     }
@@ -11253,6 +14152,19 @@ function pg_widget_row($properties)
 
     $small = !empty($properties['small']);
     $muted = !empty($properties['muted']);
+    $extra = $properties['class'] ?? '';
+
+    // Nested anchors do not parse: the moment the browser meets an inner <a>
+    // inside the row's own one it closes the row, and everything after that
+    // point -- the rest of the meta line, the arrow -- lands in the list as a
+    // sibling instead of inside the box. Log messages arrive with their URLs
+    // already linkified, so a row that is itself a link keeps the text and
+    // drops the inner tags. The row's own href is where it goes.
+    if ($href !== '') {
+        $name  = pg_strip_anchor_tags($name);
+        $aside = pg_strip_anchor_tags($aside);
+        $meta  = pg_strip_anchor_tags($meta);
+    }
 
     $output_aside  = ($aside !== '') ? '<span class="pg-row-aside text-muted">' . $aside . '</span>' : '';
     $output_meta   = ($meta !== '') ? '<span class="pg-row-meta d-block text-muted">' . $meta . '</span>' : '';
@@ -11265,7 +14177,8 @@ function pg_widget_row($properties)
 
     // A real link rather than an onclick handler, so the row is reachable by
     // keyboard and opens in a new tab on middle click like any other link.
-    $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' opacity-50' : '');
+    $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' opacity-50' : '')
+        . ($extra !== '' ? ' ' . $extra : '');
 
     if ($href !== '') {
         $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . '>';
@@ -11285,6 +14198,14 @@ function pg_widget_row($properties)
             ' . $output_meta . '
         </span>
         ' . $close;
+}
+
+// Removes <a> and </a> while leaving the text and any other markup -- an icon,
+// a <time>, a thumbnail -- untouched. Only the tags go, so nothing the caller
+// meant to show is lost.
+function pg_strip_anchor_tags($html)
+{
+    return preg_replace('#</?a\b[^>]*>#i', '', (string) $html);
 }
 
 // White or near-black, whichever reads better on the given background. Mid-tone
@@ -11357,7 +14278,14 @@ function validate_token()
     // If the user passed a username and password in this request
     // and did not login via a session, then token validation is not
     // necessary, so return true.
-    if (defined('API_USERNAME')) {
+    //
+    // API_AUTHENTICATED, not API_USERNAME: the first says the password was
+    // checked and was right, the second only says one was sent. A page on
+    // another site can make a visitor's browser post whatever body it likes,
+    // and while this read the second of the two, adding a made up user name to
+    // that body was enough to have the token waived - on a request that still
+    // arrived with the visitor's own cookies.
+    if (defined('API_AUTHENTICATED')) {
         return true;
     }
 

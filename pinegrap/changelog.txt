@@ -19,42 +19,1610 @@
 
 
 
-  2026.4.3
+  2026.4.4
   ==========================================================
 
-  [YENİ] Arama Motorlarına Kapat. Sayfa ekranındaki (ve
-         Görsel Editör'ün sayfa ayarları panelindeki) yeni
-         anahtar açıldığında o sayfa "noindex" etiketiyle
-         sunulur, robots.txt dosyasına engelleme satırı
-         eklenir ve sayfa site haritasından çıkarılır.
-         Sayfaya bağlı ürün, ürün grubu ve form adresleri de
-         site haritasından birlikte düşer. Başka bir sayfanın
-         içine widget olarak yerleştirdiğiniz liste
-         sayfaları ve site arama sayfası için düşünüldü:
-         bunlar zaten dizindeki içeriğin kopyasıdır ve arama
-         motorunun tarama bütçesini boşa harcar.
+  PANO
+  --------------------------------------------------------
 
-         Anahtarın altındaki ikinci anahtar bağlantıları da
-         kapatır ("nofollow"). Kapalı bırakırsanız sayfa
-         dizine girmez ama içindeki bağlantılar taranmaya
-         devam eder — blog listesi widget'ı için genellikle
-         istediğiniz budur. Bağlantılar zaten başka bir
-         sayfada da varsa açın.
+  [YENİ] Satış Haritası kartı. Tamamlanmış siparişleriniz
+         fatura adresine göre haritada renklenir: dünya
+         görünümünde ülkeler, ülke görünümünde o ülkenin
+         illeri. Yanındaki liste her iki görünümde de il /
+         eyalet düzeyinde sıralanır.
 
-         NOT robots.txt ile engellenen bir sayfa taranmaz,
-         dolayısıyla üzerindeki noindex etiketi de okunmaz.
-         Anahtarı sayfa arama sonuçlarına girmeden önce
-         kullanın; hâlihazırda listelenen bir sayfanın
-         sonuçlardan düşmesi zaman alabilir.
+         Kart, en çok sipariş aldığınız ülkenin haritasıyla
+         açılır; o ülke için harita yoksa dünya haritasıyla.
+         İkisi arasında, haritanın köşesindeki düğmeden tek
+         tıkla geçersiniz. Bir yerin üzerine gelince cirosu, sipariş
+         sayısı, toplam içindeki payı ve altındaki en büyük
+         yerler görünür; tıklayınca oranın siparişleri açılır.
+         Son 30 gün, son 12 ay ve tüm zamanlar arasında geçiş
+         var.
 
-  [DÜZELTME] Yeni sayfa eklenirken "Query failed" hatası.
-         Kayıt sorgusu, site aramasını kapalı tutan alana
-         sayı yerine boş metin yazıyordu. MySQL 5.7 ve
-         MariaDB 10.2'den beri varsayılan olan katı kip bunu
-         reddediyor ve sayfa hiç oluşturulamıyordu.
+         Kartı yönetici, tasarımcı ve müdürler görür; bunların
+         altındaki kullanıcılar için "Ticaret raporlarını
+         yönet" izni gerekir. Siparişleri yönetme izni tek
+         başına yetmez, çünkü kart mağazanın kazancını
+         gösterir. Sipariş listesine giden bağlantılar ise
+         yalnızca siparişleri yönetebilenlere çıkar.
 
-  [ŞEMA] Sayfa tablosuna iki alan eklendi (noindex,
-         nofollow). Yükseltme veritabanınıza dokunur.
+         NOT: Ülke içi harita şimdilik Türkiye için var; başka
+         ülkelerde kart dünya haritasını gösterir ve liste yine
+         il / eyalet kırılımını verir.
+
+  [DÜZELTME] Kartların "veri yok" görünümü ortaklaştı: ikon,
+         tek cümle, kartın ortasında. Bazı kartlarda mesajlar
+         üst üste biniyor ya da köşeye yapışıyordu.
+
+  [YENİ] Güvenlik Duvarı kartı, duvar kapalıyken bunu söylüyor
+         ve açma ayarına giden bir düğme veriyor.
+
+
+  DOSYA YÖNETİCİSİ
+  --------------------------------------------------------
+
+  [YENİ] Liste görünümünde sütunlar seçilebiliyor. Başlık
+         satırına sağ tıklayın ya da sağ tık > Görünüm >
+         Sütunlar: kullanmadığınız sütunların işaretini kaldırın,
+         liste sadece istediklerinizi çizsin. Dosya Yöneticisi ve
+         Katalog kendi listesini tutar; seçiminiz tarayıcınızda
+         saklanır. Bir şey gizlediyseniz menünün altında "Bütün
+         sütunları göster" çıkar.
+
+  [YENİ] Sol panelde "Son Gezilenler" ve "Sabitlenmiş". Son
+         gezdiğiniz beş klasör kendiliğinden listelenir; sık
+         çalıştığınız bir klasörü de sağ tıktan "Kenar çubuğuna
+         sabitle" ile üste alırsınız. Ağacın dört kat altındaki
+         bir klasöre her seferinde inmek yerine tek tık. İkisi de
+         boşken görünmez, yani listeyi kullanmayan için panel
+         eskisi gibi. Ürün gruplarında da çalışır, kendi
+         listesiyle. Bu tercihler kullandığınız tarayıcıda
+         saklanır.
+
+  [YENİ] "Nerede kullanılıyor?" Bir dosyayı seçin, önizleme
+         panelindeki düğmeye basın: o dosyaya işaret eden sayfa
+         bölgeleri, ortak ve dinamik bölgeler, sayfalar, stiller,
+         ortak bileşenler, ürünler, ürün grupları, reklamlar ve
+         paylaşım görseli / logo / uygulama simgesi ayarları
+         listelenir. Her satır gittiği ekrana bağlanır. Sağ tık
+         menüsünde de var. Silmeden önce neyin kırılacağını
+         görmenin yolu artık silip beklemek değil.
+
+  [YENİ] Toplu yeniden adlandırma. Birden fazla öğe seçip sağ
+         tıktan ya da seçim çubuğundan açın; üç kural var: bul ve
+         değiştir, başına/sonuna ekleme, ve sırayla numaralandırma
+         (foto-### → foto-001, foto-002...). Ne yazarsanız yazın
+         eski ad → yeni ad listesi anında altta görünür, yani
+         hiçbir şey yazılmadan önce sonucu görürsünüz.
+         Değişmeyecek satırlar soluk, iki satır aynı adı
+         isterse kırmızı işaretlenir ve o satırlar atlanır.
+         Dosya uzantısı varsayılan olarak korunur. Tamamı tek
+         "Geri Al" ile geri döner. Ürünler ve ürün gruplarında
+         da çalışır.
+
+  [YENİ] Hızlı süzgeçler. Arama kutusunun yanındaki sürgü
+         düğmesi, ekrandakileri ne olduklarına göre daraltır:
+         optimize edilmemiş görseller, 1 MB'tan büyük dosyalar,
+         açıklaması olmayanlar, tasarım dosyaları, site
+         haritasında olmayan sayfalar, SEO puanı 50'nin altında
+         olanlar, arşivlenmiş öğeler. Katalogda tükenen ürünler,
+         yayında olmayanlar, görseli ya da fiyatı olmayanlar ve
+         varyant setleri. Birden fazla süzgeç birlikte daraltır.
+         Açık süzgeçler araç çubuğunun altında yazar, kaç öğenin
+         kaçının göründüğünü söyler ve tek tıkla kaldırılır;
+         süzgeç yüzünden boşalan klasör "burası boş" demez,
+         süzgeçlere uymadığını söyler.
+
+  [YENİ] Izgara karolarının boyutu ayarlanabiliyor: küçük, orta,
+         büyük ve çok büyük. Sağ tık > Görünüm menüsünden, ya da
+         Ctrl basılıyken fare tekerleğiyle; Ctrl + artı / eksi de
+         çalışır, Ctrl + 0 ortaya döner. Seçtiğiniz boyut
+         tarayıcınızda hatırlanır.
+
+  [YENİ] Boşluk tuşuyla hızlı bakış. Seçili öğeye basın, tüm
+         ekranı kaplayan bir görünüm açılır: görsel, video, ses,
+         PDF ve sayfa önizlemesi. Sol ve sağ ok tuşları klasörde
+         yürür, Boşluk ya da Esc kapatır. Üstteki düğmelerden
+         adresi kopyalanır, düzenlenir, indirilir ya da yeni
+         sekmede açılır. Kapattığınızda baktığınız öğe seçili
+         kalır. Sağ tık menüsünde ve seçim çubuğunda da var.
+
+  [YENİ] Klavyeyle gezinme. Ok tuşlarıyla dosyalar arasında
+         dolaşırsınız; ızgarada yukarı ve aşağı bir satır atlar,
+         listede bir satır iner. Home ve End listenin başına ve
+         sonuna gider, Shift ile ok tuşu aradaki her şeyi seçer,
+         Ctrl + Boşluk üzerinde durduğunuzu seçime ekler ya da
+         çıkarır. Bir şeyin adını yazmaya başlayınca o satıra
+         atlanır — "kon" yazmak konferans ile başlayan ilk
+         dosyayı bulur, aynı harfe basmayı sürdürmek o harfle
+         başlayanlar arasında yürür. Türkçe harfler doğru
+         eşleşir.
+
+  [YENİ] Seçim yaptığınızda ekranın altındaki çubuk ne
+         yapabileceğinizi gösteriyor: aç, taşı, indir, sil ve
+         yanındaki ⋮ menüsünde geri kalanı — kopyala, kes,
+         adresi kopyala, zip'le, toplu düzenle, optimize et.
+         Şimdiye kadar bunların hepsi yalnızca sağ tık
+         menüsündeydi; dokunmatik ekranda uzun basmak
+         gerekiyordu. Katalogda aynı çubuk düzenle, yayına al /
+         yayından kaldır, gruba taşı ve dışa aktarı sunar. Dar
+         ekranda düğmeler yalnızca ikona iner.
+
+  [YENİ] "Taşı..." penceresi. Bir şeyi başka klasöre götürmek
+         için sürüklemek ya da kes / git / yapıştır yapmak
+         gerekmiyor: sağ tık menüsünden ya da seçim çubuğundan
+         "Taşı..." deyin, klasörlerin tamamı arama kutusuyla
+         birlikte listelensin, hedefi seçin. Katalogda aynı
+         pencere ürün gruplarını listeler ve iki şeyi ayrı ayrı
+         sorar: "Gruba taşı" ürünü gösterildiği gruptan çıkarır,
+         "Gruba ekle" ürünü bulunduğu gruplarda da bırakır.
+
+  [YENİ] Bir dosyanın ya da sayfanın adresi artık kopyalanıyor.
+         Sağ tıkta "Adresi kopyala" üç biçim sunar: tam
+         adres (tarayıcıya yapıştırmak için), site içi yol
+         (sayfa içeriğine yapıştırmak için, alan adı değişse de
+         çalışır) ve HTML olarak (görselde hazır <img> etiketi,
+         sayfada bağlantı etiketi). Önizleme panelinin üstüne de
+         adres kopyalama, indirme ve yeni sekmede açma düğmeleri
+         geldi. Katalogda "Adı kopyala" ürün kodunu verir.
+
+  [YENİ] Taşıma, yapıştırma ve silme sonrası çıkan bildirimde
+         "Geri Al" düğmesi var. Düğme, bildirimin söylediği
+         işlemi geri alır — arada başka bir şey yaptıysanız
+         o işlem yerinde kalır.
+
+  [YENİ] Dosya Yöneticisi. Klasörler, sayfalar ve dosyalar tek
+         ekranda, masaüstü dosya yöneticisi gibi: soldaki menüden
+         açılır ve klasik Klasörler ekranının yerini alır. Izgara
+         ve liste görünümü, klasör ağacı, sağ tık menüleri,
+         sürükle-bırak ile taşıma, kes / kopyala / yapıştır, F2
+         ile yeniden adlandırma, Ctrl+Z ile geri alma, klasörleri
+         içerikleriyle kopyalama ve bilgisayardan sürükleyip
+         bırakarak dosya ve klasör yükleme. Klasör ve öğe renkleri
+         erişim türünü gösterir (genel, misafir, kayıt, üyelik,
+         özel). Sol paneldeki "Dosyalar" ve "Resimler" sitedeki
+         her şeyi klasörden bağımsız tek listede toplar. Büyük
+         dosyalar parça parça diske yazılır, sunucunun belleğine
+         takılmaz; sınırı data/config.php içindeki
+         UPLOAD_MEMORY_CEILING ile açabilirsiniz. Klasik Dosyalar
+         ekranı, henüz taşınmamış araçları barındırdığı için ⋯
+         menüsündeki "Klasik görünümler" altında kalır.
+
+  [YENİ] Önizleme paneli: görsel, sayfa, PDF, video ve ses
+         önizlemesi ile ayrıntılar — sayfa stili, klasör
+         sıralaması, arşiv durumu. Sayfa karolarında SEO puanı
+         halkası; önizlemede tam SEO kontrol listesi, skoru
+         yenileme ve HTML denetleme. Aynı liste ürün ve ürün
+         gruplarında da açılır.
+
+  [YENİ] "Paylaşılanlar": belirli kullanıcılara açılmış üyelik ve
+         özel klasörleri tek ekranda toplayan sanal bir liste.
+         Klasör klasör, o klasöre erişimi olan kullanıcı adlarını,
+         rehberdeki kişi kayıtlarını, verilen yetkiyi (görüntüleme
+         / düzenleme) ve varsa süre bitiş tarihini gösterir;
+         süresi geçmiş yetkiler kırmızı işaretlenir. Sol panelin
+         altındaki kendi bölümünden açılır ve yalnızca yöneticiler
+         görür.
+
+  [YENİ] "Yedekler": sunucudaki site yedekleri Dosya
+         Yöneticisi'nden görülür. Yedek klasörleri diğer klasörler
+         gibi açılır, indirilir, yeniden adlandırılır, silinir ve
+         izinleri değiştirilebilir; "Sıkıştır ve indir" bir yedeği
+         tek adımda zip'leyip verir. Yeni yedek almak da buradan:
+         boş alana sağ tık > "Yedek Oluştur". Yalnızca yöneticiler
+         görür.
+
+  [YENİ] Zip sıkıştırma ve çıkartma Dosya Yöneticisi genelinde:
+         seçtiğiniz dosya ve klasörler (alt klasörleriyle
+         birlikte) tek bir zip dosyasına sıkıştırılır ve arşiv
+         oluşturulunca adı hemen düzenlemeye açılır. Zip dosyaları
+         da kendi adlarını taşıyan yeni bir klasöre çıkartılır.
+
+  [YENİ] Görsel araçları sağ tıkta, tekli ve toplu: optimize et,
+         "{N} piksele düşür ve optimize et" (ayarlı eşikten büyük
+         görsellerde, daha önce optimize edilmiş olsa bile
+         sunulur) ve WebP'ye dönüştürme. Dönüştürme, optimize
+         aracıyla aynı görüntü motorundan geçer (EXIF yönü,
+         saydamlık ve renk düzeltmeleri korunur); dosya adı .webp
+         uzantısını aldığından adres değişir ve onay penceresi
+         bunu açıkça söyler. Tasarımcılar ayrıca dosyaları tek tek
+         veya topluca tasarım dosyası olarak işaretleyip işareti
+         kaldırabilir.
+
+  [YENİ] Geri Dönüşüm Kutusu. Dosya Yöneticisi'nden silinen
+         klasör, sayfa ve dosyalar ile Ürün Grupları ekranından
+         silinen gruplar ve ürünler doğrudan yok olmaz; kutuda
+         bekler, tek tıkla eski yerine ve eski yayın durumuna
+         geri yüklenir ya da kalıcı olarak silinir. Belirlenen
+         süre sonunda (varsayılan 30 gün, Ayarlar'dan)
+         kendiliğinden temizlenir; her satırda kaç günü kaldığı
+         yazar. Alt grubu olan bir grup, klasör gibi, altındaki
+         her şeyle birlikte gider ve birlikte döner. Kutudaki bir
+         öğe adını rehin tutmaz; ad bu arada kapılmışsa geri
+         yüklenen öğenin adına numara eki gelir. Gönderilmiş form
+         içeren sayfalar güvenlik gereği kalıcı silinmez. Kutu
+         yalnızca Dosya Yöneticisi'nde görünür.
+
+  GÖRSEL SAYFA EDİTÖRÜ
+  --------------------------------------------------------
+
+  [YENİ] Görsel Tasarımcı artık birden fazla sayfayı aynı
+         ekranda, sekmeler hâlinde düzenliyor. Bir tasarım
+         tek bir stil dosyaları / betikler / yazı tipleri /
+         tema seti taşıyor; içindeki her sayfa kendi düzenine
+         sahip. Üstteki sekme çubuğundan sayfalar arasında
+         geçiş yapılır; "Sayfa Ekle" ile yeni sayfa açılır
+         ya da mevcut bir görsel tasarımcı sayfası bu
+         tasarıma katılır. Ayarlar penceresi "Tüm sayfalarda
+         ortak" ve "Sadece bu sayfa" olarak ikiye ayrıldı;
+         sayfa bölümü hangi sayfayı düzenlediğinizi başlıkta
+         söyler.
+
+  [YENİ] Bir tasarım sayfası her yerden çoğaltılabiliyor: sekme
+         menüsündeki "Çoğalt", Dosya Yöneticisi ve düzenleme
+         panelindeki "Sayfayı Çoğalt". Kopya sayfanın düzenini
+         olduğu gibi alır ve aynı tasarımın yeni bir sayfası
+         olur; Dosya Yöneticisi'nden ya da panelden
+         çoğalttığınızda editör kopyanın sekmesinde açılır.
+         Bir klasörü çoğaltmak da içindeki tasarım sayfalarını
+         düzenleriyle birlikte kopyalar.
+
+  [YENİ] Görsel Sayfa Editörü'nün kendi ana ekranı var
+         (menüde "Görsel Sayfa Editörü"): Yeni Oluştur,
+         HTML / ZIP İçe Aktar, Şablondan Seç (yakında) ve
+         Tasarımlar tablosu (standart liste: arama,
+         sıralama, satırda Düzenle / Sil — Sil tasarımı
+         kaldırır, sayfalarını Geri Dönüşüm Kutusuna
+         taşır). Editörden çıkış ve silme buraya döner;
+         tasarımın son sayfası da
+         silinebilir (tasarım boş kalır, listede öyle görünür,
+         araç çubuğundan silinir). Sayfa Stilleri listesi
+         artık yalnız HTML şablon stillerini gösterir; "Ekle"
+         doğrudan özel stil ekranına gider. add_style.php
+         kaldırılacak olarak işaretlendi (özel stile
+         yönlendirir).
+
+  [YENİ] Görsel Tasarımcı'daki üyelik widget'ları gerçek
+         akışa bağlandı: Giriş Formu, Şifremi Unuttum, Üye
+         Kaydı ve Üyelik Aktivasyonu artık siteye giriş, parola
+         sıfırlama, kayıt ve üyelik etkinleştirme yapan gerçek
+         formlar. Formlar sitenin kendi giriş / sıfırlama /
+         kayıt işleyicilerine gönderilir; hata ve bildirimler
+         widget'ın içindeki PHP Mesajları alanında çıkar.
+         Site ayarlarına uyarlar: güçlü parola açıksa kurallar
+         formda yazar, CAPTCHA açıksa soru çıkar, Beni Hatırla /
+         Şifremi Unuttum / parola ipucu kapalıysa o kontroller
+         hiç çizilmez; Google ile Giriş açıksa giriş, kayıt ve
+         üyelik formlarına Google düğmesi konabilir. Kayıt ve
+         üyelik formuna eklediğiniz ek alanlar (telefon, şirket,
+         adres…) Seçenekler → Üyelik Alanı → Rehber bağlantısı
+         ile bir rehber sütununa bağlanır ve yeni üyenin rehber
+         kaydına yazılır; yeni üyenin gireceği rehber grubu da
+         widget ayarından seçilir. Tasarımcı, kapalı bir ayara
+         bağlı kontrolü tuvalde soluk ve "Kapalı" rozetiyle
+         gösterir. Özel form ayarlarına da "Rehber grubu"
+         seçici eklendi.
+
+  [YENİ] Alışveriş Sepeti widget'ında düzenli ödemeli ürünün
+         ödeme planı. Ürün "ödeme planını müşteri
+         değiştirebilir" ise sepet satırının altında Ödeme Planı
+         kutusu çıkar: periyot, ödeme sayısı ve başlangıç
+         tarihi; Güncelle ile kaydedilir, geçmiş tarih ya da
+         geçersiz sayı satırın kendi mesaj alanında reddedilir.
+         Müşterinin değiştiremediği düzenli ürün, ürün
+         kartındaki planla sepete girer ve ödeme adımına bu
+         planla ulaşır. Tasarımcıda satır için yeni belirteçler:
+         ilk tahsilat tarihi, plan düzenlenebilir mi, plan
+         kutusu (konmazsa satırın sonuna eklenir).
+
+  [YENİ] Görsel Tasarımcı'da artık aynı anda iki kişi
+         çalışabilir. Aynı tasarımı açan diğer kullanıcıların
+         avatarı araç çubuğunda görünür; üzerine gelince kim
+         olduğunu, hangi sayfada olduğunu ve düzenliyor mu
+         yoksa bakıyor mu olduğunu söyler. Sohbet açıksa
+         avatara tıklayıp o kişiyle konuşabilirsiniz.
+
+  [YENİ] Bir sayfayı aynı anda yalnız bir kişi düzenler.
+         Sayfayı ikinci açan kişi görüntüleme moduna girer:
+         tuval salt-okunur olur, Kaydet kapanır ve üstte
+         sayfayı kimin düzenlediğini yazan bir şerit çıkar.
+         İlk kişi başka bir sayfaya geçtiğinde sayfa serbest
+         kalır. Bu koruma sunucuda da uygulanır — kilitli bir
+         sayfa, kaydet düğmesine ulaşan bir istekle bile
+         üzerine yazılamaz.
+
+  [YENİ] Görsel Sayfa Editöründe özel form: ayrı bir "alan listesi"
+         yok. Widget'ın içine koyduğunuz her kontrol — metin, e-posta,
+         açılır liste, onay kutusu, radyo grubu, tarih, dosya, gizli
+         alan — o formun bir alanıdır. Alanın tanımı kontrolün
+         kendisinden okunur: adı `name`, tipi kontrolün türü,
+         zorunluluğu `required`, etiketi yanındaki etiket (grupta
+         `<legend>`), seçenekleri `<option>`'ları ya da gruptaki
+         kutular. Kontrol seçiliyken "Form Alanı" panelinde ise
+         markup'ın söyleyemediği şeyler: form etiketi, alan adı,
+         zorunlu, rehber bağlantısı, RSS / liste rolü, ziyaretçiden
+         gizle, biçim kuralı ve uymazsa gösterilecek mesaj, dosya
+         için yükleme klasörü. Tip seçimi, veri bağlama listesinden
+         alan seçme ve "gönder düğmesi etiketi" ayarı kaldırıldı —
+         düğmenin metni düğmenin üstünde yazılır.
+
+  [YENİ] Görsel Tasarımcı artık yalnız yöneticilere ve
+         tasarımcılara açık değil. İçerik düzenleme hakkı olan
+         yönetici (manager) ve kullanıcılar da sayfayı açıp
+         **metinleri** değiştirebiliyor.
+
+  DÜZENLEME ÇUBUĞU
+  --------------------------------------------------------
+
+  [YENİ] Sayfa bilgileri artık SEO halkasına tıklayınca açılan
+         panelde. Sayfanın adı panelin başında, altında erişim
+         türü, sayfa türü, kısa bağlantı, sonraki sayfa,
+         aranabilirlik ve anahtar kelimeler, yorum ayarı ve
+         moderatör, RSS durumu, sayfa stili ve site haritası
+         durumu — hepsi tek listede, SEO skorunun hemen üstünde.
+
+  [YENİ] Aynı panelde, bilgilerin hemen altında iki düğme:
+         "Sayfa Özelliklerini Düzenle" ve "Sayfayı Çoğalt".
+         Adları yazıyor — hangi ikonun ne yaptığını hatırlamak
+         gerekmiyor. Görsel Sayfa Editörüyle yapılmış bir sayfada
+         ilk düğme "Sayfayı Düzenle" olur ve editörü açar: o
+         sayfanın ayarları da editörün kendi panelinde. Çoğaltma
+         düğmesi yalnız sayfa oluşturma yetkisi olan kullanıcıya
+         görünür.
+
+  [YENİ] Çubuktaki sayfa adına tıklayınca o sayfanın düzenleme
+         ekranı açılıyor: Görsel Sayfa Editörüyle yapılmış
+         sayfalarda editör, diğerlerinde sayfa özellikleri.
+         Üzerine gelince adın altı çiziliyor. Sayfayı
+         düzenleyemeyen bir kullanıcıda (örneğin yalnız takvim
+         yöneten biri) ad bağlantı olmaz.
+
+  [YENİ] Tasarım araçları da aynı panelde, "TASARIM" başlığı
+         altında: Sayfa Tasarımcısını Aç, Sayfa Stilini Düzenle,
+         Sayfa Stillerini ve Temalarını Önizleme ve (mobil
+         açıksa) Mobil/Masaüstü modu. Hepsinin adı yazıyor.
+
+  [YENİ] Stil ve tema önizlemesi açıkken iki seçim kutusu
+         panelin en başına, sayfa adının hemen altına geliyor:
+         stil listesi + "ayarla", tema listesi + "temayı
+         düzenle", altında "Önizlemeyi Kapat". Önizlemedeyken
+         aradığınız şey bu olduğu için en üstte duruyor.
+
+  [YENİ] Aynı panel düzenleme çubuğunun sağ kenarında da açılıyor
+         — başlığın altından ekranın dibine kadar, içeriği
+         halkadan açılanla birebir aynı. Çubuktaki kopyada
+         kapatma düğmesi yok; yerine bir görünüm düğmesi var
+         (aşağıya bakın). Çubuğun rengini alır ve köşesi çubuğa
+         doğru kıvrılır, iki yüzey tek parça okunur; çubuktan
+         açılan sol menü, arama, bildirimler ve hesap menüsü
+         panelin üstüne iner.
+
+  [YENİ] Çubuk artık başlığın hemen altına oturan, tek sıra
+         ikonlu bir düğme şeridiyle açılıyor; panel onun
+         genişlemiş hâli. Sayfa eylemleri ve tasarım araçları
+         panelde olduğu sırada, her biri bir ikon; üzerine
+         gelince adı yazar. Şeridin sağ ucundaki SEO skoruna
+         tıklayınca panel açılır, panelin başlığındaki çift ok
+         da şeride geri döner. Hangisini seçtiyseniz bir sonraki
+         açılışta o gelir — düzenlediğiniz sayfanın üçte birini
+         kaplayan bir sütun, düğme arayana sorulmadan
+         gösterilecek bir şey değil.
+
+         NOT: Stil ve tema önizlemesi açıkken şerit görünmez —
+         oradaki iki seçim kutusu tek sıraya sığmıyor ve
+         önizlemedeyken aradığınız şey tam olarak onlar.
+         Önizlemeyi kapattığınızda şerit geri gelir.
+
+  [YENİ] Panel ekranlarındaki geniş arama kutusu artık düzenleme
+         çubuğunun başlığında da var — ortada, Ctrl+K rozetiyle.
+         Eskiden yalnız sağdaki büyüteç vardı: çubuğun düğmeleri
+         başlığın ortasını kapladığı için alan daralıp sola
+         kayıyordu. Düğmeler panele taşındı, orta boşaldı.
+         (Geniş ekranlarda; dar ekranda yine sağdaki büyüteç.)
+
+  [DÜZELTME] Düzenleme çubuğundan yapılan aramada bir sonuca ya
+         da kısayola tıklayınca ekran çubuğun içinde değil, asıl
+         pencerede açılıyor. Eskiden elli piksellik şeridin
+         içine bir panel ekranının tamamı yükleniyor, o ekran
+         da kendi çubuğunu içeri taşıyordu. Panel ve şerit düğmeleri,
+         sayfa bilgilerindeki bağlantılar ve önizleme seçicileri
+         de aynı kurala uyar.
+
+  [YENİ] Çubuktaki aramadan bir ayar kısayoluna tıklarsanız panoya
+         gidilir ve site ayarları orada, seçtiğiniz başlıkta
+         açılır. Ayarlar bir kutu ve o kutunun düzenleme çubuğunda
+         açılacak yeri yok.
+
+  [YENİ] Panel Ctrl+I ile açılıp kapanıyor. Çubuğu açmadan,
+         doğrudan.
+
+  [YENİ] Panel açık/koyu temayı takip ediyor. Panelde hangi
+         temayı seçtiyseniz panel de onunla açılıyor; seçim
+         yapmadıysanız işletim sisteminizin tercihiyle.
+
+  [YENİ] Panelde sayfanın son 30 gündeki görüntülenme sayısı ve
+         son düzenleyeni (kim, ne zaman) yazıyor. Yorum onayı
+         bekleyen sayfada kaç yorumun beklediği de görünür ve
+         tıklayınca yorum ekranı açılır.
+
+  [YENİ] Kısa bağlantı panelden yönetiliyor. Sayfanın kısa
+         bağlantısı varsa adı yazıyor; tıklayınca Dosya
+         Yöneticisi'ndeki kısa bağlantı penceresi o bağlantının
+         üstünde açılıyor. "Kısa Bağlantı Oluştur" düğmesi de
+         aynı pencereyi hedef o sayfa seçili hâlde açıyor —
+         hedefi elle seçmeniz gerekmiyor.
+
+  [DÜZELTME] Yuvarlak düğmeleri gizlediğinizde gizli kalıyorlar.
+         Altmış saniye sonra kendiliğinden geri geliyorlardı.
+
+  [DÜZELTME] Çubuğu açık bıraktığınızda öbür sayfalarda da açık
+         geliyor. Bu tercih zaten kaydediliyordu ama yalnızca
+         tema önizlemesi açıkken okunuyordu.
+
+  NOT    Düzenleme çubuğundaki düğmelerin tamamı kaldırıldı ve
+         panele taşındı; çubuk artık sayfa adını, aramayı,
+         bildirimleri ve hesap menüsünü taşıyor. Sayfa adına
+         tıklayınca o sayfanın düzenleme ekranı açılır, geri
+         kalan her şey paneldedir — ister SEO halkasından, ister
+         çubuğun kendi sağ kenarından. Ctrl+G (Sayfa Tasarımcısı)
+         ve Ctrl+E (düzenleme modu) kısayolları aynen çalışmaya
+         devam eder.
+
+  E-TİCARET: KAMPANYALAR
+  --------------------------------------------------------
+
+  [YENİ] Teklifler tek ekranda kuruluyor. Bir kampanya
+         tanımlamak için artık üç ayrı ekran (Teklifler, Teklif
+         Kuralları, Teklif Hareketleri) dolaşmak gerekmiyor:
+         teklif, koşulu ve sonucu numaralı adımlar hâlinde tek
+         ekranda — Teklif → Eğer → O Zaman → Seçenekler. Koşul ve
+         sonuçlar "+ Koşul ekle" / "+ Sonuç ekle" menüsünden
+         eklenen satırlar; kurala ya da sonuca ad vermek
+         gerekmiyor, adlarını yazılım kendisi üretiyor. Ekranın
+         üstünde teklif tek cümle hâlinde okunuyor ("TESTKOD
+         kodunu girince · sepet ₺100 üzerindeyse → kargo
+         ücretsiz"), eksik bir şey varsa Kaydet düğmesi kaç eksik
+         kaldığını söylüyor. Yeni teklifte dört hızlı başlangıç
+         seçeneği var: kodla indirim, tutar üstü ücretsiz kargo,
+         al-götür hediye, üründe indirim.
+
+  [YENİ] Teklif şablonları on dörde çıktı. Yeni koşulların hepsi
+         için hazır bir başlangıç var: kademeli sepet indirimi,
+         2 al en ucuzu bedava, gruptan 3 al en ucuzu bedava, dolu
+         sepete ücretsiz kargo, tek kullanımlık kod ve ilk
+         siparişlere özel. "Hoş geldin indirimi" artık kişi başı
+         bir kez sınırıyla geliyor — iki kez alınabilen hoş geldin
+         indirimi hoş geldin indirimi değildir.
+
+  [YENİ] [ŞEMA] Sipariş indirimi kademeli olabiliyor. "Siparişe
+         indirim" satırındaki tek oran / kademeli düğmesiyle bir
+         merdiven kuruyorsunuz: ₺100+ → %5, ₺250+ → %10, ₺500+ →
+         %20. Sepetin ulaştığı en yüksek kademe uygulanır ve sepet
+         değiştikçe kademe kendiliğinden değişir. Hediye ürün ya da
+         ürün indirimi sepeti düşürürse indirim, düşen tutara göre
+         yeniden hesaplanır. Merdiven teklife ait olduğu için
+         paylaşılan bir hareket satırını kirletmez; hareket satırı
+         ilk kademenin oranını taşır, böylece yükseltmeyi koşmamış
+         bir kurulum da indirim yapar — en düşük orandan, asla daha
+         yükseğinden.
+
+  [YENİ] [ŞEMA] "Ürüne indirim" sonucu artık bir ürün grubunu da
+         hedefleyebiliyor. Satırdaki ürün / grup düğmesiyle seçin:
+         "Ofis Sandalyesi grubundaki her üründe %15". Kampanyaya
+         her ürün için ayrı satır açmak gerekmiyor, gruba sonradan
+         eklenen ürün de indirimli oluyor. Kataloğ listesinde üstü
+         çizili fiyat, sepette indirimli satır, sepetteki
+         "Uygulanan Teklif" listesi — hepsi tek ürün seçilmiş gibi
+         çalışıyor.
+
+  [YENİ] [ŞEMA] Teklife "müşteri yeniyse" koşulu eklendi. EĞER
+         adımındaki "Koşul ekle" menüsünde yeni bir satır: müşteri
+         hiç sipariş vermemişse, son N gün içinde kaydolmuşsa ya da
+         ikisi birden. Hoş geldin indirimini artık kod dağıtmadan
+         kurabiliyorsunuz. Hesabı olmayan ziyaretçi "hiç sipariş
+         vermemiş" sayılır; "yakın zamanda kaydolmuş" ise kayıt
+         tarihi bilinmeyen eski hesaplarda geçmez, yani teklif
+         yanlışlıkla herkese açılmaz. İptal edilmiş ya da
+         tamamlanmamış siparişler müşterinin "yeni" durumunu
+         bozmaz.
+
+  E-TİCARET: ÜRÜNLER VE KATALOG
+  --------------------------------------------------------
+
+  [YENİ] Fiyat, stok ve kısa açıklama listede düzenleniyor.
+         Katalog Yöneticisi'nin liste görünümünde bu üç değere
+         çift tıklayın, yerinde değiştirin, Enter'a basın — ürün
+         ekranını açmanız gerekmiyor. Değiştirilebilen hücreler
+         üzerine gelince kalem işaretiyle belli olur; sağ tık
+         menüsünde "Burada düzenle" olarak da var. Yanlış
+         yazdığınızda bildirimdeki "Geri Al" düğmesi eski değere
+         döndürür. Stok takibi kapalı bir üründe miktar
+         istenmez, bunu söyler; fiyat eksi olamaz, sıfır olabilir
+         (bağış ve hesap ödemesi gibi ürünler için). Kısa
+         açıklaması olmayan ürünün satırında tire görünür, yani
+         eksik olduğu listeden belli olur. Ürünün adresi
+         değişmez: yayındaki bağlantılar kırılmaz.
+
+  [YENİ] [ŞEMA] Ürün başına vergi oranı. Şimdiye kadar oran vergi bölgesine
+         bağlıydı: bir bölge, bir oran. KDV böyle çalışmıyor — aynı sepette %20,
+         %10 ve %1 yan yana durabilir. Artık her ürün kendi oranını taşıyabiliyor;
+         ürün ekranında "Vergiye Tabi" anahtarının altından giriliyor, birden çok
+         ürün için Seçilenleri Değiştir ekranından topluca ayarlanabiliyor.
+         Boş bırakılan ürün eskisi gibi davranıyor: teslimat adresinin vergi
+         bölgesi karar veriyor. Bölge hâlâ verginin alınıp alınmayacağına karar
+         veriyor, yani vergi bölgesi dışına yapılan satış oran ne olursa olsun
+         vergisiz kalıyor. Yükseltme mevcut ürünlerin hiçbirini değiştirmiyor.
+
+  [YENİ] Ürün Grupları ekranı, Dosya Yöneticisi'nin arayüzüne
+         taşındı: solda katalog ağacı, sağda önizleme, üstte arama
+         ve sıralama; sürükle-bırak, kes / kopyala / yapıştır, F2,
+         Delete ve Ctrl+Z burada da çalışır. Sol menüdeki "Tüm
+         Ürünler" ve "Tüm Varyant Setleri" tek listede gösterir ve
+         ikisinden de yeni ürün eklenebilir. Stoku bitmiş ürünler
+         köşedeki kırmızı noktayla, içinde bulundukları gruplar da
+         aynı noktayla işaretlenir. Sitede görünen ad olan Kısa
+         Açıklama listede ve aramada ikinci satırdadır. Grup ve
+         ürünler ekran açmadan, sağ tıktan yayına alınıp
+         kaldırılabilir. Ürünleri dışa aktarmak için artık Ürünler
+         ekranına gitmek gerekmiyor: üst çubuktaki menü bütün
+         kataloğu, sağ tıktaki "Seçilileri dışa aktar" seçtiğinizi
+         verir. Ticaret yetkisi verilen temel kullanıcılar bu
+         ekranı açabilir; yetkiler ekranın sağ üst menüsündeki
+         Ticaret Yönetim Hakları panelinden de verilebilir.
+
+  [YENİ] Excel içe aktarma. Ürünleri İçe Aktar kutusu .xlsx, .xls
+         ve .ods dosyalarını da kabul eder. Dosya, içe aktarıcının
+         yıllardır okuduğu biçime çevrilip öyle verilir; sütun
+         listesi, eşleştirme ve "mevcut ürünleri güncelle"
+         davranışı değişmedi. Tarih biçimli hücreler tarihe,
+         formüller sonuçlarına döner.
+
+  [YENİ] Görsel boyut tavanları. Ürün fotoğrafları yüklemede
+         otomatik optimize edilir ve ayarlanan tavana (varsayılan
+         2400 piksel) küçültülür; Google'ın ürün görselleri için
+         duyurduğu alt sınır gözetilir. Kütüphanedeki dosyalar
+         için küçültme dosya başına isteğe bağlıdır: eşikten
+         (varsayılan 2560 piksel) büyük görsellerde "piksele düşür
+         ve optimize et" düğmesi sunulur ve görseli hedefe
+         (varsayılan 1920 piksel) indirir. Yeniden boyutlandırma
+         kalitesi ayrı bir ayardır; düz optimize düğmesi eski
+         davranışını korur ve mevcut dosyalara düğmeye
+         basılmadıkça dokunulmaz.
+
+  PAZARYERLERİ
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Pazaryeri eşitlemesi geldi; ilk pazaryeri n11. Site
+         Ayarları > Pazaryerleri'nden mağaza hesabınızı bağlar, ürünlerinizi
+         oradaki stok kodlarıyla eşleştirir ve buradaki stok ile fiyat
+         değişikliklerinin oraya kendiliğinden gitmesini sağlarsınız.
+
+  [YENİ] [ŞEMA] Ürünlerinizi buradan pazaryerinde açabiliyorsunuz. Bir ürünün
+         pazaryeri kategorisini bir kez seçer, o kategorinin istediklerini
+         yanıtlarsınız; varyantlar tek ilanın seçenekleri olarak gider.
+         Renk gibi varyantı ayırt eden özellikler ürünlerinizin kendi
+         seçeneklerinden okunur, sizden istenmez.
+
+  [YENİ] [ŞEMA] Pazaryerinde satılan siparişler mağazanıza geliyor. n11'den
+         gelen sipariş, siparişler listenizde web siparişlerinizin yanında
+         çıkar; müşteri bilgisi, adresi ve kalemleriyle birlikte. Stok
+         kendiliğinden düşer ve düşen stok ürünün listelendiği bütün
+         pazaryerlerine geri gönderilir.
+
+  [YENİ] Stok ve fiyat, siz beklemeden gönderiliyor. Sipariş kaydetmek,
+         barkod okutmak veya toplu düzenleme yapmak pazaryerinin sunucusunu
+         beklemez: değişiklik kuyruğa yazılır, zamanlanmış görev partiler
+         hâlinde gönderir. Bir ürünün art arda değişmesi tek gönderim olur.
+
+  [YENİ] Ne gittiğini ve neyin geçmediğini görebiliyorsunuz. Pazaryerleri
+         ekranı hangi ürünün ne zaman gönderildiğini, hangisinin hangi
+         gerekçeyle reddedildiğini gösterir; reddedilenler düzeltildikten
+         sonra tek düğmeyle yeniden denenir.
+
+  DIŞ API
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Dış dünya erişimi baştan kuruldu. Sitenize dışarıdan bağlanan
+         yazılımlar (pazaryeri entegrasyonu, muhasebe, kendi araçlarınız) artık
+         integration.php adresi üzerinden çalışıyor. Her uygulamanın kendi
+         anahtarı ve gizli anahtarı var; hangi bilgiye erişebileceğini
+         (ürünler, stok, siparişler, müşteriler) tek tek seçiyorsunuz.
+         Gizli anahtar yalnızca üretildiği anda bir kez gösterilir, sonra
+         yalnız son dört hanesi görünür; anahtarı yenilerken eskisi bir süre
+         daha çalıştığı için entegrasyonunuz kesintiye uğramaz. Uygulama
+         bazında IP kısıtı, son kullanma tarihi ve dakikalık istek sınırı
+         koyabilir, her isteğin kaydını görebilirsiniz.
+
+  [YENİ] Dış sistemler artık API üzerinden ürün ekleyebiliyor. Pazaryeri
+         bağlantısı bir ürünü, varyant niteliklerini ve grubunu tek çağrıda
+         oluşturur; kullanılmakta olan bir ürün kodu gönderilirse ürün
+         sessizce başka bir adla kaydedilmez, çakışma bildirilir.
+
+  [YENİ] Varyantlı ürünler dışarıya olduğu gibi görünüyor. Katalogda aynı ürünün
+         her rengi, her bedeni ayrı bir satır; onları bir arada tutan şey ürün
+         grubu. API şimdiye kadar yalnız satırları veriyordu, yani bir pazaryeri
+         "dört tutarlı tek bir hediye kartı" yerine birbiriyle ilgisiz dört ürün
+         görüyordu. Artık her ürün hangi seçimlerin karşılığı olduğunu (Renk:
+         Yeşil gibi) ve hangi gruplara ait olduğunu söylüyor; ürün grupları da
+         kendi uçlarından okunabiliyor. Böylece pazaryerine dört ilan yerine tek
+         ilan, altında dört seçenekle gidebiliyor.
+
+  [YENİ] Olay bildirimi (webhook). Bir entegrasyon artık "yeni bir şey var mı"
+         diye sürekli sormak yerine, olduğu anda haber alabiliyor: sipariş
+         geldiğinde, iptal edildiğinde, stok değiştiğinde belirlediği adrese
+         imzalı bir çağrı gidiyor. Gönderim kuyruktan yapılıyor — alıcının
+         sunucusu yavaşsa müşterinin ödeme ekranı beklemiyor. Ulaşılamayan
+         adres artan aralıklarla altı kez deneniyor, sonra abonelik "sorunlu"
+         işaretleniyor ki sessizce kaybolmasın.
+         Zamanlanmış görevlerden "Webhook gönderimi"ni açmayı unutmayın.
+
+  VERGİ HESABI
+  --------------------------------------------------------
+
+  [DÜZELTME] [ŞEMA] KDV artık satırın tamamı üzerinden hesaplanıyor. Ödeme
+         adımı KDV'yi birim fiyattan hesaplayıp adetle çarpıyordu; sepet
+         özeti, Paraşüt ve e-belge biçimi ise satır toplamından. İki yöntem
+         adet 1'de aynı sonucu verir, adet 2 ve üzerinde 1–3 kuruş ayrışır —
+         bu yüzden faturanın toplamı tahsil edilen tutara tam oturmuyordu.
+         Dördün üçü zaten satır tabanında olduğu için ödeme adımı onlara
+         hizalandı.
+
+         Sepette görünen tutarla ödemede hesaplanan tutarın ayrışmasından
+         kaynaklanan "tutar değişti" reddi de böylece ortadan kalkıyor.
+
+         Mevcut siparişleriniz değişmez: yükseltme eski satırların vergisini
+         olduğu gibi taşır, sipariş toplamları aynı kalır. Adet 1 olan
+         satırlarda hiçbir şey değişmez; yeni siparişlerde çok adetli
+         satırlarda kuruş düzeyinde fark görebilirsiniz — doğru olan yeni
+         hesaptır.
+
+  [DÜZELTME] PayPal Express'e satır bazlı vergi gönderilmiyor. O alan birim
+         vergi istiyor, satır tutarı ise her zaman tam birimlere bölünemiyor;
+         siparişin vergisi zaten ödeme düzeyinde gönderiliyor.
+
+  ERP (ÖN MUHASEBE)
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] ERP (ön muhasebe) modülü geldi. Ayarlar → E-Ticaret → ERP'den
+         açtığınızda panele yeni bir menü grubu ekleniyor: cari hesaplar,
+         faturalar, irsaliyeler ve kasa/banka. Modül kapalıyken siteniz
+         bugünküyle birebir aynı çalışır.
+
+  [YENİ] Cari hesaplar. Müşteri ve tedarikçi tek listede, çünkü çoğu firma
+         ikisi birden olur ve iki liste tutan dükkân onları ömür boyu elle
+         karşılaştırır. Her hesabın ekstresi var: yürüyen bakiyesiyle, hangi
+         rakamın nereden geldiği görünecek şekilde. Açılış bakiyesi de bir
+         hareket olarak yazılır, bakiyeye sessizce eklenmez.
+
+  [YENİ] Kasa ve banka. Kasa, banka hesabı ve POS cihazı açabilir; tahsilat,
+         ödeme ve virman girebilirsiniz. Tahsilat tek bir işlemdir: kasa
+         artarken müşterinin borcu aynı anda azalır. Biri olup diğeri olmazsa
+         hiçbiri olmaz — yarım kalmış bir tahsilat, kendi defteriyle çelişen
+         bir bakiye demektir.
+
+         İçinde hareket olan bir kasa silinemez; pasife alınır. Bakiyesi o
+         hareketlerden oluşuyor ve başka kayıtlar onlara bakıyor.
+
+  [YENİ] Siparişten fatura kesme. Fatura rakamlarını siparişten alır, yeniden
+         hesaplamaz. Kargo ve ek ücret birer kalem olur; sipariş indirimi
+         indirdiği kalemlere dağıtılır ve KDV, indirimden sonra kalan matrah
+         üzerinden yazılır. Fatura toplamı siparişten tahsil edilenle
+         tutmuyorsa belge oluşturulmaz ve numara harcanmaz: seride açıklanamayan
+         bir boşluk, yanlış bir faturadan daha uzun ömürlü bir sorundur.
+
+         Modül kapalı olsa da tablolar kuruluyor. Şemayı bir anahtara bağlamak,
+         sonradan açan siteyi sürüm numarasının söylediğinden farklı bir şemaya
+         düşürür; boş tablonun maliyeti yok, yarım şemanın maliyeti bir sonraki
+         yükseltmede kırık bir site.
+
+  [YENİ] Üç yeni kullanıcı hakkı: ERP modülünü yönet, kasa ve bankayı gör,
+         ERP ayarlarını değiştir. Kasa ayrı bir hak, çünkü bir müşterinin
+         borcunu görmek bankada ne olduğunu görmekle aynı şey değil.
+
+  [YENİ] Fatura kapatma. Bir tahsilatı faturaya bağlayabilirsiniz: fatura
+         "kısmen ödendi" ya da "ödendi" olur ve belgenin üstünde onu hangi
+         tahsilatın kapattığı satır satır görünür. Kısmi ödeme desteklenir.
+
+         Tahsilat faturanın açığından fazlaysa, fazlası faturaya yazılmaz;
+         cari hesapta alacak olarak durur. Hiçbir tahsilat kendiliğinden en
+         eski faturaya sayılmaz: belirli bir faturayı ödeyen müşteri başka bir
+         faturayı kapanmış bulursa sizinle mutabakat yapamaz, o yüzden
+         eşleştirmeyi her zaman siz seçersiniz.
+
+  [YENİ] İade faturası ve iptal. Kesilmiş bir fatura düzenlenmez — belge
+         karşı tarafın elinde. Onun yerine iki yol var:
+
+         İade, geri gelen mal için kendi numarasıyla kesilen ayrı bir
+         belgedir. Kalem kalem miktar girebilirsiniz, yani üç üründen birini
+         iade almak da mümkün. Tamamını iade ederseniz faturanın tahsil
+         ettiğinin kuruşu kuruşuna aynısı geri verilir.
+
+         İptal, hiç kesilmemesi gereken fatura içindir ve yalnız üzerine
+         henüz bir şey işlenmemişken yapılabilir: tahsilat bağlanmışsa veya
+         iadesi kesilmişse iptal edilemez, bunlar önce geri alınır. İptal
+         edilen belgenin kaydı silinmez, ters kayıtla çevrilir; numarası da
+         serbest bırakılmaz. Açıklanabilir bir boşluk, iki kez görünen bir
+         belge numarasından iyidir.
+
+  [YENİ] Kargo yöntemlerine taşıyıcı ünvanı ve VKN alanları eklendi, siparişe
+         ödeme tarihi, ürüne KDV istisna kodu. Üçü de internet satışlarının
+         e-arşiv faturasında zorunlu ve sistemde hiçbir yerde tutulmuyordu.
+
+  E-FATURA (PARAŞÜT)
+  --------------------------------------------------------
+
+  [DÜZELTME] Faturaya KDV işleniyor. Paraşüt'e gönderilen her kalem bugüne
+         kadar "%0 KDV" olarak gidiyordu; kesilen belgeler siparişte
+         hesaplanan vergiyi hiç taşımıyordu. Artık her satır, o siparişte
+         müşteriden alınan orana göre gidiyor. Sipariş verildikten sonra
+         vergi bölgesi veya ürün oranı değiştirilmişse, kayıttaki oran
+         tahsil edilen tutarı artık açıklamadığı için belge kesilmez ve
+         durum size bildirilir.
+
+  [DÜZELTME] Kargo ücreti ve vade farkı faturada görünüyor. İkisi de sipariş
+         başlığında tutulduğu için fatura kalemlerine hiç girmiyordu; belge
+         yalnız ürünleri yazıyor, toplam tahsil edilenin altında kalıyordu.
+         Artık ayrı birer satır olarak yer alıyorlar. Belge kesilmeden önce
+         fatura toplamı sipariş toplamıyla karşılaştırılıyor; kuruş
+         düzeyindeki yuvarlama farkı size bildiriliyor, büyük bir sapmada
+         belge hiç oluşturulmuyor.
+
+  [DÜZELTME] İndirimli siparişler yanlış faturalanmıyor. Sipariş indirimi
+         kalem satırlarına değil başlığa işlendiği için, faturaya indirimsiz
+         tutarlar gidiyordu — yani müşteriye ödediğinden fazlası fatura
+         ediliyordu. İndirim satırlara dağıtılana kadar bu siparişler için
+         belge kesilmiyor ve sebebi ekranda yazıyor.
+
+  [YENİ] E-Fatura mı E-Arşiv mi, artık sistem karar veriyor. Sipariş ekranındaki
+         iki ayrı düğme tek "Fatura Kes" düğmesine indi. Belgenin türü alıcının
+         vergi numarası GİB'de kayıtlı mı diye sorularak belirleniyor — yanlış
+         türü seçmek geçersiz belge üretiyordu. E-faturada alıcının GİB etiketi
+         de artık gönderiliyor; eksikliği belgenin reddedilmesine yol açıyordu.
+         Sorgu cevapsız kalırsa belge kesilmiyor, tahminle iş yapılmıyor.
+
+  [DÜZELTME] Vergi numarası olmayan müşteriye de fatura kesilebiliyor. Sipariş
+         ekranı vergi numarası boşsa hiçbir belgeye izin vermiyordu — oysa
+         numarası olmayan alıcı e-fatura mükellefi değildir ve e-arşiv tam
+         olarak bu durum içindir. Sıradan tüketici siparişleri böylece hiç
+         faturalanamıyordu. Numara artık yalnız e-irsaliye için zorunlu.
+
+  [DÜZELTME] "Vergi numarası olarak kişi kartındaki VKN/TCKN alanını kullan"
+         ayarı çalışmıyordu. Ayar seçiliyken numara sipariş kaydından
+         okunmaya çalışılıyordu; o alan orada yok. Sonuç: Paraşüt'e giden
+         müşteri kartı numarasız oluşuyor, e-fatura kesilemiyordu.
+
+  [DÜZELTME] "Gönderildi" artık gerçekten gönderildiği anlamına geliyor.
+         E-belge adımı başarısız olsa bile sipariş "Paraşüt'e aktarıldı"
+         işaretleniyordu. Artık yalnız belge oluştuğunda işaretleniyor;
+         başarısız denemede fatura numarası saklanıyor ki yeniden
+         deneyebilesiniz.
+
+  [DÜZELTME] E-irsaliye oluşturma tek denemede sonuçlanıyor. Başarısız bir
+         denemenin ardından art arda farklı biçimlerde yeniden gönderim
+         yapılıyor ve bunlardan biri tuttuğunda Paraşüt'te birden fazla
+         irsaliye oluşabiliyordu. Artık tek istek gönderiliyor, sonuç ne
+         ise o bildiriliyor.
+
+  [GÜVENLİK] [ŞEMA] Paraşüt kimlik bilgileri şifreli saklanıyor. Gizli
+         anahtar ve hesap parolanız veritabanında düz metin duruyordu ve
+         ayarlar ekranı ikisini de forma geri yazdığı için sayfa kaynağından
+         okunabiliyorlardı. Yükseltme mevcut değerleri şifreleyip taşır;
+         ekranda bir daha gösterilmezler. Değiştirmek için kutuya yenisini
+         yazın, boş bırakırsanız kayıtlı olan korunur.
+
+  [DÜZELTME] Çalışmayan "Sandbox (Test) Ortamı" seçeneği kaldırıldı. Paraşüt'ün
+         müşteriye açık bir test ortamı yok; bu seçenek şirketin kendi iç
+         sunucusuna bağlanmaya çalışıyor ve açık olduğunda entegrasyon hiç
+         çalışmıyordu. Açık bırakılmış kurulumlarda yükseltme kapatır.
+
+  [HIZ] Paraşüt oturumu daha az yenileniyor. Süresi dolan oturum için her
+         seferinde hesap parolasıyla yeniden giriş yapılıyordu; artık Paraşüt'ün
+         verdiği yenileme anahtarı kullanılıyor. Aynı anda birden fazla sayfa
+         yenilemeye kalktığında yalnız biri yeniliyor, diğerleri sonucu
+         bekliyor — eskiden hepsi ayrı ayrı giriş yapıp birbirinin oturumunu
+         geçersiz kılabiliyordu.
+
+  [GÜVENLİK] Müşteri bilgileri sunucu günlüğüne yazılmıyor. Fatura
+         gönderiminde istek ve yanıtın tamamı — ad, adres, vergi numarası
+         dahil — PHP hata günlüğüne düşüyordu. Bu kayıtlar kaldırıldı.
+
+  SİTE AYARLARI
+  --------------------------------------------------------
+
+  [YENİ] Site Ayarları artık bir sayfa değil. Panelin sağ
+         üstündeki dişliye basın; ayarlar bulunduğunuz ekranın
+         üstünde açılır ve yaptığınız işi bırakmanız gerekmez.
+         Bir ürünü düzenlerken görsel kalitesini, tasarımda
+         çalışırken temayı, siparişe bakarken kargo ayarını
+         oradan değiştirip kutuyu kapatın. Soldaki menüdeki
+         "Site Ayarları" girdisi bu yüzden kaldırıldı.
+
+  [YENİ] Ayarlar sekiz bölüme ayrıldı: Genel, Görünüm,
+         Özellikler, SEO, İletişim, Güvenlik, Güvenlik Duvarı,
+         E-Ticaret. Açılan kutunun solunda bu sekizi ve
+         Ayarlar menüsünün altındaki öteki ekranlar — site
+         günlüğü, oturumlar, SMTP, yedekler, temizlik,
+         para birimleri — izleme / bağlantılar / işler /
+         e-ticaret olarak gruplanmış duruyor. Sağında ok olan
+         satır kutuyu kapatıp ayrı bir ekrana götürür.
+
+  [YENİ] Telefonda bölüm listesi soldan kayarak açılan bir çekmece
+         olur: başlıktaki liste düğmesine basın, bölümü seçin,
+         kendiliğinden kapanır. Ayarların kendisi telefonun tüm
+         ekranını kullanır.
+
+  [YENİ] Ayarlara giden her bağlantı artık kutuyu açıyor. Site
+         günlüğü, oturumlar, güvenlik duvarı kaydı, performans
+         kaydı, SMTP, MailChimp gibi ekranlardaki "Ayarlara
+         dön" düğmesi ve ekmek kırıntısındaki "Ayarlar"
+         bağlantısı sizi bir sayfaya götürmüyor: bulunduğunuz
+         ekranın üstünde ilgili bölümü açıyor. Panodaki güvenlik
+         duvarı karosundaki "Güvenlik duvarını aç" ve arama
+         kutusundaki ayar kısayolları da öyle.
+
+  [YENİ] Ayarlara giden bağlantı doğru bölümü açıyor. Güvenlik
+         duvarı kaydından gelen Güvenlik Duvarı'na, oturumlar
+         ekranından gelen Güvenlik'teki Cihaz kartına, performans
+         kaydından gelen Özellikler'e, Paraşüt kutusundan gelen
+         E-Ticaret'teki e-fatura kartına düşüyor.
+
+  [YENİ] Önbellek temizleme, temizlik aracı, Cloudflare ve
+         yazılım güncellemesi işini bitirince ayarları geri
+         açıyor ve sonucu orada yazıyor ("Önbellek temizlendi",
+         "Güncelleme yok" gibi). Eskiden bu cümleler eski
+         ayarlar sayfasında görünüyordu.
+
+  [DÜZELTME] Ayarlara bağlı ekranların başındaki "Ayarlar >" izi ve
+         yanındaki geri oku kaldırıldı. Ayarlar bir üst sayfa değil;
+         ikisi de sizi yukarı çıkarmıyor, bulunduğunuz sayfanın üstünde
+         ayarları açıyordu ve bozuk bir bağlantı gibi duruyordu.
+         Ayarlar için başlıktaki dişli — o her ekranda duruyor.
+
+  [DÜZELTME] Ayarlar kutusundaki bildirimin kapatma düğmesi kutunun
+         dışına taşıyordu.
+
+  [YENİ] Ayarlar bir kararlar listesi gibi okunuyor: her ayarın adı ve
+         açıklaması solda, onu değiştiren kutu ya da anahtar sağda,
+         aralarında ince bir çizgi. Uzun alanlar — açıklama kutuları,
+         kod alanları, listeler — eskisi gibi tam genişlikte.
+         Telefonda kontrol yine adının altına iniyor.
+
+  [YENİ] MailChimp ayarları artık Site Ayarları → İletişim içinde, ayrı bir
+         sayfa değil. Kaydederken anahtar, liste ve mağaza MailChimp'e
+         soruluyor; biri kabul edilmezse hangisi olduğu söyleniyor ve
+         hiçbir ayar yazılmıyor.
+
+  [DÜZELTME] MailChimp ekranındaki "Geçmiş Senkronizasyon" kutusu yanlış
+         alana bağlıydı: içine yazdığınız gün sayısı Mağaza ID'sinin
+         üzerine yazılıyor, gün sayısının kendisi ise hiç
+         kaydedilmiyordu.
+
+  [DÜZELTME] Bot IP listelerini güncelleyen düğme ayarlar penceresinde
+         listeleri çekmiyor, yalnızca ayarları kaydedip "kaydedildi"
+         diyordu.
+
+  NOT    Site Ayarları'nın eski tek sayfalık ekranı (settings.php) artık
+         hiçbir yerden kullanılmıyor; Temizlik ekranındaki silinebilir
+         dosyalar listesine eklendi. Silmek zorunda değilsiniz, yer
+         kaplamaktan başka bir zararı yok.
+
+  [YENİ] Şeffaf Akrilik Efekti açıkken ayarlar penceresi de buzlu cam
+         olarak çiziliyor — panelin açılır menüleriyle aynı görünüm.
+         Efekt kapalıysa pencere eskisi gibi opak.
+
+  [DÜZELTME] Ayarlarda her ayarın adı ile onu değiştiren kutu artık aynı
+         hizada. Kutular adın birkaç piksel altında ya da üstünde
+         duruyordu ve kayma kutunun boyuna göre değiştiği için kart
+         eğri görünüyordu.
+
+  [DÜZELTME] Ayarlarda kart başlığı ile ilk ayar arasındaki boşluk geri
+         geldi, ayarlar arasındaki boşluklar da her yerde eşitlendi.
+
+  [DÜZELTME] Ayar kartlarındaki fazladan yatay çizgiler kaldırıldı;
+         ayarları ayıran çizgi zaten çiziliyordu, ikincisi araya
+         gereksiz boşluk koyuyordu.
+
+  [DÜZELTME] Ödeme sağlayıcı ayarlarındaki alanlar (API kullanıcı adı,
+         anahtar, imza ve benzerleri) diğer ayarlarla aynı düzene
+         girdi; etiketleri yanlış türde olduğu için tek başlarına
+         eski görünümde kalıyorlardı.
+
+  [DÜZELTME] Güvenlik duvarındaki etiket alanları (izin verilen adresler,
+         muaf tutulan yollar) yeniden tam genişlikte.
+
+  [DÜZELTME] Ayarlarda bir satıra en fazla iki alan giriyor. Bazı yerlerde
+         üç, Merchant Center bölümünde altı alan yan yana diziliyor ve
+         hepsi büzüşüyordu. Ayrıca kutuların genişliği artık ne
+         tuttuklarına göre: iki haneli bir gün sayısı için kısa bir
+         kutu, e-posta adresi için geniş bir kutu.
+
+  [DÜZELTME] Ayarlar kutusu açıldığında ya da bölümler arasında
+         gezinirken sebepsiz "Kaydedilmemiş Değişiklikler" sorusu
+         çıkıyordu. Sebep tarayıcınızın otomatik doldurması ya da
+         parola yöneticisi: kutu açıldıktan sonra alanlara yazıyor ve
+         yazılım bunu sizin yazdığınız sanıyordu. Artık soru yalnızca
+         gerçekten siz bir şey değiştirdiyseniz çıkıyor — üstelik
+         yazıp geri aldığınızda da çıkmıyor.
+
+  [DÜZELTME] Ayarlar formundaki gizli sahte parola kutusu kaldırıldı.
+         Parola yöneticileri bu kutuyu görünce formu bir giriş formu
+         sanıyor ve kayıtlı kullanıcı adınızı ayar alanlarına
+         yazıyordu — destek e-posta adresinin "admin" olarak
+         görünmesinin sebebi buydu.
+
+  [GÜVENLİK] Ayarlardaki metin kutuları siz birine dokunana kadar
+         kilitli açılıyor. Otomatik doldurma ve parola yöneticileri
+         kilitli kutuyu atlar; ayarlarda zaten sizin adınıza
+         doldurulması gereken hiçbir alan yok. Kutuya tıkladığınız
+         ya da klavyeyle geldiğiniz anda kilit kalkıyor, yazmanız
+         hiçbir şekilde değişmiyor.
+
+  [GÜVENLİK] Parola yöneticisinin kendiliğinden doldurduğu alan eski
+         değerine geri getiriliyor ve kutunun başında size söyleniyor.
+         Bazı yöneticiler (Kaspersky) alanı hiç haber vermeden
+         yazıyor, o yüzden ayarlar açıkken kutular saniyede birkaç
+         kez sessizce kontrol ediliyor.
+         Bazı parola yöneticileri (örneğin Kaspersky) ayar formundaki
+         adres ve kuruluş alanlarını kimlik bilgilerinizle dolduruyor;
+         fark edilmezse bir sonraki kaydetmede o değer sitenin ayarı
+         olarak saklanıyordu. Sizin yazdığınız ya da bir düğmeye
+         basarak ürettiğiniz değer etkilenmez.
+
+  [DÜZELTME] SEO bölümündeki IndexNow "Üret" düğmesi anahtarı
+         üretiyor ama Kaydet düğmesini açmıyordu; üretilen anahtarı
+         kaydetmek için alana ayrıca bir şey yazmak gerekiyordu.
+
+  [YENİ] Arayüz turuna ayarlar adımı eklendi: dişlinin nerede
+         olduğunu ve ayarların bir sayfa değil, bulunduğunuz
+         ekranın üstünde açılan bir kutu olduğunu anlatıyor.
+         Menü ile ilgili adımlar da güncellendi. Tur bu yüzden
+         bir kez daha kendiliğinden açılır; istediğiniz zaman
+         sağ üstteki menüden Yardım ve Destek altından yeniden
+         izleyebilirsiniz.
+
+  [YENİ] Ayarlar daha makul yerlere dağıtıldı: canlı sohbet
+         artık "pazarlama" altında değil İletişim'de, ortaklık
+         programı E-Ticaret'te, kayıt ve üyelik hesap
+         ayarlarının yanında Güvenlik'te, tarih ve saat
+         Genel'de, tema ile zengin metin editörü Görünüm'de.
+         Güvenlik duvarının üç bölümü ile zamanlanmış işler
+         kendi yerlerine taşındı.
+
+  [YENİ] Uzun kartlar bölündü: Genel beşe (Sunucu ve Alan Adı /
+         Yazılım / Güncelleme Kanalı / Tarih ve Saat / Cron
+         İşleri), eski Güvenlik kartı dörde (Oturum ve Parola /
+         Cihaz / Google ile Giriş / Kayıt ve Üyelik), güvenlik
+         duvarı üçe, E-Ticaret altıya.
+
+  [DÜZELTME] Alan genişlikleri toparlandı. Aynı türden alan yerine
+         göre altı farklı genişlikte durabiliyordu; beş haneli bir
+         sayı kutusu, e-posta adresi kadar geniş çiziliyordu. Artık
+         genişlik alanın ne tuttuğuna göre: sayılar ve kısa kodlar
+         dar, e-posta ve sunucu adı geniş, adres ve çok satırlı
+         metin tam genişlikte. E-Ticaret bölümündeki kargo ve ödeme
+         alanlarında ayrıca bir yazım hatası vardı; o alanlar hiçbir
+         ekran boyutunda daralmıyordu.
+
+  [DÜZELTME] Telefonda ayarlar kaydırılamıyordu: bölüm ekrandan
+         aşağı taşıyor, Kaydet düğmesi hiç görünmüyordu. Artık
+         yalnızca bölümün kendisi kayıyor; başlık ve Kaydet çubuğu
+         yerinde kalıyor. Kutu telefonun tüm ekranını kaplıyor ve
+         tarayıcı araç çubuğu gizlenip görünürken yüksekliği
+         kaymıyor.
+
+  [DÜZELTME] Bir ayarı kaydetmek artık yalnız o bölümü yazıyor.
+         Eskiden tek Kaydet düğmesi sitenin bütün ayarlarını
+         yeniden yazıyordu; bunun iki görünür sonucu vardı,
+         ikisi de giderildi: Ortaklık Programı'ndaki komisyon
+         oranı, ortaklık iletişim grubu ve destek e-posta
+         adresi her kayıtta boşalıyordu. Barkod etiket
+         tasarımınız ve etiket ölçüleri de her kayıtta
+         sıfırlanıyordu; etiket tasarımı zaten etiket
+         düzenleyicide saklanıyor, Ayarlar ona artık hiç
+         dokunmuyor.
+
+  [DÜZELTME] Ayar alanları tarayıcının kayıtlı kullanıcı adıyla
+         kendiliğinden dolabiliyordu. Fark edilmezse destek
+         e-posta adresi ya da mağaza adresi ilk kaydetmede o
+         değerle değişiyordu; artık hiçbir ayar alanı otomatik
+         doldurulmuyor.
+
+  [DÜZELTME] "Yazılım Dili" seçimi kaydedilmeyebilirdi: dil
+         sütunu, kontrolün durduğu bölümden başka bir bölümün
+         kaydına bağlanmıştı.
+
+  [DÜZELTME] Vekil sunucu arkasındaki bir sitede, kenar
+         sunucusunu atlayan bir panel adresinden bakıldığında
+         Güvenlik Duvarı bölümü "harici güvenlik duvarı yok"
+         diyordu; kayıtlı sağlayıcı okunamıyordu.
+
+  NOT    Kaydedilmemiş bir değişiklik varken kutuyu kapatmaya
+         çalışırsanız sorulur. Kaydettikten sonra bölüm sunucudan
+         yeniden okunur: ekranda gördüğünüz, veritabanına yazılanın
+         kendisidir.
+
+  NOT    Eski yer imleriniz çalışmaya devam eder. Site
+         Ayarları'na bir bölüm adresiyle geldiğinizde o bölüm
+         açılır.
+
+
+  PANEL VE BİLDİRİMLER
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Panel artık bir uygulama gibi kurulabiliyor. Telefonunuzda
+         veya masaüstünüzde tarayıcının "ana ekrana ekle" seçeneğiyle
+         kurduğunuzda kendi penceresinde açılır, simgesine basılı tutunca
+         Siparişler ve Ürünler kısayolları çıkar. iPhone ve iPad'de
+         bildirim alabilmek için bu kurulum şart.
+
+  [YENİ] [ŞEMA] Bildirimler artık cihaza düşüyor. Yeni sipariş, form gönderimi,
+         yeni yorum ve yanıtlanmamış sohbet mesajı, paneli açık tutmayan
+         kullanıcının telefonuna veya masaüstüne bildirim olarak gider.
+         Bildirime dokununca panel açılır; sohbet bildirimi doğrudan o
+         konuşmayı açar. Bildirimin metni push servisinden geçmez, cihaz
+         uyandıktan sonra metni sizin sitenizden alır.
+
+         Çalışması için Ayarlar > Zamanlanmış Görevler'den "Cihaz
+         bildirimleri" seçili olmalı. Sohbet mesajı bir dakika bekler:
+         mesajı bu sürede okursanız bildirim hiç gönderilmez.
+
+  [DÜZELTME] [ŞEMA] Bildirimler artık kimin okuduğunu hatırlıyor. Önceden zil
+         herkes için ortaktı: bir kullanıcı bildirimlere baktığında diğer
+         kullanıcıların sayacı da sıfırlanıyor, kimse yeni siparişi
+         görmüyordu. Yükseltme sırasında okunmuş bildirimler bugün kayıtlı
+         olan kullanıcılar için okundu sayılır; yeni açılan hesap geçmişi
+         okunmuş olarak başlar.
+
+  [YENİ] Panodaki Sistem Durumu kartı yeniden düzenlendi. Kart artık iki
+         kart genişliğinde: solda sağlık göstergesi ve durum kontrolleri,
+         sağda üzerinde işlem yapılabilen satırlar (yedek, güncelleme,
+         zamanlanmış görevler, web sunucusu kuralları, tablo taraması,
+         önbellek, temizlik). Sorunu olan satır en üstte durur, açılan
+         listeler kendi satırının altında açılır.
+
+  [YENİ] Sistem Durumu kartı bakım araçlarını da taşıyor.
+         Karta üç kutucuk eklendi: Tarama (tüm tabloların tam
+         denetimi, yerinde çalışır ve sonucu kartın altına
+         yazar), Önbellek (sunucu önbelleklerini temizler,
+         önce sorar) ve Temizlik (yazılım klasöründeki eski
+         dosyaları kaldırma aracını açar). Kutucuklar kartın
+         kendi çıktısında olduğu için karta nerede yer
+         verilirse orada çıkarlar. Kart Site Ayarları
+         ekranından kaldırıldı; Panel'deki yerinde duruyor.
+         Temizlik ve Önbellek, Ayarlar menüsünden de eskisi
+         gibi açılabiliyor.
+
+  [DÜZELTME] Dosya bütünlüğü denetimi yalnız gerçek dosyaları
+         karşılaştırıyor. Denetimin kendi kayıtları (en son ne zaman
+         koştuğu, ne bulduğu) bir zamanlar karşılaştırma listesinin
+         içinde tutuluyordu; o listeyi taşıyan bir kurulumda bunlar
+         "eksik dosya" olarak raporlanıyor ve Sistem Durumu kartı,
+         hiçbir dosyanız değişmemişken uyarı veriyordu. Listede dosya
+         olmayan ne varsa artık yok sayılıyor.
+
+  [DÜZELTME] Temizlik aracı dosya bütünlüğü listesini silmiyor.
+         data/temp içindeki hash_reference.json bir önbellek değil,
+         dosyalarınızın değişip değişmediğinin ölçüsü; siliniyor ve
+         yerine güncelleme sunucusundaki kopya geçiyordu. Yanındaki
+         durum dosyası gerçekten önbellek, o silinmeye devam ediyor.
+
+  [DÜZELTME] Panel bir süre çalıştıktan sonra donmuyor.
+         Belirti şuydu: sayfa kayıyor ama hiçbir yere
+         tıklanamıyor, sağ tık menüleri de açılmıyor ve tarayıcı
+         "sayfa yanıt vermiyor" bile demiyor. Kod düzenleyici
+         penceresi ya da ayarlar penceresi her açılıp
+         kapandığında, arkada saniyede dört kez çalışan ve hiç
+         durmayan bir yoklama kalıyordu; gün içinde biriktikçe
+         tarayıcı başka bir işe vakit bulamıyordu. Düzenleyici
+         kapandığında artık gerçekten bırakılıyor.
+
+  [YENİ] Tanıtım turları. Yönetim paneline ilk giren kişiye
+         panelin kendisi tanıtılır: soldaki menü, üstteki çubuk,
+         arama (Ctrl+K), bildirimler (Ctrl+Q), sohbet ve kendi
+         menünüz. Dosya Yöneticisi, Ürün Grupları ve sayfa
+         düzenleme ekranlarının kendi turları var. Tur bir kez
+         gösterilir; sağ üstteki menüden yeniden başlatılabilir.
+
+  FORMLAR
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] İmza alanı. Özel form alanlarına yeni bir tür
+         eklendi: ziyaretçi fareyle ya da parmağıyla imzalar,
+         imza forma kaydedilir. Teklif onayı, sözleşme, teslim
+         tutanağı gibi "okudum, kabul ediyorum" gereken yerler
+         için.
+
+         İmzanın yanında bir kayıt tutulur: imzalanan belgenin o
+         andaki özeti, imza anındaki sunucu saati, IP adresi,
+         tarayıcı bilgisi ve çizginin kendisi (hareketin hızı ve
+         sırası). Gönderilen Formu Düzenle ekranında imza
+         görünür ve yanında iki şey yazar: kaydın sonradan
+         değiştirilip değiştirilmediği, ve imzalanan belgenin
+         (form alanları, sözleşme metni ve verilen cevaplar)
+         imzadan sonra değişip değişmediği.
+
+         İmza bir kez atıldıktan sonra düzenlenemez. Diğer form
+         alanları gönderilen form ekranından değiştirilebilir;
+         imza yalnızca gösterilir, hiçbir ekranda yeniden
+         çizilemez ve aynı forma ikinci bir imza atılamaz.
+
+  [YENİ] [ŞEMA] Zaman damgası. İmza atıldığında, imzanın
+         özeti bir zaman damgası kuruluşuna gönderilip o
+         kuruluşun imzaladığı bir belge (RFC 3161 damgası)
+         kayda eklenir. İmza zamanı böylece yalnızca sizin
+         sunucunuzun saatine dayanmaz; üçüncü bir taraf da
+         aynı ana tanıklık eder.
+
+         Ayar: Site Ayarları > Özellikler > İmza Zaman
+         Damgası. Sunucu adresi boşken özellik kapalıdır ve
+         imzalarda hiçbir şey değişmez. Yanındaki "Zaman
+         Damgasını Sına" düğmesi kartı kaydedip kuruluştan tek
+         kullanımlık bir damga ister; cevap ekranda görünür, yani
+         kontör almadan önce adresin çalıştığını görürsünüz.
+
+         Ücretsiz damga sunucuları var ve gerçek, doğrulanabilir
+         damga üretirler; lisanslı bir sağlayıcı (Kamu SM,
+         E-Güven, E-Tuğra gibi) kontör karşılığı satar. Kimlik
+         doğrulama aynı kartta seçilir: kimlik istemeyen
+         sunucular için "Yok", hesap karşılığı satanların çoğu
+         için "HTTP Basic".
+
+         Damga alınamazsa imza yine kaydedilir, damgasız
+         kalır ve site günlüğüne sebebiyle birlikte yazılır.
+
+         Kanıt makbuzunda damganın kim tarafından, ne zaman
+         verildiği, damgalanan özet ve o özetin nasıl yeniden
+         hesaplanacağı yazar; damga dosyası indirilebilir ve
+         herhangi bir RFC 3161 doğrulayıcısına verilebilir.
+
+  NOT    Ücretsiz bir damga sunucusundan alınan damga gerçek ve
+         doğrulanabilirdir, ancak lisanslı bir sağlayıcıdan
+         alınmadığı için kanunun "nitelikli zaman damgası"
+         dediği şey değildir.
+
+  [YENİ] İmza dosyasının özeti de kayda giriyor. Böylece
+         diskteki görüntünün imzalanan görüntü olup olmadığı
+         ayrıca doğrulanabiliyor; makbuz bunu da yazıyor.
+
+  [YENİ] İmza, sayfa düzeninde alan belirteciyle gösterilebilir.
+         Gönderi görünümü sayfasının düzenine ^^alan_adi^^ yazınca
+         o gönderimde atılmış imza orada görünür — ziyaretçiye
+         daha önce imzaladığının kanıtı olarak. Salt görüntüdür:
+         hiçbir yerde yeniden çizilemez. Aynı belirteç gönderim
+         sonrası onay ekranında ve liste görünümünde de çalışır;
+         e-posta gibi düz metin çıktılarda imzanın adresi yazılır.
+
+  [YENİ] İmzanın yanında iki bağlantı: İndir (imzayı resim
+         dosyası olarak kaydeder) ve Kanıt makbuzu.
+
+         Makbuz tek sayfalık, yazdırılabilir bir belgedir:
+         imzanın kendisi, onay metni, imza zamanı, IP adresi ve
+         tarayıcı bilgisi, imzalanan belgenin tamamı (sözleşme
+         metni ve verilen cevaplar), belgenin parmak izi ve iki
+         doğrulama satırı. Sözleşme dosyasına konacak, yıllar
+         sonra açılacak belge budur; tarayıcının "Yazdır → PDF
+         olarak kaydet" seçeneğiyle PDF'e alınır.
+
+         Belge imzadan sonra değiştirilmişse makbuzun başında
+         kırmızı bir uyarı çıkar ve aşağıda görünenin imzalanan
+         hâl olmadığını söyler.
+
+  [YENİ] Alanı eklerken imzanın kaydedileceği klasör seçilir.
+         Alanın etiketi onay cümlesidir ("Okudum, kabul ediyorum
+         ve imzalıyorum"); daha uzun bir metin için üstüne bir
+         Bilgi alanı koyun — o metin de imzaya bağlanır.
+
+  NOT    Bu bir "nitelikli elektronik imza" (e-imza) değildir ve
+         5070 sayılı kanun anlamında ıslak imzanın yerine
+         geçmez; yanındaki kayıt onu delil olarak güçlendirir.
+         Islak imzayla aynı hukuki sonucu doğuran imza için
+         imzalayan kişide e-imza sertifikası ya da mobil imza
+         aboneliği gerekir.
+
+  CANLI SOHBET
+  --------------------------------------------------------
+
+  [YENİ] Canlı Sohbet: son görülme ve ziyaretçi bağlamı.
+         Çevrimdışı veya uzakta görünen kullanıcılar için hem
+         kullanıcı listesinde hem konuşma başlığında "Son
+         görülme: 5 dakika önce" gibi bir bilgi görünür;
+         üzerine gelince tam tarih ve saat. Ziyaretçi
+         konuşmalarının başlığında ziyaretçinin e-posta adresi
+         de IP'nin yanında listelenir; başlığın üzerine gelince
+         sohbetin başlatıldığı sayfa görünür.
+
+  [YENİ] Canlı Sohbet: telefonda tam ekran. Dar ekranlarda hem
+         paneldeki sohbet penceresi hem sitedeki sohbet balonu
+         tam ekran açılıyor ve ekrana sabitleniyor: mesaj
+         yazarken klavye açıldığında pencere yukarı kayıp
+         görüntüden çıkmıyor, başlık üstte sabit kalıyor ve
+         yalnız mesaj alanı kayıyor. Klavye açılınca son mesaj
+         görünür kalır; pencere açıkken arkadaki sayfa kaymaz.
+
+  OTURUM, HESAP VE GÜVENLİK
+  --------------------------------------------------------
+
+  [GÜVENLİK] Parolalar artık modern, tuzlu bir yöntemle
+         saklanıyor. Eski sürümler parolayı tuzsuz MD5 ile
+         tutuyordu; bu yöntem bugünün donanımında saniyeler
+         içinde çözülebiliyor. Yükseltmeden sonra hiç kimsenin
+         parolası sıfırlanmaz ve kimse yeniden parola belirlemek
+         zorunda kalmaz: her kullanıcı bir sonraki girişinde
+         parolası sessizce yeni yönteme taşınır, giriş yapmayan
+         hesaplar da arka planda toplu olarak taşınır. Görünür bir
+         değişiklik yok; koruma perde arkasında.
+
+  [GÜVENLİK] Oturum ("beni hatırla" ve giriş) artık parolanın
+         kendisini değil, rastgele ve iptal edilebilir bir
+         belirteç taşıyor. Eskiden tarayıcıdaki çerez, parolanın
+         veritabanındaki karşılığını taşıyordu; veritabanını
+         okuyabilen biri bunu bir tarayıcıya yapıştırıp herkes
+         olarak giriş yapabiliyordu. Artık çerez veritabanında
+         karşılığı bulunmayan bir belirteç; veritabanını okumak
+         giriş yapmaya yetmiyor. Parola değiştirildiğinde o
+         hesabın bütün "beni hatırla" oturumları düşer, ve
+         çıkışta belirteç anında geçersiz olur.
+
+  [GÜVENLİK] "Beni Hatırla" çerezinin ömrü 10 yıldan 30 güne indi.
+         Bu çerez bir kimlik taşıyor; ödünç alınan ya da kaybolan
+         bir bilgisayarda kalan kopya artık o makineden uzun
+         yaşamıyor. Süreyi data/config.php içindeki
+         REMEMBER_ME_DAYS ile değiştirebilirsiniz.
+
+  NOT    Bu güncellemeden sonra "beni hatırla" ile açık kalan
+         oturumlar bir kez kapanır (çerez biçimi değiştiği için);
+         kullanıcılar yeniden giriş yapar. Tek seferliktir.
+
+  [GÜVENLİK] Başarısız giriş denemeleri artık sayılıyor. Aynı
+         hesaba ya da aynı adresten arka arkaya yanlış parola
+         girilirse hesap kısa süreliğine kilitlenir ve süre her
+         denemede uzar; doğru parola sayacı sıfırlar. Deneme
+         sayıları ve süreler Ayarlar > Güvenlik altından
+         değiştirilebilir, kilitli hesaplar oradan açılabilir.
+         Yönetim paneli, üyelik girişi ve parola sıfırlama aynı
+         sayaca yazar.
+
+  [YENİ] Google ile Giriş. Ziyaretçiler artık giriş, üyelik ve
+         kayıt ekranlarındaki "Google ile Giriş" düğmesiyle
+         Google hesaplarıyla oturum açabilir. Hesabı yoksa arka
+         planda oluşturulur; doğrulanmış e-postası mevcut bir
+         hesapla eşleşirse ona bağlanır. Parola gerekmez.
+
+         Açmak için (her site kendi Google projesini kullanır):
+         1) Google Cloud Console'da bir proje açıp "OAuth client
+            ID" (Web application) oluşturun.
+         2) "Authorized redirect URI" olarak Ayarlar ekranında
+            gösterilen adresi ekleyin (.../google_auth.php).
+         3) Aldığınız Client ID ve Client Secret'ı Ayarlar'daki
+            giriş bölümüne girin, "Google ile Giriş"i işaretleyip
+            kaydedin.
+         Kapalıyken hiçbir şey değişmez; düğme yalnızca açık ve
+         Client ID girilmişken görünür. Giriş ve üyelik
+         yerleşimini özelleştirmiş siteler düğmeyi almak için
+         yerleşime tek satır ekler: <?=$google_signin ?? ''?>
+
+  [YENİ] Oturum yönetimi. Üyeler Hesabım ekranında açık
+         cihazlarını görür ve istediğini tek tek kapatabilir.
+         Yönetim tarafında Kullanıcılar menüsüne "Oturumlar"
+         eklendi: tüm hesapların açık oturumları tek listede,
+         kullanıcı düzenleme ekranında da o kullanıcınınkiler.
+         Kapatılan oturum, cihaz sınırı kapalı olsa bile o cihazın
+         bir sonraki isteğinde düşer. "Son kullanım" cihazın
+         gerçek son aktifliğini gösterir; son 5 dakikada aktif
+         cihazlar "Çevrimiçi" rozeti alır. Yetki kuralı "farklı
+         kullanıcı olarak gir" ile aynıdır: yönetici olmayanlar
+         yalnız kendinden düşük rollü kullanıcıların oturumlarını
+         kapatabilir.
+
+  [YENİ] [ŞEMA] Engellenen e-posta adresleri. Güvenlik
+         duvarı ayarlarında, engellenen IP adreslerinin yanında.
+         Tam adres ("spam@example.com") ya da alan adı
+         ("tempmail.com") yazabilirsiniz. Engellenen bir adres
+         hiçbir formdan üye olamaz, Google hesabı bağlayamaz ve
+         giriş yapamaz. Tek kullanımlık posta servislerini alan
+         adıyla tek satırda kapatmak için. Engellenen kişinin o
+         an açık olan oturumu da kapanır. Kendi hesabınızı
+         yanlışlıkla kilitlememeniz için giriş engeli yalnız
+         üyelere uygulanır.
+
+  [GÜVENLİK] Şifre sıfırlama formu artık hesabın var olup
+         olmadığını açık etmiyor. Eskiden "bu adrese ait
+         hesap bulunamadı" diyordu; bu, siteye kayıtlı
+         e-posta adreslerini tek tek sorgulayıp toplamak
+         için kullanılabiliyordu. Artık her iki durumda da
+         aynı yanıt veriliyor: "Bu e-posta adresi kayıtlıysa
+         talimatlar gönderildi."
+
+  Not    Yanlış e-posta yazan kullanıcı da bu yanıtı alır ve
+         posta beklemeye başlar. Bilinçli bir ödün: aksi
+         hâlde mesajın kendisi hesabın varlığını söylüyor.
+
+  [DÜZELTME] Kullanıcı düzenleme ekranındaki "Şifreyi Sıfırla
+         ve Gönder" düğmesi artık kendi hesabınızda
+         görünmüyor. Sıfırlama o hesabın bütün oturumlarını
+         düşürdüğü için, kendinize uyguladığınızda yeni şifre
+         ekranda görünmeden oturumunuz kapanıyordu; e-posta
+         ayarlanmamış bir sitede şifre hiçbir yerde kalmıyor
+         ve tek yönetici siteye giremez hâle geliyordu. Kendi
+         şifrenizi, düğmenin yerinde duran "Şifre Değiştir"
+         bağlantısından değiştirirsiniz — o ekran tarayıcınızı
+         açık tutar.
+
+  [DÜZELTME] Üye rolündeki bir ziyaretçi özel klasördeki bir
+         sayfayı açtığında ve sitenin çıkış bağlantısına
+         bastığında hata günlüğüne PHP uyarıları yazılıyordu
+         (erişim satırı olmayan klasör, oturumda bulunmayan
+         anahtar). Ziyaretçi bir şey görmüyordu; günlük her
+         ziyarette onlarca satır büyüyordu.
+
+  [GÜVENLİK] Zip çıkartmada web sitesinde çalışabilecek dosya
+         türleri (php, phtml, htaccess, web.config, ini, cgi, sh,
+         exe ve benzerleri; "resim.php.jpg" gibi çift uzantılılar
+         ve gizli dosyalar dahil) siteye çıkartılmaz, kaç
+         tanesinin engellendiği bildirilir. Arşivdeki klasör
+         yolları da kırpılır, böylece hazırlanmış bir zip dosyası
+         hedef klasörün dışına yazamaz.
+
+  [GÜVENLİK] Yasaklı IP kalkanı. Güvenlik duvarı yasak listesini
+         veritabanından okuduğu için, bağlantılar tükendiğinde
+         tam da en çok gerektiği anda devre dışı kalıyordu.
+         Artık liste bir dosyaya da yansıtılıyor ve yasaklı
+         adresler veritabanına hiç gidilmeden geri
+         çevriliyor.
+
+  Not    Kalkan yalnızca daha önce yasaklanmış adresleri
+         tanır; ilk saldırı dalgasını güvenlik duvarının
+         kendisi yakalar. Kesintiyi kısaltır, tamamen
+         önlemez.
+
+  [GÜVENLİK] IPv6 ziyaretçiler artık tek adres yerine /64 ağ
+         bloğu üzerinden sayılıyor. Hız sınırları, giriş
+         kilidi, parola sıfırlama tavanı ve otomatik yasak,
+         her isteğini farklı bir IPv6 adresinden gönderen bir
+         saldırgana daha önce hiç işlemiyordu; şimdi blok bir
+         bütün olarak sayılır ve gerekirse blok yasaklanır.
+         IPv4 ziyaretçiler için değişen bir şey yok.
+
+  [GÜVENLİK] Otomatik yasaklar tekrar edende uzuyor. Yasağı
+         biten bir adres yeniden yasaklanırsa süre her
+         seferinde dört katına çıkar: 1 saat, 4 saat, 16 saat,
+         64 saat, en fazla 7 gün. Süresi dolmadan süren
+         saldırı süreyi uzatmaz; yasak bitip geri gelen
+         uzatır. Kaldır düğmesi merdiveni sıfırlar.
+
+  [GÜVENLİK] Aynı anda açık istek sınırı. Giriş, parola
+         sıfırlama, sipariş gibi hassas formlarda bir
+         ziyaretçinin aynı anda en fazla 3 isteği işlenir;
+         fazlası 429 ile geri çevrilir. Dakikadaki istek
+         sayısı sınırın altında kalsa bile, e-posta ya da
+         ödeme yanıtı beklerken veritabanı bağlantısı tutan
+         isteklerin havuzu doldurmasını önler.
+
+  [YENİ] Güvenlik Duvarı Kaydı ekranında "Olası Yanlış
+         Pozitifler" kartı. İşaretlenen adreslerden aynı
+         dönemde oturum açmış bir kullanıcı, "beni hatırla"
+         girişi, etkinlik günlüğünde adlı bir kayıt ya da
+         tamamlanmış bir sipariş gösterenler ayrı listelenir;
+         üstteki şerit kaç tane olduğunu söyler. İzleme
+         modundan engellemeye geçmeden önce bakılacak yer
+         burasıdır. "İzin Ver" düğmesi adresi izin verilen
+         listeye ekler ve varsa otomatik yasağını kaldırır.
+
+  [GÜVENLİK] Güvenlik başlıkları. Her yanıt artık
+         X-Content-Type-Options, Referrer-Policy ve
+         Permissions-Policy taşıyor; sayfalarınızın başka bir
+         sitenin çerçevesi içinde gösterilmesi reddediliyor
+         (isterseniz kapatabilirsiniz). HSTS ("her zaman
+         HTTPS") ayrı bir seçenek ve kapalı geliyor: bir yıllık
+         bir taahhüttür, sertifikanız oturduktan sonra bilerek
+         açmanız için.
+
+  [YENİ] İçerik Güvenliği Politikası (CSP), önce raporlama
+         modunda. Tarayıcılar, bir politikanın reddedeceği
+         betik, stil, çerçeve ve bağlantıları bildiriyor; hiçbir
+         şey engellenmiyor. Güvenlik Duvarı Kaydı ekranındaki
+         yeni kart bunları kaynağa göre listeliyor: sitenizin
+         gerçekten kullandığı üçüncü taraflar burada görünür.
+         Liste temizlenince politika Site Ayarları'ndan
+         "Uygula" moduna alınabilir; yerleşik politika
+         yazılımın kendi kullandığı kütüphaneleri zaten tanır.
+
+  [YENİ] fail2ban için düz metin engel günlüğü. Reddedilen her
+         istek ve her otomatik yasak data/firewall.log
+         dosyasına tek satır olarak yazılıyor. Kendi
+         sunucusunu yöneten, Site Ayarları'ndaki hazır filtre
+         ve jail metniyle yasaklı adresi ağ düzeyinde
+         düşürebilir. Dosya 5 MB'ta döner; paylaşımlı
+         hostingde yok sayılabilir ya da kapatılabilir.
+
+  [GÜVENLİK] Giriş kilidinden önce soru. Bir hesap ya da adres
+         için üçüncü başarısız denemeden sonra giriş, parola
+         denetlenmeden önce basit bir toplama sorusu soruyor.
+         Bir insan bir saniyede geçer; parola listesi
+         deneyen bir betik geçemez, yanlış cevapları da
+         başarısız deneme sayılır. Eşik Site Ayarları >
+         Güvenlik'ten değiştirilir, 0 kapatır.
+
+  [YENİ] Güvenli Mod ayarı Genel'den Güvenlik Duvarı > HTTPS ve
+         Güvenlik Başlıkları kartına taşındı; HSTS seçeneği
+         onun altında ve ancak Güvenli Mod açıkken
+         kullanılabilir. Genel ekranını kaydetmek artık
+         Güvenli Mod'a dokunmaz.
+
+  [GÜVENLİK] Yasakladığınız IP adresleri artık izleme modunda da
+         engelleniyor. İzleme modu "güvenlik duvarı kendi
+         kararıyla kimseyi reddetmesin, ben izleyeyim"
+         demektir; yasak listesi ise sizin verinizdir ve
+         orada yazan bir adres mod değişti diye içeri
+         alınmaz. Böylece izlerken elle adres yasaklayabilir,
+         ya da saldırı sırasında izlemeye geçerken zaten
+         yasaklı olanlara kapıyı açmamış olursunuz. İzin
+         verilen adresler her zaman olduğu gibi önceliklidir.
+
+  Not    Güvenlik duvarını tamamen kapatmak her şeyi kapatır:
+         bu durumda yasak listesi de uygulanmaz ve artık
+         bu, aynaya da anında yansıyor (önceden kapattıktan
+         sonra altı saate kadar engellemeye devam
+         edebiliyordu).
+
+  [DÜZELTME] Yasaklı adres, veritabanına varmadan geri
+         çevrildiğinde bu artık Güvenlik Duvarı Kaydı
+         ekranında da görünüyor. Önceden bu engellemeler
+         hiçbir ekrana düşmüyordu; sessizce reddeden bir
+         koruma, korumanın yarısıdır.
+
+  [DÜZELTME] İzin verilen adresler, veritabanı öncesi katmanda
+         da tanınıyor. Bir aralığı yasaklayıp içindeki kendi
+         adresinizi izin listesine aldıysanız artık
+         geçebiliyorsunuz.
+
+  [YENİ] Aynı anda açık istek sınırı ve en uzun yasak süresi
+         artık Site Ayarları > Güvenlik Duvarı'ndan
+         ayarlanabiliyor.
+
+  SEO VE PAYLAŞIM
+  --------------------------------------------------------
+
+  [YENİ] Sosyal paylaşım ve yapılandırılmış veri ayarları: site
+         geneli varsayılan paylaşım görseli (kendi görseli olmayan
+         sayfalar sosyal ağlarda bununla görünür) ve kuruluş
+         logosu (arama motorlarının kuruluş ve yazı
+         işaretlemelerinde kullanılır). Google satıcı bilgileri —
+         kargo ülkesi, ücreti, teslim süresi ve iade koşulları —
+         site geneli ayarlanır ve ürün işaretlemesine eklenir;
+         alanlar doldurulana kadar hiçbir şey yayımlanmaz. Özel
+         JSON-LD ile hem site geneli hem sayfa başına kendi
+         yapılandırılmış verinizi ekleyebilirsiniz; kayıt
+         sırasında JSON olarak doğrulanır.
+
+  [YENİ] Yapay zekâ asistan botlarına IP doğrulamalı izin. Bir
+         ziyaretçi ChatGPT ya da Claude'a sitenizi sorduğunda
+         asistan sayfayı o an çeker; bu isteği engellemek
+         cevaptaki kaynak bağlantısını da götürür. Ayarlar >
+         WAF altında iki anahtar: asistan botları (ChatGPT-User,
+         Claude-User, Perplexity-User) ve arama botları
+         (OAI-SearchBot, Claude-SearchBot). İzin, adını yazana
+         değil yayınlanan IP listelerinde bulunana verilir;
+         listeler "Bot IP listeleri" göreviyle günlük tazelenir.
+         Eğitim tarayıcıları (GPTBot, ClaudeBot) bu anahtarlardan
+         bağımsız olarak engelli kalır.
+
+  [DÜZELTME] HTML yapı denetimi, oluşturulamayan bir sayfada
+         artık durmuyor. Oluşturulurken hata ekranı veren bir
+         sayfa (erişimi kısıtlı, arşivlenmiş, sorgusu başarısız)
+         eskiden gecelik işin tamamını o hata ekranıyla
+         bitiriyordu; yeniden çalıştırınca bir sonraki böyle
+         sayfada yine duruyordu. Şimdi o sayfa "oluşturulamadı"
+         notuyla geçiliyor, sebebi sayfanın SEO panelinde ve
+         site günlüğünde yazıyor, iş kalan sayfalarla devam
+         ediyor.
+
+  HIZ
+  --------------------------------------------------------
+
+  [HIZ] user tablosu InnoDB'ye geçti. Eskiden bir kullanıcının
+         çevrimiçi damgası güncellenirken tablo bütünüyle
+         kilitleniyor, o anda giriş yapmış herkesin isteği sıraya
+         giriyordu. Ayrıca temiz olmayan bir kapanıştan sonra bu
+         tablo onarım istiyor ve onarılana kadar kimse giriş
+         yapamıyordu.
+
+  [YENİ] Veritabanı devre kesicisi. Bağlantılar tükendiğinde
+         her yeni deneme durumu daha da kötüleştiriyor ve
+         havuzun boşalmasını engelliyordu. Artık sistem kısa
+         bir süre geri çekiliyor, böylece site kendi kendine
+         toparlanıyor. Süre data/config.php'de
+         DB_UNAVAILABLE_BACKOFF ile ayarlanabilir
+         (varsayılan 30 saniye).
+
+  [DÜZELTME] Birkaç bin ürünlük içe aktarma zaman aşımına
+         uğruyordu. products ve product_groups tablolarındaki
+         address_name sütunu indekssizdi; içe aktarıcı her ürün
+         için tabloyu baştan sona tarıyordu. Aynı eksik indeksin
+         bedelini site de ödüyordu: her katalog ürün sayfası
+         bütün ürünleri tarıyordu. Ürünleri İçe Aktar ekranı
+         ayrıca kendi zaman bütçesini aldı ve tarayıcı vazgeçse
+         bile başladığı işi bitiriyor.
+
+  KURULUM VE YÜKSELTME
+  --------------------------------------------------------
+
+  [DÜZELTME] Yarıda kesilen yükseltme artık siteyi kilitlemiyor.
+         Yükseltme sırasında sayfa yenilenir, sekme kapanır ya da
+         sunucu isteği keserse veritabanı bir sürümde "takılı"
+         kalıyor ve her deneme "Duplicate column" hatasıyla
+         duruyordu; hata da gizli bir çerçevenin içinde basıldığı
+         için ekranda görünmüyordu. Sürüm numarası artık her adım
+         biter bitmez yazılıyor, her adım ikinci kez
+         çalıştırılabiliyor (var olan tablo, sütun ve indeks
+         sorulup geçiliyor), aynı anda ikinci bir yükseltme
+         başlatılamıyor ve bir adım başarısız olursa ekran hangi
+         sürümde, hangi ifadede ve MySQL'in ne dediğini gösterip
+         "Tekrar dene" sunuyor — yükseltme kaldığı yerden sürüyor.
+
+  [YENİ] Yükseltme adımları includes/migrations klasöründe, sürüm
+         başına bir dosya. Kurulum klasörü sunucudan silinmiş olsa
+         da şema geçmişi yerinde kalıyor; bir dosyadaki sözdizimi
+         hatası yalnız o sürümü durduruyor, kurulum ekranını
+         değil. Yedekten kurulumda sürümler tek tek listeleniyor,
+         bu pakette olmayan bir sürümden alınmış yedek açıkça
+         söyleniyor, büyük sql.sql dosyaları satır satır okunuyor.
+
+  [YENİ] Güncelleme kanalı: Kararlı ve Beta. Ayarlar > Genel'den
+         seçilir. Kararlı, herkesin kullandığı yayındır; Beta yeni
+         sürümleri daha erken alır ve bir test kurulumunda ya da
+         bizimle bir düzeltme üzerinde çalışırken kullanılır.
+         Kanal değiştiğinde güncelleme kontrolü sıfırdan
+         yapılır. Kararlıya geri dönmek kurulu beta sürümünü
+         kaldırmaz: site, kararlı bir yayın onu geçene kadar
+         mevcut sürümde kalır.
+
+  [YENİ] Yükseltme her sürümü kendi isteğinde çalıştırıyor.
+         Yüz sürümü tek uzun istekte taşımak yerine ekran
+         sunucuya sürümleri tek tek uygulatıyor; zaman aşımı,
+         kopan bağlantı ya da kapanan sekme en fazla o bir sürümü
+         yarım bırakıyor ve "Devam Et" aynı yerden sürdürüyor.
+         Başlamadan önce MySQL sürümü, veritabanı yetkileri,
+         yeniden yazılacak büyük tablolar, PHP sınırları ve yedek
+         için boş alan gösteriliyor; "Veritabanını şimdi yedekle"
+         düğmesi data/backups altına bir sql.sql yazıyor. Uzun bir
+         adım sürerken yönetim paneli başka sekmede
+         kullanılabiliyor.
+
+  [GÜVENLİK] Otomatik yükseltme adresi
+         (install/index.php?automated_upgrade=true) artık
+         kimliksiz çalışmıyor. Yönetici oturumu, sunucudaki cron
+         için komut satırı (php install/index.php
+         automated_upgrade) ya da data/config.php içine yazılan
+         AUTOMATED_UPGRADE_SECRET anahtarı (&secret=...)
+         gerekiyor; anahtar tanımlı değilse o yol kapalı. Yanlış
+         anahtar, kilit ekranındaki parola denemeleriyle aynı
+         sayaca yazılıyor.
+
+  [YENİ] Yapılandırma ekranında veritabanı şema sürümü. Yükseltme
+         bu numaradan sonraki her sürümü uygular; numarayı daha
+         eskiye çekip kaydettiğinizde o adımlar yeniden koşar ve
+         panel sizi doğrudan yükseltme ekranına götürür. Aynı
+         sürümü bir kurulumda tekrar çalıştırmak gerektiğinde
+         kullanılır — yükseltme adımlarının hepsi yeniden
+         çalıştırılabilir yazılıdır, uygulanmış olanlar atlanır.
+         Tanınmayan bir numara kabul edilmiyor. Ekran yalnız
+         yöneticiye açık.
+
+  VERİTABANI
+  --------------------------------------------------------
+
+  [ŞEMA] Bu sürüm veritabanınıza dokunur. Yükseltme sırasında
+         kurulum ekranı her adımı tek tek gösterir ve isterseniz
+         önce yedek alır. Eklenenler: pazaryeri, dış API, bildirim
+         ve görsel editör tabloları; imza kayıtları tablosu;
+         ayarlara görsel işleme,
+         sosyal paylaşım, Google, güncelleme kanalı ve API
+         alanları; güvenlik başlıkları, içerik güvenliği
+         politikası ve giriş sorusu ayarları; ürünlere vergi
+         oranı; kullanıcılara parola geçmişi ve oturum
+         alanları. Site verileriniz yerinde kalır.
 
   2026.4.2
   ==========================================================
@@ -109,6 +1677,45 @@
          ayrı düğme: bir tıkla yapabildiği kadarını yapıp
          kalanı sıraya bırakıyor, büyük bir sitede birkaç
          tıklama gerekebiliyor.
+
+  [YENİ] Sitede gezinirken sağ üstteki düzenleme çubuğunda o
+         sayfanın SEO skoru duruyor. Izgara düğmesinin
+         solunda, yüzdesi dolan bir halka ve ortasında skor;
+         tıklayınca altında hangi denetimin kaç puan
+         kaybettirdiğini yazan panel açılıyor. Sayfayı
+         kaydettikten sonra çubuğa bakmanız yeterli, panele
+         gitmeniz gerekmiyor.
+
+  [YENİ] Skor listesinin altına iki küçük düğme geldi:
+         "Skoru yenile" ve "HTML'i denetle". Üçünde de var —
+         sayfa düzenleme ekranındaki SEO kartında, Sayfalar
+         listesinden açılan panelde ve düzenleme çubuğundaki
+         yeni alanda. İkisi de yalnızca baktığınız kaydı
+         işler, gecelik işi beklemezsiniz. Ayrı iki düğme
+         olmasının sebebi maliyet farkı: skor veritabanı
+         alanlarını okur, milisaniyeler sürer; HTML denetimi
+         sayfayı oluşturur, sayfayı açmak kadar sürer.
+
+  [YENİ] Sayfa özelliklerini kaydettiğinizde SEO skoru, sayfa
+         içeriğini kaydettiğinizde (Sayfa Tasarımcısı veya
+         düzenleme modu) HTML skoru o sayfa için hemen
+         hesaplanıyor. Kaydedip çubuktaki halkaya bakmanız
+         yeterli.
+
+  NOT    Sistem üstbilgi ve altbilgi de buna dahil — onlar
+         sayfanın kendi kolonunda duruyor, paylaşılan bölge
+         değiller.
+
+  [YENİ] Ortak bölge (cregion) kaydedildiğinde o bölgeyi
+         kullanan bütün sayfalar sıraya alınıyor. Çoğu sitede
+         üstbilgi ve altbilgi ortak bölgedir ve tek düzenleme
+         yüzlerce sayfanın işaretlemesini değiştirir.
+         Sayfalar kaydetme isteğinin içinde oluşturulmuyor —
+         bu doğru bir takas olmazdı — ama gecelik iş onları
+         artık o gece alıyor, haftalık tam yenilemeyi
+         beklemiyor. İç içe ortak bölgeler de hesaba
+         katılıyor: içerideki değişince dışarıdakini kullanan
+         sayfalar da sıraya giriyor.
 
   NOT    Yapı denetimi PHP'nin DOM eklentisini gerektirir.
          Eklenti kapalıysa Cron işleri penceresinde uyarı
@@ -329,165 +1936,6 @@
          sunucularda (macOS, FreeBSD, Solaris) komut
          kutularının içine PHP uyarısı basıyordu. Bu sistemler
          artık Linux komutunu görüyor.
-
-  [DÜZELTME] Bekleyen Sevkiyatlar kartı, siparişe takip
-         numarası yazıldığı anda o siparişi gönderilmiş
-         sayıyordu. Stok geç geldiği için iki partide çıkan
-         bir sipariş, ilk parti yola çıkar çıkmaz karttan
-         düşüyor, kalan ürünler hiçbir ekranda görünmüyordu.
-         Ölçüt artık sevk edilen miktar: nakliyeye uygun bir
-         kalemde sevk edilmemiş adet kaldığı sürece sipariş
-         kartta kalır.
-
-  [DÜZELTME] Aynı kart, yazılım gibi kargolanmayan ürünleri
-         de bekleyen sevkiyata sayıyordu. Artık yalnızca
-         nakliyeye uygun kalemler sayılıyor; karışık bir
-         siparişin dijital satırları paket üretmiyor.
-
-  [DÜZELTME] Kart yalnızca son 30 günü gösteriyordu; bir ay
-         önce takılmış bir sevkiyat kimsenin gözüne
-         çarpmadan listeden çıkıyordu. Tarih sınırı
-         kaldırıldı. Dışa aktarılmış siparişler de artık
-         sayılıyor — dışa aktarma, siparişin gönderildiği
-         anlamına gelmiyor.
-
-  [YENİ] Bekleyen Sevkiyatlar kartı yeniden düzenlendi.
-         Üstte bekleyen paket adedi ile tutarı, altında
-         adedi gösteren paket çubuğu, altında da her
-         sevkiyat için kargo firması, sipariş numarası ve o
-         sevkiyatta bekleyen paket adedi yer alıyor. Bir
-         sipariş birden çok adrese gidiyorsa her adres kendi
-         kargo firmasıyla ayrı satırda listeleniyor. Satıra
-         tıklamak siparişi açıyor.
-
-  [YENİ] Panelde widget'lar yüklenirken gösterilen gri
-         yer tutucular, o widget'ın gerçek içeriğiyle aynı
-         yerleşimi alıyor. Önceden hepsi aynı şekildeydi —
-         bir daire ve üç satır — hiçbir widget'a uymuyordu,
-         veri gelince kartın içi gözle görülür şekilde
-         yeniden diziliyordu. 24 widget'ın 20'sinde kutular
-         artık tam olarak aynı yere düşüyor, kalanlarda
-         birkaç piksel. Gösterecek verisi olmayan widget'lar
-         (E-posta Kampanyaları, Yorum Onayı, İade Bekleyen)
-         boş döndüklerinde yine kayıyor; bu, veri gelmeden
-         bilinemiyor.
-
-  [YENİ] Panel kartlarındaki listeler tek bir satır
-         biçimine geçti: yuvarlak köşeli, hafif zeminli bir
-         satır, solunda kartın kendi renginde bir ikon
-         karosu, sağında ok. Son Güncellemeler, Rehber,
-         Kullanıcılar, Stokta Tükenen Ürünler, Formlar,
-         Teklifler, Döviz Kurları, Site Günlükleri,
-         Alışveriş, Trend İçerik, E-Ticaret Özeti ve
-         Bekleyen Sevkiyatlar aynı dili konuşuyor. Trend
-         İçerik gibi çok satır sığdıran kartlar aynı biçimin
-         yarım boyundaki halini kullanıyor, böylece görünen
-         kayıt sayısı azalmadı.
-
-  [YENİ] Satırlara artık klavyeyle ulaşılıyor ve orta tuşla
-         yeni sekmede açılıyorlar. Önceden satır tıklaması
-         JavaScript ile yapılıyordu; şimdi gerçek bağlantı.
-
-  [DÜZELTME] İkon karosundaki simge veya baş harfler,
-         karonun rengine göre beyaz ya da koyu seçiliyor.
-         Sabit beyaz, açık tonlu kart renklerinde
-         okunmuyordu — amber zeminde beyaz simgenin
-         kontrastı 2,15:1 idi, erişilebilirlik alt sınırı
-         olan 4,5:1'in oldukça altında. Panelde ölçülen en
-         düşük kontrast artık 4,23:1, en yükseği 8,25:1.
-
-  [YENİ] Sistem Durumu widget'ı. Panelin üstünde duran ince
-         durum çubuğu ile Bakım kartı tek bir kartta
-         birleşti. Üstte 0-100 arası sistem sağlığı bir
-         gösterge halkasında, altında her denetim için birer
-         küçük kutu: dosya bütünlüğü, SSL, CAPTCHA, parola,
-         güvenlik duvarı, bot filtresi, IndexNow, PHP
-         sürümü, veritabanı, eklentiler, php.ini, son
-         yedekleme, sürüm, zamanlanmış görevler ve
-         veritabanı boyutu. Bir kutunun üzerine gelince
-         ayrıntısı çıkıyor; yedekleme ve sürüm kutuları
-         ilgili ekrana gidiyor.
-
-  [YENİ] Dosya bütünlüğü, SSL ve güvenlik duvarı kutuları
-         diğerlerinin üstünde, üçlü ayrı bir sırada duruyor.
-         Bunlar "içeri girilebilir mi" sorusunu cevaplayan
-         üç denetim, ilk okunan da onlar olsun diye.
-
-  [YENİ] Zamanlanmış görevler kutusu tıklanınca hangi
-         görevin en son ne zaman çalıştığını tek tek
-         açıyor. Bu bilgi başka hiçbir ekranda yok — Cron
-         İşleri penceresi komutları gösterir, çalışıp
-         çalışmadıklarını değil.
-
-  [YENİ] Skor artık yedeklemeyi, bekleyen güncellemeyi ve
-         duran zamanlanmış görevleri de hesaba katıyor.
-         Güvenlik denetimlerinden daha hafif ağırlıklarla:
-         iki gün gecikmiş bir yedek fark edilmeye değer ama
-         kapalı bir güvenlik duvarından ağır basmamalı.
-         Hiç çalışmamış bir görev puan düşürmüyor — o, cron
-         kurulmamış bir site demek, bozulmuş bir görev
-         değil. Veritabanı boyutu gösteriliyor ama puana
-         girmiyor.
-
-  [YENİ] Aynı kart Site Ayarları ekranında Genel kartının
-         solunda da görünüyor. Orada sürüklenmiyor ve
-         kendiliğinden yenilenmiyor; yalnızca çıktı.
-
-  [YENİ] Ziyaretçi Özetleri yeniden düzenlendi. Yan yana üç
-         küçük grafik yerine tek büyük grafik var ve bugün
-         ile dün üst üste çiziliyor: bugün dolu çizgi, dün
-         kesikli, aynı eksende. Önceden düğme dönemi
-         değiştiriyordu, yani farkı görmek için öbürünün
-         şeklini akılda tutmak gerekiyordu.
-
-  [YENİ] Bugünün çizgisi içinde bulunulan saatte duruyor,
-         eksen yine bütün günü gösteriyor. Kalan bölge
-         soluk ve kesikli bir çizgiyle ayrılıyor, böylece
-         "günün geri kalanı henüz olmadı" ile "trafik
-         durdu" birbirine karışmıyor.
-
-  [DÜZELTME] Dünle karşılaştırma artık aynı saate göre
-         yapılıyor: "dün bu saate kadar 214". Önceden yarım
-         gün, dünün tamamına kıyaslanıyordu; sabahları her
-         zaman düşüş, gece yarısına doğru her zaman toparlanma
-         görünüyordu. Dünün tam günü ayrıca yazıyor, günün
-         nerede biteceğine dair ölçü olsun diye.
-
-  [YENİ] Grafiğin altında dört kutu: bu hafta, bu ay, geçmiş
-         12 ay ve en çok ziyaret edilen sayfa. İlk üçü
-         tıklanınca o dönem büyük grafiğe çıkıyor,
-         karşılaştırmasıyla birlikte; tekrar tıklayınca güne
-         dönüyor. En çok ziyaret edilen kutusunda ayrıca
-         bugünün en çok ziyaret edilen sayfası ve sayısı var.
-
-  [YENİ] Faaliyet Özeti kartı kaldırıldı. Gösterdiği üç sayı
-         — sipariş, form ve rehber kaydı — artık ait oldukları
-         kartların başına taşındı. Alışveriş, Formlar ve
-         Rehber kartlarının üstünde bugünün sayısı, düne göre
-         yönü gösteren küçük bir ok, son yedi günün toplamı ve
-         sekiz günü çizen ince bir çizgi var. Sayıyı görmek
-         için ayrı bir karta bakmak gerekmiyor; sayı, ait
-         olduğu listenin başında duruyor.
-
-  [GÜVENLİK] Faaliyet Özeti, e-ticaret yetkisi olan herkese
-         form ve rehber sayılarını da gösteriyordu. Oysa
-         Formlar ve Rehber kartlarını görmek ayrı yetkilere
-         bağlı: form yetkisi olmayan bir kullanıcı formları
-         göremiyor ama kaç form geldiğini okuyabiliyordu. Her
-         sayı artık kendi kartının yetkisinin arkasında.
-
-  [HIZ] Kaldırılan kart, panel her açıldığında sekiz günü tek
-         tek saymak için 24 ayrı sorgu çalıştırıyordu. Aynı
-         sekiz gün artık kart başına tek sorguyla geliyor;
-         panelin açılışındaki 24 sorgu 3'e indi.
-
-  [DÜZELTME] Form sayısı, formun son değiştirilme tarihine
-         bakıyordu. Eski bir formu açıp "tamamlandı"
-         işaretlemek o formu "bugün gelen form" yapıyordu.
-         Ölçüt artık formun gönderildiği tarih. Kartın
-         altındaki liste, en son dokunulana göre sıralanmaya
-         devam ediyor — o liste "ne geldi" değil "nerede
-         kaldım" sorusunu cevaplıyor.
 
   [ŞEMA] Bu sürüm veritabanınıza dokunur. Canlı sohbet iki
          yeni tablo, SEO skoru iki yeni tablo ve sayfa, ürün,

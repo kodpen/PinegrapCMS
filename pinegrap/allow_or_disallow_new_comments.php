@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -96,5 +96,5 @@ if ($item_id == 0) {
 $liveform->remove_form();
 
 // send user back to previous page
-header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_allow_or_disallow_new_comments');
+header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_allow_or_disallow_new_comments');
 ?>

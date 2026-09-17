@@ -12,9 +12,41 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
+
+/**
+ * Find and replace inside a layout tree, without breaking the JSON.
+ *
+ * Regions get a plain str_replace over their markup. A tree cannot: the
+ * moment a replacement carries a quote or a backslash the column stops
+ * being decodable and the page has no layout left at all. Only the decoded
+ * leaf strings are substituted; keys are structural and stay untouched.
+ *
+ * Returns the original string when it does not decode, so an unreadable
+ * tree is copied as it is rather than replaced with nothing.
+ */
+function duplicate_page_tree_find_replace($json, $keywords) {
+
+    if (trim((string) $json) === '') {
+        return (string) $json;
+    }
+
+    $tree = json_decode((string) $json, true);
+
+    if (!is_array($tree)) {
+        return (string) $json;
+    }
+
+    array_walk_recursive($tree, function (&$value) use ($keywords) {
+        if (is_string($value)) {
+            $value = find_replace(array('content' => $value, 'keywords' => $keywords));
+        }
+    });
+
+    return json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
 
 function duplicate_page($request) {
 
@@ -71,6 +103,13 @@ function duplicate_page($request) {
     $comments_watchers_managed_by_submitter = $row['comments_watchers_managed_by_submitter'];
     $system_region_header = $row['system_region_header'];
     $system_region_footer = $row['system_region_footer'];
+
+    // A visual design page keeps its whole body in these two columns and has
+    // no regions at all, so a copy made without them is an empty page wearing
+    // the original's name. Only read where 4.22 has run.
+    $multi_page_design = pg_multi_page_design_ready();
+    $page_tree_json = $multi_page_design ? (string) $row['page_tree_json'] : '';
+    $page_tree_code = $multi_page_design ? (string) $row['page_tree_code'] : '';
 
     if (check_edit_access($page_folder) == false) {
         log_activity(lang('access denied because user does not have access to modify folder'));
@@ -155,6 +194,16 @@ function duplicate_page($request) {
         $page_search_keywords = find_replace(array(
             'content' => $page_search_keywords,
             'keywords' => $request['find_replace_keywords']));
+
+        // The generated markup takes the same pass the regions take. The tree
+        // it came from cannot: it is JSON, and a replacement carrying a quote
+        // or a backslash would leave the page with no readable layout at all.
+        // Substituting the decoded strings keeps the two in step.
+        $page_tree_code = find_replace(array(
+            'content' => $page_tree_code,
+            'keywords' => $request['find_replace_keywords']));
+
+        $page_tree_json = duplicate_page_tree_find_replace($page_tree_json, $request['find_replace_keywords']);
     }
 
     $page_name = get_unique_name(array(
@@ -185,6 +234,8 @@ function duplicate_page($request) {
                 sitemap,
                 " . (pg_page_noindex_ready() ? "noindex,
                 nofollow," : "") . "
+                " . ($multi_page_design ? "page_tree_json,
+                page_tree_code," : "") . "
                 page_type,
                 layout_type,
                 layout_modified,
@@ -224,6 +275,8 @@ function duplicate_page($request) {
                 '" . escape($sitemap) . "',
                 " . (pg_page_noindex_ready() ? "'" . (int) $noindex . "',
                 '" . (int) $nofollow . "'," : "") . "
+                " . ($multi_page_design ? "'" . e($page_tree_json) . "',
+                '" . e($page_tree_code) . "'," : "") . "
                 '" . escape($page_type) . "',
                 '" . e($layout_type) . "',
                 '" . e($layout_modified) . "',
@@ -254,6 +307,15 @@ function duplicate_page($request) {
 
     $new_page['id'] = mysqli_insert_id(db::$con);
     $new_page['name'] = $page_name;
+
+    // A form widget in the copied tree describes fields that belong to the
+    // page, not to the widget, so the copy needs rows of its own. This is the
+    // same call the visual editor makes on every save; it reads the widgets
+    // off the new page's tree, creates what they ask for, and stamps the ids
+    // back. Returns without touching anything when the page has no form.
+    if ($page_tree_json !== '') {
+        pg_cf_reconcile_page_form($new_page['id'], $user['id']);
+    }
 
     // call the function that updates the tag cloud table
     update_tag_cloud_keywords_for_page($new_page['id'], $page_search, $page_search_keywords, 0, '');

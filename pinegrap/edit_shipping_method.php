@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -156,6 +156,13 @@ if (!$_POST) {
     } else {
         $po_box_checked = '';
     }
+
+    // Only ever appended to below, and only inside branches that may not run,
+    // so they have to start out empty.
+    $zones = array();
+    $allowed_zones = array();
+    $disallowed_zones = array();
+    $output_allowed_zones = '';
 
     // get all zones for zones selection
     $query = "SELECT id, name FROM zones ORDER BY name";
@@ -416,19 +423,17 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Edit Shipping Method'),
+        'heading_description' => lang('Edit a shipping method that will be made available during checkout based on the products and destination address.'),
         'cancel'=>array('enable'=>'true','url'=>'view_shipping_methods.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Shipping Methods'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_methods.php'), array('label' => lang('Edit Shipping Method'))),
         ]) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
     ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . '
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Edit a shipping method that will be made available during checkout based on the products and destination address.') . '" title="' . lang('Edit Shipping Method') . '">[' . $name . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="edit_shipping_method.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -441,7 +446,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
-                                            <input  value="' . $name . '" type="text" name="name" placeholder="' . lang('Shipping Method Name') . '" id="name" maxlength="50" class="form-control add-header-content-updater" />
+                                            <input  value="' . $name . '" type="text" name="name" placeholder="' . lang('Shipping Method Name') . '" id="name" maxlength="50" class="form-control" />
                                         </div>
                                         <div class="col-12 col-sm-6 col-lg-8 my-2">
                                             <label for="description" class="form-label">' . lang('Display Message') . '</label>
@@ -926,7 +931,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     print $output;

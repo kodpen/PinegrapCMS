@@ -553,7 +553,10 @@ class Spreadsheet_Excel_Reader {
 		}
 		return null;
 	}
-	function fontProperty($row, $col, $sheet = 0, $prop) {
+	// $prop given a default rather than $sheet losing one: PHP 8 rejects a
+	// required parameter after an optional one, and keeping the order intact
+	// means any existing four-argument call still works unchanged.
+	function fontProperty($row, $col, $sheet = 0, $prop = null) {
 		$font = $this->fontRecord ( $row, $col, $sheet );
 		if ($font != null) {
 			return $font [$prop];

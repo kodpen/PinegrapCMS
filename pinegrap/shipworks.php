@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -28,19 +28,30 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 // HTTP/1.0
 header("Pragma: no-cache");
 
-// Try to find user for login info.
+// Try to find the user by name, then verify the raw password against the stored
+// hash in PHP (pg_password_verify handles legacy MD5, wrapped and modern rows,
+// and upgrades on a correct password). A wrong password empties $user so the
+// existing "login invalid" branch fires unchanged.
 $user = db_item(
     "SELECT
         user_id AS id,
         user_role AS role,
-        user_manage_ecommerce AS manage_ecommerce
+        user_manage_ecommerce AS manage_ecommerce,
+        user_password,
+        user_password_algo
     FROM user
     WHERE
         (
             (user_username = '" . escape($_REQUEST['username']) . "')
             OR (user_email = '" . escape($_REQUEST['username']) . "')
         )
-        AND (user_password = '" . escape(md5($_REQUEST['password'])) . "')");
+    LIMIT 1");
+
+if (!is_array($user)
+    || !isset($user['id'])
+    || !pg_password_verify($user['id'], isset($_REQUEST['password']) ? $_REQUEST['password'] : '', $user['user_password'], $user['user_password_algo'])) {
+    $user = array('id' => '');
+}
 
 // If a user was not found (login invalid), then output error.
 if ($user['id'] == '') {

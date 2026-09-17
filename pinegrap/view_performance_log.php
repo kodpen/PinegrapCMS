@@ -9,7 +9,7 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2016–2026 Kodpen
+ * @copyright   2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -128,19 +128,14 @@ if (defined('PERF_MONITOR_ENABLED') && !PERF_MONITOR_ENABLED) {
         'extra classes' => 'setting',
         'icon'          => 'setting',
         'heading'       => lang('Performance Log'),
-        'cancel'        => array(
-            'enable' => 'true',
-            'title'  => lang('Return to Settings'),
-            'url'    => 'settings.php',
-        ),
-        'auto_main' => false,
+        'heading_description' => h(lang('Per-request runtime metrics recorded after each response is flushed to the client.')),
     ));
 
-    echo '<main id="content" class="container">
+    echo '<main id="content" class="container-fluid">
         <div class="alert alert-secondary d-flex align-items-center my-4">
             <i class="bi bi-speedometer2 me-2"></i>
             <div>' . lang('Performance monitoring is turned off, and the records were cleared when it was switched off.')
-            . ' <a href="settings.php">' . lang('Site Settings') . '</a></div>
+            . ' <a href="' . pg_settings_link('features', 'pgset-features') . '">' . lang('Site Settings') . '</a></div>
         </div>
     </main>';
 
@@ -156,14 +151,8 @@ if (!$table_exists) {
         'extra classes' => 'setting',
         'icon' => 'setting',
         'heading' => lang('Performance Log'),
-        'cancel' => array(
-            'enable' => 'true',
-            'title' => lang('Return to Settings'),
-            'url'   => 'settings.php',
-        ),
-        'auto_main' => false,
     ));
-    echo '<main id="content" class="container">
+    echo '<main id="content" class="container-fluid">
         <div class="alert alert-warning my-4">
             <i class="bi bi-exclamation-triangle me-2"></i>'
             . lang('The performance tables do not exist yet. Please run the software upgrade to create them.')
@@ -471,16 +460,10 @@ echo pg_page_shell(array(
     'extra classes' => 'setting',
     'icon' => 'setting',
     'heading' => lang('Performance Log'),
-    'cancel' => array(
-        'enable' => 'true',
-        'title' => lang('Return to Settings'),
-        'url'   => 'settings.php',
-    ),
-    'auto_main' => false,
 ));
 
 echo '
-<main id="content" class="container">
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -488,7 +471,7 @@ echo '
 
             <div class="row mb-3 flex-wrap align-items-center">
                 <div class="col-12 col-md-6 text-center text-md-start">
-                    <h2 class="d-inline-block" data-bs-content="' . h(lang('Per-request runtime metrics recorded after each response is flushed to the client.')) . '" title="' . h(lang('Performance Log')) . '">' . lang('Performance Log') . '</h2>
+                    
                     <p class="m-0 small text-muted">' . lang('Per-request runtime metrics recorded after each response is flushed to the client.') . '</p>
                 </div>
                 <div class="col-12 col-md-6">

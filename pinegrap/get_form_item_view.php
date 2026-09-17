@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -46,7 +46,7 @@ function get_form_item_view($properties) {
     // If we don't know which submitted form to show and user has edit access to page, then show
     // notice.
     if (
-        !$form_id and !$_GET['r']
+        !$form_id and empty($_GET['r'])
         and check_edit_access(db("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'"))
     ) {
 
@@ -143,7 +143,7 @@ function get_form_item_view($properties) {
         
         // if the user is logged in, then get user information
         // we will use this in several places below
-        if ((isset($_SESSION['sessionusername']) == true) && (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true)) {
+        if ((isset($_SESSION['sessionusername']) == true) && (pg_session_signed_in() == true)) {
             $user = validate_user();
         }
 
@@ -720,7 +720,7 @@ function get_form_item_view($properties) {
                                     <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
                                     <td style="vertical-align: top">
                                         ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'22', 'class'=>'software_input_text')) . '
-                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                         ' . get_date_time_picker_format() . '
                                         <script>
                                             software_$("#' . $field['id'] . '").datetimepicker(datetimepicker_options);
@@ -1104,7 +1104,8 @@ function get_form_item_view($properties) {
             foreach ($conditionals as $conditional) {
                 $whole_string = $conditional[0];
                 $positive_string = $conditional[1];
-                $negative_string = $conditional[4];
+                // Optional capture group: absent when the conditional has no else part.
+                $negative_string = $conditional[4] ?? '';
                 $field_name = $conditional[2];
                 
                 // if field name is reference code and there is another field, use the other field,

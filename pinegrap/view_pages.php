@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -188,7 +188,7 @@ if (pg_seo_structure_schema_ready()) {
 }
 
 // The link filters read seo_flags bits the graph pass fills in, which needs
-// the 2026.4.13 columns.
+// the 2026.4.2 columns.
 if (pg_seo_structure_schema_ready() && db_item("SHOW TABLES LIKE 'seo_link'")) {
     $filters_in_array['seo_broken_links'] = lang('Pages With Broken Internal Links');
     $filters_in_array['seo_orphan'] = lang('Orphan Pages');
@@ -399,7 +399,7 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     $output_button_bar .=
         '<nav id="button_bar" class="navigation " aria-label="Button Bar">
         <a class="btn btn-sm btn-primary m-1" href="add_page.php" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
-        <a class="btn btn-sm btn-outline-secondary m-1" href="add_system_style.php?from=pages" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . ' (Visual Page Editor)</a>
+        <a class="btn btn-sm btn-primary m-1" href="add_system_style.php?from=pages" data-loading-content="' . lang(array('string'=>'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . ' (Visual Page Editor)</a>
         ';
 
     // If advanced search is enabled and the user is a manager or above then output "Update Search Index" button.
@@ -1106,6 +1106,7 @@ $query =
        page.page_folder,
        page.page_style,
        page.layout_type,
+       " . (pg_multi_page_design_ready() ? "(page.page_tree_json IS NOT NULL AND page.page_tree_json <> '') AS has_tree," : "'0' AS has_tree,") . "
        folder.folder_name,
        folder.folder_access_control_type,
        style.style_name,
@@ -1328,7 +1329,9 @@ if ($pages) {
             $output_form_enabled_row = '<td class="align-middle text-center">' . $output_form_enabled_mark . '</td>';
         }
 
-        $output_edit_url = 'edit_page.php?id=' . $page['page_id'];
+        // A visual-editor page opens in the visual editor; everything else
+        // (custom style, folder default) in the page screen.
+        $output_edit_url = pg_page_edit_url($page);
         
         if($page['user_username'] != ''){
             $output_last_modifier_user = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($page['user_username']) ) ) );
@@ -1468,10 +1471,12 @@ pg_page_shell(
         'title'=> lang('Pages'),
         'extra classes'=>'page',
         'icon'=>'page', 
-        'heading'=>lang('Pages'),
+        'heading'=>($heading ?? lang('Pages')),
+        'heading_description' => ($subheading ?? lang('Create, edit and publish site pages')),
         
     )
 ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -1479,7 +1484,7 @@ pg_page_shell(
             ' . $liveform->output_notices() . '
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
+                    
                     ' . $output_button_bar . '
                 </div>
                 <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
@@ -1550,7 +1555,8 @@ pg_page_shell(
         </div>
     </div>
     ' . pg_seo_render_detail_offcanvas() . '
-</main>' .
+</main>
+' .
 output_footer();
 
 $liveform->remove_form('view_pages');

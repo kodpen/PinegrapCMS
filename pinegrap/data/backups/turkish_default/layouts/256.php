@@ -4,7 +4,7 @@
 	if ($number_of_special_offers):
 	?>
 <h2>
-	Special Offer<?php if ($number_of_special_offers > 1): ?>s<?php endif ?>
+	Özel Teklif<?php if ($number_of_special_offers > 1): ?>ler<?php endif ?>
 </h2>
 <?php
 	// If there are pending offers, then start form
@@ -50,7 +50,7 @@
 					if ($action['recipient']):
 					?>
 				<div class="form-group">
-					<label for="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to">Ship to</label>
+					<label for="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to">Alıcı</label>
 					<select name="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to" id="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to" class="form-control"></select>
 				</div>
 				<?php
@@ -60,13 +60,13 @@
 					if ($action['add_name']):
 					?>
 				<div class="form-group">
-					<input type="text" name="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" id="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" class="form-control" placeholder="or add name">
+					<input type="text" name="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" id="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" class="form-control" placeholder="ya da isim ekle">
 				</div>
 				<?php endif ?>
 				<?php endif ?>
 				<div class="form-group">
 					<button type="submit" name="add_pending_offer_<?=$offer['id']?>_<?=$action['id']?>" class="btn btn-primary btn-sm">
-					Add
+					Ekle
 					</button>
 				</div>
 				<?php if ($number_of_special_offers > 1): ?>
@@ -127,7 +127,7 @@
 <?php endif ?>
 <form <?=$attributes?>>
 	<div class="form-group">
-		<label for="quick_add_product_id">Item</label>
+		<label for="quick_add_product_id">Ürün</label>
 		<select name="quick_add_product_id" id="quick_add_product_id" class="form-control"></select>
 	</div>
 	<?php
@@ -136,23 +136,23 @@
 		?>
 	<?php if ($quick_add['recipient']): ?>
 	<div id="quick_add_ship_to_row" class="form-group">
-		<label for="quick_add_ship_to">Ship to</label>
+		<label for="quick_add_ship_to">Alıcı</label>
 		<select name="quick_add_ship_to" id="quick_add_ship_to" class="form-control"></select>
 	</div>
 	<div id="quick_add_add_name_row" class="form-group">
-		<label for="quick_add_add_name">or add name</label>
-		<input type="text" name="quick_add_add_name" id="quick_add_add_name" class="form-control" placeholder="Example: Tom">
+		<label for="quick_add_add_name">ya da isim ekle</label>
+		<input type="text" name="quick_add_add_name" id="quick_add_add_name" class="form-control" placeholder="Örnek: Tuna">
 	</div>
 	<?php endif ?>
 	<?php if ($quick_add['quantity']): ?>
 	<div id="quick_add_quantity_row" class="form-group">
-		<label for="quick_add_quantity">Qty</label>
+		<label for="quick_add_quantity">Miktar</label>
 		<input type="number" name="quick_add_quantity" id="quick_add_quantity" class="form-control">
 	</div>
 	<?php endif ?>
 	<?php if ($quick_add['amount']): ?>
 	<div id="quick_add_amount_row" class="form-group">
-		<label for="quick_add_amount">Amount</label>
+		<label for="quick_add_amount">Tutar</label>
 		<div class="input-group">
 			<span class="input-group-addon"><?=$currency_symbol?></span>
 			<input type="number" step="any" name="quick_add_amount" id="quick_add_amount" class="form-control">
@@ -165,7 +165,7 @@
 	<?php if ($quick_add['available_products']): ?>
 	<div class="form-group">
 		<button type="submit" class="btn btn-default btn-secondary btn-sm">
-		Add
+		Ekle
 		</button>
 	</div>
 	<?php endif ?>
@@ -176,7 +176,7 @@
 	// If there are no recipients in the order, then show message.
 	if (!$recipients):
 	?>
-<p><strong>No items have been added.</strong></p>
+<p><strong>Henüz ürün eklenmedi.</strong></p>
 <?php
 	// Otherwise there is at least one recipient, so show items.
 	else:
@@ -187,7 +187,7 @@
 		// differentiate "Today's Charges" from the "Recurring Charges".
 		if ($recurring_items):
 		?>
-	<h2>Today's Charges</h2>
+	<h2>Bugünün Ücretleri</h2>
 	<?php endif ?>
 	<?php
 		// If there are nonrecurring items, then place items in a column.
@@ -210,7 +210,7 @@
 				<tr>
 					<td colspan="6">
 						<h3>
-							Ship to
+							Alıcı
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
 							<strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
@@ -219,19 +219,19 @@
 				</tr>
 				<?php endif ?>
 				<tr>
-					<th>Item</th>
-					<th>Description</th>
+					<th>Ürün</th>
+					<th>Açıklama</th>
 					<th class="text-center">
 						<?php if ($recipient['non_donations_in_nonrecurring']): ?>
-						Qty
+						Miktar
 						<?php endif ?>
 					</th>
 					<th class="text-right">
 						<?php if ($recipient['non_donations_in_nonrecurring']): ?>
-						Price
+						Fiyat
 						<?php endif ?>
 					</th>
-					<th class="text-right">Amount</th>
+					<th class="text-right">Tutar</th>
 					<th></th>
 				</tr>
 				<?php foreach($recipient['items'] as $item): ?>
@@ -241,7 +241,7 @@
 					?>
 				<tr>
 					<td>
-						<span class="visible-xs-inline">Item:</span>
+						<span class="visible-xs-inline">Ürün:</span>
 						<?=h($item['name'])?>
 					</td>
 					<td>
@@ -300,16 +300,16 @@
 							if ($item['recurring_schedule']):
 							?>
 						<fieldset>
-							<legend>Payment Schedule</legend>
+							<legend>Ödeme Planı</legend>
 							<div class="form-group">
 								<label for="recurring_payment_period_<?=$item['id']?>">
-								Frequency*
+								Sıklık*
 								</label>
 								<select name="recurring_payment_period_<?=$item['id']?>" id="recurring_payment_period_<?=$item['id']?>" class="form-control"></select>
 							</div>
 							<div class="form-group">
 								<label for="recurring_number_of_payments_<?=$item['id']?>">
-								Number of Payments<?php if ($number_of_payments_required): ?>*<?php endif ?>
+								Ödeme Sayısı<?php if ($number_of_payments_required): ?>*<?php endif ?>
 								</label>
 								<input type="number" name="recurring_number_of_payments_<?=$item['id']?>" id="recurring_number_of_payments_<?=$item['id']?>" class="form-control">
 								<p class="help-block">
@@ -323,7 +323,7 @@
 								?>
 							<div class="form-group">
 								<label for="recurring_start_date_<?=$item['id']?>">
-								Start Date*
+								Başlangıç Tarihi*
 								</label>
 								<input type="text" name="recurring_start_date_<?=$item['id']?>" id="recurring_start_date_<?=$item['id']?>" class="form-control">
 							</div>
@@ -340,16 +340,16 @@
 							?>
 						<fieldset>
 							<legend>
-								Gift Card
+								Hediye Kartı
 								<?php if ($item['number_of_gift_cards'] > 1): ?>
 								(<?=$quantity_number?>
-								of
+								/
 								<?=$item['number_of_gift_cards']?>)
 								<?php endif ?>
 							</legend>
 							<div class="form-group">
 								<label>
-								Amount
+								Tutar
 								</label>
 								<p class="form-control-static">
 									<strong><?=$item['price_info']?></strong>
@@ -357,30 +357,30 @@
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address">
-								Recipient Email*
+								Alıcının E-postası*
 								</label>
-								<input type="email" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address" class="form-control" placeholder="recipient@example.com">
+								<input type="email" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address" class="form-control" placeholder="alici@ornek.com">
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name">
-								Your Name
+								Adınız
 								</label>
-								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" class="form-control" placeholder="Your name that will appear in the email.">
+								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" class="form-control" placeholder="E-postada görünecek adınız.">
 								<p class="help-block">
-									(leave blank if you want to be anonymous)
+									(isimsiz kalmak istiyorsanız boş bırakın)
 								</p>
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message">
-								Message
+								Mesaj
 								</label>
-								<textarea name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" rows="3" class="form-control" placeholder="The message that will appear in the email."></textarea>
+								<textarea name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" rows="3" class="form-control" placeholder="E-postada görünecek mesaj."></textarea>
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date">
-								Delivery Date
+								Teslimat Tarihi
 								</label>
-								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" class="form-control" placeholder="Your name that will appear in the email.">
+								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" class="form-control" placeholder="E-postada görünecek adınız.">
 							</div>
 						</fieldset>
 						<?php endfor ?>
@@ -424,7 +424,7 @@
 
 						                    (<?=$quantity_number?>
 
-						                    of
+						                    /
 
 						                    <?=$item['number_of_forms']?>)
 
@@ -544,7 +544,7 @@
 
 						                            <p class="help-block">
 
-						                                (Format: h:mm AM/PM)
+						                                (Biçim: s:dd AM/PM)
 
 						                            </p>
 
@@ -965,7 +965,7 @@
 							?>
 						<div class="form-group">
 							<label for="quantity[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Qty
+							Miktar
 							</label>
 							<input type="number" name="quantity[<?=$item['id']?>]" id="quantity[<?=$item['id']?>]" class="form-control" style="min-width: 5em">
 						</div>
@@ -974,7 +974,7 @@
 					</td>
 					<td class="text-right">
 						<?php if ($item['selection_type'] != 'donation'): ?>
-						<span class="visible-xs-inline">Price:</span>
+						<span class="visible-xs-inline">Fiyat:</span>
 						<?=$item['price_info']?>
 						<?php endif ?>
 					</td>
@@ -982,7 +982,7 @@
 						<?php if ($item['selection_type'] == 'donation'): ?>
 						<div class="form-group">
 							<label for="donations[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Amount
+							Tutar
 							</label>
 							<div class="input-group">
 								<span class="input-group-addon">
@@ -997,12 +997,12 @@
 							</div>
 						</div>
 						<?php else: ?>
-						<span class="visible-xs-inline">Amount:</span>
+						<span class="visible-xs-inline">Tutar:</span>
 						<?=$item['amount_info']?>
 						<?php endif ?>
 					</td>
 					<td class="text-center">
-						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Kaldır">
 						<span class="glyphicon glyphicon-remove"></span>
 						</a>
 					</td>
@@ -1016,14 +1016,14 @@
 				<tr>
 					<td colspan="6">
 						<h3>
-							Shipping Address
+							Kargo Adresi
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-							for <strong><?=h($recipient['ship_to_name'])?></strong>
+							— <strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
 						</h3>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_salutation">
-							Salutation
+							Ünvan
 							</label>
 							<select
 								id="shipping_<?=$recipient['id']?>_salutation"
@@ -1034,7 +1034,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_first_name">
-							First Name*
+							İsim*
 							</label>
 							<input
 								type="text"
@@ -1046,7 +1046,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_last_name">
-							Last Name*
+							Soyisim*
 							</label>
 							<input
 								type="text"
@@ -1058,7 +1058,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_company">
-							Company
+							Şirket
 							</label>
 							<input
 								type="text"
@@ -1070,7 +1070,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_address_1">
-							Address 1*
+							Adres 1*
 							</label>
 							<input
 								type="text"
@@ -1082,7 +1082,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_address_2">
-							Address 2
+							Adres 2
 							</label>
 							<input
 								type="text"
@@ -1094,7 +1094,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_city">
-							City*
+							İlçe*
 							</label>
 							<input
 								type="text"
@@ -1106,7 +1106,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_country">
-							Country*
+							Ülke*
 							</label>
 							<select
 								id="shipping_<?=$recipient['id']?>_country"
@@ -1117,7 +1117,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_state_text_box">
-							State / Province
+							İl
 							</label>
 							<input
 								type="text"
@@ -1127,7 +1127,7 @@
 								spellcheck="false"
 								class="form-control">
 							<label for="shipping_<?=$recipient['id']?>_state_pick_list" style="display: none">
-							State / Province*
+							İl*
 							</label>
 							<select
 								id="shipping_<?=$recipient['id']?>_state_pick_list"
@@ -1138,7 +1138,7 @@
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_zip_code">
-							Zip / Postal Code<span id="shipping_<?=$recipient['id']?>_zip_code_required" style="display: none">*</span>
+							Posta Kodu<span id="shipping_<?=$recipient['id']?>_zip_code_required" style="display: none">*</span>
 							</label>
 							<input
 								type="text"
@@ -1148,14 +1148,14 @@
 								spellcheck="false"
 								class="form-control">
 						</div>
-						<div>Address Type</div>
+						<div>Adres Tipi</div>
 						<div class="radio">
 							<label>
 							<input
 								type="radio"
 								name="shipping_<?=$recipient['id']?>_address_type"
 								value="residential">
-							Residential
+							Ev
 							</label>
 						</div>
 						<div class="radio">
@@ -1164,12 +1164,12 @@
 								type="radio"
 								name="shipping_<?=$recipient['id']?>_address_type"
 								value="business">
-							Business
+							İşyeri
 							</label>
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_phone_number">
-							Phone
+							Telefon
 							</label>
 							<input
 								type="tel"
@@ -1188,9 +1188,9 @@
 						<?php endif ?>
 						<?php if ($arrival_dates): ?>
 						<h3>
-							Requested Arrival Date
+							Talep Edilen Varış Tarihi
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-							for <strong><?=h($recipient['ship_to_name'])?></strong>
+							— <strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
 						</h3>
 						<?php foreach($arrival_dates as $arrival_date): ?>
@@ -1224,9 +1224,9 @@
 							id="shipping_<?=$recipient['id']?>_method_heading"
 							style="display: none"
 							>
-							Shipping Method
+							Nakliye Yöntemi
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-							for <strong><?=h($recipient['ship_to_name'])?></strong>
+							— <strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
 						</h3>
 						<table
@@ -1235,9 +1235,9 @@
 							>
 							<thead>
 								<tr>
-									<th>Select One</th>
-									<th class="text-right">Cost</th>
-									<th>Details</th>
+									<th>Birini Seçin</th>
+									<th class="text-right">Maliyet</th>
+									<th>Detaylar</th>
 								</tr>
 							</thead>
 							<tr class="method_row">
@@ -1254,7 +1254,7 @@
 								</td>
 								<td>
 									<div class="delivery_date" style="display: none">
-										Estimated Delivery:
+										Tahmini Teslimat:
 										<strong class="date"></strong>
 									</div>
 									<div class="description"></div>
@@ -1270,7 +1270,7 @@
 		</div>
 		<div class="col-lg-3">
 			<?php endif ?>
-			<h3>Totals</h3>
+			<h3>Toplamlar</h3>
 			<table class="table">
 				<?php
 					// We only show the subtotal if there is an offer discount, tax,
@@ -1279,25 +1279,25 @@
 					if ($show_subtotal):
 					?>
 				<tr>
-					<th scope="row" class="text-right">Subtotal:</th>
+					<th scope="row" class="text-right">Ara Toplam:</th>
 					<td class="text-right"><?=$subtotal_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($discount_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Discount:</th>
+					<th scope="row" class="text-right">İndirim:</th>
 					<td class="text-right">-<?=$discount_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($tax_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Tax:</th>
+					<th scope="row" class="text-right">Vergi:</th>
 					<td class="text-right"><?=$tax_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($shipping_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Shipping:</th>
+					<th scope="row" class="text-right">Nakliye:</th>
 					<td class="text-right">
 						<?php
 							// The shipping class allows the shipping to be dynamically updated
@@ -1309,17 +1309,17 @@
 				<?php endif ?>
 				<?php if ($gift_card_discount_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Gift Card<?php if ($number_of_applied_gift_cards > 1): ?>s<?php endif ?>:</th>
+					<th scope="row" class="text-right">Hediye Kart<?php if ($number_of_applied_gift_cards > 1): ?>ları<?php else: ?>ı<?php endif ?>:</th>
 					<td class="text-right">-<?=$gift_card_discount_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($show_surcharge): ?>
 				<tr class="surcharge_row">
-					<th scope="row" class="text-right">Surcharge:</th>
+					<th scope="row" class="text-right">Ek Ücret:</th>
 					<td class="text-right"><?=$surcharge_info?></td>
 				</tr>
 				<tr class="surcharge_total_row">
-					<th scope="row" class="text-right" style="width: 100%">Total Due:</th>
+					<th scope="row" class="text-right" style="width: 100%">Ödenecek Toplam:</th>
 					<td class="text-right">
 						<strong>
 						<?=$total_with_surcharge_info?><?php if ($base_currency_total_with_surcharge_info): ?>*
@@ -1329,7 +1329,7 @@
 				</tr>
 				<?php endif ?>
 				<tr class="total_row">
-					<th scope="row" class="text-right" style="width: 100%">Total Due:</th>
+					<th scope="row" class="text-right" style="width: 100%">Ödenecek Toplam:</th>
 					<td class="text-right">
 						<?php
 							// The total and base_currency_total classes allow the total to be
@@ -1349,7 +1349,7 @@
 				?>
 			<p class="text-muted">
 				<small>
-				*This amount is based on our current currency exchange rate to <?=h($base_currency_name)?> and may differ from the exact charges (displayed above in <?=h($base_currency_name)?>).
+				* Bu tutar <?=h($base_currency_name)?> için geçerli döviz kurumuza göre hesaplanmıştır ve kesin tutardan (yukarıda <?=h($base_currency_name)?> olarak gösterilen) farklı olabilir.
 				</small>
 			</p>
 			<?php endif ?>
@@ -1368,7 +1368,7 @@
 			<?php endif ?>
 			<?php if ($applied_offers): ?>
 			<h3>
-				Applied Offer<?php if ($number_of_applied_offers > 1): ?>s<?php endif ?>
+				Uygulanan Teklif<?php if ($number_of_applied_offers > 1): ?>ler<?php endif ?>
 			</h3>
 			<?php if ($number_of_applied_offers > 1): ?>
 			<ul>
@@ -1427,7 +1427,7 @@
 	</div>
 	<?php endif ?>
 	<?php if ($recurring_items): ?>
-	<h2>Recurring Charges</h2>
+	<h2>Yinelenen Ücretler</h2>
 	<div class="row">
 		<div class="col-lg-9">
 			<table class="table mobile_stacked">
@@ -1445,7 +1445,7 @@
 				<tr>
 					<td colspan="7">
 						<h3>
-							Ship to
+							Alıcı
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
 							<strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
@@ -1454,20 +1454,20 @@
 				</tr>
 				<?php endif ?>
 				<tr>
-					<th>Item</th>
-					<th>Description</th>
-					<th>Frequency</th>
+					<th>Ürün</th>
+					<th>Açıklama</th>
+					<th>Sıklık</th>
 					<th class="text-center">
 						<?php if ($recipient['non_donations_in_recurring']): ?>
-						Qty
+						Miktar
 						<?php endif ?>
 					</th>
 					<th class="text-right">
 						<?php if ($recipient['non_donations_in_recurring']): ?>
-						Price
+						Fiyat
 						<?php endif ?>
 					</th>
-					<th class="text-right">Amount</th>
+					<th class="text-right">Tutar</th>
 					<th></th>
 				</tr>
 				<?php foreach($recipient['items'] as $item): ?>
@@ -1477,7 +1477,7 @@
 					?>
 				<tr>
 					<td>
-						<span class="visible-xs-inline">Item:</span>
+						<span class="visible-xs-inline">Ürün:</span>
 						<?=h($item['name'])?>
 					</td>
 					<td>
@@ -1541,16 +1541,16 @@
 							):
 							?>
 						<fieldset>
-							<legend>Payment Schedule</legend>
+							<legend>Ödeme Planı</legend>
 							<div class="form-group">
 								<label for="recurring_payment_period_<?=$item['id']?>">
-								Frequency*
+								Sıklık*
 								</label>
 								<select name="recurring_payment_period_<?=$item['id']?>" id="recurring_payment_period_<?=$item['id']?>" class="form-control"></select>
 							</div>
 							<div class="form-group">
 								<label for="recurring_number_of_payments_<?=$item['id']?>">
-								Number of Payments<?php if ($number_of_payments_required): ?>*<?php endif ?>
+								Ödeme Sayısı<?php if ($number_of_payments_required): ?>*<?php endif ?>
 								</label>
 								<input type="number" name="recurring_number_of_payments_<?=$item['id']?>" id="recurring_number_of_payments_<?=$item['id']?>" class="form-control">
 								<p class="help-block">
@@ -1564,7 +1564,7 @@
 								?>
 							<div class="form-group">
 								<label for="recurring_start_date_<?=$item['id']?>">
-								Start Date*
+								Başlangıç Tarihi*
 								</label>
 								<input type="text" name="recurring_start_date_<?=$item['id']?>" id="recurring_start_date_<?=$item['id']?>" class="form-control">
 							</div>
@@ -1614,7 +1614,7 @@
 
 						                    (<?=$quantity_number?>
 
-						                    of
+						                    /
 
 						                    <?=$item['number_of_forms']?>)
 
@@ -1734,7 +1734,7 @@
 
 						                            <p class="help-block">
 
-						                                (Format: h:mm AM/PM)
+						                                (Biçim: s:dd AM/PM)
 
 						                            </p>
 
@@ -2138,7 +2138,7 @@
 						<?php endif ?>
 					</td>
 					<td>
-						<span class="visible-xs-inline">Frequency:</span>
+						<span class="visible-xs-inline">Sıklık:</span>
 						<?=h($item['payment_period'])?>
 					</td>
 					<td class="text-center">
@@ -2160,7 +2160,7 @@
 							?>
 						<div class="form-group">
 							<label for="quantity[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Qty
+							Miktar
 							</label>
 							<input type="number" name="quantity[<?=$item['id']?>]" id="quantity[<?=$item['id']?>]" class="form-control" style="min-width: 5em">
 						</div>
@@ -2169,7 +2169,7 @@
 					</td>
 					<td class="text-right">
 						<?php if ($item['selection_type'] != 'donation'): ?>
-						<span class="visible-xs-inline">Price:</span>
+						<span class="visible-xs-inline">Fiyat:</span>
 						<?=$item['price_info']?>
 						<?php endif ?>
 					</td>
@@ -2185,7 +2185,7 @@
 							?>
 						<div class="form-group">
 							<label for="donations[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Amount
+							Tutar
 							</label>
 							<div class="input-group">
 								<span class="input-group-addon">
@@ -2200,7 +2200,7 @@
 							</div>
 						</div>
 						<?php else: ?>
-						<span class="visible-xs-inline">Amount:</span>
+						<span class="visible-xs-inline">Tutar:</span>
 						<?=$item['amount_info']?>
 						<?php endif ?>
 					</td>
@@ -2212,7 +2212,7 @@
 							// for the same item that could confuse customer.
 							if (!$item['in_nonrecurring']):
 							?>
-						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Kaldır">
 						<span class="glyphicon glyphicon-remove"></span>
 						</a>
 						<?php endif ?>
@@ -2225,7 +2225,7 @@
 			</table>
 		</div>
 		<div class="col-lg-3">
-			<h3>Totals</h3>
+			<h3>Toplamlar</h3>
 			<table class="table">
 				<?php
 					// Loop through the payment periods in order to show totals.
@@ -2233,7 +2233,7 @@
 					?>
 				<tr>
 					<th scope="row" class="text-right" style="width: 100%">
-						<?=h($payment_period['name'])?> Subtotal:
+						<?=h($payment_period['name'])?> Ara Toplam:
 					</th>
 					<td class="text-right">
 						<?=$payment_period['subtotal_info']?>
@@ -2242,7 +2242,7 @@
 				<?php if ($payment_period['tax_info']): ?>
 				<tr>
 					<th scope="row" class="text-right" style="width: 100%">
-						<?=h($payment_period['name'])?> Tax:
+						<?=h($payment_period['name'])?> Vergi:
 					</th>
 					<td class="text-right">
 						<?=$payment_period['tax_info']?>
@@ -2251,7 +2251,7 @@
 				<?php endif ?>
 				<tr>
 					<th scope="row" class="text-right" style="width: 100%">
-						<?=h($payment_period['name'])?> Total:
+						<?=h($payment_period['name'])?> Toplam:
 					</th>
 					<td class="text-right">
 						<strong><?=$payment_period['total_info']?></strong>
@@ -2262,14 +2262,14 @@
 		</div>
 	</div>
 	<?php endif ?>
-	<h2>Billing</h2>
+	<h2>Faturalandırma</h2>
 	<?php if ($billing_same_as_shipping): ?>
 	<div class="checkbox">
 		<label>
 		<input
 			type="checkbox"
 			id="billing_same_as_shipping">
-		Billing Address Same as Shipping
+		Fatura Adresi Kargo Adresiyle Aynı
 		</label>
 	</div>
 	<?php endif ?>    
@@ -2286,7 +2286,7 @@
 	</div>
 	<?php endif ?>
 	<div class="form-group">
-		<label for="billing_salutation">Salutation</label>
+		<label for="billing_salutation">Ünvan</label>
 		<select
 			name="billing_salutation"
 			id="billing_salutation"
@@ -2295,7 +2295,7 @@
 		</select>
 	</div>
 	<div class="form-group">
-		<label for="billing_first_name">First Name*</label>
+		<label for="billing_first_name">İsim*</label>
 		<input
 			type="text"
 			name="billing_first_name"
@@ -2305,7 +2305,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_last_name">Last Name*</label>
+		<label for="billing_last_name">Soyisim*</label>
 		<input
 			type="text"
 			name="billing_last_name"
@@ -2315,7 +2315,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_company">Company</label>
+		<label for="billing_company">Şirket</label>
 		<input
 			type="text"
 			name="billing_company"
@@ -2325,7 +2325,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_address_1">Address 1*</label>
+		<label for="billing_address_1">Adres 1*</label>
 		<input
 			type="text"
 			name="billing_address_1"
@@ -2335,7 +2335,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_address_2">Address 2</label>
+		<label for="billing_address_2">Adres 2</label>
 		<input
 			type="text"
 			name="billing_address_2"
@@ -2345,7 +2345,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_city">City*</label>
+		<label for="billing_city">İlçe*</label>
 		<input
 			type="text"
 			name="billing_city"
@@ -2355,7 +2355,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_country">Country*</label>
+		<label for="billing_country">Ülke*</label>
 		<select
 			name="billing_country"
 			id="billing_country"
@@ -2364,7 +2364,7 @@
 		</select>
 	</div>
 	<div class="form-group">
-		<label for="billing_state_text_box">State / Province</label>
+		<label for="billing_state_text_box">İl</label>
 		<input
 			type="text"
 			name="billing_state"
@@ -2372,7 +2372,7 @@
 			autocomplete="section-billing billing address-level1"
 			spellcheck="false"
 			class="form-control">
-		<label for="billing_state_pick_list" style="display: none">State / Province*</label>
+		<label for="billing_state_pick_list" style="display: none">İl*</label>
 		<select
 			name="billing_state"
 			id="billing_state_pick_list"
@@ -2382,7 +2382,7 @@
 		</select>
 	</div>
 	<div class="form-group">
-		<label for="billing_zip_code">Zip / Postal Code*</label>
+		<label for="billing_zip_code">Posta Kodu*</label>
 		<input
 			type="text"
 			name="billing_zip_code"
@@ -2392,7 +2392,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_phone_number">Phone*</label>
+		<label for="billing_phone_number">Telefon*</label>
 		<input
 			type="tel"
 			name="billing_phone_number"
@@ -2402,7 +2402,7 @@
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_email_address">Email*</label>
+		<label for="billing_email_address">E-Posta*</label>
 		<input
 			type="email"
 			name="billing_email_address"
@@ -2421,7 +2421,7 @@
 	<?php endif ?>
 	<?php if ($po_number): ?>
 	<div class="form-group">
-		<label for="po_number">PO Number</label>
+		<label for="po_number">PO Numarası</label>
 		<input
 			type="text"
 			name="po_number"
@@ -2432,7 +2432,7 @@
 	<?php endif ?>
 	<?php if ($referral_source): ?>
 	<div class="form-group">
-		<label for="referral_source">How did you hear about us?</label>
+		<label for="referral_source">Bizden nasıl haberiniz oldu?</label>
 		<select name="referral_source" id="referral_source" class="form-control"></select>
 	</div>
 	<?php endif ?>
@@ -2440,7 +2440,7 @@
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="update_contact" value="1">
-		Update my contact info with this billing info.
+		İletişim bilgilerimi bu fatura bilgileriyle güncelle.
 		</label>
 	</div>
 	<?php endif ?>
@@ -2468,7 +2468,7 @@
 	<?php endif ?>
 	<?php if ($applied_gift_cards): ?>
 	<h2>
-		Applied Gift Card<?php if ($number_of_applied_gift_cards > 1): ?>s<?php endif ?>
+		Uygulanan Hediye Kart<?php if ($number_of_applied_gift_cards > 1): ?>ları<?php else: ?>ı<?php endif ?>
 	</h2>
 	<?php if ($number_of_applied_gift_cards > 1): ?>
 	<ul>
@@ -2480,8 +2480,8 @@
 		<li>
 			<?php endif ?>
 			<?=h($gift_card['protected_code'])?>
-			(Remaining Balance: <?=$gift_card['remaining_balance_info']?>)
-			<a href="<?=h($gift_card['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+			(Kalan Bakiye: <?=$gift_card['remaining_balance_info']?>)
+			<a href="<?=h($gift_card['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Kaldır">
 			<span class="glyphicon glyphicon-remove"></span>
 			</a>
 			<?php if ($number_of_applied_gift_cards > 1): ?>
@@ -2495,15 +2495,15 @@
 	<?php endif ?>
 	<?php endif ?>
 	<?php if ($payment): ?>
-	<h2>Payment</h2>
+	<h2>Ödeme</h2>
 	<?php if ($gift_card_code): ?>
 	<div class="form-group form-inline">
 		<div class="form-group">
-			<label for="gift_card_code">Gift Card Code</label>
+			<label for="gift_card_code">Hediye Kartı Kodu</label>
 			<input type="text" name="gift_card_code" id="gift_card_code" class="form-control">
 		</div>
 		<button type="submit" name="submit_apply_gift_card" class="btn btn-default btn-secondary btn-sm" formnovalidate>
-		Apply
+		Uygula
 		</button>
 	</div>
 	<?php endif ?>
@@ -2512,7 +2512,7 @@
 		// If this is the only payment method, then show a heading.
 		if ($number_of_payment_methods == 1):
 		?>
-	<h3>Credit/Debit Card</h3>
+	<h3>Kredi / Banka Kartı</h3>
 	<?php
 		// Otherwise there are multiple payment methods, so show radio button.
 		else:
@@ -2520,7 +2520,7 @@
 	<div class="radio">
 		<label>
 		<input type="radio" name="payment_method" value="Credit/Debit Card">
-		Credit/Debit Card
+		Kredi / Banka Kartı
 		</label>
 	</div>
 	<?php endif ?>
@@ -2532,7 +2532,7 @@
 		<div class="row">
 			<div class="col-sm-4">
 				<div class="form-group">
-					<label for="card_number">Card Number*</label>
+					<label for="card_number">Kart Numarası*</label>
 					<input
 						type="tel"
 						id="card_number"
@@ -2546,7 +2546,7 @@
 			<div class="col-sm-3 col-xs-6">
 				<?php // Use the following to have one text box for expiration. ?>
 				<div class="form-group">
-					<label for="expiration">Expiration*</label>
+					<label for="expiration">Son Kullanma*</label>
 					<input
 						type="tel"
 						id="expiration"
@@ -2554,7 +2554,7 @@
 						autocomplete="cc-exp"
 						spellcheck="false"
 						inputmode="numeric"
-						placeholder="MM / YY"
+						placeholder="AA / YY"
 						class="form-control">
 				</div>
 				<?php
@@ -2562,7 +2562,7 @@
 					expiration (month and year).
 					
 					<div class="form-group">
-					    <label for="expiration_month">Expiration*</label>
+					    <label for="expiration_month">Son Kullanma*</label>
 					    <select
 					        id="expiration_month"
 					        name="expiration_month"
@@ -2586,7 +2586,7 @@
 				?>
 			<div class="col-sm-3 col-xs-6">
 				<div class="form-group">
-					<label for="card_verification_number">Security Code*</label>
+					<label for="card_verification_number">Güvenlik Kodu*</label>
 					<input
 						type="tel"
 						id="card_verification_number"
@@ -2594,12 +2594,12 @@
 						autocomplete="cc-csc"
 						spellcheck="false"
 						inputmode="numeric"
-						placeholder="CSC"
+						placeholder="CVC"
 						maxlength="4"
 						class="form-control">
 					<?php if ($card_verification_number_url): ?>
 					<p class="help-block">
-						<a href="<?=h($card_verification_number_url)?>" target="_blank">What is this?</a>
+						<a href="<?=h($card_verification_number_url)?>" target="_blank">Bu nedir?</a>
 					</p>
 					<?php endif ?>  
 				</div>
@@ -2632,7 +2632,7 @@
 			?>
 		<p class="text-muted">
 			<small>
-			<?=h($surcharge_percentage)?>% surcharge has been added.
+			%<?=h($surcharge_percentage)?> ek ücret eklendi.
 			</small>
 		</p>
 		<?php endif ?>
@@ -2679,7 +2679,7 @@
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="offline_payment_allowed" value="1">
-		Allow offline payment option for this <?=h($shopping_cart_label)?> (and click update to apply).
+		Bu <?=h($shopping_cart_label)?> için çevrimdışı ödeme seçeneğine izin ver (ve uygulanacak güncellemeyi tıklayın).
 		</label>
 	</div>
 	<?php endif ?>
@@ -2687,7 +2687,7 @@
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="terms" value="1">
-		I agree to the <a href="<?=h($terms_url)?>" target="_blank">terms and conditions</a>.
+		<a href="<?=h($terms_url)?>" target="_blank">kullanım koşullarını</a> kabul ediyorum.
 		</label>
 	</div>
 	<?php endif ?>
@@ -2722,7 +2722,7 @@
 </form>
 <p class="text-muted">
 	<small>
-	This <?=h($shopping_cart_label)?> has been saved.  To retrieve this <?=h($shopping_cart_label)?> at a later time, please use this link:<br>
+	Bu <?=h($shopping_cart_label)?> kaydedildi. Bu <?=h($shopping_cart_label)?>'i daha sonra almak için lütfen bu bağlantıyı kullanın:<br>
 	<a href="<?=h($retrieve_order_url)?>"><?=h($retrieve_order_url)?></a>
 	</small>
 </p>
@@ -2730,7 +2730,7 @@
 <?php if ($currency): ?>
 <form <?=$currency_attributes?>>
 	<div class="form-group">
-		<label for="currency_id" class="sr-only">Currency</label>
+		<label for="currency_id" class="sr-only">Para Birimi</label>
 		<select name="currency_id" id="currency_id" class="form-control"></select>
 	</div>
 	<?=$currency_system // Required hidden fields and JS (do not remove) ?>

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -27,17 +27,15 @@ if (!isset($_POST['name'])) {
         'extra classes'=>'page',
         'icon'=>'page',
         'heading'=>lang('Create Common Region'),
+        'heading_description' => lang('Create a common region of shared content that can be added to any page style and updated during page editing by any site manager.'),
         'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Common Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_common_regions'), array('label' => lang('Create Common Region'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a common region of shared content that can be added to any page style and updated during page editing by any site manager.') . '" title="' . lang('Create Common Region') . '">[' . lang('new common region name') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_common_region.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -52,7 +50,7 @@ if (!isset($_POST['name'])) {
                                             <label for="name" class="form-label">' . lang('Common Region Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<cregion>') . '</div>
-                                                <input name="name" id="name" type="text" class="form-control add-header-content-updater" maxlength="100" />
+                                                <input name="name" id="name" type="text" class="form-control" maxlength="100" />
                                                 <div class="input-group-text">' . h('</cregion>') . '</div>
                                             </div>
                                         </div>
@@ -76,7 +74,8 @@ if (!isset($_POST['name'])) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     // Get wysiwyg editor code

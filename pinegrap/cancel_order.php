@@ -93,8 +93,7 @@ $result = process_order_cancellation($order_id, $reason, $is_admin, $current_use
 // view_orders.php for the admin per-row case); the widget reads ?cancelled=*
 // and renders the matching flash. PATH-only fallback when send_to is
 // missing/junk.
-$back = isset($_POST['send_to']) ? (string) $_POST['send_to'] : '';
-if ($back === '' || !preg_match('#^/[^/]#', $back)) $back = PATH;
+$back = pg_safe_redirect_path($_POST['send_to'] ?? '', PATH);
 
 $flag = 'err';
 switch ($result['status']) {

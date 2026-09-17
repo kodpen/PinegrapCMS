@@ -12,136 +12,91 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 $user = validate_user();
 validate_ecommerce_access($user);
+require_once('edit_offer_f.php');
+// The editor saves through api.php and then sends the operator here, leaving
+// its confirmation in this form - the same hand-off the other list screens use.
+include_once('liveform.class.php');
+$liveform = new liveform('view_offers');
 
-// store all values collected in request to session
-foreach ($_REQUEST as $key => $value) {
-    // if the value is a string then add it to the session
-    // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
-    // for certain php.ini settings
-    if (is_string($value) == TRUE) {
-        $_SESSION['software']['ecommerce']['view_offers'][$key] = trim($value);
-    }
-}
-
-
-// if the sort is not set yet, then default it to empty so that the switch below falls
-// through to its default case
-if (isset($_SESSION['software']['ecommerce']['view_offers']['sort']) == false) {
-    $_SESSION['software']['ecommerce']['view_offers']['sort'] = '';
-}
-
-switch (($_SESSION['software']['ecommerce']['view_offers']['sort'] ?? '')) {
-    case lang('Offer Code'):
-        $sort_column = 'offers.code';
-        break;
-
-    case lang('Message'):
-        $sort_column = 'offers.description';
-        break;
-
-    case lang('Rule'):
-        $sort_column = 'offer_rules.name';
-        break;
-
-    case lang('Status'):
-        $sort_column = 'offers.status';
-        break;
-
-    case lang('Start Date'):
-        $sort_column = 'offers.start_date';
-        break;
-
-    case lang('End Date'):
-        $sort_column = 'offers.end_date';
-        break;
-
-    case lang('Require Code'):
-        $sort_column = 'offers.require_code';
-        break;
-        
-    case lang('Best'):
-        $sort_column = 'offers.only_apply_best_offer';
-        break;
-
-    case lang('Last Modified'):
-        $sort_column = 'offers.timestamp';
-        break;
-
-    default:
-        $sort_column = 'offers.timestamp';
-        $_SESSION['software']['ecommerce']['view_offers']['sort'] = lang('Last Modified');
-        $_SESSION['software']['ecommerce']['view_offers']['order'] = 'desc';
-}
-
-// if order is not set, set to ascending
-if (isset($_SESSION['software']['ecommerce']['view_offers']['order']) == false) {
-    $_SESSION['software']['ecommerce']['view_offers']['order'] = 'asc';
-}
-
-$offers = db_items(
+// Sorting and searching are done by the table itself in the browser, so the
+// query only fixes the initial order.
+$rows = db_items(
     "SELECT
-        offers.id,
-        offers.code,
-        offers.description,
-        offer_rules.id as offer_rule_id,
-        offer_rules.name as offer_rule_name,
-        offers.status,
-        offers.start_date,
-        offers.end_date,
-        offers.require_code,
-        offers.only_apply_best_offer,
-        last_modified_user.user_username AS last_modified_username,
-        offers.timestamp AS last_modified_timestamp
+        offers.*,
+        last_modified_user.user_username AS last_modified_username
     FROM offers
-    LEFT JOIN offer_rules ON offers.offer_rule_id = offer_rules.id
     LEFT JOIN user AS last_modified_user ON offers.user = last_modified_user.user_id
-    ORDER BY $sort_column " . e(($_SESSION['software']['ecommerce']['view_offers']['order'] ?? '')) . "");
+    ORDER BY offers.timestamp DESC");
 
-// Get the current date so that later we can figure out if offers are active.
-$current_date = date('Y-m-d');
+$products = _pg_offer_products();
+$shipping_methods = _pg_offer_shipping_methods();
+$today = date('Y-m-d');
 
-// Loop through the offers in order to prepare them.
-foreach ($offers as $key => $offer) {
-
-    // Default to not active, so that the template can always read this key.
-    $offer['status_enabled'] = false;
-
-    // If this offer is active, then store that, so a color can be used to indicate that.
-    if (
-        $offer['status'] == 'enabled'
-        and $offer['start_date'] <= $current_date
-        and $offer['end_date'] >= $current_date
-    ) {
-        $offer['status_enabled'] = true;
+$offers = array();
+$counts = array('all' => 0, 'active' => 0, 'scheduled' => 0, 'expired' => 0, 'disabled' => 0, 'code' => 0, 'auto' => 0, 'incomplete' => 0);
+if ($rows) {
+    foreach ($rows as $row) {
+        // The editor's view of the offer gives the chips and the "incomplete"
+        // check the same reading the editor itself has.
+        $state = _pg_offer_load($row['id']);
+        $status = _pg_offer_status($row);
+        $incomplete = _pg_offer_is_incomplete($state);
+        $condition_chips = array();
+        foreach ($state['conditions'] as $condition) {
+            $condition_chips[] = _pg_offer_condition_chip($condition, $products);
+        }
+        $action_chips = array();
+        foreach ($state['actions'] as $action) {
+            $action_chips[] = array(
+                'icon' => _pg_offer_action_icon($action['type']),
+                'text' => _pg_offer_action_chip($action, $products));
+        }
+        $open_ended = ($row['end_date'] == PG_OFFER_OPEN_END_DATE) && ($row['start_date'] <= $today);
+        $offers[] = array(
+            'id'                => (int) $row['id'],
+            'code'              => $row['code'],
+            'description'       => $row['description'],
+            'status'            => $status,
+            'status_label'      => _pg_offer_status_label($status),
+            'enabled'           => ($row['status'] == 'enabled'),
+            'require_code'      => (int) $row['require_code'],
+            'incomplete'        => $incomplete,
+            'condition_chips'   => $condition_chips,
+            'action_chips'      => $action_chips,
+            'upsell'            => ((int) $row['upsell'] == 1) && $state['conditions'],
+            'period'            => $open_ended ? lang('Open-ended') : (prepare_form_data_for_output($row['start_date'], 'date') . ' – ' . prepare_form_data_for_output($row['end_date'], 'date')),
+            'sentence'          => _pg_offer_sentence($state, $products, $shipping_methods),
+            'modified'          => get_relative_time(array('timestamp' => $row['timestamp'])),
+            'modified_by'       => $row['last_modified_username']);
+        $counts['all']++;
+        $counts[$status]++;
+        $counts[$row['require_code'] ? 'code' : 'auto']++;
+        if ($incomplete) {
+            $counts['incomplete']++;
+        }
     }
-
-    $offer['actions'] = db_items(
-        "SELECT
-            offer_actions.id,
-            offer_actions.name
-        FROM offers_offer_actions_xref
-        LEFT JOIN offer_actions ON offers_offer_actions_xref.offer_action_id = offer_actions.id
-        WHERE offers_offer_actions_xref.offer_id = '" . e($offer['id']) . "'
-        ORDER BY offer_actions.name");
-
-    $offers[$key] = $offer;
 }
 
-echo pg_page_shell([
-        'title'=> lang('All Offers'),
-        'extra classes'=>'products',
-        'icon'=>'store',
-        'heading'=>lang('All Offers'),
-        'auto_main'=>false,
-    ]);
+$orphans = _pg_offer_orphans();
+$orphan_count = count($orphans['rules']) + count($orphans['actions']);
 
-require('assets/templates/view_offers.php');
+echo pg_page_shell(array(
+    'title'               => lang('All Offers'),
+    'extra classes'       => 'products',
+    'icon'                => 'store',
+    'heading'             => lang('All Offers'),
+    'heading_description' => lang('Campaign offers applied at checkout')));
+
+require('includes/templates/view_offers.php');
+
+// The notice has been shown; it must not survive into the next visit.
+$liveform->remove_form();
 
 echo output_footer();

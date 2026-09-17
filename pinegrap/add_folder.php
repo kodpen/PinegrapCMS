@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -49,6 +49,7 @@ if (!$_POST) {
             'extra classes'=>'folders',
             'icon'=>'folder',
             'heading'=>lang('Create Folder'),
+            'heading_description' => lang('Create a new folder to secure pages & files.'),
             'cancel'=>array('enable'=>'true','url'=>'view_folders.php'),
             'breadcrumb' => array(
                 array('label' => lang('All Folders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php'),
@@ -56,16 +57,13 @@ if (!$_POST) {
             ),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform_add_folder->output_errors() . '
                 ' . $liveform_add_folder->get_warnings() . '
                 ' . $liveform_add_folder->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new folder to secure pages & files.') . '" title="' . lang('Create Folder') . '">[' . lang('new folder') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_folder.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -79,7 +77,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-8 my-2">
                                             <label for="name" class="form-label">*' . lang('Folder Name') . '</label>
-                                            ' . $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control add-header-content-updater ', 'required'=>'required')) . '
+                                            ' . $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 col-md-4  my-2">
@@ -144,7 +142,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform_add_folder->unmark_errors('add_page');
@@ -225,7 +224,7 @@ if (!$_POST) {
     $liveform_view_folders->add_notice($notice);
     
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
     // else send user to the default view
     } else {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_folders.php');

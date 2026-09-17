@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -283,13 +283,15 @@ pg_page_shell([
         'title'=> lang('All Shipping Methods'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('All Shipping Methods')
+        'heading'=>lang('All Shipping Methods'),
+        'heading_description' => lang('All shipping options and fees, based on the carrier, product, destination, and arrival date.'),
     ]) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('All shipping options and fees, based on the carrier, product, destination, and arrival date.') . '" title="' . lang('All Shipping Methods') . '">' . lang('All Shipping Methods') . '</h2>
+                    
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_shipping_method.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                     </nav>
@@ -325,5 +327,6 @@ pg_page_shell([
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();

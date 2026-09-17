@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -56,7 +56,7 @@ if ($page_id != '') {
         LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
         WHERE
             (page.page_id = '" . escape($page_id) . "')
-            AND (page.page_type = 'custom form')");
+            AND " . pg_form_page_sql('page'));
 
     // If a custom form could not be found for that page id, then output an error.
     if (!$custom_form) {
@@ -124,7 +124,7 @@ if (!$_POST) {
                custom_form_pages.form_name
             FROM page
             LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-            WHERE page.page_type = 'custom form'
+            WHERE " . pg_form_page_sql('page') . "
             ORDER BY custom_form_pages.form_name";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -148,21 +148,19 @@ if (!$_POST) {
                 'extra classes'=>'form',
                 'icon'=>'form',
                 'heading'=>lang('Add Submitted Form'),
+                'heading_description' => lang('Manually create a submitted form for any existing custom form.'),
                 'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
 
                 'breadcrumb' => array(array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Add Submitted Form'))),
             )
         ) . '
+<main id="content" class="container-fluid">
                 <div class="row">
                 <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-                            <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Manually create a submitted form for any existing custom form.') . '" title="' . lang('Add Submitted Form') . '">[' . lang('new submitted form') . ']</h2>
-                        </div>
-                    </div>
+                    
                     <form name="form" action="add_submitted_form.php" method="get" class="product_form">
                         <div class="row">
                             <div class="col-12">
@@ -191,7 +189,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
         $liveform->unmark_errors();
@@ -432,6 +431,21 @@ if (!$_POST) {
 
                         break;
 
+                    // The same pad the visitor signs on. An operator entering a
+                    // form that arrived on paper, or sitting with the customer,
+                    // signs here; nothing about the record differs, and who was
+                    // logged in is part of it.
+                    case 'signature':
+                        $output_fields .=
+                        '<div class="col-12 border py-2 my-2 ' . $row_class . '">
+                            ' . pg_signature_field($field) . '
+                            ' . $field_required . '
+                        </div>';
+
+                        $signature_exists = true;
+
+                        break;
+
                     case 'file upload':
                         $output_fields .=
                         '<div class="col-12 border py-2 my-2 ' . $row_class . '">
@@ -515,6 +529,11 @@ if (!$_POST) {
             $output_wysiwyg_javascript = get_wysiwyg_editor_code($wysiwyg_fields);
         }
 
+        // The capture script, once, when this form has a signature field.
+        if (!empty($signature_exists) && function_exists('pg_signature_includes')) {
+            $output_fields .= pg_signature_includes();
+        }
+
         // Assume that we don't need to set enctype for HTML form until we find out otherwise.
         $output_enctype = '';
 
@@ -537,7 +556,8 @@ if (!$_POST) {
                 ),
             )
         ) . '
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                 ' . $output_wysiwyg_javascript . '
             <div class="row">
                 <div class="col-12">
@@ -605,8 +625,8 @@ if (!$_POST) {
                     </div>
                 </div>
             </div>
-        </main>
-        ' . output_footer();
+        
+</main>' . output_footer();
 
         $liveform->unmark_errors();
         $liveform->clear_notices();
@@ -671,6 +691,31 @@ if (!$_POST) {
             } else {
                 $liveform->validate_required_field($field['id'], $error_message);
             }
+        }
+
+        // A signature that arrived as anything other than a PNG data URL is
+        // refused here, the same as on the visitor's form.
+        if (
+            ($field['type'] == 'signature')
+            && function_exists('pg_signature_png_from_data_url')
+            && ($liveform->check_field_error($field['id']) == false)
+            && ($liveform->get_field_value($field['id']) != '')
+            && (pg_signature_png_from_data_url($liveform->get_field_value($field['id'])) === false)
+        ) {
+            $liveform->mark_error($field['id'], lang('The signature could not be read. Please clear the box and sign again.'));
+        }
+
+        // A file the web server would run or read as its own settings is
+        // refused at validation, so the form comes back with the field marked
+        // rather than a renamed file quietly landing in the upload folder.
+        if (
+            ($field['type'] == 'file upload')
+            && ($liveform->check_field_error($field['id']) == false)
+            && (isset($_FILES[$field['id']]) == true)
+            && ($_FILES[$field['id']]['name'] != '')
+            && pg_upload_name_blocked($_FILES[$field['id']]['name'])
+        ) {
+            $liveform->mark_error($field['id'], pg_upload_blocked_message($_FILES[$field['id']]['name']));
         }
 
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
@@ -832,6 +877,56 @@ if (!$_POST) {
                             '" . $field['id'] . "',
                             '" . escape($field['name']) . "')");
                 }
+
+            // A signature is written through its own path: the drawing becomes a
+            // file, form_data points at it, and the record that gives it meaning
+            // is written beside it. The document is read again here because the
+            // field list above drops information fields, and that is where a
+            // contract is written.
+            } else if (($field['type'] == 'signature') && function_exists('pg_signature_ready') && pg_signature_ready()) {
+                $signature_png = pg_signature_png_from_data_url($liveform->get_field_value($field['id']));
+                $signature_file_id = false;
+
+                if ($signature_png !== false) {
+                    $signature_document = db_items(
+                        "SELECT id, name, label, type, required, information
+                        FROM form_fields
+                        WHERE page_id = '" . escape($page_id) . "'
+                        ORDER BY sort_order ASC");
+
+                    $signature_values = array();
+
+                    foreach ($fields as $signature_source) {
+                        if ($signature_source['type'] == 'signature') {
+                            continue;
+                        }
+
+                        $signature_values[$signature_source['id']] = $liveform->get_field_value($signature_source['id']);
+                    }
+
+                    $signature_file_id = pg_signature_store(
+                        $form_id,
+                        $field['id'],
+                        $signature_png,
+                        array(
+                            'page_id' => $page_id,
+                            'document_hash' => pg_signature_document_hash($page_id, $signature_document, $signature_values, $field['label']),
+                            'consent_text' => $field['label'],
+                            'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
+                        ));
+                }
+
+                db(
+                    "INSERT INTO form_data (
+                        form_id,
+                        form_field_id,
+                        file_id,
+                        name)
+                    VALUES (
+                        '" . $form_id . "',
+                        '" . $field['id'] . "',
+                        '" . (($signature_file_id === false) ? '0' : (int) $signature_file_id) . "',
+                        '" . escape($field['name']) . "')");
 
             // Otherwise the field is not a file upload type so save data in a different way.
             } else {

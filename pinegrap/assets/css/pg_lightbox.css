@@ -1,0 +1,285 @@
+/* ============================================================================
+ * Pinegrap Lightbox + Carousel Enhancements
+ * ----------------------------------------------------------------------------
+ * Fancybox-inspired image viewer with pan, pinch/wheel zoom, swipe nav,
+ * keyboard shortcuts, and a thumbnail strip. Dependency-free (vanilla JS).
+ *
+ * Activated automatically by `functions.php` carousel render whenever the
+ * widget's `lightbox` prop is on. Click any carousel image (or thumbnail)
+ * with `data-pg-lb-gallery` to open the gallery at that position.
+ *
+ * Class prefix `pgl-` (Pinegrap Lightbox) is unique enough to avoid clashing
+ * with Bootstrap, FontAwesome, jQuery UI, etc.
+ * ========================================================================== */
+
+/* ── Overlay (fullscreen modal) ─────────────────────────────────────────── */
+.pgl-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483600;          /* above Bootstrap modals (1055) and tooltips */
+    background: rgba(15, 17, 21, 0.96);
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease-out;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+.pgl-overlay.pgl-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+.pgl-overlay * { box-sizing: border-box; }
+
+/* Lock body scroll while lightbox is open. The class is toggled by the JS
+ * (added on .pgl-open, removed on close) — kept here so an early CSS load
+ * can apply the same overflow-hidden rule before the JS attaches. */
+body.pgl-lock { overflow: hidden; }
+
+/* ── Toolbar (top bar) ──────────────────────────────────────────────────── */
+.pgl-toolbar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .5rem .75rem;
+    color: #f3f4f6;
+    background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0));
+    flex-shrink: 0;
+}
+.pgl-counter {
+    font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: .02em;
+    padding: .35rem .55rem;
+    background: rgba(255,255,255,.08);
+    border-radius: 6px;
+    min-width: 56px;
+    text-align: center;
+}
+.pgl-spacer { flex: 1; }
+.pgl-btn {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    transition: background .15s ease, transform .1s ease;
+}
+.pgl-btn:hover  { background: rgba(255,255,255,.12); }
+.pgl-btn:active { transform: scale(.93); }
+.pgl-btn:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+    background: transparent !important;
+    transform: none !important;
+}
+.pgl-btn .bi { display: block; }
+
+/* Bootstrap Icons fallback — if the host page didn't load Bootstrap Icons,
+ * the buttons would render as empty squares. Inline SVG fallback via
+ * background-image keeps them readable. The .bi class is preferred when
+ * available; these rules only kick in if the icon font is missing. */
+.pgl-btn[data-icon] .pgl-fallback { display: none; }
+.pgl-btn[data-icon] .bi { display: block; }
+
+/* ── Side navigation buttons (prev/next) ────────────────────────────────── */
+.pgl-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    border: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: background .15s ease, opacity .15s ease;
+}
+.pgl-nav:hover { background: rgba(0,0,0,.7); }
+.pgl-nav:disabled {
+    opacity: .25;
+    cursor: not-allowed;
+}
+.pgl-prev { left: 16px; }
+.pgl-next { right: 16px; }
+@media (max-width: 600px) {
+    .pgl-nav { width: 44px; height: 44px; font-size: 20px; }
+    .pgl-prev { left: 8px; }
+    .pgl-next { right: 8px; }
+}
+
+/* ── Stage (image container) ────────────────────────────────────────────── */
+.pgl-stage {
+    position: relative;
+    flex: 1 1 auto;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+}
+.pgl-stage.pgl-grabbing { cursor: grabbing; }
+.pgl-stage.pgl-zoomed   { cursor: zoom-out; }
+
+.pgl-img {
+    /* No max-width/height here on purpose — JS sets the element to the
+     * image's natural pixel size (so zoom math is straightforward), then
+     * transform: translate() + scale() handles fit + pan + zoom together.
+     * Setting a max-* would clamp the box before the transform applies and
+     * throw off the pan/zoom calculations. */
+    display: block;
+    transform-origin: 0 0;
+    transition: transform .2s cubic-bezier(.25, .8, .25, 1);
+    will-change: transform;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none; user-select: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.pgl-stage.pgl-dragging .pgl-img,
+.pgl-stage.pgl-pinching .pgl-img {
+    transition: none;     /* during active gesture, follow the finger 1:1 */
+}
+.pgl-stage.pgl-loading .pgl-img {
+    /* Hide the old image while a new one loads — prevents the transform
+     * reset (scale=1, tx=0, ty=0) from briefly flashing the previous image
+     * at the wrong size before the new src + dimensions are applied. */
+    opacity: 0;
+}
+
+/* Loading spinner — visible while the image fetches */
+.pgl-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -22px 0 0 -22px;
+    width: 44px;
+    height: 44px;
+    border: 3px solid rgba(255,255,255,.18);
+    border-top-color: rgba(255,255,255,.85);
+    border-radius: 50%;
+    animation: pgl-spin .8s linear infinite;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s ease;
+}
+.pgl-stage.pgl-loading .pgl-spinner { opacity: 1; }
+@keyframes pgl-spin { to { transform: rotate(360deg); } }
+
+/* Error state — image failed to load */
+.pgl-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #f3f4f6;
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    text-align: center;
+    padding: 1rem;
+    background: rgba(0,0,0,.35);
+    border-radius: 8px;
+    display: none;
+}
+.pgl-stage.pgl-error .pgl-error { display: block; }
+.pgl-stage.pgl-error .pgl-img,
+.pgl-stage.pgl-error .pgl-spinner { display: none; }
+
+/* ── Thumbs strip (bottom) ──────────────────────────────────────────────── */
+.pgl-thumbs {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.25) transparent;
+    background: linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));
+    flex-shrink: 0;
+    justify-content: center;
+}
+.pgl-thumbs::-webkit-scrollbar { height: 6px; }
+.pgl-thumbs::-webkit-scrollbar-track { background: transparent; }
+.pgl-thumbs::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+
+.pgl-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: .55;
+    transition: opacity .15s ease, transform .15s ease, outline-color .15s ease;
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+    flex-shrink: 0;
+}
+.pgl-thumb:hover { opacity: .85; }
+.pgl-thumb.pgl-thumb-active {
+    opacity: 1;
+    outline-color: #ffffff;
+    transform: scale(1.05);
+}
+.pgl-thumbs[hidden] { display: none; }
+
+/* ── Caption (optional, below image) ────────────────────────────────────── */
+.pgl-caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem 1.5rem;
+    color: #f3f4f6;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    text-align: center;
+    background: linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0));
+    pointer-events: none;
+}
+.pgl-caption:empty { display: none; }
+
+/* ── Inline carousel (image hover hint) ─────────────────────────────────── */
+/* The frontend carousel images get a subtle hover affordance so users know
+ * they can click for the lightbox. Bootstrap's carousel-item doesn't have
+ * cursor styling otherwise. */
+.pg-carousel .carousel-item img[data-pg-lb-gallery] {
+    cursor: zoom-in;
+    transition: filter .15s ease;
+}
+.pg-carousel .carousel-item img[data-pg-lb-gallery]:hover {
+    filter: brightness(1.04);
+}
+
+/* Inline carousel thumbnail strip — smarter sizing + active highlight */
+.pg-carousel-thumbs {
+    scrollbar-width: thin;
+}
+.pg-carousel-thumb {
+    border-radius: 4px;
+    transition: outline-color .12s ease, transform .12s ease, opacity .12s ease;
+    opacity: .7;
+}
+.pg-carousel-thumb:hover { opacity: .95; }
+.pg-carousel-thumb.active {
+    outline-color: var(--bs-primary, #0d6efd) !important;
+    opacity: 1;
+}

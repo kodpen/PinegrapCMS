@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,10 +34,9 @@ echo pg_page_shell([
         'icon'=>'design',
         'heading'=>lang('Generate Layout'),
         'cancel'=>true,
-        'auto_main'=>false,
     ]);
 
-require('assets/templates/generate_layout.php');
+require('includes/templates/generate_layout.php');
 
 echo output_footer();
 

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -197,7 +197,7 @@ if ($management == TRUE) {
             // If the user is already a watcher, then output error.
             if ($row[0] > 0) {
                 $liveform->mark_error('username_or_email_address', 'Sorry, that watcher has already been added.');
-                header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
                 exit();
             }
 
@@ -220,7 +220,7 @@ if ($management == TRUE) {
             // If the value that was entered is not a valid e-mail address then output error.
             if (validate_email_address($username_or_email_address) == FALSE) {
                 $liveform->mark_error('username_or_email_address', 'Sorry, the username or e-mail address that you entered is not valid.');
-                header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
                 exit();
             }
 
@@ -239,7 +239,7 @@ if ($management == TRUE) {
             // If there is already a watcher for the entered e-mail address, then output error.
             if ($row[0] > 0) {
                 $liveform->mark_error('username_or_email_address', 'Sorry, that watcher has already been added.');
-                header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
                 exit();
             }
 
@@ -268,7 +268,7 @@ if ($management == TRUE) {
         $liveform->add_notice('The watcher has been added and will be notified via e-mail when a ' . $output_comment_label_lowercase . ' is added in the future.');
 
         // send user back to previous page
-        header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
         exit();
 
     // Otherwise the manager requested to remove a watcher, so do that.
@@ -288,7 +288,7 @@ if ($management == TRUE) {
         // If the watcher does not exist, then output error.
         if ($row[0] == 0) {
             $liveform->mark_error('', 'Sorry, that watcher does not exist.');
-            header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
             exit();
         }
         
@@ -306,7 +306,7 @@ if ($management == TRUE) {
         $liveform->add_notice('The watcher has been removed.');
 
         // send user back to previous page
-        header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
         exit();
     }
 
@@ -515,7 +515,7 @@ if ($management == TRUE) {
     }
 
     // send user back to previous page
-    header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . '#software_watcher');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#software_watcher');
     exit();
 }
 ?>

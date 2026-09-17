@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -35,6 +35,11 @@ function get_shopping_cart($properties) {
     $checkout_button_label = $properties['checkout_button_label'];
     $next_page_id_with_shipping = $properties['next_page_id_with_shipping'];
     $next_page_id_without_shipping = $properties['next_page_id_without_shipping'];
+
+    // Only ever appended to, inside loops that do not run for every order,
+    // so they have to start out empty.
+    $output_ship_tos = '';
+    $output_recurring_ship_tos = '';
 
     global $user;
 
@@ -173,8 +178,20 @@ function get_shopping_cart($properties) {
                 
                 // else product is shippable
                 } else {
+                    // When the cart already says where the gift belongs - the
+                    // recipient paying for what earned it - the shopper is told,
+                    // not asked.
+                    $decided_ship_to_id = get_ship_to_id_for_offer_gift(
+                        $pending_offer['id'],
+                        $offer_action['allowed_recipients'] ? $offer_action['allowed_recipients'] : array());
+                    $decided_ship_to_name = $decided_ship_to_id
+                        ? (string) db_value("SELECT ship_to_name FROM ship_tos WHERE id = '" . e($decided_ship_to_id) . "'")
+                        : '';
+                    if ($decided_ship_to_name != '') {
+                        $output_select_recipient = '<strong>' . h(lang('Ship to')) . '</strong> ' . h($decided_ship_to_name);
+
                     // if only certain recipients are allowed for this offer action
-                    if ($offer_action['allowed_recipients']) {
+                    } elseif ($offer_action['allowed_recipients']) {
                         $recipient_options = array();
                         $recipient_options[''] = '';
                         
@@ -194,7 +211,7 @@ function get_shopping_cart($properties) {
                         
                         $recipient_options = array();
                         $recipient_options[''] = '';
-                        $recipient_options['myself'] = 'myself';
+                        $recipient_options[lang('myself')] = lang('myself');
 
                         // if there is at least one recipient stored in session
                         if ($_SESSION['ecommerce']['recipients']) {
@@ -477,7 +494,7 @@ function get_shopping_cart($properties) {
                     
                     $quick_add_ship_to_options = array();
                     $quick_add_ship_to_options[''] = '';
-                    $quick_add_ship_to_options['myself'] = 'myself';
+                    $quick_add_ship_to_options[lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
                     if ($_SESSION['ecommerce']['recipients']) {
@@ -812,7 +829,11 @@ function get_shopping_cart($properties) {
                         $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . number_format(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE), 2, '.', ',') . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
                     }
                     
-                    $output_remove = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_item_from_cart.php?order_item_id=' . $order_item_id . '&screen=shopping_cart&send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button">X</a>';
+                    // nofollow on a destructive action link. The CSRF token
+                    // already stops a crawler from actually emptying a cart,
+                    // but a crawler that follows it still spends a request and
+                    // still gets counted; there is nothing here to index.
+                    $output_remove = '<a rel="nofollow" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_item_from_cart.php?order_item_id=' . $order_item_id . '&screen=shopping_cart&send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button">X</a>';
                     
                     // assume that we don't need to output a recurring schedule fieldset, until we find out otherwise
                     $output_recurring_schedule_fieldset = '';
@@ -1558,17 +1579,17 @@ function get_shopping_cart($properties) {
             if ($applied_offers) {
                 $output_applied_offers =
                     '<div class="applied_offers" style="margin-bottom: 1em">
-                        <div class="heading">Applied Offers</div>
+                        <div class="heading">' . h(lang('Applied Offers')) . '</div>
                         <div class="data">
                         <ul style="margin-top: 0em">';
                 
                 // loop through each applied offer
                 foreach ($applied_offers as $offer_id) {
                     // get offer data
-                    $query = "SELECT description FROM offers WHERE id = '$offer_id'";
+                    $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
-                    $offer_description = $row['description'];
+                    $offer_description = pg_offer_public_label($row);
                     
                     $output_applied_offers .= '<li class="software_highlight"><em>' . h($offer_description) . '</em></li>';
                 }
@@ -1753,6 +1774,15 @@ function get_shopping_cart($properties) {
                         
                         $action['recipient'] = true;
 
+                        // The gift belongs with what earned it: when the cart
+                        // points at a single recipient the picker is not drawn
+                        // at all and add_pending_offers() places the item there
+                        // itself. Asking would only invite a free item into a
+                        // shipment of its own, which the checkout refuses.
+                        if (get_ship_to_id_for_offer_gift($offer['id'], $action['allowed_recipients'] ? $action['allowed_recipients'] : array())) {
+                            $action['recipient'] = false;
+                        }
+
                         // if only certain recipients are allowed for this offer action
                         if ($action['allowed_recipients']) {
 
@@ -1776,7 +1806,7 @@ function get_shopping_cart($properties) {
                             
                             $recipient_options = array();
                             $recipient_options[''] = '';
-                            $recipient_options['myself'] = 'myself';
+                            $recipient_options[lang('myself')] = lang('myself');
 
                             // if there is at least one recipient stored in session
                             if ($_SESSION['ecommerce']['recipients']) {
@@ -1976,7 +2006,7 @@ function get_shopping_cart($properties) {
 
                     $quick_add['ship_to_options'] = array();
                     $quick_add['ship_to_options'][''] = '';
-                    $quick_add['ship_to_options']['myself'] = 'myself';
+                    $quick_add['ship_to_options'][lang('myself')] = lang('myself');
 
                     // if there is at least one recipient stored in session
                     if ($_SESSION['ecommerce']['recipients']) {
@@ -2931,6 +2961,7 @@ function get_shopping_cart($properties) {
                     FROM offers WHERE id = '" . e($offer_id) . "'");
 
                 if ($offer) {
+                    $offer['description'] = pg_offer_public_label($offer);
                     $applied_offers[$key] = $offer;
                 } else {
                     unset($applied_offers[$key]);

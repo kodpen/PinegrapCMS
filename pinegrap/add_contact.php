@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -130,6 +130,7 @@ if (!$_POST) {
             'extra classes'=>'contact',
             'icon'=>'contact',
             'heading'=>lang('Create Contact'),
+            'heading_description' => lang('Create a new contact, subscriber, unregistered member, or unapproved affiliate, and add them to any of my contact groups.'),
             'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
             'breadcrumb' => array(
                 array('label' => lang('All My Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'),
@@ -137,13 +138,10 @@ if (!$_POST) {
             ),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block text-break" data-bs-content="' . lang('Create a new contact, subscriber, unregistered member, or unapproved affiliate, and add them to any of my contact groups.') . '" title="' . lang('Create Contact') . '">[' . lang('First Name') . ' ' . lang('Last Name') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -198,7 +196,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4 my-2">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
-                                            <input type="text" name="email_address" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                                            <input type="text" name="email_address" autocomplete="off" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                         </div>
                                         <div class="col-12 my-1">
                                             <div class="form-check form-switch">
@@ -404,7 +402,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
         output_footer();
 
 } else {
@@ -665,7 +664,7 @@ if (!$_POST) {
 
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
         
     // else send user to the default view
     } else {

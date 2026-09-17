@@ -1,6 +1,8 @@
 <?php
 /**
- * PineGrap - Web Application Firewall
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Web Application Firewall
  *
  * Self-contained request firewall. Deliberately has NO dependency on
  * functions.php: it is included from two different bootstraps that do not
@@ -20,7 +22,8 @@
  * a live storefront is worse than no firewall.
  *
  * @author      Erdal Güral (Kodpen)
- * @copyright   2016-2026 Kodpen
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -325,6 +328,44 @@ function waf_is_ip($value)
 }
 
 /**
+ * The unit a per-address counter counts.
+ *
+ * An IPv4 visitor is one address. An IPv6 visitor is one /64: that is the
+ * smallest allocation a subscriber receives, and every address inside it is
+ * theirs for free. A counter keyed on the full IPv6 address therefore counts
+ * nothing - each request can arrive from a new address in the same /64 and no
+ * bucket ever passes 1 - and a ban on the address used last costs nothing.
+ * Keying on the /64 makes an IPv6 household or server the same size as an
+ * IPv4 one behind NAT, which is the size the limits were tuned for.
+ *
+ * Returns the address unchanged for IPv4, for IPv4-mapped IPv6 (an IPv4
+ * visitor on a dual-stack socket) and for anything that will not parse, so a
+ * caller never receives an empty subject. For IPv6 it returns the /64 in
+ * CIDR form, on purpose: that string is also a valid block-list pattern, so
+ * an automatic ban can be placed on exactly the subject that was counted.
+ */
+function waf_ip_subject($ip)
+{
+    if (strpos($ip, ':') === false || !function_exists('inet_pton') || !function_exists('inet_ntop')) {
+        return $ip;
+    }
+
+    $bin = @inet_pton($ip);
+
+    if ($bin === false || strlen($bin) !== 16) {
+        return $ip;
+    }
+
+    if (substr($bin, 0, 12) === "\0\0\0\0\0\0\0\0\0\0\xff\xff") {
+        return $ip;
+    }
+
+    $prefix = @inet_ntop(substr($bin, 0, 8) . str_repeat("\0", 8));
+
+    return ($prefix === false) ? $ip : $prefix . '/64';
+}
+
+/**
  * Is this address infrastructure rather than a visitor?
  *
  * True for loopback, and for anything the operator declared as a trusted
@@ -569,7 +610,21 @@ function waf_ip_in_cidr($ip, $cidr)
 {
     $parts = explode('/', $cidr, 2);
     $subnet = trim($parts[0]);
-    $bits = isset($parts[1]) ? (int) $parts[1] : -1;
+    $prefix = isset($parts[1]) ? trim($parts[1]) : '';
+
+    // A prefix that is not a plain number makes the whole pattern meaningless,
+    // and the pattern has to be REJECTED rather than interpreted.
+    //
+    // "1.2.3.4/" and "1.2.3.4/abc" both used to reach (int) as 0, and 0 is a
+    // valid prefix length meaning "compare no bits at all" - so the function
+    // returned true for every address on earth. The ban list is a free-text
+    // field an operator types into, where a trailing slash is one keystroke,
+    // and a single bad line took the entire audience off the site.
+    if ($prefix === '' || !ctype_digit($prefix)) {
+        return false;
+    }
+
+    $bits = (int) $prefix;
 
     $ip_bin = @inet_pton($ip);
     $subnet_bin = @inet_pton($subnet);
@@ -662,11 +717,11 @@ function waf_valid_ip_pattern($pattern)
  * block entries. The extra columns are probed rather than assumed so an
  * install that has not run the upgrade still gets its old blocks enforced.
  */
-function waf_ip_lists()
+function waf_ip_lists($recheck = false)
 {
     static $lists = null;
 
-    if ($lists !== null) {
+    if ($lists !== null && !$recheck) {
         return $lists;
     }
 
@@ -748,48 +803,144 @@ function waf_ip_is_blocked($ip)
 }
 
 /**
- * Add a temporary automatic ban.
+ * Does an allow-list entry fall inside this range?
+ *
+ * Asked before an automatic ban is placed on a whole /64. The pre-database
+ * mirror carries block lines only, so a range ban that covers an allowed
+ * address would turn that address away before the allow list is consulted.
+ *
+ * Only each entry's base address is tested. An allow entry that is itself a
+ * range and merely overlaps the subject is rare enough that a full
+ * intersection is not worth carrying here; the single address - an
+ * operator's own office or server - is the case that matters, and it is
+ * exact.
+ */
+function waf_subject_contains_allowed($subject)
+{
+    $lists = waf_ip_lists();
+
+    foreach ($lists['allow'] as $entry) {
+        $base  = trim((string) $entry);
+        $slash = strpos($base, '/');
+
+        if ($slash !== false) {
+            $base = substr($base, 0, $slash);
+        }
+
+        if (waf_is_ip($base) && waf_ip_in_cidr($base, $subject)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Add a temporary automatic ban, or lengthen one that is being repeated.
  *
  * Auto bans always expire. A permanent ban placed by an automated rule is
  * how a firewall ends up locking out a customer's whole office for good with
  * nobody knowing why.
+ *
+ * They do get longer. Each time a subject offends again AFTER its previous
+ * ban has run out, the new ban is four times the last: with the default hour
+ * that is 1h, 4h, 16h, 64h, then the ceiling of seven days. hit_count is the
+ * rung on that ladder - the number of separate bans, not of offences. A burst
+ * that crosses the threshold several times inside one ban does not climb: the
+ * later calls find the ban still running and only make sure it lasts at least
+ * the base period from now.
+ *
+ * The ladder has memory only because waf_sweep() keeps expired automatic rows
+ * for as long as the firewall log is kept instead of deleting them on expiry.
+ * waf_ip_lists() already ignores an expired row, so keeping it changes
+ * nothing about who is blocked.
+ *
+ * The subject is a single address or a CIDR range (an IPv6 /64 from
+ * waf_ip_subject()). Returns the length of the ban now in force, in minutes,
+ * or 0 when nothing could be written.
  */
-function waf_auto_ban($ip, $minutes, $note)
+function waf_auto_ban($subject, $minutes, $note)
 {
     if (!waf_table_has_column('banned_ip_addresses', 'list_type')) {
-        return;
+        return 0;
     }
 
-    if (!waf_is_ip($ip)) {
-        return;
+    if (!waf_valid_ip_pattern($subject)) {
+        return 0;
     }
 
-    $expires = time() + ($minutes * 60);
+    $now  = time();
+    $base = max(60, (int) $minutes * 60);
+
+    $ceiling = (int) waf_setting('waf_auto_ban_max_minutes', 10080) * 60;
+
+    if ($ceiling < $base) {
+        $ceiling = $base;
+    }
 
     // Single atomic statement against the (ip_address, list_type, source)
     // unique key added in 2026.2.7.
     //
-    // The previous SELECT-then-INSERT was wrong twice over. It raced — two
+    // The previous SELECT-then-INSERT was wrong twice over. It raced - two
     // simultaneous requests from the same attacker could both see "no
-    // existing row" and both insert — and it silently failed outright while
+    // existing row" and both insert - and it silently failed outright while
     // ip_address was too narrow to hold an IPv6 address, because the lookup
     // used the full address and the stored value was a truncated stub. That
     // produced a fresh ban row on every single offence.
     //
     // Insert-or-update through the key cannot do either. The note is not
     // rewritten on repeats: the first reason is the useful one.
-    @mysqli_query(
+    //
+    // Assignment order matters, and MySQL evaluates the list left to right:
+    // the hit_count assignment sees the OLD expires_at, and the expires_at
+    // assignment sees the NEW hit_count. An engine that handed it the old
+    // hit_count instead would land the ban one rung lower - shorter, never
+    // longer - so the reliance fails in the safe direction.
+    $written = @mysqli_query(
         db::$con,
         "INSERT INTO banned_ip_addresses
             (ip_address, list_type, source, note, expires_at, created_at, hit_count)
          VALUES
-            ('" . waf_escape($ip) . "', 'block', 'auto',
+            ('" . waf_escape($subject) . "', 'block', 'auto',
              '" . waf_escape(mb_substr($note, 0, 250)) . "',
-             " . $expires . ", " . time() . ", 1)
+             " . ($now + $base) . ", " . $now . ", 1)
          ON DUPLICATE KEY UPDATE
-            expires_at = " . $expires . ",
-            hit_count = hit_count + 1"
+            hit_count = IF(expires_at < " . $now . ", hit_count + 1, hit_count),
+            expires_at = IF(expires_at < " . $now . ",
+                " . $now . " + CAST(LEAST(FLOOR(" . $base . " * POW(4, LEAST(GREATEST(hit_count, 1) - 1, 8))), " . $ceiling . ") AS UNSIGNED),
+                GREATEST(expires_at, " . ($now + $base) . "))"
     );
+
+    // Push the new ban into the pre-database mirror now rather than waiting
+    // for the sampled sweep. An address is auto-banned during an attack, which
+    // is precisely the run-up to the connection pool filling - the mirror is
+    // worth least if it learns about the attacker afterwards.
+    //
+    // The static cache inside waf_ip_lists() was filled before this INSERT, so
+    // it is cleared first or the mirror would be written without the very
+    // entry that triggered it.
+    waf_ip_lists(true);
+    waf_ban_shield_refresh(true);
+
+    if (!$written) {
+        return 0;
+    }
+
+    // Read back what the statement decided. A SELECT after the write is fine
+    // here: it feeds the log line, not the decision.
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT expires_at FROM banned_ip_addresses
+         WHERE ip_address = '" . waf_escape($subject) . "'
+           AND list_type = 'block' AND source = 'auto'
+         LIMIT 1"
+    );
+
+    if ($result && ($row = @mysqli_fetch_assoc($result))) {
+        return (int) ceil(max(0, (int) $row['expires_at'] - $now) / 60);
+    }
+
+    return (int) ($base / 60);
 }
 
 
@@ -812,7 +963,13 @@ function waf_auto_ban($ip, $minutes, $note)
  */
 function waf_good_bots()
 {
-    return array(
+    static $bots = null;
+
+    if ($bots !== null) {
+        return $bots;
+    }
+
+    $bots = array(
         // Search engines - all rDNS verifiable.
         'googlebot'            => array('name' => 'Googlebot',        'verify' => array('.googlebot.com', '.google.com')),
         'adsbot-google'        => array('name' => 'AdsBot-Google',    'verify' => array('.googlebot.com', '.google.com')),
@@ -886,6 +1043,146 @@ function waf_good_bots()
         'garanti'              => array('name' => 'Garanti',  'verify' => array()),
         'letsencrypt'          => array('name' => "Let's Encrypt", 'verify' => array()),
     );
+
+    // AI user fetchers and AI search indexers, gated twice: the config column
+    // must exist (2026.4.4 schema) and the operator's switch must be on.
+    //
+    // The gate is column presence on the already-loaded config row rather than
+    // a SHOW TABLES probe, because this merge runs on every request and the
+    // row is in hand either way. The column and the waf_bot_ranges table are
+    // created by the same upgrade, so one implies the other.
+    //
+    // These are NOT the AI training crawlers. GPTBot, ClaudeBot, CCBot and
+    // PerplexityBot crawl in bulk and stay in waf_bad_bots() regardless of
+    // these switches. The entries added here fetch a single page because a
+    // human just asked the assistant about it (chatgpt-user, claude-user,
+    // perplexity-user) or index for AI search results (oai-searchbot,
+    // claude-searchbot). Blocking them keeps the site out of AI answers.
+    $config = waf_config();
+
+    if (is_array($config) && array_key_exists('waf_allow_ai_fetchers', $config)) {
+        foreach (waf_ai_bots() as $token => $meta) {
+            if (!empty($config[$meta['setting']])) {
+                $bots[$token] = array(
+                    'name'   => $meta['name'],
+                    'verify' => array(),
+                    'ranges' => $meta['ranges'],
+                );
+            }
+        }
+    }
+
+    return $bots;
+}
+
+/**
+ * AI bots whose operators publish their egress IP ranges as JSON.
+ *
+ * Kept separate from waf_good_bots() because waf_verify_bot() consults this
+ * table UNCONDITIONALLY - even when the visibility switches are off. The user
+ * agent text is trivially forgeable (a scraper claiming "ChatGPT-User" from an
+ * IBM address block is what motivated this), so an operator who hand-types one
+ * of these tokens into the Allowed Bots setting must not end up trusting the
+ * text alone: the claim is still tested against the published ranges.
+ *
+ * 'ranges' names the waf_bot_ranges row holding the operator's published
+ * prefixes. Anthropic publishes one combined list for all three of its bots,
+ * so claude-user and claude-searchbot share a row; the intent split between
+ * them still comes from the UA token, the IP only proves origin.
+ */
+function waf_ai_bots()
+{
+    return array(
+        'chatgpt-user'     => array('name' => 'ChatGPT-User',     'ranges' => 'openai-chatgpt-user', 'setting' => 'waf_allow_ai_fetchers'),
+        'claude-user'      => array('name' => 'Claude-User',      'ranges' => 'anthropic-bots',      'setting' => 'waf_allow_ai_fetchers'),
+        'perplexity-user'  => array('name' => 'Perplexity-User',  'ranges' => 'perplexity-user',     'setting' => 'waf_allow_ai_fetchers'),
+        'oai-searchbot'    => array('name' => 'OAI-SearchBot',    'ranges' => 'openai-searchbot',    'setting' => 'waf_allow_ai_search'),
+        'claude-searchbot' => array('name' => 'Claude-SearchBot', 'ranges' => 'anthropic-bots',      'setting' => 'waf_allow_ai_search'),
+    );
+}
+
+/**
+ * Load one operator's published ranges from waf_bot_ranges.
+ *
+ * Cached per request per provider. Every failure path returns false, which
+ * every caller treats as "cannot verify" - the pre-2026.4.4 behaviour.
+ */
+function waf_ai_ranges_row($provider)
+{
+    static $cache = array();
+
+    if (array_key_exists($provider, $cache)) {
+        return $cache[$provider];
+    }
+
+    $cache[$provider] = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT fetched_at, prefixes FROM waf_bot_ranges
+         WHERE provider = '" . waf_escape($provider) . "'
+         LIMIT 1"
+    );
+
+    if ($result && @mysqli_num_rows($result)) {
+        $row = @mysqli_fetch_assoc($result);
+        $prefixes = json_decode((string) $row['prefixes'], true);
+
+        if (is_array($prefixes) && $prefixes) {
+            $cache[$provider] = array(
+                'fetched_at' => (int) $row['fetched_at'],
+                'prefixes'   => $prefixes,
+            );
+        }
+    }
+
+    return $cache[$provider];
+}
+
+/**
+ * Verify a range-published bot claim against the stored prefix list.
+ *
+ * Differs from the rDNS path in what absence of proof means. A missing PTR
+ * record proves nothing, so rDNS fails open on it. A published range list is
+ * complete by the operator's own declaration - every address their bot egresses
+ * from is in it - so an IP outside the list IS positive proof of forgery...
+ * as long as our copy is recent. A stale copy may simply predate a new range,
+ * so after 30 days without a refresh a miss stops counting as proof and the
+ * verdict degrades to 'unknown' (fail open). A positive match in a stale list
+ * is still a match: operators grow their lists far more than they shrink them.
+ *
+ * No reputation caching here, deliberately. The rDNS path caches because DNS
+ * costs real wall time; this is string comparison against an in-memory array,
+ * and skipping the cache means a refresh takes effect on the very next
+ * request instead of up to seven days later.
+ */
+function waf_verify_bot_ranges($ip, $provider)
+{
+    if (!waf_is_ip($ip)) {
+        return 'unknown';
+    }
+
+    $data = waf_ai_ranges_row($provider);
+
+    if ($data === false) {
+        return 'unknown';
+    }
+
+    foreach ($data['prefixes'] as $cidr) {
+        if (waf_ip_in_cidr($ip, (string) $cidr)) {
+            return 'verified';
+        }
+    }
+
+    if ($data['fetched_at'] < time() - 2592000) {
+        return 'unknown';
+    }
+
+    return 'spoofed';
 }
 
 /**
@@ -1055,6 +1352,18 @@ function waf_classify_bot($user_agent)
  */
 function waf_verify_bot($ip, $token)
 {
+    // Range-published operators first, and INDEPENDENT of the visibility
+    // switches. This branch must also catch the token when it arrived via the
+    // operator's hand-typed Allowed Bots list: with the switch off the token
+    // is absent from waf_good_bots(), and without this lookup the hand-typed
+    // entry would be trusted on UA text alone - the exact hole a scraper
+    // claiming "ChatGPT-User" from an IBM address block demonstrated.
+    $ai = waf_ai_bots();
+
+    if (isset($ai[$token])) {
+        return waf_verify_bot_ranges($ip, $ai[$token]['ranges']);
+    }
+
     $bots = waf_good_bots();
 
     if (!isset($bots[$token]) || !$bots[$token]['verify']) {
@@ -1416,7 +1725,7 @@ function waf_sensitive_scripts()
         'affiliate_entrance.php', 'custom_form.php', 'submit_form.php',
         'cart_action.php', 'add_to_cart.php', 'submit_order.php',
         'get_express_order.php', 'forgot_password.php', 'reset_password.php',
-        'email_a_friend.php', 'add_comment.php', 'apps.php', 'api.php',
+        'email_a_friend.php', 'add_comment.php', 'api.php',
         'cancel_order.php', 'retrieve_order.php', 'order_history_retrieve_order.php',
     );
 }
@@ -1450,11 +1759,120 @@ function waf_script_name()
 }
 
 /**
- * Fixed-window counter, one row per IP per scope.
+ * Bucket key for the fixed-window counters.
+ *
+ * The subject is whatever is being counted: an address for the request
+ * limits, an account name for the sign-in limit. Hashing it keeps the key
+ * inside the column's 64 characters whatever the subject's length or
+ * character set, and keeps the account name itself out of the table.
+ */
+function waf_rate_key($subject, $scope)
+{
+    return substr(sha1($subject . '|' . $scope), 0, 40) . '|' . $scope;
+}
+
+/**
+ * Current hit count for the window in progress, without counting this call.
+ *
+ * Returns 0 when the row is missing, belongs to an earlier window, or the
+ * table is unavailable, so a caller that gates on it fails open.
+ */
+function waf_rate_hits($subject, $scope, $window_seconds)
+{
+    $state = waf_rate_state($subject, $scope, $window_seconds);
+
+    return $state['hits'];
+}
+
+/**
+ * The counter's row for the window in progress: how many hits, and when the
+ * window it belongs to started.
+ *
+ * The window start is what tells a caller when the count clears, which is the
+ * one thing a screen showing a lockout has to be able to say. Returns zeros
+ * when the row is missing, belongs to an earlier window, or the table is
+ * unavailable, so a caller that gates on it fails open.
+ */
+function waf_rate_state($subject, $scope, $window_seconds)
+{
+    $empty = array('hits' => 0, 'window_start' => 0);
+
+    if ($window_seconds <= 0) {
+        return $empty;
+    }
+
+    $now          = time();
+    $window_start = $now - ($now % $window_seconds);
+
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT hits, window_start FROM waf_rate
+         WHERE bucket_key = '" . waf_escape(waf_rate_key($subject, $scope)) . "'
+           AND window_start >= " . $window_start . "
+         LIMIT 1"
+    );
+
+    if (!$result || !@mysqli_num_rows($result)) {
+        return $empty;
+    }
+
+    $row = @mysqli_fetch_assoc($result);
+
+    return array(
+        'hits'         => (int) $row['hits'],
+        'window_start' => (int) $row['window_start']);
+}
+
+/**
+ * Count one event and return the new total for the window in progress.
  *
  * Implemented as a single INSERT ... ON DUPLICATE KEY UPDATE so it is atomic
- * without a transaction or a table lock - two concurrent requests from the
- * same IP cannot both read "1" and both write "2".
+ * without a transaction or a table lock - two concurrent requests with the
+ * same subject cannot both read "1" and both write "2".
+ */
+function waf_rate_record($subject, $scope, $window_seconds)
+{
+    if ($window_seconds <= 0) {
+        return 0;
+    }
+
+    $now          = time();
+    $window_start = $now - ($now % $window_seconds);
+    $key          = waf_escape(waf_rate_key($subject, $scope));
+
+    $query = "INSERT INTO waf_rate (bucket_key, hits, window_start)
+              VALUES ('" . $key . "', 1, " . $window_start . ")
+              ON DUPLICATE KEY UPDATE
+                  hits = IF(window_start < " . $window_start . ", 1, hits + 1),
+                  window_start = " . $window_start;
+
+    if (!@mysqli_query(db::$con, $query)) {
+        // Table missing or unavailable - fail open.
+        return 0;
+    }
+
+    return waf_rate_hits($subject, $scope, $window_seconds);
+}
+
+/**
+ * Forget a subject's counter.
+ *
+ * Used when a sign-in succeeds, so that a few mistyped passwords do not
+ * follow the account around for the rest of the window.
+ */
+function waf_rate_clear($subject, $scope)
+{
+    @mysqli_query(
+        db::$con,
+        "DELETE FROM waf_rate WHERE bucket_key = '" . waf_escape(waf_rate_key($subject, $scope)) . "'"
+    );
+}
+
+/**
+ * Fixed-window counter, one row per subject per scope.
+ *
+ * Counting and testing happen together here: every call is an event. Callers
+ * that need to test without counting use waf_rate_hits().
  *
  * Returns true when the caller is over the limit.
  */
@@ -1464,33 +1882,850 @@ function waf_rate_exceeded($ip, $scope, $limit, $window_seconds)
         return false;
     }
 
-    $now = time();
-    $window_start = $now - ($now % $window_seconds);
-    $key = substr(sha1($ip . '|' . $scope), 0, 40) . '|' . $scope;
+    return (waf_rate_record($ip, $scope, $window_seconds) > $limit);
+}
 
-    $query = "INSERT INTO waf_rate (bucket_key, hits, window_start)
-              VALUES ('" . waf_escape($key) . "', 1, " . $window_start . ")
-              ON DUPLICATE KEY UPDATE
-                  hits = IF(window_start < " . $window_start . ", 1, hits + 1),
-                  window_start = " . $window_start;
+/**
+ * How long a rate bucket is kept.
+ *
+ * The buckets are shared: the firewall counts requests in them by the minute,
+ * and the sign-in throttle keeps its lockouts there, which an operator may set
+ * as high as a month. Deleting everything on the firewall's own hour would
+ * quietly release those lockouts early, so retention is whichever of the two
+ * is longer.
+ */
+function waf_rate_retention()
+{
+    $retention = 3600;
 
-    if (!@mysqli_query(db::$con, $query)) {
-        // Table missing or unavailable - fail open.
-        return false;
+    if (function_exists('pg_login_throttle_ready') && pg_login_throttle_ready()) {
+        $retention = max($retention, ((int) waf_setting('login_throttle_lockout', 60)) * 60);
     }
 
-    $result = @mysqli_query(
+    return $retention;
+}
+
+/**
+ * Drop rate buckets whose window has long passed.
+ *
+ * Separate from waf_sweep() because it has a second caller. waf_sweep() runs
+ * only while the firewall is switched on, and the sign-in throttle writes to
+ * this table whether it is or not - so with the firewall off and the throttle
+ * on, this was the one table with a writer and no cleaner.
+ */
+function waf_rate_sweep()
+{
+    @mysqli_query(
         db::$con,
-        "SELECT hits FROM waf_rate WHERE bucket_key = '" . waf_escape($key) . "' LIMIT 1"
+        "DELETE FROM waf_rate WHERE window_start < " . (time() - waf_rate_retention()) . " LIMIT 5000"
     );
+}
 
-    if (!$result || !@mysqli_num_rows($result)) {
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CONCURRENCY CEILING
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * How many requests one subject may have open at once on a sensitive script.
+ *
+ * The rate limits count requests per minute and are tuned for cheap ones. The
+ * scarce resource on a sensitive script is not requests but connection
+ * seconds: a sign-in or a password reset holds its database connection while
+ * it waits on SMTP or a payment gateway, and twenty such requests a minute
+ * that each take thirty seconds are ten connections held open - inside every
+ * per-minute allowance, and enough to fill a small max_user_connections. This
+ * ceiling is on what is open now, not on what arrived this minute.
+ *
+ * 0 switches it off.
+ */
+function waf_inflight_limit()
+{
+    return max(0, (int) waf_setting('waf_inflight_limit', 3));
+}
+
+/**
+ * How long an open slot is believed, in seconds.
+ *
+ * A request that was killed hard - an out-of-memory abort, a worker recycled
+ * by the server - never runs its shutdown function and never gives its slot
+ * back. Rather than lock its sender out until an operator notices, a slot
+ * older than this is treated as dead. Sized past the longest a sensitive
+ * request should legitimately take while holding a connection.
+ */
+function waf_inflight_ttl()
+{
+    return 120;
+}
+
+function waf_inflight_file($subject)
+{
+    return dirname(__FILE__) . '/data/temp/waf_inflight_' . sha1($subject) . '.txt';
+}
+
+/**
+ * Take a slot for this request, or report that none is free.
+ *
+ * The slot file holds one line per open request: a token and the second it
+ * started. The file stays locked for the whole read-decide-write, so two
+ * simultaneous requests cannot both see the last free slot and both take it.
+ * A token rather than the process id names the slot: process ids repeat, and
+ * getmypid() is on some hosts' disable_functions list.
+ *
+ * With $observe the slot is taken even when none is free. That is Monitor
+ * mode: the request goes through anyway, and counting it is what lets the log
+ * show what blocking would have refused rather than only the first refusal.
+ *
+ * Returns true when the request may proceed. Every failure of the mechanism
+ * itself - no temp directory, no lock, a full disk - also returns true: a
+ * limiter that can turn visitors away because of its own bookkeeping would be
+ * worse than none.
+ */
+function waf_inflight_acquire($subject, $limit, $observe = false)
+{
+    $file = waf_inflight_file($subject);
+    $dir  = dirname($file);
+
+    if (!@is_dir($dir) && !@mkdir($dir, 0755, true)) {
+        return true;
+    }
+
+    $handle = @fopen($file, 'c+');
+
+    if (!$handle) {
+        return true;
+    }
+
+    if (!@flock($handle, LOCK_EX)) {
+        @fclose($handle);
+        return true;
+    }
+
+    $now  = time();
+    $live = array();
+
+    foreach (explode("\n", (string) @stream_get_contents($handle)) as $line) {
+        $parts = explode(' ', trim($line));
+
+        if (count($parts) === 2 && ((int) $parts[1] + waf_inflight_ttl()) > $now) {
+            $live[] = $parts[0] . ' ' . (int) $parts[1];
+        }
+    }
+
+    $granted = (count($live) < $limit);
+
+    if ($granted || $observe) {
+        $token  = str_replace('.', '', uniqid('', true)) . mt_rand(1000, 9999);
+        $live[] = $token . ' ' . $now;
+
+        register_shutdown_function('waf_inflight_release', $subject, $token);
+    }
+
+    // Rewritten even when refused: the dead slots dropped above are then gone
+    // for good instead of being re-read on every request until the sweep.
+    @ftruncate($handle, 0);
+    @rewind($handle);
+    @fwrite($handle, $live ? (implode("\n", $live) . "\n") : '');
+    @fflush($handle);
+    @flock($handle, LOCK_UN);
+    @fclose($handle);
+
+    return $granted;
+}
+
+/**
+ * Give the slot back.
+ *
+ * Runs at shutdown, after the response has gone out, and also after a fatal
+ * error or an exit() from waf_deny(): PHP still runs shutdown functions then,
+ * which is what makes a leaked slot the exception rather than the rule.
+ */
+function waf_inflight_release($subject, $token)
+{
+    $handle = @fopen(waf_inflight_file($subject), 'c+');
+
+    if (!$handle) {
+        return;
+    }
+
+    if (!@flock($handle, LOCK_EX)) {
+        @fclose($handle);
+        return;
+    }
+
+    $keep = array();
+
+    foreach (explode("\n", (string) @stream_get_contents($handle)) as $line) {
+        $line = trim($line);
+
+        if ($line !== '' && strpos($line, $token . ' ') !== 0) {
+            $keep[] = $line;
+        }
+    }
+
+    @ftruncate($handle, 0);
+    @rewind($handle);
+    @fwrite($handle, $keep ? (implode("\n", $keep) . "\n") : '');
+    @fflush($handle);
+    @flock($handle, LOCK_UN);
+    @fclose($handle);
+}
+
+/**
+ * Remove slot files nobody has written to for a while.
+ *
+ * Every acquire and release rewrites its file, so a file untouched for ten
+ * minutes holds no live slot: whatever is still in it is long past the TTL.
+ * Sampled from waf_sweep(), like the other housekeeping.
+ */
+function waf_inflight_sweep()
+{
+    if (!function_exists('glob')) {
+        return;
+    }
+
+    $files = @glob(dirname(__FILE__) . '/data/temp/waf_inflight_*.txt');
+
+    if (!$files) {
+        return;
+    }
+
+    $cutoff = time() - 600;
+
+    foreach ($files as $file) {
+        $mtime = @filemtime($file);
+
+        if ($mtime && $mtime < $cutoff) {
+            @unlink($file);
+        }
+    }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PLAIN-TEXT BLOCK LOG
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * One line per refusal, in a file fail2ban can follow.
+ *
+ * The firewall's own log lives in the database, which is the right place for
+ * a screen and the wrong place for a host-level tool: fail2ban reads files,
+ * and what it can do with one - put the address into iptables - is the one
+ * thing this firewall cannot do for itself. A refused request still costs a
+ * PHP worker; a packet the kernel drops costs nothing. On a VPS this file is
+ * the bridge between the two.
+ *
+ * One event per line, local time, so fail2ban's default date parser reads it
+ * without configuration:
+ *
+ *   2026-09-16 12:34:56 pinegrap-firewall DENY ip=203.0.113.9 status=429 rule=rate-sensitive ref=9BB256844399
+ *   2026-09-16 12:35:10 pinegrap-firewall BAN ip=203.0.113.9 minutes=240 subject=203.0.113.9 rule=auto-ban
+ *
+ * ip= is always the visitor's own address, never a range, because that is
+ * what a jail's <HOST> can match; a range ban names its range in subject=.
+ * The pre-database shield writes DENY lines of the same shape from
+ * includes/db_guard.php, which cannot call this function.
+ *
+ * Rotated once past five megabytes, one previous copy kept. A log that can
+ * grow without bound is the disk-quota outage that the firewall log's own
+ * row cap exists to prevent.
+ */
+function waf_text_log_file()
+{
+    return dirname(__FILE__) . '/data/firewall.log';
+}
+
+function waf_text_log_enabled()
+{
+    return ((int) waf_setting('waf_text_log', 1) === 1);
+}
+
+function waf_text_log($event, $ip, $fields)
+{
+    if (!waf_text_log_enabled()) {
+        return;
+    }
+
+    $file = waf_text_log_file();
+    $size = @filesize($file);
+
+    if ($size !== false && $size > 5242880) {
+        @unlink($file . '.1');
+        @rename($file, $file . '.1');
+    }
+
+    $line = date('Y-m-d H:i:s') . ' pinegrap-firewall ' . $event . ' ip=' . $ip;
+
+    foreach ($fields as $key => $value) {
+        // Each value is one token and the line stays one line.
+        $line .= ' ' . $key . '=' . preg_replace('/\s+/', '_', (string) $value);
+    }
+
+    @file_put_contents($file, $line . "\n", FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * The rule id of the last event this request logged.
+ *
+ * waf_deny() is handed a status and a reference, not the rule that decided
+ * them; the text log line wants the rule, and every caller logs the event
+ * immediately before denying, so remembering the last one is enough.
+ */
+function waf_last_rule($rule_id = null)
+{
+    static $last = '';
+
+    if ($rule_id !== null) {
+        $last = (string) $rule_id;
+    }
+
+    return $last;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   RESPONSE HEADERS
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The Content-Security-Policy this site sends, report endpoint included.
+ *
+ * The built-in policy is written to LEARN, not to lock down. Inline script
+ * and style stay allowed because a CMS page is full of both, and the hosts
+ * the software itself loads from (jsDelivr, jQuery, DataTables, CodeMirror,
+ * Google Fonts, the Cloudflare beacons a proxied site gets injected) are
+ * listed, so that what remains - analytics, maps, a payment gateway, a chat
+ * widget the SITE added - is a violation. In Report-Only mode that yields
+ * exactly the list an operator needs to write the policy they will
+ * eventually enforce, and nothing else. Images, fonts and media may come
+ * from anywhere over https: they are the noise, not the risk. data: is kept
+ * out of the script sources on purpose, so a data: script shows up as what
+ * it is.
+ *
+ * frame-ancestors follows the clickjacking switch, because it is the same
+ * decision in newer syntax; X-Frame-Options stays alongside for browsers
+ * that only know the old one.
+ *
+ * An operator's own policy replaces the built-in one entirely. Line breaks
+ * are folded to spaces: a header is one line, and a newline in a setting
+ * would otherwise end the header early. The report endpoint is appended
+ * unless the policy names its own.
+ */
+function waf_csp_policy()
+{
+    $custom = trim((string) waf_setting('security_csp_policy', ''));
+
+    if ($custom !== '') {
+        $policy = trim(preg_replace('/[\r\n]+/', ' ', $custom));
+    } else {
+        $policy = "default-src 'self' blob:; "
+                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
+                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://cdn.datatables.net https://codemirror.net; "
+                . "img-src 'self' data: blob: https:; "
+                . "font-src 'self' data: https:; "
+                . "media-src 'self' data: blob: https:; "
+                . "connect-src 'self' https://cdn.jsdelivr.net https://cdn.datatables.net https://cloudflareinsights.com; "
+                . "object-src 'none'; "
+                . "base-uri 'self'";
+
+        if ((int) waf_setting('security_frame_protection', 1) === 1) {
+            $policy .= "; frame-ancestors 'self'";
+        }
+    }
+
+    if (stripos($policy, 'report-uri') === false
+        && stripos($policy, 'report-to') === false
+        && defined('PATH') && defined('SOFTWARE_DIRECTORY')
+    ) {
+        $policy = rtrim($policy, '; ') . '; report-uri ' . PATH . SOFTWARE_DIRECTORY . '/csp_report.php';
+    }
+
+    return $policy;
+}
+
+/**
+ * Send the security response headers. Once per request, before any output,
+ * from both bootstraps.
+ *
+ * Independent of the firewall's own switch on purpose: these are properties
+ * of the site's responses, not decisions about a request, and an operator
+ * switching the firewall off to chase a false positive must not lose the
+ * site's headers in the same movement.
+ *
+ * The policy header and HSTS are separate (waf_send_csp_header) because the
+ * router stage serves files and feeds, where a policy is dead weight on
+ * every image; only the init stage, which renders documents, sends them.
+ */
+function waf_send_security_headers()
+{
+    static $done = false;
+
+    if ($done) {
+        return;
+    }
+
+    $done = true;
+
+    if (headers_sent() || PHP_SAPI === 'cli') {
+        return;
+    }
+
+    if ((int) waf_setting('security_headers', 1) !== 1) {
+        return;
+    }
+
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+
+    // (self) rather than (): first-party use stays possible and only a
+    // third-party frame is refused. A store locator or a barcode scanner on
+    // the site's own pages keeps working.
+    header('Permissions-Policy: camera=(self), microphone=(self), geolocation=(self)');
+
+    if ((int) waf_setting('security_frame_protection', 1) === 1) {
+        header('X-Frame-Options: SAMEORIGIN');
+    }
+}
+
+function waf_send_csp_header()
+{
+    static $done = false;
+
+    if ($done) {
+        return;
+    }
+
+    $done = true;
+
+    if (headers_sent() || PHP_SAPI === 'cli') {
+        return;
+    }
+
+    if ((int) waf_setting('security_headers', 1) !== 1) {
+        return;
+    }
+
+    // HSTS rides with the document headers rather than the base set, for one
+    // reason: the decision "was this request HTTPS" must be the SAME decision
+    // Secure Mode makes, and that function (check_if_request_is_secure, with
+    // its TRUST_PROXY_SSL_HEADERS opt-in and its test page) exists only once
+    // functions.php is loaded - which is this stage. Two notions of "secure"
+    // in one product would be one too many. A browser applies HSTS per host
+    // from any response, so documents alone are enough. Never without Secure
+    // Mode: the header is a one-year promise that the site is HTTPS-only.
+    if ((int) waf_setting('security_hsts', 0) === 1
+        && (string) waf_setting('url_scheme', 'http://') === 'https://'
+        && function_exists('check_if_request_is_secure')
+        && check_if_request_is_secure()
+    ) {
+        header('Strict-Transport-Security: max-age=31536000');
+    }
+
+    $mode = (string) waf_setting('security_csp_mode', 'report');
+
+    if ($mode !== 'report' && $mode !== 'enforce') {
+        return;
+    }
+
+    $policy = waf_csp_policy();
+
+    if ($policy === '') {
+        return;
+    }
+
+    header(($mode === 'enforce' ? 'Content-Security-Policy: ' : 'Content-Security-Policy-Report-Only: ') . $policy);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CSP VIOLATION REPORTS
+   ───────────────────────────────────────────────────────────────────────── */
+
+function waf_csp_report_file()
+{
+    return dirname(__FILE__) . '/data/temp/csp_reports.json';
+}
+
+/**
+ * Record one browser report. csp_report.php hands this the raw body.
+ *
+ * Aggregated at write time by (directive, blocked source, page path) - the
+ * three things an operator needs to decide whether a source belongs in the
+ * policy - never stored per report or per visitor. A blocked URL is cut to
+ * its origin: a policy allows hosts, not paths, and a query string would make
+ * every report unique. Five hundred entries and fourteen days at most; past
+ * that the least seen go first. A report is telemetry, and telemetry that
+ * can fill a disk is a liability.
+ *
+ * No database and no session: a busy site's browsers post here constantly,
+ * and the endpoint has to cost about what a static file costs.
+ */
+function waf_csp_report_store($raw)
+{
+    if (!is_string($raw) || $raw === '' || strlen($raw) > 16384) {
         return false;
     }
 
-    $row = @mysqli_fetch_assoc($result);
+    $data = json_decode($raw, true);
 
-    return ((int) $row['hits'] > $limit);
+    if (!is_array($data)) {
+        return false;
+    }
+
+    $report = (isset($data['csp-report']) && is_array($data['csp-report'])) ? $data['csp-report'] : $data;
+
+    $directive = '';
+
+    foreach (array('effective-directive', 'violated-directive') as $name) {
+        if (!empty($report[$name]) && is_string($report[$name])) {
+            $directive = strtolower(trim(strtok($report[$name], ' ')));
+            break;
+        }
+    }
+
+    $blocked  = (isset($report['blocked-uri']) && is_string($report['blocked-uri'])) ? trim($report['blocked-uri']) : '';
+    $document = (isset($report['document-uri']) && is_string($report['document-uri'])) ? $report['document-uri'] : '';
+
+    if ($directive === '' || $blocked === '') {
+        return false;
+    }
+
+    // Origin only for URLs; the keywords (inline, eval, data, blob, self) stay
+    // as they are.
+    if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $blocked)) {
+        $parts = @parse_url($blocked);
+
+        if (empty($parts['host'])) {
+            return false;
+        }
+
+        $blocked = strtolower($parts['scheme'] . '://' . $parts['host']) . (isset($parts['port']) ? ':' . (int) $parts['port'] : '');
+    } else {
+        $blocked = strtolower(preg_replace('/[^a-z0-9:_-]/i', '', $blocked));
+
+        if ($blocked === '') {
+            return false;
+        }
+    }
+
+    $path = '/';
+
+    if ($document !== '') {
+        $document_path = @parse_url($document, PHP_URL_PATH);
+
+        if (is_string($document_path) && $document_path !== '') {
+            $path = $document_path;
+        }
+    }
+
+    $directive = substr(preg_replace('/[^a-z-]/', '', $directive), 0, 32);
+    $blocked   = substr($blocked, 0, 120);
+    $path      = substr($path, 0, 160);
+
+    $file = waf_csp_report_file();
+    $dir  = dirname($file);
+
+    if (!@is_dir($dir) && !@mkdir($dir, 0755, true)) {
+        return false;
+    }
+
+    $handle = @fopen($file, 'c+');
+
+    if (!$handle) {
+        return false;
+    }
+
+    if (!@flock($handle, LOCK_EX)) {
+        @fclose($handle);
+        return false;
+    }
+
+    $store = json_decode((string) @stream_get_contents($handle), true);
+
+    if (!is_array($store) || !isset($store['entries']) || !is_array($store['entries'])) {
+        $store = array('entries' => array());
+    }
+
+    $now = time();
+    $key = sha1($directive . '|' . $blocked . '|' . $path);
+
+    if (isset($store['entries'][$key])) {
+        $store['entries'][$key]['n'] = (int) $store['entries'][$key]['n'] + 1;
+        $store['entries'][$key]['l'] = $now;
+    } else {
+        $store['entries'][$key] = array('d' => $directive, 'b' => $blocked, 'p' => $path, 'n' => 1, 'f' => $now, 'l' => $now);
+    }
+
+    $cutoff = $now - (14 * 86400);
+
+    foreach ($store['entries'] as $entry_key => $entry) {
+        if (!isset($entry['l']) || (int) $entry['l'] < $cutoff) {
+            unset($store['entries'][$entry_key]);
+        }
+    }
+
+    if (count($store['entries']) > 500) {
+        uasort($store['entries'], 'waf_csp_report_compare');
+        $store['entries'] = array_slice($store['entries'], 0, 500, true);
+    }
+
+    @ftruncate($handle, 0);
+    @rewind($handle);
+    @fwrite($handle, json_encode($store));
+    @fflush($handle);
+    @flock($handle, LOCK_UN);
+    @fclose($handle);
+
+    return true;
+}
+
+function waf_csp_report_compare($a, $b)
+{
+    return (int) $b['n'] - (int) $a['n'];
+}
+
+/**
+ * The aggregated reports, most seen first.
+ */
+function waf_csp_report_read()
+{
+    $store = json_decode((string) @file_get_contents(waf_csp_report_file()), true);
+
+    if (!is_array($store) || empty($store['entries']) || !is_array($store['entries'])) {
+        return array();
+    }
+
+    $entries = array_values($store['entries']);
+    usort($entries, 'waf_csp_report_compare');
+
+    return $entries;
+}
+
+function waf_csp_report_clear()
+{
+    @unlink(waf_csp_report_file());
+}
+
+/**
+ * Mirror the block list to a file the pre-database guard can read.
+ *
+ * This function is the only writer, and it exists because of what the mirror
+ * is for: includes/db_guard.php has to turn a banned address away BEFORE a
+ * connection is opened, which is exactly when this firewall cannot run. See
+ * that file's header for the incident.
+ *
+ * The proxy lines matter as much as the block lines. Behind a CDN,
+ * REMOTE_ADDR is the edge, not the visitor, so a mirror the guard cannot
+ * resolve against would silently match nothing. Rather than duplicate
+ * waf_client_ip()'s logic - and let two copies of one security decision drift
+ * apart - the guard consumes the resolved list this function writes, and
+ * waf.php stays the single authority for what a trusted proxy is.
+ *
+ * Rewritten at most once every five minutes. That is also the longest an
+ * expired ban can linger in the mirror: the database drops it on expiry, and
+ * the next refresh removes it here.
+ */
+function waf_ban_shield_refresh($force = false)
+{
+    if (!isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    $file = dirname(__FILE__) . '/data/temp/ban_shield.txt';
+
+    // The file's own mtime is the throttle. It is already being stat()ed by
+    // the guard on every request, so this costs nothing extra.
+    if (!$force && @is_file($file) && ((int) @filemtime($file) + 300) > time()) {
+        return;
+    }
+
+    $lists = waf_ip_lists();
+
+    // Written even when empty. An empty file is a statement - "nobody is
+    // banned right now" - while a missing one is indistinguishable from a
+    // mirror that was never built, and the guard would go on consulting a
+    // stale copy.
+    // The shield writes its refusals to the same text log as waf_deny(), and
+    // this line is how it learns whether that log is switched on: it has no
+    // database to ask.
+    $out = 'L ' . (waf_text_log_enabled() ? '1' : '0') . "\n";
+
+    foreach (waf_cloudflare_ranges() as $range) {
+        $out .= 'P ' . $range . "\n";
+    }
+
+    // Allow lines, so the guard applies the same precedence waf_run() does:
+    // the allow list wins over everything. Without them an operator who bans
+    // a range and allows their own address inside it is turned away at the
+    // door - by the one layer that has no screen to explain itself.
+    foreach ($lists['allow'] as $entry) {
+        $entry = trim($entry);
+
+        if ($entry !== '') {
+            $out .= 'A ' . $entry . "\n";
+        }
+    }
+
+    foreach (waf_parse_list(waf_setting('waf_trusted_proxies', '')) as $proxy) {
+        $proxy = trim($proxy);
+
+        if ($proxy !== '') {
+            $out .= 'P ' . $proxy . "\n";
+        }
+    }
+
+    // Block lines are written only while the firewall is on. Monitor mode
+    // still writes them - the list is the operator's data and outlives the
+    // firewall's own judgement, see the IP list branch of waf_run() - but the
+    // off switch has to reach this file as well, or disabling the firewall
+    // would leave the guard rejecting people from a mirror for another six
+    // hours with no screen anywhere saying why.
+    if (waf_mode() !== 'off') {
+
+        foreach ($lists['block'] as $entry) {
+            $entry = trim($entry);
+
+            if ($entry !== '') {
+                $out .= 'B ' . $entry . "\n";
+            }
+        }
+    }
+
+    $dir = dirname($file);
+
+    if (!@is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+
+    // Temp file plus rename: a reader must never see half a list. A partial
+    // read here is not a cosmetic glitch - it is an address list with entries
+    // missing, used to decide who gets in.
+    $tmp = $file . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp'; // disable_functions on some hosts
+
+    if (@file_put_contents($tmp, $out, LOCK_EX) !== false) {
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+        }
+    }
+}
+
+/**
+ * Write the events the pre-database guard recorded into the firewall log.
+ *
+ * The guard turns a banned address away before a database connection exists,
+ * so it cannot log what it did; it appends a line to a small file instead
+ * (pg_ban_shield_record). This drains that file on the next request that does
+ * have a database. Without it the firewall log would show nothing at all for
+ * the one rule that is enforced unconditionally - and a block nobody can see
+ * is the failure the 2026-08-31 incident was actually made of.
+ *
+ * The whole file is taken under the lock and truncated in the same breath, so
+ * a second request cannot drain the same lines again. Identical (address,
+ * path) pairs inside one bucket collapse into a single row with a counter,
+ * the same shape waf_log_event() writes, because a flood from one banned
+ * address is exactly what this path sees most.
+ */
+function waf_shield_drain()
+{
+    if (!isset(db::$con) || !db::$con || !waf_schema_ready()) {
+        return;
+    }
+
+    $file = dirname(__FILE__) . '/data/temp/shield_pending.log';
+
+    if (!@is_file($file) || !@filesize($file)) {
+        return;
+    }
+
+    $handle = @fopen($file, 'c+');
+
+    if (!$handle) {
+        return;
+    }
+
+    if (!@flock($handle, LOCK_EX)) {
+        @fclose($handle);
+        return;
+    }
+
+    $raw = (string) @stream_get_contents($handle);
+    @ftruncate($handle, 0);
+    @fflush($handle);
+    @flock($handle, LOCK_UN);
+    @fclose($handle);
+
+    $groups = array();
+
+    foreach (explode("\n", $raw) as $line) {
+        $parts = explode("\t", trim($line));
+
+        if (count($parts) !== 3) {
+            continue;
+        }
+
+        $when = (int) $parts[0];
+        $ip   = $parts[1];
+        $path = $parts[2];
+
+        if ($when <= 0 || !waf_is_ip($ip)) {
+            continue;
+        }
+
+        $bucket = $when - ($when % WAF_LOG_WINDOW);
+        $key    = $bucket . '|' . $ip . '|' . $path;
+
+        if (!isset($groups[$key])) {
+            // A bounded number of rows per drain. A burst wide enough to pass
+            // this is already one row per address on the screen; the rest are
+            // dropped rather than turned into a write storm of their own.
+            if (count($groups) >= 200) {
+                continue;
+            }
+
+            $groups[$key] = array('bucket' => $bucket, 'ip' => $ip, 'path' => $path, 'n' => 0, 'first' => $when, 'last' => $when);
+        }
+
+        $groups[$key]['n']++;
+        $groups[$key]['first'] = min($groups[$key]['first'], $when);
+        $groups[$key]['last']  = max($groups[$key]['last'], $when);
+    }
+
+    foreach ($groups as $group) {
+
+        // Same aggregation identity as waf_log_event(), so a drained event and
+        // a live one for the same address and path share a row.
+        $event_key = sha1($group['ip'] . '|ip-list-shield|block|iplist|' . $group['path']);
+
+        @mysqli_query(
+            db::$con,
+            "INSERT INTO waf_log
+                (event_key, window_start, hit_count, ip_address, action, rule_id,
+                 category, score, method, request_url, target, matched,
+                 user_agent, user_id, reference, log_timestamp, last_seen)
+             VALUES
+                ('" . waf_escape($event_key) . "',
+                 " . (int) $group['bucket'] . ",
+                 " . (int) $group['n'] . ",
+                 '" . waf_escape($group['ip']) . "',
+                 'block',
+                 'ip-list-shield',
+                 'iplist',
+                 10,
+                 '',
+                 '" . waf_escape(substr($group['path'], 0, 500)) . "',
+                 'REMOTE_ADDR',
+                 '" . waf_escape($group['ip']) . "',
+                 '',
+                 0,
+                 '',
+                 " . (int) $group['first'] . ",
+                 " . (int) $group['last'] . ")
+             ON DUPLICATE KEY UPDATE
+                hit_count = hit_count + " . (int) $group['n'] . ",
+                last_seen = GREATEST(last_seen, " . (int) $group['last'] . ")"
+        );
+    }
 }
 
 /**
@@ -1499,6 +2734,10 @@ function waf_rate_exceeded($ip, $scope, $limit, $window_seconds)
  */
 function waf_sweep()
 {
+    // The mirror is refreshed at the top of waf_run() rather than here: it
+    // has to be written even on the request that finds the firewall switched
+    // off, which never reaches this function.
+
     // The row cap runs far more often than the rest of the sweep. Time-based
     // retention is the slow, tidy job; the cap is the safety valve, and a
     // safety valve checked once every two hundred requests is not a safety
@@ -1511,7 +2750,8 @@ function waf_sweep()
         return;
     }
 
-    @mysqli_query(db::$con, "DELETE FROM waf_rate WHERE window_start < " . (time() - 3600));
+    waf_rate_sweep();
+    waf_inflight_sweep();
 
     $days = (int) waf_setting('waf_log_retention_days', 14);
 
@@ -1522,11 +2762,18 @@ function waf_sweep()
         );
     }
 
+    // Expired automatic rows are kept for as long as the log is kept (thirty
+    // days when retention is off). They block nothing - waf_ip_lists() skips
+    // an expired row - but waf_auto_ban() reads hit_count from them to make a
+    // repeat ban longer than the last, and a row deleted on expiry would reset
+    // that ladder every time.
     if (waf_table_has_column('banned_ip_addresses', 'expires_at')) {
+        $memory = (($days > 0) ? $days : 30) * 86400;
+
         @mysqli_query(
             db::$con,
             "DELETE FROM banned_ip_addresses
-             WHERE source = 'auto' AND expires_at > 0 AND expires_at < " . time()
+             WHERE source = 'auto' AND expires_at > 0 AND expires_at < " . (time() - $memory)
         );
     }
 
@@ -1604,6 +2851,8 @@ function waf_escape($value)
  */
 function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
 {
+    waf_last_rule($rule_id);
+
     // Pre-upgrade installs still run the legacy bot filter, but have no
     // waf_log table to write to. Skip rather than fire a failing query on
     // every blocked request.
@@ -1683,19 +2932,24 @@ function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
  * a legitimate visitor caught by a false positive gets something they can
  * quote to support. Sends 429 for rate limiting so well-behaved clients back
  * off instead of retrying immediately.
+ *
+ * $always is for a refusal that is not the firewall's decision to begin with:
+ * the operator's own block list. See the IP list branch of waf_run().
  */
-function waf_deny($status, $reference)
+function waf_deny($status, $reference, $always = false)
 {
     // Last line of defence for Monitor mode.
     //
     // Every caller already checks $blocking before reaching here, but "every
     // caller" is exactly the kind of invariant that breaks the moment a new
-    // branch is added. Monitor mode promises the operator that nothing will
-    // be rejected; that promise is enforced in one place, here, rather than
-    // trusted to a dozen call sites.
-    if (waf_mode() !== 'block') {
+    // branch is added. Monitor mode promises the operator that nothing that
+    // the FIREWALL decided will be rejected; that promise is enforced in one
+    // place, here, rather than trusted to a dozen call sites.
+    if (!$always && waf_mode() !== 'block') {
         return;
     }
+
+    waf_text_log('DENY', waf_client_ip(), array('status' => $status, 'rule' => waf_last_rule(), 'ref' => $reference));
 
     if (!headers_sent()) {
         http_response_code($status);
@@ -1897,11 +3151,84 @@ function waf_user_is_authenticated()
  * generic-HTTP-client bot class must not apply to them. They authenticate
  * with their own key/secret and are still rate limited.
  */
+/**
+ * Is this a call to the REST API?
+ *
+ * Asked of the request, not of the file that ended up running it. The two are
+ * not the same here: web.config rewrites anything that does not resolve to a
+ * file on disk to router.php, and IIS treats /integration.php/products/138 as
+ * one of those - one extra path segment (/integration.php/meta) resolves to the
+ * file, two do not. So the endpoint's own URLs arrive with SCRIPT_NAME set to
+ * router.php, and every check that asked what script was running got the wrong
+ * answer for exactly the shape the API uses most: reading and writing one
+ * product. Those calls were then blocked as unknown bots, because a client that
+ * sends no user agent, or sends "python-requests", is what an integration looks
+ * like, and the exemption that exists for it was never reached.
+ *
+ * Read from the path only, never the query string, and read as the first
+ * segment that names a PHP file - the same thing the server resolves. That is
+ * what makes it safe to trust: /index.php/integration.php/x answers index.php
+ * here as well, so an exemption cannot be claimed by appending the endpoint's
+ * name to some other request. See waf_is_excluded() for the same rule and the
+ * bypass that taught it.
+ */
 function waf_is_api_request()
 {
-    $script = waf_script_name();
+    static $answer = null;
 
-    return ($script === 'apps.php' || $script === 'api.php');
+    if ($answer === null) {
+        $answer = waf_request_names_script(array('integration.php', 'api.php'));
+    }
+
+    return $answer;
+}
+
+/**
+ * Is this a call to api.php?
+ *
+ * The endpoint the site's own pages talk to: the store's product, cart,
+ * shipping and instalment calls, the live chat's polling, and the control
+ * panel's own XHR. It has its own per address allowance - see
+ * waf_handle_rate_api() - rather than the one sized for sign-in screens.
+ */
+function waf_is_site_api_request()
+{
+    static $answer = null;
+
+    if ($answer === null) {
+        $answer = waf_request_names_script(array('api.php'));
+    }
+
+    return $answer;
+}
+
+/**
+ * Does this request name one of these scripts?
+ *
+ * The resolved script first, then the path, for the rewrite described above.
+ */
+function waf_request_names_script($names)
+{
+    if (in_array(waf_script_name(), $names, true)) {
+        return true;
+    }
+
+    $url = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+
+    $question = strpos($url, '?');
+
+    if ($question !== false) {
+        $url = substr($url, 0, $question);
+    }
+
+    foreach (explode('/', $url) as $segment) {
+
+        if (substr($segment, -4) === '.php') {
+            return in_array($segment, $names, true);
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -2016,7 +3343,28 @@ function waf_run($stage = 'init')
             return;
         }
 
+        // First request back after a database outage: record it before the
+        // mode check, because an outage is a fact about the installation
+        // rather than a security decision, and the operator needs it in the
+        // log whatever the firewall's mode. See includes/db_guard.php.
+        if (function_exists('pg_db_guard_log_recovery')) {
+            pg_db_guard_log_recovery();
+        }
+
         $mode = waf_mode();
+
+        // Before the off switch, not after: the mirror has to learn that the
+        // firewall was turned off, and only a request that still runs can
+        // teach it. Refreshed with no block lines in that case, so the
+        // pre-database guard stops rejecting within one request rather than
+        // when the mirror expires six hours later. Cheap - throttled by the
+        // mirror's own mtime.
+        waf_ban_shield_refresh();
+
+        // Events the pre-database guard recorded while it had no database.
+        // Written before the mode check for the same reason the outage record
+        // is: they are facts about what happened, not decisions to be made.
+        waf_shield_drain();
 
         // The Enable Firewall checkbox is an absolute off switch. Nothing
         // below this line runs when it is unticked — no bot filtering, no
@@ -2052,15 +3400,30 @@ function waf_run($stage = 'init')
         }
 
         // ── Block list ───────────────────────────────────────────────────
+        //
+        // Enforced in Monitor mode too, and this is the one rule here that is.
+        // Monitor mode means "do not let the firewall start rejecting people
+        // on its own judgement while I watch"; it does not mean "release the
+        // addresses I banned". The list is the operator's data - they typed
+        // those entries, or they kept an automatic ban the screen showed them
+        // - and an address that earned a place on it does not become
+        // acceptable because the operator switched the mode to look at
+        // something else. Two real uses depend on it: banning a specific
+        // address by hand WHILE observing, and switching to Monitor during an
+        // attack without opening the door to everyone already banned.
+        //
+        // The off switch still switches it off: with the firewall disabled
+        // this function returns above, and waf_ban_shield_refresh() writes a
+        // mirror with no block lines, so the pre-database guard stops too.
+        //
+        // check_banned_ip_addresses() has always worked this way, outside the
+        // firewall entirely. This makes the main path agree with it.
         if (empty($done['iplist'])) {
             $done['iplist'] = true;
 
             if (waf_ip_is_blocked($ip)) {
-                waf_log_event($blocking ? 'block' : 'would-block', 'ip-list', 'iplist', 10, 'REMOTE_ADDR', $ip);
-
-                if ($blocking) {
-                    waf_deny(403, waf_reference());
-                }
+                waf_log_event('block', 'ip-list', 'iplist', 10, 'REMOTE_ADDR', $ip);
+                waf_deny(403, waf_reference(), true);
             }
         }
 
@@ -2082,6 +3445,11 @@ function waf_run($stage = 'init')
         // there would silently ignore the exemption, and since page regions
         // are edited by POSTing to the page's own front-end URL, a designer
         // saving repeatedly would be rate limited out of their own site.
+        //
+        // The api.php limit is the sensitive one's counterpart for the endpoint
+        // the site's own pages talk to, and exempts staff for the same reason,
+        // so it belongs at the same stage. Exactly one of the two ever counts a
+        // given request: the sensitive counter steps aside for api.php.
         if (waf_setting('waf_rate_limit', 1)) {
             if (empty($done['rate_global'])) {
                 $done['rate_global'] = true;
@@ -2091,6 +3459,18 @@ function waf_run($stage = 'init')
             if ($stage === 'init' && empty($done['rate_sensitive'])) {
                 $done['rate_sensitive'] = true;
                 waf_handle_rate_sensitive($ip, $blocking);
+            }
+
+            if ($stage === 'init' && empty($done['rate_api'])) {
+                $done['rate_api'] = true;
+                waf_handle_rate_api($ip, $blocking);
+            }
+
+            // The ceiling on open requests belongs with the sensitive limit:
+            // same stage, same exemptions, same switch.
+            if ($stage === 'init' && empty($done['inflight'])) {
+                $done['inflight'] = true;
+                waf_handle_inflight($ip, $blocking);
             }
         }
 
@@ -2177,9 +3557,25 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
             if ($blocking) {
                 waf_deny(403, waf_reference());
             }
+
+            return;
         }
 
-        return;
+        // Range-verified operators are trusted only on a positive match.
+        // For every other good bot 'unknown' fails open, because an absent
+        // PTR record proves nothing. For these five the published list is
+        // the sole basis for trusting the name at all - so while no list is
+        // stored yet (fresh upgrade, fetch failing) the entry must not hand
+        // out crawler privileges on UA text alone. The request falls through
+        // to the unknown-bot policy below, which is exactly where this user
+        // agent landed before 2026.4.4.
+        $ai = waf_ai_bots();
+
+        if ($verdict !== 'verified' && isset($ai[$bot['token']])) {
+            $bot['class'] = 'unverified';
+        } else {
+            return;
+        }
     }
 
     // robots.txt and ACME challenges are served to anyone. See
@@ -2241,7 +3637,7 @@ function waf_handle_rate_global($ip, $blocking)
 
     $limit = (int) waf_setting('waf_rate_limit_requests', 300);
 
-    if (!waf_rate_exceeded($ip, 'g', $limit, 60)) {
+    if (!waf_rate_exceeded(waf_ip_subject($ip), 'g', $limit, 60)) {
         return;
     }
 
@@ -2270,17 +3666,146 @@ function waf_handle_rate_sensitive($ip, $blocking)
         return;
     }
 
+    // Both endpoints count on an allowance of their own rather than this one.
+    // This number is sized for a screen a visitor submits a few times an hour -
+    // a sign-in, a checkout, a comment. An endpoint that a page talks to while
+    // the visitor sits still is a different animal: an open chat window asks
+    // api.php something every two seconds, which is this whole allowance by
+    // itself, and a marketplace synchronising its catalogue at the rate the
+    // software itself hands out would be refused here and then banned, from an
+    // address doing exactly what it was authorised to do.
+    //
+    // integration.php is counted per application (includes/api/ratelimit.php),
+    // against a key the caller had to be given; api.php per address on
+    // waf_rate_limit_api, in waf_handle_rate_api() below. Neither is
+    // uncounted, and what this counter was looking for on them is caught
+    // where it belongs: a failed key registers an offence
+    // (includes/api/auth.php), and a failed password is counted by the
+    // sign-in throttle (pg_login_record_failure), which closes the account
+    // rather than the address.
+    if (waf_is_api_request()) {
+        return;
+    }
+
     if (!waf_is_sensitive_request()) {
         return;
     }
 
     $limit = (int) waf_setting('waf_rate_limit_sensitive', 30);
 
-    if (!waf_rate_exceeded($ip, 's', $limit, 60)) {
+    if (!waf_rate_exceeded(waf_ip_subject($ip), 's', $limit, 60)) {
         return;
     }
 
     waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-sensitive', 'rate', 7, waf_script_name(), $limit . '/min');
+    waf_register_offence($ip, 5, $blocking);
+
+    if ($blocking) {
+        waf_deny(429, waf_reference());
+    }
+}
+
+/**
+ * The allowance for api.php.
+ *
+ * Separate from the sensitive limit because the traffic is a different shape.
+ * A visitor sitting on a page with the chat open sends about thirty requests a
+ * minute without touching anything, and a shopper moving through the express
+ * order screen adds a call per address, shipping method and instalment table
+ * on top. The default is sized for that with room for a couple of tabs, and is
+ * an operator setting because an office or a mobile carrier puts many visitors
+ * behind one address.
+ *
+ * What this does NOT have to carry: password guessing against the endpoint's
+ * migration login, which the sign-in throttle counts per account
+ * (pg_login_throttle_guard, called from initialize_user), and the chat's own
+ * application limits - a captcha before the first anonymous message, a send
+ * ceiling of twenty per two minutes, an attachment ceiling per conversation.
+ * Those stop a robot from achieving anything. This stops it from costing
+ * anything, which is the part they cannot do: site_chat_bootstrap and the
+ * captcha issue both answer without a session, so they are the cheapest thing
+ * on the site to ask for in a loop.
+ */
+function waf_handle_rate_api($ip, $blocking)
+{
+    if (!waf_is_site_api_request()) {
+        return;
+    }
+
+    if (defined('IS_BOT') && IS_BOT) {
+        return;
+    }
+
+    // Counting requests against an unresolved address would count the whole
+    // internet as one visitor. See waf_ip_is_infrastructure().
+    if (waf_ip_is_infrastructure($ip)) {
+        return;
+    }
+
+    // Signed-in staff are exempt, which is what keeps a control panel screen
+    // that loads a dozen widgets one request at a time out of this counter.
+    if (waf_user_is_authenticated()) {
+        return;
+    }
+
+    $limit = (int) waf_setting('waf_rate_limit_api', 180);
+
+    if ($limit <= 0) {
+        $limit = 180;
+    }
+
+    if (!waf_rate_exceeded(waf_ip_subject($ip), 'api', $limit, 60)) {
+        return;
+    }
+
+    waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-api', 'rate', 7, waf_script_name(), $limit . '/min');
+    waf_register_offence($ip, 5, $blocking);
+
+    if ($blocking) {
+        waf_deny(429, waf_reference());
+    }
+}
+
+/**
+ * The concurrency ceiling on sensitive scripts. See waf_inflight_limit().
+ *
+ * Same exemptions as the sensitive rate limit, for the same reasons, and
+ * api.php is likewise left to its own allowance. A refusal is a 429 like a
+ * rate limit, so a well-behaved client backs off rather than retrying at
+ * once - which for a ceiling on open requests is the one response that
+ * actually helps.
+ */
+function waf_handle_inflight($ip, $blocking)
+{
+    $limit = waf_inflight_limit();
+
+    if ($limit <= 0) {
+        return;
+    }
+
+    if (defined('IS_BOT') && IS_BOT) {
+        return;
+    }
+
+    // Counting requests against an unresolved address would count the whole
+    // internet as one visitor. See waf_ip_is_infrastructure().
+    if (waf_ip_is_infrastructure($ip)) {
+        return;
+    }
+
+    if (waf_user_is_authenticated()) {
+        return;
+    }
+
+    if (waf_is_api_request() || !waf_is_sensitive_request()) {
+        return;
+    }
+
+    if (waf_inflight_acquire(waf_ip_subject($ip), $limit, !$blocking)) {
+        return;
+    }
+
+    waf_log_event($blocking ? 'rate' : 'would-rate', 'concurrent', 'rate', 7, waf_script_name(), $limit . ' open');
     waf_register_offence($ip, 5, $blocking);
 
     if ($blocking) {
@@ -2357,9 +3882,20 @@ function waf_register_offence($ip, $score, $blocking)
         return;
     }
 
+    // Counted and banned per subject rather than per address: an IPv6 sender
+    // rotating through its /64 would otherwise never reach the threshold, and
+    // a ban on the one address it used last would cost it nothing.
+    $subject = waf_ip_subject($ip);
+
     // Reuse the rate bucket machinery: a 10 minute window of offences.
-    if (!waf_rate_exceeded($ip, 'o', $threshold, 600)) {
+    if (!waf_rate_exceeded($subject, 'o', $threshold, 600)) {
         return;
+    }
+
+    // A /64 with an allow-listed address inside it is not banned as a whole;
+    // see waf_subject_contains_allowed(). The offending address alone is.
+    if ($subject !== $ip && waf_subject_contains_allowed($subject)) {
+        $subject = $ip;
     }
 
     $minutes = (int) waf_setting('waf_auto_ban_minutes', 60);
@@ -2368,6 +3904,10 @@ function waf_register_offence($ip, $score, $blocking)
         $minutes = 60;
     }
 
-    waf_auto_ban($ip, $minutes, 'Automatic: ' . $threshold . '+ firewall events');
-    waf_log_event('ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $minutes . ' min');
+    $applied = waf_auto_ban($subject, $minutes, 'Automatic: ' . $threshold . '+ firewall events');
+
+    // The line names what was banned and for how long it actually is, which
+    // after a repeat is longer than the configured base period.
+    waf_log_event('ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' ' . ($applied > 0 ? $applied : $minutes) . ' min');
+    waf_text_log('BAN', $ip, array('minutes' => ($applied > 0 ? $applied : $minutes), 'subject' => $subject, 'rule' => 'auto-ban'));
 }

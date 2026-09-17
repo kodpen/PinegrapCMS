@@ -1,0 +1,49 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * ERP - dashboard
+ *
+ * The first screen of the module: what is owed, what came in, and what did not reach the tax authority.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+include('init.php');
+$user = validate_user();
+if (!validate_erp_access($user)) {
+    exit();
+}
+
+include_once('liveform.class.php');
+$liveform = new liveform('erp_dashboard');
+
+echo pg_page_shell(array(
+    'title'               => lang('ERP'),
+    'extra classes'       => 'erp erp_dashboard',
+    'icon'                => 'store',
+    'heading'             => lang('ERP'),
+    'heading_description' => lang('Cash and bank balances, receipts and payments, overdue receivables and e-document failures.'),
+    'cancel'              => false,
+)) . '
+<main id="content" class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+
+            <div class="card">
+                <div class="card-body text-center text-muted py-5">
+                    <i class="bi bi-speedometer2 fs-1 d-block mb-3"></i>
+                    ' . h(lang('This screen is not built yet.')) . '
+                </div>
+            </div>
+        </div>
+    </div>
+</main>' . output_footer();
+
+$liveform->remove_form();

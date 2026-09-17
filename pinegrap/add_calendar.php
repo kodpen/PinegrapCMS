@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -38,6 +38,7 @@ if (!$_POST) {
             'extra classes'=>'calendar',
             'icon'=>'calendar',
             'heading'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Calendar'))),
+            'heading_description' => lang('Create a new calendar to be displayed on any calendar pages.'),
             'cancel'=>array(
                 'enable'=>'true',
                 'title'=>lang('Return to Calendars'),
@@ -49,15 +50,12 @@ if (!$_POST) {
             )
         )
     )    . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new calendar to be displayed on any calendar pages.') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('Calendar'))) . '">[' . lang(array('string'=>'new {var:1} name','vars'=>lang('calendar'))) . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_calendar.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -70,7 +68,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-6 my-2">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Calendar'))) . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                     </div>
@@ -88,7 +86,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

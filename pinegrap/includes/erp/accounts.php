@@ -1,0 +1,278 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * ERP - accounts: the people and firms the shop owes or is owed by.
+ *
+ * One table for customers and suppliers, because a party is often both and a
+ * shop that keeps two lists ends up reconciling them by hand. kind says which
+ * side they are usually on; it does not stop a movement in either direction.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_ERP_ENTRY')) {
+    exit;
+}
+
+/**
+ * One account.
+ *
+ * @param int $id
+ * @return array|null
+ */
+function erp_account($id)
+{
+    $row = db_item("SELECT * FROM erp_accounts WHERE id = '" . (int) $id . "' LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Accounts for a list screen.
+ *
+ * @param array $filters  kind, status, search
+ * @return array
+ */
+function erp_accounts($filters = array())
+{
+    $where = array("1 = 1");
+
+    if (!empty($filters['kind'])) {
+        // 'both' answers to either side, so asking for customers has to include it.
+        $kind = escape($filters['kind']);
+        $where[] = "(kind = '" . $kind . "' OR kind = 'both')";
+    }
+
+    if (!empty($filters['status'])) {
+        $where[] = "status = '" . escape($filters['status']) . "'";
+    }
+
+    if (!empty($filters['search'])) {
+        $search = escape($filters['search']);
+        $where[] = "(title LIKE '%" . $search . "%' OR tax_number LIKE '%" . $search . "%' OR email LIKE '%" . $search . "%')";
+    }
+
+    return (array) db_items("SELECT * FROM erp_accounts WHERE " . implode(' AND ', $where) . " ORDER BY title ASC, id ASC");
+}
+
+/**
+ * Create or update an account.
+ *
+ * @param array $data  id (0 to create), title, kind, is_person, tax_number, ...
+ * @return array ['success' => bool, 'id' => int, 'error' => string]
+ */
+function erp_account_save($data)
+{
+    $id = (int) ($data['id'] ?? 0);
+    $title = trim((string) ($data['title'] ?? ''));
+
+    if ($title === '') {
+        return array('success' => false, 'id' => 0, 'error' => lang('Enter a name.'));
+    }
+
+    $columns = array(
+        'kind' => in_array(($data['kind'] ?? ''), array('customer', 'supplier', 'both'), true) ? $data['kind'] : 'customer',
+        'title' => $title,
+        'is_person' => !empty($data['is_person']) ? 1 : 0,
+        'tax_number' => trim((string) ($data['tax_number'] ?? '')),
+        'tax_office' => trim((string) ($data['tax_office'] ?? '')),
+        'email' => trim((string) ($data['email'] ?? '')),
+        'phone' => trim((string) ($data['phone'] ?? '')),
+        'address' => trim((string) ($data['address'] ?? '')),
+        'district' => trim((string) ($data['district'] ?? '')),
+        'city' => trim((string) ($data['city'] ?? '')),
+        'country_code' => strtoupper(trim((string) ($data['country_code'] ?? 'TR'))),
+        'postcode' => trim((string) ($data['postcode'] ?? '')),
+        'currency' => strtoupper(trim((string) ($data['currency'] ?? 'TRY'))),
+        'contact_id' => (int) ($data['contact_id'] ?? 0),
+        'status' => (($data['status'] ?? 'active') === 'passive') ? 'passive' : 'active',
+        'notes' => trim((string) ($data['notes'] ?? '')),
+    );
+
+    $pairs = array();
+    foreach ($columns as $column => $value) {
+        $pairs[] = $column . " = '" . escape($value) . "'";
+    }
+
+    if ($id > 0) {
+        $pairs[] = "updated_at = '" . time() . "'";
+        $ok = erp_query("UPDATE erp_accounts SET " . implode(', ', $pairs) . " WHERE id = '" . $id . "'");
+
+        return ($ok === false)
+            ? array('success' => false, 'id' => $id, 'error' => erp_db_error())
+            : array('success' => true, 'id' => $id, 'error' => '');
+    }
+
+    $pairs[] = "created_by = '" . (int) ($data['created_by'] ?? 0) . "'";
+    $pairs[] = "created_at = '" . time() . "'";
+    $pairs[] = "updated_at = '" . time() . "'";
+
+    $ok = erp_query("INSERT INTO erp_accounts SET " . implode(', ', $pairs));
+
+    if ($ok === false) {
+        return array('success' => false, 'id' => 0, 'error' => erp_db_error());
+    }
+
+    return array('success' => true, 'id' => (int) mysqli_insert_id(db::$con), 'error' => '');
+}
+
+/**
+ * Record an account's opening position.
+ *
+ * The opening figure is a movement like any other and not a column: held in
+ * both places it gets counted twice, which is what the first draft of this
+ * schema did.
+ *
+ * @param array $data  account_id, amount (kurus, signed: positive = they owe us),
+ *                     doc_date, created_by
+ * @return array ['success' => bool, 'error' => string]
+ */
+function erp_account_open($data)
+{
+    $account_id = (int) ($data['account_id'] ?? 0);
+    $amount = (int) ($data['amount'] ?? 0);
+
+    if ($account_id <= 0) {
+        return array('success' => false, 'error' => lang('Choose an account.'));
+    }
+
+    $existing = (int) db_value("SELECT COUNT(*) FROM erp_account_transactions
+        WHERE account_id = '" . $account_id . "' AND kind = 'opening'");
+
+    if ($existing > 0) {
+        return array('success' => false, 'error' => lang('This account already has an opening balance.'));
+    }
+
+    if (!erp_tx_begin()) {
+        return array('success' => false, 'error' => lang('Could not start a database transaction.'));
+    }
+
+    $posted = erp_account_post(array(
+        'account_id' => $account_id,
+        'doc_date' => $data['doc_date'] ?? date('Y-m-d'),
+        'kind' => 'opening',
+        'direction' => ($amount >= 0) ? 'debit' : 'credit',
+        'amount' => abs($amount),
+        'currency' => $data['currency'] ?? 'TRY',
+        'exchange_rate' => $data['exchange_rate'] ?? 1,
+        'description' => lang('Opening balance'),
+        'created_by' => $data['created_by'] ?? 0,
+    ));
+
+    if (($posted === false) || !erp_account_refresh_balance($account_id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return array('success' => false, 'error' => $error);
+    }
+
+    if (!erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return array('success' => false, 'error' => $error);
+    }
+
+    return array('success' => true, 'error' => '');
+}
+
+/**
+ * Find, or create, the account that stands for a contact.
+ *
+ * The shop's customer list is `contacts`; the ledger's is `erp_accounts`. They
+ * are not the same thing - a supplier has no contact record and a contact who
+ * never bought anything needs no ledger - so they are linked rather than
+ * merged, from both ends: contacts.erp_account_id and erp_accounts.contact_id.
+ *
+ * Both ends are written because both are read. The order bridge starts from a
+ * contact and needs the account; a statement starts from the account and needs
+ * the person.
+ *
+ * @param int $contact_id
+ * @param int $created_by
+ * @return int  Account id, 0 when the contact does not exist
+ */
+function erp_account_for_contact($contact_id, $created_by = 0)
+{
+    $contact_id = (int) $contact_id;
+
+    if ($contact_id <= 0) {
+        return 0;
+    }
+
+    $existing = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
+
+    if ($existing > 0) {
+        return $existing;
+    }
+
+    $contact = db_item("SELECT id, first_name, last_name, company, email_address, business_phone, mobile_phone,
+            business_address_1, business_city, business_state, business_zip_code, business_country,
+            tax_number, tax_office
+        FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
+
+    if (!is_array($contact)) {
+        return 0;
+    }
+
+    $company = trim((string) $contact['company']);
+    $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
+
+    $result = erp_account_save(array(
+        'kind' => 'customer',
+        // A company name when there is one, because that is who the invoice is
+        // made out to; the person's name otherwise.
+        'title' => ($company !== '') ? $company : ($person !== '' ? $person : ('#' . $contact_id)),
+        'is_person' => ($company === ''),
+        'tax_number' => $contact['tax_number'],
+        'tax_office' => $contact['tax_office'],
+        'email' => $contact['email_address'],
+        'phone' => (trim((string) $contact['business_phone']) !== '') ? $contact['business_phone'] : $contact['mobile_phone'],
+        'address' => $contact['business_address_1'],
+        'city' => $contact['business_state'],
+        'district' => $contact['business_city'],
+        'postcode' => $contact['business_zip_code'],
+        'country_code' => (trim((string) $contact['business_country']) !== '') ? $contact['business_country'] : 'TR',
+        'contact_id' => $contact_id,
+        'created_by' => $created_by,
+    ));
+
+    if (!$result['success']) {
+        return 0;
+    }
+
+    erp_query("UPDATE contacts SET erp_account_id = '" . (int) $result['id'] . "' WHERE id = '" . $contact_id . "'");
+
+    return (int) $result['id'];
+}
+
+/**
+ * Give every contact that has ordered something an account.
+ *
+ * A shop switching the module on has a customer list already and no appetite
+ * for typing it again. Only contacts with an order are taken: a newsletter
+ * signup is not a ledger account, and creating one for every address in the
+ * book would bury the real ones.
+ *
+ * @param int $created_by
+ * @return array ['created' => int, 'existing' => int]
+ */
+function erp_accounts_sync_contacts($created_by = 0)
+{
+    $rows = (array) db_items("SELECT DISTINCT orders.contact_id
+        FROM orders
+        LEFT JOIN erp_accounts ON erp_accounts.contact_id = orders.contact_id
+        WHERE orders.contact_id > 0 AND erp_accounts.id IS NULL");
+
+    $created = 0;
+
+    foreach ($rows as $row) {
+        if (erp_account_for_contact((int) $row['contact_id'], $created_by) > 0) {
+            $created++;
+        }
+    }
+
+    return array('created' => $created, 'existing' => count($rows) - $created);
+}

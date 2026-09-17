@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -44,25 +44,28 @@ if (isset($_POST['parasut_action'])) {
             go($redirect);
         }
 
-        if (empty(trim($parasut_tax_number))) {
+        // A missing tax number is not a reason to refuse. A buyer without one is
+        // not registered for e-invoice, which is exactly the case an e-archive
+        // covers - blocking here left ordinary consumer orders with no way to be
+        // invoiced at all. Only the e-shipment path needs the number.
+        if (($parasut_action === 'e_irsaliye') && (trim($parasut_tax_number) === '')) {
             $liveform->mark_error('_error', lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.'));
             go($redirect);
         }
 
-        if ($parasut_action === 'e_invoice') {
-            $result = parasut_create_invoice($order_id, 'e_invoice');
+        if ($parasut_action === 'invoice') {
+            $result = parasut_create_invoice($order_id);
             if ($result['success']) {
-                $liveform->add_notice(lang('E-Invoice created successfully in Parasut.') . ' (ID: ' . h($result['parasut_invoice_id']) . ')');
+                $kind_label = ($result['edoc_kind'] === 'einvoice') ? lang('E-Invoice') : lang('E-Archive');
+                $state_note = (($result['edoc_state'] ?? '') === 'done')
+                    ? ''
+                    : ' ' . lang('The document is still being processed at Parasut; check its status there in a few minutes.');
+                $liveform->add_notice(lang(array(
+                    'string' => '{var:1} created in Parasut.',
+                    'vars' => $kind_label,
+                )) . ' (ID: ' . h($result['parasut_invoice_id']) . ')' . $state_note . _parasut_variance_notice($result));
             } else {
-                $liveform->mark_error('_error', lang('Parasut E-Invoice Error') . ': ' . h($result['error']));
-            }
-
-        } elseif ($parasut_action === 'e_archive') {
-            $result = parasut_create_invoice($order_id, 'e_archive');
-            if ($result['success']) {
-                $liveform->add_notice(lang('E-Archive invoice created successfully in Parasut.') . ' (ID: ' . h($result['parasut_invoice_id']) . ')');
-            } else {
-                $liveform->mark_error('_error', lang('Parasut E-Archive Error') . ': ' . h($result['error']));
+                $liveform->mark_error('_error', lang('Parasut Invoice Error') . ': ' . h($result['error']));
             }
 
         } elseif ($parasut_action === 'e_irsaliye') {
@@ -99,6 +102,17 @@ if (!$_POST) {
              WHERE orders.id = '" . escape($_GET['id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // The id comes straight from the query string, so it can point at an order
+    // that was deleted or never existed. Without this the ~100 reads below all
+    // run against null and the screen renders as a shell full of blanks.
+    if (!$row) {
+        output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+    }
+
+    // Only built for shipping orders, inside the ship-to loop further below,
+    // but printed unconditionally when the screen is assembled.
+    $output_shipping_details = '';
 
     $status = $row['status'];
     $order_type = $row['type'];
@@ -255,7 +269,7 @@ if (!$_POST) {
             $source .=
                 '<hr/>
                 <div class="row" >
-                    <span class="col-12"><h6 class="text-muted">' . lang('UTF') . '</h6></span>
+                    <span class="col-12"><h6 class="text-muted">' . lang('UTM') . '</h6></span>
                 </div>
                 <div class="row">
                     <span class="translateable col text-muted">' . lang('Source') . ':</span>
@@ -2131,7 +2145,7 @@ if (!$_POST) {
     //
     // process_order_cancellation() writes refund_status = 'manual_required'
     // when the gateway could not void the payment, or would not have been
-    // asked to. Until 2026.4.10 nothing could clear that: the refund itself
+    // asked to. Until 2026.4.2 nothing could clear that: the refund itself
     // happens in the provider's dashboard, outside this software, so no code
     // path here ever learned it was done. The flag was therefore permanent,
     // and the dashboard card built on it would have shown the same orders
@@ -2313,15 +2327,10 @@ if (!$_POST) {
 
         // Inline mini-forms that post back to this page with a parasut_action field.
         $output_parasut_forms = '
-        <form method="post" id="parasut-e-invoice-form" class="d-none">
+        <form method="post" id="parasut-invoice-form" class="d-none">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . (int)$_GET['id'] . '" />
-            <input type="hidden" name="parasut_action" value="e_invoice" />
-        </form>
-        <form method="post" id="parasut-e-archive-form" class="d-none">
-            ' . get_token_field() . '
-            <input type="hidden" name="id" value="' . (int)$_GET['id'] . '" />
-            <input type="hidden" name="parasut_action" value="e_archive" />
+            <input type="hidden" name="parasut_action" value="invoice" />
         </form>
         ';
 
@@ -2335,8 +2344,7 @@ if (!$_POST) {
         }
 
         // Escape single quotes in translated strings so they are safe inside JS confirm('...').
-        $js_confirm_invoice  = str_replace("'", "\\'", lang('This will create an e-invoice in Parasut for this order. Continue?'));
-        $js_confirm_archive  = str_replace("'", "\\'", lang('This will create an e-archive invoice in Parasut for this order. Continue?'));
+        $js_confirm_invoice  = str_replace("'", "\\'", lang('This will invoice the order in Parasut. Whether it is issued as an e-invoice or an e-archive is decided from the buyer\'s tax number. Continue?'));
         $js_confirm_shipment = str_replace("'", "\\'", lang('This will create an e-shipment document in Parasut for this order. Continue?'));
         if ($is_mixed) {
             $js_confirm_shipment = str_replace("'", "\\'", lang('This order contains both shippable and non-shippable items. Only shippable (stock-tracked) items will be included in the e-shipment document.')) . '\n\n' . $js_confirm_shipment;
@@ -2357,19 +2365,17 @@ if (!$_POST) {
             </button>';
         }
 
+        // One button, not two. Whether the document is an e-invoice or an e-archive
+        // follows from whether the buyer is registered with the tax authority, so
+        // it is not the operator's to choose - and choosing wrong produced a
+        // document that was not valid.
         $output_parasut_buttons = '
         <div class="btn-group btn-group-sm flex-wrap">
             <button type="button"
                 class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_id ? 'link-success' : 'link-secondary') . '"
-                onclick="pgConfirm({title:\'Paraşüt E-Fatura\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-invoice-form\').submit();}); return false;"
-                title="Paraşüt E-Fatura">
-                <i class="bi bi-receipt me-1"></i>' . lang('E-Invoice') . $output_parasut_invoice_badge . '
-            </button>
-            <button type="button"
-                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_id ? 'link-success' : 'link-secondary') . '"
-                onclick="pgConfirm({title:\'Paraşüt E-Arşiv\', message:\'' . $js_confirm_archive . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-archive-form\').submit();}); return false;"
-                title="Paraşüt E-Arşiv">
-                <i class="bi bi-archive me-1"></i>' . lang('E-Archive') . $output_parasut_invoice_badge . '
+                onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
+                title="Paraşüt">
+                <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>
             ' . $output_parasut_shipment_button . '
         </div>';
@@ -2383,12 +2389,13 @@ if (!$_POST) {
             'extra classes'=>'store view_order',
             'icon'=>'store',
             'heading'=>lang('View Order'),
+            'heading_description' => lang('View the details of this order and update shipping information.'),
             'cancel'=>array('enable'=>'true','url'=>'view_orders.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'), array('label' => lang('View Order'))),
         )
-    ) . get_date_picker_format() . '
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+    ) . '<main id="content" class="container-fluid">' . get_date_picker_format() . '
+        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
 
                 <div class="row">
             <div class="col-12">
@@ -2398,7 +2405,7 @@ if (!$_POST) {
                 ' . $output_refund_banner . '
                 <div class="row mb-2  flex-wrap d-print-none">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View the details of this order and update shipping information.') . '" title="' . lang('View Order') . '">[#' . $order_number . ']</h2>
+
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $output_gateway_buttons . '
                             ' . $output_cancel_button . '
@@ -2613,12 +2620,12 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    ' .
         $output_iyzico_modals .
         $output_cancel_modal .
         $output_refund_modal .
         $output_parasut_forms .
-        output_footer();
+        '</main>' . output_footer();
         $liveform->remove_form();
 
 // else the form has been submitted
@@ -2707,7 +2714,7 @@ if (!$_POST) {
         }
 
         // Call iyzico AmountBaseRefund API.
-        require_once(dirname(__FILE__) . '/assets/iyzipay-php/IyzipayBootstrap.php');
+        require_once(dirname(__FILE__) . '/includes/iyzipay-php/IyzipayBootstrap.php');
         IyzipayBootstrap::init();
 
         $gateway_host = (ECOMMERCE_PAYMENT_GATEWAY_MODE == 'test')
@@ -2857,7 +2864,7 @@ if (!$_POST) {
             $liveform_view_orders->add_notice('The order has been deleted.');
         }
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
         
     // else the user selected to save the order
     } else {
@@ -2928,7 +2935,7 @@ if (!$_POST) {
             $liveform_view_orders->add_notice('The order has been saved.');
         }
         
-        header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
     }
     
     $liveform->remove_form();

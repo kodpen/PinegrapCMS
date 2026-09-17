@@ -8,7 +8,7 @@
     <div class="col-lg-8">
     <div class="form-group" style="margin-bottom:-15px">
         <label for="email_address">Contact Email</label>
-        <input type="email" name="email_address" id="email_address" placeholder="(Can be different from Username Email if preferred)">
+        <input type="email" name="email_address" id="email_address" autocomplete="off" placeholder="(Can be different from Username Email if preferred)">
     </div>
         
     <div class="form-group">

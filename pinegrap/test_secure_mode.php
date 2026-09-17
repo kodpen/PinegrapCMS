@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -64,7 +64,7 @@ function tsm_lang($string)
             $language = DEFAULT_SOFTWARE_LANGUAGE;
         }
 
-        $path = dirname(__FILE__) . '/assets/local/' . basename($language) . '.json';
+        $path = dirname(__FILE__) . '/includes/local/' . basename($language) . '.json';
         if (file_exists($path) && is_readable($path)) {
             $json = @file_get_contents($path);
             if ($json !== false) {

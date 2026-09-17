@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -70,6 +70,8 @@ if (
 } else {
     $screen = 1;
 }
+
+$output_screen_links = '';
 
 if ($number_of_screens > 1) {
     $output_screen_links .= '
@@ -258,19 +260,17 @@ pg_page_shell([
         'title'=> lang('All Recurring Commission Profiles'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('All Recurring Commission Profiles')
+        'heading'=>lang('All Recurring Commission Profiles'),
+        'heading_description' => lang('View all profiles for recurring commissions.'),
     ]) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('View all profiles for recurring commissions.') . '" title="' . lang('All Recurring Commission Profiles') . '">' . lang('All Recurring Commission Profiles') . '</h2>
-                </div>
-            </div>
+            
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
@@ -296,7 +296,8 @@ pg_page_shell([
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 
 $liveform->remove_form();

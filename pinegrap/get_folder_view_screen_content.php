@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -115,7 +115,11 @@ function get_folder_view_tree($folder_id, $include_pages, $include_files, $exclu
 
         // Loop through folders in order to get their contents.
         foreach ($folders as $folder) {
-            $folder_output = get_folder_view_tree($folder['id'], $include_pages, $include_files, $current_page_id);
+            // $current_page_id belongs to get_folder_view_screen_content(); inside this
+            // function the same value arrives as $excluded_page_id. Passing the wrong
+            // name meant the recursion dropped the exclusion, so the page being viewed
+            // reappeared in its own listing at every nested folder level.
+            $folder_output = get_folder_view_tree($folder['id'], $include_pages, $include_files, $excluded_page_id);
 
             // If this folder has content to display, then output folder name and contents.
             // We output a folder even if a visitor does not have view access to it, assuming it has content,

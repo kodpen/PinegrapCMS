@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
  
@@ -36,7 +36,7 @@ if (!$_POST) {
            custom_form_pages.form_name
         FROM page
         LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-        WHERE page.page_type = 'custom form'
+        WHERE " . pg_form_page_sql('page') . "
         ORDER BY custom_form_pages.form_name";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
@@ -65,21 +65,19 @@ if (!$_POST) {
             'extra classes'=>'form',
             'icon'=>'form', 
             'heading'=>lang('Import Submitted Forms'),
+            'heading_description' => lang('Upload submitted form data for any existing custom form.'),
             'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
         
             'breadcrumb' => array(array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Import Submitted Forms'))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Upload submitted form data for any existing custom form.') . '" title="' . lang('Import Submitted Forms') . '">[' . lang('new submitted forms') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="import_submitted_forms.php" method="post" class="product_form" enctype="multipart/form-data">
                     ' . get_token_field() . '
                     <div class="row">
@@ -113,7 +111,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->unmark_errors();

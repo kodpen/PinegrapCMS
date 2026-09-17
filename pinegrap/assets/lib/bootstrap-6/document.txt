@@ -1,0 +1,7 @@
+Version: 
+Alpha 1 Bootstrap 6.0
+Document link:      
+https://v6-dev--twbs-bootstrap.netlify.app/docs/6.0/getting-started/install/
+Orginal File links: 
+https://v6-dev--twbs-bootstrap.netlify.app/docs/6.0/dist/js/bootstrap.js
+https://v6-dev--twbs-bootstrap.netlify.app/docs/6.0/dist/css/bootstrap.css

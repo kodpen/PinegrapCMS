@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,20 +34,19 @@ if (!$_POST) {
         'title'=> lang('Import ZIP File'),
         'extra classes'=>'design',
         'icon'=>'design',
-        'heading'=>lang('Import ZIP File')
+        'heading'=>lang('Import ZIP File'),
+        'heading_description' => lang('Import web pages and files from a ZIP file.'),
     ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('Import web pages and files from a ZIP file.') . '" title="' . lang('Import ZIP File') . '">' . lang('Import ZIP File') . '</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="import_zip.php" method="post" class="product_form" enctype="multipart/form-data">
                     ' . get_token_field() . '
+                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url()) . '" />
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">
@@ -80,7 +79,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();
@@ -115,13 +115,24 @@ if (!$_POST) {
     // Create an array of imported items that we will use
     // to keep track of which items were actually created.
     $imported_items = array();
- 
+
+    // A zip is a stranger's directory listing: whoever made it chose the
+    // names. Anything the web server would run or read as its own settings
+    // is left in the archive, and the notice at the end says how many were.
+    $skipped_blocked = 0;
+
     // loop through all archive items
     foreach ($archive_items as $archive_item) {
         // If this is a directory, then skip to next item.
 
-       
+
         if (($archive_item['filename'][mb_strlen($archive_item['filename']) - 1]) == '/') {
+            continue;
+        }
+
+        if (pg_upload_name_blocked(basename($archive_item['filename']))) {
+            log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $archive_item['filename'])), $_SESSION['sessionusername']);
+            $skipped_blocked++;
             continue;
         }
 
@@ -546,9 +557,16 @@ if (!$_POST) {
     $liveform_view_pages = new liveform('view_pages');
     $liveform_view_pages->add_notice(lang('Items in ZIP file have been imported.') . ' ');
 
+    if ($skipped_blocked > 0) {
+        $liveform_view_pages->add_warning(lang(array('string' => '{var:1} file(s) in the ZIP were left out because files of that type cannot be uploaded here.', 'vars' => $skipped_blocked)));
+    }
 
-    // query do no action since new table system
-    go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php?query=' . urlencode($import_name));
+
+    // Back to the screen that asked for the import when one named itself, and
+    // to the page list otherwise -- which is where this screen has always
+    // finished. The File Manager posts its own form here rather than carrying
+    // a second copy of any of the above.
+    go(pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_pages.php?query=' . urlencode($import_name)));
 }
 
 function get_protocol_relative_url($url)

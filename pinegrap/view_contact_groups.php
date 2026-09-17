@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -212,9 +212,11 @@ print
             'extra classes'=>'contact',
             'icon'=>'contact', 
             'heading'=>lang('All Contact Groups'),
+            'heading_description' => lang('All contact groups used to collect and organize contacts and subscribers'),
                     
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -223,7 +225,7 @@ print
                    
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('All contact groups used to collect and organize contacts and subscribers') . '" title="' . lang('All Contact Groups') . '">' . lang('All Contact Groups') . '</h2>
+                        
                         ' . $output_add_contact_group_button . '
                     </div>
                 </div>
@@ -245,7 +247,8 @@ print
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 

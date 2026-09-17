@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -41,6 +41,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $page_meta_description = $row['page_meta_description'] ?? '';
     $page_noindex = (int) ($row['noindex'] ?? 0);
     $page_nofollow = (int) ($row['nofollow'] ?? 0);
+    $page_custom_jsonld = trim((string) ($row['custom_jsonld'] ?? ''));
     $page_type = $row['page_type'] ?? '';
     $comments = $row['comments'] ?? '';
     $comments_label = $row['comments_label'] ?? '';
@@ -61,10 +62,21 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $system_region_header = $row['system_region_header'] ?? '';
     $system_region_footer = $row['system_region_footer'] ?? '';
 
-    // Save per-page asset fields before $row is overwritten by the style query
+    // Save per-page asset fields before $row is overwritten by the style query.
+    // Since the multi-page designer these are a FALLBACK only: the shared
+    // assets live on the style (style_custom_*) and win below when present.
+    // Kept so an install that took the files before running the migration
+    // still renders its pages with their old per-page assets.
     $page_custom_fonts = isset($row['page_custom_fonts']) ? trim($row['page_custom_fonts']) : '';
     $page_custom_css   = isset($row['page_custom_css'])   ? trim($row['page_custom_css'])   : '';
     $page_custom_js    = isset($row['page_custom_js'])    ? trim($row['page_custom_js'])    : '';
+
+    // Per-page generated layout. A visual-designer page carries its own tree
+    // and the HTML built from it; several pages can share one style row for
+    // assets and theme, so the style's own style_code is no longer the page.
+    // Column is probed via `SELECT *` above — absent on an un-migrated
+    // database, in which case this stays '' and style_code is used as before.
+    $page_tree_code = isset($row['page_tree_code']) ? (string)$row['page_tree_code'] : '';
 
     // Remember the requested device type, because we might change this below
     // if a mobile style does not exist.  We want to remember the requested device type,
@@ -94,17 +106,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     }
 
     // Get style information.
+    // `style.*` rather than a column list: style_custom_css / _js / _fonts
+    // arrived with the multi-page designer step of 2026.4.4, and naming them
+    // here would break the query on a database that has the new files but
+    // has not run the upgrade yet.
     $query =
         "SELECT
-            style.style_name,
-            style.style_code,
-            style.style_type,
-            style.style_head,
-            style.social_networking_position,
-            style.collection,
-            style.layout_type,
-            style.style_layout,
-            style.theme_id,
+            style.*,
             files.name AS style_theme_name
         FROM style
         LEFT JOIN files ON style.theme_id = files.id
@@ -113,7 +121,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $row = mysqli_fetch_assoc($result);
 
     $style_name = $row['style_name'] ?? '';
-    $content = $row['style_code'] ?? '';
+    // The page's own generated layout wins when it has one; the style's code
+    // is the fallback for legacy styles and for pages saved before the
+    // per-page tree existed.
+    $content = ($page_tree_code !== '') ? $page_tree_code : ($row['style_code'] ?? '');
+
+    // Shared assets live on the style; a page's own columns are the fallback
+    // for installs that haven't migrated. trim() so a column holding only
+    // whitespace doesn't shadow a real per-page value.
+    $style_custom_fonts = isset($row['style_custom_fonts']) ? trim((string)$row['style_custom_fonts']) : '';
+    $style_custom_css   = isset($row['style_custom_css'])   ? trim((string)$row['style_custom_css'])   : '';
+    $style_custom_js    = isset($row['style_custom_js'])    ? trim((string)$row['style_custom_js'])    : '';
+    if ($style_custom_fonts !== '') $page_custom_fonts = $style_custom_fonts;
+    if ($style_custom_css   !== '') $page_custom_css   = $style_custom_css;
+    if ($style_custom_js    !== '') $page_custom_js    = $style_custom_js;
     $style_type = $row['style_type'] ?? '';
     $style_head = $row['style_head'] ?? '';
     $social_networking_position = $row['social_networking_position'] ?? '';
@@ -761,7 +782,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if the mode is edit, then output the includes and css that is needed for the edit region dialog
         if ($mode == 'edit') {
             $output_edit_region_code .=
-                '<link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css" />
+                '<link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css" />
                 ' . get_wysiwyg_editor_code(array('software_edit_region_textarea'), $activate_editors = false, $page_folder, $edit_region_dialog = TRUE, $style_theme_name) . '
                 <script type="text/javascript">var software_editor_content = \'\';</script>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
@@ -798,7 +819,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         
         // if this is a photo gallery, then output the lightbox includes
         if ($page_type == 'photo gallery') {
-            $output_lightbox_includes = '<script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lightbox/jquery.lightbox-0.5.js"></script><link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lightbox/jquery.lightbox-0.5.css" />';
+            $output_lightbox_includes = '<script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/lightbox/jquery.lightbox-0.5.js"></script><link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/lightbox/jquery.lightbox-0.5.css" />';
         }
 
         // if CDN is enabled, then use Google CDN for jQuery for performance reasons
@@ -810,9 +831,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // else CDN is disabled, so use local jQuery and MDI
         } else {
             $output_jquery = '
-            <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/ui/jquery-ui.min.css" />
-            <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery.min.js"></script>
-            <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/ui/jquery-ui.min.js"></script>';
+            <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.css" />
+            <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
+            <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.js"></script>';
         }
 
         //if user is logged in than output login translates
@@ -848,7 +869,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             var software_path = "' . escape_javascript(PATH) . '";
             var software_directory = "' . escape_javascript(SOFTWARE_DIRECTORY) . '";
             var software_system_language = "' . escape_javascript(lang(array('info'=>''))) . '";
-            var software_token = "' . $_SESSION['software']['token'] . '";
+            var software_token = "' . ($_SESSION['software']['token'] ?? '') . '";
             var software_device_type = "' . $device_type . '";
             var software_page_id = ' . $page_id . ';
             var translate ={
@@ -1359,8 +1380,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if we need to include dynamic ad region javascript files, then do so
         if ($include_dynamic_ad_region_javascript_files == true) {
             $dynamic_ad_region_javascript_includes =
-                '<script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery.scrollTo-1.4.2.min.js"></script>
-                <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery.serialScroll-1.2.3b.min.js"></script>' . "\n";
+                '<script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.scrollTo-1.4.2.min.js"></script>
+                <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.serialScroll-1.2.3b.min.js"></script>' . "\n";
             
             $content = preg_replace('/(<\/head>)/i', $dynamic_ad_region_javascript_includes . '$1', $content);
         }
@@ -1866,6 +1887,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 if ($_pg_sw_structured_data_enabled) {
                     $_pg_sw_product = _pg_catalog_item_resolve_product($_pg_sw_item_widget['product_group_id']);
                     if (is_array($_pg_sw_product)) {
+                        // Remembered for the Open Graph block far below: a
+                        // widget-built product page shares with the product's
+                        // picture and og:type=product, like its legacy twin.
+                        $pg_og_sw_product_image_name = (string) ($_pg_sw_product['image_name'] ?? '');
                         $_pg_sw_canonical_url = URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
                         $_pg_sw_jsonld = _pg_build_product_jsonld($_pg_sw_product, $_pg_sw_canonical_url);
                         $content = preg_replace(
@@ -2181,7 +2206,63 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $output_rss_url = OUTPUT_PATH . h(encode_url_path($system_region_properties['page_name'])) . '?rss=true';
                             }
                         }
-                        
+
+                        // ── ItemList JSON-LD (2026.4.4) ─────────────────────
+                        //
+                        // The detail page describes one product; this page IS
+                        // a list, and its markup should say so - the RSS side
+                        // has always treated the two separately, the schema
+                        // side only covered the detail. The widget path has
+                        // emitted ItemList since it was written; this reuses
+                        // its resolver, fetcher and builder verbatim, so a
+                        // legacy catalog page and a widget listing produce the
+                        // same block for the same group.
+                        //
+                        // Gated up front rather than at the splice: with the
+                        // setting off there is no reason to run the queries.
+                        if ((defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE)) {
+                            // The page's own group. Zero has always meant the
+                            // top-level group here - the sitemap builder reads
+                            // it the same way - and the resolver then follows
+                            // the drill segment in the URL, so a page at
+                            // /catalog/group-address describes that group's
+                            // list rather than the root's.
+                            $legacy_catalog_info = db_item(
+                                "SELECT
+                                    catalog_pages.product_group_id,
+                                    catalog_detail_page.page_name AS catalog_detail_page_name
+                                FROM catalog_pages
+                                LEFT JOIN page AS catalog_detail_page ON catalog_pages.catalog_detail_page_id = catalog_detail_page.page_id
+                                WHERE catalog_pages.page_id = '" . e($system_region_properties['page_id']) . "'");
+
+                            $legacy_catalog_group_id = (int) ($legacy_catalog_info['product_group_id'] ?? 0);
+
+                            if ($legacy_catalog_group_id == 0) {
+                                $legacy_catalog_group_id = (int) db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
+                            }
+
+                            $legacy_catalog_group_id = _pg_catalog_listing_resolve_active_group($legacy_catalog_group_id, (string) ($_GET['page'] ?? ''));
+                            $legacy_catalog_products = _pg_catalog_listing_rss_products($legacy_catalog_group_id, 'sort_order', 'DESC', 60);
+
+                            if (is_array($legacy_catalog_products) && count($legacy_catalog_products) > 0) {
+                                $jsonld = _pg_build_catalog_listing_jsonld(
+                                    $legacy_catalog_products,
+                                    $system_region_properties['page_name'],
+                                    (string) ($legacy_catalog_info['catalog_detail_page_name'] ?? ''));
+
+                                $content = preg_replace(
+                                    '/<\/head>/i',
+                                    addcslashes(
+                                        "\n<!-- Start Structured Data -->\n"
+                                        . '<script type="application/ld+json">' . json_encode($jsonld, JSON_UNESCAPED_UNICODE) . '</script>'
+                                        . "\n<!-- End Structured Data -->\n",
+                                        '\\$') . '</head>',
+                                    $content,
+                                    1);
+                                unset($jsonld);
+                            }
+                        }
+
                         break;
                         
                     case 'catalog detail':
@@ -2194,202 +2275,148 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $output_rss_url = OUTPUT_PATH . h(encode_url_path($system_region_properties['page_name'])) . '/' . h(encode_url_path($item['address_name'])) . '?rss=true';
                             }
                         }
-                        $output_product_images ='';
-                        $output_product_name = '';
-                        $output_product_description = '';
-                        $output_availability ='';
-                        $output_product_brand = '';
-                        $output_product_price = '';
-                        $output_product_offers = '';
-                        $output_product_sku = '';
-                        $output_product_mpn = '';
-                        $output_product_gtin = '';
+                        // ── Product / ItemList JSON-LD (rewritten 2026.4.4) ──
+                        //
+                        // The old block here concatenated JSON by hand and carried
+                        // a hard-coded review/aggregateRating pair whose own
+                        // comment admitted it was invented ("google require it so
+                        // we set random"). Google asks for ONE of review,
+                        // aggregateRating or offers - the Rich Results Test merely
+                        // WARNS when offers stands alone - so the fabricated pair
+                        // was never needed, and invented ratings are the kind of
+                        // markup that draws a manual action. Rebuilt on arrays and
+                        // json_encode: a product name with a quote in it used to
+                        // make the whole block invalid JSON, silently dropped by
+                        // every reader. priceValidUntil was d-m-Y, not ISO 8601.
+                        $strutured_data_feeds = '';
 
+                        // The RSS branch above only resolved the item when the URL
+                        // carried a slash, yet the old JSON-LD read it regardless.
+                        // The resolver is memoised per request, so asking again is
+                        // free and makes this branch self-sufficient.
+                        $item = get_catalog_item_from_url();
 
-                        if($item['image_name']){
-                            $output_product_images = '"image": "' . URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($item['image_name'])) . '",';
-                        }
+                        // A product page describes one Product.
+                        if ((($item['id'] ?? '') != '') && (($item['type'] ?? '') == 'product')) {
+                            $jsonld = array(
+                                '@context' => 'https://schema.org/',
+                                '@type'    => 'Product',
+                                // The display name lives in short_description; the
+                                // name column is the operator's stock code, which
+                                // is what sku is for.
+                                'name'     => ($item['short_description'] != '') ? $item['short_description'] : $item['name'],
+                            );
 
-                        //if product name/sku/id
-                        if($item['name']){
-                            $output_product_sku = '"sku": "' . $item['name'] . '",';
-                        }
-                        //if brand specified
-                        if($item['brand']){
-                            $output_product_brand = '"brand": {"@type":"Brand","name":"' . $item['brand'] . '"},';
-                        }
-                        
-                        //if mpn specified
-                        if($item['mpn']){
-                            $output_product_mpn = '"mpn":"' . $item['mpn'] . '",';
-                        }
-                        
-                        //if mpn specified
-                        if($item['gtin']){
-                            $output_product_gtin = '"gtin":"' . $item['gtin'] . '",';
-                        }
+                            if ($item['image_name'] != '') {
+                                $jsonld['image'] = URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($item['image_name']);
+                            }
 
-                        //if product short_description
-                        if($item['short_description']){
-                            $output_product_name = '"name": "' . $item['short_description'] . '",';
-                        }
+                            $jsonld['description'] = ($item['meta_description'] != '')
+                                ? strip_tags($item['meta_description'])
+                                : lang('No Description');
 
-                        //if product meta_description
-                        if($item['meta_description']){
-                            $output_product_description = '"description": "' . strip_tags($item['meta_description']) . '",';
-                        }else{
-                            //else output no description
-                            $output_product_description = '"description": "' . lang('No Description') . '",';
-                        }
+                            if ($item['name'] != '') {
+                                $jsonld['sku'] = $item['name'];
+                            }
 
-                        //if item is a product 
-                        if($item['type'] == 'product'){
-                            // get product price and modify it for output
-                            $amount = str_replace(',', '', $item['price']);
-                            $amount =  ($amount / 100);
-                            $price = number_format($amount, 2);
-                            $output_product_price = '"price": "' . $price . '",';
+                            if ($item['brand'] != '') {
+                                $jsonld['brand'] = array('@type' => 'Brand', 'name' => $item['brand']);
+                            }
+
+                            if ($item['mpn'] != '') {
+                                $jsonld['mpn'] = $item['mpn'];
+                            }
+
+                            if ($item['gtin'] != '') {
+                                $jsonld['gtin'] = $item['gtin'];
+                            }
 
                             // if the inventory is enabled for the product,
                             // and the product is out of stock
-                            if ( ($item['inventory'] == 1) && ($item['inventory_quantity'] == 0) ) {
-
-                                if($item['backorder'] == 1){
-                                    // if backorder enabled but not in stock.
-                                    $output_availability = '"availability": "https://schema.org/PreOrder"';
-                                }else{
-
-                                    // else backorder disabled and not in stock.
-                                    $output_availability = '"availability": "https://schema.org/OutOfStock"';
-                                }
-                            }else{
-
-                                //otherwise product in stock anyway output instock
-                                $output_availability = '"availability": "https://schema.org/InStock"';
+                            if (($item['inventory'] == 1) && ($item['inventory_quantity'] == 0)) {
+                                $availability = ($item['backorder'] == 1)
+                                    ? 'https://schema.org/PreOrder'
+                                    : 'https://schema.org/OutOfStock';
+                            } else {
+                                $availability = 'https://schema.org/InStock';
                             }
 
-                        //else item is a product group
-                        }else{
-                            // get all products currently in this product group
-                            $query = 
-                            "SELECT
-                            product as id,
-                            sort_order,
-                            products.name,
-                            products.enabled,
-                            products.short_description,
-                            products.price as price,
-                            products.image_name as image_name,
-                            inventory,
-                            inventory_quantity,
-                            meta_description,
-                            backorder,
-                            products.brand as brand,
-                            products.mpn as mpn,
-                            products.gtin as gtin
-                            FROM products_groups_xref
-                            LEFT JOIN products on products.id = product
-                            WHERE
-                            product_group = '" . e($item['id']) . "'";
-                           
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                            $jsonld['offers'] = array(
+                                '@type'           => 'Offer',
+                                'url'             => $canonical_url,
+                                'priceCurrency'   => BASE_CURRENCY_CODE,
+                                'price'           => sprintf('%01.2f', ((int) str_replace(',', '', $item['price'])) / 100),
+                                'priceValidUntil' => date('Y-m-d', strtotime('+1 year')),
+                                'itemCondition'   => 'https://schema.org/NewCondition',
+                                'availability'    => $availability,
+                            );
 
-                            while ($row = mysqli_fetch_assoc($result)) {
-                                
-                                // get product price and modify it for output
-                                $amount = str_replace(',', '', $row['price']);
-                                $amount =  ($amount / 100);
-                                $price = number_format($amount, 2);
-                                $output_product_price = '"price": "' . $price . '",';
-                                
-                                // if the inventory is enabled for the product,
-                                // and the product is out of stock
-                                if ( ($row['inventory'] == 1) && ($row['inventory_quantity'] == 0) ) {
-                                    
-                                    if($row['backorder'] == 1){
-                                        // if backorder enabled but not in stock.
-                                        $output_availability = '"availability":"https://schema.org/PreOrder"';
-                                    }else{
-                                        
-                                        // else backorder disabled and not in stock.
-                                        $output_availability = '"availability":"https://schema.org/OutOfStock"';
-                                    }
-                                }else{
-                                    
-                                    //otherwise product in stock anyway output instock
-                                    $output_availability = '"availability": "https://schema.org/InStock"';
+                            // Google's merchant listing facts (shipping, returns)
+                            // ride on the offer; site-wide values from Settings,
+                            // physical products only.
+                            if (pg_merchant_jsonld_configured()) {
+                                $merchant_shippable = (int) db_value("SELECT shippable FROM products WHERE id = '" . e($item['id']) . "'");
+
+                                foreach (pg_product_merchant_jsonld_parts($merchant_shippable) as $merchant_key => $merchant_value) {
+                                    $jsonld['offers'][$merchant_key] = $merchant_value;
                                 }
-                                
-                                //if brand specified
-                                if($row['brand']){
-                                    $output_product_brand = '"brand":{"@type":"Brand","name":"' . $row['brand'] . '"},';
-                                }
-                                
-                                //if mpn specified
-                                if($row['mpn']){
-                                    $output_product_mpn = '"mpn":"' . $row['mpn'] . '",';
-                                }
-                                
-                                //if mpn specified
-                                if($row['gtin']){
-                                    $output_product_gtin = '"gtin":"' . $row['gtin'] . '",';
-                                }  
+                            }
+
+                        // A product group page is a list, and its markup should
+                        // say so. The old code looped the group's products into a
+                        // single Product whose every field was whatever the LAST
+                        // product left behind - a category page claiming to be one
+                        // arbitrary product.
+                        } elseif ((($item['id'] ?? '') != '') && (($item['type'] ?? '') == 'product group')) {
+                            $group_products = db_items(
+                                "SELECT
+                                    products.name,
+                                    products.short_description,
+                                    products.address_name
+                                FROM products_groups_xref
+                                LEFT JOIN products ON products.id = products_groups_xref.product
+                                WHERE
+                                    (products_groups_xref.product_group = '" . e($item['id']) . "')
+                                    AND (products.enabled = '1')
+                                ORDER BY products_groups_xref.sort_order ASC");
+
+                            $list_items = array();
+                            $list_position = 1;
+
+                            foreach ($group_products as $group_product) {
+                                $list_items[] = array(
+                                    '@type'    => 'ListItem',
+                                    'position' => $list_position++,
+                                    'name'     => ($group_product['short_description'] != '') ? $group_product['short_description'] : $group_product['name'],
+                                    'url'      => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($system_region_properties['page_name']) . '/' . encode_url_path($group_product['address_name']),
+                                );
+                            }
+
+                            if (count($list_items) > 0) {
+                                $jsonld = array(
+                                    '@context'        => 'https://schema.org/',
+                                    '@type'           => 'ItemList',
+                                    'itemListElement' => $list_items,
+                                );
                             }
                         }
-                           
 
-                        
-                        //prepare product offers to output in strutured_data_feeds
-                        //priceValidUntil today + 1 years
-                        $output_product_offers = '"offers": 
-            { 
-                "@type": "Offer", 
-                "url": "' . h($canonical_url) . '", 
-                "priceCurrency": "' . BASE_CURRENCY_CODE . '",
-                "priceValidUntil":"' . date('d-m-Y', strtotime('+1 year')) . '",
-                ' . $output_product_price . '
-                ' . $output_availability . '
-            }';       
-        //strutured_data_feeds is generate strutured data for product view pages.
-        // we dont allow comment and review feature yet but google require it so we set random.                   
-        $strutured_data_feeds .= '
-        <!-- Start Structured Data -->
-        <script type="application/ld+json">{
-            "@context": "https://schema.org/",
-            "@type": "Product",
-            ' . $output_product_name . '
-            ' . $output_product_images  . '
-            ' . $output_product_description  . '
-            ' . $output_product_sku  . '
-            ' . $output_product_mpn  . '
-            ' . $output_product_gtin  . '
-            ' . $output_product_brand  . '
-            "review": {
-                "@type": "Review",
-                "reviewRating": {
-                    "@type": "Rating",
-                    "ratingValue": "4",
-                    "bestRating": "5"
-                },
-                "author": {
-                    "@type": "Person",
-                    "name": "Pinegrap Admin"
-                }
-            },
-            "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.7",
-                "reviewCount": "530"
-            },
-            ' . $output_product_offers . '
-        }
-        </script>
-        <!-- End Structured Data -->';
+                        if (isset($jsonld)) {
+                            $strutured_data_feeds =
+                                "\n<!-- Start Structured Data -->\n"
+                                . '<script type="application/ld+json">' . json_encode($jsonld, JSON_UNESCAPED_UNICODE) . '</script>'
+                                . "\n<!-- End Structured Data -->\n";
+                            unset($jsonld);
+                        }
 
-                        // If there is at least one Structured Data feed on this page and Structured Data enabled from Site Settings then output application/ld+json in head.
-                        if ($strutured_data_feeds && (defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE) ) {
-                            // Add code in head
-                            $content = preg_replace('/<\/head>/i', $strutured_data_feeds . '</head>', $content);
+                        // && binds tighter than ||: the old test parsed as
+                        // ($feeds && !defined) || (STRUTURED_DATA == TRUE), so the
+                        // feeds guard never actually gated the splice, and the
+                        // bare constant became an Error on PHP 8 when undefined.
+                        if (($strutured_data_feeds != '')
+                            && ((defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE))
+                        ) {
+                            $content = preg_replace('/<\/head>/i', addcslashes($strutured_data_feeds, '\\$') . '</head>', $content, 1);
                         }
                         
                     break;
@@ -2846,6 +2873,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     // If a custom_form system widget is placed on this page via the Visual Editor,
                     // it handles form rendering — skip legacy get_custom_form_screen_content output
                     // to avoid duplicate form fields.
+                    //
+                    // Two places a widget can live: a page region (the legacy
+                    // editor drops a marker comment into pregion_content) and
+                    // the page's own layout tree, where it is a shared_ref
+                    // carrying the component id. A visual-designer page has no
+                    // regions at all, so the first query alone could not see
+                    // its widget and the legacy form was drawn under the
+                    // designed one.
                     $pg_custom_form_widget_active = (int) db_value(
                         "SELECT COUNT(*)
                          FROM pregion pr, shared_components sc
@@ -2853,6 +2888,29 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                            AND LOCATE(CONCAT('<!--pg-system-widget:', sc.id, '-->'), pr.pregion_content) > 0
                            AND sc.system_region_config LIKE '%\"regionType\":\"custom_form\"%'"
                     );
+                    if ($pg_custom_form_widget_active === 0 && function_exists('pg_page_tree_json')) {
+                        $pg_cf_tree = json_decode((string)pg_page_tree_json((int)$system_region_properties['page_id']), true);
+                        $pg_cf_sids = array();
+                        if (is_array($pg_cf_tree)) {
+                            $pg_cf_find = function ($n) use (&$pg_cf_find, &$pg_cf_sids) {
+                                if (!is_array($n)) return;
+                                if (isset($n['type']) && $n['type'] === 'shared_ref') {
+                                    $sid = (int)(isset($n['props']['sharedId']) ? $n['props']['sharedId'] : 0);
+                                    if ($sid > 0) $pg_cf_sids[$sid] = $sid;
+                                    return;
+                                }
+                                if (!empty($n['children']) && is_array($n['children'])) foreach ($n['children'] as $c) $pg_cf_find($c);
+                            };
+                            $pg_cf_find($pg_cf_tree);
+                        }
+                        if (!empty($pg_cf_sids)) {
+                            $pg_custom_form_widget_active = (int) db_value(
+                                "SELECT COUNT(*) FROM shared_components
+                                 WHERE id IN (" . implode(',', array_map('intval', $pg_cf_sids)) . ")
+                                   AND system_region_config LIKE '%\"regionType\":\"custom_form\"%'"
+                            );
+                        }
+                    }
                     if ($pg_custom_form_widget_active > 0) break;
 
                     $properties = get_page_type_properties($system_region_properties['page_id'], $system_region_properties['page_type']);
@@ -3781,6 +3839,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $output_edit_container_start = '';
                         $output_published_notices = '';
                         
+                        // Only produced in edit mode, but both are printed when the
+                        // comment is assembled further below.
+                        $output_edit_container_start = '';
+                        $output_edit_container_end = '';
+
                         // If the visitor has edit access to this page and edit mode is on,
                         // then output grids.
                         if (($edit_access) && ($mode == 'edit')) {
@@ -4115,12 +4178,31 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         
                         $output_link = '';
                         
-                        // if comment watching is enabled, then output the appropriate link
+                        // rel="nofollow" is load-bearing here, not decoration.
+                        //
+                        // This link carries the current article in send_to, so
+                        // every article renders a DIFFERENT sign-in URL. A
+                        // crawler reads those as thousands of separate pages
+                        // and fetches them all, and every crawler does it
+                        // independently.
+                        //
+                        // Measured on a live site: the sign-in page was the
+                        // single most requested page on the whole installation
+                        // with 1.7 million views, against 100-200 real visitors
+                        // a day from search. It burned the crawl budget that
+                        // should have gone to the articles, inflated the
+                        // visitor counter past any use, and filled the view and
+                        // visitor tables. The firewall was right not to block
+                        // it: Googlebot was behaving correctly. The mistake was
+                        // inviting it.
+                        //
+                        // Signing in is an action, not a document. Nothing on
+                        // the other side of this link belongs in an index.
                         if ($system_region_properties['comments_watcher_email_page_id'] != 0) {
-                            $output_link = lang(array('string'=>'Please {var:1} to add your {var:2} or get notified when a {var:2} is added.','vars'=>array('<a style="font-weight: bold;" href="' . $link_url . '">' . lang('login or register') . '</a>',$output_comment_label_lowercase)));
+                            $output_link = lang(array('string'=>'Please {var:1} to add your {var:2} or get notified when a {var:2} is added.','vars'=>array('<a style="font-weight: bold;" rel="nofollow" href="' . $link_url . '">' . lang('login or register') . '</a>',$output_comment_label_lowercase)));
                         // else output the standard link
                         } else {
-                            $output_link = lang(array('string'=>'Please {var:1} to add your {var:2}.','vars'=>array('<a style="font-weight: bold;" href="' . $link_url . '">' . lang('login or register') . '</a>',$output_comment_label_lowercase)));
+                            $output_link = lang(array('string'=>'Please {var:1} to add your {var:2}.','vars'=>array('<a style="font-weight: bold;" rel="nofollow" href="' . $link_url . '">' . lang('login or register') . '</a>',$output_comment_label_lowercase)));
                         }
 
                         // Remember that we have already told the visitor to login to add a comment,
@@ -4335,7 +4417,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         '<label for="publish_cancel"> '.$publish_cancel_label.'</label>
                                     </span>
 
-                                    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+                                    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                     ' . get_date_picker_format() . '
                                     <script>software.init_add_comment_publish()</script>
                                 </div>';
@@ -4772,7 +4854,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             // Otherwise the visitor is not logged in, so if a login message has not already
                             // been shown to the visitor up above in the add comment area, then output login message.
                             } else if (!$add_comment_login_message_shown) {
-                                $output_watcher_action = '<div class="watcher_action">' . lang(array('string'=>'Please {var:1} first.','vars'=>array('<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri() . '#software_watcher') . '">' . lang('login or register') . '</a>') )) . '</div>';
+                                // Same trap as the add-comment link above: the
+                                // current page travels in send_to, so this is a
+                                // distinct URL on every article.
+                                $output_watcher_action = '<div class="watcher_action">' . lang(array('string'=>'Please {var:1} first.','vars'=>array('<a rel="nofollow" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri() . '#software_watcher') . '">' . lang('login or register') . '</a>') )) . '</div>';
 							}
                         }
                         
@@ -5126,12 +5211,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // Otherwise a submitted form id was not passed, so if there is a reference code,
         // then use it to get the form id.
-        } else if ($_GET['r']) {
+        } else if (!empty($_GET['r'])) {
             $submitted_form['id'] = db_value("SELECT id FROM forms WHERE reference_code = '" . escape($_GET['r']) . "'");
         }
 
         // If a submitted form was found, then continue to get title and description.
-        if ($submitted_form['id']) {
+        // Neither branch above runs when there is no form id and no reference code.
+        if (!empty($submitted_form['id'])) {
             // Get title values for this submitted form.  The title field is the one where the RSS title
             // setting is enabled for the field.  There can be multiple title fields (e.g. first name, last name).
             $titles = db_items(
@@ -5197,6 +5283,24 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (($description['data'] ?? '') != '') {
                 $page_meta_description = $description['data'];
             }
+
+            // Facts for the Open Graph article tags and the BlogPosting block
+            // further below: when the post was written, when it changed, who
+            // wrote it, and its share picture from the RSS media field.
+            $pg_blog_form = db_item(
+                "SELECT page_id, submitted_timestamp, last_modified_timestamp
+                FROM forms
+                WHERE id = '" . e($submitted_form['id']) . "'");
+
+            if (is_array($pg_blog_form)) {
+                $pg_og_article = array(
+                    'published' => (int) $pg_blog_form['submitted_timestamp'],
+                    'modified'  => (int) $pg_blog_form['last_modified_timestamp'],
+                );
+                $pg_og_image_candidate = pg_resolve_submitted_form_og_image($pg_blog_form['page_id'], $submitted_form['id']);
+                $pg_blog_author = pg_submitted_form_author_name($submitted_form['id']);
+                $pg_blog_form_id = (int) $submitted_form['id'];
+            }
         }
     }
     
@@ -5227,33 +5331,95 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $open_graph = '';
     $open_graph_description = '';
 
+    // Resolve the page's share picture and og:type once; the Open Graph block
+    // and the Twitter card both read them.
+    //
+    // og:type tells the platform what kind of card to draw: a product page is
+    // a product, a blog post is an article, everything else a plain site
+    // link. The picture comes from wherever this page type keeps one, and a
+    // page with none falls back to the site-wide default from Settings.
+    $og_type = 'website';
+    $og_image = null;
+
+    if (($page_type == 'catalog') || ($page_type == 'catalog detail')) {
+        if (isset($image_name) && ($image_name != '')) {
+            $og_image = pg_og_image_from_file_name($image_name);
+        }
+
+        if ($page_type == 'catalog detail') {
+            $og_item = get_catalog_item_from_url();
+
+            if (($og_item['type'] ?? '') == 'product') {
+                $og_type = 'product';
+            }
+        }
+
+    } else if ($page_type == 'order form') {
+
+        // Get image name for product group.
+        $order_form_image_name = db("SELECT image_name FROM product_groups WHERE id = '" . e($order_form_product_group_id) . "'");
+
+        if ($order_form_image_name != '') {
+            $og_image = pg_og_image_from_file_name($order_form_image_name);
+        }
+
+    } else if ($page_type == 'form item view') {
+        $og_type = 'article';
+
+        if (!empty($pg_og_image_candidate)) {
+            $og_image = $pg_og_image_candidate;
+        }
+
+    } else if (!empty($pg_og_sw_product_image_name)) {
+        // A visual-designer page whose product detail widget resolved a
+        // product: the page IS that product's page.
+        $og_type = 'product';
+        $og_image = pg_og_image_from_file_name($pg_og_sw_product_image_name);
+    }
+
+    if ($og_image === null) {
+        $og_image = pg_og_default_image();
+    }
+
     // If open graph tags are not disabled, then prepare them.
 
     if (!defined('OPEN_GRAPH') or OPEN_GRAPH) {
 
         $open_graph ='        <meta property="og:title" content="' . h($page_title) . '">' . "\n" .
-            '        <meta property="og:type" content="website">' . "\n" .
-            '        <meta property="og:url" content="' . h($canonical_url) . '">' . "\n";
-        
-        // Prepare open graph image tag.
+            '        <meta property="og:type" content="' . $og_type . '">' . "\n" .
+            '        <meta property="og:url" content="' . h($canonical_url) . '">' . "\n" .
+            '        <meta property="og:site_name" content="' . h(TITLE) . '">' . "\n" .
+            '        <meta property="og:locale" content="' . pg_og_locale() . '">' . "\n";
 
-        // if the page is a catalog or catalog detail page then get the image name in a certain way
-        if (($page_type == 'catalog') || ($page_type == 'catalog detail')) {
+        if (!empty($og_image['url'])) {
+            $open_graph .= '        <meta property="og:image" content="' . h($og_image['url']) . '">' . "\n";
 
-            // if the image name is not blank then continue to prepare the open graph image tag
-            if ($image_name != '') {
-                $open_graph .= '         <meta property="og:image" content="' . URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($image_name)) . '">' . "\n";
+            // Width and height let the platform draw the card before it has
+            // fetched the picture.
+            if (((int) ($og_image['width'] ?? 0) > 0) && ((int) ($og_image['height'] ?? 0) > 0)) {
+                $open_graph .= '        <meta property="og:image:width" content="' . (int) $og_image['width'] . '">' . "\n" .
+                    '        <meta property="og:image:height" content="' . (int) $og_image['height'] . '">' . "\n";
             }
-            
-        // else if the page is an order form, then get the image name in a different way
-        } else if ($page_type == 'order form') {
 
-            // Get image name for product group.
-            $image_name = db("SELECT image_name FROM product_groups WHERE id = '" . e($order_form_product_group_id) . "'");
-            
-            // if the image name is not blank then continue to prepare the open graph image tag
-            if ($image_name != '') {
-                $open_graph .= '         <meta property="og:image" content="' . URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($image_name)) . '">' . "\n";
+            $og_image_alt = trim((string) ($og_image['alt'] ?? ''));
+
+            if ($og_image_alt == '') {
+                $og_image_alt = $page_title;
+            }
+
+            if ($og_image_alt != '') {
+                $open_graph .= '        <meta property="og:image:alt" content="' . h($og_image_alt) . '">' . "\n";
+            }
+        }
+
+        // Article facts for a blog post; platforms show these under the card.
+        if (($og_type == 'article') && !empty($pg_og_article)) {
+            if ($pg_og_article['published'] > 0) {
+                $open_graph .= '        <meta property="article:published_time" content="' . date('c', $pg_og_article['published']) . '">' . "\n";
+            }
+
+            if ($pg_og_article['modified'] > 0) {
+                $open_graph .= '        <meta property="article:modified_time" content="' . date('c', $pg_og_article['modified']) . '">' . "\n";
             }
         }
 
@@ -5266,7 +5432,18 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // tags, because Twitter will use the Open Graph tags.
 
     if (!defined('TWITTER_CARD') or TWITTER_CARD) {
-        $twitter_card = '        <meta name="twitter:card" content="summary">
+        // A page with a share picture gets the large card. The one exception
+        // is a picture we KNOW is too narrow for it (the format asks for
+        // 600px); an unmeasured picture gets the benefit of the doubt.
+        $twitter_card_type = 'summary';
+
+        if (!empty($og_image['url'])
+            && !(((int) ($og_image['width'] ?? 0) > 0) && ((int) ($og_image['width'] ?? 0) < 600))
+        ) {
+            $twitter_card_type = 'summary_large_image';
+        }
+
+        $twitter_card = '        <meta name="twitter:card" content="' . $twitter_card_type . '">
         ';
     }
 
@@ -5315,6 +5492,68 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             '        <meta name="robots" content="' . $robots_content . '">' . "\n" . '</head>',
             $content,
             1);
+    }
+
+    // ── Structured data that describes the page itself (2026.4.4) ───────────
+    //
+    // BlogPosting and breadcrumbs for a blog post, Organization once on the
+    // home page, and the operator's own JSON-LD (per page and site-wide). Not
+    // for an e-mail body (no crawler reads mail), not in edit mode (the same
+    // rule the widget JSON-LD above follows), and silent when Structured Data
+    // is disabled in Settings.
+    if (($email != TRUE) && ($mode != 'edit')
+        && ((defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE))
+    ) {
+        $pg_jsonld_out = '';
+
+        if (($page_type == 'form item view') && !empty($pg_blog_form_id)) {
+            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_blogposting_jsonld(array(
+                'headline'    => $page_title,
+                'description' => $page_meta_description,
+                'url'         => $canonical_url,
+                'image'       => (!empty($pg_og_image_candidate)) ? $pg_og_image_candidate : pg_og_default_image(),
+                'published'   => $pg_og_article['published'] ?? 0,
+                'modified'    => $pg_og_article['modified'] ?? 0,
+                'author'      => $pg_blog_author ?? '',
+            )), JSON_UNESCAPED_UNICODE) . '</script>';
+
+            // Home > list page > post - the middle step only when the post was
+            // reached through its pretty URL, which is what tells us the list
+            // page's name.
+            $pg_breadcrumb_items = array(
+                array('name' => TITLE, 'url' => URL_SCHEME . HOSTNAME_SETTING . PATH),
+            );
+
+            if (defined('PRETTY_URL_PATH') && (mb_strpos(PRETTY_URL_PATH, '/') !== FALSE)) {
+                $pg_list_page_name = mb_substr(PRETTY_URL_PATH, 0, mb_strpos(PRETTY_URL_PATH, '/'));
+                $pg_breadcrumb_items[] = array(
+                    'name' => $pg_list_page_name,
+                    'url'  => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($pg_list_page_name),
+                );
+            }
+
+            $pg_breadcrumb_items[] = array('name' => $page_title, 'url' => $canonical_url);
+
+            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_breadcrumb_jsonld($pg_breadcrumb_items), JSON_UNESCAPED_UNICODE) . '</script>';
+        }
+
+        // The organization introduces itself once, on the front door.
+        if ($page_home == 'yes') {
+            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_organization_jsonld(), JSON_UNESCAPED_UNICODE) . '</script>';
+        }
+
+        // Operator-authored blocks: this page's own, then the site-wide one.
+        if (isset($page_custom_jsonld)) {
+            $pg_jsonld_out .= pg_custom_jsonld_block($page_custom_jsonld);
+        }
+
+        if (defined('SITE_CUSTOM_JSONLD')) {
+            $pg_jsonld_out .= pg_custom_jsonld_block(SITE_CUSTOM_JSONLD);
+        }
+
+        if ($pg_jsonld_out != '') {
+            $content = preg_replace('/<\/head>/i', addcslashes($pg_jsonld_out, '\\$') . "\n" . '</head>', $content, 1);
+        }
     }
 
     $theme_id = '';
@@ -5517,7 +5756,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     // If this is the first page view of this visit,
                     // then record the visit start timestamp, so that we can determine the visit
                     // length in order to make sure that the auto dialogs are delayed correctly.
-                    if (!$_SESSION['software']['visit_start_timestamp']) {
+                    if (empty($_SESSION['software']['visit_start_timestamp'])) {
                         $_SESSION['software']['visit_start_timestamp'] = $current_timestamp;
                     }
 

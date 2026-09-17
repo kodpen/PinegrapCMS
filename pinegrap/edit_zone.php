@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -120,17 +120,15 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Edit Shipping Zone'),
+        'heading_description' => lang('Edit a shipping zone that will be used to calculate shipping during checkout based on the products and shipping addresses.'),
         'cancel'=>array('enable'=>'true','url'=>'view_zones.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Shipping Zones'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_zones.php'), array('label' => lang('Edit Shipping Zone'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Edit a shipping zone that will be used to calculate shipping during checkout based on the products and shipping addresses.') . '" title="' . lang('Edit Shipping Zone') . '">[' . $name . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="edit_zone.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -143,7 +141,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-lg-6 my-2">
                                             <label for="name" class="form-label">' . lang('Shipping Zone Name') . '</label>
-                                            <input value="' . $name . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control add-header-content-updater" />
+                                            <input value="' . $name . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control" />
                                         </div>
                                     </div>
                                 </div>
@@ -231,7 +229,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     print $output;

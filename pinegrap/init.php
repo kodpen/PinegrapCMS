@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,6 +26,14 @@ if (defined('PG_INIT_LOADED')) {
 }
 
 define('PG_INIT_LOADED', true);
+
+// Query errors are handled where the query is written: "or exit(...)", a
+// false return, an @ in front of the call. Since PHP 8.1 mysqli reports them
+// as exceptions instead, which none of those checks ever see - the request
+// ends as an uncaught fatal, a blank 500 with the reason in the error log
+// only. install/index.php has turned reporting off since it was written; the
+// rest of the software is written against the same contract and needs it too.
+mysqli_report(MYSQLI_REPORT_OFF);
 
 try {
     if (!@include_once(dirname(__FILE__) . '/data/config.php')) {
@@ -45,6 +53,14 @@ try {
     echo "Message : " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
     echo " Code : " . (int) $e->getCode();
 }
+
+// Database availability guard, checked before functions.php is parsed.
+//
+// Placed here rather than next to db_connect() on purpose: by that point this
+// request has already loaded megabytes of code it is about to throw away. When
+// the breaker is open this costs one stat() and answers 503 instead.
+require_once(dirname(__FILE__) . '/includes/db_guard.php');
+pg_db_guard_check();
 
 require(dirname(__FILE__) . '/functions.php');
 
@@ -72,6 +88,10 @@ if (!defined('PHP_SETTINGS_UPDATED')) {
     ini_set('default_charset', 'utf-8');
     mb_internal_encoding('UTF-8');
     mb_http_output('UTF-8');
+
+    // Drop the "X-Powered-By: PHP/8.x" banner. See router.php for why this
+    // cannot be left to the web server rules on IIS.
+    header_remove('X-Powered-By');
 }
 
 // get software directory
@@ -227,14 +247,71 @@ if (!defined('DB_CONNECTED') or DB_CONNECTED !== true) {
 
 // get configuration constants from database
 $query = "SELECT * FROM config";
-$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+$result = mysqli_query(db::$con, $query);
+
+// A database that answers but has no config table is an installation that was
+// never run, or one whose tables are gone. router.php says so on the front end
+// and stops; the panel and the scheduled jobs come through this file without
+// ever loading router.php, so the same answer has to be given here. What stood
+// here exited with the raw mysqli error, which told the operator nothing, and
+// since PHP 8.1 it was not even reached: the query threw first (see
+// mysqli_report above) and the screen was a blank 500.
+if ($result === false) {
+    // The interface language is normally read from the row this query was
+    // supposed to return, so without this the one screen an operator sees when
+    // the database is empty is the one screen that speaks English at them.
+    // config.php is all there is to go on, and router.php reads the same two
+    // constants in the same order before rendering its own version of this.
+    if (!defined('SOFTWARE_LANGUAGE')) {
+        if (defined('ENFORCEMENT_SOFTWARE_LANGUAGE')) {
+            define('SOFTWARE_LANGUAGE', ENFORCEMENT_SOFTWARE_LANGUAGE);
+        } elseif (defined('DEFAULT_SOFTWARE_LANGUAGE')) {
+            define('SOFTWARE_LANGUAGE', DEFAULT_SOFTWARE_LANGUAGE);
+        } elseif (function_exists('dedect_user_language')) {
+            // Defined by router.php, so only there for a front-end request.
+            define('SOFTWARE_LANGUAGE', dedect_user_language());
+        }
+    }
+
+    $config_error = lang('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
+
+    if (defined('OUTPUT_PATH')) {
+        $config_error .= ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/">'
+            . lang('Install or Reinstall Software') . '</a>';
+    }
+
+    print $config_error;
+    exit();
+}
+
 $row = mysqli_fetch_assoc($result);
+
+// Upgrade bridge: a config row from a database behind the code lacks the
+// columns this release added, and the two hundred reads below are plain
+// $row['...'] - each would log a warning per request until the upgrade runs,
+// which on shared hosting with a disk quota is a full log within the day.
+// Rather than guard every read, the keys this file reads are taken from this
+// very file and the missing ones are given null, which every read below
+// already treats as "not set". Only while behind: on a current schema a
+// missing key is a real bug and must keep warning.
+if (is_array($row) && isset($row['version'])
+    && version_compare((string) $row['version'], pg_code_version(), '<')) {
+    if (preg_match_all('/\$row\[\'([a-z0-9_]+)\'\]/i', (string) @file_get_contents(__FILE__), $config_keys)) {
+        $row += array_fill_keys(array_unique($config_keys[1]), null);
+    }
+}
 
 // Hand the firewall the config row we just read, so it does not query the
 // same table again. Loading it here (rather than at waf_run below) also means
 // the settings screen can call waf_* helpers without a second read.
 require_once(dirname(__FILE__) . '/waf.php');
 waf_prime_config($row);
+
+// Security response headers, before anything can be printed. The policy
+// header is sent from this bootstrap only: it renders documents, the router
+// serves files.
+waf_send_security_headers();
+waf_send_csp_header();
 
 // change type of values that should be boolean
 settype($row['private_label'], 'boolean');
@@ -253,6 +330,7 @@ settype($row['mass_deletion'], 'boolean');
 settype($row['strong_password'], 'boolean');
 settype($row['password_hint'], 'boolean');
 settype($row['remember_me'], 'boolean');
+settype($row['oauth_google_enabled'], 'boolean');
 settype($row['membership_expiration_warning_email'], 'boolean');
 settype($row['visitor_tracking'], 'boolean');
 settype($row['google_analytics'], 'boolean');
@@ -297,7 +375,7 @@ settype($row['enable_iyzipay_protected_currency'], 'boolean');
 
 define('VERSION', $row['version']);
 if (!defined('EDITION')) {
-    define('EDITION', 'PRE');
+    define('EDITION', 'CE');
 }
 
 $private_label = $row['private_label'];
@@ -337,6 +415,12 @@ define('META_DESCRIPTION', $row['meta_description']);
 define('META_KEYWORDS', $row['meta_keywords']);
 define('REMEMBER_ME', $row['remember_me']);
 define('FORGOT_PASSWORD_LINK', $row['forgot_password_link']);
+define('OAUTH_GOOGLE_ENABLED', $row['oauth_google_enabled']);
+define('OAUTH_GOOGLE_CLIENT_ID', $row['oauth_google_client_id']);
+define('BANNED_EMAIL_ADDRESSES', (string) ($row['banned_email_addresses'] ?? ''));
+define('REMEMBER_ME_DEVICE_LIMIT_ENABLED', (int) ($row['remember_me_device_limit_enabled'] ?? 0));
+define('REMEMBER_ME_DEVICE_LIMIT', (int) ($row['remember_me_device_limit'] ?? 0));
+define('REMEMBER_ME_DEVICE_LIMIT_STRICT', (int) ($row['remember_me_device_limit_strict'] ?? 0));
 define('MOBILE', $row['mobile']);
 define('SEARCH_TYPE', $row['search_type']);
 define('SOCIAL_NETWORKING', $row['social_networking']);
@@ -375,12 +459,31 @@ define('VISITOR_TRACKING', $row['visitor_tracking']);
 // to know whether the firewall is armed reads this constant rather than
 // querying, so the answer is identical everywhere in the request.
 define('WAF_ENABLED', isset($row['waf_enabled']) ? (int) $row['waf_enabled'] : 0);
+// Update channel, same pattern: the column arrives with 2026.4.4, and a
+// database that has not run that step yet reads 'stable' — the channel every
+// installation was on before the setting existed. Only the two names the enum
+// can hold are accepted, so a value edited by hand into something else cannot
+// send the site looking for a package that does not exist.
+define('SOFTWARE_UPDATE_CHANNEL',
+    (isset($row['software_update_channel']) && ($row['software_update_channel'] === 'beta')) ? 'beta' : 'stable');
 // Performance monitor switch, same pattern. Read here rather than acted on in
 // perf_monitor_init(): that runs before this config row is loaded, so the
 // shutdown handler is where the setting can actually be consulted. What it
 // gates is all of the cost — one upsert — while the init half is a few
 // microseconds of timers that are not worth a second config read to avoid.
 define('PERF_MONITOR_ENABLED', isset($row['perf_monitor']) ? (int) $row['perf_monitor'] : 1);
+// Signature time stamping, same pattern again: the columns arrive with
+// 2026.4.4 and a database that has not run that step yet reads an empty
+// address, which is what "no authority is used" looks like - so the code can
+// land before the schema without the signature field breaking.
+//
+// Only the two schemes the panel offers are accepted; a value edited by hand
+// into something else falls back to sending no credentials, rather than
+// sending them in a way nobody chose.
+define('SIGNATURE_TSA_URL', isset($row['signature_tsa_url']) ? (string) $row['signature_tsa_url'] : '');
+define('SIGNATURE_TSA_AUTH', (isset($row['signature_tsa_auth']) && ($row['signature_tsa_auth'] === 'basic')) ? 'basic' : 'none');
+define('SIGNATURE_TSA_USERNAME', isset($row['signature_tsa_username']) ? (string) $row['signature_tsa_username'] : '');
+define('SIGNATURE_TSA_PASSWORD', isset($row['signature_tsa_password']) ? (string) $row['signature_tsa_password'] : '');
 // Live chat switches, following the WAF_ENABLED pattern: the code may be
 // newer than the database — when the column is missing the feature acts
 // disabled, the page does not break. CHAT_ENABLED is absolute: while off,
@@ -397,14 +500,14 @@ define('CHAT_RETENTION_DAYS', isset($row['chat_retention_days']) ? (int) $row['c
 define('CHAT_WIDGET_THEME', isset($row['chat_widget_theme']) ? $row['chat_widget_theme'] : 'auto');
 define('CHAT_WIDGET_COLOR', isset($row['chat_widget_color']) ? $row['chat_widget_color'] : '#0d6efd');
 define('CHAT_WIDGET_ICON', isset($row['chat_widget_icon']) ? $row['chat_widget_icon'] : 'chat');
-// Widget label (2026.4.6): empty = "Live Support" from the language file.
+// Widget label (2026.4.2): empty = "Live Support" from the language file.
 define('CHAT_WIDGET_TITLE', isset($row['chat_widget_title']) ? $row['chat_widget_title'] : '');
-// Chat attachments (2026.4.4): off by default — no upload endpoint works
+// Chat attachments (2026.4.2): off by default — no upload endpoint works
 // until the operator enables them.
 define('CHAT_ALLOW_FILES', isset($row['chat_allow_files']) ? (int) $row['chat_allow_files'] : 0);
 define('CHAT_ALLOW_IMAGES', isset($row['chat_allow_images']) ? (int) $row['chat_allow_images'] : 0);
 define('CHAT_VISITOR_IMAGE_LIMIT', isset($row['chat_visitor_image_limit']) ? (int) $row['chat_visitor_image_limit'] : 5);
-// Scheduled-job dispatch (2026.4.17), same pattern: off when the columns are
+// Scheduled-job dispatch (2026.4.2), same pattern: off when the columns are
 // not there yet, so the general job on an installation that has not run the
 // upgrade simply dispatches nothing. JOB_DISPATCH is a comma separated list of
 // job names; the master switch and the list are read separately so that
@@ -528,14 +631,26 @@ define('SUBSCRIPTION_KEY', $row['subscription_key']);
 define('STRUTURED_DATA', $row['strutured_data']);
 define('ADVANCED_VISUAL_EFFECTS', $row['advanced_visual_effects']);
 define('LAST_SOFTWARE_AUTO_BACKUP', $row['last_software_auto_backup']);
-define('ENABLE_PARASUT', $row['enable_parasut']);
-define('PARASUT_TC_IN_FIELD', $row['parasut_tc_in_field']);
+define('ENABLE_PARASUT', $row['enable_parasut'] ?? 0);
+define('PARASUT_TC_IN_FIELD', $row['parasut_tc_in_field'] ?? 'do not use');
 define('PARASUT_CLIENT_ID', $row['parasut_client_id'] ?? '');
-define('PARASUT_CLIENT_SECRET', $row['parasut_client_secret'] ?? '');
 define('PARASUT_USERNAME', $row['parasut_username'] ?? '');
-define('PARASUT_PASSWORD', $row['parasut_password'] ?? '');
+// The client secret and the account password live inside this blob, still
+// encrypted. They are decoded on the request that actually calls Parasut
+// (_parasut_credentials()) rather than being unwrapped into a constant that
+// every page of the site would carry.
+define('PARASUT_CREDENTIALS_ENC', $row['parasut_credentials_enc'] ?? '');
+// ERP module. Read defensively: code lands before the schema does on a site that
+// has its files replaced and its upgrade run afterwards, and a missing column has
+// to read as "off" rather than as a notice on every page.
+define('ERP_ENABLED', isset($row['erp_enabled']) ? (int) $row['erp_enabled'] : 0);
+define('ERP_PARASUT_ENABLED', isset($row['erp_parasut_enabled']) ? (int) $row['erp_parasut_enabled'] : 0);
+define('ERP_DEFAULT_SERIES', $row['erp_default_series'] ?? 'PGF');
+define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
+define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id']) ? (int) $row['erp_default_cash_account_id'] : 0);
+define('ERP_EINVOICE_SCENARIO', $row['erp_einvoice_scenario'] ?? 'basic');
+define('ERP_WEB_ADDRESS', $row['erp_web_address'] ?? '');
 define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
-define('PARASUT_USE_SANDBOX', !empty($row['parasut_use_sandbox']));
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');
 define('PARASUT_API_BASE', 'https://api.parasut.com');
@@ -543,6 +658,20 @@ define('PARASUT_TOKEN_CACHE', dirname(__FILE__) . '/data/parasut_token.json');
 define('ENABLE_IYZIPAY_PROTECTED_CURRENCY', $row['enable_iyzipay_protected_currency']);
 define('IYZIPAY_PROTECTED_CURRENCY_CODE', $row['iyzipay_protected_currency_code']);
 define('INDEXNOW_KEY', $row['indexnow_key']);
+
+// Open Graph and structured data settings (2026.4.4). Read with a fallback so
+// an installation that takes the code without running the database upgrade
+// keeps today's behaviour: every one of these reads as "not configured".
+define('OG_DEFAULT_IMAGE', $row['og_default_image'] ?? '');
+define('APP_ICON', $row['app_icon'] ?? '');
+define('ORGANIZATION_LOGO', $row['organization_logo'] ?? '');
+define('MERCHANT_COUNTRY', $row['merchant_country'] ?? '');
+define('MERCHANT_SHIPPING_RATE', (int) ($row['merchant_shipping_rate'] ?? -1));
+define('MERCHANT_TRANSIT_DAYS_MIN', (int) ($row['merchant_transit_days_min'] ?? 1));
+define('MERCHANT_TRANSIT_DAYS_MAX', (int) ($row['merchant_transit_days_max'] ?? 3));
+define('MERCHANT_RETURN_DAYS', (int) ($row['merchant_return_days'] ?? -1));
+define('MERCHANT_RETURN_FEES', (int) ($row['merchant_return_fees'] ?? 0));
+define('SITE_CUSTOM_JSONLD', $row['custom_jsonld'] ?? '');
 define('BARCODE_ENABLED', !empty($row['barcode_enabled']));
 define('BARCODE_DEFAULT_TYPE', $row['barcode_default_type'] ?? 'CODE128');
 define('BARCODE_LABEL_WIDTH', $row['barcode_label_width'] ?? 60);
@@ -609,7 +738,7 @@ if (!defined('LOGO_URL')) {
 
 // Check if we need to set a default value for control_panel_stylesheet_url
 if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
-    define('CONTROL_PANEL_STYLESHEET_URL', PATH . SOFTWARE_DIRECTORY . '/assets/backend.src.css?v=' . @filemtime(dirname(__FILE__) . '/assets/backend.src.css'));
+    define('CONTROL_PANEL_STYLESHEET_URL', PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' . @filemtime(dirname(__FILE__) . '/assets/css/backend.src.css'));
 }
 
 
@@ -683,8 +812,11 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         exit();
     }
 
-    // If secure mode is enabled, then setup the session cookie
-    if (URL_SCHEME === 'https://') {
+    // Mark the session cookie Secure only when this request actually arrived
+    // over https. URL_SCHEME is a static setting; a Secure cookie set over a
+    // plain-http request (localhost, LAN) is discarded by the browser and no
+    // new session could ever start there.
+    if (pg_request_is_https() == true) {
         ini_set('session.cookie_secure', '1');
     }
 
@@ -693,8 +825,18 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         ini_set('session.cookie_httponly', '1');
     }
 
-    // Start session after secure mode checks
-    session_start();
+    // Start session after secure mode checks.
+    //
+    // An entry point that carries its own credentials asks for none: the
+    // external API (integration.php) defines PG_NO_SESSION before including
+    // this file. Without that, a signed-in operator's cookie in the same
+    // browser would decide what an API call presenting no credentials is
+    // allowed to do, and every anonymous request would leave a session file
+    // behind. Those entry points set $_SESSION to an empty array first, so the
+    // shared code that reads it finds nothing rather than warning.
+    if (!defined('PG_NO_SESSION')) {
+        session_start();
+    }
 }
 
 
@@ -818,6 +960,22 @@ if (ECOMMERCE == true) {
 initialize_developer_security();
 
 
-// who_is_online check has been moved to api.php (action: user_online_check)
-// and is now called via AJAX heartbeat from backend.src.js every 50 seconds.
-// This avoids a synchronous DB query on every page load.
+// Presence ("who is online"). This check used to run here, then moved to the
+// backend's AJAX heartbeat (api.php, action user_online_check, fired by
+// backend.src.js every 50 seconds) to keep a query off every page load. But
+// that heartbeat only runs inside the admin UI, so anyone browsing the public
+// site - every ordinary member, and every visitor who signs in with Google -
+// never got a stamp and stayed "offline" forever in the user list and in chat.
+//
+// So it runs here again, throttled through the session: at most one UPDATE per
+// signed-in visitor per 50 seconds, instead of a query on every request. The
+// backend heartbeat is left alone and still works.
+if (defined('DB_CONNECTED')
+    && defined('USER_LOGGED_IN') && USER_LOGGED_IN
+    && (!defined('UPDATE_SEARCH_INDEX') || UPDATE_SEARCH_INDEX !== true)) {
+
+    if ((time() - ((int) ($_SESSION['software']['presence_stamped_at'] ?? 0))) > 50) {
+        $_SESSION['software']['presence_stamped_at'] = time();
+        who_is_online(50);
+    }
+}

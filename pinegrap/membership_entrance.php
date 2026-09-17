@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -68,11 +68,26 @@ if (!$_POST) {
     }
     
     // if the login form was submitted
-    if ($_POST['login'] == 'true') {
+    if (($_POST['login'] ?? '') == 'true') {
         check_banned_ip_addresses('login');
 
         $username = $liveform->get_field_value('u');
-        $password = md5($liveform->get_field_value('p'));
+        // Raw password now; validate_login() checks it against the stored hash.
+        $password = $liveform->get_field_value('p');
+
+        // Refuse straight away while this address or account is locked out, so a
+        // password list never reaches the credential comparison.
+        pg_login_throttle_guard($username);
+
+        // From a few failures on, the attempt must also answer a question; see
+        // pg_login_captcha_gate().
+        $pg_login_screen = array(
+            'action'     => PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php',
+            'identifier' => 'u',
+            'password'   => 'p',
+        );
+
+        pg_login_captcha_gate($username, $liveform, $pg_login_screen);
         
         $liveform->validate_required_field('u', lang('Email or username is required.'));
         $liveform->validate_required_field('p', lang('Password is required.'));
@@ -80,7 +95,12 @@ if (!$_POST) {
         // if there is not already an error, validate login
         if ($liveform->check_form_errors() == false) {
             // if login is not valid, check which part of login is invalid
-            if (validate_login($username, $password) == false) {
+            $login_user_id = validate_login($username, $password);
+            if ($login_user_id === false) {
+                // A wrong password is counted before the visitor is told which half was
+                // wrong, so the counter cannot be avoided by reading the message.
+                pg_login_record_failure($username);
+
                 // if username exists, password is incorrect, so output error about password being incorrect
                 if (validate_username($username) == true) {
                     log_activity('access denied (password invalid) (email or username: ' . $username . ')', 'UNKNOWN');
@@ -100,60 +120,40 @@ if (!$_POST) {
             }
         }
         
+        // A refused password that brings the account or the address up to the
+        // question threshold is answered with the question screen now.
+        if (isset($login_user_id) && $login_user_id === false) {
+            pg_login_captcha_after_failure($username, $liveform, $pg_login_screen);
+        }
+
         // if an error does not exist, user has logged in successfully, so forward user to next screen
         if ($liveform->check_form_errors() == false) {
+            // Signed in: forget this account's failures. Done before $username is
+            // replaced below, because the counter was opened under whatever the
+            // visitor typed, which may have been their email address.
+            pg_login_throttle_pass($username);
+
             // Get the actual username for the user, because the user probably entered
             // an email address for the username field.  We need the actual username
             // because it is important that we store the actual username in the session and cookies.
+            // We already have the verified user id; read the canonical username by id.
             $username = db_value(
-                "SELECT user_username
-                FROM user
-                WHERE
-                    (
-                        (user_username = '" . escape($username) . "')
-                        OR (user_email = '" . escape($username) . "')
-                    )
-                    AND (user_password = '" . escape($password) . "')");
+                "SELECT user_username FROM user WHERE user_id = '" . (int) $login_user_id . "'");
 
-            // if remember me feature is enabled then deal with it
+            // Sign the visitor in and, when the device limit is on, count this device.
+            // The gate fires for every login (no-op when the limit is off); a remembered
+            // login keeps a persistent cookie, a non-remembered one gets a session cookie
+            // only while the limit is on.
+            $pg_remember = (REMEMBER_ME == TRUE && $liveform->get_field_value('login_remember_me') == 1);
+            pg_device_limit_gate($login_user_id, $username, ($_REQUEST['send_to'] ?? ''), $pg_remember);
+            pg_login_set_device_cookie($login_user_id, $pg_remember);
+
             if (REMEMBER_ME == TRUE) {
-                // if the user selected to be remembered, then add cookies for that
-                if ($liveform->get_field_value('login_remember_me') == 1) {
-                    $secure = false;
-
-                    // If secure mode is enabled, then prepare secure cookie values.
-                    if (URL_SCHEME == 'https://') {
-                        $secure = true;
-                    }
-
-                    // If PHP version is greater than or equal to 5.2.0 then add cookies
-                    // for login info so that user will be logged in automatically and also
-                    // use httponly cookie, in order to prevent hacking methods.  PHP before 5.2.0
-                    // does not support setting httponly cookies.
-                    if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
-                        setcookie('software[username]', $username, time() + 315360000, '/', '', $secure, true);
-                        setcookie('software[password]', $password, time() + 315360000, '/', '', $secure, true);
-
-                    // Otherwise store login info in cookies without httponly cookie.
-                    } else {
-                        setcookie('software[username]', $username, time() + 315360000, '/', '', $secure);
-                        setcookie('software[password]', $password, time() + 315360000, '/', '', $secure);
-                    }
-
-                    // add cookie to remember that the user checked the remember me check box,
-                    // so that if the user logs out we can check the check box the next time by default for the user
-                    setcookie('software[remember_me]', 'true', time() + 315360000, '/');
-
-                // else the user did not select to be remembered, so add a different cookie
-                } else {
-                    // add cookie to remember the the user did not check the remember me check box,
-                    // so that the remember me check box will not be checked by default next time
-                    setcookie('software[remember_me]', 'false', time() + 315360000, '/');
-                }
+                setcookie('software[remember_me]', $pg_remember ? 'true' : 'false', time() + 315360000, '/');
             }
-            
+
+            $_SESSION['sessionuserid']  = $login_user_id;
             $_SESSION['sessionusername'] = $username;
-            $_SESSION['sessionpassword'] = $password;
 
             require_once(dirname(__FILE__) . '/connect_user_to_order.php');
             connect_user_to_order();
@@ -173,278 +173,52 @@ if (!$_POST) {
         }
         
     // else if the register form was submitted
-    } elseif ($_POST['register'] == 'true') {
+    } elseif (($_POST['register'] ?? '') == 'true') {
         check_banned_ip_addresses('register as a member');
-        
-        $liveform->validate_required_field('first_name', lang('First Name is required.'));
-        $liveform->validate_required_field('last_name', lang('Last Name is required.'));
-        $liveform->validate_required_field('member_id', h(MEMBER_ID_LABEL) . ' is required.');
-        $liveform->validate_required_field('username', lang('Username is required.'));
-        $liveform->validate_required_field('email_address', lang('Email is required.'));
-        $liveform->validate_required_field('email_address_verify', lang('Please type email address again.'));
-        $liveform->validate_required_field('password', lang('New Password is required.'));
-        $liveform->validate_required_field('password_verify', lang('Please type new password again.'));
 
-        // try to find member id
-        $query = "SELECT expiration_date FROM contacts WHERE member_id = '" . escape($liveform->get_field_value('member_id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        if (mysqli_num_rows($result) == 0) {
-            $liveform->mark_error('member_id', 'The ' . h(MEMBER_ID_LABEL) . ' you entered was not found.  Please enter a different ' . h(MEMBER_ID_LABEL) . '.');
-        } else {
-            $row = mysqli_fetch_assoc($result);
-            $expiration_date = $row['expiration_date'];
-        }
-        
-        // if there is not already an error for the username field, check to see if username is already in use
-        if ($liveform->check_field_error('username') == false) {
-            // check to see if username is already in use
-            $query = "SELECT user_id FROM user WHERE (user_username = '" . escape($liveform->get_field_value('username')) . "') OR (user_email = '" . escape($liveform->get_field_value('username')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-            if (mysqli_num_rows($result) > 0) {
-                $liveform->mark_error('username', 'The username you entered is already in use. Please enter a different username.');
+        // A designed page (the membership widget) names itself in return_to
+        // and its widget in pg_widget_id: the widget's contact-bound controls
+        // become extra address-book columns, and every answer goes back to
+        // that page. The legacy screen sends neither.
+        $activate_opts = array();
+        $return_to     = '';
+        if (isset($_POST['return_to']) && is_scalar($_POST['return_to']) && (string) $_POST['return_to'] !== '') {
+            $return_to = pg_safe_redirect_path((string) $_POST['return_to'], '/__none__');
+            if ($return_to === '/__none__') {
+                $return_to = '';
             }
+        }
+        if ($return_to !== '' && function_exists('pg_member_widget_register_opts')) {
+            $activate_opts = pg_member_widget_register_opts((int) ($_POST['pg_widget_id'] ?? 0), $liveform, 'membership');
         }
 
-        // if there is not already an error for the e-mail address field, check to see if e-mail address and verification e-mail address do not match
-        if (($liveform->check_field_error('email_address') == false) && ($liveform->check_field_error('email_address_verify') == false)) {
-            if ($liveform->get_field_value('email_address') != $liveform->get_field_value('email_address_verify')) {
-                $liveform->mark_error('email_address', 'The two email addresses you entered did not match.');
-                $liveform->mark_error('email_address_verify');
-            }
-        }
-
-        // if there is not already an error for the e-mail address field, validate e-mail address
-        if ($liveform->check_field_error('email_address') == false) {
-            if ((validate_email_address($liveform->get_field_value('email_address')) == false)) {
-                $liveform->mark_error('email_address', 'The email address you entered is invalid.');
-                $liveform->mark_error('email_address_verify');
-            }
-        }
-
-        // if there is not already an error for the e-mail address field, check to see if e-mail address is already in use
-        if ($liveform->check_field_error('email_address') == false) {
-            $query = "SELECT user_id FROM user WHERE (user_email = '" . escape($liveform->get_field_value('email_address')) . "') OR (user_username = '" . escape($liveform->get_field_value('email_address')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-            if (mysqli_num_rows($result) > 0) {
-                $liveform->mark_error('email_address', 'The email address you entered is already in use. Please enter a different email address.');
-                $liveform->mark_error('email_address_verify');
-            }
-        }
-        
-        // if there is not already an error for the password field, check to see if password and verification password do not match
-        if (($liveform->check_field_error('password') == false) && ($liveform->check_field_error('password_verify') == false)) {
-            if ($liveform->get_field_value('password') != $liveform->get_field_value('password_verify')) {
-                $liveform->mark_error('password', 'The two passwords you entered did not match.');
-                $liveform->mark_error('password_verify');
-                $liveform->assign_field_value('password', '');
-                $liveform->assign_field_value('password_verify', '');
-            }
-        }
-        
-        // if there is not already an error for the password field,
-        // and there is not already an error for the password verify field,
-        // and strong password is enabled,
-        // and the password is not strong,
-        // then mark error for password fields
-        if (
-            ($liveform->check_field_error('password') == false)
-            && ($liveform->check_field_error('password_verify') == false)
-            && (STRONG_PASSWORD == true)
-            && (validate_password_strength($liveform->get_field_value('password')) == false)
-        ) {
-            $liveform->mark_error('password', 'The password you entered does not meet the requirements. Please enter a different password.');
-            $liveform->mark_error('password_verify');
-            $liveform->assign_field_value('password', '');
-            $liveform->assign_field_value('password_verify', '');
-        }
-        
-        // Check to see if the password is in the password hint, and mark an error if so.
-        if (($liveform->get_field_value('password_hint') != '') && ($liveform->get_field_value('password') != '')) {
-            if (
-                ($liveform->get_field_value('password_hint') == $liveform->get_field_value('password'))
-                || (mb_strpos(mb_strtolower($liveform->get_field_value('password_hint')), mb_strtolower($liveform->get_field_value('password'))) !== false) 
-               ) {
-                    $liveform->mark_error('password_hint', 'Your password hint cannot contain your password.');
-                    $liveform->assign_field_value('password_hint', '');
-            }
-        }
+        $activated = pg_member_activate($liveform, $activate_opts);
 
         // if an error does not exist
-        if ($liveform->check_form_errors() == false) {
-            // check for an existing contact to use
-            $query = "SELECT id FROM contacts WHERE member_id = '" . escape($liveform->get_field_value('member_id')) . "' AND last_name = '" . escape($liveform->get_field_value('last_name')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        if ($activated['ok']) {
 
-            // if a contact was found
-            if (mysqli_num_rows($result) > 0) {
-                $row = mysqli_fetch_assoc($result);
-                $contact_id = $row['id'];
-
-                // update contact
-                $query = "UPDATE contacts
-                         SET
-                             first_name = '" . escape($liveform->get_field_value('first_name')) . "',
-                             email_address = '" . escape($liveform->get_field_value('email_address')) . "',
-                             opt_in = '" . e($liveform->get('opt_in')) . "'
-                         WHERE id = '$contact_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-
-            // else a contact was not found
-            } else {
-
-                // create contact
-                $query = "INSERT INTO contacts (
-                             first_name,
-                             last_name,
-                             email_address,
-                             member_id,
-                             expiration_date,
-                             opt_in,
-                             timestamp)
-                         VALUES (
-                             '" . escape($liveform->get_field_value('first_name')) . "',
-                             '" . escape($liveform->get_field_value('last_name')) . "',
-                             '" . escape($liveform->get_field_value('email_address')) . "',
-                             '" . escape($liveform->get_field_value('member_id')) . "',
-                             '" . escape($expiration_date) . "',
-                             '" . e($liveform->get('opt_in')) . "',
-                             UNIX_TIMESTAMP())";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-
-                // get contact id so we can connect user to contact
-                $contact_id = mysqli_insert_id(db::$con);
-            }
-
-            // Update opt-in status for all contacts with this same email address, so the opt-in
-            // status is the same for all.
-            db(
-                "UPDATE contacts SET opt_in = '" . e($liveform->get('opt_in')) . "'
-                WHERE email_address = '" . e($liveform->get('email_address')) . "'");
-            
-            // check if membership contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = '" . MEMBERSHIP_CONTACT_GROUP_ID  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            // if membership contact group exists
-            if (mysqli_num_rows($result) > 0) {
-                // check if contact is already in membership contact group
-                $query =
-                    "SELECT contact_id
-                    FROM contacts_contact_groups_xref
-                    WHERE
-                        (contact_id = '$contact_id')
-                        AND (contact_group_id = '" . MEMBERSHIP_CONTACT_GROUP_ID . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                
-                // if contact is not already in contact group, then add contact to membership contact group
-                if (mysqli_num_rows($result) == 0) {
-                    $query =
-                        "INSERT INTO contacts_contact_groups_xref (
-                            contact_id,
-                            contact_group_id)
-                        VALUES (
-                            '$contact_id',
-                            '" . MEMBERSHIP_CONTACT_GROUP_ID . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            // The designed page: a send_to it chose, else back to itself with
+            // the notice its Messages block prints. The legacy screen: the
+            // membership confirmation page.
+            if ($return_to !== '') {
+                $done_url = pg_safe_redirect_path(($_POST['send_to'] ?? ''), '/__none__');
+                if ($done_url === '/__none__') {
+                    $liveform->add_notice(lang('Your membership is active. You are now signed in.'));
+                    $done_url = $return_to;
                 }
+                header('Location: ' . URL_SCHEME . HOSTNAME . $done_url);
+                exit();
             }
-
-            $sql_start_page_column = "";
-            $sql_start_page_value = "";
-
-            // If there is a start page set in the session, then set start page for user.
-            if ($_SESSION['software']['start_page_id']) {
-                $sql_start_page_column = "user_home,";
-                $sql_start_page_value = "'" . escape($_SESSION['software']['start_page_id']) . "',";
-            }
-            
-            // create user
-            $query = "INSERT INTO user (
-                         user_username,
-                         user_email,
-                         user_password,
-                         user_role,
-                         $sql_start_page_column
-                         user_password_hint,
-                         user_contact,
-                         user_timestamp)
-                     VALUES (" .
-                         "'" . escape($liveform->get_field_value('username')) . "', " .
-                         "'" . escape($liveform->get_field_value('email_address')) . "', " .
-                         "md5('" . escape($liveform->get_field_value('password')) . "'), " .
-                         "'3', " .
-                         $sql_start_page_value .
-                         "'" . escape($liveform->get_field_value('password_hint')) . "', " .
-                         $contact_id . ", " .
-                         "UNIX_TIMESTAMP())";
-
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-
-            // if remember me feature is enabled then deal with it
-            if (REMEMBER_ME == TRUE) {
-                // if the user selected to be remembered, then add cookies for that
-                if ($liveform->get_field_value('register_remember_me') == 1) {
-                    $secure = false;
-
-                    // If secure mode is enabled, then prepare secure cookie values.
-                    if (URL_SCHEME == 'https://') {
-                        $secure = true;
-                    }
-
-                    // If PHP version is greater than or equal to 5.2.0 then add cookies
-                    // for login info so that user will be logged in automatically and also
-                    // use httponly cookie, in order to prevent hacking methods.  PHP before 5.2.0
-                    // does not support setting httponly cookies.
-                    if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
-                        setcookie('software[username]', $liveform->get_field_value('username'), time() + 315360000, '/', '', $secure, true);
-                        setcookie('software[password]', md5($liveform->get_field_value('password')), time() + 315360000, '/', '', $secure, true);
-
-                    // Otherwise store login info in cookies without httponly cookie.
-                    } else {
-                        setcookie('software[username]', $liveform->get_field_value('username'), time() + 315360000, '/', '', $secure);
-                        setcookie('software[password]', md5($liveform->get_field_value('password')), time() + 315360000, '/', '', $secure);
-                    }
-
-                    // add cookie to remember that the user checked the remember me check box,
-                    // so that if the user logs out we can check the check box the next time by default for the user
-                    setcookie('software[remember_me]', 'true', time() + 315360000, '/');
-
-                // else the user did not select to be remembered, so add a different cookie
-                } else {
-                    // add cookie to remember the the user did not check the remember me check box,
-                    // so that the remember me check box will not be checked by default next time
-                    setcookie('software[remember_me]', 'false', time() + 315360000, '/');
-                }
-            }
-
-            // add login information to session
-            $_SESSION['sessionusername'] = $liveform->get_field_value('username');
-            $_SESSION['sessionpassword'] = md5($liveform->get_field_value('password'));
-
-            require_once(dirname(__FILE__) . '/connect_user_to_order.php');
-            connect_user_to_order();
-            
-            // if there is a membership e-mail address, then send membership confirmation via e-mail to e-mail address
-            if (MEMBERSHIP_EMAIL_ADDRESS) {
-                
-                email(array(
-                    'to' => MEMBERSHIP_EMAIL_ADDRESS,
-                    'from_name' => ORGANIZATION_NAME,
-                    'from_email_address' => EMAIL_ADDRESS,
-                    'subject' => 'Registration Confirmation',
-                    'format' => 'html',
-                    'body' => get_membership_confirmation_screen()));
-
-            }
-            
-            // remove liveform because we don't need it anymore
-            $liveform->remove_form('membership_entrance');
 
             // send user to membership confirmation page
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/membership_confirmation.php' . $query_string);
 
         // else an error does exist
         } else {
+            if ($return_to !== '') {
+                header('Location: ' . URL_SCHEME . HOSTNAME . $return_to);
+                exit();
+            }
             // send user back to previous form
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php' . $query_string);
         }

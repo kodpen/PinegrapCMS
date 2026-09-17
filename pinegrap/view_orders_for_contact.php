@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -143,6 +143,7 @@ pg_page_shell(
         'extra classes'=>'contact',
         'icon'=>'contact',
         'heading'=>lang('All Orders for Contact'),
+        'heading_description' => lang('All orders for this contact.'),
         'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
         'breadcrumb' => array(
             array('label' => lang('All My Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'),
@@ -151,16 +152,13 @@ pg_page_shell(
         ),
     )
 ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
 
 
 
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
-<h2 class="d-inline-block text-break" data-bs-content="' . lang('All orders for this contact.') . '" title="' . lang('All Orders for Contact') . '">[' . h($first_name)  . ' ' . h($last_name)  . ']</h2>
-                </div>
-            </div>
+            
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
@@ -178,5 +176,6 @@ pg_page_shell(
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
     output_footer();

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -66,18 +66,16 @@ if (!$_POST) {
             'extra classes'=>'contact',
             'icon'=>'contact', 
             'heading'=>lang('Import Contacts'),
+            'heading_description' => lang('Import contacts into any of my contact groups.'),
             'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
         
             'breadcrumb' => array(array('label' => lang('Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'), array('label' => lang('Import Contacts'))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Import contacts into any of my contact groups.') . '" title="' . lang('Import Contacts') . '">[' . lang('New Contacts') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="import_contacts.php" method="post" class="product_form" enctype="multipart/form-data">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -131,7 +129,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 } else {
@@ -340,7 +339,7 @@ if (!$_POST) {
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
         
     // else send user to the default view
     } else {

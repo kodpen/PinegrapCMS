@@ -2460,21 +2460,6 @@ CREATE TABLE `user` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `user`
---
-
-LOCK TABLES `user` WRITE;
-/*!40000 ALTER TABLE `user` DISABLE KEYS */;
-SET autocommit=0;
-INSERT INTO `user` VALUES (106,'adminpinegrapdefault','info@kodpen.com','273d2ee30d753c035f7fa7c924fc592d',0,294,'no','no',NULL,1582644414,127,'no','no','no','','no','yes',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'','',0,NULL,0,'0000',1621257356,'','');
-/*!40000 ALTER TABLE `user` ENABLE KEYS */;
-UNLOCK TABLES;
-COMMIT;
-
--- Dumped table `user` with 1 row(s)
---
-
---
 -- Table structure for table `email_a_friend_pages`
 --
 

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -612,6 +612,7 @@ if (!$_POST) {
             '"image_name",' .
             '"price",' .
             '"taxable",' .
+            '"tax_rate",' .
             '"selection_type",' .
             '"default_quantity",' .
             '"address_name",' .
@@ -714,6 +715,8 @@ if (!$_POST) {
                 image_name,
                 price,
                 taxable,
+
+                tax_rate,
                 selection_type,
                 default_quantity,
                 address_name,
@@ -838,6 +841,7 @@ if (!$_POST) {
                 '"' . escape_csv($product['image_name']) . '",' .
                 '"' . sprintf('%01.2lf', $product['price'] / 100) . '",' .
                 '"' . $product['taxable'] . '",' .
+                '"' . $product['tax_rate'] . '",' .
                 '"' . $product['selection_type'] . '",' .
                 '"' . $product['default_quantity'] . '",' .
                 '"' . escape_csv($product['address_name']) . '",' .
@@ -1684,22 +1688,7 @@ if (!$_POST) {
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
 
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                            <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">Duplicate Products</h2>
-
-                        </div>
-                        <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                            <div class="row justify-content-center justify-content-md-end">
-                                <form id="search_form" action="view_products.php" method="get" class="search_form col-auto">
-                                    <div class="input-group input-group-sm">
-                                        <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                        <select id="filter_select" name="filter" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+                    
                     <div class="card my-4">
                         <div class="card-body p-0 position-relative">
                             <form name="form"  action="duplicate_products.php" method="post"> 
@@ -1712,6 +1701,8 @@ if (!$_POST) {
                                 <input type="hidden" name="edit_price_value">
                                 <input type="hidden" name="edit_inventory">
                                 <input type="hidden" name="edit_inventory_quantity_process">
+                                <input type="hidden" name="edit_tax_rate_method">
+                                <input type="hidden" name="edit_tax_rate_value">
                                 <input type="hidden" name="edit_inventory_quantity">
                                 <table class="chart table-hover table" style="width:100%;display:none">
                                     <thead>
@@ -1783,14 +1774,15 @@ if (!$_POST) {
                     </div>
                 </div>
             </div>
-        </main>';
+        ';
 
         print pg_page_shell([
         'title'=> $heading,
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>$heading
-    ]) . $output . output_footer();
+        'heading'=>$heading,
+        'heading_description' => ($subheading ?? '')
+    ]) . '<main id="content" class="container-fluid">' . $output . '</main>' . output_footer();
         $liveform->remove_form('view_products');
     }
 }else{
@@ -1852,6 +1844,8 @@ if (!$_POST) {
                 price,
     
                 taxable,
+
+                tax_rate,
     
                 contact_group_id,
     
@@ -2036,6 +2030,8 @@ if (!$_POST) {
                 '" . escape($row['price']) . "',
     
                 '" . escape($row['taxable']) . "',
+
+                " . (($row['tax_rate'] === null) ? 'NULL' : "'" . escape($row['tax_rate']) . "'") . ",
     
                 '" . escape($row['contact_group_id']) . "',
     

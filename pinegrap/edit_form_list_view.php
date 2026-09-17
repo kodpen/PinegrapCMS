@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -29,7 +29,7 @@ $page = db_item(
         page_style AS style_id,
         mobile_style_id AS mobile_style_id
     FROM page
-    WHERE page_id = '" . e($_REQUEST['page_id']) . "'");
+    WHERE page_id = '" . e($_REQUEST['page_id'] ?? '') . "'");
 if (!$page) {
     output_error(lang('Sorry, the page could not be found.'));
 }
@@ -431,10 +431,11 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Edit Form List View'),
+        'heading_description' => lang('Update this page\'s display of data from multiple submitted forms.'),
         'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php')
     ,
             'breadcrumb' => array(array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'), array('label' => lang('Edit Form List View'))),
-        ]) );
+        ]) . '<main id="content" class="container-fluid">' );
 
     // Get MySQL version so we can know if advanced search and browse are supported.
     $query = "SELECT VERSION()";
@@ -687,9 +688,8 @@ if (!$_POST) {
                 ' . $form->get_messages() . '
                 <div class="row mb-2 flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page position-relative" data-bs-content="' . lang('Update this page\'s display of data from multiple submitted forms.') . '" title="' . lang('Edit Form List View') . '">[' . h($page['name']) . ']</h2>
+
                         <p>' . $output_custom_form_information . '</p>
-                        </div>
                     </div>
                 </div>
                 <div class="modal fade" id="hints" tabindex="-1" aria-labelledby="hints" aria-hidden="true">
@@ -971,7 +971,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     $form->remove();
@@ -1186,13 +1187,16 @@ if (!$_POST) {
     log_activity(lang(array('string'=>'page ({var:1}) was modified','vars'=>$page['name'])), $_SESSION['sessionusername']);
     
     if ($_POST['send_to']) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
     } else {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['page_id']);
     }
 }
 
-function select_order_by($order_by = '', $standard_fields, $custom_fields, $include_random)
+// $order_by lost its default: PHP 8 rejects an optional parameter sitting in
+// front of required ones. All three call sites below pass every argument, so
+// nothing relied on it.
+function select_order_by($order_by, $standard_fields, $custom_fields, $include_random)
 {
     $output_random_option = '';
 

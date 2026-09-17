@@ -1326,7 +1326,7 @@
             						</div>
                             	    <span id="oneinstallment" class="installment_box">
                         				<input type="radio" name="installment" checked value="1" >
-                        				<label for="1">Tek Çekim<br/><br/><?if($total_with_surcharge_info):?><?=($total_with_surcharge_info)?><?else:?><?=($total_info)?><?endif?></label>
+                        				<label for="1">Tek Çekim<br/><br/><?php if($total_with_surcharge_info):?><?=($total_with_surcharge_info)?><?php else:?><?=($total_info)?><?php endif?></label>
                             	    </span>
                             	    <span id="twoinstallment" class="installment_box" style="display:none">
                         				<input type="radio" name="installment" value="2">

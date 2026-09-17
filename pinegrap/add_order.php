@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -49,7 +49,6 @@ include_once('liveform.class.php');
 $liveform = new liveform('add_order');
 $user     = validate_user();
 validate_ecommerce_access($user);
-license_check(array('output' => 'validate'));
 
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 
@@ -300,6 +299,10 @@ if ($action === 'complete_order') {
                             SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
                             WHERE id = '" . escape($item['product_id']) . "'");
                     }
+
+                    if (function_exists('pg_marketplace_product_changed')) {
+                        pg_marketplace_product_changed((int)$item['product_id']);
+                    }
                 }
             }
 
@@ -469,8 +472,8 @@ echo
             'extra classes' => 'product',
             'icon'          => 'store',
             'heading'       => lang('Add Local Order'),
+            'heading_description' => lang('Scan a barcode or search for a product to add items to the cart, then complete the order as a local sale.'),
             'cancel'=>array('enable'=>'true','url'=>'view_orders.php'),
-            'auto_main'     => false,
             'breadcrumb' => array(
                 array('label' => lang('Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'),
                 array('label' => lang('Add Local Order')),
@@ -482,13 +485,7 @@ echo
 
         <div class="row">
             <div class="col-12">
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page"
-                            data-bs-content="' . lang('Scan a barcode or search for a product to add items to the cart, then complete the order as a local sale.') . '"
-                            title="' . lang('Add Local Order') . '">' . lang('Add Local Order') . '</h2>
-                    </div>
-                </div>
+                
                 ' . $liveform->get_messages() . '
             </div>
         </div>

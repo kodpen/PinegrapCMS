@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -126,6 +126,7 @@ if (!$_POST) {
                     array('label' => $file_name),
                 ),
             ]) . '
+<main id="content" class="container-fluid">
                             <div class="row">
                     <div class="col-12">
                         ' . $liveform->output_errors() . '
@@ -189,8 +190,8 @@ if (!$_POST) {
                 </form>
                     </div>
                 </div>
-            </main>
-            ' . output_footer();
+            
+</main>' . output_footer();
         
         $liveform->remove_form('edit_theme_file');
     }

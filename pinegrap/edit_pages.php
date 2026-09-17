@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
@@ -23,7 +23,7 @@ validate_area_access($user, 'user');
 
 // If a theme is being previewed then get the activated themes.
 // We will use further below.
-if ($_SESSION['software']['preview_theme_id']) {
+if (!empty($_SESSION['software']['preview_theme_id'])) {
     $activated_desktop_theme_id = db_value("SELECT id FROM files WHERE activated_desktop_theme = '1'");
     $activated_mobile_theme_id = db_value("SELECT id FROM files WHERE activated_mobile_theme = '1'");
 }
@@ -35,7 +35,7 @@ if (!$_POST) {
 
     // If the user is currently previewing a theme that is not the activated theme
     if (
-        ($_SESSION['software']['preview_theme_id'])
+        (!empty($_SESSION['software']['preview_theme_id']))
         && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
         && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
     ) {
@@ -120,7 +120,7 @@ if (!$_POST) {
             window.close();
         }
     </script>
-    <main id="content" class="container">
+    <main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12 col-sm-6">
                 <div class="form-floating mt-1 mb-2">
@@ -173,10 +173,10 @@ if (!$_POST) {
     validate_token_field();
     
     // if at least one page was selected
-    if ($_POST['pages']) {
+    if (!empty($_POST['pages'])) {
         $number_of_pages = 0;
         
-        switch ($_POST['action']) {
+        switch ($_POST['action'] ?? '') {
             // if pages are being edited, proceed
             case 'edit':
                 // if a folder was selected to move the page(s) to
@@ -220,7 +220,7 @@ if (!$_POST) {
                             // If the user is currently previewing a theme and it is not an activated theme,
                             // then update preview style for page instead of activated style.
                             if (
-                                ($_SESSION['software']['preview_theme_id'])
+                                (!empty($_SESSION['software']['preview_theme_id']))
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                             ) {
@@ -266,7 +266,7 @@ if (!$_POST) {
                             // If the user is currently previewing a theme and it is not an activated theme,
                             // then update preview style for page instead of activated style.
                             if (
-                                ($_SESSION['software']['preview_theme_id'])
+                                (!empty($_SESSION['software']['preview_theme_id']))
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                             ) {
@@ -394,7 +394,7 @@ if (!$_POST) {
                             // If the user is currently previewing a theme that is not the activated theme,
                             // then set default label in a certain way.
                             if (
-                                ($_SESSION['software']['preview_theme_id'])
+                                (!empty($_SESSION['software']['preview_theme_id']))
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                             ) {
@@ -417,7 +417,7 @@ if (!$_POST) {
                         // If the user is currently previewing a theme that is not the activated theme,
                         // then add preview label to log message.
                         if (
-                            ($_SESSION['software']['preview_theme_id'])
+                            (!empty($_SESSION['software']['preview_theme_id']))
                             && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                             && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                         ) {
@@ -441,7 +441,7 @@ if (!$_POST) {
                             // If the user is currently previewing a theme that is not the activated theme,
                             // then set default label in a certain way.
                             if (
-                                ($_SESSION['software']['preview_theme_id'])
+                                (!empty($_SESSION['software']['preview_theme_id']))
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                                 && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                             ) {
@@ -464,7 +464,7 @@ if (!$_POST) {
                         // If the user is currently previewing a theme that is not the activated theme,
                         // then add preview label to log message.
                         if (
-                            ($_SESSION['software']['preview_theme_id'])
+                            (!empty($_SESSION['software']['preview_theme_id']))
                             && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                             && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                         ) {
@@ -638,7 +638,7 @@ if (!$_POST) {
                         }
                         
                         // if this page is a form view directory, delete form_view_directories_form_list_views_xref records
-                        if ($current_page_type == 'form view directory') {
+                        if ($page_type == 'form view directory') {
                             $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($page_id) . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         }
@@ -770,7 +770,7 @@ if (!$_POST) {
     
     // If there is a send to value then send user back to that screen
     if ((isset($_POST['send_to']) == TRUE) && ($_POST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
         
     // else send user to the default view
     } else {

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -74,18 +74,16 @@ if (!$_POST) {
             'extra classes'=>'products',
             'icon'=>'store',
             'heading'=>lang('Edit Ship Date Adjustment'),
+            'heading_description' => lang('Update this adjustment for a specific zip code prefix and shipping method.'),
             'cancel'=>array('enable'=>'true','url'=>'view_ship_date_adjustments.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Ship Date Adjustments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php'), array('label' => lang('Edit Ship Date Adjustment'))),
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break" data-bs-content="' . lang('Update this adjustment for a specific zip code prefix and shipping method.') . '" title="' . lang('Edit Ship Date Adjustment') . '">' . h($ship_date_adjustment['zip_code_prefix']) . '</h2>
-                        </div>
-                    </div>
+                    
                     <form action="edit_ship_date_adjustment.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '">
@@ -129,7 +127,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
     $liveform->remove_form();

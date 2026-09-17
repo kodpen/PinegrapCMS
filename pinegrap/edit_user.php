@@ -12,12 +12,13 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 include_once('liveform.class.php');
+include_once('includes/user_permissions.php');
 $liveform_view_users = new liveform('view_users');
 $user = validate_user();
 validate_area_access($user, 'manager');
@@ -40,6 +41,99 @@ if ($user['role'] > 0) {
     }
 }
 
+// Manual sign-in unlock.
+//
+// Handled ahead of the edit form's own POST branch because it is not part of
+// saving the user: it clears this account's throttle counters and comes
+// straight back to the screen, so it must not fall through into the save.
+if (isset($_POST['unlock_sign_in'])) {
+
+    validate_token_field();
+
+    $unlock_user = db_item(
+        "SELECT user_username, user_email
+        FROM user
+        WHERE user_id = '" . escape($_POST['id'] ?? '') . "'");
+
+    if ($unlock_user) {
+
+        pg_login_unlock($unlock_user['user_username'], $unlock_user['user_email']);
+
+        log_activity(
+            lang(array(
+                'string' => 'sign-in lock lifted for {var:1}',
+                'vars'   => $unlock_user['user_username'])),
+            $_SESSION['sessionusername']);
+    }
+
+    $unlock_send_to = '';
+
+    if ((isset($_POST['send_to'])) && ($_POST['send_to'] != '')) {
+        $unlock_send_to = '&send_to=' . urlencode($_POST['send_to']);
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
+        . '/edit_user.php?id=' . urlencode($_POST['id'] ?? '') . $unlock_send_to);
+
+    exit();
+}
+
+// Disconnect Google from this account.
+//
+// The link is the Google subject - a permanent id - not the email address.
+// That is deliberate: either side's email can change (the member renames their
+// Gmail, the operator edits the account's email) and a link that broke on that
+// would lock people out of their own accounts. So changing the email here does
+// NOT unlink Google, and this button is how the link is actually removed -
+// when an account changes hands, or the wrong Google account was connected.
+//
+// Handled ahead of the edit form's own POST branch, like unlock_sign_in above:
+// it is not part of saving the user and must not fall through into the save.
+if (isset($_POST['pg_unlink_google'])) {
+
+    validate_token_field();
+
+    $unlink_user_id = (int) ($_POST['id'] ?? 0);
+    $unlink_user = db_item(
+        "SELECT user_username, user_role, user_password_algo
+        FROM user
+        WHERE user_id = '" . $unlink_user_id . "'");
+
+    if ($unlink_user) {
+
+        // Same rule as "login as user": a non-administrator may only act on an
+        // account with a lower-privileged role, and always on their own.
+        if (($unlink_user_id !== (int) USER_ID) && (USER_ROLE > 0) && (USER_ROLE >= (int) $unlink_user['user_role'])) {
+            log_activity(lang(array(
+                'string' => 'access denied to disconnect Google for a higher-role user ({var:1})',
+                'vars'   => array($unlink_user['user_username']))), USER_USERNAME);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // An account with no password of its own would be locked out entirely.
+        if (((int) $unlink_user['user_password_algo']) === 3) {
+            output_error(lang('This account signs in with Google only. Give it a password first, or disconnecting Google would lock it out.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        db("UPDATE user SET user_google_id = NULL WHERE user_id = '" . $unlink_user_id . "'");
+
+        log_activity(lang(array(
+            'string' => 'google connection removed from user ({var:1})',
+            'vars'   => array($unlink_user['user_username']))), $_SESSION['sessionusername'] ?? '');
+    }
+
+    $unlink_send_to = '';
+
+    if ((isset($_POST['send_to'])) && ($_POST['send_to'] != '')) {
+        $unlink_send_to = '&send_to=' . urlencode($_POST['send_to']);
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
+        . '/edit_user.php?id=' . urlencode($_POST['id'] ?? '') . $unlink_send_to);
+
+    exit();
+}
+
 if (!$_POST) {
     $set_page_type_values = array();
     
@@ -48,6 +142,7 @@ if (!$_POST) {
             user_id,
             user_username,
             user_email,
+            user_google_id,
             user_role,
             user_home,
             user_password_hint,
@@ -64,6 +159,9 @@ if (!$_POST) {
             user_manage_ecommerce,
             user_view_card_data,
             manage_ecommerce_reports,
+            manage_erp,
+            manage_erp_cash,
+            manage_erp_settings,
             user_set_offline_payment,
             user_publish_calendar_events,
             user_set_page_type_email_a_friend,
@@ -102,6 +200,10 @@ if (!$_POST) {
     $id = $row['user_id'];
     $username = $row['user_username'];
     $email = $row['user_email'];
+    $user_google_id = $row['user_google_id'];
+    $output_google_badge = (!empty($user_google_id))
+        ? ' <span class="badge bg-light text-dark border fw-light" title="' . h(lang('This account can sign in with Google.')) . '">' . lang('Google') . '</span>'
+        : '';
     $role = $row['user_role'];
     $home = $row['user_home'];
     $password_hint = $row['user_password_hint'];
@@ -118,6 +220,9 @@ if (!$_POST) {
     $manage_ecommerce = $row['user_manage_ecommerce'];
     $view_card_data = $row['user_view_card_data'];
     $manage_ecommerce_reports = $row['manage_ecommerce_reports'];
+    $manage_erp = $row['manage_erp'] ?? 0;
+    $manage_erp_cash = $row['manage_erp_cash'] ?? 0;
+    $manage_erp_settings = $row['manage_erp_settings'] ?? 0;
     $set_offline_payment = $row['user_set_offline_payment'];
     $publish_calendar_events = $row['user_publish_calendar_events'];
     $set_page_type_values['set_page_type_email_a_friend'] = $row['user_set_page_type_email_a_friend'];
@@ -156,145 +261,70 @@ if (!$_POST) {
     // it might cause confusing log messages eventually (e.g. "example_username -> example_username").
     // It might also cause confusion for the user about what happens if they do that.
     if ($id != USER_ID) {
-        $output_login_as_user_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="login_as_user.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><span class="material-icons me-1">login</span>' . lang('Login as User') . '</a>';
+        $output_login_as_user_button = '<a class="btn btn-sm btn-outline-secondary rounded-pill px-3" href="login_as_user.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-box-arrow-in-right me-1"></i>' . lang('Login as User') . '</a>';
     }
-    
-    $output_contact_info = '';
-    
-    // if this user has a contact, then prepare contact info
-    if ($contact_id != '') {
 
-        $image = '';
-        if($contact_file_id == 0){
-            if($contact_image){
-                $image = '
-                <div class="text-center">
-                    <img style="width: 150px; height: 150px;" class="img-fluid img-thumbnail" src="' . h($contact_image) . '">
-                </div>';
-            }else{
-                $image = '
-                <div class="text-center">
-                    <img style="width: 150px; height: 150px;" class="img-fluid img-thumbnail" src="assets/images/person1.png">
-                </div>';
-            }
-           
-        }else{
-            $query = 
-            "SELECT 
-                files.name
-            FROM files 
-            WHERE files.id = '" . escape($contact_file_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $file = mysqli_fetch_array($result);
-            $file_name = $file['name'];
-            $image =    '
-            <div class="text-center">
-                <img style="width: 150px; height: 150px;" class="img-fluid img-thumbnail" src="' . PATH . h($file_name) . '">
-            </div>';
-        }
+    // Resetting a password revokes every remembered session of that account
+    // (reset_password.php -> pg_auth_token_revoke_user), so an editor who does
+    // it to his/her own account is signed out on the next request - before the
+    // screen carrying the new password gets to render it. The password then
+    // only exists in the e-mail, and where mail is not configured it exists
+    // nowhere at all, which is how an administrator locks the site's last
+    // administrator out of it. The gate that counts is in reset_password.php;
+    // here the button simply is not offered, and the change password screen -
+    // which keeps the browser signed in - is offered in its place.
+    $output_reset_password_button = '';
+    $output_reset_password_form   = '';
 
+    if ($id != USER_ID) {
+        $output_reset_password_button = '<a class="btn btn-sm btn-outline-warning rounded-pill px-3" href="#" onclick="event.preventDefault(); pgConfirm({title:\'' . lang('Reset & Send Password') . '\', message:\'' . lang('Are you sure you want to reset the user\'s password and email a new password to the user?') . '\', confirmText:\'' . lang('Reset & Send Password') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok) document.reset_password_form.submit();}); return false;"><i class="bi bi-key me-1"></i>' . lang('Reset & Send Password') . '</a>';
 
-        $output_name = '';
-        
-        // if there is a first name or last name, then output name
-        if (($first_name != '') || ($last_name != '')) {
-            $name = '';
-            
-            // if there is a first name, then start name with that
-            if ($first_name != '') {
-                $name .= $first_name;
-            }
-            
-            // if there is a last name, then add it to the name
-            if ($last_name != '') {
-                // if the name is not blank so far, then add a space for separation
-                if ($name != '') {
-                    $name .= ' ';
-                }
-                
-                $name .= $last_name;
-            }
-            
-            $output_name = '<div class="p-2 text-center"><a class="btn btn-link link-secondary py-0 m-1 contacts-color" href="edit_contact.php?id=' . $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-2">perm_contact_calendar</span>' . h($name) . '</a></div>';
-        }
-        
-        $output_email_address = '';
-        
-        // if there is an e-mail address then output it
-        if ($email_address != '') {
-            $output_link_start = '';
-            $output_link_end = '';
-            
-            // if there is no name then add link around e-mail address
-            if ($output_name == '') {
-                $output_link_start = '<a class="btn btn-link link-secondary py-0 m-1 contacts-color" href="edit_contact.php?id=' . $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-2">perm_contact_calendar</span>';
-                $output_link_end = '</a>';
-            }
-            
-            $output_email_address = '<div class="p-2 text-center">' . $output_link_start . h($email_address) . $output_link_end . '</div>';
-        }
-        
-        // if there is a member ID then output it
-        if ($member_id != '') {
-            $output_member_id = '<div class="p-2 text-center">' . h(MEMBER_ID_LABEL) . ': ' . h($member_id) . '</div>';
-        }
-        
-        $output_contact_info = $image . $output_name . $output_email_address . $output_member_id;
-        
-    // else the user does not have a contact, so output message and submit button
+        $output_reset_password_form =
+            '<form name="reset_password_form" action="reset_password.php" method="post">'
+            . get_token_field()
+            . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />'
+            . '<input type="hidden" name="user_id" value="' . h($_GET['id']) . '">'
+            . '</form>';
+
     } else {
-        $output_contact_info =
-            '<div class="alert alert-secondary"><p class="mb-0">' . lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.') . '</p></div>
-            <div class="text-center"><button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn my-1  btn-primary " data-loading-content="' . lang(array('string'=>'Creating') ) . '"><span class="material-icons me-2">person_add</span><span class="btn-text" >' . lang(array('string'=>'Create Contact') ) . '</span></button>';
+        $output_reset_password_button = '<span class="text-body-secondary small">' . h(lang('You cannot reset your own password here.')) . '</span>';
+
+        // Linked only where the site actually has a change password page: a
+        // button pointing at a page that is not there is worse than no button.
+        $own_password_url = get_page_type_url('change password');
+
+        if ($own_password_url) {
+            $output_reset_password_button .= '<a class="btn btn-sm btn-outline-secondary rounded-pill px-3" href="' . h($own_password_url) . '"><i class="bi bi-key me-1"></i>' . lang('Change Password') . '</a>';
+        }
     }
-    
-  
-    
-    // assume that user may be deleted, until we find out otherwise
-    $allow_delete = true;
-    
-    // if user is an administrator or designer, then prepare to output role picklist
+
+    // The last administrator may not be demoted or deleted: the site would be
+    // left with nobody who can reach the admin-only screens.
+    $allow_delete       = true;
+    $allow_role_change  = true;
+    $role_cards_disabled = true;
+
     if ($user['role'] <= 1) {
-        // assume that role is allowed to be changed, until we find out otherwise
-        $allow_role_change = true;
-        $output_role_disabled_class = '';
-        $output_role_disabled_attribute = '';
-        
-        // if the editor is an administrator and the user that is being edited is an administrator, find out if role is allowed to be changed
+
+        $role_cards_disabled = false;
+
         if (($user['role'] == 0) && ($role == 0)) {
-            // check to see if there is another administrator user, other than this user that is being edited
-            $query =
-                "SELECT user_id
-                FROM user
-                WHERE
-                    (user_role = '0')
-                    AND (user_id != '$id')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            // if there is no other administrator user, do not allow the role to be changed and do not allow the user to be deleted
-            if (mysqli_num_rows($result) == 0) {
-                $allow_role_change = false;
-                $allow_delete = false;
+
+            $another_administrator = db_value("SELECT user_id FROM user
+                WHERE (user_role = '0') AND (user_id != '" . escape($id) . "')");
+
+            if ($another_administrator == '') {
+                $allow_role_change   = false;
+                $allow_delete        = false;
+                $role_cards_disabled = true;
             }
         }
-
-        // if the role is allowed to be changed
-        if ($allow_role_change == false) {
-            $output_role_disabled_class =' disabled';
-            $output_role_disabled_attribute = 'disabled="disabled"';
-        }
-    }else{
-        $output_role_disabled_class =' disabled';
-        $output_role_disabled_attribute = 'disabled="disabled"';
     }
-    
-    // if the user is allowed to be deleted, prepare delete button to be outputted
+
     if ($allow_delete == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
-        
-    // else the user is not allowed to be deleted, so do not prepare delete button to be outputted
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-loading-content="' . lang(array('string'=>'Deleting')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1  btn-danger disabled"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1 btn-danger disabled"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
     }
 
     $output_password_hint_field = "";
@@ -404,237 +434,160 @@ if (!$_POST) {
         $contact_group_access_style = '; display: none';
     }
     
-    $output_manage_forms = '';
-    
-    // if forms module is on, then output manage forms checkbox
-    if (FORMS == true) {
-        $output_manage_forms = '<div class="form-check my-2 form-switch"><input type="checkbox"' . $manage_forms_checked . ' name="manage_forms" id="manage_forms" value="yes" class="form-check-input" /><label class="form-check-label" for="manage_forms">' . lang('Also allow User to access submitted form data for selected folders') . '</label></div>';
-    }
-    
-    // if calendars module is on, then output manage calendars checkbox
-    if (CALENDARS == true) {
-        // get all calendars
-        $query =
-            "SELECT
-               id,
-               name
-            FROM calendars
-            ORDER BY name";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $calendars = array();
-        
-        // loop through all calendars so they can be added to array
-        while ($row = mysqli_fetch_assoc($result)) {
-            $calendars[] = $row;
-        }
-
-        $output_calendars = '';
-
-        // loop through all calendars
-        foreach ($calendars as $calendar) {
-            // check to see if user has access to calendar
-            $query =
-                "SELECT user_id
-                FROM users_calendars_xref
-                WHERE
-                    (user_id = '" . escape($_GET['id']) . "')
-                    AND (calendar_id = '" . $calendar['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            // if user has access to this calendar, then prepare to check checkbox
-            if (mysqli_num_rows($result) > 0) {
-                $checked = ' checked="checked"';
-                
-            // else user does not have access to this calendar, so do not check checkbox
-            } else {
-                $checked = '';
-            }
-            
-            $output_calendars .= '
-            <div class="form-check"><input type="checkbox" name="calendar_' . $calendar['id'] . '" id="calendar_' . $calendar['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . $checked . ' /><label class="form-check-label" for="calendar_' . $calendar['id'] . '"> ' . h($calendar['name']) . '</label></div>';
-        }
-        
-        $output_manage_calendars =
-            '<div class="col-12 mt-5 mb-1 collapse show" id="manage_calendars_heading_row">
-                <h4 class="fw-bold text-muted">' . lang('Calendar Management Rights') . '</h4>
-            </div>
-            <div class="col-12 my-2 collapse show" id="manage_calendars_row">
-                <div class="form-check form-switch">
-                    <input value="yes" id="manage_calendars" name="manage_calendars" class="form-check-input collapse-switcher"' . $manage_calendars_checked . ' type="checkbox" role="switch" data-bs-target="#calendar_access" />
-                    <label class="form-check-label" for="manage_calendars">' . lang('Allow User to add events to one or more calendars') . '</label>
-                </div>
-                <div class="collapse popover w-100 fade bs-popover-bottom p-0 mb-2" id="calendar_access">
-                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                    <div class="popover-body">
-                        <div class="row">
-                            <div class="col-12 my-1">
-                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                    <div class="card-header border-0 bg-reset">
-                                        <div class="form-check form-switch">
-                                            <input id="multiselect-checkbox-checker-4" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                            <label for="multiselect-checkbox-checker-4" class="form-check-label">' . lang('Select All') . '</label>
-                                        </div>
-                                    </div>
-                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                        ' . $output_calendars . '
-                                    </div>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="publish_calendar_events" name="publish_calendar_events" value="yes"' . $publish_calendar_events_checked . ' class="form-check-input" />
-                                    <label class="form-check-label" for="publish_calendar_events">' . lang('Also allow User to publish calendar events for selected calendars') . '</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> 
-            </div>';
-    }
-    
-    // if e-commerce module is on, then output manage e-commerce checkbox
-    if (ECOMMERCE == true) {
-        $output_set_offline_payment = '';
-        
-        // if offline payment is enabled, then prepare to output set offline payment
-        if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
-            $output_set_offline_payment = '
-            <div class="form-check my-2 form-switch">
-                <input type="checkbox" id="set_offline_payment" name="set_offline_payment" value="1" class="form-check-input"' . $set_offline_payment_checked . ' />
-                <label class="form-check-label" for="set_offline_payment">' . lang('Allow User to set offline payment option for orders') . '</label>
-            </div>';
-        }
-        
-        $output_manage_ecommerce =
-            '<div class="col-12 mt-5 mb-1 collapse show" id="manage_ecommerce_heading_row">
-                <h4 class="fw-bold text-muted">' . lang('Commerce Management Rights') . '</h4>
-            </div>
-            <div class="col-12 my-2 collapse show" id="manage_ecommerce_row">
-                <div class="form-check mb-2 form-switch">
-                    <input type="checkbox" id="manage_ecommerce" name="manage_ecommerce" value="yes" class="form-check-input collapse-switcher"' . $manage_ecommerce_checked . ' role="switch" data-bs-target="#view_card_data_container"/>
-                    <label class="form-check-label" for="manage_ecommerce">' . lang('Allow User to manage all commerce (i.e. products, shipping, tax, and orders)') . '</label>
-                </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="view_card_data_container">
-                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                    <div class="popover-body">
-                        <div class="row">
-                            <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="view_card_data" name="view_card_data" value="1" class="form-check-input"' . $view_card_data_checked . ' />
-                                    <label class="form-check-label" for="view_card_data">' . lang('Also allow User to view card data') . '</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> 
-                <div class="form-check my-2 form-switch">
-                    <input type="checkbox" id="manage_ecommerce_reports" name="manage_ecommerce_reports" value="1" class="form-check-input"' . $manage_ecommerce_reports_checked . ' />
-                    <label class="form-check-label" for="manage_ecommerce_reports">' . lang('Allow User to manage all commerce reports (i.e. order reports & shipping report)') . '</label>
-                </div>
-                ' . $output_set_offline_payment . '
-            </div>';
-    }
-
-    $output_manage_ads = '';
-
-    // If ads is enabled, then output area for it.
-    if (ADS === true) {
-        $output_manage_ads =
-            '<div class="col-12 mt-5 mb-1 collapse show" id="manage_ad_regions_heading_row">
-                <h4 class="fw-bold text-muted">' . lang('Ads Management Rights') . '</h4>
-            </div>
-            <div class="col-12 my-2 collapse show" id="manage_ad_regions_row">
-                <h5>' . lang('Allow User to edit Ads within the selected Ad Regions') . '</h5>
-                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                    <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-6" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-6" class="form-check-label">' . lang('Select All') . '</label>
-                        </div>
-                    </div>
-                    <div class="card-body overflow-auto" style="max-height:300px">
-                        ' . get_checkboxes_for_items_user_can_edit('ad_regions', get_items_user_can_edit('ad_regions', $_GET['id'])) . '
-                    </div>
-                </div>
-            </div>';
-    }
-    
-    // get all contact groups
-    $query =
-        "SELECT
-           id,
-           name
-        FROM contact_groups
-        ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    $contact_groups = array();
-    
-    // loop through all contact groups so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $contact_groups[] = $row;
-    }
-
-    $output_contact_groups = '';
-
-    // loop through all contact groups
-    foreach ($contact_groups as $contact_group) {
-        // check to see if user has access to contact group
-        $query =
-            "SELECT user_id
-            FROM users_contact_groups_xref
-            WHERE
-                (user_id = '" . escape($_GET['id']) . "')
-                AND (contact_group_id = '" . $contact_group['id'] . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // if user has access to this contact group, then prepare to check checkbox
-        if (mysqli_num_rows($result) > 0) {
-            $checked = ' checked="checked"';
-            
-        // else user does not have access to this contact group, so do not check checkbox
-        } else {
-            $checked = '';
-        }
-        
-        $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="contact_group_' . $contact_group['id'] . '">' . h($contact_group['name']) . '</label></div>';
-    }
-    
-    $output_hidden_role = '';
-    
-    // if user that is logged in is a manager then output hidden field for role data
-    if ($user['role'] == 2) {
-        $output_hidden_role = '<input type="hidden" name="role" value="3" />';
-    }
-    
-    // get folders that user has edit access to
+    // Folders this user may edit or view. Read before the panels are built
+    // because both the folder trees and the row summaries need them.
     $folders_that_user_has_edit_access_to = array();
-    
-    $query =
-        "SELECT aclfolder_folder as folder_id
-        FROM aclfolder
-        WHERE
-            (aclfolder_user = '" . escape($_GET['id']) . "')
-            AND (aclfolder_rights = '2')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    $result = mysqli_query(db::$con, "SELECT aclfolder_folder as folder_id FROM aclfolder
+        WHERE (aclfolder_user = '" . escape($_GET['id']) . "') AND (aclfolder_rights = '2')") or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
         $folders_that_user_has_edit_access_to[] = $row['folder_id'];
     }
-    
-    // get folders that user has view access to
+
     $folders_that_user_has_view_access_to = array();
-    
-    $query =
-        "SELECT aclfolder_folder as folder_id
-        FROM aclfolder
-        WHERE
-            (aclfolder_user = '" . escape($_GET['id']) . "')
-            AND (aclfolder_rights = '1')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    $result = mysqli_query(db::$con, "SELECT aclfolder_folder as folder_id FROM aclfolder
+        WHERE (aclfolder_user = '" . escape($_GET['id']) . "') AND (aclfolder_rights = '1')") or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
         $folders_that_user_has_view_access_to[] = $row['folder_id'];
     }
+
+    $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $_GET['id']);
+    $menus_user_can_edit          = get_items_user_can_edit('menus', $_GET['id']);
+
+    $output_hidden_role = '';
+
+    // A manager may only manage users, so the role cards are read-only and the
+    // role travels in a hidden field - a disabled control posts nothing.
+    if ($user['role'] == 2) {
+        $output_hidden_role = '<input type="hidden" name="role" value="3" />';
+    }
+
+    // Selection markup for the permission panels, built with this user's current
+    // selections so the panels open on what they already have.
+    $permission_panels = array(
+        'edit_tree'      => get_acl_folder_tree('edit', 0, 0, array(), $folders_that_user_has_edit_access_to),
+        'page_types'     => get_page_type_checkboxes_and_labels($set_page_type_values),
+        'common_regions' => get_checkboxes_for_items_user_can_edit('common_regions', $common_regions_user_can_edit),
+        'menus'          => get_checkboxes_for_items_user_can_edit('menus', $menus_user_can_edit),
+        'view_tree'      => get_date_picker_format() . get_acl_folder_tree('view', 0, 0, array(), $folders_that_user_has_view_access_to, $_GET['id']),
+    );
+
+    if (FORMS == true) {
+        $permission_panels['manage_forms_switch'] = pg_user_permission_switch(
+            'manage_forms', 'yes', ($manage_forms == 'yes'), lang('Reach the data submitted through forms'));
+    }
+
+    // Calendars this user may post to, counted as the checkboxes are built.
+    $calendar_count = 0;
+
+    if (CALENDARS == true) {
+
+        $output_calendars = '';
+
+        $result = mysqli_query(db::$con, "SELECT id, name FROM calendars ORDER BY name") or output_error('Query failed.');
+
+        while ($calendar = mysqli_fetch_assoc($result)) {
+
+            $calendar_checked = db_value("SELECT user_id FROM users_calendars_xref
+                WHERE (user_id = '" . escape($_GET['id']) . "') AND (calendar_id = '" . escape($calendar['id']) . "')");
+
+            if ($calendar_checked != '') {
+                $calendar_count++;
+            }
+
+            $output_calendars .= '<div class="form-check"><input type="checkbox" name="calendar_' . $calendar['id'] . '" id="calendar_' . $calendar['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . (($calendar_checked != '') ? ' checked="checked"' : '') . ' /><label class="form-check-label" for="calendar_' . $calendar['id'] . '"> ' . h($calendar['name']) . '</label></div>';
+        }
+
+        $permission_panels['calendars'] = $output_calendars;
+    }
+
+    if (ECOMMERCE == true) {
+
+        $output_commerce_switches =
+            pg_user_permission_switch('view_card_data', '1', ($view_card_data == 1), lang('View card data'))
+            . pg_user_permission_switch('manage_ecommerce_reports', '1', ($manage_ecommerce_reports == 1), lang('Manage commerce reports'), lang('Order reports and the shipping report.'));
+
+        if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
+            $output_commerce_switches .= pg_user_permission_switch('set_offline_payment', '1', ($set_offline_payment == 1), lang('Set the offline payment option on orders'));
+        }
+
+        $permission_panels['commerce_switches'] = $output_commerce_switches;
+    }
+
+    if (defined('ERP_ENABLED') && ERP_ENABLED) {
+
+        // manage_erp is the gate and is rendered by the row itself; only the two
+        // rights that sit behind it belong in the panel.
+        $permission_panels['erp_switches'] =
+            pg_user_permission_switch('manage_erp_cash', '1', ($manage_erp_cash == 1), lang('See cash and bank'), lang('Balances, receipts and payments.'))
+            . pg_user_permission_switch('manage_erp_settings', '1', ($manage_erp_settings == 1), lang('Change ERP settings'), lang('Numbering, default accounts and the Parasut connection.'));
+    }
+
+    if (ADS === true) {
+        $ad_regions_user_can_edit = get_items_user_can_edit('ad_regions', $_GET['id']);
+        $permission_panels['ad_regions'] = get_checkboxes_for_items_user_can_edit('ad_regions', $ad_regions_user_can_edit);
+    }
+
+    // Contact groups. The checked state was computed here before and then left
+    // out of the markup, so every group came up empty on this screen no matter
+    // what the user actually had.
+    $output_contact_groups = '';
+    $contact_group_count   = 0;
+
+    $result = mysqli_query(db::$con, "SELECT id, name FROM contact_groups ORDER BY name") or output_error('Query failed.');
+
+    while ($contact_group = mysqli_fetch_assoc($result)) {
+
+        $contact_group_checked = db_value("SELECT user_id FROM users_contact_groups_xref
+            WHERE (user_id = '" . escape($_GET['id']) . "') AND (contact_group_id = '" . escape($contact_group['id']) . "')");
+
+        if ($contact_group_checked != '') {
+            $contact_group_count++;
+        }
+
+        $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . (($contact_group_checked != '') ? ' checked="checked"' : '') . ' /><label class="form-check-label" for="contact_group_' . $contact_group['id'] . '">' . h($contact_group['name']) . '</label></div>';
+    }
+
+    $permission_panels['contact_groups'] = $output_contact_groups;
+
+    // How many page types are set. The generator treats "no value at all" as
+    // every type allowed, which is what a row saved before page types existed
+    // looks like, so the same rule decides the count.
+    $page_type_count = 0;
+
+    foreach ($set_page_type_values as $set_page_type_value) {
+        if (($set_page_type_value == 1) || ($set_page_type_value === '') || ($set_page_type_value === null)) {
+            $page_type_count++;
+        }
+    }
+
+    $permission_ui = pg_user_permission_ui(array(
+        'values' => array(
+            'create_pages'            => ($create_pages == 1) ? '1' : '',
+            'delete_pages'            => ($delete_pages == 1) ? '1' : '',
+            'manage_forms'            => $manage_forms,
+            'manage_calendars'        => $manage_calendars,
+            'publish_calendar_events' => $publish_calendar_events,
+            'manage_visitors'         => $manage_visitors,
+            'manage_contacts'         => $manage_contacts,
+            'manage_emails'           => $manage_emails,
+            'manage_ecommerce'        => $manage_ecommerce,
+        ),
+        'panels' => $permission_panels,
+        'counts' => array(
+            'edit_folders'   => count($folders_that_user_has_edit_access_to),
+            'view_folders'   => count($folders_that_user_has_view_access_to),
+            'page_types'     => $page_type_count,
+            'common_regions' => count($common_regions_user_can_edit),
+            'menus'          => count($menus_user_can_edit),
+            'calendars'      => $calendar_count,
+            'contact_groups' => $contact_group_count,
+            'ad_regions'     => isset($ad_regions_user_can_edit) ? count($ad_regions_user_can_edit) : 0,
+        ),
+    ));
 
     $output_badge_label_info = '';
     $output_badge_label_placeholder = lang('Badge Label');
@@ -642,60 +595,350 @@ if (!$_POST) {
     // If there is a default badge label in the site settings,
     // then output info about how field can be left blank for default.
     if (BADGE_LABEL != '') {
-        $output_badge_label_info = '<div class="form-text text-end">(' . lang('leave blank for default') . ': "' . h(BADGE_LABEL) . '")</div>';
-        $output_badge_label_placeholder =h(BADGE_LABEL);
+        $output_badge_label_info = '<div class="form-text">(' . lang('leave blank for default') . ': "' . h(BADGE_LABEL) . '")</div>';
+        $output_badge_label_placeholder = h(BADGE_LABEL);
     }
 
+    // ── Identity header ──────────────────────────────────────────────────
+    //
+    // Who this account is, and the actions that act on the account rather than
+    // on the form. They used to be a row of link buttons above the form with no
+    // frame around them and no picture to anchor them.
+    $identity_name = trim($first_name . ' ' . $last_name);
 
-    $output_log_rows = '';
-    $log_rows = '';
-
-    $query = "SELECT log_id, log_description, log_ip, log_user, log_timestamp "
-    ."FROM log "
-    ."WHERE log_user = '$username' "
-    ."ORDER BY log_user DESC, log_id DESC "
-    ."LIMIT 100";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-
-    while ($row = mysqli_fetch_array($result)){
-       
-        // output style row
-        $log_rows .= '
-            <tr>
-                <td>'. get_relative_time(array('timestamp' => $row['log_timestamp'])). '</td>
-                <td>' . convert_text_to_html($row['log_description']) . '</td>
-                <td>' . h($row['log_ip']) . '</td>
-            </tr>';
+    if ($identity_name == '') {
+        $identity_name = $username;
     }
-    if($log_rows !== ''){
-        $output_log_rows = '
 
-        <div class="col-12">
-            <div class="accordion " id="user_accordion">
-              <div class="accordion-item">
-                <h2 class="accordion-header">
-                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#user_accordion_collapse_one" aria-expanded="true" aria-controls="user_accordion_collapse_one">
-                  ' . lang('User\'s Logs') . ' ( ' . lang(array('string'=>'Maximum {var:1} Rows', 'vars'=>array('100'))) . ' ) 
-                  </button>
-                </h2>
-                <div id="user_accordion_collapse_one" class="accordion-collapse collapse show">
-                  <div class="accordion-body" style="max-height: 500px;overflow: auto;">
-                    <table class="table" >
-                        <thead>
-                            <tr>
-                                <th>' . lang('Time') . '</th>
-                                <th>' . lang('Description') . '</th>
-                                <th>' . lang('IP Address') . '</th>
-                            </tr>
-                        </thead>
-                        ' . $log_rows . '
-                    </table>
-                  </div>
+    $identity_photo = '';
+
+    if ($contact_id != '') {
+        if ($contact_file_id != 0) {
+            $identity_photo = PATH . db_value("SELECT name FROM files WHERE id = '" . escape($contact_file_id) . "'");
+        } elseif ($contact_image != '') {
+            $identity_photo = $contact_image;
+        }
+    }
+
+    if ($identity_photo != '') {
+        $output_identity_picture = '<img class="pg-identity-pic" src="' . h($identity_photo) . '" alt="" />';
+    } else {
+        $output_identity_picture = '<span class="pg-identity-pic">' . h(mb_strtoupper(mb_substr($identity_name, 0, 1, 'UTF-8'), 'UTF-8')) . '</span>';
+    }
+
+    // ── Sessions ─────────────────────────────────────────────────────────
+    //
+    // Rendered as rows rather than a table: six columns wrap the device name
+    // onto three lines inside a panel this wide.
+    $edit_user_sessions_back  = 'edit_user.php?id=' . (int) $_GET['id']
+        . (isset($_REQUEST['send_to']) ? '&send_to=' . urlencode($_REQUEST['send_to']) : '');
+    $edit_user_sessions_count = 0;
+    $edit_user_session_rows   = '';
+    $edit_user_session_latest = 0;
+
+    $edit_user_current_selector = '';
+
+    if (isset($_COOKIE['software']['auth'])) {
+        $edit_user_cookie_parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
+        $edit_user_current_selector = (string) $edit_user_cookie_parts[0];
+    }
+
+    $edit_user_pin_column = (bool) db_item("SHOW COLUMNS FROM auth_tokens LIKE 'pinned'");
+
+    $edit_user_sessions = db_items(
+        "SELECT selector, user_agent, ip_address, created_at, last_used_at, expires_at"
+        . ($edit_user_pin_column ? ", pinned" : "") . "
+        FROM auth_tokens
+        WHERE user_id = '" . escape($_GET['id']) . "' AND expires_at > '" . time() . "'
+        ORDER BY GREATEST(last_used_at, created_at) DESC");
+
+    if ($edit_user_sessions) {
+
+        foreach ($edit_user_sessions as $edit_user_session) {
+
+            $edit_user_sessions_count++;
+
+            $edit_user_session_fresh = max((int) $edit_user_session['last_used_at'], (int) $edit_user_session['created_at']);
+
+            if ($edit_user_session_fresh > $edit_user_session_latest) {
+                $edit_user_session_latest = $edit_user_session_fresh;
+            }
+
+            $edit_user_session_tags = '';
+
+            if (($edit_user_current_selector !== '') && hash_equals((string) $edit_user_session['selector'], $edit_user_current_selector)) {
+                $edit_user_session_tags .= '<span class="badge text-bg-success fw-light">' . h(lang('This device')) . '</span>';
+            }
+
+            if ((time() - $edit_user_session_fresh) < 300) {
+                $edit_user_session_tags .= '<span class="badge text-bg-success fw-light">' . h(lang('Online')) . '</span>';
+            }
+
+            $edit_user_session_pinned = ($edit_user_pin_column && isset($edit_user_session['pinned']) && (((int) $edit_user_session['pinned']) === 1));
+
+            if ($edit_user_session_pinned) {
+                $edit_user_session_tags .= '<span class="badge text-bg-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>';
+            }
+
+            $edit_user_session_pin_button = '';
+
+            if ($edit_user_pin_column) {
+                $edit_user_session_pin_button =
+                    '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
+                    . '<input type="hidden" name="pg_session_action" value="' . ($edit_user_session_pinned ? 'unpin' : 'pin') . '"/>'
+                    . '<input type="hidden" name="pg_selector" value="' . h((string) $edit_user_session['selector']) . '"/>'
+                    . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
+                    . '<button type="submit" class="btn btn-sm btn-ghost" title="' . h($edit_user_session_pinned ? lang('Unlock') : lang('Lock')) . '"><i class="bi ' . ($edit_user_session_pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle') . '"></i></button>'
+                    . '</form>';
+            }
+
+            $edit_user_session_rows .=
+                '<div class="pg-session">'
+                . '<i class="bi ' . (preg_match('/(iphone|android|mobile|ipad)/i', (string) $edit_user_session['user_agent']) ? 'bi-phone' : 'bi-laptop') . '"></i>'
+                . '<div class="pg-session-text">'
+                . '<div class="pg-session-name">' . h(pg_user_agent_label($edit_user_session['user_agent'])) . $edit_user_session_tags . '</div>'
+                . '<div class="pg-session-meta">' . h((string) $edit_user_session['ip_address'])
+                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => date('Y-m-d H:i', (int) $edit_user_session['created_at']))))
+                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => date('Y-m-d H:i', (int) $edit_user_session['expires_at']))))
+                . '</div></div>'
+                . '<div class="pg-session-actions">' . $edit_user_session_pin_button
+                . '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
+                . '<input type="hidden" name="pg_session_action" value="revoke"/>'
+                . '<input type="hidden" name="pg_selector" value="' . h((string) $edit_user_session['selector']) . '"/>'
+                . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
+                . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Sign out')) . '</button>'
+                . '</form></div></div>';
+        }
+    }
+
+    // ── Sign-in lockout ──────────────────────────────────────────────────
+    $output_sign_in_lock_notice = '';
+    $output_sign_in_unlock_form = '';
+    $output_identity_lock_tag   = '';
+
+    $sign_in_lock = pg_login_lock_state($username, $email);
+
+    if ($sign_in_lock['locked']) {
+
+        $sign_in_lock_minutes = max(1, (int) ceil(($sign_in_lock['until'] - time()) / 60));
+
+        $output_identity_lock_tag = '<span class="badge text-bg-danger fw-light"><i class="bi bi-lock-fill me-1"></i>' . h(lang('Sign-in Locked')) . '</span>';
+
+        $output_sign_in_lock_notice =
+            '<div class="alert alert-danger d-flex align-items-center gap-2 py-2">'
+            . '<i class="bi bi-lock-fill"></i>'
+            . '<span><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
+                'string' => 'Too many failed attempts. Clears on its own in {var:1} minutes.',
+                'vars'   => $sign_in_lock_minutes))) . '</span>'
+            . '<a class="btn btn-sm btn-outline-danger rounded-pill px-3 ms-auto" href="#" onclick="event.preventDefault(); document.unlock_sign_in_form.submit(); return false;"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</a>'
+            . '</div>';
+
+        $output_sign_in_unlock_form =
+            '<form name="unlock_sign_in_form" action="edit_user.php" method="post">'
+            . get_token_field()
+            . '<input type="hidden" name="unlock_sign_in" value="1">'
+            . '<input type="hidden" name="id" value="' . h($_GET['id']) . '">'
+            . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />'
+            . '</form>';
+    }
+
+    // ── Identity tags ────────────────────────────────────────────────────
+    $output_identity_tags =
+        '<span class="badge text-bg-primary fw-light">' . h(pg_user_role_name($role)) . '</span>'
+        . ((!empty($user_google_id)) ? '<span class="badge text-bg-light border fw-light" title="' . h(lang('This account can sign in with Google.')) . '"><i class="bi bi-google me-1"></i>Google</span>' : '')
+        . ((($edit_user_session_latest > 0) && ((time() - $edit_user_session_latest) < 300)) ? '<span class="badge text-bg-success fw-light">' . h(lang('Online')) . '</span>' : '')
+        . $output_identity_lock_tag;
+
+    // ── Contact card ─────────────────────────────────────────────────────
+    if ($contact_id != '') {
+
+        $output_contact_lines = '<span>' . h($email_address) . '</span>';
+
+        if ($member_id != '') {
+            $output_contact_lines .= '<span>' . h(MEMBER_ID_LABEL) . ': ' . h($member_id) . '</span>';
+        }
+
+        $output_contact_body =
+            '<a class="pg-contact-card link-body-emphasis text-decoration-none" href="edit_contact.php?id=' . (int) $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '">'
+            . (($identity_photo != '')
+                ? '<img class="pg-contact-pic" src="' . h($identity_photo) . '" alt="" />'
+                : '<span class="pg-contact-pic d-inline-flex align-items-center justify-content-center bg-secondary-subtle text-body-secondary fs-4"><i class="bi bi-person"></i></span>')
+            . '<span class="pg-contact-who"><b>' . h($identity_name) . '</b>' . $output_contact_lines . '</span>'
+            . '<i class="bi bi-chevron-right ms-auto text-body-secondary"></i>'
+            . '</a>';
+
+        $output_contact_header =
+            '<a class="btn btn-sm btn-ghost" href="edit_contact.php?id=' . (int) $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '">' . h(lang('Open contact')) . '</a>';
+
+    } else {
+
+        $output_contact_body =
+            '<p class="small text-body-secondary mb-2">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
+            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-loading-content="' . h(lang('Creating')) . '"><i class="bi bi-person-plus me-1"></i><span class="btn-text">' . h(lang('Create Contact')) . '</span></button>';
+
+        $output_contact_header = '';
+    }
+
+    $output_contact_card =
+        '<div class="card mb-3">
+            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Contact')) . '</span>
+                ' . $output_contact_header . '
+            </div>
+            <div class="card-body">' . $output_contact_body . '</div>
+        </div>';
+
+    // ── Sign-in and sessions card ────────────────────────────────────────
+    //
+    // The password date needs the column the 2026.4.4 step adds; a row that
+    // predates it carries 0, which is honestly "not known" rather than a date
+    // guessed from the log.
+    $password_changed_at = pg_user_has_password_changed_at()
+        ? (int) db_value("SELECT user_password_changed_at FROM user WHERE user_id = '" . escape($_GET['id']) . "'")
+        : 0;
+
+    $output_password_note = ($password_changed_at > 0)
+        ? lang(array('string' => 'Last changed {var:1}', 'vars' => date('d.m.Y', $password_changed_at)))
+        : lang('Change date not recorded');
+
+    $output_google_row = (!empty($user_google_id))
+        ? '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Sign in with Google')) . '</b><span>' . h(lang('Connected')) . '</span></div>
+            </div>'
+        : '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('Sign in with Google')) . '</b><span>' . h(lang('Not connected')) . ' &middot; ' . h(lang('Signs in with a password only')) . '</span></div>
+            </div>';
+
+    $output_sessions_row = ($edit_user_sessions_count > 0)
+        ? '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang(array('string' => '{var:1} active session{suffix:1}', 'vars' => $edit_user_sessions_count, 'suffix' => (($edit_user_sessions_count == 1) ? '' : 's')))) . '</b><span>' . h(lang('Last used')) . ' ' . get_relative_time(array('timestamp' => $edit_user_session_latest)) . '</span></div>
+                <button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>
+            </div>'
+        : '<div class="pg-fact">
+                <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>
+                <div class="pg-fact-text"><b>' . h(lang('No active sessions')) . '</b></div>
+                ' . ((!empty($user_google_id)) ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="offcanvas" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
+            </div>';
+
+    $output_sign_in_card =
+        '<div class="card mb-3">
+            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Sign-in and Sessions')) . '</span>
+            </div>
+            <div class="card-body">
+                <div class="pg-fact">
+                    <span class="pg-fact-icon"><i class="bi bi-key"></i></span>
+                    <div class="pg-fact-text"><b>' . h(lang('Password')) . '</b><span>' . h($output_password_note) . '</span></div>
                 </div>
-              </div>
+                ' . $output_google_row . $output_sessions_row . '
             </div>
         </div>';
+
+    // ── Recent activity ──────────────────────────────────────────────────
+    $log_all   = db_items("SELECT log_description, log_ip, log_timestamp FROM log
+        WHERE log_user = '" . escape($username) . "' ORDER BY log_id DESC LIMIT 100");
+
+    $log_recent_rows = '';
+    $log_panel_rows  = '';
+    $log_count       = 0;
+
+    if ($log_all) {
+
+        foreach ($log_all as $log_row) {
+
+            $log_count++;
+
+            $log_line =
+                '<div class="pg-log-line">'
+                . '<span class="pg-log-when">' . get_relative_time(array('timestamp' => $log_row['log_timestamp'])) . '</span>'
+                . '<span class="pg-log-what">' . convert_text_to_html($log_row['log_description']) . '</span>'
+                . '<span class="pg-log-ip">' . h($log_row['log_ip']) . '</span>'
+                . '</div>';
+
+            if ($log_count <= 5) {
+                $log_recent_rows .= $log_line;
+            }
+
+            $log_panel_rows .= $log_line;
+        }
     }
+
+    $output_activity_card =
+        '<div class="card mb-3">
+            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Recent Activity')) . '</span>
+                ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="offcanvas" data-bs-target="#pg_activity_panel">' . h(lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
+            </div>
+            <div class="card-body">
+                ' . (($log_count > 0) ? $log_recent_rows : '<p class="small text-body-secondary mb-0">' . h(lang('No activity recorded yet.')) . '</p>') . '
+            </div>
+        </div>';
+
+    // ── The panels that live outside the form ────────────────────────────
+    //
+    // Sessions and the Google connection are their own forms, and forms cannot
+    // nest, so these sit after the main form closes. The panel says as much:
+    // the buttons in it act at once rather than on Save.
+    $output_google_panel = (!empty($user_google_id))
+        ? '<div class="pg-perm-block">
+                <div class="pg-perm-block-title">' . h(lang('Sign in with Google')) . '</div>
+                <div class="d-flex align-items-start gap-3 border rounded p-3">
+                    <span class="pg-fact-icon"><i class="bi bi-google"></i></span>
+                    <div class="flex-grow-1">
+                        <p class="small mb-0">' . h(lang('The connection is tied to the Google account itself, not to the email address - changing the email here does not remove it.')) . '</p>
+                    </div>
+                    <form method="post" action="edit_user.php" style="margin:0">' . get_token_field()
+                        . '<input type="hidden" name="pg_unlink_google" value="1"/>'
+                        . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
+                        . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
+                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Disconnect Google')) . '</button>'
+                    . '</form>
+                </div>
+            </div>'
+        : '';
+
+    $output_sessions_list = ($edit_user_sessions_count > 0)
+        ? '<div class="pg-perm-block">
+                <div class="pg-perm-block-title">' . h(lang(array('string' => '{var:1} active session{suffix:1}', 'vars' => $edit_user_sessions_count, 'suffix' => (($edit_user_sessions_count == 1) ? '' : 's')))) . '</div>
+                <div class="card"><div class="card-body p-0">' . $edit_user_session_rows . '</div></div>
+                <form method="post" action="view_sessions.php" class="mt-2">' . get_token_field()
+                    . '<input type="hidden" name="pg_session_action" value="revoke_user"/>'
+                    . '<input type="hidden" name="pg_user_id" value="' . (int) $_GET['id'] . '"/>'
+                    . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
+                    . '<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-right me-1"></i>' . h(lang('Sign out all sessions')) . '</button>'
+                . '</form>
+            </div>'
+        : '<p class="small text-body-secondary">' . h(lang('No active sessions.')) . '</p>';
+
+    $output_sessions_panel =
+        '<div class="offcanvas offcanvas-end pg-perm-panel" tabindex="-1" id="pg_sessions_panel" aria-labelledby="pg_sessions_panel_title">
+            <div class="offcanvas-header">
+                <span class="pg-perm-icon" style="--pg-perm-color:#64b5f6"><i class="bi bi-shield-lock"></i></span>
+                <h5 class="offcanvas-title ms-2" id="pg_sessions_panel_title">' . h(lang('Sign-in and Sessions')) . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="offcanvas-body">
+                <p class="pg-perm-panel-lead">' . h(lang('These act at once and do not wait for Save.')) . '</p>
+                ' . $output_sessions_list . $output_google_panel . '
+            </div>
+            <div class="offcanvas-footer">
+                <div class="pg-perm-panel-count">' . h(lang('Sessions expire on their own after 30 days.')) . '</div>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-dismiss="offcanvas">' . h(lang('Done')) . '</button>
+            </div>
+        </div>'
+        . (($log_count > 5)
+            ? '<div class="offcanvas offcanvas-end pg-perm-panel" tabindex="-1" id="pg_activity_panel" aria-labelledby="pg_activity_panel_title">
+                <div class="offcanvas-header">
+                    <span class="pg-perm-icon" style="--pg-perm-color:#9aa3ab"><i class="bi bi-clock-history"></i></span>
+                    <h5 class="offcanvas-title ms-2" id="pg_activity_panel_title">' . h(lang('Recent Activity')) . '</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
+                </div>
+                <div class="offcanvas-body">' . $log_panel_rows . '</div>
+            </div>'
+            : '');
 
     print
     pg_page_shell(
@@ -704,277 +947,145 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account',
             'heading'=>lang('Edit User'),
-            'cancel' => array('enable' => 'true', 'url' => 'view_users.php'),
+            'heading_description' => lang('Update this user\'s privileges, or email a new password.'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
-                array('label' => lang('Users'), 'url' => 'view_users.php'),
+                array('label' => lang('Users'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
                 array('label' => $username),
             ),
         )
     )  . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update this user\'s privileges, or email a new password.') . '" title="' . lang('Edit User') . '">[' . h($username) . ']</h2>
-                        <p class="p-0 m-0">' . h($email) . '</p>
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                ' . $output_login_as_user_button . '
-                                <a class="btn btn-link link-secondary py-0 mb-2 " href="#" onclick="event.preventDefault(); pgConfirm({title:\'' . lang('Reset & Send Password') . '\', message:\'' . lang('Are you sure you want to reset the user\'s password and email a new password to the user?') . '\', confirmText:\'' . lang('Reset & Send Password') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok) document.reset_password_form.submit();}); return false;" ><span class="material-icons me-1">lock_reset</span>' . lang('Reset & Send Password') . '</a>
+                <div class="card mb-3">
+                    <div class="card-body py-3">
+                        <div class="pg-identity">
+                            ' . $output_identity_picture . '
+                            <div class="pg-identity-who">
+                                <div class="pg-identity-name">' . h($identity_name) . $output_identity_tags . '</div>
+                                <div class="pg-identity-meta">' . h($username) . ' &middot; ' . h($email) . '</div>
                             </div>
-                        </nav>
-                        <form name="reset_password_form" action="reset_password.php" method="post">
-                            ' . get_token_field() . '
-                            <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                            <input type="hidden" name="user_id" value="' . h($_GET['id']) . '">
-                        </form>
+                            <div class="pg-identity-actions">
+                                ' . $output_login_as_user_button . '
+                                ' . $output_reset_password_button . '
+                            </div>
+                        </div>
                     </div>
                 </div>
+                ' . $output_sign_in_lock_notice . '
+                ' . $output_sign_in_unlock_form . '
+                ' . $output_reset_password_form . '
                 <form name="form" action="edit_user.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <input type="hidden" name="current_url" value="' . h(get_request_uri()) . '" />
-                    <div class="row">
-                        <div class="col-12 col-md-4 col-lg-3 col-xl-2">
-                            <div class="card my-4 position-sticky" style="top:56px;">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('User Role') . '
-                                </label>
+                    <div class="row g-3">
+                        <div class="col-12 col-xl-8">
+
+                            <div class="card mb-3">
+                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Role') . '</span>
+                                    <span class="small text-body-secondary">' . lang('Changing the role changes the rights below.') . '</span>
+                                </div>
                                 <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12">
-                                            <select name="role" id="role" class="form-select collapse-if-selected' . $output_role_disabled_class . '" ' . $output_role_disabled_attribute . ' data-bs-target="#user_options_row" onchange="change_user_role(this.options[this.selectedIndex].value)">' . select_user_role($role, $user['role']) . '</select>
-                                            <script>
-                                                $(document).ready(function() {
-                                                    change_user_role($("select#role option:selected").val());
-                                                });
-                                            </script>
+                                    ' . pg_user_role_cards($role, $user['role'], $role_cards_disabled) . '
+                                </div>
+                            </div>
+
+                            <div class="card mb-3">
+                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Account') . '</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-12 col-lg-4">
+                                            <label for="username" class="form-label">' . lang('Username') . '</label>
+                                            <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
+                                            <div class="form-text">' . lang('Used when signing in.') . '</div>
                                         </div>
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label" for="email">' . lang('User Email') . '</label>
+                                            <input value="' . h($email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
+                                            <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
+                                        </div>
+                                        <div class="col-12 col-lg-4">
+                                            <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
+                                            <select class="form-select" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
+                                            <div class="form-text">' . lang('Opened after signing in.') . '</div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="border-secondary-subtle opacity-50 my-3">
+                                    <div class="text-uppercase small fw-semibold text-body-secondary mb-2">' . lang('Optional') . '</div>
+
+                                    <div class="row g-3">
+                                        ' . $output_password_hint_field . '
+                                        <div class="col-12 col-sm-6 col-lg-4">
+                                            <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
+                                            <input value="' . h($reward_points) . '" type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input type="checkbox"' . $badge_checked . ' id="badge" name="badge" value="1" class="form-check-input collapse-switcher" data-bs-target="#badge_row"/>
+                                                <label class="form-check-label" for="badge">' . lang('Show badge next to username') . '</label>
+                                            </div>
+                                            <div class="collapse ms-4 mt-1 mb-2' . (($badge_checked != '') ? ' show' : '') . '" id="badge_row" style="max-width:22rem">
+                                                <input value="' . h($badge_label) . '" type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control form-control-sm" size="20" maxlength="100" />
+                                                ' . $output_badge_label_info . '
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mb-3 d-none" id="pg_permissions_everything">
+                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                                </div>
+                                <div class="card-body">
+                                    ' . pg_user_permission_everything() . '
+                                </div>
+                            </div>
+
+                            <div class="card mb-3" id="pg_permissions_block">
+                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                                    <span class="small text-body-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="pg-perms" id="pg_permissions" data-pg-empty="' . h(lang('No selection')) . '">' . $permission_ui['rows'] . '
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-8 col-lg-9 col-xl-10">
-                            <div class="row g-2 mb-5">
-                                <div class="col-12 col-lg-8">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                        ' . lang('Main Informations') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 col-xl-6 my-2">
-                                                    <label for="username" class="form-label">' . lang('Username') . '</label>
-                                                    <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control add-header-content-updater" required />
-                                                    <div class="form-text text-end">' . lang('User Account ID') . '</div>
-                                                </div>
-                                                <div class="col-12 col-xl-6 my-2">
-                                                    <label for="username" class="form-label">' . lang('User Start Page') . '</label>
-                                                    <select class="form-select" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
-                                                    <div class="form-text text-end">' . lang('Send User to a Specific Page on Login') . '</div>
-                                                </div>
-                                                <div class="col-12 col-xl-6 my-2">
-                                                    <label class="form-label" for="email">' . lang('User Email') . '</label>
-                                                    <input value="' . h($email) . '" type="email" class="form-control text-end" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
-                                                    <div class="form-text text-end">' . lang('Email for Login & Password Retrieval') . '</div>
-                                                </div>
-                                                ' . $output_password_hint_field . '
-                                                <div class="col-12 col-xl-6 my-2">
-                                                    <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
-                                                    <input value="' . $reward_points . '"  type="number" class="form-control text-end" id="reward_points" name="reward_points" maxlength="9"/>
-                                                </div>
-                                                <div class="col-12 my-2 mt-3">
-                                                    <div class="form-check form-switch">
-                                                        <input type="checkbox" id="badge" name="badge" value="1" class="form-check-input collapse-switcher"' . $badge_checked . ' data-bs-target="#badge_row"/>
-                                                        <label class="form-check-label" for="badge">' . lang('Show badge next to username') . '</label>
-                                                    </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="badge_row">
-                                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                        <div class="popover-body">
-                                                            <div class="row">
-                                                                <div class="col-12 my-1">
-                                                                    <label class="form-label" for="badge_label">' . lang('Badge Label') . '</label>
-                                                                    <input value="' . h($badge_label) . '" type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control" value="" size="20" maxlength="100" />
-                                                                    ' . $output_badge_label_info . '
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div> 
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-lg-4">
-                                    <div class="card my-4 position-sticky" style="top:56px;">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                        ' . lang('User\'s Contact') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 my-2">
-                                                    ' . $output_contact_info . '
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            ' . $output_log_rows . '
-                            <div class="collapse" id="user_options_row">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('User Access Privileges') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 my-2 collapse" id="user_has_all_permissions">
-                                                <div class="alert alert-warning">' . lang('This user would be have all permissions') . '</div>
-                                            </div>
-                                            
-                                            <div class="col-12 mt-2 mb-1 collapse show" id="edit_access_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Content Management & Forms Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="edit_access_row">
-                                                <h5>' . lang('Allow User to view and edit pages, files, and custom forms within selected folders') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_acl_folder_tree('edit', 0, 0, array(), $folders_that_user_has_edit_access_to) . '
-                                                    </div>
-                                                </div>
-                                                <div class="form-check my-2 form-switch"><input type="checkbox"' . $create_pages_checked . ' name="create_pages" id="create_pages" value="1" class="form-check-input" /><label class="form-check-label" for="create_pages">' . lang('Also allow User to create/duplicate pages in selected folders') . '</label></div>
-                                                <div class="form-check my-2 form-switch"><input type="checkbox"' . $delete_pages_checked . ' name="delete_pages" id="delete_pages" value="1" class="form-check-input" /><label class="form-check-label" for="delete_pages">' . lang('Also allow User to delete pages in selected folders') . '</label></div>
-                                                ' . $output_manage_forms . '
-                                                <h5>' . lang('Allow User to set the following page types for pages') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-1" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-1" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_page_type_checkboxes_and_labels($set_page_type_values) . '
-                                                    </div>
-                                                </div>
-                                            </div>
 
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="shared_content_access_rights_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Shared Content Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="common_regions_access_row">
-                                                <h5>' . lang('Allow User to edit the content within the selected Common Regions') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-2" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-2" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_checkboxes_for_items_user_can_edit('common_regions', get_items_user_can_edit('common_regions', $_GET['id'])) . '
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="menus_access_row">
-                                                <h5>' . lang('Allow User to edit Menu Items within the selected Menus') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-3" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-3" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_checkboxes_for_items_user_can_edit('menus', get_items_user_can_edit('menus', $_GET['id'])) . '
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            ' . $output_manage_calendars . '
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="manage_visitors_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Visitor Report Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="manage_visitors_row">
-                                                <div class="form-check form-switch">
-                                                    <input type="checkbox" id="manage_visitors" name="manage_visitors" value="yes" class="form-check-input"' . $manage_visitors_checked . ' />
-                                                    <label class="form-check-label" for="manage_visitors">' . lang('Allow User to manage all visitor reports') . '</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="manage_contacts_and_manage_emails_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Contact Management & Campaign Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="manage_contacts_and_manage_emails_row">
-                                                <div class="form-check form-switch">
-                                                    <input type="checkbox" id="manage_contacts" name="manage_contacts" value="yes" onclick="show_or_hide_contact_group_access()" class="form-check-input"' . $manage_contacts_checked . ' />
-                                                    <label class="form-check-label" for="manage_contacts">' . lang('Allow User to view, edit, import, and export all contacts within any selected contact groups') . '</label>
-                                                </div>
-                                                <div class="form-check form-switch">
-                                                    <input type="checkbox" id="manage_emails" name="manage_emails" value="yes" onclick="show_or_hide_contact_group_access()" class="form-check-input"' . $manage_emails_checked . ' />
-                                                    <label class="form-check-label" for="manage_emails">' . lang('Allow User to send e-mail campaigns to any selected contact groups') . '</label>
-                                                </div>
-                                                <div class="collapse popover w-100 fade bs-popover-bottom p-0 mb-2" id="contact_group_access">
-                                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                    <div class="popover-body">
-                                                        <div class="row">
-                                                            <div class="col-12 my-1">
-                                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                                    <div class="card-header border-0 bg-reset">
-                                                                        <div class="form-check form-switch">
-                                                                            <input id="multiselect-checkbox-checker-5" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                                            <label for="multiselect-checkbox-checker-5" class="form-check-label">' . lang('Select All') . '</label>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                                        ' . $output_contact_groups . '
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div> 
-                                            </div>
-                                            ' . $output_manage_ecommerce . '
-                                            ' . $output_manage_ads . '
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="view_access_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Private Content Access Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="view_access_row">
-                                                <h5>' . lang('Allow User to view pages, files, and submit custom forms within selected private folders.') . '</h5>
-                                                <div class="alert alert-secondary">' . lang('For selected folders, you can enter an optional expiration date.') . ' (' . lang('leave blank for no expiration') . ').</div>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_date_picker_format() . '
-                                                        ' . get_acl_folder_tree('view', 0, 0, array(), $folders_that_user_has_view_access_to, $_GET['id']) . '
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-12 col-xl-4">
+                            ' . $output_contact_card . '
+                            ' . $output_sign_in_card . '
+                            ' . $output_activity_card . '
                         </div>
                     </div>
+
+                    ' . $permission_ui['panels'] . '
+
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success " data-loading-content="' . lang(array('string'=>'Saving') ) . '"><span class="bi bi-floppy me-2"></span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
                     </nav>
                 </form>
+                ' . $output_sessions_panel . '
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
         
 } else {
@@ -1091,7 +1202,7 @@ if (!$_POST) {
             
             // If there is a send to value then send user back to that screen
             if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-                header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
                 
             // else send user to the default view
             } else {
@@ -1105,7 +1216,7 @@ if (!$_POST) {
             
             // If there is a send to value then send user back to that screen
             if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-                header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
                 
             // else send user to the default view
             } else {
@@ -1250,6 +1361,9 @@ if (!$_POST) {
                 user_manage_ecommerce = '" . escape($_POST['manage_ecommerce'] ?? '') . "',
                 user_view_card_data = '" . escape($_POST['view_card_data'] ?? '') . "',
                 manage_ecommerce_reports = '" . e($_POST['manage_ecommerce_reports'] ?? '') . "',
+                manage_erp = '" . e($_POST['manage_erp'] ?? '') . "',
+                manage_erp_cash = '" . e($_POST['manage_erp_cash'] ?? '') . "',
+                manage_erp_settings = '" . e($_POST['manage_erp_settings'] ?? '') . "',
                 $sql_offline_payment
                 user_publish_calendar_events = '" . escape($_POST['publish_calendar_events'] ?? '') . "',
                 user_set_page_type_email_a_friend = '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
@@ -1475,7 +1589,7 @@ if (!$_POST) {
         
         // If there is a send to value then send user back to that screen
         if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
             
         // else send user to the default view
         } else {

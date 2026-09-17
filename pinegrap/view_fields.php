@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,6 +24,7 @@ $output_rows = '';
 $user = validate_user();
 
 $output_layout_buttons = '';
+$output_product_id_to_url = '';
 $output_rss_table_heading = '';
 $output_office_use_only_table_heading = '';
 $output_preview_button  = '';
@@ -395,6 +396,7 @@ pg_page_shell(array(
         array(array('label' => $output_form_designer_content_heading))
     ),
 )) . '
+<main id="content" class="container-fluid">
     <div class="row">
         ' . $liveform->get_messages() . '
         <div class="col-12">

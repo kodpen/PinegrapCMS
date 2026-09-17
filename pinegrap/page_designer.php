@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -50,13 +50,12 @@ echo pg_page_shell(
         'replace_home_with'=>'close',
         'hide_menu'=>true,
         'heading'=>'<span class="pagelink me-2"></span><span id="previewpaneltitle"></span>',
-        'auto_main'=>false,
     )
 ) . '  
 
     
 
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/page_designer.css?v=' . @filemtime(dirname(__FILE__) . '/assets/page_designer.css') . '" />
+    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/page_designer.css?v=' . @filemtime(dirname(__FILE__) . '/assets/css/page_designer.css') . '" />
     <script>
     // ── Early console interceptor: queues messages until pdConsoleAdd is ready ──
     (function() {
@@ -116,7 +115,7 @@ echo pg_page_shell(
         };
     })();
     </script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/page_designer.js?v=' . @filemtime(dirname(__FILE__) . '/assets/page_designer.js') . '"></script>
+    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/page_designer.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/page_designer.js') . '"></script>
     ' . get_codemirror_includes() . '
     <script>
         init_page_designer({

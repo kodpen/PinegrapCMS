@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -87,6 +87,46 @@ $query =
         UNIX_TIMESTAMP())";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $new_style_id = mysqli_insert_id(db::$con);
+
+// Multi-page visual design: the shared assets sit on the style and every
+// attached page owns its layout. Copy both halves — a duplicated design with
+// no pages would open as an empty editor, and a duplicate that left the
+// pages pointing at the ORIGINAL style would silently edit that one.
+// Page names get the same "(2)" uniqueness treatment as the style name.
+if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
+    db("UPDATE style dst, style src
+        SET dst.style_custom_css   = src.style_custom_css,
+            dst.style_custom_js    = src.style_custom_js,
+            dst.style_custom_fonts = src.style_custom_fonts
+        WHERE dst.style_id = '" . (int)$new_style_id . "'
+          AND src.style_id = '" . (int)$_GET['id'] . "'");
+
+    $src_pages = db_items(
+        "SELECT * FROM page
+         WHERE page_style = '" . (int)$_GET['id'] . "'
+           AND layout_type = 'system'
+         ORDER BY page_id ASC");
+    foreach ((array)$src_pages as $src_page) {
+        $new_page_name = get_unique_name(array(
+            'name' => $src_page['page_name'],
+            'type' => 'page'));
+        // Copy every column except the identity ones, then repoint the
+        // style FK. SELECT * + drop-identity rather than a hand-written
+        // column list, so a column added to `page` later is not silently
+        // left behind (same reasoning as pg_pb_copy_row()).
+        $cols = array();
+        $vals = array();
+        foreach ($src_page as $col => $val) {
+            if ($col === 'page_id') continue;
+            $cols[] = '`' . $col . '`';
+            if ($col === 'page_name')       { $vals[] = "'" . e($new_page_name) . "'"; continue; }
+            if ($col === 'page_style')      { $vals[] = "'" . (int)$new_style_id . "'"; continue; }
+            if ($col === 'page_home')       { $vals[] = "''"; continue; }   // never two home pages
+            $vals[] = ($val === null) ? 'NULL' : "'" . e($val) . "'";
+        }
+        db("INSERT INTO page (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ")");
+    }
+}
 
 // if the style is a system style, then duplicate cells in database
 if ($style['type'] == 'system') {

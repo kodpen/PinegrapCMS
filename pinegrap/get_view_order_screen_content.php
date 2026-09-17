@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -31,9 +31,10 @@ function get_view_order_screen_content($properties)
     $output_grand_shipping = '';
     $output_delete_button = '';
 
-    // NOTE: $output_ship_tos is never assigned anywhere in this script, so that slot always
-    // renders empty.  Starting it empty keeps that behaviour and stops the warning.
+    // Both are only ever appended to, inside loops that do not run for every
+    // order, so they have to start out empty.
     $output_ship_tos = '';
+    $output_recurring_ship_tos = '';
     $device_type = $properties['device_type'];
 
 
@@ -293,7 +294,7 @@ function get_view_order_screen_content($properties)
                         order_items.product_name,
                         order_items.quantity,
                         order_items.price,
-                        order_items.tax,
+                        order_items.tax_total,
                         order_items.offer_id,
                         order_items.discounted_by_offer,
                         order_items.recurring_payment_period,
@@ -1384,17 +1385,17 @@ function get_view_order_screen_content($properties)
         if ($applied_offers) {
             $output_applied_offers =
                 '<div class="applied_offers" style="margin-bottom: 1em">
-                    <div class="heading">Applied Offers</div>
+                    <div class="heading">' . h(lang('Applied Offers')) . '</div>
                     <div class="data">
                     <ul style="margin-top: 0em">';
             
             // loop through each applied offer
             foreach ($applied_offers as $offer_id) {
                 // get offer data
-                $query = "SELECT description FROM offers WHERE id = '$offer_id'";
+                $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
-                $offer_description = $row['description'];
+                $offer_description = pg_offer_public_label($row);
                 
                 $output_applied_offers .= '<li><em>' . h($offer_description) . '</em></li>';
             }
@@ -1934,7 +1935,7 @@ function get_view_order_screen_content($properties)
                     order_items.product_name AS name,
                     order_items.quantity,
                     order_items.price / 100 AS price,
-                    order_items.tax / 100 AS tax,
+                    order_items.tax_total / 100 AS tax,
                     order_items.offer_id,
                     order_items.added_by_offer,
                     order_items.discounted_by_offer,
@@ -2037,7 +2038,7 @@ function get_view_order_screen_content($properties)
                     $item['in_nonrecurring'] = true;
 
                     $subtotal += $item['amount'];
-                    $tax += $item['tax'] * $item['quantity'];
+                    $tax += $item['tax'];
                     
                     if ($item['selection_type'] == 'donation') {
                         $recipient['donations_in_nonrecurring'] = true;
@@ -2179,7 +2180,7 @@ function get_view_order_screen_content($properties)
 
                     $payment_periods[$item['recurring_payment_period']]['exists'] = true;
                     $payment_periods[$item['recurring_payment_period']]['subtotal'] += $item['amount'];
-                    $payment_periods[$item['recurring_payment_period']]['tax'] += $item['tax'] * $item['quantity'];
+                    $payment_periods[$item['recurring_payment_period']]['tax'] += $item['tax'];
 
                 }
 
@@ -2386,6 +2387,7 @@ function get_view_order_screen_content($properties)
                 FROM offers WHERE id = '" . e($offer_id) . "'");
 
             if ($offer) {
+                $offer['description'] = pg_offer_public_label($offer);
                 $applied_offers[$key] = $offer;
             } else {
                 unset($applied_offers[$key]);

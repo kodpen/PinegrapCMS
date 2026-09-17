@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -32,7 +32,8 @@ if (!$order_item_id) {
 }
 
 $order_item = db_item(
-    "SELECT id, order_id, ship_to_id FROM order_items WHERE id = '" . e($order_item_id) . "'");
+    "SELECT id, order_id, ship_to_id, offer_id, offer_action_id, added_by_offer
+    FROM order_items WHERE id = '" . e($order_item_id) . "'");
 
 if (!$order_item) {
     output_error('Sorry, we can\'t remove the item from your cart, because it does not exist. It might have already been removed.');
@@ -45,6 +46,19 @@ if ($order_item['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
 }
 
 $ship_to_id = $order_item['ship_to_id'];
+
+// A gift the offer placed by itself would come straight back on the next cart
+// refresh, so a removal is remembered: this offer does not offer that product
+// again for the rest of the order.
+if ($order_item['added_by_offer'] && $order_item['offer_id']) {
+    if (!isset($_SESSION['ecommerce']['declined_offer_gifts'])) {
+        $_SESSION['ecommerce']['declined_offer_gifts'] = array();
+    }
+    $declined_offer_gift = $order_item['order_id'] . '_' . $order_item['offer_id'] . '_' . $order_item['offer_action_id'];
+    if (!in_array($declined_offer_gift, $_SESSION['ecommerce']['declined_offer_gifts'])) {
+        $_SESSION['ecommerce']['declined_offer_gifts'][] = $declined_offer_gift;
+    }
+}
 
 // delete order item
 $query = "DELETE FROM order_items WHERE (id = '" . escape($order_item_id) . "') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')";

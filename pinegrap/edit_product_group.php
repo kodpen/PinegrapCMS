@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,6 +26,11 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
+
+// The image picker on this screen is the one the product screens draw, so the
+// markup, the drop area and the upload rules stay in one place — the copy that
+// used to live here was a second implementation that quietly fell behind.
+include_once('product_builder.php');
 $liveform = new liveform('edit_product_group');
 
 // if the form has not been submitted
@@ -66,6 +71,15 @@ if (!$_POST) {
     $code = $row['code'];
     $keywords = h($row['keywords']);
     $image_name = h($row['image_name']);
+
+    // The escaped copy above is for the markup on this screen. The picker takes
+    // raw names and escapes them itself, so feeding it $image_name would print
+    // an entity-mangled file name and break the tile's own URL.
+    $picker_images = array();
+
+    if ($row['image_name'] !== '') {
+        $picker_images[] = $row['image_name'];
+    }
     $display_type = $row['display_type'];
     $address_name = $row['address_name'];
     $title = $row['title'];
@@ -272,48 +286,19 @@ if (!$_POST) {
 
     $initial_unselected_count = count($initial_unselected);
 
-    // Get product images from xref.
+    // The rest of this record's images, appended after the cover so the picker
+    // draws them in the order they are stored.
     $query = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = '" . escape($_REQUEST['id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-    $xref_image_names = '';
-    $output_xref_image_names ='';
-    if (mysqli_num_rows($result) != 0){
-        $xref_image_names = array();
 
-        while ($row = mysqli_fetch_assoc($result)){
-            $xref_image_names[]= $row['file_name'];
-        }
-        foreach($xref_image_names as $xref_image_name) {
-            $output_xref_images .= '
-            <div class="item col">
-                <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button"  class="btn btn-link link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                    <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . $xref_image_name . '">
-                        <input type="hidden" name="selected_images[]" value="' . $xref_image_name . '"/>
-                        <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . $xref_image_name . '" />
-                    </div>
-                </div>
-            </div>';
-        }
+    while ($row = mysqli_fetch_assoc($result)) {
+        $picker_images[] = $row['file_name'];
     }
 
     $output_thumbnail ='';
     if($image_name == true){
         $output_thumbnail ='<div class="col-12 col-md-auto"><a href="' . OUTPUT_PATH . $image_name . '" target="_blank"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . $image_name . '" /></a></div>';
-        $output_selected_image = '
-        <div class="item col">
-            <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button"  class="btn btn-link link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . $image_name . '">
-                    <input type="hidden" name="selected_images[]" value="' . $image_name . '"/>
-                    <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . $image_name . '" />
-                </div>
-            </div>
-        </div>';
-
     }
-
-    $output_selected_images =  $output_selected_image . $output_xref_images;
 
     $output_attributes = '';
 
@@ -526,10 +511,12 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Edit Product Group'),
-        'cancel'=>array('enable'=>'true','url'=>'view_product_groups.php')
+        'heading_description' => lang('Edit a product group and assign products to them.'),
+        'cancel'=>array('enable'=>'true','url'=>pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'))
     ,
-            'breadcrumb' => array(array('label' => lang('All Product Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'), array('label' => lang('Edit Product Group'))),
+            'breadcrumb' => array(array('label' => lang('Product Groups'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php')), array('label' => lang('Edit Product Group'))),
         ]) . '
+<main id="content" class="container-fluid">
             ' . get_wysiwyg_editor_code(array('full_description', 'details')) . '
         <div class="row">
             <div class="col-12">
@@ -538,12 +525,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<div class="row mb-2">
-                            ' . $output_thumbnail . '
-                            <div class="col-12 col-md">
-                                <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Edit a product group and assign products to them.') . '" title="' . lang('Edit Product Group') . '">[' . $name . ']</h2>
-                            </div>
-                        </div>
+
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
@@ -566,7 +548,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4 my-2">
                                             <label for="name" class="form-label">' . lang('Product Group Name') . '</label>
-                                            <input type="text" name="name" id="name" class="form-control add-header-content-updater" value="' . $name . '"/>
+                                            <input type="text" name="name" id="name" class="form-control" value="' . $name . '"/>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-check form-switch">
@@ -638,9 +620,9 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 mt-3">
-                                            <div id="software_image_picker_container" ondblclick="software_image_picker({initialize:true});" class="user-select-none sortable-list img-list bg-body-tertiary rounded p-2 row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-4">' . $output_selected_images . '</div>
-                                            <button type="button" class="btn btn-primary my-3 me-2" onclick="software_image_picker({initialize:true});" ><span class="bi bi-plus-circle me-2"></span>' . lang('Add Image') . '</button>
-                                            <button type="button" class="btn " data-bs-toggle="modal" data-bs-target="#image_code"><span class="material-icons me-2">code</span>' . lang('Code') . '</button>
+                                            ' . pg_pb_render_image_picker(
+                                                    $picker_images,
+                                                    '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
                                             <div class="modal fade" id="image_code" tabindex="-1" aria-labelledby="image_code" aria-hidden="true">
                                                 <div class="modal-dialog modal-lg ">
@@ -664,25 +646,6 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <script>
-                                                $(document).ready(function() {
-                                                    $(".sortable-list").sortable({
-                                                        items: "> div:not(.add_new_item)",
-                                                        placeholder: "col",
-                                                        handle: ".card .card-body",
-                                                        revert: "100",
-                                                        cursorAt: { left: 1 },
-                                                        animation: 150,
-                                                        forcePlaceholderSize: false,
-                                                        forceHelperSize: true,
-                                                        swapThreshold: 1,
-                                                        tolerance: "pointer",
-                                                        zIndex: 9999,
-                                                        cursor: "move",
-                                                        cancel: ".no-drag"
-                                                    });
-                                                });
-                                            </script>
                                         </div>
                                     </div>
                                 </div>
@@ -840,6 +803,8 @@ if (!$_POST) {
                     <input type="hidden" name="edit_price_value">
                     <input type="hidden" name="edit_inventory">
                     <input type="hidden" name="edit_inventory_quantity_process">
+                    <input type="hidden" name="edit_tax_rate_method">
+                    <input type="hidden" name="edit_tax_rate_value">
                     <input type="hidden" name="edit_inventory_quantity">
                 </form>
                 <script>
@@ -866,8 +831,9 @@ if (!$_POST) {
                 </script>
             </div>
         </div>
-    </main>' .
-        output_footer();
+    ' .
+        pg_pb_render_image_picker_assets() .
+        '</main>' . output_footer();
         
         $liveform->remove_form();
 
@@ -1270,7 +1236,7 @@ if (!$_POST) {
     
     // if there is a send to set, then forward user to send to
     if ($_POST['send_to'] != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
         
     // else there is not a send to set, so forward user to view product groups screen.
     } else {

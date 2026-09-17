@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -35,7 +35,7 @@ function software_update_check()
     $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
     $request['version'] = VERSION;
     $request['edition'] = EDITION;
-    $request['uname'] = php_uname();
+    $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
     $request['os'] = PHP_OS;
     $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
     $request['php_version'] = phpversion();
@@ -46,7 +46,8 @@ function software_update_check()
 
     $data = encode_json($request);
     $API = '59593DS72233483322T669223344';
-    $REQUEST = 'latest_version';
+    // Beta sites ask their own question; see pg_update_channel().
+    $REQUEST = function_exists('pg_update_request_key') ? pg_update_request_key() : 'latest_version';
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST);

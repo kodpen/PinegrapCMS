@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -122,7 +122,7 @@ $confirmation_alternative_page_id = $row['confirmation_alternative_page_id'];
 // about the user not being logged in, if this form grants membership or private access.
 if ($auto_registration == 0) {
     // if custom form grants membership access and the user is not logged in, then output error
-    if ((($membership == 1) && ($membership_days > 0)) && ((isset($_SESSION['sessionusername']) == false ) || (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false))) {
+    if ((($membership == 1) && ($membership_days > 0)) && ((isset($_SESSION['sessionusername']) == false ) || (pg_session_signed_in() == false))) {
         log_activity(lang(array('string'=>'access denied to submit data to membership trial custom form ({var:1}) because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
         output_error(lang('You do not have access to submit data to this membership trial form because you are not logged in.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
@@ -217,7 +217,13 @@ $query =
         office_use_only,
         upload_folder_id,
         quiz_question,
-        quiz_answer
+        quiz_answer" . (
+            // Added in 2026.4.4; an installation running this code against an
+            // older database must not lose its form to an unknown column.
+            (function_exists('pg_cf_form_fields_has_column') && pg_cf_form_fields_has_column('validation_regex'))
+                ? ",\n        validation_regex,\n        validation_message"
+                : ",\n        '' AS validation_regex,\n        '' AS validation_message"
+        ) . "
     FROM form_fields
     WHERE (page_id = '" . escape($_POST['page_id'] ?? '') . "') AND (type != 'information')
     ORDER BY sort_order";
@@ -278,6 +284,32 @@ foreach ($fields as $field) {
             }
         }
 
+        // A signature that arrived as anything other than a PNG data URL is
+        // refused here, so the form comes back with the field marked rather than
+        // the submission being stored with a signature nobody can see.
+        if (
+            ($field['type'] == 'signature')
+            && function_exists('pg_signature_png_from_data_url')
+            && ($liveform->check_field_error($field['id']) == false)
+            && ($liveform->get_field_value($field['id']) != '')
+            && (pg_signature_png_from_data_url($liveform->get_field_value($field['id'])) === false)
+        ) {
+            $liveform->mark_error($field['id'], lang('The signature could not be read. Please clear the box and sign again.'));
+        }
+
+        // A file the web server would run or read as its own settings is
+        // refused at validation, so the form comes back with the field marked
+        // rather than a renamed file quietly landing in the upload folder.
+        if (
+            ($field['type'] == 'file upload')
+            && ($liveform->check_field_error($field['id']) == false)
+            && (isset($_FILES[$field['id']]) == true)
+            && ($_FILES[$field['id']]['name'] != '')
+            && pg_upload_name_blocked($_FILES[$field['id']]['name'])
+        ) {
+            $liveform->mark_error($field['id'], pg_upload_blocked_message($_FILES[$field['id']]['name']));
+        }
+
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
         if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
             $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>$field['label'])) );
@@ -296,6 +328,40 @@ foreach ($fields as $field) {
         // if field has time type and there is not already an error for this field and user entered value for field and submitted time is invalid, prepare error
         if (($field['type'] == 'time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_time($liveform->get_field_value($field['id'])) == false)) {
             $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>$field['label'])) );
+        }
+
+        // Pattern validation, when the field carries one.
+        //
+        // The browser already refused this value once — the same expression is
+        // on the input as `pattern`. It is checked again here because the
+        // attribute is a courtesy to somebody using the form as intended, not
+        // a control: anything can POST to this script.
+        //
+        // Anchored on both ends and matched against the WHOLE value, which is
+        // what HTML's pattern means; an operator who writes `\d{4}` expects
+        // four digits, not four digits somewhere. `u` for UTF-8, because a
+        // Turkish form's expressions contain Turkish letters. A malformed
+        // expression is ignored rather than fatal: a typo in a regex must not
+        // take the form down for everybody.
+        if (
+            isset($field['validation_regex'])
+            && (trim((string)$field['validation_regex']) != '')
+            && ($liveform->check_field_error($field['id']) == false)
+            && (is_array($liveform->get_field_value($field['id'])) == false)
+            && ($liveform->get_field_value($field['id']) != '')
+        ) {
+            $pattern = '/^(?:' . str_replace('/', '\\/', trim((string)$field['validation_regex'])) . ')$/u';
+            $matched = @preg_match($pattern, (string)$liveform->get_field_value($field['id']));
+
+            if ($matched === 0) {
+                $message = trim((string)$field['validation_message']);
+
+                if ($message == '') {
+                    $message = lang(array('string'=>'Please enter a valid value for {var:1}','vars'=>$field['label']));
+                }
+
+                $liveform->mark_error($field['id'], $message);
+            }
         }
 
         // If this field is a title field and there is not already an error for this field,
@@ -390,6 +456,14 @@ if ($liveform->check_form_errors() == false) {
 
     // Prepare to store connect to contact email address value which we will use for submitter email address.
     $connect_to_contact_email_address = '';
+
+    // Built up one "column = value," clause at a time in the loop below and in
+    // the membership block further down, so it has to start out empty.
+    $sql_update_contact = '';
+
+    // Only set when this submission creates a user account; the notification
+    // further below is written either way.
+    $username = '';
     
     // loop through all fields
     foreach ($fields as $field) {
@@ -510,6 +584,54 @@ if ($liveform->check_form_errors() == false) {
                 // if we find a selected option that overrides the upload folder.
                 $files[] = array('id' => $file_id);
                 
+            // A signature is stored the way an uploaded file is - the drawing
+            // becomes a file and form_data points at it - but through its own
+            // path, because what makes it worth keeping is the record written
+            // beside it.
+            //
+            // The document it is bound to is read again here rather than taken
+            // from $fields: the query that built that list drops information
+            // fields, and an information field is exactly where a contract or an
+            // offer is written.
+            } else if (($field['type'] == 'signature') && function_exists('pg_signature_ready') && pg_signature_ready()) {
+                $file_id = '';
+                $data = '';
+
+                $signature_png = pg_signature_png_from_data_url($liveform->get_field_value($field['id']));
+
+                if ($signature_png !== false) {
+                    $signature_document = db_items(
+                        "SELECT id, name, label, type, required, information
+                        FROM form_fields
+                        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'
+                        ORDER BY sort_order ASC");
+
+                    $signature_values = array();
+
+                    foreach ($fields as $signature_source) {
+                        if ($signature_source['type'] == 'signature') {
+                            continue;
+                        }
+
+                        $signature_values[$signature_source['id']] = $liveform->get_field_value($signature_source['id']);
+                    }
+
+                    $signature_file_id = pg_signature_store(
+                        $form_id,
+                        $field['id'],
+                        $signature_png,
+                        array(
+                            'page_id' => $_POST['page_id'] ?? 0,
+                            'document_hash' => pg_signature_document_hash($_POST['page_id'] ?? 0, $signature_document, $signature_values, $field['label']),
+                            'consent_text' => $field['label'],
+                            'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
+                        ));
+
+                    if ($signature_file_id !== false) {
+                        $file_id = $signature_file_id;
+                    }
+                }
+
             // else field does not have file upload type
             } else {
                 $file_id = '';
@@ -719,6 +841,10 @@ if ($liveform->check_form_errors() == false) {
             || ($connect_to_contact == 'false')
         )
         && ($submitter_email_address != '')
+        // A blocked address gets no account from a form submission either.
+        // The submission itself is still stored - the operator wanted the
+        // message; what is refused is the membership it would have created.
+        && (pg_email_blocked($submitter_email_address) == false)
     ) {
         // Check if user exists for email address.
         $user_id = db_value("SELECT user_id FROM user WHERE user_email = '" . escape($submitter_email_address) . "'");
@@ -734,22 +860,12 @@ if ($liveform->check_form_errors() == false) {
                 'type' => 'lowercase_letters',
                 'length' => 10));
 
-            db(
-                "INSERT INTO user (
-                    user_username,
-                    user_email,
-                    user_password,
-                    user_role,
-                    user_timestamp)
-                VALUES (
-                    '" . escape($username) . "',
-                    '" . escape($submitter_email_address) . "',
-                    '" . md5($random_password) . "',
-                    '3',
-                    UNIX_TIMESTAMP())");
-
-            // Get the new user id so we can connect the submitted form to this user.
-            $user_id = mysqli_insert_id(db::$con);
+            // Auto-registration: create the member with a modern password hash.
+            $user_id = create_member_user(array(
+                'username' => $username,
+                'email'    => $submitter_email_address,
+                'password' => $random_password,
+            ));
 
             // Remember email and password in the session, so we can show it on confirmation page.
             $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] = $submitter_email_address;
@@ -763,8 +879,13 @@ if ($liveform->check_form_errors() == false) {
             // If the user is not already logged in, then auto-login user.
             // The user might already be logged in if connect-to-contact was disabled.
             if (!USER_LOGGED_IN) {
+                $_SESSION['sessionuserid']  = db_value("SELECT user_id FROM user WHERE user_username = '" . escape($username) . "'");
                 $_SESSION['sessionusername'] = $username;
-                $_SESSION['sessionpassword'] = md5($random_password);
+
+                // Bind this fresh session to a device token while the device
+                // limit is on, so it counts toward the limit and can be signed
+                // out from another device. No-op when the limit is off.
+                pg_login_set_device_cookie((int) $_SESSION['sessionuserid'], false);
 
                 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
                 connect_user_to_order();
@@ -1432,7 +1553,7 @@ if ($liveform->check_form_errors() == false) {
         if ($quiz_score < $quiz_pass_percentage) {
             $liveform->add_notice(lang(array('string'=>'The quiz was submitted successfully, however you did not pass the quiz. Your score was {var:1}%.','vars'=>$quiz_score)) );
             
-            header('Location: ' . URL_SCHEME . HOSTNAME . $send_to);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to));
             exit();
         }
     }
@@ -1489,6 +1610,6 @@ if ($liveform->check_form_errors() == false) {
 
 // else an error does exist
 } else {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
 }
 ?>

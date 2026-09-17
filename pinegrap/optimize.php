@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -49,7 +49,13 @@ if (!check_edit_access($file['folder_id']) or ($file['design'] and (USER_ROLE > 
 
 require(dirname(__FILE__) . '/optimize_image.php');
 
-$response = optimize_image($file['id']);
+// 'resize' also scales the image down; anything else means compress at the
+// same pixel size, which is what every link that predates this parameter
+// sends. Read as an exact match rather than a truthiness test so a stray
+// value cannot turn the plain button into the one that changes dimensions.
+$mode = ((($_GET['mode'] ?? '') === 'resize') ? 'resize' : 'optimize');
+
+$response = optimize_image($file['id'], $mode);
 
 if ($response['status'] == 'error') {
     output_error(h($response['message']));

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -377,9 +377,11 @@ print
             'extra classes'=>'store',
             'icon'=>'store', 
             'heading'=> lang('Shipping Report'),
+            'heading_description' => lang('View the number of Products that need to be shipped or have been shipped on different days.'),
             'cancel'=>false
         )
     ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -387,7 +389,7 @@ print
             ' . $liveform->output_notices() . '
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('View the number of Products that need to be shipped or have been shipped on different days.') . '" title="' . lang('Shipping Report') . '">' . lang('Shipping Report') . '</h2>
+                    
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="view_ship_date_adjustments.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-wrench-adjustable-circle bi-me-2"></span>' . lang('Ship Date Adjustments') . '</a>
                     </nav>
@@ -423,6 +425,7 @@ print
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 ?>

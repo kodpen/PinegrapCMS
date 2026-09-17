@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -94,52 +94,38 @@ if ($form->check_form_errors()) {
     go(get_page_type_url('set password'));
 }
 
-$password_hash = md5($form->get('new_password'));
+// Modern hash for the new password.
+$password_hash = pg_password_hash($form->get('new_password'));
 
 // Update password for user.
 db(
     "UPDATE user SET 
         user_password = '" . e($password_hash) . "',
+        user_password_algo = 2,
         user_password_hint = '" . e($form->get('password_hint')) . "',
         token = NULL,
         token_timestamp = '0'
+        " . pg_password_changed_sql() . "
     WHERE user_id = '" . e($user['id']) . "'");
 
-// Auto-login user with new info so the user does not have to login manually.
+// Setting a password (via the reset link) invalidates every remembered session
+// for this account; a fresh token is minted below for the browser doing it.
+pg_auth_token_revoke_user($user['id']);
+
+// Auto-login the user so they do not have to sign in manually.
+$_SESSION['sessionuserid']  = $user['id'];
 $_SESSION['sessionusername'] = $user['username'];
-$_SESSION['sessionpassword'] = $password_hash;
 
 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
 connect_user_to_order();
 
 log_activity('User set password and was automatically logged in.', $user['username']);
 
-// If remember me is on and the user has chosen to be remembered,
-// and the user is not logged in as a different user,
-// then update cookie with new login information.
-if (
-    (REMEMBER_ME == true)
-    && (isset($_COOKIE['software']['username']) == true)
-    && ($_SESSION['software']['logged_in_as_different_user'] == false)
-) {
-    $secure = false;
-
-    // If secure mode is enabled, then prepare secure cookie values.
-    if (URL_SCHEME == 'https://') {
-        $secure = true;
-    }
-
-    // If PHP version is greater than or equal to 5.2.0 then add cookies
-    // for login info so that user will be logged in automatically and also
-    // use httponly cookie, in order to prevent hacking methods.  PHP before 5.2.0
-    // does not support setting httponly cookies.
-    if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
-        setcookie('software[password]', $password_hash, time() + 315360000, '/', '', $secure, true);
-
-    // Otherwise store login info in cookies without httponly cookie.
-    } else {
-        setcookie('software[password]', $password_hash, time() + 315360000, '/', '', $secure);
-    }
+// Same as change_password.php: the revoke above dropped this browser's token
+// too, so bind the session to a fresh one or the next request signs it out.
+if (($_SESSION['software']['logged_in_as_different_user'] ?? false) == false) {
+    $keep_remembered = ((REMEMBER_ME == true) && (isset($_COOKIE['software']['auth']) == true));
+    pg_login_set_device_cookie($user['id'], $keep_remembered);
 }
 
 // get user information
@@ -179,6 +165,7 @@ if ($send_to != '') {
     || ($user['manage_emails'] == true)
     || ($user['manage_ecommerce'] == true)
     || $user['manage_ecommerce_reports']
+    || !empty($user['manage_erp'])
     || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)
 ) {
     $continue_url = PATH . SOFTWARE_DIRECTORY . '/welcome.php';

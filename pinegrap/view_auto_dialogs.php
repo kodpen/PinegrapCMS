@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -120,13 +120,13 @@ echo pg_page_shell(
         'extra classes'=>'page',
         'icon'=>'page',
         'heading'=>lang('Auto Dialogs'),
-        'auto_main'=>false,
+        'heading_description' => lang('Pop-up dialogs shown to visitors'),
     )
 );
 
 $home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' ORDER BY page_timestamp DESC LIMIT 1");
 
-require('assets/templates/view_auto_dialogs.php');
+require('includes/templates/view_auto_dialogs.php');
 
 echo output_footer();
 

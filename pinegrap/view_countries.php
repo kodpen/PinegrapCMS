@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -125,13 +125,15 @@ echo
         'title'=> lang('All Countries'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('All Countries')
+        'heading'=>lang('All Countries'),
+        'heading_description' => lang('All countries that are valid for billing address and shipping address selection.'),
     ]) . '
+<main id="content" class="container-fluid">
     <div class="row">
             <div class="col-12">
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('All countries that are valid for billing address and shipping address selection.') . '" title="' . lang('All Countries') . '">' . lang('All Countries') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_country.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         </nav>
@@ -157,5 +159,6 @@ echo
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
 output_footer();

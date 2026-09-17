@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -177,6 +177,12 @@ if (!$_POST) {
         $output_available_custom_fields .= '<li class="list-group-item py-1">^^' . h($custom_field['name']) . '^^</li>';
     }
 
+    // These two are only ever produced by the form list view screen this block
+    // was copied from; there is no filter UI here, so they stay empty. Declared
+    // so the concatenation below does not read undefined variables.
+    $output_custom_fields_for_javascript = '';
+    $output_filters_for_javascript = '';
+
     $output_javascript =
         '<script>
             window.onload = initialize_filters;
@@ -193,10 +199,11 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Edit Form Item View'),
+        'heading_description' => lang('Update this page\'s display of a single submitted form, linked to by a reference code.'),
         'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php')
     ,
             'breadcrumb' => array(array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'), array('label' => lang('Edit Form Item View'))),
-        ]) );
+        ]) . '<main id="content" class="container-fluid">' );
 
     print $output_header . '
             <div class="row">
@@ -204,7 +211,7 @@ if (!$_POST) {
                 ' . $form->get_messages() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page position-relative" data-bs-content="' . lang('Update this page\'s display of a single submitted form, linked to by a reference code.') . '" title="' . lang('Edit Form Item View') . '">[' . h($page['name']) . ']</h2>
+
                         <p>' . $output_custom_form_information . '</p>
                     </div>
                 </div>
@@ -287,7 +294,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     $form->remove();
@@ -315,7 +323,7 @@ if (!$_POST) {
 
     if ($_POST['send_to']) {
         // send user to send to
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
     } else {
         // send user to send to
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['page_id']);

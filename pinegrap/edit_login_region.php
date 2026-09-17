@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -55,17 +55,19 @@ if (!$_POST) {
         'extra classes'=>'page',
         'icon'=>'page',
         'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))),
+        'heading_description' => lang('Update the messages displayed in the login region before and after users log in.'),
         'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Login Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update the messages displayed in the login region before and after users log in.') . '" title="' . lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))) . '">[' . h($row['name']) . ']</h2>
+
                         <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<login>' . $row['name'] . '</login>') . '</strong></p>
                     </div>
                 </div>
@@ -85,7 +87,7 @@ if (!$_POST) {
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Login Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<login>') . '</div>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 <div class="input-group-text">' . h('</login>') . '</div>
                                             </div>
                                         </div>
@@ -133,7 +135,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

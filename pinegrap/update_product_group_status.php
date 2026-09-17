@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -20,6 +20,12 @@ function update_product_group_status($properties) {
 
     $id = $properties['id'];
     $status = $properties['status'];
+
+    // Who the change is recorded as. The screens leave this out and the
+    // signed-in operator is used; an entry point without a session - the
+    // external API - passes the account it is acting for, because USER_ID is
+    // empty there and every row below would be stamped with nobody.
+    $user_id = isset($properties['user']) ? (int) $properties['user'] : (int) USER_ID;
 
     if ($status == 'enabled') {
         $enabled = 1;
@@ -44,7 +50,7 @@ function update_product_group_status($properties) {
             "UPDATE product_groups
             SET
                 enabled = '$enabled',
-                user = '" . USER_ID . "',
+                user = '" . $user_id . "',
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($product_group['id']) . "'");
 
@@ -104,7 +110,7 @@ function update_product_group_status($properties) {
             "UPDATE products
             SET
                 enabled = '$enabled',
-                user = '" . USER_ID . "',
+                user = '" . $user_id . "',
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($product['id']) . "'");
 

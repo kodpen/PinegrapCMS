@@ -1824,6 +1824,461 @@ function pg_seo_score_color($score)
     return array('class' => 'danger', 'style' => '');
 }
 
+// Score colour as a literal hex value.
+//
+// The admin screens draw scores with Bootstrap contextual classes. The editor
+// toolbar cannot: it is injected into the visitor's own theme, which may carry
+// no Bootstrap, no icon font and no custom properties at all. Same bands as
+// pg_seo_score_color(), so the ring on the front end and the bar in the panel
+// cannot drift apart.
+function pg_seo_score_hex($score)
+{
+    if ($score >= 80) {
+        return '#198754';
+    }
+
+    if ($score >= 55) {
+        return '#ffc107';
+    }
+
+    if ($score >= 30) {
+        return '#fd7e14';
+    }
+
+    return '#dc3545';
+}
+
+// One line of the toolbar panel: a coloured dot, the wording, and the points.
+function pg_seo_toolbar_row($state, $text, $points = '', $title = '')
+{
+    if ($state === 'ok') {
+        $dot = '#198754';
+    } elseif ($state === 'warn') {
+        $dot = '#ffc107';
+    } elseif ($state === 'muted') {
+        $dot = '#adb5bd';
+    } else {
+        $dot = '#dc3545';
+    }
+
+    return
+        '<div class="pg_seo_tb_row"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>
+            <span class="pg_seo_tb_dot" style="background:' . $dot . '"></span>
+            <span class="pg_seo_tb_text">' . h($text) . '</span>
+            ' . (($points !== '') ? '<span class="pg_seo_tb_points">' . h($points) . '</span>' : '') . '
+        </div>';
+}
+
+// Ring, panel and the CSS both need, for the editor toolbar on the front end.
+//
+// Deliberately self-contained: its own class names, its own colours, inline
+// SVG instead of an icon font. Everything else that draws a score lives in the
+// admin panel, where Bootstrap is a given; here the surrounding markup belongs
+// to whoever built the site and nothing can be assumed.
+//
+// Returns three strings so the caller can put each where it belongs - the CSS
+// in the toolbar's existing <style>, the button inside the button container,
+// the panel after it.
+//
+// The panel also carries the page's own properties (pg_page_info_block), which
+// used to hang off an info dropdown inside the toolbar iframe. They are read
+// far more often than the buttons beside them and the toolbar had to be
+// expanded first to reach them; here they are one click away on any page.
+// That is also why the panel survives an installation whose SEO upgrade has
+// not run: there would be nowhere left to read them.
+//
+// The toolbar draws this a second time, inside its own frame, where the ring
+// is out of reach - same panel, same id, because that is a separate document.
+// What differs there is only that it stands open and has nothing to close it
+// with, which is what $options carries.
+//
+// @param int   $page_id
+// @param int   $style_id style the page is being rendered with
+// @param array $user     row from validate_user() / initialize_user()
+// @param array $options  close (bool), hidden (bool) - both default true;
+//                        send_to, which the toolbar has to give because its
+//                        own REQUEST_URL is toolbar.php, not the page
+// @return array css, button, panel, score (value, hex - what the compact
+//               toolbar view puts on the button that opens the panel)
+function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = array())
+{
+    $show_close = (!isset($options['close'])) || ($options['close'] == true);
+    $start_hidden = (!isset($options['hidden'])) || ($options['hidden'] == true);
+
+    $empty = array('css' => '', 'button' => '', 'panel' => '', 'score' => array('value' => NULL, 'hex' => '#adb5bd'));
+    $page_id = (int) $page_id;
+
+    if (!$page_id) {
+        return $empty;
+    }
+
+    $info = pg_page_info_block($page_id, $style_id, $user, isset($options['send_to']) ? $options['send_to'] : NULL);
+
+    $row = false;
+
+    if (pg_seo_schema_ready()) {
+
+        $select =
+            "SELECT page_id, seo_score, seo_flags, seo_analysis, seo_analysis_current, seo_checked_at
+            FROM page
+            WHERE page_id = '" . $page_id . "'";
+
+        $row = db_item($select);
+
+        // The editor is looking at this page because they just changed it,
+        // which is exactly when the stored score is out of date. One record is
+        // a handful of queries - the same trade the detail panel in the admin
+        // makes - and once it is current the next page view skips this
+        // entirely.
+        if ($row && (((string) $row['seo_analysis_current']) !== '1')) {
+            pg_seo_recalculate('page', array($page_id));
+            $row = db_item($select);
+        }
+    }
+
+    // Neither a score nor anything to say about the page: no ring, no panel.
+    if (!$row && ($info['html'] === '')) {
+        return $empty;
+    }
+
+    $scored = $row ? pg_seo_row_scored($row) : false;
+    $score = $scored ? (int) $row['seo_score'] : 0;
+    $hex = $scored ? pg_seo_score_hex($score) : '#adb5bd';
+
+    // pathLength normalises the circumference to 100 so the dash array is the
+    // percentage itself, whatever radius this ends up drawn at.
+    $button =
+        '<button type="button" id="software_seo_toggle" title="' . h(lang('SEO Score') . ($scored ? ': ' . $score . '/100' : '')) . '">
+            <svg width="26" height="26" viewBox="0 0 36 36" aria-hidden="true">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#00000022" stroke-width="3.2"></circle>
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="' . $hex . '" stroke-width="3.2" stroke-linecap="round"
+                    pathLength="100" stroke-dasharray="' . ($scored ? $score : 0) . ' 100" transform="rotate(-90 18 18)"></circle>
+                <text x="18" y="19" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="' . $hex . '"
+                    font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">' . ($scored ? $score : '&#8211;') . '</text>
+            </svg>
+        </button>
+        <span class="grid_toggle_button_vh"></span>';
+
+    // ---- panel ------------------------------------------------------------
+
+    // Every section below the page name announces itself, so the score does
+    // too: without a heading its bars run straight into the last fact row and
+    // read as one more page property.
+    if (!$scored) {
+        $body =
+            '<div class="pg_seo_tb_head">' . h(lang('SEO Score')) . '</div>
+            <div class="pg_seo_tb_note">' . h(lang('SEO score has not been calculated yet.')) . '</div>';
+    } else {
+        $analysis = json_decode((string) ($row['seo_analysis'] ?? ''), true);
+        $checks = (is_array($analysis) && !empty($analysis['checks'])) ? $analysis['checks'] : array();
+        $groups = (is_array($analysis) && !empty($analysis['groups'])) ? $analysis['groups'] : array();
+
+        $structure_score = isset($groups['structure']) ? $groups['structure'] : NULL;
+        $link_score = isset($groups['links']) ? $groups['links'] : NULL;
+        $speed_score = isset($groups['speed']) ? $groups['speed'] : NULL;
+        $meta_score = isset($groups['meta']) ? (int) $groups['meta'] : $score;
+
+        $body = '';
+
+        // Group summary, only once a second group exists: before that the
+        // composed score is the meta score and a second bar reading the same
+        // number explains nothing.
+        if (($structure_score !== NULL) || ($speed_score !== NULL)) {
+
+            $body .= '<div class="pg_seo_tb_head">' . h(lang('SEO Score')) . '</div>';
+
+            $weights = pg_seo_group_weights($structure_score, $link_score, $speed_score);
+            $lines = array(array(lang('Content & Meta'), (int) $meta_score, $weights['meta']));
+
+            if ($structure_score !== NULL) {
+                $lines[] = array(lang('HTML Structure'), (int) $structure_score, $weights['structure']);
+            }
+
+            if ($link_score !== NULL) {
+                $lines[] = array(lang('Internal Links'), (int) $link_score, $weights['links']);
+            }
+
+            if ($speed_score !== NULL) {
+                $lines[] = array(lang('Page Speed'), (int) $speed_score, $weights['speed']);
+            }
+
+            foreach ($lines as $line) {
+                $body .=
+                    '<div class="pg_seo_tb_group">
+                        <span class="pg_seo_tb_glabel">' . h($line[0]) . '</span>
+                        <span class="pg_seo_tb_gbar"><i style="width:' . (int) $line[1] . '%;background:' . pg_seo_score_hex((int) $line[1]) . '"></i></span>
+                        <span class="pg_seo_tb_gscore">' . (int) $line[1] . '</span>
+                        <span class="pg_seo_tb_gweight">%' . (int) $line[2] . '</span>
+                    </div>';
+            }
+        }
+
+        // Speed rows are kept apart from the rest: they describe how the page
+        // is delivered rather than what is written on it, and an operator
+        // cannot fix them by editing a field.
+        $meta_rows = '';
+        $speed_rows = '';
+
+        foreach ($checks as $check) {
+            $row_html = pg_seo_toolbar_row($check['s'], pg_seo_check_label($check), (int) $check['e'] . '/' . (int) $check['w']);
+
+            if (strpos((string) $check['c'], 'speed_') === 0) {
+                $speed_rows .= $row_html;
+            } else {
+                $meta_rows .= $row_html;
+            }
+        }
+
+        if ($meta_rows !== '') {
+            $body .= '<div class="pg_seo_tb_head">' . h(lang('Content & Meta')) . '</div>' . $meta_rows;
+        }
+
+        $issues = pg_seo_load_issues('page', $page_id);
+
+        if ($issues) {
+            $body .= '<div class="pg_seo_tb_head">' . h(lang('HTML Structure')) . '</div>';
+
+            foreach ($issues as $issue) {
+
+                if ($issue['severity'] == 'error') {
+                    $state = 'fail';
+                } elseif ($issue['severity'] == 'warning') {
+                    $state = 'warn';
+                } else {
+                    $state = 'muted';
+                }
+
+                $body .= pg_seo_toolbar_row(
+                    $state,
+                    pg_seo_issue_label($issue['code'], $issue['occurrences'], $issue['detail']),
+                    '',
+                    $issue['detail']);
+            }
+        }
+
+        if ($speed_rows !== '') {
+            $body .= '<div class="pg_seo_tb_head">' . h(lang('Page Speed')) . '</div>' . $speed_rows;
+        }
+    }
+
+    // Same two passes the detail panel in the admin offers, reachable without
+    // leaving the page being edited. The page is reloaded rather than the panel
+    // refreshed in place: the ring in the toolbar is rendered by the server and
+    // would otherwise keep showing the score the run just replaced.
+    $actions = '';
+
+    // Both passes write to the SEO columns, so neither is offered where they
+    // do not exist yet.
+    if ($row) {
+
+        $actions_base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_seo_analysis.php?type=page&amp;id=' . $page_id
+            . get_token_query_string_field() . '&amp;fragment=checklist';
+
+        $actions =
+            '<div class="pg_seo_tb_actions">
+                <button type="button" class="pg_seo_tb_btn" data-url="' . $actions_base . '&amp;action=score">'
+                    . h(lang('Refresh score')) . '</button>'
+                . ((class_exists('DOMDocument') && pg_seo_structure_schema_ready())
+                    ? '<button type="button" class="pg_seo_tb_btn" data-url="' . $actions_base . '&amp;action=structure">'
+                        . h(lang('Analyze HTML')) . '</button>'
+                    : '') .
+            '</div>';
+    }
+
+    $panel =
+        '<div id="software_seo_panel"' . ($start_hidden ? ' hidden' : '') . '>
+            <div class="pg_seo_tb_top">
+                <span class="pg_seo_tb_total" style="color:' . $hex . '">' . ($scored ? $score . '/100' : '&#8211;') . '</span>
+                <span class="pg_seo_tb_title">' . h(lang('SEO Score')) . '</span>
+                ' . ($show_close
+                    ? '<button type="button" id="software_seo_close" title="' . h(lang('Close')) . '">&#215;</button>'
+                    : '') . '
+            </div>
+            <div class="pg_seo_tb_body">' . $info['html'] . $body . $actions . '</div>
+        </div>
+        <script>
+        (function () {
+            var panel = document.getElementById("software_seo_panel");
+
+            if (!panel) {
+                return;
+            }
+
+            // Dressed to match the panel screens rather than the site it is
+            // sitting on: this is an editor surface, and beside a dark toolbar
+            // a white box reads as something that belongs to the page. The
+            // choice is the one the admin screens store - site and toolbar are
+            // one origin, so it is readable from here - and "auto" or no
+            // choice at all falls back to what the machine asks for.
+            //
+            // Watched rather than read once: the toggle lives in the toolbar,
+            // which is a different document, and storage events are how that
+            // document can be heard from.
+            function dress() {
+
+                var stored = null;
+
+                try {
+                    stored = localStorage.getItem("pinegrap backend color scheme");
+                } catch (error) {
+                    stored = null;
+                }
+
+                var dark = (stored === "dark")
+                    || ((stored !== "light") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+                panel.classList.toggle("pg_seo_tb_dark", dark);
+            }
+
+            dress();
+            window.addEventListener("storage", dress);
+
+            panel.addEventListener("click", function (event) {
+                var trigger = event.target.closest(".pg_seo_tb_btn");
+
+                if (!trigger || trigger.disabled) {
+                    return;
+                }
+
+                var buttons = panel.querySelectorAll(".pg_seo_tb_btn");
+                Array.prototype.forEach.call(buttons, function (button) { button.disabled = true; });
+
+                // window.parent, not this window: on the page the two are the
+                // same, and inside the toolbar frame it is the document
+                // underneath that carries the ring the run just changed.
+                fetch(trigger.getAttribute("data-url"), {credentials: "same-origin"})
+                    .then(function () { window.parent.location.reload(); })
+                    .catch(function () {
+                        Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
+                    });
+            });
+        })();
+        </script>';
+
+    $css = '
+            #software_seo_toggle{
+                margin-top: 6px;
+                margin-bottom: 0;
+                margin-left: 7px;
+                margin-right: 0;
+                width: 32px;
+                height: 40px;
+                background: #fff;
+                border: 0;
+                border-radius: 0;
+                padding: 0;
+                line-height: 0;
+                cursor: pointer;
+            }
+            #software_pinegrap_button_container.collapsed #software_seo_toggle{
+                display: none;
+            }
+            /* Every colour in this panel and in the page block below it comes
+               from these, so the dark set is one override rather than a second
+               copy of the stylesheet. The class is put on by the panel script,
+               which reads the same key the admin screens store their choice
+               in - the site and the toolbar are one origin, so it can. */
+            #software_seo_panel{
+                --pg-sp-bg: #fff;
+                --pg-sp-fg: #212529;
+                --pg-sp-muted: #6c757d;
+                --pg-sp-faint: #adb5bd;
+                --pg-sp-line: #00000018;
+                --pg-sp-line-soft: #00000010;
+                --pg-sp-border: #00000033;
+                --pg-sp-hover: #f1f3f5;
+                --pg-sp-link: #0d6efd;
+                --pg-sp-track: #00000014;
+                --pg-sp-shadow: #00000022;
+
+                position: fixed;
+                top: 50px;
+                right: 0;
+                width: 330px;
+                max-height: 70vh;
+                overflow-y: auto;
+                background: var(--pg-sp-bg);
+                color: var(--pg-sp-fg);
+                border: 1px solid var(--pg-sp-border);
+                border-top: 0;
+                border-right: 0;
+                border-bottom-left-radius: 3px;
+                z-index: 9999999;
+                font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+                font-size: 12px;
+                line-height: 1.35;
+                text-align: left;
+                box-shadow: 0 6px 18px var(--pg-sp-shadow);
+            }
+            #software_seo_panel.pg_seo_tb_dark{
+                --pg-sp-bg: #1b1f23;
+                --pg-sp-fg: #dee2e6;
+                --pg-sp-muted: #9aa4ae;
+                --pg-sp-faint: #6c757d;
+                --pg-sp-line: #ffffff20;
+                --pg-sp-line-soft: #ffffff14;
+                --pg-sp-border: #ffffff33;
+                --pg-sp-hover: #2b3035;
+                --pg-sp-link: #6ea8fe;
+                --pg-sp-track: #ffffff1a;
+                --pg-sp-shadow: #00000066;
+            }
+            #software_seo_panel[hidden]{ display: none; }
+            .pg_seo_tb_top{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 10px;
+                border-bottom: 1px solid var(--pg-sp-line);
+                position: sticky;
+                top: 0;
+                background: var(--pg-sp-bg);
+            }
+            .pg_seo_tb_total{ font-size: 15px; font-weight: 700; }
+            .pg_seo_tb_title{ flex: 1 1 auto; color: var(--pg-sp-muted); text-transform: uppercase; letter-spacing: .03em; font-size: 10px; }
+            #software_seo_close{
+                border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1;
+                color: var(--pg-sp-muted); padding: 0 2px;
+            }
+            .pg_seo_tb_body{ padding: 6px 10px 10px; }
+            .pg_seo_tb_note{ color: var(--pg-sp-muted); padding: 4px 0; }
+            .pg_seo_tb_head{
+                margin-top: 10px; margin-bottom: 3px; color: var(--pg-sp-muted);
+                text-transform: uppercase; letter-spacing: .03em; font-size: 10px; font-weight: 600;
+            }
+            .pg_seo_tb_group{ display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+            .pg_seo_tb_glabel{ flex: 0 0 96px; color: var(--pg-sp-fg); }
+            .pg_seo_tb_gbar{ flex: 1 1 auto; height: 4px; background: var(--pg-sp-track); border-radius: 2px; overflow: hidden; }
+            .pg_seo_tb_gbar i{ display: block; height: 100%; }
+            .pg_seo_tb_gscore{ flex: 0 0 22px; text-align: right; font-weight: 600; }
+            .pg_seo_tb_gweight{ flex: 0 0 30px; text-align: right; color: var(--pg-sp-faint); }
+            .pg_seo_tb_row{ display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; border-bottom: 1px solid var(--pg-sp-line-soft); }
+            .pg_seo_tb_dot{ flex: 0 0 7px; width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; }
+            .pg_seo_tb_text{ flex: 1 1 auto; }
+            .pg_seo_tb_points{ flex: 0 0 auto; color: var(--pg-sp-faint); }
+            .pg_seo_tb_actions{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+            .pg_seo_tb_btn{
+                flex: 1 1 auto;
+                border: 1px solid var(--pg-sp-border);
+                background: var(--pg-sp-bg);
+                color: var(--pg-sp-fg);
+                border-radius: 3px;
+                padding: 5px 8px;
+                font-size: 11px;
+                font-family: inherit;
+                cursor: pointer;
+            }
+            .pg_seo_tb_btn:hover{ background: var(--pg-sp-hover); }
+            .pg_seo_tb_btn[disabled]{ opacity: .5; cursor: default; }
+    ';
+
+    return array(
+        'css' => $css . $info['css'],
+        'button' => $button,
+        'panel' => $panel,
+        'score' => array('value' => ($scored ? $score : NULL), 'hex' => $hex));
+}
+
 // Thin progress bar with the score at its side, drawn under the record name
 // in list screens. Expects seo_score, seo_flags, seo_analysis_current keys.
 function pg_seo_render_bar($row)
@@ -2085,6 +2540,9 @@ function pg_seo_issue_label($code, $occurrences = 1, $detail = '')
         case 'img_no_lazy':
             return lang(array('string' => '{var:1} image{suffix:1} not lazily loaded', 'vars' => $count, 'suffix' => (($count == 1) ? '' : 's')));
 
+        case 'render_failed':
+            return lang(array('string' => 'The page could not be rendered for analysis: {var:1}', 'vars' => $detail));
+
         case 'link_empty':
             return lang(array('string' => '{var:1} link{suffix:1} with no text', 'vars' => $count, 'suffix' => (($count == 1) ? '' : 's')));
         case 'link_empty_href':
@@ -2282,8 +2740,12 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
         }
     }
 
+    // The wrapper is what the two buttons below replace when they finish, so
+    // whatever is drawn inside it has to be everything the panel shows for
+    // this record. The name and the edit link that get_seo_analysis.php puts
+    // above it are deliberately outside: they do not change.
     return
-        '<div class="mt-2">
+        '<div class="mt-2 pg_seo_panel_wrap">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold' . $text_class . '"' . $text_style . '>' . $score . '/100</span>
                 <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
@@ -2294,7 +2756,109 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
             ' . $output_rows . '
             ' . $output_issues . '
             ' . $output_speed_rows . '
+            ' . pg_seo_render_run_buttons($type, $id) . '
         </div>';
+}
+
+// The two per-record buttons at the foot of the detail panel.
+//
+// Separate from the nightly passes on purpose: those work through a queue in
+// id order and are bounded by a time budget, which is the wrong shape when the
+// operator is looking at one record and wants that record's number now.
+//
+// Two rather than one because the halves cost wildly different amounts. The
+// score reads database columns and returns in milliseconds; the HTML check
+// renders the page and takes about as long as loading it. Behind one button
+// the cheap half would inherit the expensive half's wait for no reason.
+function pg_seo_render_run_buttons($type, $id)
+{
+    if (!$type || !$id) {
+        return '';
+    }
+
+    $base = 'get_seo_analysis.php?type=' . h($type) . '&amp;id=' . (int) $id
+        . get_token_query_string_field() . '&amp;fragment=checklist';
+
+    $structure = '';
+
+    // The HTML half has nothing to offer without the extension that parses it.
+    if (class_exists('DOMDocument') && pg_seo_structure_schema_ready()) {
+        $structure =
+            '<button type="button" class="btn btn-sm btn-outline-secondary pg-seo-run"
+                data-seo-url="' . $base . '&amp;action=structure"
+                title="' . h(lang('Renders this record and examines the resulting HTML. Slower than the score.')) . '">
+                <span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML') . '</button>';
+    }
+
+    return
+        '<div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary pg-seo-run"
+                data-seo-url="' . $base . '&amp;action=score"
+                title="' . h(lang('Recalculates this record\'s score from its current field values.')) . '">
+                <span class="bi bi-arrow-repeat me-1"></span>' . lang('Refresh score') . '</button>
+            ' . $structure . '
+        </div>';
+}
+
+// Click handler for those buttons. Emitted once per page: the list screens get
+// it through the offcanvas shell, the edit screens ask for it directly.
+//
+// The response replaces the wrapper the button sits in, so the same handler
+// works inside the offcanvas and inside a card on an edit screen without
+// either knowing about the other.
+function pg_seo_render_run_script()
+{
+    static $emitted = FALSE;
+
+    if ($emitted) {
+        return '';
+    }
+
+    $emitted = TRUE;
+
+    return
+    '<script>
+    document.addEventListener("click", function (event) {
+        var trigger = event.target.closest(".pg-seo-run");
+
+        if (!trigger) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var wrap = trigger.closest(".pg_seo_panel_wrap");
+
+        if (!wrap || trigger.disabled) {
+            return;
+        }
+
+        // Both buttons in the wrapper are disabled, not just the one clicked:
+        // the two passes write the same columns and the second would recompose
+        // from a record the first has not finished writing.
+        var buttons = wrap.querySelectorAll(".pg-seo-run");
+        Array.prototype.forEach.call(buttons, function (button) { button.disabled = true; });
+        trigger.classList.add("disabled");
+
+        fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})
+            .then(function (response) { return response.text(); })
+            .then(function (html) {
+                var holder = document.createElement("div");
+                holder.innerHTML = html;
+                var fresh = holder.querySelector(".pg_seo_panel_wrap");
+
+                if (fresh) {
+                    wrap.replaceWith(fresh);
+                } else {
+                    wrap.innerHTML = html;
+                }
+            })
+            .catch(function () {
+                Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
+                trigger.classList.remove("disabled");
+            });
+    });
+    </script>';
 }
 
 // One group line in the detail panel: name, thin bar, score and the weight
@@ -2327,7 +2891,7 @@ function pg_seo_render_detail_offcanvas()
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
         </div>
         <div class="offcanvas-body" id="pg_seo_offcanvas_body"></div>
-    </div>
+    </div>' . pg_seo_render_run_script() . '
     <script>
     document.addEventListener("click", function (event) {
         var trigger = event.target.closest(".pg-seo-open");

@@ -342,7 +342,11 @@ software_$(document).ready(function() {
                         break;
 
                     case 'e':
+                        // A visual-designer page has no edit-mode toggle — it
+                        // has a button that opens the editor. Same key, same
+                        // meaning ("let me edit this page"), different button.
                         var grid_toggle = software_$('#grid_toggle');
+                        if (!grid_toggle.length) { grid_toggle = software_$('#pg_visual_edit'); }
 
                         if (grid_toggle.length) {
                             event.preventDefault();
@@ -355,9 +359,22 @@ software_$(document).ready(function() {
 
                         break;
 
-                    // Page designer shortcut (Ctrl+G).
+                    // Page designer shortcut (Ctrl+G). Opens whichever designer
+                    // this page has - the page designer on a custom style, the
+                    // style designer on a visual one - because the button
+                    // itself carries the right address for each.
+                    //
+                    // It is on this page now, in the panel behind the SEO ring;
+                    // it used to sit inside the toolbar iframe and the lookup
+                    // reached in there for it. The toolbar is still searched as
+                    // a fallback: this file is served from the site root and an
+                    // old copy can outlive an update of the software folder.
                     case 'g':
-                        var page_designer_button = toolbar.contents().find('.page_designer_button');
+                        var page_designer_button = software_$('.page_designer_button');
+
+                        if (!page_designer_button.length) {
+                            page_designer_button = toolbar.contents().find('.page_designer_button');
+                        }
 
                         if (page_designer_button.length) {
                             event.preventDefault();
@@ -367,6 +384,27 @@ software_$(document).ready(function() {
                             // even though we run preventDefault above.
                             setTimeout (function () {
                                 page_designer_button[0].click();
+                            }, 0);
+                        }
+
+                        break;
+
+                    // Page panel shortcut (Ctrl+I). The ring is on every page
+                    // and reaching it used to mean opening the toolbar first
+                    // out of habit, then looking somewhere else.
+                    case 'i':
+                        // Ctrl+I is italic where text is being written, and
+                        // edit mode puts editable regions on this very page.
+                        var writing = event.target && (event.target.isContentEditable
+                            || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.nodeName));
+
+                        var seo_toggle = software_$('#software_seo_toggle');
+
+                        if (!writing && seo_toggle.length) {
+                            event.preventDefault();
+
+                            setTimeout(function () {
+                                seo_toggle[0].click();
                             }, 0);
                         }
 

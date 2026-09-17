@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,12 +23,19 @@ ini_set('memory_limit', '-1');
 include('init.php');
 
 include_once('liveform.class.php');
-$liveform = new liveform($_POST['from']);
+$liveform = new liveform($_POST['from'] ?? '');
 $user = validate_user();
 validate_area_access($user, 'user');
 
 // if the form has not been submitted yet, then output form
 if (!$_POST) {
+
+    // Printed in the two option labels, so what the operator is choosing
+    // between is a pair of numbers rather than a pair of adjectives.
+    $optimize_settings        = pg_image_settings();
+    $optimize_resize_trigger  = $optimize_settings['file_resize_trigger'];
+    $optimize_resize_target   = $optimize_settings['file_max_dimension'];
+
     $output_design_row = '';
 
     // if this user is a designer or administrator, then allow the user to update the design property
@@ -89,11 +96,11 @@ if (!$_POST) {
 
             if (document.getElementById("optimize").checked) {
 
-                var number_of_files = opener.$(\'input[name="files[]"]:checked\').length;
-
-             
-
-                opener.document.form.optimize.value = 1;
+                /* The mode travels in the same hidden field the switch used to
+                   put a 1 in. edit_files.php still treats any other truthy
+                   value as plain optimizing, so a form posted from an older
+                   cached copy of this window behaves exactly as it did. */
+                opener.document.form.optimize.value = document.getElementById("optimize_mode").value;
 
                 opener.scrollTo(0, 0);
 
@@ -120,7 +127,7 @@ if (!$_POST) {
 
         }
     </script>
-    <main id="content" class="container">
+    <main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12 col-xs-8 col-sm-8 col-md-auto">
                 <div class="form-floating mt-1 mb-2">
@@ -133,6 +140,13 @@ if (!$_POST) {
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" id="optimize" value="1" />
                   <label class="form-check-label" for="optimize">' . lang('Optimize Images') . '</label>
+                </div>
+                <div class="mt-2">
+                    <select class="form-select" id="optimize_mode">
+                        <option value="optimize">' . lang('Compress only, keep the original size') . '</option>
+                        <option value="resize">' . lang(array('string' => 'Compress, and shrink anything wider than {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
+                    </select>
+                    <div class="form-text">' . lang(array('string' => 'Shrinking scales the longest edge down to {var:1} pixels, keeping the proportions. Smaller images are left alone.', 'vars' => array($optimize_resize_target))) . '</div>
                 </div>
             </div>
         </div>
@@ -175,7 +189,12 @@ if (!$_POST) {
                         output_error(lang('You do not have access to move files to the folder that you selected') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
                     }
 
-                    if ($_POST['optimize']) {
+                    // 'resize' also scales images down; anything else truthy
+                    // is the plain compress this screen has always done.
+                    $optimize_mode = '';
+
+                    if (!empty($_POST['optimize'])) {
+                        $optimize_mode = (($_POST['optimize'] === 'resize') ? 'resize' : 'optimize');
                         require(dirname(__FILE__) . '/optimize_image.php');
                     }
                     
@@ -246,9 +265,14 @@ if (!$_POST) {
                         $file['type'] = mb_strtolower($file['type']);
 
                         // If this file is an image that we should optimize, then do that.
+                        //
+                        // The already-optimized flag only holds back the plain
+                        // mode. A file can be fully compressed and still be
+                        // 6000 pixels wide, which is precisely what the shrink
+                        // mode was selected for.
                         if (
-                            $_POST['optimize']
-                            and !$file['optimized']
+                            $optimize_mode
+                            and (($optimize_mode === 'resize') or !$file['optimized'])
                             and (
                                 ($file['type'] == 'jpg')
                                 or ($file['type'] == 'jpeg')
@@ -260,7 +284,7 @@ if (!$_POST) {
                             )
                         ) {
 
-                            $response = optimize_image($file['id']);
+                            $response = optimize_image($file['id'], $optimize_mode);
 
                             if ($response['status'] == 'success') {
                                 $liveform->add_notice(h($response['message']));
@@ -395,7 +419,7 @@ if (!$_POST) {
 
     // If there is a send to value then send user back to that screen
     if (isset($_POST['send_to']) == TRUE) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
         
     // else send user to the default view
     } else {

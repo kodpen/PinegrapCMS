@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -48,6 +48,20 @@ if (
     output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// What the built-in editor opens, and what it is allowed to write back.
+//
+// One list for both, because two lists is how a format ends up editable on
+// screen and silently discarded on save -- which is exactly what .key and .pub
+// did: the editor drew for them and the write below never ran. Those two are
+// still shown, but read only; the DKIM signing key is not something to hand a
+// text box for.
+$editable_formats = array('json', 'txt', 'svg', 'xml', 'css', 'js', 'html', 'htm');
+
+// Cancel and the breadcrumb go back where the operator came from, when the
+// screen that opened this one said where that was.
+$back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php');
+$viewable_formats = array_merge($editable_formats, array('key', 'pub'));
+
 if (!isset($_POST['name'])) {
     $query = 
         "SELECT 
@@ -70,8 +84,14 @@ if (!isset($_POST['name'])) {
     $design = $row['design'];
     $optimized = $row['optimized'];
     $folder_archived = $row['folder_archived'];
-    // Get file content
-    $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    // Get file content -- only for what the editor actually opens. Every other
+    // type is a zip, an image or a font, and pulling one into memory to build a
+    // page that never shows it is work nobody sees.
+    $code = '';
+
+    if (in_array(mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)), $viewable_formats)) {
+        $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
+    }
 
     $output_file_name = '';
     
@@ -255,6 +275,13 @@ if (!isset($_POST['name'])) {
         case 'xml':
             $code_type = 'xml';
             break;
+        // htmlmixed: the tags, plus the CSS inside <style> and the JavaScript
+        // inside <script>. The mode and its three dependencies are already in
+        // get_codemirror_includes().
+        case 'html':
+        case 'htm':
+            $code_type = 'mixed';
+            break;
         case 'txt':
         case 'key':
         case 'pub':
@@ -266,8 +293,9 @@ if (!isset($_POST['name'])) {
     $output_no_file_editor_classes = 'col-md-6'; //default
 
 
-    if (in_array($file_extension, array('json', 'txt', 'key','pub', 'svg', 'xml','css','js') ) ){
+    if (in_array($file_extension, $viewable_formats)) {
 
+        $read_only = (in_array($file_extension, $editable_formats) == false);
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $output_file_content_row = '
         <div class="col-12 col-md-8">
@@ -278,11 +306,12 @@ if (!isset($_POST['name'])) {
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-2">
-                            <label class="form-label">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )  . '</label>
+                            <label class="form-label">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )
+                                . ($read_only ? ' <span class="badge text-bg-secondary">' . lang('Read only') . '</span>' : '') . '</label>
                             <div id="edit_custom">
-                                <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
+                                <textarea name="code" id="code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly="readonly"' : '') . '>' . h($code) . '</textarea>
                                 ' . get_codemirror_includes() . '
-                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => $code_type)) . '
+                                ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => $code_type, 'readonly' => $read_only)) . '
                             </div>
                         </div>
                     </div>
@@ -344,6 +373,12 @@ if (!isset($_POST['name'])) {
         </div>';
     }
 
+    // The block above only measures the types it draws a preview for, and the
+    // list below is not the same one — tiff is here and not there. Defaulted so
+    // the resize check reads a number either way.
+    if (!isset($image_width))  { $image_width = 0; }
+    if (!isset($image_height)) { $image_height = 0; }
+
     $output_rotate_image_button ='';
     if (    ($file['type'] == 'jpg')
             or ($file['type'] == 'jpeg')
@@ -353,12 +388,31 @@ if (!isset($_POST['name'])) {
             or ($file['type'] == 'tiff')
             or ($file['type'] == 'webp')
         ){
-             if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
+            $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
+
+             if (!$optimized && $image_library_available) {
                 $optimize_button ='<a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Processing') . '" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name) . ' )</a>';
             }
 
-         
-            $image_buttons = $optimize_button . '<button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Loading') . '" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            // The second half of the pair. Offered whatever the optimized flag
+            // says, because compressing an image does not make it narrower and
+            // a 6000 px photo is still a 6000 px photo afterwards. Only shown
+            // above the trigger, so it never appears where it would do nothing.
+            $resize_button = '';
+
+            if ($image_library_available && pg_image_can_be_resized($image_width, $image_height)) {
+
+                $image_settings = pg_image_settings();
+
+                $resize_button =
+                    '<a class="btn btn-link link-warning py-0 mb-2" data-loading-content="' . lang('Processing') . '" href="optimize.php?id='
+                    . h($_GET['id']) . get_token_query_string_field() . '&amp;mode=resize"><i class="bi bi-arrows-angle-contract bi-me-2"></i>'
+                    . lang(array(
+                        'string' => 'Resize to {var:1} pixels and optimize',
+                        'vars'   => array($image_settings['file_max_dimension']))) . '</a>';
+            }
+
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" data-loading-content="' . lang('Loading') . '" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
@@ -422,17 +476,19 @@ if (!isset($_POST['name'])) {
             'extra classes'=>'file',
             'icon'=>'file', 
             'heading'=>lang('Edit File'),
+            'heading_description' => lang('Rename file, move it to another folder, or change its description.'),
             'cancel'=>array(
                 'enable'=>'true',
                 'title'=>lang('Return to Files'),
-                'url'=>'view_files.php'
+                'url'=>$back_url
             ),
             'breadcrumb' => array(
-                array('label' => lang('Files'), 'url' => 'view_files.php'),
+                array('label' => lang('Files'), 'url' => $back_url),
                 array('label' => $file_name),
             ),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -447,7 +503,7 @@ if (!isset($_POST['name'])) {
                         <div class="col-12 col-sm-12 text-center text-md-start">
 <div class="row mb-2">
                                 <div class="col-12 col-md">
-                                    <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Rename file, move it to another folder, or change its description.') . '" title="' . lang('Edit File') . '">[' . $output_file_name . ']</h2>
+                                    
                                     <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
                                     <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
                                 </div>
@@ -478,7 +534,7 @@ if (!isset($_POST['name'])) {
                                             <div class="row">
                                                 <div class="col-12 my-2">
                                                     <label for="name" class="form-label">' . lang('File Name') . '</label>
-                                                    <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control  add-header-content-updater"/>
+                                                    <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control "/>
                                                 </div>
                                             </div>
                                         </div>
@@ -529,7 +585,6 @@ if (!isset($_POST['name'])) {
                 </form>
             </div>
         </div>
-    </main>
     ' . ($file['type'] === 'svg' ? '
     <script>
     (function () {
@@ -571,7 +626,7 @@ if (!isset($_POST['name'])) {
             img.src = svgUrl;
         });
     }());
-    </script>' : '') . output_footer();
+    </script>' : '') . '</main>' . output_footer();
 
 print $output;
 $liveform->remove_form('edit_file');
@@ -585,7 +640,6 @@ $liveform->remove_form('edit_file');
     $name = prepare_file_name($_POST['name']);
     $file_path = FILE_DIRECTORY_PATH . '/' . $name;
     $file_extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-    $editable_formats = array('json', 'txt', 'svg', 'xml', 'css', 'js');
 
     // DELETE
     if (!empty($_POST['delete'])) {
@@ -604,8 +658,16 @@ $liveform->remove_form('edit_file');
     }
 
     // INVALID NAME
+    //
+    // Renaming "photo.jpg" to "photo.php" is uploading a PHP file with an
+    // extra step, so a new name keeps the upload rule. The file's current
+    // name is let through as it is, so an old file can still be edited.
     if ($name === '.htaccess') {
         output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    if ((trim((string) $_POST['name']) !== (string) $row['name']) && pg_upload_name_blocked($_POST['name'])) {
+        output_error(h(pg_upload_blocked_message($_POST['name'])) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // DESIGN FIELD
@@ -695,9 +757,27 @@ $liveform->remove_form('edit_file');
             }
         }
     
-        // Update DB with new size and timestamp
+        // Update DB with the new size, dimensions and timestamp.
+        //
+        // A quarter turn swaps width and height, and those two columns are a
+        // cache that is only refilled when it is empty — so leaving them alone
+        // here left the file list printing the pre-rotation size for ever, and
+        // the resize button deciding on it.
+        @clearstatcache(true, $file_path);
+
+        $rotated_size = @getimagesize($file_path);
+
+        $sql_rotated_dimensions = '';
+
+        if ($rotated_size && !empty($rotated_size[0]) && !empty($rotated_size[1])) {
+            $sql_rotated_dimensions =
+                "image_width = '" . (int) $rotated_size[0] . "',
+                 image_height = '" . (int) $rotated_size[1] . "',";
+        }
+
         $query = "UPDATE files SET
             size = '" . escape(filesize($file_path)) . "',
+            " . $sql_rotated_dimensions . "
             timestamp = UNIX_TIMESTAMP(),
             user = '" . $user['id'] . "'
             WHERE id = '" . $file_id . "'";
@@ -845,6 +925,31 @@ $liveform->remove_form('edit_file');
         // NAME CONFLICT
         if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
             output_error(lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // RENAME THE FILE ON DISK
+        //
+        // The record's name is the address: every reader resolves a file as
+        // FILE_DIRECTORY_PATH . '/' . name, and the front end serves it by
+        // matching the requested path against that column. Renaming the row
+        // without renaming the file leaves the record pointing at nothing and
+        // strands the real file under a name no record refers to. For an
+        // editable format the code write below papered over it by creating a
+        // second file under the new name; for every other type - a zip, an
+        // image, a font - the download simply broke.
+        //
+        // Done before that write, so an editable file is moved and then updated
+        // in place instead of being written twice.
+        //
+        // The database is only told about the new name if the file actually
+        // moved. Updating it after a failed rename is what produces the broken
+        // state this is here to prevent.
+        if ($name !== $row['name']) {
+            $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+
+            if ((file_exists($old_file_path) == TRUE) && (@rename($old_file_path, $file_path) == FALSE)) {
+                output_error(lang('The file could not be renamed on the file system. Check write permission for the file directory.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
         }
 
         if (in_array($file_extension, $editable_formats) && isset($_POST['code'])) {

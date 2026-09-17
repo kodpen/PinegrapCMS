@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -158,9 +158,11 @@ print
             'extra classes'=>'visitor',
             'icon'=>'visitor', 
             'heading'=> lang('All Visitor Reports'),
+            'heading_description' => lang('Create real-time reports on all website visitor activities.'),
             'cancel'=>false
         )
     ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -169,7 +171,7 @@ print
            
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('Create real-time reports on all website visitor activities.') . '" title="' . lang('All Visitor Reports') . '">' . lang('All Visitor Reports') . '</h2>
+                    
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="view_visitor_report.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $output_web_statistics_link . '
@@ -193,7 +195,8 @@ print
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 
 $liveform->remove_form();

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -47,17 +47,15 @@ if (!$_POST) {
             'extra classes'=>'products',
             'icon'=>'store',
             'heading'=>lang('Create Tax Zone'),
+            'heading_description' => lang('Create a new tax zone that will be used to calculate tax during checkout based on the products and billing address.'),
             'cancel'=>array('enable'=>'true','url'=>'view_tax_zones.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Tax Zones'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_tax_zones.php'), array('label' => lang('Create Tax Zone'))),
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new tax zone that will be used to calculate tax during checkout based on the products and billing address.') . '" title="' . lang('Create Tax Zone') . '">[' . lang('Tax Zone Name') . ']</h2>
-                        </div>
-                    </div>
+                    
                     <form name="form" action="add_tax_zone.php" method="post">
                         ' . get_token_field() . '
                         <div class="row">
@@ -70,7 +68,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="name" class="form-label">' . lang('Tax Zone Name') . '</label>
-                                                <input type="text" name="name" id="name" maxlength="50" placeholder="' . lang('Tax Zone Name') . '" class="form-control add-header-content-updater" />
+                                                <input type="text" name="name" id="name" maxlength="50" placeholder="' . lang('Tax Zone Name') . '" class="form-control" />
                                             </div>
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="tax_rate" class="form-label">' . lang('Tax Rate') . ' (%)</label>
@@ -121,7 +119,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
     print $output;

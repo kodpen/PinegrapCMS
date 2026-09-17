@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -44,7 +44,7 @@ if (isset($_SESSION['sessionusername']) == true)
 	if (isset($_SESSION['software']['view_page_mode']) == false)
 	{
 		// If there is a cookie value, then use that.
-		if ($_COOKIE['software']['view_page_mode'])
+		if (!empty($_COOKIE['software']['view_page_mode']))
 		{
 			$_SESSION['software']['view_page_mode'] = $_COOKIE['software']['view_page_mode'];
 			// Otherwise, set default value to preview.
@@ -217,6 +217,14 @@ else
 	$page_meta_description = $row['page_meta_description'];
 	$folder_archived = $row['folder_archived'];
 }
+// Register which page this request resolved to, now that both branches above
+// have answered it. The performance monitor reads this at shutdown behind its
+// own pg_measurable_render() flag, so registering here changes nothing for it
+// - but a system widget rendering further down needs the answer DURING the
+// render. A custom form that owns its own fields is the case: it collects
+// submissions for the page it sits on, and only this function can tell it
+// which page that is. First registration wins, so the later call is a no-op.
+pg_rendered_page($page_id);
 // Determine if user has edit access to page.
 // We will use this in several places below.
 if (check_edit_access($folder_id) == true)
@@ -240,14 +248,14 @@ case 'login':
 	// If the user is already logged in and the user does not have edit access to this page,
 	// then send user to the login home.  We don't want to send users with edit access to the login home,
 	// because we want to allow them to view this page in order to be able to edit it.
-	if ((isset($_SESSION['sessionusername']) == true) && (isset($_SESSION['sessionpassword']) == true) && (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true) && (check_edit_access($folder_id) == false))
+	if ((pg_session_signed_in() == true) && (check_edit_access($folder_id) == false))
 	{
 		send_user_to_login_home();
 	}
 break;
 case 'logout':
 	// if user did not come from the control panel, and if they are currently logged in, then send the user to the logout script
-	if (((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) && ($_GET['logged_out'] != true))
+	if (((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) && (($_GET['logged_out'] ?? '') != true))
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/logout.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -257,7 +265,7 @@ case 'registration entrance':
 	// If the user is already logged in and the user does not have edit access to this page,
 	// then send user to the login home.  We don't want to send users with edit access to the login home,
 	// because we want to allow them to view this page in order to be able to edit it.
-	if ((isset($_SESSION['sessionusername']) == true) && (isset($_SESSION['sessionpassword']) == true) && (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true) && (check_edit_access($folder_id) == false))
+	if ((pg_session_signed_in() == true) && (check_edit_access($folder_id) == false))
 	{
 		send_user_to_login_home();
 	}
@@ -266,14 +274,14 @@ case 'membership entrance':
 	// If the user is already logged in and the user does not have edit access to this page,
 	// then send user to the login home.  We don't want to send users with edit access to the login home,
 	// because we want to allow them to view this page in order to be able to edit it.
-	if ((isset($_SESSION['sessionusername']) == true) && (isset($_SESSION['sessionpassword']) == true) && (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true) && (check_edit_access($folder_id) == false))
+	if ((pg_session_signed_in() == true) && (check_edit_access($folder_id) == false))
 	{
 		send_user_to_login_home();
 	}
 break;
 case 'my account':
 	// if user is not logged in, send user to registration entrance screen to login or register
-	if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)
+	if (pg_session_signed_in() == false)
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -281,7 +289,7 @@ case 'my account':
 break;
 case 'my account profile':
 	// if user is not logged in, send user to registration entrance screen to login or register
-	if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)
+	if (pg_session_signed_in() == false)
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -289,7 +297,7 @@ case 'my account profile':
 break;
 case 'view order':
 	// if user is not logged in, send user to registration entrance screen to login or register
-	if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)
+	if (pg_session_signed_in() == false)
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -297,7 +305,7 @@ case 'view order':
 break;
 case 'affiliate sign up form':
 	// if user is not logged in, send user to registration entrance screen to login or register
-	if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)
+	if (pg_session_signed_in() == false)
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -320,7 +328,7 @@ case 'form item view':
 	// if the user has chosen to edit the submitted form,
 	// and the user is not logged in
 	// then determine if submitted form can be edited by a registered user, in order to see if we need to send user to registration entrance screen
-	if (((isset($_GET['edit_submitted_form'])) && ($_GET['edit_submitted_form'] == 'true')) && ((isset($_SESSION['sessionusername']) == false) || (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)))
+	if (((isset($_GET['edit_submitted_form'])) && ($_GET['edit_submitted_form'] == 'true')) && ((isset($_SESSION['sessionusername']) == false) || (pg_session_signed_in() == false)))
 	{
 		$properties = get_page_type_properties($page_id, $page_type);
 		// if submitted form can be edited by a registered user, then send user to registration entrance screen
@@ -365,7 +373,7 @@ case 'private':
 case 'guest':
 	// if user is not logged in or has an invalid login, then forward user to Registration Entrance screen
 	// and, if the user is not browsing the site as a Guest
-	if ((validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false) && ($_SESSION['software']['guest'] !== true))
+	if ((pg_session_signed_in() == false) && ($_SESSION['software']['guest'] !== true))
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -373,7 +381,7 @@ case 'guest':
 	break;
 case 'registration':
 	// if user is not logged in or has an invalid login, then forward user to Registration Entrance page
-	if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)
+	if (pg_session_signed_in() == false)
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -381,7 +389,7 @@ case 'registration':
 	break;
 case 'membership':
 	// if user is not logged in or has an invalid login, then forward user to Membership Entrance page
-	if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == false)
+	if (pg_session_signed_in() == false)
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php?send_to=' . urlencode(REQUEST_URL));
 		exit();
@@ -2653,7 +2661,7 @@ else
 		$get_access_cp = $_GET['edit'];
 	}
 	// if the user is logged in and $get_access_cp is not set to 'no' and the user has control panel access, then remember that the toolbar should be outputted
-	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
+	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
 	{
 		$toolbar = true;
 	}
@@ -2696,6 +2704,14 @@ else
 
                 }';
 		}
+		// SEO ring for this page, drawn to the left of the grid button. Built
+		// before the CSS below so its rules can join the same <style>: the
+		// toolbar is injected into the visitor's own theme and cannot rely on
+		// a stylesheet of its own being there.
+		require_once(dirname(__FILE__) . '/seo.php');
+
+		$output_seo_toolbar = pg_seo_page_toolbar($page_id, STYLE_ID, $user);
+
 		// Set styling for grid mode and full screen buttons.
 		$output_css = '
         <style>
@@ -2901,6 +2917,7 @@ else
 				right: 0;
 			}
             ' . $output_mobile_border_constraint . '
+            ' . $output_seo_toolbar['css'] . '
         </style>
                 ';
 		// We are using stristr instead of mb_stristr because mb_stristr requires PHP 5.2,
@@ -2928,23 +2945,66 @@ else
 		{
 			$content .= $output_css;
 		}
-		// If theme preview is enabled and the toolbar was expanded on the last page visit,
-		// then prepare it to be expanded by default.
-		if ((isset($_SESSION['software']['preview_theme_id']) && $_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['toolbar_enabled'] == true))
+		// If the toolbar was expanded on the last page visit, then prepare it to
+		// be expanded by default.
+		//
+		// frontend.src.js posts this flag to api.php every time the state
+		// changes, on every front-end page. It used to be read only while a
+		// theme preview was running, so everywhere else the bar it had just
+		// remembered opened closed again on the next page.
+		if (isset($_SESSION['software']['toolbar_enabled']) && ($_SESSION['software']['toolbar_enabled'] == true))
 		{
 			$fullscreen_toggle = "up_button";
 			$fullscreen_toggle_title = lang('Activate Fullscreen Mode') . " (Ctrl+D | &#8984;+D)";
-			// Otherwise theme preview is disabled or toolbar was collapsed on last page visit,
-			// so prepare it to be collapsed by default.
-			
+			// Otherwise the toolbar was collapsed on the last page visit, so
+			// prepare it to be collapsed by default.
+
 		}
 		else
 		{
 			$fullscreen_toggle = "down_button";
 			$fullscreen_toggle_title = lang('Deactivate Fullscreen Mode') . " (Ctrl+D | &#8984;+D)";
 		}
+		// Is this page built with the Visual Page Editor?
+		//
+		// The old edit-mode toggle exists to reveal pregion / cregion boxes on
+		// a page assembled from a custom layout. A visual design has no such
+		// regions — its whole body IS the tree — so the toggle switches on a
+		// mode with nothing in it, which reads as broken. Those pages get a
+		// button that opens the editor instead.
+		//
+		// The toggle is not deleted, only skipped here: every custom-layout
+		// page still needs it, and that is most of the sites running this.
+		$pg_is_visual_page = false;
+		if (function_exists('pg_page_is_visual_design')) {
+			$_pg_vp_cols = function_exists('pg_multi_page_design_ready') && pg_multi_page_design_ready();
+			$_pg_vp_row  = db_item("SELECT page_style" . ($_pg_vp_cols ? ", (page_tree_json <> '') AS has_tree" : ", 0 AS has_tree") . "
+			                       FROM page WHERE page_id = '" . e((int)$page_id) . "' LIMIT 1");
+			if (is_array($_pg_vp_row)) {
+				$pg_is_visual_page = pg_page_is_visual_design(array(
+					'page_style' => (int)$_pg_vp_row['page_style'],
+					'has_tree'   => (int)$_pg_vp_row['has_tree'],
+				));
+			}
+		}
+
 		// If user has edit access to this page, then output grid button.
-		if ($edit_access == true)
+		if (($edit_access == true) && $pg_is_visual_page)
+		{
+			// One button, one destination: the page opens in the editor on its
+			// own tab. Which roles may open it, and what they may change once
+			// there, is decided by the editor (includes/designer_access.php).
+			$_pg_vp_url = function_exists('pg_page_edit_url')
+				? pg_page_edit_url(array('page_id' => (int)$page_id, 'page_style' => (int)$_pg_vp_row['page_style'], 'has_tree' => 1))
+				: ('edit_system_style.php?page=' . (int)$page_id);
+			$_pg_vp_url .= (strpos($_pg_vp_url, '?') === false ? '?' : '&')
+			            . 'send_to=' . urlencode(get_request_uri());
+			$output_grid_button = '
+			<button type="button" class="toggle_button_off" id="pg_visual_edit" title="' . lang('Edit in the Visual Page Editor') . ' (Ctrl+E | &#8984;+E)" onclick="javascript:window.location.href=\'' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $_pg_vp_url) . '\'"><span class="bi bi-pencil-square"></span></button>
+			<span class="grid_toggle_button_vh"></span>
+			';
+		}
+		else if ($edit_access == true)
 		{
 			// if view page mode is set to preview, then set change mode value to edit
 			if ($view_page_mode == 'preview')
@@ -2973,6 +3033,7 @@ else
 		$output_toolbar = '
 			<iframe id="software_toolbar" scrolling="no" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/toolbar.php?page_id=' . $page_id . '&amp;style_id=' . STYLE_ID . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" style="position: fixed; top: 0; right: 0; left: 0; z-index: 999999999; padding: 0; margin: 0; width: 100%; display: none;100% !important" frameborder="0"></iframe>
             <div id="software_pinegrap_button_container">
+				' . $output_seo_toolbar['button'] . '
 				' . $output_grid_button . '
 				<button type="button" class="' . $fullscreen_toggle . '" id="software_fullscreen_toggle" title="' . $fullscreen_toggle_title . '" ></button>
                 
@@ -2986,10 +3047,15 @@ else
             		var button_container = document.querySelector("#software_pinegrap_button_container"); 
 					var toggle_softwareminimizebuttons = document.querySelector("#softwareminimizebuttons"); 
 
+					// Shown unless the operator has said otherwise, and then it
+					// stays said. There used to be a rule here that forced the
+					// buttons back on once sixty seconds had passed since the
+					// last change - it ran on every page load, so hiding them
+					// could not outlive a minute of browsing.
 					function toggle_control_buttons(update = false){
 						var timenow = Math.floor(Date.now() / 1000);
 
-						if( sessionStorage.getItem("toggle_control_buttons") == undefined 
+						if( sessionStorage.getItem("toggle_control_buttons") == undefined
 							|| sessionStorage.getItem("toggle_control_buttons") == "hide"
 							&& update === true){
 							sessionStorage.setItem("toggle_control_buttons","show");
@@ -2999,12 +3065,7 @@ else
 							sessionStorage.setItem("toggle_control_buttons","hide");
 							sessionStorage.setItem("toggle_control_buttons_time",timenow);
 						}
-						
-						if(timenow - sessionStorage.getItem("toggle_control_buttons_time") >= 60){
-							sessionStorage.setItem("toggle_control_buttons","show");
-							sessionStorage.setItem("toggle_control_buttons_time",timenow);
-						}
-						
+
 						if(sessionStorage.getItem("toggle_control_buttons") === "show"){
 						
 							toggle_softwareminimizebuttons.classList.add("active");
@@ -3021,21 +3082,66 @@ else
 					toggle_softwareminimizebuttons.onclick = function() {
 						toggle_control_buttons(update = true);
 					};
+
+					// SEO panel. The panel markup follows this script - it is a
+					// sibling of the button container, not a child - so it does
+					// not exist yet while this runs. Every handler therefore
+					// looks the panel up when it fires rather than closing over
+					// a reference resolved now.
+					//
+					// The button itself is only emitted once the score columns
+					// exist, so on an installation that has not run the upgrade
+					// there is nothing here to bind at all.
+					var seo_toggle = document.querySelector("#software_seo_toggle");
+
+					function seo_panel_set(hidden) {
+						var seo_panel = document.querySelector("#software_seo_panel");
+
+						if (seo_panel) {
+							seo_panel.hidden = (hidden === null) ? !seo_panel.hidden : hidden;
+						}
+					}
+
+					if (seo_toggle) {
+
+						seo_toggle.onclick = function () {
+							seo_panel_set(null);
+						};
+
+						document.addEventListener("click", function (event) {
+							if (event.target.closest && event.target.closest("#software_seo_close")) {
+								seo_panel_set(true);
+							}
+						});
+
+						// Collapsing the button bar takes the panel with it,
+						// otherwise it is left floating with nothing to close it.
+						toggle_softwareminimizebuttons.addEventListener("click", function () {
+							seo_panel_set(true);
+						});
+					}
 				</script>
-			</div>';
+			</div>' . $output_seo_toolbar['panel'];
 		
+		// The toolbar goes in as a preg_replace replacement, where a dollar sign
+		// or a backslash is a backreference rather than a character. The SEO
+		// panel carries real page content - a title, a link, a finding's detail
+		// - so anything reading like $1 in it would be substituted away or
+		// swallow part of the markup. Escaped once here, for every branch below.
+		$output_toolbar_replacement = str_replace(array('\\', '$'), array('\\\\', '\\$'), $output_toolbar);
+
 		// We are using stristr instead of mb_stristr because mb_stristr requires PHP 5.2,
 		// and we still have some sites on PHP 5.1 (probably won't cause any utf-8 issue).
 		// if there is a body tag in the HTML, then add toolbar after body tag
 		if (stristr($content, '<body') == true)
 		{
-			$content = preg_replace('/(<body.*?>)/i', '$1' . $output_toolbar, $content);
+			$content = preg_replace('/(<body.*?>)/i', '$1' . $output_toolbar_replacement, $content);
 			// else if there is an html tag in the HTML, then add toolbar after html tag
 			
 		}
 		else if (stristr($content, '<html') == true)
 		{
-			$content = preg_replace('/(<html.*?>)/i', '$1' . $output_toolbar, $content);
+			$content = preg_replace('/(<html.*?>)/i', '$1' . $output_toolbar_replacement, $content);
 			// else HTML does not contain body tag or html tag, so add toolbar to the beginning of the content
 			
 		}
@@ -3220,7 +3326,7 @@ function init_tracking()
 	if (empty($_SESSION['software']['visitor_id']) || !$_SESSION['software']['visitor_id'])
 	{
 		// Legacy fallback: ignore host-tracker.com monitoring bot.
-		if (mb_strpos($_SERVER['HTTP_USER_AGENT'], 'host-tracker.com') !== false)
+		if (mb_strpos($_SERVER['HTTP_USER_AGENT'] ?? '', 'host-tracker.com') !== false)
 		{
 			return;
 		}
@@ -3276,7 +3382,7 @@ function init_tracking()
 		else
 		{
 			// if number of visits cookie is set
-			if ($_COOKIE['software']['number_of_visits'])
+			if (!empty($_COOKIE['software']['number_of_visits']))
 			{
 				$first_visit = 0;
 				setcookie('software[number_of_visits]', $_COOKIE['software']['number_of_visits'] + 1, time() + 315360000, '/');
@@ -3514,11 +3620,11 @@ function init_tracking()
 		$_SESSION['software']['utm_term'] = trim($_GET['utm_term']);
 		$_SESSION['software']['utm_content'] = trim($_GET['utm_content']);
 		$cookie_id = 0;
-		if ($_SESSION['software']['cookie_id'])
+		if (!empty($_SESSION['software']['cookie_id']))
 		{
 			$cookie_id = db("SELECT id FROM cookies WHERE id = '" . e($_SESSION['software']['cookie_id']) . "'");
 		}
-		else if ($_COOKIE['lsid'])
+		else if (!empty($_COOKIE['lsid']))
 		{
 			$cookie_id = db("SELECT id FROM cookies WHERE lsid = '" . e($_COOKIE['lsid']) . "'");
 		}

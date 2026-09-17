@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -37,6 +37,6 @@ function get_registration_confirmation_screen_content()
         'Email: ' . h($email_address) . '<br />
         Username: ' . h($username) . '<br />
         <br />
-        <a href="' . URL_SCHEME . HOSTNAME . h($_REQUEST['send_to']) . '" class="software_button_primary">Continue</a><br />';
+        <a href="' . URL_SCHEME . HOSTNAME . h(pg_safe_redirect_path($_REQUEST['send_to'] ?? '')) . '" class="software_button_primary">Continue</a><br />';
 }
 ?>

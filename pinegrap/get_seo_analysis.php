@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -52,9 +52,22 @@ if ($type == 'page') {
     validate_ecommerce_access($user);
 }
 
+// The HTML pass, when a button asked for it. Runs before the recomposition
+// below, which is what turns the new structure score into the composed total.
+//
+// Guarded rather than trusted: this is a GET that renders a page, and an
+// installation without the DOM extension would otherwise spend the render and
+// store nothing.
+if (($_GET['action'] ?? '') === 'structure') {
+    if (class_exists('DOMDocument') && pg_seo_structure_schema_ready()) {
+        pg_seo_analyze_record($type, $id);
+    }
+}
+
 // The panel is the one place freshness is worth a synchronous computation:
 // one record, a handful of queries, and the operator is explicitly asking
-// for its current state.
+// for its current state. This is also the whole of what action=score does -
+// the button asks for the panel, and building the panel recomputes.
 if (pg_seo_schema_ready()) {
     pg_seo_recalculate($type, array($id));
 }
@@ -99,6 +112,14 @@ if ($type == 'page') {
 
 if (!$record) {
     exit(lang('Sorry, we could not find that record.'));
+}
+
+// The buttons at the foot of the panel replace only the checklist wrapper, so
+// they ask for that on its own. The name and the edit link above it do not
+// change and re-sending them would put a second copy inside the first.
+if (($_GET['fragment'] ?? '') === 'checklist') {
+    echo pg_seo_render_checklist($record, $type, $id);
+    exit;
 }
 
 echo

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -31,6 +31,11 @@ function get_order_receipt_in_plain_text($order_id)
     $order_date = $row['order_date'];
     $gift_card_discount = $row['gift_card_discount'] / 100;
     $surcharge = $row['surcharge'] / 100;
+
+    // Only ever appended to, inside loops that do not run for every order,
+    // so they have to start out empty.
+    $output_ship_tos = '';
+    $output_recurring_ship_tos = '';
 
     // set shipping to false until we find out that this is a shipping order
     $shipping = false;
@@ -143,7 +148,7 @@ function get_order_receipt_in_plain_text($order_id)
                     order_items.product_name,
                     order_items.quantity,
                     order_items.price,
-                    order_items.tax,
+                    order_items.tax_total,
                     order_items.offer_id,
                     order_items.discounted_by_offer,
                     order_items.recurring_payment_period,
@@ -186,7 +191,7 @@ function get_order_receipt_in_plain_text($order_id)
                 $name = $order_item['product_name'];
                 $quantity = $order_item['quantity'];
                 $product_price = $order_item['price'] / 100;
-                $product_tax = $order_item['tax'] / 100;
+                $product_tax = $order_item['tax_total'] / 100;
                 $offer_id = $order_item['offer_id'];
                 $discounted_by_offer = $order_item['discounted_by_offer'];
                 $recurring_payment_period = $order_item['recurring_payment_period'];
@@ -215,7 +220,8 @@ function get_order_receipt_in_plain_text($order_id)
                 }
 
                 $total_price = $product_price * $quantity;
-                $total_tax = $product_tax * $quantity;
+                // tax_total already covers the line, so no quantity here.
+                $total_tax = $product_tax;
                 
                 $output_amount = '';
 
@@ -918,16 +924,16 @@ function get_order_receipt_in_plain_text($order_id)
     // if offer(s) have been applied, prepare list of applied offer(s)
     if ($applied_offers) {
         $output_applied_offers .=
-            'Applied Offers:' . "\n" .
+            lang('Applied Offers') . ':' . "\n" .
             '-------------------------' . "\n";
         
         // loop through each applied offer
         foreach ($applied_offers as $offer_id) {
             // get offer data
-            $query = "SELECT description FROM offers WHERE id = '$offer_id'";
+            $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
-            $offer_description = $row['description'];
+            $offer_description = pg_offer_public_label($row);
             
             // the offer description can contain HTML, so convert HTML to plain text
             $output_applied_offers .= '- ' . convert_html_to_text($offer_description) . "\n";

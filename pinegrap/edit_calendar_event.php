@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -407,12 +407,14 @@ if (!$_POST) {
             'extra classes'=>'calendar',
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))),
+            'heading_description' => lang('View, edit, or publish this calendar event.'),
             'cancel'=>array('enable'=>'true','url'=>'view_calendars.php'),
         
             'breadcrumb' => array(array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))))),
         )
     ) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
     ' . get_date_time_picker_format() . '
     ' . get_wysiwyg_editor_code(array('full_description', 'notes', 'no_remaining_spots_message')) . '
             <div class="row">
@@ -421,7 +423,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View, edit, or publish this calendar event.') . '" title="' . lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))) . '">[' . h($liveform->get_field_value('name')) . ']</h2>
+
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_calendar_event.php?id=' . h(escape_javascript($_GET['id'])) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
@@ -444,7 +446,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4 my-2">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 col-md-8 my-2">
@@ -740,7 +742,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();
@@ -1444,7 +1447,7 @@ if (!$_POST) {
 
         // if there is a send to, then send user there
         if ($liveform->get_field_value('send_to') != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
             
         // else there is not a send to, so add notice and send user to calendars screen
         } else {

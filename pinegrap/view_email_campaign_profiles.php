@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -480,9 +480,11 @@ if (isset($_GET['export'])) {
             'extra classes'=>'campaign',
             'icon'=>'campaign', 
             'heading'=> lang('My Campaign Profiles'),
+            'heading_description' => lang('Use Campaign Profiles to schedule e-mails automatically for certain actions (e.g. Calendar Event reservation).'),
             'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php')
         )
     )    . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -491,7 +493,7 @@ if (isset($_GET['export'])) {
                
                 <div class="row mb-2 flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('Use Campaign Profiles to schedule e-mails automatically for certain actions (e.g. Calendar Event reservation).') . '" title="' . lang('My Campaign Profiles') . '">' . lang('My Campaign Profiles') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_email_campaign_profile.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form class="disable_shortcut d-inline-block" method="get">
@@ -536,7 +538,8 @@ if (isset($_GET['export'])) {
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     $liveform->remove_form();
 }

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -67,21 +67,19 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Arrival Date'))),
+        'heading_description' => lang('Create a new arrival date for any special occasion, or holiday that will be presented during checkout. (Delete all will hide feature.)'),
         'cancel'=>array('enable'=>'true','url'=>'view_arrival_dates.php'),
         'breadcrumb' => array(
             array('label' => lang('All Shipping Arrival Dates'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_arrival_dates.php'),
             array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Arrival Date')))),
         ),
     ]) . '
+<main id="content" class="container-fluid">
             ' . get_date_picker_format() . '
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
         <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new arrival date for any special occasion, or holiday that will be presented during checkout. (Delete all will hide feature.)') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('Arrival Date'))) . '">[' . lang(array('string'=>'new {var:1}','vars'=>lang('arrival date'))) . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_arrival_date.php" method="post" >
                     ' . get_token_field() . '
                     <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
@@ -95,7 +93,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Arrival Date'))) . '</label>
-                                            <input type="text" name="name"  id="name" maxlength="50" class="form-control add-header-content-updater" />
+                                            <input type="text" name="name"  id="name" maxlength="50" class="form-control" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
@@ -113,7 +111,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12  col-sm-8 col-lg-12 my-2">
                                             <label for="description" class="form-label">' . lang(array('string'=>'{var:1} Description','vars'=>lang('Arrival Date'))) . '</label>
-                                            <input type="text" name="description" id="description" maxlength="255" class="form-control add-header-content-updater" />
+                                            <input type="text" name="description" id="description" maxlength="255" class="form-control" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                     </div>
@@ -231,7 +229,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
         output_footer();
 
     print $output;

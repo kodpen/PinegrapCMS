@@ -1,5 +1,13 @@
 # The following rules are used by Pinegrap.
 
+# Static files are UTF-8. Without this Apache serves .css and .js with no
+# charset and the browser is left to guess; it guesses Latin-1 often enough
+# that a "›" in the stylesheet reaches the screen as "â€º" until the page is
+# reloaded. The HTML says utf-8 in its own <meta>, but a stylesheet is a
+# separate response and does not inherit it reliably.
+AddCharset UTF-8 .css .js .json .svg
+
+
 RewriteEngine on
 
 # When the system is accessed from a sub-directory with an Apache alias

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -151,8 +151,16 @@ switch (($_SESSION['software']['ecommerce']['view_orders']['status'] ?? '')) {
 // Prepare SQL type filter.
 $sql_type = "";
 switch (($_SESSION['software']['ecommerce']['view_orders']['type'] ?? '')) {
+    // "Online" means the order came from outside rather than being typed in
+    // here, so a marketplace order belongs inside it. Giving marketplace orders
+    // a type of their own and leaving this reading `= 'online'` would hide them
+    // behind a filter nobody changed, which is how an order gets missed.
     case 'online':
-        $sql_type = "AND (orders.type = 'online')";
+        $sql_type = "AND (orders.type IN ('online', 'marketplace'))";
+        break;
+
+    case 'marketplace':
+        $sql_type = "AND (orders.type = 'marketplace')";
         break;
 
     case 'local':
@@ -1326,7 +1334,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             products.short_description,
             order_items.quantity,
             order_items.price,
-            order_items.tax,
+            order_items.tax_total AS tax,
             order_items.recurring_payment_period,
             order_items.recurring_number_of_payments,
             order_items.recurring_start_date,
@@ -2224,10 +2232,20 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_status_options .= '<option value="' . h($status['value']) . '"' . $selected . '>' . h($status['label']) . '</option>';
     }
 
-    // Build type filter options (online / local / any).
+    // Build type filter options (online / marketplace / local / any).
+    //
+    // Marketplace is offered only where there is one to look at. On a shop with
+    // no marketplace account it is a filter that can only ever return nothing.
     $types = array();
     $types[] = array('label' => '[' . lang('Any') . ']', 'value' => 'any');
     $types[] = array('label' => lang('Online'), 'value' => 'online');
+
+    if (db_value("SHOW TABLES LIKE 'marketplace_accounts'")
+        && db_value("SELECT COUNT(*) FROM marketplace_accounts")) {
+
+        $types[] = array('label' => lang('Marketplace'), 'value' => 'marketplace');
+    }
+
     $types[] = array('label' => lang('Local'),  'value' => 'local');
 
     $output_type_options = '';
@@ -2396,6 +2414,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 orders.billing_last_name,
                 orders.status,
                 orders.parasut_exported,
+                orders.parasut_invoice_id,
                 orders.order_number,
                 user.user_username as username,
                 orders.tracking_code,
@@ -2429,6 +2448,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $billing_last_name = $row['billing_last_name'];
         $status = $row['status'];
         $parasut_exported = $row['parasut_exported'];
+        $parasut_invoice_id = trim((string) $row['parasut_invoice_id']);
         $order_number = $row['order_number'];
         $username = $row['username'];
         $tracking_code = $row['tracking_code'];
@@ -2437,12 +2457,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $card_number = $row['card_number'];
         $order_type = $row['type'];
             
+        // Three now, and the marketplace one has to be nameable: an order that
+        // came from n11 and one that came from the shop's own checkout are the
+        // same row otherwise, and they are not the same order - the marketplace
+        // has its own dispatch clock and its own customer.
         $output_order_type = '';
-        if($order_type == 'local'){
+        if ($order_type == 'local') {
             $output_order_type = lang('Local');
-        }else{
+        } elseif ($order_type == 'marketplace') {
+            $output_order_type = lang('Marketplace');
+        } else {
             $output_order_type = lang('Online');
-            
         }
         $card_verification_number = $row['card_verification_number'];
         $total = $row['total'] / 100;
@@ -2515,8 +2540,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         }else if($status == 'canceled' || $status == 'cancelled'){
             $output_status = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
         }
-        if($parasut_exported != 0){
-            $output_status = $output_status . '<span title="' . lang('This order has been exported for upload to parasut.com') . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+        // parasut_exported is set by two different things: the spreadsheet export
+        // and an invoice raised through the API. Only parasut_invoice_id tells
+        // them apart, so the tooltip is chosen from that rather than claiming an
+        // invoice exists for an order that was only exported to a file.
+        if(($parasut_exported != 0) || ($parasut_invoice_id !== '')){
+            $parasut_badge_title = ($parasut_invoice_id !== '')
+                ? lang('An invoice was created for this order in Parasut')
+                : lang('This order has been exported for upload to parasut.com');
+            $output_status = $output_status . '<span title="' . h($parasut_badge_title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
         }
         
 
@@ -2924,14 +2956,22 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
 
 
-    // total of all online sales.
-    $online_orders_total = 0;
-    $online_orders_total_all = 0;
-    $query = "SELECT total FROM orders ";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    while ($local_sale_row = mysqli_fetch_assoc($result)) {
-        $online_orders_total =  $local_sale_row['total'] / 100 + $online_orders_total;
-    }
+    // Total of all online sales.
+    //
+    // This card said "sales" and summed `SELECT total FROM orders` with no
+    // condition at all - every abandoned cart, every cancelled order and every
+    // order typed in at the counter, added to the figure an operator reads as
+    // revenue. It also fetched every order in the shop into PHP to add them up,
+    // which is a full table read on each view of this screen.
+    //
+    // Now it means what the label says: money actually taken, from orders that
+    // came from outside. A marketplace order is one of those - the sale is real
+    // and the money is real, it was simply made on somebody else's site.
+    $online_orders_total = (float) db_value(
+        "SELECT SUM(total) FROM orders
+        WHERE (status IN ('complete', 'exported'))
+          AND (type IN ('online', 'marketplace'))") / 100;
+
     $online_orders_total_all = prepare_amount($online_orders_total);
 
     // Money already taken from customers that has not gone back yet.
@@ -2967,9 +3007,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             'extra classes'=>'store',
             'icon'=>'store', 
             'heading'=>lang('View Orders'),
+            'heading_description' => lang('View and export website orders.'),
             'cancel'=>false
         )
-    ) . '     
+    ) . '
+<main id="content" class="container-fluid">     
     ' . $output_advanced_filters . '
             <div class="row">
             <div class="col-12">
@@ -2978,7 +3020,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('View and export website orders.') . '" title="' . lang('All Orders') . '">' . lang('All Orders') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                                 ' . $output_gateway_buttons . '  
@@ -3171,7 +3213,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             });
         })();
         </script>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     print $output;

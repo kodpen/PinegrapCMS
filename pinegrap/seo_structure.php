@@ -99,6 +99,7 @@ function pg_seo_structure_severities()
         'img_no_lazy'               => 'notice',
 
         // Links
+        'render_failed'             => 'notice',
         'link_empty'                => 'error',
         'link_empty_href'           => 'warning',
         'link_generic_anchor'       => 'notice',
@@ -1176,6 +1177,39 @@ function pg_seo_render_context($page_type, $page_id, $page_name)
 // Drop everything a record was previously told, when it is no longer being
 // examined.
 //
+// Findings only a whole document can produce.
+//
+// pg_seo_analyze_html() gates these on $is_document (plus the open_graph and
+// expect_jsonld switches), because a fragment has no <head>, no sharing tags
+// and no place for the page-level markup they look for. A caller that scores a
+// fragment therefore scores it against a SHORTER rule set and gets a higher
+// number for the same page - the visual designer read 48 on the canvas while
+// the pages list read 42, with nothing on screen to explain the gap.
+//
+// The fix is not to run these against a fragment (they would fire on every
+// one) but to carry the stored answers over, which is what the designer
+// already does for the link and speed groups. This list is the contract
+// between the two, and it lives next to the checks that emit it so the two
+// cannot drift apart.
+function pg_seo_document_only_codes()
+{
+    return array(
+        // <head>: the title and description tags themselves, not their text
+        'title_tag_missing', 'title_tag_multiple', 'meta_description_tag_missing',
+        // sharing tags, only asked for when open_graph is on
+        'og_incomplete',
+        // page-level heading structure
+        'h1_missing', 'h1_multiple',
+        'heading_starts_at_h2', 'heading_level_skip', 'heading_duplicate_text',
+        // document skeleton
+        'html_lang_missing', 'main_missing',
+        // whole-page measures
+        'thin_content',
+        // structured data, only asked for on the types that need it
+        'jsonld_missing',
+    );
+}
+
 // pg_seo_store_issues() and pg_seo_store_links() are the only writers that
 // delete, and they only run when a record is actually analyzed. A page that
 // used to be analyzed and is now excluded - its type is not rendered any more,
@@ -1281,16 +1315,52 @@ function pg_seo_analyze_page($page_id)
         $_SESSION['software']['token'] = '';
     }
 
-    $html = get_page_content($page_id, '', '', 'preview', FALSE, $dynamic_properties, FALSE, 'desktop');
+    // A render that cannot complete calls output_error(), which would print
+    // an error screen and end the process - and with it the whole pass, on
+    // whichever page happened to come first. While the flag is up that call
+    // throws instead. The finally block puts every piece of borrowed request
+    // state back whether the render returned or threw; without it a failed
+    // render would leave a foreign page name in $_GET for the next one.
+    $html = '';
+    $render_error = '';
 
-    if ($had_page_parameter) {
-        $_GET['page'] = $previous_page_parameter;
-    } else {
-        unset($_GET['page']);
+    pg_seo_rendering(TRUE);
+
+    try {
+        $html = get_page_content($page_id, '', '', 'preview', FALSE, $dynamic_properties, FALSE, 'desktop');
+    } catch (Exception $e) {
+        $render_error = $e->getMessage();
+    } finally {
+        pg_seo_rendering(FALSE);
+
+        if ($had_page_parameter) {
+            $_GET['page'] = $previous_page_parameter;
+        } else {
+            unset($_GET['page']);
+        }
+
+        if (!$had_token) {
+            unset($_SESSION['software']['token']);
+        }
     }
 
-    if (!$had_token) {
-        unset($_SESSION['software']['token']);
+    // Recorded rather than silently skipped, so the detail panel says why a
+    // page has no structure score instead of leaving the operator to guess.
+    if ($render_error !== '') {
+        pg_seo_store_issues('page', $page_id, array(array(
+            'code'        => 'render_failed',
+            'severity'    => 'notice',
+            'occurrences' => 1,
+            'source'      => 'document',
+            'detail'      => mb_substr($render_error, 0, 250),
+        )));
+
+        log_activity(lang(array(
+            'string' => 'SEO structure analysis could not render page {var:1}: {var:2}',
+            'vars'   => array($page_row['page_name'], mb_substr($render_error, 0, 200)),
+        )), '');
+
+        return NULL;
     }
 
     if (trim((string) $html) === '') {
@@ -1438,6 +1508,218 @@ function pg_seo_analyze_catalog_record($type, $id)
 }
 
 /**
+ * Queue every page a common region appears on for re-analysis.
+ *
+ * A common region is not attached to pages by a foreign key. It is pulled in
+ * by a <cregion>Name</cregion> placeholder written into a page style's code -
+ * and a style can be shared by hundreds of pages - or into a page region's own
+ * content. So "which pages does this affect" is a text search, not a join, and
+ * the site decides the answer: on one installation the header is a common
+ * region called "header", on another it is three of them with names nobody
+ * else would guess.
+ *
+ * That is why editing one is not analyzed on the spot the way a page region
+ * is. Rendering every affected page inside a save request is not a trade this
+ * can make. What it does instead costs one UPDATE: mark them stale, so the
+ * nightly pass picks them up that night rather than whenever the periodic full
+ * refresh next comes round - which can be a week.
+ *
+ * Placeholders nest: a common region's content can reference another one, so
+ * editing the inner one changes the outer one's markup too. The name set is
+ * closed over that before the search, with a guard against a region that
+ * references itself.
+ *
+ * @param string $cregion_name
+ * @return int Pages queued.
+ */
+function pg_seo_queue_common_region($cregion_name)
+{
+    if (!pg_seo_structure_schema_ready()) {
+        return 0;
+    }
+
+    $cregion_name = trim((string) $cregion_name);
+
+    if ($cregion_name === '') {
+        return 0;
+    }
+
+    // Close the name set over embedding: anything whose content pulls in a name
+    // already in the set is itself changed by this edit.
+    $names = array($cregion_name);
+    $checked = array();
+    $guard = 0;
+
+    while (count($names) > count($checked)) {
+
+        if (++$guard > 50) {
+            break;
+        }
+
+        foreach ($names as $name) {
+
+            if (isset($checked[$name])) {
+                continue;
+            }
+
+            $checked[$name] = TRUE;
+
+            $parents = db_items(
+                "SELECT cregion_name
+                FROM cregion
+                WHERE cregion_content LIKE '%<cregion>" . e(escape_like($name)) . "</cregion>%'");
+
+            foreach ($parents as $parent) {
+
+                if (!in_array($parent['cregion_name'], $names, TRUE)) {
+                    $names[] = $parent['cregion_name'];
+                }
+            }
+        }
+    }
+
+    $style_conditions = array();
+    $region_conditions = array();
+
+    foreach ($names as $name) {
+        $placeholder = "'%<cregion>" . e(escape_like($name)) . "</cregion>%'";
+        $style_conditions[] = "style_code LIKE " . $placeholder;
+        $region_conditions[] = "pregion_content LIKE " . $placeholder;
+    }
+
+    $page_ids = array();
+
+    // Styles carry the placeholder for whole layouts, which is where a header
+    // or a footer normally lives. Both the desktop and the mobile style count.
+    $styles = db_items("SELECT style_id FROM style WHERE " . implode(' OR ', $style_conditions));
+
+    if ($styles) {
+
+        $style_ids = array();
+
+        foreach ($styles as $style) {
+            $style_ids[] = (int) $style['style_id'];
+        }
+
+        $rows = db_items(
+            "SELECT page_id
+            FROM page
+            WHERE (page_style IN (" . implode(',', $style_ids) . "))
+            OR (mobile_style_id IN (" . implode(',', $style_ids) . "))");
+
+        foreach ($rows as $row) {
+            $page_ids[(int) $row['page_id']] = TRUE;
+        }
+    }
+
+    // A page region can pull one in as well, for a block that repeats on a
+    // handful of pages rather than a whole layout.
+    $rows = db_items(
+        "SELECT DISTINCT pregion_page
+        FROM pregion
+        WHERE " . implode(' OR ', $region_conditions));
+
+    foreach ($rows as $row) {
+        $page_ids[(int) $row['pregion_page']] = TRUE;
+    }
+
+    if (!$page_ids) {
+        return 0;
+    }
+
+    $id_list = implode(',', array_keys($page_ids));
+
+    db(
+        "UPDATE page
+        SET
+            seo_struct_current = 0,
+            seo_analysis_current = 0
+        WHERE page_id IN (" . $id_list . ")");
+
+    return count($page_ids);
+}
+
+/**
+ * Analyze one record's markup and store the result.
+ *
+ * The single unit of work behind everything that analyzes structure: the
+ * nightly job, the button on the Pages screen, the buttons on the detail
+ * panels, and the save handlers. Callers differ only in how many records they
+ * feed it and in what they say to the operator afterwards.
+ *
+ * The record is marked as attempted BEFORE the analysis, not after.
+ *
+ * The intent was always that a record which cannot be rendered is recorded as
+ * analyzed with no score rather than left queued, so that a later run does not
+ * start on the same broken record and never reach the rest of the site.
+ * Writing that after the render does not achieve it: a render that fails does
+ * not return, it calls output_error(), which echoes and exits. The update
+ * never runs, the record stays queued, and every run from then on dies on the
+ * same one - the whole feature stops at whichever record happens to be first
+ * in id order that cannot render standalone.
+ *
+ * The score is nulled first and written again after. The window where a record
+ * shows no structure score is one render long, and if the process does die
+ * inside it, no score is the honest answer.
+ *
+ * Products and product groups are not rendered at all: what the operator wrote
+ * is an HTML fragment and the template around it belongs to the catalog page,
+ * which is scored on its own. Their own HTML is still parsed through DOM and
+ * walked node by node, so a large enough description can exhaust memory - the
+ * same reason the mark comes first applies there too.
+ *
+ * @param string $type page, product or product_group
+ * @param int $id
+ * @return bool False when the schema or the DOM extension is not there.
+ */
+function pg_seo_analyze_record($type, $id)
+{
+    if (!pg_seo_structure_schema_ready() || !class_exists('DOMDocument')) {
+        return FALSE;
+    }
+
+    $id = (int) $id;
+
+    if (!$id) {
+        return FALSE;
+    }
+
+    if ($type === 'page') {
+        $table = 'page';
+        $id_column = 'page_id';
+    } elseif ($type === 'product') {
+        $table = 'products';
+        $id_column = 'id';
+    } elseif ($type === 'product_group') {
+        $table = 'product_groups';
+        $id_column = 'id';
+    } else {
+        return FALSE;
+    }
+
+    db(
+        "UPDATE `" . $table . "`
+        SET
+            seo_struct_score = NULL,
+            seo_struct_current = '1',
+            seo_struct_checked_at = UNIX_TIMESTAMP()
+        WHERE `" . $id_column . "` = '" . $id . "'");
+
+    $structure_score = ($type === 'page')
+        ? pg_seo_analyze_page($id)
+        : pg_seo_analyze_catalog_record($type, $id);
+
+    db(
+        "UPDATE `" . $table . "`
+        SET
+            seo_struct_score = " . (($structure_score === NULL) ? "NULL" : "'" . (int) $structure_score . "'") . ",
+            seo_analysis_current = '0'
+        WHERE `" . $id_column . "` = '" . $id . "'");
+
+    return TRUE;
+}
+
+/**
  * Run one bounded pass of the HTML structure analysis.
  *
  * Shared by the nightly job and the button on the Pages screen, which differ
@@ -1506,36 +1788,7 @@ function pg_seo_analyze_batch($time_budget)
             break;
         }
 
-        // Marked as attempted BEFORE the render, not after.
-        //
-        // The intent was always that a page which cannot be rendered is recorded
-        // as analyzed with no score rather than left queued, so that a later run
-        // does not start on the same broken record and never reach the rest of
-        // the site. Writing that after the render does not achieve it: a render
-        // that fails does not return, it calls output_error(), which echoes and
-        // exits. The update never runs, the page stays queued, and every run from
-        // then on dies on the same page - the whole feature stops at whichever
-        // page happens to be first in id order that cannot render standalone.
-        //
-        // The score is nulled here and written again below. The window where a
-        // page shows no structure score is one render long, and if the process
-        // does die inside it, no score is the honest answer.
-        db(
-            "UPDATE page
-            SET
-                seo_struct_score = NULL,
-                seo_struct_current = '1',
-                seo_struct_checked_at = UNIX_TIMESTAMP()
-            WHERE page_id = '" . (int) $page['page_id'] . "'");
-
-        $structure_score = pg_seo_analyze_page($page['page_id']);
-
-        db(
-            "UPDATE page
-            SET
-                seo_struct_score = " . (($structure_score === NULL) ? "NULL" : "'" . (int) $structure_score . "'") . ",
-                seo_analysis_current = '0'
-            WHERE page_id = '" . (int) $page['page_id'] . "'");
+        pg_seo_analyze_record('page', $page['page_id']);
 
         $total_analyzed++;
     }
@@ -1579,27 +1832,7 @@ function pg_seo_analyze_batch($time_budget)
                     break 2;
                 }
 
-                // Marked before the analysis, for the same reason the page loop
-                // does it. No render happens here, but the operator's own HTML is
-                // still parsed through DOM and walked node by node, so a large
-                // enough description can exhaust memory - and a fatal there would
-                // leave the row queued and every later run would start on it.
-                db(
-                    "UPDATE `" . $table . "`
-                    SET
-                        seo_struct_score = NULL,
-                        seo_struct_current = '1',
-                        seo_struct_checked_at = UNIX_TIMESTAMP()
-                    WHERE id = '" . (int) $record['id'] . "'");
-
-                $structure_score = pg_seo_analyze_catalog_record($type, $record['id']);
-
-                db(
-                    "UPDATE `" . $table . "`
-                    SET
-                        seo_struct_score = " . (($structure_score === NULL) ? "NULL" : "'" . (int) $structure_score . "'") . ",
-                        seo_analysis_current = '0'
-                    WHERE id = '" . (int) $record['id'] . "'");
+                pg_seo_analyze_record($type, $record['id']);
 
                 $total_analyzed++;
             }

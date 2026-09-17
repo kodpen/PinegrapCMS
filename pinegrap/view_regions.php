@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -774,8 +774,10 @@ echo
         'title'=> $heading,
         'extra classes'=>'design',
         'icon'=>'design',
-        'heading'=>$heading
+        'heading'=>$heading,
+        'heading_description' => ($subheading ?? lang('Reusable content blocks placed on pages'))
     ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -784,7 +786,7 @@ echo
                
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $button_bar_button . '
                         </nav>
@@ -800,7 +802,8 @@ echo
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 $liveform->remove_form();

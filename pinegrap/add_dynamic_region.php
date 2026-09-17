@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -27,17 +27,15 @@ if (!isset($_POST['name'])) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))),
+        'heading_description' => lang('Create a new dynamic region that contains PHP code and can be added to any page style.'),
         'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Dynamic Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new dynamic region that contains PHP code and can be added to any page style.') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))) . '">[' . lang(array('string'=>'new {var:1} name','vars'=>lang('dynamic region'))) . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_dynamic_region.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -52,7 +50,7 @@ if (!isset($_POST['name'])) {
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Dynamic Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<dregion>') . '</div>
-                                                <input name="name" id="name" type="text" class="form-control add-header-content-updater" maxlength="100" />
+                                                <input name="name" id="name" type="text" class="form-control" maxlength="100" />
                                                 <div class="input-group-text">' . h('</dregion>') . '</div>
                                             </div>
                                         </div>
@@ -78,7 +76,8 @@ if (!isset($_POST['name'])) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     print $output;

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -93,20 +93,18 @@ if (!$_POST) {
             'extra classes'=>'ads',
             'icon'=>'ads',
             'heading'=>lang('Edit Ad'),
+            'heading_description' => lang('Update this ad and assign it to any existing ad region.'),
             'cancel'=>array('enable'=>'true','url'=>'view_ads.php')
         ,
             'breadcrumb' => array(array('label' => lang('All My Ads'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php?filter=all_ad_regions'), array('label' => lang('Edit Ad'))),
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
                     ' . get_wysiwyg_editor_code(array('content_textarea', 'caption')) . '
                     ' . $liveform->output_errors() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update this ad and assign it to any existing ad region.') . '" title="' . lang('Edit Ad') . '">' . h($ad_region_name) . '</h2>
-                        </div>
-                    </div>
+                    
                     <form name="form" action="edit_ad.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
@@ -121,7 +119,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad'))) . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
@@ -174,7 +172,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
     
     $liveform->remove_form();
@@ -195,7 +194,7 @@ if (!$_POST) {
 
         // if there is a send to, then forward user to send to
         if ($liveform->get_field_value('send_to') != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
             
         // else there is not a send to, so prepare notice and send user to view ads screen
         } else {
@@ -261,7 +260,7 @@ if (!$_POST) {
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         // if there is a send to, then forward user to send to
         if ($liveform->get_field_value('send_to') != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
             
         // else there is not a send to, so prepare notice and send user to view ads screen
         } else {

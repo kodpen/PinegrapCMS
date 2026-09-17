@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -48,10 +48,7 @@ function get_help_url($properties) {
 		case 'smtp_settings': $url = 'site-settings#smtp-settings'; break;
 		case 'mailchimp_settings': $url = 'site-settings#mailchimp-settings'; break;
 		case 'backups':  $url = 'site-settings#backups'; break;
-		case 'apps_settings':  $url = 'site-settings#custom-apps'; break;
 		case 'cloudflare':  $url = 'site-settings#cloudflare'; break;
-		case 'smtp_settings':  $url = 'site-settings#smtp-settings'; break;
-		case 'smtp_settings':  $url = 'site-settings#smtp-settings'; break;
         case 'view_folders': $url = 'folders'; break;
 
         case 'add_folder':

@@ -19,7 +19,7 @@ $liveform = new liveform('view_parasut_inbox');
 
 if (!defined('ENABLE_PARASUT') || !ENABLE_PARASUT || !defined('PARASUT_COMPANY_ID') || PARASUT_COMPANY_ID === '') {
     $liveform->mark_error('_error', lang('Parasut integration is not enabled. Please configure it in Settings.'));
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings.php');
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice'));
 }
 
 // Determine active tab.
@@ -483,8 +483,10 @@ echo pg_page_shell([
     'extra classes' => 'store',
     'icon'          => 'store',
     'heading'       => lang('Parasut E-Invoice Inbox'),
+    'heading_description' => lang('View and manage e-invoices via Parasut API.'),
     'cancel'        => false,
 ]) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -493,11 +495,7 @@ echo pg_page_shell([
 
             <div class="row mb-2 flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block"
-                        data-bs-content="' . lang('View and manage e-invoices via Parasut API.') . '"
-                        title="' . lang('Parasut E-Invoice Inbox') . '">
-                        ' . lang('Parasut E-Invoice Inbox') . '
-                    </h2>
+                    
                     <nav id="button_bar" class="navigation" aria-label="Button Bar">
                         <a class="btn btn-sm btn-outline-secondary"
                            href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . h($tab) . '"
@@ -512,8 +510,8 @@ echo pg_page_shell([
             ' . $output_tab_content . '
         </div>
     </div>
-</main>' .
+' .
 $output_detail_modal .
-output_footer();
+'</main>' . output_footer();
 
 $liveform->remove_form();

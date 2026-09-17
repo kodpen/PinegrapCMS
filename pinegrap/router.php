@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,6 +34,14 @@ ini_set('default_charset', 'utf-8');
 mb_internal_encoding('UTF-8');
 mb_http_output('UTF-8');
 
+// Drop the "X-Powered-By: PHP/8.x" banner, which announces the exact
+// interpreter build to anyone scanning for a version with a known hole.
+// It has to be done here rather than in the web server rules: PHP adds this
+// header itself, and IIS's <customHeaders><remove> only reaches headers IIS
+// added. Apache's "Header always unset" does reach it, so on Apache this is
+// belt and braces. expose_php is the php.ini way and is not always ours to set.
+header_remove('X-Powered-By');
+
 // Remember that the PHP settings have been set, so that we don't have to do it again
 // in the init.php script.
 define('PHP_SETTINGS_UPDATED', true);
@@ -49,12 +57,33 @@ class db {
     public static $con;
 }
 
+// Database availability guard. This path never loads functions.php, so the
+// guard is standalone by design - see the header of includes/db_guard.php.
+require_once(dirname(__FILE__) . '/includes/db_guard.php');
+pg_db_guard_check();
+
+// Query errors are handled where the query is written: "or exit(...)", a
+// false return, an @ in front of the call. Since PHP 8.1 mysqli reports them
+// as exceptions instead, which none of those checks ever see - the request
+// ends as an uncaught fatal, a blank 500 with the reason in the error log
+// only. install/index.php has turned reporting off since it was written; the
+// rest of the software is written against the same contract and needs it too.
+mysqli_report(MYSQLI_REPORT_OFF);
+
+$router_connect_errno = 0;
+$router_connect_error = '';
+
 // if php version is bigger than 7 than try connect else use old methods
 if (defined('PHP_MAJOR_VERSION') && PHP_MAJOR_VERSION >= 7) {
     try {
         db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
     } catch( Exception $e ) {
-        router_output_error('Sorry, this website could not connect to the database.  The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.');
+        // Record and fall through. Reporting the error from inside the catch
+        // skipped the overload check below, which is what turned a transient
+        // "too many connections" into a hard error page on every request.
+        db::$con = false;
+        $router_connect_errno = (int) $e->getCode();
+        $router_connect_error = $e->getMessage();
     }
 }else{
     db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
@@ -63,8 +92,31 @@ if (defined('PHP_MAJOR_VERSION') && PHP_MAJOR_VERSION >= 7) {
 // if the connection or selection of the database failed, then output error
 
 if (!db::$con) {
+
+    if ($router_connect_errno === 0 && function_exists('mysqli_connect_errno')) {
+        $router_connect_errno = (int) mysqli_connect_errno();
+    }
+
+    if ($router_connect_error === '' && function_exists('mysqli_connect_error')) {
+        $router_connect_error = (string) mysqli_connect_error();
+    }
+
+    // Transient overload: back off so the connection pool can drain, and
+    // answer 503 + Retry-After rather than an error page a crawler would read
+    // as a broken site. Credentials and missing databases fall through to the
+    // message below, because waiting does not fix those.
+    if (pg_db_guard_is_overload($router_connect_errno)) {
+        pg_db_guard_trip();
+        pg_db_guard_log('database unavailable (' . $router_connect_errno . '): ' . $router_connect_error);
+        pg_db_guard_unavailable();
+    }
+
     router_output_error('Sorry, this website could not connect to the database.  The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.');
 }else{
+
+    // Healthy again - close the breaker if a previous request opened it.
+    pg_db_guard_clear();
+
     // check db connected but if it's empty or has no config table.
     if(!mysqli_num_rows(mysqli_query(db::$con,"SHOW TABLES LIKE 'config'"))) {
         router_output_error('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
@@ -194,6 +246,7 @@ define('REQUEST_URL', router_get_request_url());
 // the page's own front-end URL: without knowing whether a designer is logged
 // in, saving a region containing <script> would look exactly like an attack.
 require_once(dirname(__FILE__) . '/waf.php');
+waf_send_security_headers();
 waf_run('router');
 
 $request_url_without_path = mb_substr(REQUEST_URL, mb_strlen(PATH));
@@ -457,7 +510,7 @@ function router_output_error($error_message) {
     if(defined('EDITION')){
         define('EDITION', EDITION);
     }else{
-        define('EDITION', 'Premium');
+        define('EDITION', 'CE');
     }
 
     require (dirname(__FILE__) . '/functions.php');

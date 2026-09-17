@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -47,13 +47,15 @@ if (!$_POST) {
             'extra classes'=>'designer',
             'icon'=>'design', 
             'heading'=> lang('Upload Design Files'),
+            'heading_description' => lang('Drop design files below, update the settings (if necessary), and then click Upload.'),
             'cancel'=>array('enable'=>'true','url'=>'view_design_files.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php'), array('label' => lang('Upload Design Files'))),
         )
     ) . '
-    <link rel="stylesheet" type="text/css" href="assets/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.css?v=' . @filemtime(dirname(__FILE__) . '/assets/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.css') . '" />
-    <script src="assets/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.js?v=' . @filemtime(dirname(__FILE__) . '/assets/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.js') . '"></script>
+<main id="content" class="container-fluid">
+    <link rel="stylesheet" type="text/css" href="assets/lib/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.css?v=' . @filemtime(dirname(__FILE__) . '/assets/lib/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.css') . '" />
+    <script src="assets/lib/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.js?v=' . @filemtime(dirname(__FILE__) . '/assets/lib/dropzone/dropzone.' . ENVIRONMENT_SUFFIX . '.js') . '"></script>
     <script>
         Dropzone.options.dropzone = {
             autoProcessQueue: false,
@@ -116,7 +118,7 @@ if (!$_POST) {
             <div class="col-12">
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Drop design files below, update the settings (if necessary), and then click Upload.') . '" title="' . lang('Upload Design Files') . '">[' . lang('New Design File') . ']</h2>
+
                         <p>' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
                     </div>
                 </div>
@@ -184,7 +186,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 } else {
@@ -193,6 +196,16 @@ if (!$_POST) {
     // If the user didn't select a file then output error.
     if ($_FILES['file']['name'][0] == '') {
         output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    // Every name is checked before any file is written, so a batch with one
+    // refused file in it does not land in halves. A design file is still a
+    // file in the web root: a name the server would run is refused here too.
+    foreach ($_FILES['file']['name'] as $file_name) {
+        if (pg_upload_name_blocked($file_name)) {
+            log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $file_name)), $_SESSION['sessionusername']);
+            output_error(h(pg_upload_blocked_message($file_name)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
     }
 
     foreach ($_FILES['file']['name'] as $index => $file_name) {

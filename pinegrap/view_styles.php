@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -84,8 +84,9 @@ if (!empty($_SESSION['software']['design']['view_styles']['order'])) {
     $_SESSION['software']['design']['view_styles']['order'] = 'asc';
 }
 
-// get total number of styles
-$query = "SELECT COUNT(style_id) FROM style";
+// Designs made with the visual editor have their own screen
+// (view_system_styles.php); this list is the HTML-template styles.
+$query = "SELECT COUNT(style_id) FROM style WHERE style_layout <> 'visual_designer'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_styles = $row[0];
@@ -107,6 +108,7 @@ $query =
     FROM style
     LEFT JOIN files ON style.theme_id = files.id
     LEFT JOIN user ON style.style_user = user.user_id
+    WHERE style.style_layout <> 'visual_designer'
     ORDER BY $sort_column $asc_desc";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -154,8 +156,10 @@ pg_page_shell([
         'title'=> lang('All Page Styles'),
         'extra classes'=>'design',
         'icon'=>'design',
-        'heading'=>lang('All Page Styles')
+        'heading'=>lang('All Page Styles'),
+        'heading_description' => lang('All HTML templates that define the design and content layout for any page.')
     ]) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -163,9 +167,10 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('All HTML templates that define the design and content layout for any page.') . '" title="' . lang('All Page Styles') . '">' . lang('All Page Styles') . '</h2>
+                    
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_style.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-primary m-1 " href="add_custom_style.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-outline-secondary m-1 " href="view_system_styles.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-magic me-2"></span>' . lang('Visual Page Editor') . '</a>
                     </nav>
                 </div>
             </div>
@@ -205,7 +210,8 @@ pg_page_shell([
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 
 $liveform->remove_form('view_styles');

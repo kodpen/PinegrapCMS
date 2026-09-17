@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -90,7 +90,7 @@ if (defined('VERSION') && VERSION === '2026') {
 	    include_once('liveform.class.php');
 	    $liveform = new liveform('settings');
 	    $liveform->add_notice("Pre-upgrade preparation failed: " . $e->getMessage());
-	    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+	    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
 	exit();
 
     }
@@ -142,7 +142,7 @@ $request['hostname'] = HOSTNAME_SETTING;
 $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
 $request['version'] = VERSION;
 $request['edition'] = EDITION;
-$request['uname'] = php_uname();
+$request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
 $request['os'] = PHP_OS;
 $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
 $request['php_version'] = phpversion();
@@ -151,7 +151,8 @@ $request['installer'] = INSTALLER;
 $request['private_label'] = PRIVATE_LABEL;
 $data = encode_json($request);
 $API = '59593DS72233483322T669223344';
-$REQUEST ='latest_version';
+// Beta sites ask their own question; see pg_update_channel().
+$REQUEST = function_exists('pg_update_request_key') ? pg_update_request_key() : 'latest_version';
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API='.$API.'&REQUEST='.$REQUEST);
@@ -195,7 +196,7 @@ if ($response === false) {
 	include_once('liveform.class.php');
 	$liveform = new liveform('settings');
 	$liveform->mark_error('update', lang(array('string'=>'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.','vars'=>array($curl_errno,$curl_error) )));
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
 	exit();
 }
 
@@ -210,7 +211,7 @@ if (!isset($response['version'])) {
     include_once('liveform.class.php');
 	$liveform = new liveform('settings');
 	$liveform->mark_error('update', lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available') );
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
 	exit();
 }
 
@@ -273,8 +274,71 @@ if($software_update_available == 0){
 
 	$liveform = new liveform('settings');
 	$liveform->add_notice(lang('There is no update available.'));
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
 	exit();
+}
+
+// Folders the web server cannot write into. The replace step opens the package
+// on the tree as the web server, and a folder that refuses keeps its old files
+// through every extraction - the site then runs new code on old files. So the
+// folders are checked here, before anything is downloaded, the same way the
+// System Status card checks them: while one refuses, the Update button stays
+// off and a button beside the list opens them (0777 folders, 0666 files, see
+// pg_write_permission_repair()). Once they are open the download and the
+// extraction run exactly as before.
+$output_permissions_block = '';
+
+$update_blocked = false;
+
+if (function_exists('pg_write_permission_scan')) {
+
+    $permissions = pg_write_permission_scan();
+
+    if ($permissions['directories_count'] > 0) {
+
+        $update_blocked = true;
+
+        $permissions_rows = '';
+
+        foreach (array_slice($permissions['directories'], 0, 12, true) as $permissions_path => $permissions_mode) {
+            $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="text-body-secondary">' . h($permissions_mode) . '</span></li>';
+        }
+
+        if ($permissions['directories_count'] > 12) {
+            $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => number_format($permissions['directories_count'] - 12)))) . '</li>';
+        }
+
+        // The repair changes who may write into the software directory, so it
+        // is an administrator's button; a manager sees the list and the name of
+        // who to ask.
+        if ((int) $user['role'] === 0) {
+            $permissions_action = '
+                <button type="button" class="btn btn-danger" id="write_permissions_fix"
+                        data-busy-label="' . h(lang('Fixing')) . '"
+                        data-idle-label="' . h(lang('Set the file permissions')) . '"
+                        data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
+                    <i class="bi bi-wrench-adjustable me-1"></i><span id="write_permissions_fix_state">' . h(lang('Set the file permissions')) . '</span>
+                </button>
+                <span class="form-text d-block mt-2">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
+                <div class="form-text mt-2 d-none" id="write_permissions_fix_result"></div>';
+        } else {
+            $permissions_action = '<span class="form-text d-block mt-2">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
+        }
+
+        $output_permissions_block = '
+        <div class="col-12 col-md-8 offset-md-2">
+            <div class="alert alert-danger">
+                <p class="form-text mb-2"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
+                    'string' => 'The web server cannot write into {var:1} folder(s) of the software. The update cannot add or replace files there, so it does not start until they are opened:',
+                    'vars' => number_format($permissions['directories_count'])
+                ))) . '</p>
+                <ul class="mb-2 small">' . $permissions_rows . '</ul>
+                ' . $permissions_action . '
+            </div>
+        </div>';
+
+    }
+
 }
 
 print
@@ -282,8 +346,10 @@ pg_page_shell([
         'title'=> lang('Software Updater'),
         'extra classes'=>'setting',
         'icon'=>'setting',
-        'heading'=>lang('Software Updater')
+        'heading'=>lang('Software Updater'),
+        'heading_description' => lang('Get new files from update server and Update Software.'),
     ]) . '
+<main id="content" class="container-fluid">
 <script>
     function update(){
         $status = "";
@@ -371,6 +437,44 @@ pg_page_shell([
                 update();
             }
         });
+
+        // Opening the folders the web server cannot write into, then reading
+        // the screen again: the list and the Update button are rendered from
+        // the scan, so a reload is what turns the button on.
+        $("#write_permissions_fix").click(function(){
+            var button = $(this),
+                result = $("#write_permissions_fix_result");
+            if (button.prop("disabled")) {
+                return;
+            }
+            button.prop("disabled", true);
+            $("#write_permissions_fix_state").text(button.attr("data-busy-label"));
+            $.ajax({
+                contentType: "application/json",
+                url: "api.php",
+                type: "POST",
+                data: JSON.stringify({
+                    action: "write_permissions_repair",
+                    token: software_token
+                }),
+                success: function(response) {
+                    result.text(response.message || button.attr("data-failed-label")).removeClass("d-none");
+                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
+                    if (response.status == "success") {
+                        window.setTimeout(function(){
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        button.prop("disabled", false);
+                    }
+                },
+                error: function() {
+                    result.text(button.attr("data-failed-label")).removeClass("d-none");
+                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
+                    button.prop("disabled", false);
+                }
+            });
+        });
     });
 </script>
     <div class="row">
@@ -378,11 +482,7 @@ pg_page_shell([
         ' . $liveform->output_errors() . '
         ' . $liveform->get_warnings() . '
         ' . $liveform->output_notices() . '
-        <div class="row mb-2  flex-wrap">
-            <div class="col-12 col-sm-12 text-center text-md-start">
-                <h2 class="d-inline-block " data-bs-content="' . lang('Get new files from update server and Update Software.') . '" title="' . lang('Software Updater') . '">' . lang('Software Updater') . '</h2>
-            </div>
-        </div>
+        ' . $output_permissions_block . '
         <div class="col-12 col-md-8 offset-md-2">
 			<div class="card my-5 border-4">
 				<div class="card-body">
@@ -395,7 +495,7 @@ pg_page_shell([
 				</div>
 				<div class="card-footer">
 					<div class="text-center">
-                    <a id="update" class="btn btn-light ready" href="#!" class="button_primary"><span class="me-1 material-icons">sync</span>' . lang('Update') . '</a></div>
+                    <a id="update" class="btn btn-light ' . ($update_blocked ? 'disabled' : 'ready') . '" href="#!"' . ($update_blocked ? ' aria-disabled="true" title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><span class="me-1 material-icons">sync</span>' . lang('Update') . '</a></div>
 				</div>
                 
 			</div>
@@ -407,6 +507,7 @@ pg_page_shell([
         </div>
 
         
+</main>
 ' . output_footer();
 $liveform->remove_form();
 

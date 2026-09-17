@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -186,6 +186,7 @@ if ($action != 'import') {
             'heading'=>lang('Import My Site'),
             'cancel'=>true
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
@@ -286,7 +287,8 @@ if ($action != 'import') {
             </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
     $liveform->unmark_errors();
@@ -1363,10 +1365,19 @@ function fetch_url_response($url)
         if ($content === false) {
             return false;
         }
-        // Try to extract Content-Type from $http_response_header
+        // Try to extract Content-Type from the response headers.
+        //
+        // PHP 8.5 deprecated the magic $http_response_header variable in favour of
+        // http_get_last_response_headers(). Prefer the function where it exists
+        // (8.4 and up) and fall back to the variable on everything older, so this
+        // keeps working across the whole supported range.
         $content_type = '';
-        if (isset($http_response_header)) {
-            foreach ($http_response_header as $header) {
+        $response_headers = function_exists('http_get_last_response_headers')
+            ? http_get_last_response_headers()
+            : (isset($http_response_header) ? $http_response_header : null);
+
+        if (is_array($response_headers)) {
+            foreach ($response_headers as $header) {
                 if (stripos($header, 'Content-Type:') === 0) {
                     $content_type = trim(substr($header, 13));
                 }

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,7 +23,7 @@ function get_email_preferences($properties = array()) {
     $form = new liveform('email_preferences');
 
     // if user is logged in, get e-mail information for user
-    if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true) {
+    if (pg_session_signed_in() == true) {
         // get user information to find contact
         $query =
             "SELECT

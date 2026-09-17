@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,9 +26,17 @@ $default_logout_button_label = lang('Exit');
 
 switch ($_GET['action']) {
     default:
+        // Only accept a same-origin redirect target. pg_safe_back_url()
+        // passes relative paths and absolute URLs on this host, and rejects
+        // off-site hosts, protocol-relative "//host" and javascript:/data:
+        // schemes - closing the open redirect while keeping every legitimate
+        // in-site kiosk target working. An empty or rejected value becomes '',
+        // which the redirect below turns into go(PATH): the original no-url path.
+        $kiosk_url = pg_safe_back_url(($_GET['url'] ?? ''), '');
+
         $_SESSION['software']['kiosk']['enabled'] = true;
         $_SESSION['software']['kiosk']['activity'] = false;
-        $_SESSION['software']['kiosk']['url'] = $_GET['url'];
+        $_SESSION['software']['kiosk']['url'] = $kiosk_url;
 
         // If an inactivity time was passed in the query string,
         // and the value is a positive integer, then store the value in the session.
@@ -87,8 +95,8 @@ switch ($_GET['action']) {
             $_SESSION['software']['kiosk']['logout_button_label'] = $default_logout_button_label;
         }
 
-        if ($_GET['url'] != '') {
-            go($_GET['url']);
+        if ($kiosk_url != '') {
+            go($kiosk_url);
         } else {
             go(PATH);
         }

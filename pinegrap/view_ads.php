@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -305,8 +305,10 @@ print
         'title'=> lang('All My Ads'),
         'extra classes'=>'ads',
         'icon'=>'ads',
-        'heading'=>lang('All My Ads')
+        'heading'=>lang('All My Ads'),
+        'heading_description' => lang('All shared content that can be rotated on one or more pages that I can edit.'),
     ]) . '
+<main id="content" class="container-fluid">
     <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -315,7 +317,7 @@ print
                
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('All shared content that can be rotated on one or more pages that I can edit.') . '" title="' . lang('All My Ads') . '">' . lang('All My Ads') . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_ad.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                         </nav>
@@ -352,7 +354,8 @@ print
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 $liveform->remove_form();

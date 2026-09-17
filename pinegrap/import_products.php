@@ -12,9 +12,24 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
+
+// A few thousand products is a few tens of thousands of queries, which is a
+// long way past the budget PHP gives an ordinary page. This screen had no
+// budget of its own at all -- the only bulk operation in the software without
+// one -- so an import large enough to matter was stopped by the clock rather
+// than by anything wrong with it, halfway through, with no record of where.
+// The same numbers import_zip.php has asked for since it was written.
+ini_set('max_execution_time', '9999');
+ini_set('memory_limit', '512M');
+
+// Once the first product is written the run has to reach the last one. A
+// browser that gives up, or an operator who closes the tab because nothing
+// seems to be happening, would otherwise leave the catalog half imported --
+// and there is no way to tell from the outside which half.
+ignore_user_abort(true);
 
 include('init.php');
 include_once('liveform.class.php');
@@ -33,33 +48,32 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Import Products'),
+        'heading_description' => lang('Import new or existing products.'),
         'cancel'=>array('enable'=>'true','url'=>'view_products.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'), array('label' => lang('Import Products'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Import new or existing products.') . '" title="' . lang('Import Products') . '">[' . lang('Product Name') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="import_products.php" method="post" class="product_form" enctype="multipart/form-data">
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('Import CSV') . '
+                                    ' . lang('Import CSV or Excel') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12  my-2">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto')) . '
+                                            <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
                                         </div>
                                         <div class="col-12 my-2">
                                             <div class="form-check form-switch">
@@ -82,7 +96,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form('import_products');
@@ -101,9 +116,32 @@ if (!$_POST) {
 
     // Fix Mac line-ending issue.
     ini_set('auto_detect_line_endings', true);
-    
+
+    // A spreadsheet is turned into the CSV this importer already reads, and
+    // everything below carries on unaware. See import_products_f.php for why
+    // it is done at the door rather than inside the loop.
+    $import_path = $_FILES['file']['tmp_name'];
+    $import_temp_path = '';
+
+    require_once(dirname(__FILE__) . '/import_products_f.php');
+
+    if (pg_products_import_is_spreadsheet($_FILES['file']['name'])) {
+
+        $import_error = '';
+        $import_temp_path = pg_products_import_to_csv($import_path, $_FILES['file']['name'], $import_error);
+
+        if ($import_temp_path == '') {
+            $liveform->mark_error('file', $import_error);
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+            exit();
+        }
+
+        $import_path = $import_temp_path;
+    }
+
     // get file handle for uploaded CSV file
-    $handle = fopen($_FILES['file']['tmp_name'], "r");
+    $handle = fopen($import_path, "r");
     // get column names from first row of CSV file
     $columns = fgetcsv($handle, 100000, ",");
     
@@ -111,6 +149,8 @@ if (!$_POST) {
     if (!$columns) {
         $liveform->mark_error('file', lang('The file was empty.'));
         fclose($handle);
+
+        if ($import_temp_path != '') { unlink($import_temp_path); }
         
         // Redirect user back to the import_products page
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
@@ -172,6 +212,8 @@ if (!$_POST) {
     $product_imported_count = 0;
     $product_updated_count = 0;
 
+    $update_existing_products = isset($_POST['update_existing_products']) ? $_POST['update_existing_products'] : '';
+
     // loops through all rows of data in CSV file
     while ($row = fgetcsv($handle, 100000, ",")) {
         // If product name is not blank, do something with the rows data.
@@ -201,8 +243,12 @@ if (!$_POST) {
 
                 $new_address_name = '';
                 
-                // If update_existing_products checkbox was checked
-                if ($_POST['update_existing_products'] == '1') {
+                // If update_existing_products checkbox was checked.
+                //
+                // Read once, above the loop: an unticked checkbox posts no
+                // field at all, and asking for the missing key here wrote a
+                // warning to the error log for every product in the file.
+                if ($update_existing_products == '1') {
                     $enabled = '';
 
                     // if the seo analysis is current, then initialize variables for storing new values for seo fields, so we can determine if we need to clear the seo current status
@@ -319,7 +365,16 @@ if (!$_POST) {
                                 $update_values .= ', ';
                             }
                             
-                            $update_values .= $column_name . " = '" . escape($column_value) . "'";
+                            // A tax rate goes through the same reader the screens use:
+                            // a Turkish sheet writes 8,25 and MySQL would read that as 8,
+                            // and anything that is not a number would land as 0.000, which
+                            // means zero-rated rather than "not a rate".
+                            if ($column_name == 'tax_rate') {
+                                $parsed_tax_rate = parse_tax_rate($column_value);
+                                $update_values .= $column_name . " = " . (($parsed_tax_rate === NULL) ? 'NULL' : "'" . escape($parsed_tax_rate) . "'");
+                            } else {
+                                $update_values .= $column_name . " = '" . escape($column_value) . "'";
+                            }
                             
                             // if the seo analysis is current, then determine if this is a column that we need to set the new value for
                             if ($seo_analysis_current == 1) {
@@ -466,7 +521,13 @@ if (!$_POST) {
                             }
                             
                             $insert_columns .= $column_name;
-                            $insert_values .= "'" . escape($column_value) . "'";
+
+                            if ($column_name == 'tax_rate') {
+                                $parsed_tax_rate = parse_tax_rate($column_value);
+                                $insert_values .= ($parsed_tax_rate === NULL) ? 'NULL' : "'" . escape($parsed_tax_rate) . "'";
+                            } else {
+                                $insert_values .= "'" . escape($column_value) . "'";
+                            }
                         }
                     }
                 }
@@ -632,7 +693,12 @@ if (!$_POST) {
     }
     
     fclose($handle);
-    
+
+    // The converted spreadsheet has done its work. PHP would clear the temp
+    // directory eventually; a file of ten thousand products is worth not
+    // leaving there until it does.
+    if ($import_temp_path != '') { unlink($import_temp_path); }
+
     // Display notices to tell the user what has been done. Redirect them to proper page.
     if (($product_imported_count > 0) && ($product_updated_count > 0)) {
         $liveform_view_products->add_notice( lang(array('string'=>'{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.','vars'=>array( $product_imported_count, $product_updated_count,lang('product(s)')))) );
@@ -723,6 +789,10 @@ function convert_column_name($column_name)
             
         case 'taxable':
             return('taxable');
+            break;
+
+        case 'tax_rate':
+            return('tax_rate');
             break;
             
         case 'selection_type':

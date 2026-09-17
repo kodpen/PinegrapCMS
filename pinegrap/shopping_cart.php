@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -192,6 +192,7 @@ $query =
         order_items.product_id,
         order_items.quantity,
         products.name,
+        products.short_description,
         products.required_product,
         products.recurring,
         products.recurring_schedule_editable_by_customer,
@@ -901,27 +902,37 @@ foreach ($order_items as $order_item) {
         // if required product is not in cart, add product to cart and add notice, so user knows that required product was added to cart
         if (mysqli_num_rows($result) == 0) {
             // get information about required product
-            $query = "SELECT name FROM products WHERE id = '" . $order_item['required_product'] . "'";
+            // products.name is the item code; the shopper knows the product by
+            // its short description, which is what the cart lists as well.
+            $query = "SELECT name, short_description FROM products WHERE id = '" . $order_item['required_product'] . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
-            $required_product_name = $row['name'];
+            $required_product_name = ($row['short_description'] != '') ? $row['short_description'] : $row['name'];
 
             // add required product to cart
             add_order_item($order_item['required_product'], 1, 0, '', '');
 
-            $liveform->add_notice(h($order_item['name']) . ' requires ' . h($required_product_name) . ', so ' . h($required_product_name) . ' has been added to your order.');
+            $liveform->add_notice(lang(array(
+                'string' => '{var:1} requires {var:2}, so {var:2} has been added to your order.',
+                'vars'   => array(h(($order_item['short_description'] != '') ? $order_item['short_description'] : $order_item['name']), h($required_product_name)))));
         }
     }
 }
 
 /* begin: check that there are no free order items alone in a ship to */
 
-$query = "SELECT ship_to_id, product_name
+// products.short_description is the name the shopper sees; order_items.product_name
+// carries the item code, which means nothing to them in a warning.
+$query = "SELECT
+            order_items.ship_to_id,
+            order_items.product_name,
+            products.short_description
          FROM order_items
+         LEFT JOIN products ON order_items.product_id = products.id
          WHERE
-            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-            AND (ship_to_id > 0)
-            AND (price <= 0)";
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            AND (order_items.ship_to_id > 0)
+            AND (order_items.price <= 0)";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $free_order_items = array();
@@ -943,7 +954,7 @@ foreach ($free_order_items as $key => $value) {
     
     // if a non-free order item could not be found, add error
     if (mysqli_num_rows($result) == 0) {
-        $liveform->mark_error('free_order_item_error', h($free_order_items[$key]['product_name']) . ' is a free item that you have requested to ship with no non-free items.  Free items must be shipped with at least one non-free item. You may update your order so that the item is shipped with at least one non-free item or you may remove the item.');
+        $liveform->mark_error('free_order_item_error', lang(array('string' => '{var:1} is a free item that you have requested to ship with no non-free items. Free items must be shipped with at least one non-free item. You may update your order so that the item is shipped with at least one non-free item or you may remove the item.', 'vars' => array(h($free_order_items[$key]['short_description'] != '' ? $free_order_items[$key]['short_description'] : $free_order_items[$key]['product_name'])))));
         break;
     }
 }

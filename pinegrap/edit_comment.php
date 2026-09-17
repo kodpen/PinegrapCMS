@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -57,6 +57,13 @@ $query =
     WHERE comments.id = '" . escape($_REQUEST['id']) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// A stale or deleted comment id gives null here, and every read below -- plus
+// $row['created_username'] further down -- would run against it.
+if (!$row) {
+    output_error(lang('Sorry, the item could not be found.'), 404);
+}
+
 $page_id = $row['page_id'];
 $comment_id = $row['id'];
 $item_id = $row['item_id'];
@@ -249,12 +256,14 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Comment'))),
+            'heading_description' => lang('Edit and publish this comment.'),
             'cancel'=>array('enable'=>'true','url'=>'view_comments.php')
 
         ,
             'breadcrumb' => array(array('label' => lang('Comments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php'), array('label' => lang('Edit Comment'))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -264,7 +273,7 @@ if (!$_POST) {
                     <div class="col-12 col-sm-12 text-center text-md-start">
 <div class="row mb-2">
                             <div class="col-12 col-md">
-                                <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Edit and publish this comment.') . '" title="' . lang('Edit Comment') . '">[' . h($name) . ']</h2>
+                                
                                 <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
                                 <p class="p-0 m-0">' . lang('Page') . ': ' . h(get_page_name($page_id)) . '</p>
                                 ' . $output_reference_line . '
@@ -287,7 +296,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="publish" class="form-label">' . lang('Publish') . '</label>
@@ -320,7 +329,7 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                         ' . get_date_time_picker_format() . '
                                         <script>init_edit_comment_publish()</script>
                                         <div class="col-12 my-3">
@@ -351,7 +360,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();
@@ -574,7 +584,7 @@ if (!$_POST) {
     
     // if there is a send to, then forward user to send to
     if ($liveform->get_field_value('send_to') != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to') . $bookmark);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . $bookmark);
         
     // else there is not a send to, so build the return URL
     } else {

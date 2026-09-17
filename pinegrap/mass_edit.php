@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -162,7 +162,7 @@ if (!$_POST) {
                                         <label class="form-label" for="page_name_' . $row['page_id'] . '">' . lang('Page Name') . '</label>
                                         <div class="input-group ">
                                             <label for="page_name_' . $row['page_id'] . '" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
-                                            <input name="page_name_' . $row['page_id'] . '" id="page_name_' . $row['page_id'] . '" type="text" value="' . h($row['page_name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control add-header-content-updater" required="required" />
+                                            <input name="page_name_' . $row['page_id'] . '" id="page_name_' . $row['page_id'] . '" type="text" value="' . h($row['page_name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                     </div>';
@@ -311,7 +311,7 @@ if (!$_POST) {
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('Mass Edit'),
-        'auto_main'=>false,
+        'heading_description' => lang('It is a special page for mass editing of Web Site Contents. Not recommended if you dont know what you are doing.'),
     ]) . '
         <main class="container" id="content" style="min-height:60vh">
             <div class="row">
@@ -321,7 +321,7 @@ if (!$_POST) {
                     ' . $liveform->output_notices() . '
                     <div class="row mb-2  flex-wrap">
                         <div class="col-12 text-center text-md-start">
-                            <h2 class="d-inline-block " data-bs-content="' . lang('It is a special page for mass editing of Web Site Contents. Not recommended if you dont know what you are doing.') . '" title="' . lang('Mass Edit') . '">' . lang('Mass Edit') . '</h2>
+                            
                             ' . $output_button_bar . '
                         </div>
                     </div>
@@ -361,7 +361,7 @@ if (!$_POST) {
                 history.pushState({}, null, String(tags_removed_url).replace( "?", "" ));
             }
 
-        // SEO character counters — logic in assets/backend.src.js
+        // SEO character counters — logic in assets/js/backend.src.js
         initSeoCounters([
             { sel: "[name^=\"page_title_\"]",       min: 50,  max: 60  },
             { sel: "[name^=\"meta_description_\"]", min: 150, max: 160 }

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -27,9 +27,18 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 //list of files and directories that can be delete securely.
+//
+// A name comes off this list the moment the software starts using it again.
+// image_editor_save.php was here as a LiveSite leftover and the name was then
+// reused for the Pintura editor's endpoint -- so running the cleanup deleted a
+// live part of the software, and every save from the image editor answered 404
+// from then on. Nothing on screen connected the two: the tool said it had
+// tidied up, and the editor said the image could not be saved.
+//
+// Before adding a name here, check that nothing references it:
+// grep -rn "<name>" --include=*.php --include=*.js .
 $file_list = array(
     'image_editor_send.php',
-    'image_editor_save.php',
     'image_editor_close.php',
     'threeds_payment.php',
     'changelog.php',
@@ -50,11 +59,70 @@ $file_list = array(
     'error_log',      
     'install/error_log', 
     '../error_log',
-    'data/temp/hash_reference.json',
     'assets/images/dashboard_bg_l.jpg',
     'assets/images/dashboard_bg_d.jpg',
+    'data_api.php',
+    'view_products_development.php',
+    'datatable_serverside_script.php',
     'JSON.php',
+    // The offer library screens. An offer now owns its rule and its actions
+    // through edit_offer.php, which writes the same tables; these screens
+    // edited rows that several offers could share, so a change made here
+    // silently changed every offer that used the row. They were taken out of
+    // the menu with 2026.4.4 and nothing links to them any more.
+    'view_offer_rules.php',
+    'add_offer_rule.php',
+    'edit_offer_rule.php',
+    'view_offer_actions.php',
+    'add_offer_action.php',
+    'edit_offer_action.php',
+    'includes/templates/view_offer_rules.php',
+    'includes/templates/edit_offer_rule.php',
+    'apps.php', 
+    'apps_settings.php',
+    // The single Site Settings screen, 5219 lines of it. Its cards and its
+    // save code were split into the eight category modules under
+    // includes/settings/, which are reached through the dialog in the header
+    // or, where there is no JavaScript, through settings_<category>.php.
+    // Nothing links here any more and no code includes it. The dialog's
+    // address resolver still recognises a settings.php link found in saved
+    // content and opens the right pane instead of following it, so removing
+    // the file costs only a bookmark typed straight into the address bar.
+    'settings.php',
+    // The MailChimp screen. Its card is in Site Settings -> Communication now,
+    // reading and writing the same seven config columns, and nothing links
+    // here any more.
+    'mailchimp_settings.php',
+    'includes/templates/mailchimp_settings.php',
+
 );
+
+// Everything the software drops in data/temp is a cache or a scratch file that is written
+// again the next time it is needed: the status and database health caches, the file
+// integrity baseline (re-fetched from the update server when it is missing), and the
+// installer's progress and attempt files. hash_reference.json used to be named here one
+// by one, which meant every cache added later kept piling up unnoticed, so the list is
+// read off the directory instead.
+//
+// .htaccess is what keeps the directory unreachable from the web, so it stays.
+//
+// hash_reference.json stays as well. It is not a cache: on the machine that
+// generated it the stamp inside names this host, which is what makes it this
+// installation's own truth, and deleting it swaps that for the copy on the
+// update server - every local difference then reads as tampering. It comes back
+// when it is missing, but not as the same file. pg_purge_caches() leaves it
+// alone for the same reason; the bookkeeping file beside it really is a cache
+// and goes. A live endpoint must never be listed for deletion, here or above.
+$temp_directory = 'data/temp';
+$temp_keep = array('.', '..', '.htaccess', 'hash_reference.json');
+
+if (is_dir($temp_directory)) {
+
+    foreach (array_diff((array) @scandir($temp_directory), $temp_keep) as $temp_item) {
+
+        $file_list[] = $temp_directory . '/' . $temp_item;
+    }
+}
 
 
 $files = array();
@@ -152,7 +220,7 @@ if (!$_POST) {
         include_once('liveform.class.php');
         $liveform = new liveform('settings');
         $liveform->add_notice(lang('Congratulations, the files or folders that need to be deleted were not found'));
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
     }
     
     print
@@ -161,19 +229,12 @@ if (!$_POST) {
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('Clean Up'),
-        'cancel'        => [
-            'enable'  => true,
-            'title'   => lang('Return to Settings'),
-            'onclick' => "window.location.href='settings.php'"
-        ]
+        'heading_description' => lang('Tool to remove obsolete files and folders inside the software folder.'),
     ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . lang('Tool to remove obsolete files and folders inside the software folder.') . '" title="' . lang('Clean Up') . '">' . lang('Clean Up') . '</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="" method="post" class="disable_shortcut">
                     ' . get_token_field() . '
                     <div class="row">
@@ -202,7 +263,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' . output_footer();
+    
+</main>' . output_footer();
 
 }else{
     validate_token_field();
@@ -293,7 +355,7 @@ if (!$_POST) {
     include_once('liveform.class.php');
     $liveform = new liveform('settings');
     $liveform->add_notice($output_counter_info);
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/settings.php');
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
     exit();
 
 }

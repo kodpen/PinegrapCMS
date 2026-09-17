@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -46,7 +46,22 @@ $email = $form->get_field_value('email');
 $screen = $form->get_field_value('screen');
 $send_to = $form->get_field_value('send_to');
 
+// A designed page (the forgot_password widget) names itself in return_to;
+// every answer below - the error, the hint screen, the confirmation - goes
+// back to that page instead of the legacy screen. The widget reads the same
+// liveform fields (screen, email) and notices this script leaves behind.
+$return_to = $form->get_field_value('return_to');
+if (is_scalar($return_to) && (string) $return_to !== '') {
+    $url = pg_safe_redirect_path((string) $return_to, $url);
+}
+
 $form->validate_required_field('email', lang(array('string'=>'{var:1} is required.','vars'=>lang('Email') )) );
+
+// Rate limit before the account lookup and, above all, before the mail send
+// below. That send holds this request's database connection for as long as the
+// mail server takes to answer, which is how a bot loop on this endpoint filled
+// max_user_connections and took a live site down on 2026-08-31.
+pg_password_reset_guard($email);
 
 // If there is not an error then get user info.
 if (!$form->check_form_errors()) {
@@ -58,8 +73,22 @@ if (!$form->check_form_errors()) {
         FROM user
         WHERE user_email = '" . e($email) . "'");
 
-    if (!$user['id']) {
-        $form->mark_error('email', lang('Sorry, we could not find an account for the email address you entered.'));
+    // No account for this address: answer exactly as if there were one.
+    //
+    // Naming the miss turned this form into a lookup service. Anyone could
+    // submit addresses and read back which ones this site holds - a list worth
+    // money to whoever sends the phishing that follows, and a plausible motive
+    // for the flood this endpoint took on 2026-08-31.
+    //
+    // The confirmation below is deliberately worded as a condition ("if this
+    // address is registered") rather than a claim, so it is true either way
+    // and no one is told their mail is on its way when it is not.
+    if (empty($user['id'])) {
+        $form->remove();
+        $form->assign_field_value('screen', 'confirm');
+        $form->add_notice(lang('If this email address is registered, then we have sent password reset instructions to it. Please also check your spam folder.'));
+
+        go($url);
     }
 }
 
@@ -147,6 +176,9 @@ $form->remove();
 
 $form->assign_field_value('screen', 'confirm');
 
-$form->add_notice(lang('We have sent an email to you. Please follow the instructions in the email. If the email is hiding from you, then please look for it in your spam folder.'));
+// Word for word the message an unknown address gets. Unifying the outcome is
+// the whole point: two confirmations that read differently are still an
+// answer to "does this address have an account here", just a politer one.
+$form->add_notice(lang('If this email address is registered, then we have sent password reset instructions to it. Please also check your spam folder.'));
 
 go($url);

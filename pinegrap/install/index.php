@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -42,14 +42,31 @@ mb_http_output('UTF-8');
 // because we always want to output the database error if an error happens in this script.
 define('INSTALL_OR_UPDATE', true);
 $automated_upgrade = false;
-// if this is being run from an automated upgrade process, then remember that
-if (
-	// $argv only exists when this runs from the command line, and the query string key is
-	// only present when the upgrade was actually triggered that way.
-	((isset($argv[1])) && ($argv[1] == 'automated_upgrade'))
-	|| ((isset($_REQUEST['automated_upgrade'])) && ($_REQUEST['automated_upgrade'] == 'true'))) {
+
+// How the automated upgrade was asked for: 'cli' for a cron that runs php directly,
+// 'secret' for a cron that fetches the URL with the key from data/config.php, 'session' for
+// the redirect that software_update.php sends a signed-in administrator through.
+$automated_upgrade_via = '';
+
+// The query string only asks. Whether it gets the upgrade is decided further down, once the
+// database is connected and the key or the administrator's session can be checked; until
+// then it is an ordinary request, with a session and a token like any other.
+$automated_upgrade_requested = false;
+
+// A signed-in administrator who arrives with ?automated_upgrade=true (software_update.php
+// sends them here once the software files are updated) gets the upgrade screen, and the
+// screen starts by itself and applies one version per request.
+$install_autostart = false;
+
+if ((PHP_SAPI === 'cli') && (isset($argv[1])) && ($argv[1] == 'automated_upgrade')) {
 
 	$automated_upgrade = true;
+
+	$automated_upgrade_via = 'cli';
+
+} elseif ((isset($_REQUEST['automated_upgrade'])) && ($_REQUEST['automated_upgrade'] == 'true')) {
+
+	$automated_upgrade_requested = true;
 
 }
 
@@ -119,6 +136,97 @@ if(
 }
 
 
+// While the installation runs it writes every step into a small file, and the install screen reads
+// that file to show the steps.  Some servers hold the output of a running script back until it
+// finishes, and this way the screen fills up on those servers too.  Nothing here needs the session,
+// so this answer never has to wait for the installation to release it.
+if ((isset($_REQUEST['install_action'])) && ($_REQUEST['install_action'] == 'progress')) {
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	header('Cache-Control: no-store');
+
+	$progress_id = '';
+
+	if (isset($_REQUEST['progress_id'])) {
+
+		$progress_id = $_REQUEST['progress_id'];
+
+	}
+
+	if (preg_match('/^[a-f0-9]{8,32}$/', $progress_id) != 1) {
+
+		print '{"steps":[],"done":false}';
+
+		exit();
+
+	}
+
+	$progress_file = dirname(__FILE__) . '/../data/temp/install_progress_' . $progress_id . '.json';
+
+	if (!file_exists($progress_file)) {
+
+		print '{"steps":[],"done":false}';
+
+		exit();
+
+	}
+
+	$progress_contents = @file_get_contents($progress_file);
+
+	if ($progress_contents == false) {
+
+		print '{"steps":[],"done":false}';
+
+		exit();
+
+	}
+
+	print $progress_contents;
+
+	exit();
+
+}
+
+// The translation function reads SOFTWARE_LANGUAGE, and that constant is normally set by the site
+// itself.  The install screen runs before a site exists, so we set it here.  Without this the whole
+// install screen is always in English.
+//
+// If a site is already installed in the database, then we use the language of that site, because an
+// administrator who comes here to restore a backup expects the same language they use every day.
+// A language in the URL always wins, so the screen can still be read in another language.
+if ((!defined('SOFTWARE_LANGUAGE')) && (!isset($_GET['local'])) && (defined('DB_HOST')) && (DB_HOST != '')) {
+
+	$language_connection = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE);
+
+	if ($language_connection != false) {
+
+		$language_result = @mysqli_query($language_connection, "SELECT software_language FROM config LIMIT 1");
+
+		if ($language_result != false) {
+
+			$language_row = @mysqli_fetch_assoc($language_result);
+
+			if ((isset($language_row['software_language'])) && ($language_row['software_language'] != '')) {
+
+				define('SOFTWARE_LANGUAGE', $language_row['software_language']);
+
+			}
+
+		}
+
+		@mysqli_close($language_connection);
+
+	}
+
+}
+
+if (!defined('SOFTWARE_LANGUAGE')) {
+
+	define('SOFTWARE_LANGUAGE', DEFAULT_SOFTWARE_LANGUAGE);
+
+}
+
 function get_software_language_options() {
     $software_language_options          = array();
     $software_language_options['-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('language')) )) . '-']		= '';
@@ -130,9 +238,18 @@ function get_software_language_options() {
 if(defined('EDITION')){
 	define('EDITION', EDITION);
 }else{
-	define('EDITION', 'Premium');
+	define('EDITION', 'CE');
 }
 require (dirname(__FILE__) . '/../functions.php');
+
+// The upgrade runner: the version list, the migration files, the schema helpers and the
+// loop that applies them.  It lives under includes/ so that it survives the install
+// directory being removed from a server.
+require (dirname(__FILE__) . '/../includes/migrations/runner.php');
+
+// The LiveSite-era steps are plain functions in one file; they are loaded here so that the
+// screen can tell which of those versions touch the database.
+install_include_legacy();
 
 // if this script is not being called from an automated upgrade script, then start session
 if ($automated_upgrade == false) {
@@ -301,6 +418,965 @@ function get_backup_options() {
 	}
 }
 
+// The starter site folders that ship with the software.  These are offered as starter
+// sites on the install screen, so they are not mixed in with the site backups that an
+// administrator has created on the server.
+function get_starter_site_folders() {
+
+	return array(
+
+		'turkish_default' => array('label' => 'Türkçe', 'language' => 'tr'),
+
+		'english_default' => array('label' => 'English', 'language' => 'en')
+
+	);
+
+}
+
+// Returns the starter site folders that actually exist on the server.
+function get_available_starter_sites() {
+
+	$directory_path = dirname(__FILE__) . '/../data/backups/';
+
+	$starter_sites = array();
+
+	foreach (get_starter_site_folders() as $folder => $starter_site) {
+
+		if (is_dir($directory_path . $folder)) {
+
+			$starter_site['folder'] = $folder;
+
+			$starter_sites[] = $starter_site;
+
+		}
+
+	}
+
+	return $starter_sites;
+
+}
+
+// Returns the site backups that are on the server, without the starter sites.  Newest first.
+function get_site_backups() {
+
+	$directory_path = dirname(__FILE__) . '/../data/backups/';
+
+	$starter_site_folders = get_starter_site_folders();
+
+	$backups = array();
+
+	if (!is_dir($directory_path)) {
+
+		return $backups;
+
+	}
+
+	$entries = @scandir($directory_path);
+
+	if ($entries == false) {
+
+		return $backups;
+
+	}
+
+	foreach ($entries as $entry) {
+
+		if (($entry == '.') || ($entry == '..') || (mb_substr($entry, 0, 1) == '.')) {
+
+			continue;
+
+		}
+
+		if (isset($starter_site_folders[$entry])) {
+
+			continue;
+
+		}
+
+		if (!is_dir($directory_path . $entry)) {
+
+			continue;
+
+		}
+
+		$backups[] = array(
+
+			'folder' => $entry,
+
+			'modified' => @filemtime($directory_path . $entry),
+
+			// A folder can only be installed when it holds a database dump.
+			'installable' => file_exists($directory_path . $entry . '/sql.sql')
+
+		);
+
+	}
+
+	// sort the backups so that the newest backup is first
+	usort($backups, 'compare_site_backups');
+
+	return $backups;
+
+}
+
+function compare_site_backups($first_backup, $second_backup) {
+
+	if ($first_backup['modified'] == $second_backup['modified']) {
+
+		return strcasecmp($first_backup['folder'], $second_backup['folder']);
+
+	}
+
+	return ($first_backup['modified'] < $second_backup['modified']) ? 1 : -1;
+
+}
+
+// While the software installs we keep a note of every step and how long it took, so the screen
+// that comes back can show what actually happened instead of just saying that it worked.
+$install_log = array();
+
+$install_started_at = 0;
+
+// While the installation streams, every step is sent to the browser as it happens instead of being
+// kept until the end.  The number below is only used for the progress bar.
+$install_streaming = false;
+
+$install_expected_steps = 10;
+
+// the file that the screen reads while the installation runs
+$install_progress_file = '';
+
+// what the runner is doing right now, and what stopped it; both go into the progress file
+$install_progress_running = '';
+
+$install_progress_error = null;
+
+function start_install_log() {
+
+	global $install_started_at;
+
+	$install_started_at = microtime(true);
+
+}
+
+// Prepares the file that the install screen reads while the installation runs.  The screen makes up
+// the name, so nobody can read the progress of somebody else without knowing it.
+function start_install_progress_file() {
+
+	global $install_progress_file;
+
+	$progress_id = '';
+
+	if (isset($_POST['progress_id'])) {
+
+		$progress_id = $_POST['progress_id'];
+
+	}
+
+	if (preg_match('/^[a-f0-9]{8,32}$/', $progress_id) != 1) {
+
+		return;
+
+	}
+
+	// These belong with the rest of the scratch files rather than loose in data/, where
+	// they sat next to config.php and the backups and looked like something that mattered.
+	$directory_path = dirname(__FILE__) . '/../data/temp';
+
+	if ((!is_dir($directory_path)) && (!@mkdir($directory_path, 0755, true))) {
+
+		return;
+
+	}
+
+	// remove the files of older installations, so they do not pile up.  The second sweep
+	// clears out the old location, for a site that was installed before they moved.
+	$old_files = array_merge(
+		(array) @glob($directory_path . '/install_progress_*.json'),
+		(array) @glob(dirname(__FILE__) . '/../data/install_progress_*.json'));
+
+	foreach ($old_files as $old_file) {
+
+		if ((@filemtime($old_file) + 3600) < time()) {
+
+			@unlink($old_file);
+
+		}
+
+	}
+
+	$install_progress_file = $directory_path . '/install_progress_' . $progress_id . '.json';
+
+	@file_put_contents($install_progress_file, '{"steps":[],"done":false}', LOCK_EX);
+
+}
+
+// Writes everything that has happened so far into that file.
+function write_install_progress_file($done = false) {
+
+	global $install_progress_file, $install_log, $install_expected_steps, $install_progress_running, $install_progress_error;
+
+	if ($install_progress_file == '') {
+
+		return;
+
+	}
+
+	$steps = array();
+
+	foreach ($install_log as $index => $step) {
+
+		$percent = (int) round((($index + 1) / $install_expected_steps) * 100);
+
+		if ($percent > 99) {
+
+			$percent = 99;
+
+		}
+
+		$steps[] = array(
+			'i' => $index,
+			's' => number_format($step['seconds'], 1),
+			'l' => $step['label'],
+			'd' => $step['detail'],
+			't' => $step['state'],
+			'p' => $percent
+		);
+
+	}
+
+	$progress = array(
+		'steps' => $steps,
+		'done' => $done,
+		'running' => (string) $install_progress_running,
+		'error' => $install_progress_error,
+		'notes' => function_exists('install_notes') ? install_notes() : array()
+	);
+
+	@file_put_contents($install_progress_file, json_encode($progress), LOCK_EX);
+
+}
+
+function add_install_step($label, $detail = '', $state = 'ok') {
+
+	global $install_log, $install_started_at, $install_streaming, $install_expected_steps;
+
+	if ($install_started_at == 0) {
+
+		start_install_log();
+
+	}
+
+	$seconds = microtime(true) - $install_started_at;
+
+	$install_log[] = array(
+		'label' => $label,
+		'detail' => $detail,
+		'state' => $state,
+		'seconds' => $seconds
+	);
+
+	// the screen reads this file while the installation runs
+	write_install_progress_file(false);
+
+	// if the installation is being streamed, then send this step to the browser right away
+	if ($install_streaming == true) {
+
+		$percent = (int) round((count($install_log) / $install_expected_steps) * 100);
+
+		if ($percent > 99) {
+
+			$percent = 99;
+
+		}
+
+		print '<script>pg_install_stream_step(' .
+			(count($install_log) - 1) . ', ' .
+			json_encode(number_format($seconds, 1)) . ', ' .
+			json_encode($label) . ', ' .
+			json_encode($detail) . ', ' .
+			json_encode($state) . ', ' .
+			$percent . ');</script>' . "\n";
+
+		flush_install_stream();
+
+	}
+
+}
+
+// Sends whatever has been printed so far to the browser.  Servers like to hold output back, so we
+// turn every buffer off before the installation starts and push after every step.
+function flush_install_stream() {
+
+	if (ob_get_level() > 0) {
+
+		@ob_flush();
+
+	}
+
+	@flush();
+
+}
+
+// Turns a php.ini size like "8M" into bytes.
+function get_install_ini_bytes($value) {
+
+	$value = trim($value);
+
+	if ($value == '') {
+
+		return 0;
+
+	}
+
+	$unit = mb_strtolower(mb_substr($value, -1));
+
+	$number = (float) $value;
+
+	if ($unit == 'g') {
+
+		return (int) ($number * 1024 * 1024 * 1024);
+
+	}
+
+	if ($unit == 'm') {
+
+		return (int) ($number * 1024 * 1024);
+
+	}
+
+	if ($unit == 'k') {
+
+		return (int) ($number * 1024);
+
+	}
+
+	return (int) $number;
+
+}
+
+// The size of a file that this server really accepts.  A big upload is refused by post_max_size
+// before it ever reaches us, and that setting is usually the smaller one, so we have to look at
+// both of them.  PHP throws the whole request away in that case, which is why an upload that is
+// too large used to look like nothing happened at all.
+function get_install_upload_limit() {
+
+	$upload_limit = get_install_ini_bytes(ini_get('upload_max_filesize'));
+
+	$post_limit = get_install_ini_bytes(ini_get('post_max_size'));
+
+	if (($post_limit > 0) && (($upload_limit == 0) || ($post_limit < $upload_limit))) {
+
+		return $post_limit;
+
+	}
+
+	return $upload_limit;
+
+}
+
+// Writes a size in a way that a person reads it.
+function get_install_size_label($bytes) {
+
+	if ($bytes <= 0) {
+
+		return lang('Unknown');
+
+	}
+
+	if ($bytes >= (1024 * 1024 * 1024)) {
+
+		return number_format($bytes / (1024 * 1024 * 1024), 1) . ' GB';
+
+	}
+
+	if ($bytes >= (1024 * 1024)) {
+
+		return number_format($bytes / (1024 * 1024), 0) . ' MB';
+
+	}
+
+	return number_format($bytes / 1024, 0) . ' KB';
+
+}
+
+// Runs the checks that we show on the install screen, so the person who is installing can see
+// what the server can do before they start.  Each check returns a state of ok, warning or error.
+function get_install_system_checks() {
+
+	$checks = array();
+
+	$php_state = 'ok';
+
+	if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+
+		$php_state = 'error';
+
+	}
+
+	$checks[] = array('label' => lang('PHP version'), 'value' => PHP_VERSION, 'state' => $php_state);
+
+	$database_value = lang('Not available');
+
+	$database_state = 'error';
+
+	if (function_exists('mysqli_connect')) {
+
+		$database_value = lang('Available');
+
+		$database_state = 'ok';
+
+		// if we are already connected to a database, then show the server version instead
+		if (isset(db::$con) && (db::$con != false)) {
+
+			$server_version = @mysqli_get_server_info(db::$con);
+
+			if ($server_version != '') {
+
+				$database_value = $server_version;
+
+			}
+
+		}
+
+	}
+
+	$checks[] = array('label' => lang('MySQL'), 'value' => $database_value, 'state' => $database_state);
+
+	$checks[] = array(
+		'label' => lang('Zip support'),
+		'value' => (class_exists('ZipArchive') ? lang('Available') : lang('Not available')),
+		'state' => (class_exists('ZipArchive') ? 'ok' : 'warning')
+	);
+
+	$image_value = lang('Not available');
+
+	$image_state = 'warning';
+
+	if (extension_loaded('imagick')) {
+
+		$image_value = 'Imagick';
+
+		$image_state = 'ok';
+
+	}
+	elseif (extension_loaded('gd')) {
+
+		$image_value = 'GD';
+
+		$image_state = 'ok';
+
+	}
+
+	$checks[] = array('label' => lang('Image engine'), 'value' => $image_value, 'state' => $image_state);
+
+	$upload_setting = ini_get('upload_max_filesize');
+
+	$post_setting = ini_get('post_max_size');
+
+	$upload_detail = 'upload_max_filesize ' . $upload_setting . ' · post_max_size ' . $post_setting;
+
+	$upload_state = 'warning';
+
+	// The smaller of the two is what really counts, and when post_max_size is the smaller one a big
+	// upload is thrown away before the script sees it, so we point at the setting that has to change.
+	if (get_install_ini_bytes($post_setting) < get_install_ini_bytes($upload_setting)) {
+
+		$upload_state = 'error';
+
+		$upload_detail = lang('post_max_size is smaller than upload_max_filesize, so it decides the limit. Raise both.') . ' ' . $upload_detail;
+
+	}
+
+	$checks[] = array(
+		'label' => lang('Upload limit'),
+		'value' => get_install_size_label(get_install_upload_limit()),
+		'state' => $upload_state,
+		'detail' => $upload_detail
+	);
+
+	$data_directory_path = dirname(__FILE__) . '/../data';
+
+	$checks[] = array(
+		'label' => lang('Write permission'),
+		'value' => (is_writable($data_directory_path) ? lang('Available') : lang('Not available')),
+		'state' => (is_writable($data_directory_path) ? 'ok' : 'error')
+	);
+
+	return $checks;
+
+}
+
+// Reads the changelog file and keeps every version section, so the install screen can show what is
+// in the version that is about to be installed and what every upgrade step does.  The sections come
+// back newest first, keyed by the version number.
+// Drops an entry whose text came out empty - a stray tag, or a heading that
+// was mistaken for one.
+function filter_install_changelog_entry($entry) {
+
+	return (trim($entry['text']) != '');
+
+}
+
+function get_install_changelog_sections() {
+
+	static $sections = null;
+
+	if ($sections !== null) {
+
+		return $sections;
+
+	}
+
+	$sections = array();
+
+	$file_path = dirname(__FILE__) . '/../changelog.txt';
+
+	if (!file_exists($file_path)) {
+
+		return $sections;
+
+	}
+
+	$contents = @file_get_contents($file_path);
+
+	if ($contents == false) {
+
+		return $sections;
+
+	}
+
+	$contents = str_replace("\r\n", "\n", $contents);
+
+	// version headings are a version number on its own line followed by a line of equal signs
+	$matched = preg_match_all('/^[ \t]*([0-9][0-9.]*)[ \t]*\n[ \t]*={5,}[ \t]*$/m', $contents, $matches, PREG_OFFSET_CAPTURE);
+
+	if (($matched == false) || (count($matches[0]) == 0)) {
+
+		return $sections;
+
+	}
+
+	foreach ($matches[0] as $index => $heading) {
+
+		$version = $matches[1][$index][0];
+
+		// preg gives us byte offsets, so we slice with the byte functions here
+		$section_start = $heading[1] + strlen($heading[0]);
+
+		$section_end = strlen($contents);
+
+		if (isset($matches[0][$index + 1])) {
+
+			$section_end = $matches[0][$index + 1][1];
+
+		}
+
+		$section = substr($contents, $section_start, $section_end - $section_start);
+
+		$entries = array();
+
+		// A version with many entries is written under topic headings: a line of
+		// capitals at the margin over a rule of hyphens.  They are read here so
+		// this panel can show the same grouping the file has - and so a heading
+		// never ends up glued to the end of the entry above it, which is what
+		// the tag-only parse below did with it.
+		$group = '';
+
+		$section_lines = explode("\n", $section);
+
+		$entry_tag = '';
+
+		$entry_text = '';
+
+		$entry_group = '';
+
+		foreach ($section_lines as $line_index => $line) {
+
+			$next_line = isset($section_lines[$line_index + 1]) ? $section_lines[$line_index + 1] : '';
+
+			// a topic heading, recognised by the rule of hyphens under it
+			if ((preg_match('/^[ \t]{0,4}([A-ZÇĞİÖŞÜ0-9][A-ZÇĞİÖŞÜ0-9 ,:\/&()-]*[A-ZÇĞİÖŞÜ0-9)])[ \t]*$/u', $line, $heading_match))
+				&& (preg_match('/^[ \t]{0,4}-{5,}[ \t]*$/', $next_line))) {
+
+				if ($entry_tag != '') {
+
+					$entries[] = array('tag' => $entry_tag, 'text' => trim(preg_replace('/\s+/', ' ', $entry_text)), 'group' => $entry_group);
+
+					$entry_tag = '';
+
+					$entry_text = '';
+
+				}
+
+				$group = trim($heading_match[1]);
+
+				continue;
+
+			}
+
+			// the rule under a heading
+			if (preg_match('/^[ \t]{0,4}-{5,}[ \t]*$/', $line)) {
+
+				continue;
+
+			}
+
+			// an entry opens with one or more tags in square brackets
+			if (preg_match('/^[ \t]{0,4}\[([^\]\n]+)\][ \t]*(.*)$/', $line, $entry_match)) {
+
+				if ($entry_tag != '') {
+
+					$entries[] = array('tag' => $entry_tag, 'text' => trim(preg_replace('/\s+/', ' ', $entry_text)), 'group' => $entry_group);
+
+				}
+
+				$entry_tag = trim($entry_match[1]);
+
+				$entry_text = $entry_match[2];
+
+				$entry_group = $group;
+
+				continue;
+
+			}
+
+			if (($entry_tag != '') && (trim($line) != '')) {
+
+				$entry_text .= ' ' . trim($line);
+
+			}
+
+		}
+
+		if ($entry_tag != '') {
+
+			$entries[] = array('tag' => $entry_tag, 'text' => trim(preg_replace('/\s+/', ' ', $entry_text)), 'group' => $entry_group);
+
+		}
+
+		$entries = array_values(array_filter($entries, 'filter_install_changelog_entry'));
+
+		if (count($entries) == 0) {
+
+			continue;
+
+		}
+
+		$sections[$version] = array('version' => $version, 'entries' => $entries);
+
+	}
+
+	return $sections;
+
+}
+
+// Returns the newest section of the changelog.
+function get_install_changelog() {
+
+	$sections = get_install_changelog_sections();
+
+	if (count($sections) == 0) {
+
+		return false;
+
+	}
+
+	foreach ($sections as $section) {
+
+		return $section;
+
+	}
+
+	return false;
+
+}
+
+// Returns what the changelog says about the database changes of a version, so the upgrade screen can
+// tell the administrator what every step does.  Empty when the version does not say anything.
+function get_install_schema_note($version_number) {
+
+	$sections = get_install_changelog_sections();
+
+	if (!isset($sections[$version_number])) {
+
+		return '';
+
+	}
+
+	foreach ($sections[$version_number]['entries'] as $entry) {
+
+		$tag = mb_strtoupper($entry['tag']);
+
+		if (($tag == 'ŞEMA') || ($tag == 'SEMA') || ($tag == 'SCHEMA')) {
+
+			return get_install_short_text($entry['text'], 150);
+
+		}
+
+	}
+
+	return '';
+
+}
+
+// Shortens a piece of text for the narrow panels on this screen.
+function get_install_short_text($text, $length) {
+
+	if (mb_strlen($text) <= $length) {
+
+		return $text;
+
+	}
+
+	return mb_substr($text, 0, $length) . '…';
+
+}
+
+// Returns the color that we use for a changelog tag.  The tags come from the changelog file, so
+// we match on the tags that we write in both languages.
+function get_install_changelog_tag_class($tag) {
+
+	$tag = mb_strtoupper($tag);
+
+	if (($tag == 'GÜVENLIK') || ($tag == 'GÜVENLİK') || ($tag == 'SECURITY')) {
+
+		return 'text-bg-danger';
+
+	}
+
+	if (($tag == 'ŞEMA') || ($tag == 'SCHEMA')) {
+
+		return 'text-bg-warning';
+
+	}
+
+	if (($tag == 'DÜZELTME') || ($tag == 'FIX')) {
+
+		return 'text-bg-primary';
+
+	}
+
+	if (($tag == 'HIZ') || ($tag == 'SPEED') || ($tag == 'PERFORMANCE')) {
+
+		return 'text-bg-info';
+
+	}
+
+	return 'text-bg-success';
+
+}
+
+// The install screen is locked when a site exists in the database and nobody has proven that
+// they are an administrator of that site.  While it is locked we only output the authentication
+// card, because otherwise the names of the backups on the server, the database fields, and the
+// submit button would be public information on every site.
+define('INSTALL_UNLOCK_SECONDS', 1800);
+
+define('INSTALL_ATTEMPT_LIMIT', 5);
+
+define('INSTALL_ATTEMPT_WINDOW', 900);
+
+function get_install_attempt_file() {
+
+	// Kept with the rest of the scratch files. Nothing here has to survive a tidy-up of
+	// data/temp: losing the file only means the attempt counter starts over.
+	return dirname(__FILE__) . '/../data/temp/install_attempts.json';
+
+}
+
+// We store a hash of the address instead of the address itself, so the file does not
+// become a list of addresses that have visited the install screen.
+function get_install_visitor_key() {
+
+	$address = '';
+
+	if (isset($_SERVER['REMOTE_ADDR'])) {
+
+		$address = $_SERVER['REMOTE_ADDR'];
+
+	}
+
+	return md5('pinegrap_install_' . $address);
+
+}
+
+// Reads the failed attempts file and removes everything that is outside of the time window.
+function get_install_attempts() {
+
+	$attempts = array();
+
+	$file_path = get_install_attempt_file();
+
+	if (file_exists($file_path)) {
+
+		$contents = @file_get_contents($file_path);
+
+		if ($contents != false) {
+
+			$decoded = @json_decode($contents, true);
+
+			if (is_array($decoded)) {
+
+				$attempts = $decoded;
+
+			}
+
+		}
+
+	}
+
+	// remove attempts that are older than the time window
+	foreach ($attempts as $key => $attempt) {
+
+		if ((!isset($attempt['time'])) || (($attempt['time'] + INSTALL_ATTEMPT_WINDOW) < time())) {
+
+			unset($attempts[$key]);
+
+		}
+
+	}
+
+	return $attempts;
+
+}
+
+// Returns the number of seconds that this visitor has to wait before they can try again.
+function get_install_attempt_wait() {
+
+	$attempts = get_install_attempts();
+
+	$key = get_install_visitor_key();
+
+	if ((isset($attempts[$key])) && ($attempts[$key]['count'] >= INSTALL_ATTEMPT_LIMIT)) {
+
+		$seconds = ($attempts[$key]['time'] + INSTALL_ATTEMPT_WINDOW) - time();
+
+		if ($seconds > 0) {
+
+			return $seconds;
+
+		}
+
+	}
+
+	return 0;
+
+}
+
+// Returns how many attempts this visitor has left before they are locked out.
+function get_install_attempts_remaining() {
+
+	$attempts = get_install_attempts();
+
+	$key = get_install_visitor_key();
+
+	$used = 0;
+
+	if (isset($attempts[$key])) {
+
+		$used = $attempts[$key]['count'];
+
+	}
+
+	$remaining = INSTALL_ATTEMPT_LIMIT - $used;
+
+	if ($remaining < 0) {
+
+		$remaining = 0;
+
+	}
+
+	return $remaining;
+
+}
+
+function add_install_attempt() {
+
+	$attempts = get_install_attempts();
+
+	$key = get_install_visitor_key();
+
+	if (!isset($attempts[$key])) {
+
+		$attempts[$key] = array('count' => 0, 'time' => time());
+
+	}
+
+	$attempts[$key]['count'] = $attempts[$key]['count'] + 1;
+
+	$attempts[$key]['time'] = time();
+
+	write_install_attempts($attempts);
+
+}
+
+function clear_install_attempts() {
+
+	$attempts = get_install_attempts();
+
+	$key = get_install_visitor_key();
+
+	if (isset($attempts[$key])) {
+
+		unset($attempts[$key]);
+
+	}
+
+	write_install_attempts($attempts);
+
+}
+
+function write_install_attempts($attempts) {
+
+	$directory_path = dirname(__FILE__) . '/../data/temp';
+
+	if ((!is_dir($directory_path)) && (!@mkdir($directory_path, 0755, true))) {
+
+		return;
+
+	}
+
+	// The data directory is not reachable from the web, however we still write a file that
+	// cannot be executed, and we do not care if the write fails, because the session lock and
+	// the password check are what protect the screen.  This file only slows down guessing.
+	@file_put_contents(get_install_attempt_file(), json_encode($attempts), LOCK_EX);
+
+}
+
+// Returns true when this session has already authenticated on the install screen and the
+// unlock has not expired yet.
+function check_install_unlocked() {
+
+	if ((isset($_SESSION['software']['install']['unlocked_until'])) && ($_SESSION['software']['install']['unlocked_until'] > time())) {
+
+		return true;
+
+	}
+
+	return false;
+
+}
+
+function set_install_unlocked() {
+
+	$_SESSION['software']['install']['unlocked_until'] = time() + INSTALL_UNLOCK_SECONDS;
+
+}
+
+// Returns the number of minutes that are left on the unlock, so we can tell the user.
+function get_install_unlock_minutes() {
+
+	if (check_install_unlocked() == false) {
+
+		return 0;
+
+	}
+
+	return (int) ceil(($_SESSION['software']['install']['unlocked_until'] - time()) / 60);
+
+}
+
 // If the ENVIRONMENT constant is set to "development", then set the ENVIRONMENT_SUFFIX to "src".
 // This allows us to use source files instead of minified files during development.
 if (defined('ENVIRONMENT') and ENVIRONMENT == 'development') {
@@ -330,177 +1406,7 @@ include_once (dirname(__FILE__) . '/../liveform.class.php');
 $liveform = new liveform('install');
 
 //Version history
-$versions = array(
-  array('number' => '2017.2'    ),
-  array('number' => '2017.2.1'  ),
-  array('number' => '2017.2.2'  ),
-  array('number' => '2017.2.3'  ),
-  array('number' => '2017.2.4'  ),
-  array('number' => '2017.2.5'  ),
-  array('number' => '2017.2.6'  ),
-  array('number' => '2017.2.7'  ),
-  array('number' => '2017.2.8'  ),
-  array('number' => '2017.2.9'  ),
-  array('number' => '2017.2.10' ),
-  array('number' => '2017.2.11' ),
-  array('number' => '2017.2.12' ),
-  array('number' => '2017.2.13' ),
-  array('number' => '2019.1'    ),
-  array('number' => '2019.1.1'  ),
-  array('number' => '2019.1.2'  ),
-  array('number' => '2019.1.3'  ),
-  array('number' => '2019.1.4'  ),
-  array('number' => '2019.1.5'  ),
-  array('number' => '2019.1.6'  ),
-  array('number' => '2019.1.7'  ),
-  array('number' => '2019.1.8'  ),
-  array('number' => '2019.1.9'  ),
-  array('number' => '2019.1.10' ),
-  array('number' => '2019.2'    ),
-  array('number' => '2019.2.1'  ),
-  array('number' => '2019.2.2'  ),
-  array('number' => '2019.2.3'  ),
-  array('number' => '2019.2.4'  ),
-  array('number' => '2019.2.5'  ),
-  array('number' => '2019.2.6'  ),
-  array('number' => '2019.2.7'  ),
-  array('number' => '2019.2.8'  ),
-  array('number' => '2019.2.9'  ),
-  array('number' => '2020.1'    ),
-  array('number' => '2020.1.1'  ),
-  array('number' => '2020.1.2'  ),
-  array('number' => '2020.1.3'  ),
-  array('number' => '2020.1.4'  ),
-  array('number' => '2020.1.5'  ),
-  array('number' => '2020.1.6'  ),
-  array('number' => '2020.1.7'  ),
-  array('number' => '2020.1.8'  ),
-  array('number' => '2020.2'    ),
-  array('number' => '2020.2.1'  ),
-  array('number' => '2020.2.2'  ),
-  array('number' => '2020.2.3'  ),
-  array('number' => '2020.2.4'  ),
-  array('number' => '2020.2.5'  ),
-  array('number' => '2020.3'    ),
-  array('number' => '2020.3.1'  ),
-  array('number' => '2020.3.2'  ),
-  array('number' => '2020.3.3'  ),
-  array('number' => '2020.3.4'  ),
-  array('number' => '2020.4'    ),
-  array('number' => '2020.4.1'  ),
-  array('number' => '2020.4.2'  ),
-  array('number' => '2021.1'    ),
-  array('number' => '2021.1.1'  ),
-  array('number' => '2021.1.2'  ),
-  array('number' => '2021.1.3'  ),
-  array('number' => '2021.1.4'  ),
-  array('number' => '2021.1.5'  ),
-  array('number' => '2021.1.6'  ),
-  array('number' => '2021.1.7'  ),
-  array('number' => '2021.1.8'  ),
-  array('number' => '2021.1.9'  ),
-  array('number' => '2021.1.10' ),
-  array('number' => '2021.1.11' ),
-  array('number' => '2021.1.12' ),
-  array('number' => '2021.1.13' ),
-  array('number' => '2021.1.14' ),
-  array('number' => '2021.2'    ),
-  array('number' => '2021.2.1'  ),
-  array('number' => '2021.2.2'  ),
-  array('number' => '2021.3'    ),
-  array('number' => '2021.3.1'  ),
-  array('number' => '2021.4'    ),
-  array('number' => '2021.4.1'  ),
-  array('number' => '2021.4.2'  ),
-  array('number' => '2021.4.3'  ),
-  array('number' => '2021.4.4'  ),
-  array('number' => '2021.4.5'  ),
-  array('number' => '2021.4.6'  ),
-  array('number' => '2021.4.7'  ),
-  array('number' => '2022'      ),
-  array('number' => '2022.1'    ),
-  array('number' => '2022.1.1'  ),
-  array('number' => '2022.1.2'  ),
-  array('number' => '2022.1.3'  ),
-  array('number' => '2022.1.4'  ),
-  array('number' => '2022.1.5'  ),
-  array('number' => '2022.1.6'  ),
-  array('number' => '2022.1.7'  ),
-  array('number' => '2022.1.8'  ),
-  array('number' => '2022.1.9'  ),
-  array('number' => '2022.2'    ),
-  array('number' => '2022.2.1'  ),
-  array('number' => '2022.2.2'  ),
-  array('number' => '2022.2.3'  ),
-  array('number' => '2022.3'    ),
-  array('number' => '2022.3.1'  ),
-  array('number' => '2022.3.2'  ),
-  array('number' => '2022.4'  	),
-  array('number' => '2022.4.1'  ),
-  array('number' => '2022.4.2'  ),
-  array('number' => '2022.4.3'  ),
-  array('number' => '2022.4.4'  ),
-  array('number' => '2023' 		),
-  array('number' => '2023.1'	),
-  array('number' => '2023.1.1'	),
-  array('number' => '2023.1.2'	),
-  array('number' => '2023.2'	),
-  array('number' => '2023.2.1'	),
-  array('number' => '2023.3'	),
-  array('number' => '2023.3.1'	),
-  array('number' => '2026'		),
-  array('number' => '2026.1'	),
-  array('number' => '2026.1.1'	),
-  array('number' => '2026.1.2'	),
-  array('number' => '2026.1.3'	),
-  array('number' => '2026.1.4'	),
-  array('number' => '2026.1.5'	),
-  array('number' => '2026.1.6'	),
-  array('number' => '2026.1.7'	),
-  array('number' => '2026.1.8'	),
-  array('number' => '2026.1.9'	),
-  array('number' => '2026.1.10'	),
-  array('number' => '2026.1.11'	),
-  array('number' => '2026.1.12'	),
-  array('number' => '2026.1.13'	),
-  array('number' => '2026.1.14'	),
-  array('number' => '2026.1.15'	),
-  array('number' => '2026.1.16'	),
-  array('number' => '2026.1.17'	),
-  array('number' => '2026.1.18'	),
-  array('number' => '2026.1.19'	),
-  array('number' => '2026.1.20'	),
-  array('number' => '2026.1.21'	),
-  array('number' => '2026.1.22'	),
-  array('number' => '2026.1.23'	),
-  array('number' => '2026.1.24'	),
-  array('number' => '2026.1.25'	),
-  array('number' => '2026.1.26'	),
-  array('number' => '2026.1.27'	),
-  array('number' => '2026.1.28'	),
-  array('number' => '2026.1.29'	),
-  array('number' => '2026.2'	),
-  array('number' => '2026.2.1'	),
-  array('number' => '2026.2.2'	),
-  array('number' => '2026.2.3'	),
-  array('number' => '2026.2.4'	),
-  array('number' => '2026.2.5'	),
-  array('number' => '2026.2.6'	),
-  array('number' => '2026.2.7'	),
-  array('number' => '2026.3'	),
-  array('number' => '2026.3.1'	),
-  array('number' => '2026.3.2'	),
-  array('number' => '2026.3.3'	),
-  array('number' => '2026.3.4'	),
-  array('number' => '2026.3.5'	),
-  array('number' => '2026.3.6'	),
-  array('number' => '2026.3.7'	),
-  array('number' => '2026.3.8'	),
-  array('number' => '2026.4'	),
-  array('number' => '2026.4.1'	),
-  array('number' => '2026.4.2'	),
-  array('number' => '2026.4.3'	),
-);
+$versions = install_get_versions();
 
 $software_version = $versions[count($versions) - 1]['number'];
 
@@ -522,19 +1428,209 @@ if (
 
 }
 
+// Find out whether a site already exists in this database before anything is sent to the
+// browser.  When a site exists, the install screen only shows the authentication card until
+// an administrator of that site has authenticated.  The install script is always public, so
+// without this the names of the backups on the server, the database fields and the submit
+// button would be readable by anyone who requests this directory.
+$install_site_exists = false;
+
+$install_locked = false;
+
+if ($automated_upgrade == false) {
+
+	if (
+
+	(defined('DB_HOST') == true) and (DB_HOST != '') and (db::$con = @mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE))) {
+
+		init_mysql_charset();
+
+		mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+
+		$result = @mysqli_query(db::$con, "SHOW TABLES");
+
+		if ($result != false) {
+
+			while ($row = mysqli_fetch_row($result)) {
+
+				if (($row[0] == 'config') || ($row[0] == 'page') || ($row[0] == 'user')) {
+
+					$install_site_exists = true;
+
+					break;
+
+				}
+
+			}
+
+		}
+
+	}
+
+	// A cron asked for the automated upgrade over the web.  It gets it with the key from
+	// data/config.php (AUTOMATED_UPGRADE_SECRET, opt-in: no constant, no key path), or with a
+	// signed-in administrator's session, which is how software_update.php arrives here.
+	// Anything else is refused, and the refusal counts towards the same attempt limit as a
+	// wrong password on the lock screen, so the key cannot be guessed in a hurry.
+	if ($automated_upgrade_requested == true) {
+
+		$automated_upgrade_secret = isset($_REQUEST['secret']) ? (string) $_REQUEST['secret'] : '';
+
+		if (install_secret_matches($automated_upgrade_secret)) {
+
+			$automated_upgrade = true;
+
+			$automated_upgrade_via = 'secret';
+
+		} elseif (($install_site_exists == true) && (check_if_administrator_is_logged_in() == true)) {
+
+			// The administrator gets the screen rather than a single long request: it starts
+			// by itself and applies one version per request, so a server limit can only cut
+			// one version short and the screen offers to continue from it.  A form that is
+			// posted back to this URL is handled by the form handler as usual.
+			$automated_upgrade_via = 'session';
+
+			$install_autostart = ($_SERVER['REQUEST_METHOD'] != 'POST');
+
+		} else {
+
+			add_install_attempt();
+
+			if ($install_site_exists == true) {
+
+				log_activity(lang('An automated upgrade was refused because the key did not match and no administrator was signed in.'), '');
+
+			}
+
+			set_response_code(403);
+
+			header('Content-Type: text/plain; charset=utf-8');
+
+			exit('Forbidden');
+
+		}
+
+	}
+
+	// A site exists, so the screen stays locked until this session proves that it belongs to
+	// an administrator.  A user who is already logged in to the control panel is never asked.
+	if (($install_site_exists == true) && ($automated_upgrade == false)) {
+
+		if ((check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
+
+			$install_locked = true;
+
+		}
+
+	}
+
+}
+
+// The step and backup requests of the upgrade screen expect JSON.  When the session behind
+// them has expired they get a short answer that says so, instead of the lock screen's HTML.
+if (($install_locked == true) && (isset($_POST['install_action'])) && (in_array($_POST['install_action'], array('upgrade_step', 'backup_database')))) {
+
+	set_response_code(403);
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	print json_encode(array('ok' => false, 'session' => true, 'error' => lang('Sorry, we could not accept your request because it appears that your session expired.')));
+
+	exit();
+
+}
+
+// if the install screen is locked, then handle the unlock form and output the authentication
+// screen.  This function never returns.
+if ($install_locked == true) {
+
+	output_install_lock_screen();
+
+}
+
+// The install screen can test the database connection before anything is written.  We only answer
+// this after the lock, so on a site that already exists it can only be used by an administrator.
+if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'test_database') && ($automated_upgrade == false)) {
+
+	output_install_database_test();
+
+}
+
+// The upgrade screen applies one version per request through this answer, and it can write
+// a backup of the database before the first one.  Both are only answered after the lock, so
+// on a site that already exists they can only be used by an administrator.
+if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'upgrade_step') && ($automated_upgrade == false)) {
+
+	output_install_upgrade_step($versions);
+
+}
+
+if ((isset($_POST['install_action'])) && ($_POST['install_action'] == 'backup_database') && ($automated_upgrade == false)) {
+
+	output_install_database_backup($versions);
+
+}
+
 // if user has not yet completed install form and this is not being run as part of an automated upgrade, output form
 if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
+
+	// PHP throws the whole request away when it is larger than post_max_size, so nothing arrives
+	// here: no fields, no file, not even the button that was pressed.  Without this the screen just
+	// came back empty handed and it looked like the upload did nothing.
+	// PHP sets CONTENT_LENGTH to zero when it discards the body, so we go by the fact that a form
+	// upload always leaves something behind in $_POST unless the whole request was thrown away.
+	if (($_SERVER['REQUEST_METHOD'] == 'POST') && (count($_POST) == 0) && (count($_FILES) == 0) &&
+		(isset($_SERVER['CONTENT_TYPE'])) && (stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false)) {
+
+		$liveform->mark_error('', lang(array(
+			'string' => 'The file you sent is larger than the {var:1} that this server accepts in one request. Copy the backup folder into the backups folder with FTP, or raise post_max_size and upload_max_filesize on the server.',
+			'vars' => get_install_size_label(get_install_upload_limit())
+		)));
+
+	}
+
+	// If a backup archive was uploaded, then extract it into the backups folder before the form is
+	// rendered, so that the new folder is in the list when the form comes back.
+	if (isset($_POST['submit_backup_zip'])) {
+
+		// keep everything the visitor already typed in the form
+		$liveform->add_fields_to_session();
+
+		process_install_backup_upload($liveform, $install_site_exists);
+
+	}
 
 	// initialize variables
 	$upgrade_option = false;
 
 	$output_upgrade_message = '';
+
+	// what the screen tells its script about the upgrade that is ahead
+	$database_version = '';
+
+	$upgrade_version_count = 0;
+
+	$upgrade_first_version = '';
+
+	$output_upgrade_button_label = lang('Start the upgrade');
+
+	$output_upgrade_preflight = '';
+
+	// shown when the version in the database cannot be matched to this package
+	$output_version_warning = '';
 	$output_submit_button_value = 'Install';
-	$output_submit_button_label = lang('Install');
+	$output_submit_button_label = lang('Start the installation');
 	$output_submit_button_process_label = lang('Installing');
-	$output_submit_button_icon ='done_all';
+	$output_submit_button_icon ='bi-play-fill';
 
 	$output_upgrade = '';
+
+	// The install screen is locked until an administrator authenticates, so the
+	// install form does not ask for a login again. Initialised here because the
+	// screen is printed on paths that never reach the branch below - a first
+	// install into an empty database among them, which is exactly when the
+	// installer is used.
+	$output_install_authentication = '';
 
 	// if DB_HOST is defined,
 	// and a connection can be made to the database,
@@ -588,8 +1684,38 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 				$database_version_key = get_version_key($database_version, $versions);
 
+				// An administrator sent here after the software files were updated, with a database
+				// that is already at this version (a release without schema changes): there is
+				// nothing to show, so the update flags are reset and they go straight back to the
+				// control panel, as the automated upgrade always did.
+				if (($install_autostart == true) && ($database_version_key !== false) && ($database_version_key >= $software_version_key)) {
+
+					install_run_upgrades($versions, $database_version_key);
+
+					header('Location: ../welcome.php');
+
+					exit();
+
+				}
+
+				// The version that the database reports is not in the version list of this package.
+				// We must not offer an upgrade here, because the upgrade would then start at the very
+				// first version and run every step again on a site that is already up to date.
+				if ($database_version_key === false) {
+
+					$output_version_warning = '
+					<div class="alert alert-danger d-flex gap-2 mt-3">
+						<i class="bi bi-exclamation-octagon-fill"></i>
+						<div>' . lang(array(
+							'string' => 'The version in the database ({var:1}) is not part of this package, so the upgrade is not offered. Correct the version in the config table, or install the site again.',
+							'vars' => h($database_version)
+						)) . '</div>
+					</div>';
+
+				}
+
 				// if database version key is less than software version key, then offer upgrade option
-				if ($database_version_key < $software_version_key) {
+				if (($database_version_key !== false) && ($database_version_key < $software_version_key)) {
 
 					$upgrade_option = true;
 
@@ -599,133 +1725,347 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					if ($liveform->get_field_value('install_type') != 'install') {
 						$liveform->assign_field_value('install_type', 'upgrade');
 						$output_submit_button_value = 'Upgrade';
-						$output_submit_button_label = lang('Upgrade');
+						$output_submit_button_label = lang('Start the upgrade');
 						$output_submit_button_process_label = lang('Upgrading');
-						$output_submit_button_icon ='system_update_alt';
+						$output_submit_button_icon ='bi-arrow-up-circle';
 
 					}
 
 					
 
-					// initialize variables
+					// The install screen is locked until an administrator authenticates, so the upgrade
+					// form does not ask for a login again.
 					$output_upgrade_authentication = '';
 
-					// if user is not logged in or is not an administrator, then display authentication rows
-					if (check_if_administrator_is_logged_in() == false) {
+					// Work out what the upgrade will actually do.  A version only touches the database when
+					// it has an upgrade function, and the changelog tells us what that change is, so the
+					// administrator can read what every step does before starting.
+					$output_upgrade_versions = '';
 
-						$output_upgrade_authentication ='
-						<div class="col-12 col-lg-8">
-							<h5>' . lang('Authentication') . '</h5>
-							<div class="row">
-								<div class="col-12 col-md-6 my-1">
-									<label class="form-label" for="upgrade_authentication_username">' . lang('Email') . '</label>
-									' . $liveform->output_field(array(
-										'type' => 'text',
-										'class' => 'form-control',
-										'id' => 'upgrade_authentication_username',
-										'name' => 'upgrade_authentication_username'
-									)) . '
-								</div>
-								<div class="col-12 col-md-6 my-1">
-									<label class="form-label" for="upgrade_authentication_password">' . lang('Password') . '</label>
-									' . $liveform->output_field(array(
-										'type' => 'password',
-										'class' => 'form-control',
-										'id' => 'upgrade_authentication_password',
-										'name' => 'upgrade_authentication_password'
-									)) . '
-								</div>
-								<div class="col-12 col-md-12 my-1">
-									<p class="form-text">' . lang(array('string'=>'Please enter the email address and password for an administrator for the existing site. If you cannot remember your login information you can use the {var:1} feature.','vars'=>'<a class="link-secondary" href="../forgot_password.php" target="_blank">' . lang('forgot password') . '</a>')) . '</p>
-								</div>
+					$upgrade_version_count = 0;
+
+					$upgrade_touches_database = false;
+
+					foreach ($versions as $upgrade_version_key => $upgrade_version) {
+
+						if ($upgrade_version_key <= $database_version_key) {
+
+							continue;
+
+						}
+
+						$upgrade_version_count++;
+
+						if ($upgrade_first_version == '') {
+
+							$upgrade_first_version = $upgrade_version['number'];
+
+						}
+
+						$upgrade_function_name = 'upgrade_to_' . str_replace('.', '_', $upgrade_version['number']);
+
+						$upgrade_version_icon = 'bi-check-lg text-success';
+
+						$upgrade_version_note = lang('no database change');
+
+						if ((install_migration_file($upgrade_version['number']) != '') || (function_exists($upgrade_function_name))) {
+
+							$upgrade_touches_database = true;
+
+							$upgrade_version_icon = 'bi-database text-warning';
+
+							$upgrade_version_note = lang('the database is updated');
+
+							$upgrade_schema_note = get_install_schema_note($upgrade_version['number']);
+
+							if ($upgrade_schema_note != '') {
+
+								$upgrade_version_note = $upgrade_schema_note;
+
+							}
+
+						}
+
+						$output_upgrade_versions .= '
+						<div class="d-flex gap-2 py-1 small align-items-start">
+							<i class="bi ' . $upgrade_version_icon . '" style="margin-top:.2rem;"></i>
+							<div><b>' . h($upgrade_version['number']) . '</b> <span class="text-body-secondary">— ' . h($upgrade_version_note) . '</span></div>
+						</div>';
+
+					}
+
+					// What this server looks like before the first step: the privileges of the database
+					// user, the large tables the pending versions rewrite, a run that is still going,
+					// what the last run left behind, and room for a backup.  Nothing here stops the
+					// upgrade; it says what is likely to go wrong while something can still be done.
+					$upgrade_preflight = install_preflight($versions, $database_version_key);
+
+					$output_upgrade_preflight_rows = '';
+
+					foreach ($upgrade_preflight['checks'] as $upgrade_check) {
+
+						$upgrade_check_icon = 'bi-check-lg text-success';
+
+						if ($upgrade_check['state'] == 'warning') {
+
+							$upgrade_check_icon = 'bi-exclamation-triangle text-warning';
+
+						} elseif ($upgrade_check['state'] == 'error') {
+
+							$upgrade_check_icon = 'bi-x-lg text-danger';
+
+						} elseif ($upgrade_check['state'] == 'info') {
+
+							$upgrade_check_icon = 'bi-info-circle text-body-secondary';
+
+						}
+
+						$upgrade_check_detail = '';
+
+						if ($upgrade_check['detail'] != '') {
+
+							$upgrade_check_detail = '<div class="small text-body-secondary" style="padding-left:1.6rem;line-height:1.4;">' . h($upgrade_check['detail']) . '</div>';
+
+						}
+
+						$output_upgrade_preflight_rows .= '
+						<div class="d-flex align-items-center gap-2 py-1 small">
+							<i class="bi ' . $upgrade_check_icon . '"></i>
+							<span class="text-nowrap">' . h($upgrade_check['label']) . '</span>
+							<span class="ms-auto text-body-secondary font-monospace text-end">' . h($upgrade_check['value']) . '</span>
+						</div>' . $upgrade_check_detail;
+
+					}
+
+					// the backup is written from here when the server can do it
+					$output_upgrade_backup = '';
+
+					if ($upgrade_preflight['backup_available'] == true) {
+
+						$output_upgrade_backup = '
+						<div class="d-flex flex-wrap align-items-center gap-2 mt-2" id="pg_upgrade_backup_row">
+							<button type="button" class="btn btn-outline-primary btn-sm" id="pg_upgrade_backup"><i class="bi bi-download me-1"></i>' . lang('Back up the database now') . '</button>
+							<span class="small text-body-secondary" id="pg_upgrade_backup_result">' . lang('Writes sql.sql into a pre_upgrade folder under data/backups, which this screen can restore later.') . '</span>
+						</div>';
+
+					}
+
+					$output_upgrade_preflight = '
+					<div class="mt-3 pt-3 border-top" id="pg_upgrade_preflight">
+						<div class="small text-uppercase fw-bold text-body-secondary mb-1">' . lang('Before you start') . '</div>
+						' . $output_upgrade_preflight_rows . $output_upgrade_backup . '
+					</div>';
+
+					// a run that stopped at one of the pending versions is continued, not started
+					if ($upgrade_preflight['last'] !== null) {
+
+						$output_upgrade_button_label = lang('Continue the upgrade');
+
+						$output_submit_button_label = $output_upgrade_button_label;
+
+					}
+
+					// what has been added to the software since the version that is installed here
+					$output_upgrade_changelog = '';
+
+					$output_upgrade_changelog_rows = '';
+
+					foreach (get_install_changelog_sections() as $changelog_section) {
+
+						$changelog_section_key = get_version_key($changelog_section['version'], $versions);
+
+						if (($changelog_section_key === false) || ($changelog_section_key <= $database_version_key)) {
+
+							continue;
+
+						}
+
+						$changelog_section_summary = '';
+
+						// A release written under topic headings is summarised by the
+						// headings themselves.  One sentence lifted out of sixty entries
+						// is not a summary of that release - it is whichever entry
+						// happened to be typed first - and the areas it touched are what
+						// an operator deciding whether to upgrade actually wants.
+						// Counted, not just listed: the four areas the release actually
+						// weighs most in are a better answer than the four that happen to
+						// come first in the file.
+						$changelog_section_groups = array();
+
+						foreach ($changelog_section['entries'] as $changelog_section_entry) {
+
+							$changelog_entry_group = isset($changelog_section_entry['group']) ? trim($changelog_section_entry['group']) : '';
+
+							if ($changelog_entry_group == '') {
+
+								continue;
+
+							}
+
+							if (!isset($changelog_section_groups[$changelog_entry_group])) {
+
+								$changelog_section_groups[$changelog_entry_group] = 0;
+
+							}
+
+							$changelog_section_groups[$changelog_entry_group]++;
+
+						}
+
+						if (count($changelog_section_groups) > 1) {
+
+							arsort($changelog_section_groups);
+
+							$changelog_section_named = array_slice(array_keys($changelog_section_groups), 0, 4);
+
+							// Left in the capitals the file writes them in: mbstring has no
+							// Turkish casing, and MB_CASE_TITLE turns "İ" into an "i" with a
+							// separate dot above it.
+							// Joined with a middot rather than a comma: a heading can carry
+							// its own comma ("Oturum, hesap ve güvenlik") and a comma-joined
+							// list of those reads as one long run-on.
+							$changelog_section_summary = implode(' · ', $changelog_section_named);
+
+							if (count($changelog_section_groups) > count($changelog_section_named)) {
+
+								$changelog_section_summary .= ' ' . lang(array(
+									'string' => 'and {var:1} more areas',
+									'vars' => (count($changelog_section_groups) - count($changelog_section_named))));
+
+							}
+
+						}
+
+						// A version with no headings - every release before this one -
+						// keeps the old summary: its first new-feature entry.
+						if ($changelog_section_summary == '') {
+
+							foreach ($changelog_section['entries'] as $changelog_section_entry) {
+
+								$changelog_section_tag = mb_strtoupper($changelog_section_entry['tag']);
+
+								if (($changelog_section_tag == 'YENİ') || ($changelog_section_tag == 'NEW')) {
+
+									$changelog_section_summary = get_install_short_text($changelog_section_entry['text'], 120);
+
+									break;
+
+								}
+
+							}
+
+						}
+
+						if ($changelog_section_summary == '') {
+
+							$changelog_section_summary = get_install_short_text($changelog_section['entries'][0]['text'], 120);
+
+						}
+
+						$output_upgrade_changelog_rows .= '
+						<div class="d-flex gap-2 py-2 border-bottom border-1">
+							<span class="badge text-bg-primary pg-tag">' . h($changelog_section['version']) . '</span>
+							<div class="small">' . h($changelog_section_summary) . '</div>
+						</div>';
+
+					}
+
+					if ($output_upgrade_changelog_rows != '') {
+
+						$output_upgrade_changelog = '
+						<div class="card mb-4">
+							<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+								<i class="bi bi-star me-2"></i>' . lang(array('string' => 'Added since {var:1}', 'vars' => $database_version)) . '
+							</div>
+							<div class="card-body pt-0">
+								<div class="pg-changelog">' . $output_upgrade_changelog_rows . '</div>
 							</div>
 						</div>';
+
+					}
+
+					$output_upgrade_warning = '
+					<div class="alert alert-primary d-flex gap-2 mt-3 mb-0">
+						<i class="bi bi-info-circle"></i>
+						<div>' . lang('This upgrade does not change your database. Your pages, files and settings stay exactly as they are.') . '</div>
+					</div>';
+
+					if ($upgrade_touches_database == true) {
+
+						$output_upgrade_warning = '
+					<div class="alert alert-warning d-flex gap-2 mt-3 mb-0">
+						<i class="bi bi-exclamation-triangle"></i>
+						<div>' . lang('This version touches your database. It is recommended that you make a backup from the Backups area of the File Manager before you upgrade.') . '</div>
+					</div>';
+
 					}
 
 					$output_upgrade ='
-					<div class="col-12">
-						<div class="form-check" aria-labelledby="Upgrade">
-							' . $liveform->output_field(array(
-								'type' => 'radio',
-								'name' => 'install_type',
-								'id' => 'upgrade',
-								'value' => 'upgrade',
-								'class' => 'form-check-input collapse-switcher',
-								'data-bs-target'=>'#upgrade_fields',
-								'data-toggle'=>'tab'
-							)) . '
-							<label for="upgrade"  class="form-check-label">' . lang(array('string'=>'Upgrade from version {var:1} to {var:2}','vars'=>array($database_version,$software_version) )) . '</label>
+					<div class="col-12" id="pg_upgrade_panel">
+						<div class="d-flex flex-wrap align-items-center gap-3 pt-3 pb-2">
+							<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
+							<div class="flex-grow-1" style="min-width:16rem;">
+								<h1 class="h3 mb-1">' . lang('A new version is ready') . '</h1>
+								<p class="text-body-secondary mb-0">' . lang('The content of your site stays where it is. The upgrade only updates the database schema and the software files.') . '</p>
+							</div>
 						</div>
-						<div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="upgrade_fields">
-                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(50px, 0px);"></div>
-                            <div class="popover-body">
-                                <div class="row">
-                                    <div class="col-12 col-lg">
-										<div class="alert alert-secondary">
-											<h5 class="alert-heading">' . lang('Instructions') . '</h5>
-											<p>' . lang('You must create a backup of the database and the software before upgrading. If custom changes have been made to your software or database, then you should consult with the software provider before upgrading.') . '</p>
+						<div class="pg-wizard-grid pg-upgrade-grid">
+							<div class="pg-panels">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-arrow-up-circle me-2"></i>' . lang('Software upgrade') . '
+									</div>
+									<div class="card-body">
+										<p class="text-body-secondary">' . lang('Every step between the version on this server and the version of this package is applied in order.') . '</p>
+										<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+											<span class="badge rounded-pill text-bg-secondary" style="font-size:.95rem;padding:.4rem .8rem;">' . h($database_version) . '</span>
+											<i class="bi bi-arrow-right text-body-secondary"></i>
+											<span class="badge rounded-pill text-bg-primary" style="font-size:.95rem;padding:.4rem .8rem;">' . h($software_version) . '</span>
+											<span class="small text-body-secondary ms-1">' . lang(array('string' => '{var:1} versions are applied', 'vars' => $upgrade_version_count)) . '</span>
 										</div>
-                                    </div>
-									' . $output_upgrade_authentication . '
-                                </div>
-                            </div>
-                        </div>
-						<div class="form-check " aria-labelledby="Install">
-							' . $liveform->output_field(array(
-								'type' => 'radio',
-								'name' => 'install_type',
-								'id' => 'install',
-								'value' => 'install',
-								'class' => 'radio form-check-input collapse-switcher',
-								'data-bs-target'=>'#install_fields',
-								'data-toggle'=>'tab'
-							)) . '
-							<label for="install"  class="form-check-label">' . lang(array('string'=>'Install version {var:1} and replace existing site','vars'=>$software_version)) . '</label>
+										' . $output_upgrade_versions . $output_upgrade_preflight . $output_upgrade_warning . '
+										<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" id="pg_upgrade_actions">
+											<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-left me-1"></i>' . lang('Give up') . '</a>
+										</div>
+										<div id="pg_upgrade_run"></div>
+										' . $liveform->output_field(array(
+											'type' => 'radio',
+											'name' => 'install_type',
+											'id' => 'upgrade',
+											'value' => 'upgrade',
+											'class' => 'form-check-input d-none'
+										)) . '
+									</div>
+								</div>
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-danger fw-bold">
+										<i class="bi bi-exclamation-triangle me-2"></i>' . lang('If you want to reinstall instead') . '
+									</div>
+									<div class="card-body">
+										<div class="pg-source pg-mode-card mb-0" id="pg_install_mode_card">
+											<span class="pg-radio"></span>
+											<div class="flex-grow-1">
+												<div class="fw-semibold">' . lang(array('string'=>'Install version {var:1} and replace existing site','vars'=>$software_version)) . '</div>
+												<div class="small text-body-secondary">' . lang('All site data is permanently deleted. This option asks for a written confirmation.') . '</div>
+												' . $liveform->output_field(array(
+													'type' => 'radio',
+													'name' => 'install_type',
+													'id' => 'install',
+													'value' => 'install',
+													'class' => 'radio form-check-input d-none'
+												)) . '
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<aside class="pg-side">' . $output_upgrade_changelog . '</aside>
 						</div>
 					</div>';
 				}
 
 			}
 
-			$output_install_authentication = '';
-
-			// if user is not logged in or is not an administrator, then display authentication rows
-			if (check_if_administrator_is_logged_in() == false) {
-				$output_install_authentication ='
-				<div class="col-12">
-              		<div class="card my-4">
-              		  	<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-              		  	  ' . lang('Authentication') . '
-              		  	</div>
-              		  	<div class="card-body">
-							<div class="row">
-								<div class="col-12 col-md-4 my-1">
-									<label class="form-label" for="install_authentication_username">' . lang('Email') . '</label>
-									' . $liveform->output_field(array(
-										'type' => 'text',
-										'class' => 'form-control',
-										'id' => 'install_authentication_username',
-										'name' => 'install_authentication_username'
-									)) . '
-								</div>
-								<div class="col-12 col-md-4 my-1">
-									<label class="form-label" for="install_authentication_password">' . lang('Password') . '</label>
-									' . $liveform->output_field(array(
-										'type' => 'password',
-										'class' => 'form-control',
-										'id' => 'install_authentication_password',
-										'name' => 'install_authentication_password'
-									)) . '
-								</div>
-								<div class="col-12 col-md-8 my-1">
-									<p class="form-text">' . lang(array('string'=>'Please enter the email address and password for an administrator for the existing site. If you cannot remember your login information you can use the {var:1} feature, or you can delete and recreate the MySQL database and try again.','vars'=>'<a class="link-secondary" href="../forgot_password.php" target="_blank">' . lang('forgot password') . '</a>')) . '</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>';
-
-			}
 
 		}
 
@@ -749,49 +2089,497 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		));
 	}
 
+	// The card that asks whether an existing site may be replaced is always part of the form, so the
+	// wizard can show it as soon as the database check finds a site.  Until then it stays hidden.
+	$reinstallation_verification_class = ' d-none';
+
 	if (!empty($_SESSION['software']['install']['reinstall'])) {
-		$reinstallation_verification ='
-		<div class="col-12">
-        	<div class="card my-4">
-        	  	<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-        	  	  ' . lang('Reinstallation Verification') . '
-        	  	</div>
-        	  	<div class="card-body">
-					<div class="row">
-						<div class="col-12">
-							<div class="alert alert-danger">
-								<p>' . lang('Existing data has been found in the database. Please verify that you want to reinstall the software. All site data will be permanently deleted. This includes all updates you have made since the last installation (i.e. styles, pages, files, products, and etc.). If you wish to continue, please check to verify reinstallation.') . '</p>
-							</div>
-						</div>
-						<div class="col-s12 my-2">
-							<div class="form-check">
-								' . $liveform->output_field(array(
-									'type' => 'hidden',
-									'name' => 'reinstall_software'
-								)) . $liveform->output_field(array(
-									'type' => 'checkbox',
-									'name' => 'reinstall_software',
-									'id' => 'reinstall_software',
-									'value' => '1',
-									'class' => 'checkbox form-check-input'
-								)) . '
-							  	<label class="form-check-label" for="reinstall_software">' . lang('Reinstall') . ' (' . lang('all data will be permanently deleted') .')</label>
-							</div>
-						</div>
-					</div>
+
+		$reinstallation_verification_class = '';
+
+	}
+
+	$reinstallation_verification ='
+		<div class="pg-danger-panel d-flex gap-2 align-items-start' . $reinstallation_verification_class . '" id="pg_reinstall_box">
+			<i class="bi bi-exclamation-octagon-fill text-danger"></i>
+			<div class="flex-grow-1">
+				<div class="fw-semibold">' . lang('A site already exists in this database') . '</div>
+				<div class="small text-body-secondary">' . lang('The installation permanently deletes everything that belongs to it: pages, files, styles and products.') . '</div>
+				<div class="form-check form-switch mt-2">
+					' . $liveform->output_field(array(
+						'type' => 'hidden',
+						'name' => 'reinstall_software'
+					)) . $liveform->output_field(array(
+						'type' => 'checkbox',
+						'name' => 'reinstall_software',
+						'id' => 'reinstall_software',
+						'value' => '1',
+						'class' => 'form-check-input'
+					)) . '
+					<label class="form-check-label small" for="reinstall_software">' . lang('Reinstall anyway and delete the data') . '</label>
 				</div>
+				<div class="small text-danger mt-1 d-none" id="pg_reinstall_message">' . lang('Please verify that you want to reinstall.') . '</div>
+			</div>
+		</div>';
+
+	// The starter sites that ship with the software are offered separately from the backups that an
+	// administrator has made, so the person who is installing can tell the two apart.
+	$install_starter_sites = get_available_starter_sites();
+
+	$install_backups = get_site_backups();
+
+	$install_selected_folder = $liveform->get_field_value('install_from_folder');
+
+	$starter_site_folders = get_starter_site_folders();
+
+	// work out which source the form should open on
+	$install_source_type = 'starter';
+
+	if (($install_selected_folder != '') && (!isset($starter_site_folders[$install_selected_folder]))) {
+
+		$install_source_type = 'backup';
+
+	}
+
+	// The upload field is only offered when the screen was unlocked, which can only happen when a
+	// site exists in the database and an administrator authenticated on the lock screen.  On a
+	// server that has no site yet we never offer a public upload.
+	$install_upload_allowed = $install_site_exists;
+
+	// prepare the starter sites
+	$output_starter_sites = '';
+
+	foreach ($install_starter_sites as $starter_site) {
+
+		$output_starter_site_selected = '';
+
+		if (($install_source_type == 'starter') && (($install_selected_folder == $starter_site['folder']) || ($install_selected_folder == ''))) {
+
+			$output_starter_site_selected = ' selected';
+
+			// only the first matching starter site is selected
+			$install_selected_folder = $starter_site['folder'];
+
+		}
+
+		$output_starter_sites .= '
+		<div class="pg-source' . $output_starter_site_selected . '" data-source="starter" data-folder="' . h($starter_site['folder']) . '">
+			<span class="pg-radio"></span>
+			<div class="flex-grow-1">
+				<div class="fw-semibold"><i class="bi bi-star me-1 text-primary"></i>' . lang(array('string' => '{var:1} starter site', 'vars' => $starter_site['label'])) . '</div>
+				<div class="small text-body-secondary">' . lang('Sample pages, a ready made design and content are installed.') . ' <span class="font-monospace">' . h($starter_site['folder']) . '</span></div>
+			</div>
+		</div>';
+
+	}
+
+	// prepare the backups that are on the server
+	$output_backup_options = '';
+
+	foreach ($install_backups as $backup) {
+
+		$output_backup_selected = '';
+
+		if (($install_source_type == 'backup') && ($install_selected_folder == $backup['folder'])) {
+
+			$output_backup_selected = ' selected="selected"';
+
+		}
+
+		$output_backup_label = $backup['folder'];
+
+		if ($backup['modified'] != false) {
+
+			$output_backup_label .= ' · ' . date('d.m.Y H:i', $backup['modified']);
+
+		}
+
+		if ($backup['installable'] == false) {
+
+			$output_backup_label .= ' · ' . lang('no database file');
+
+		}
+
+		$output_backup_options .= '<option value="' . h($backup['folder']) . '"' . $output_backup_selected . '>' . h($output_backup_label) . '</option>';
+
+	}
+
+	$output_backup_source = '';
+
+	if (count($install_backups) > 0) {
+
+		$output_backup_source = '
+		<div class="pg-source' . (($install_source_type == 'backup') ? ' selected' : '') . '" data-source="backup">
+			<span class="pg-radio"></span>
+			<div class="flex-grow-1">
+				<div class="fw-semibold"><i class="bi bi-folder2-open me-1 text-primary"></i>' . lang('A backup on the server') . ' <span class="badge text-bg-secondary">' . count($install_backups) . '</span></div>
+				<div class="small text-body-secondary">' . lang('The site is restored exactly as it was when the backup was made.') . '</div>
+				<select class="form-select form-select-sm mt-2" id="pg_backup_select">' . $output_backup_options . '</select>
+			</div>
+		</div>';
+
+	}
+
+	$output_source_warning = '';
+
+	if ((count($install_starter_sites) == 0) && (count($install_backups) == 0)) {
+
+		$output_source_warning = '
+		<div class="alert alert-danger small d-flex gap-2">
+			<i class="bi bi-exclamation-triangle"></i>
+			<div>' . lang('There is nothing in the backups folder to install from. The starter sites are normally in the data/backups folder of the software.') . '</div>
+		</div>';
+
+	}
+
+	$output_upload_source = '';
+
+	if ($install_upload_allowed == true) {
+
+		$output_upload_source = '
+		<div class="pg-source" data-source="upload">
+			<span class="pg-radio"></span>
+			<div class="flex-grow-1">
+				<div class="fw-semibold"><i class="bi bi-cloud-arrow-up me-1 text-primary"></i>' . lang('Upload a backup from my computer') . '</div>
+				<div class="small text-body-secondary">' . lang('The archive is extracted into the backups folder and then appears in the list above.') . '</div>
+			</div>
+		</div>
+		<div class="pg-drop d-none" id="pg_zip_area">
+			<div class="mb-2"><i class="bi bi-file-earmark-zip fs-3 text-primary"></i></div>
+			<div class="fw-semibold">' . lang('Upload a backup archive') . '</div>
+			<div class="small text-body-secondary mb-2">' . lang(array('string' => 'Only .zip files, and the server accepts at most {var:1}.', 'vars' => get_install_size_label(get_install_upload_limit()))) . '</div>
+			<input type="file" name="backup_zip" id="backup_zip" accept=".zip,application/zip" class="form-control form-control-sm mb-2" data-limit="' . (int) get_install_upload_limit() . '">
+			<div class="alert alert-danger small text-start d-none mb-2" id="pg_zip_too_large"></div>
+			<button type="submit" class="btn btn-sm btn-outline-primary" name="submit_backup_zip" value="1" data-loading-content="' . lang('Please Wait') . '"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
+			<div class="alert alert-warning small text-start mt-3 mb-0 d-flex gap-2">
+				<i class="bi bi-shield-check"></i>
+				<div>' . lang('The archive has to contain a folder with sql.sql inside it, otherwise nothing is extracted. Paths in the archive are trimmed, so a prepared file cannot write outside of the backups folder.') . '</div>
+			</div>
+		</div>';
+
+	}
+	else {
+
+		$output_upload_source = '
+		<div class="alert alert-secondary small d-flex gap-2 mt-3 mb-0">
+			<i class="bi bi-info-circle"></i>
+			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
+		</div>';
+
+	}
+
+	// work out which step holds the first error, so the wizard can open that step
+	$install_error_step = 0;
+
+	if ($liveform->check_form_errors() == true) {
+
+		$install_error_step = 3;
+
+		if (($liveform->check_field_error('admin_username') == true) || ($liveform->check_field_error('admin_email_address') == true) || ($liveform->check_field_error('admin_confirm_email_address') == true) || ($liveform->check_field_error('admin_password') == true) || ($liveform->check_field_error('admin_confirm_password') == true)) {
+
+			$install_error_step = 4;
+
+		}
+
+		if (($liveform->check_field_error('db_host') == true) || ($liveform->check_field_error('db_username') == true) || ($liveform->check_field_error('db_password') == true) || ($liveform->check_field_error('db_database') == true)) {
+
+			$install_error_step = 3;
+
+		}
+
+		if ($liveform->check_field_error('default_software_language') == true) {
+
+			$install_error_step = 2;
+
+		}
+
+		if ($liveform->check_field_error('install_from_folder') == true) {
+
+			$install_error_step = 1;
+
+		}
+
+	}
+
+	// the question about replacing an existing site belongs to the last step
+	if ((!empty($_SESSION['software']['install']['reinstall'])) || ($liveform->check_field_error('reinstall_software') == true)) {
+
+		$install_error_step = 5;
+
+	}
+
+	// let an administrator see that the screen is unlocked and for how long
+	$output_unlock_notice = '';
+
+	$install_unlock_minutes = get_install_unlock_minutes();
+
+	if ($install_unlock_minutes > 0) {
+
+		$output_unlock_notice = '<span class="badge rounded-pill text-bg-secondary"><i class="bi bi-unlock-fill me-1"></i>' . lang(array('string' => 'Unlocked for {var:1} more minutes', 'vars' => $install_unlock_minutes)) . '</span>';
+
+	}
+
+	// prepare the server checks
+	$output_system_checks = '';
+
+	foreach (get_install_system_checks() as $check) {
+
+		$output_check_icon = 'bi-check-lg text-success';
+
+		if ($check['state'] == 'warning') {
+
+			$output_check_icon = 'bi-exclamation-triangle text-warning';
+
+		}
+
+		if ($check['state'] == 'error') {
+
+			$output_check_icon = 'bi-x-lg text-danger';
+
+		}
+
+		$output_check_detail = '';
+
+		if ((isset($check['detail'])) && ($check['detail'] != '')) {
+
+			$output_check_detail = '<div class="small text-body-secondary" style="padding-left:1.6rem;line-height:1.4;">' . h($check['detail']) . '</div>';
+
+		}
+
+		$output_system_checks .= '
+		<div class="d-flex align-items-center gap-2 py-1 small">
+			<i class="bi ' . $output_check_icon . '"></i>
+			<span>' . h($check['label']) . '</span>
+			<span class="ms-auto text-body-secondary font-monospace">' . h($check['value']) . '</span>
+		</div>' . $output_check_detail;
+
+	}
+
+	// prepare the release notes for the version that is about to be installed
+	$output_changelog = '';
+
+	$install_changelog = get_install_changelog();
+
+	if ($install_changelog != false) {
+
+		$output_changelog_entries = '';
+
+		$changelog_group = '';
+
+		foreach ($install_changelog['entries'] as $changelog_entry) {
+
+			// A release written under topic headings keeps them here too, so the
+			// panel reads as the file does rather than as one long column.
+			$changelog_entry_group = isset($changelog_entry['group']) ? $changelog_entry['group'] : '';
+
+			if ($changelog_entry_group != $changelog_group) {
+
+				$changelog_group = $changelog_entry_group;
+
+				if ($changelog_group != '') {
+
+					$output_changelog_entries .= '
+			<div class="small fw-bold text-uppercase text-body-secondary pt-3 pb-1">' . h($changelog_group) . '</div>';
+
+				}
+
+			}
+
+			// the entries in the file are long, so we shorten them for this panel
+			$changelog_entry['text'] = get_install_short_text($changelog_entry['text'], 190);
+
+			$output_changelog_entries .= '
+			<div class="d-flex gap-2 py-2 border-bottom border-1">
+				<span class="badge ' . get_install_changelog_tag_class($changelog_entry['tag']) . ' pg-tag">' . h($changelog_entry['tag']) . '</span>
+				<div class="small">' . h($changelog_entry['text']) . '</div>
+			</div>';
+
+		}
+
+		$output_changelog = '
+		<div class="card mb-4">
+			<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+				<i class="bi bi-star me-2"></i>' . lang('What is new in this version') . '
+			</div>
+			<div class="card-body pt-0">
+				<div class="mb-2"><span class="badge text-bg-primary">' . h($install_changelog['version']) . '</span></div>
+				<div class="pg-changelog">' . $output_changelog_entries . '</div>
 			</div>
 		</div>';
 
 	}
 
 	print
+
 	get_header() . '
+	<style>
+		.pg-install-logo {
+			padding: 7px;
+			border-radius: 24px;
+			border: 1px solid var(--bs-border-color);
+			background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+		}
+		.pg-wizard-on .pg-step-panel { display: none; }
+		.pg-wizard-on .pg-step-panel.active { display: block; }
+		.pg-step {
+			display: flex;
+			gap: .7rem;
+			align-items: flex-start;
+			width: 100%;
+			text-align: start;
+			padding: .55rem .7rem;
+			border: 1px solid transparent;
+			border-radius: 1rem;
+			background: transparent;
+			color: inherit;
+		}
+		.pg-step:hover { background: var(--bs-secondary-bg); }
+		.pg-step.active { background: var(--bs-secondary-bg); border-color: var(--bs-border-color); }
+		.pg-step-dot {
+			width: 28px;
+			height: 28px;
+			border-radius: 50%;
+			border: 2px solid var(--bs-border-color);
+			background: var(--bs-body-bg);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex: none;
+			font-size: .78rem;
+			font-weight: 700;
+		}
+		.pg-step.active .pg-step-dot { background: var(--bs-primary); border-color: var(--bs-primary); color: var(--bs-body-bg); }
+		.pg-step.done .pg-step-dot { background: var(--bs-success); border-color: var(--bs-success); color: var(--bs-body-bg); }
+		.pg-source {
+			display: flex;
+			gap: .75rem;
+			align-items: flex-start;
+			padding: .8rem .9rem;
+			margin-bottom: .6rem;
+			border: 2px solid var(--bs-border-color);
+			border-radius: 1rem;
+			background: var(--bs-body-bg);
+			cursor: pointer;
+		}
+		.pg-source.selected { border-color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .08); }
+		.pg-radio {
+			width: 20px;
+			height: 20px;
+			margin-top: .15rem;
+			border-radius: 50%;
+			border: 2px solid var(--bs-border-color);
+			flex: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.pg-source.selected .pg-radio { border-color: var(--bs-primary); }
+		.pg-source.selected .pg-radio:after {
+			content: "";
+			width: 10px;
+			height: 10px;
+			border-radius: 50%;
+			background: var(--bs-primary);
+		}
+		.pg-drop {
+			border: 2px dashed var(--bs-border-color);
+			border-radius: 1rem;
+			padding: 1.1rem;
+			text-align: center;
+			background: var(--bs-body-bg);
+		}
+		.pg-changelog { max-height: 320px; overflow: auto; }
+		.pg-tag { font-size: .62rem; height: fit-content; }
+		.pg-review { display: grid; grid-template-columns: 1fr; gap: 0 1.5rem; }
+		.pg-review div { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem 0; border-bottom: 1px dashed var(--bs-border-color); }
+		@media (min-width: 768px) { .pg-review { grid-template-columns: 1fr 1fr; } }
+		main#content.pg-install { max-width: 1280px; }
+		.pg-wizard-grid { display: grid; gap: 1.15rem; grid-template-columns: minmax(0, 1fr); }
+		@media (min-width: 992px) {
+			.pg-wizard-grid { grid-template-columns: 240px minmax(0, 1fr); }
+			.pg-side { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1.15rem; align-items: start; }
+		}
+		@media (min-width: 1200px) {
+			.pg-wizard-grid { grid-template-columns: 250px minmax(0, 1fr) 310px; }
+			.pg-side { grid-column: auto; display: block; position: sticky; top: 5rem; }
+		}
+		/* the upgrade screen has no step rail, so it only has the panel and the side column */
+		@media (min-width: 992px) {
+			.pg-upgrade-grid { grid-template-columns: minmax(0, 1fr) 310px; }
+			.pg-upgrade-grid .pg-side { grid-column: auto; display: block; }
+		}
+		/* the line only runs between the dots, so it never hangs below the last step */
+		.pg-step { position: relative; z-index: 1; }
+		.pg-step:not(:last-of-type):after {
+			content: "";
+			position: absolute;
+			left: 1.4rem;
+			top: 2.4rem;
+			height: calc(100% - 1.6rem);
+			width: 2px;
+			background: var(--bs-border-color);
+			z-index: -1;
+		}
+		.pg-step.done:not(:last-of-type):after { background: var(--bs-success); opacity: .5; }
+		#pg_progress_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
+
+		/* softer notices, closer to the rest of the screen */
+		.pg-install .alert {
+			border: 0;
+			border-radius: 1rem;
+			padding: .7rem .9rem;
+			font-size: .85rem;
+		}
+		.pg-install .alert-primary { background: rgba(var(--bs-primary-rgb), .10); color: var(--bs-body-color); }
+		.pg-install .alert-primary i { color: var(--bs-primary); }
+		.pg-install .alert-warning { background: rgba(var(--bs-warning-rgb), .13); color: var(--bs-body-color); }
+		.pg-install .alert-warning i { color: var(--bs-warning-text-emphasis); }
+		.pg-install .alert-danger { background: rgba(var(--bs-danger-rgb), .12); color: var(--bs-body-color); }
+		.pg-install .alert-danger i { color: var(--bs-danger); }
+		.pg-install .alert-success { background: rgba(var(--bs-success-rgb), .12); color: var(--bs-body-color); }
+		.pg-install .alert-success i { color: var(--bs-success); }
+		.pg-install .alert-secondary { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+
+		/* buttons keep the size of their text, so an icon does not make them tall */
+		.pg-install .btn i { font-size: 1rem; line-height: 1; }
+		.pg-install .btn .material-icons { font-size: 1.1rem; }
+
+		.pg-strength { display: flex; gap: .25rem; margin-top: .4rem; }
+		.pg-strength i { height: 4px; flex: 1; border-radius: 999px; background: var(--bs-border-color); }
+		.pg-strength i.on { background: var(--bs-success); }
+
+		/* the question about replacing an existing site */
+		.pg-danger-panel {
+			border: 1px solid rgba(var(--bs-danger-rgb), .35);
+			background: rgba(var(--bs-danger-rgb), .08);
+			border-radius: 1rem;
+			padding: .85rem .95rem;
+			margin-top: .9rem;
+		}
+
+		.pg-install-console {
+			background: #0f1115;
+			color: #d7dee8;
+			border-radius: 1rem;
+			padding: .9rem 1rem;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+			font-size: .78rem;
+			line-height: 1.75;
+			max-height: 320px;
+			overflow: auto;
+		}
+		.pg-install-console .pg-time { color: #6b7688; }
+		.pg-install-console .pg-ok { color: #4ade80; }
+		.pg-install-console .pg-warning { color: #fbbf24; }
+		.pg-install-console .pg-error { color: #f87171; }
+		.pg-install-console .pg-detail { opacity: .6; }
+		#pg_run_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
+	</style>
 	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 	  	<ul class="navbar-nav me-auto">
 			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 	  	</ul>
-	  	<ul class="navbar-nav ms-auto">	
+	  	<ul class="navbar-nav ms-auto">
 			<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
 				<button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
 				<ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
@@ -802,206 +2590,249 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			</li>
 	  	</ul>
 	</nav>
-  	<script type="text/javascript">
-	  	function upgrade_install_switch() {
-	  		if ($("input.collapse-switcher").length > 0) {
-				if(	$("#upgrade").is(":checked")) { 
-					$("#submit").val("Upgrade");
-					$("#submit").html("<span class=\'material-icons me-2\'>system_update_alt</span><span class=\'btn-text\'>' . lang('Upgrade') . '</span>");
-				}
-				if(	$("#install").is(":checked")) { 
-					$("#submit").val("Install");
-					$("#submit").html("<span class=\'material-icons me-2\'>done_all</span><span class=\'btn-text\'>' . lang('Install') . '</span>");
-				}
-    		}
-		}
-
-		$(document).ready(function() {
-			upgrade_install_switch();
-
-			$("input[name=\'install_type\']").on("click focus keydown", function(){
-				upgrade_install_switch();
-			});
-		});
-  	</script>
-  	<main id="content" class="container">
+  	<main id="content" class="container-xl pg-install">
     	<div class="row">
     	  	<div class="col-12">
     	  	  	' . $liveform->output_errors() . '
     	  	  	' . $liveform->get_warnings() . '
     	  	  	' . $liveform->output_notices() . '
-    	  	  	<div class="row mb-2  flex-wrap">
-    	  	  	    <div class="col-12 col-sm-12 text-center text-md-start">
-    	  	  	        <h2 class="d-inline-block " data-bs-content="' . lang('Install or upgrade the software.') . '" title="' . lang('Installation') . '">' . lang('Installation') . '</h2>
-    	  	  	    </div>
-    	  	  	</div>
-				<form method="post" style="margin: 0px">
+					' . $output_version_warning . '
+				<div class="d-flex flex-wrap align-items-center gap-3 pt-3 pb-2" id="pg_install_hero">
+					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
+					<div class="flex-grow-1" style="min-width:16rem;">
+						<h1 class="h3 mb-1" title="' . lang('Installation') . '">' . lang('Pinegrap installation') . '</h1>
+						<p class="text-body-secondary mb-0">' . lang('Your site will be online in five short steps. If you already have a backup, you can restore it from the same wizard.') . '</p>
+					</div>
+					' . $output_unlock_notice . '
+					' . (($upgrade_option == true) ? '<button type="button" class="btn btn-sm btn-outline-secondary" id="pg_back_to_upgrade"><i class="bi bi-arrow-left me-1"></i>' . lang('Software upgrade') . '</button>' : '') . '
+				</div>
+				<div class="d-flex align-items-center gap-3 mb-3" id="pg_progress_row">
+					<span class="small text-body-secondary text-nowrap">' . lang('Step') . ' <b id="pg_step_number">1</b> / 5</span>
+					<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_progress_bar" style="width:20%;"></div></div>
+					<span class="small text-body-secondary text-nowrap" id="pg_step_title">' . lang('Source') . '</span>
+				</div>
+				<form method="post" enctype="multipart/form-data" id="install_form" style="margin: 0px">
     	  	  	  	' . get_token_field() . '
+					<input type="hidden" name="progress_id" id="progress_id" value="">
     	  	  	  	<div class="row">
     	  	  	  	  	' . $output_upgrade . '
     	  	  	  	  	' . $output_install_option . '
     	  	  	  	</div>
 					<div class="row" id="install_fields">
-						' . $reinstallation_verification . '
 						' . $output_install_authentication . '
-						<div class="col-12 col-md-6">
-						  <div class="card my-4">
-							  <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-								  ' . lang('Installation Folder') . '
-							  </div>
-							  <div class="card-body">
-								  <div class="row">
-									  <div class="col-12 my-2">
-										  <label for="install_from_folder" class="form-label">' . lang('Install From Folder') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'select',
-										  'id' => 'install_from_folder',
-										  'name' => 'install_from_folder',
-										  'class' => 'form-select',
-										  'options' => get_backup_options()
-										  )) . '
-									  </div>
-								  </div>
-							  </div>
-						  </div>
-						</div>
-						<div class="col-12 col-md-6">
-						  <div class="card my-4">
-							  <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-								  ' . lang('Language') . '
-							  </div>
-							  <div class="card-body">
-								  <div class="row">
-									  <div class="col-12 my-2">
-										  <label for="default_software_language" class="form-label">' . lang('Default Software Language') . $output_enforcement . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'select',
-										  'id' => 'default_software_language',
-										  'name' => 'default_software_language',
-										  'class' => 'form-select',
-										  'options' => get_software_language_options()
-										  )) . '
-									  </div>
-								  </div>
-							  </div>
-						  </div>
-						</div>
+
 						<div class="col-12">
-						  <div class="card my-4">
-							  <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-								  ' . lang('MySQL Database') . '
-							  </div>
-							  <div class="card-body">
-								  <div class="row">
-									  <div class="col-12 col-md-6 col-lg-3 my-2">
-										  <label for="db_host" class="form-label">' . lang('Database Hostname') . '</label>
-										  <div class="input-group">
-											  ' . $liveform->output_field(array(
-											  'type' => 'text',
-											  'name' => 'db_host',
-											  'id' => 'db_host',
-											  'class' => 'form-control',
-											  'value' => 'localhost'
-											  )) . ' 
-											  <div class="input-group-text" title="' . lang('e.g. localhost, mysql.example.com or 192.168.0.1') . '">(?)</div>
-										  </div>
-									  </div>
-									  <div class="col-12 col-md-6 col-lg-3 my-2">
-										  <label for="db_username" class="form-label">' . lang('Database Username') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'text',
-										  'name' => 'db_username',
-										  'id' => 'db_username',
-										  'class' => 'form-control',
-										  )) . '
-									  </div>
-									  <div class="col-12 col-md-6 col-lg-3 my-2">
-										  <label for="db_password" class="form-label">' . lang('Database Password') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'password',
-										  'name' => 'db_password',
-										  'id' => 'db_password',
-										  'class' => 'form-control',
-										  )) . '
-									  </div>
-									  <div class="col-12 col-md-6 col-lg-3 my-2">
-										  <label for="db_database" class="form-label">' . lang('Database Name') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'text',
-										  'name' => 'db_database',
-										  'id' => 'db_database',
-										  'class' => 'form-control',
-										  )) . '
-									  </div>
-								  </div>
-							  </div>
-						  </div>
-						</div>
+						<div class="pg-wizard-grid">
+							<nav class="pg-rail" id="pg_rail">
+								<button type="button" class="pg-step active" data-step="1">
+									<span class="pg-step-dot">1</span>
+									<span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small text-body-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span>
+								</button>
+								<button type="button" class="pg-step" data-step="2">
+									<span class="pg-step-dot">2</span>
+									<span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small text-body-secondary">' . lang('Language of the control panel') . '</span></span>
+								</button>
+								<button type="button" class="pg-step" data-step="3">
+									<span class="pg-step-dot">3</span>
+									<span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small text-body-secondary">' . lang('MySQL connection information') . '</span></span>
+								</button>
+								<button type="button" class="pg-step" data-step="4">
+									<span class="pg-step-dot">4</span>
+									<span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small text-body-secondary">' . lang('The first administrator account') . '</span></span>
+								</button>
+								<button type="button" class="pg-step" data-step="5">
+									<span class="pg-step-dot">5</span>
+									<span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small text-body-secondary">' . lang('Summary and installation') . '</span></span>
+								</button>
+							</nav>
+
+							<div class="pg-panels">
+
+							<div class="pg-step-panel active" data-panel="1">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-box-seam me-2"></i>' . lang('Installation Folder') . '
+									</div>
+									<div class="card-body">
+										<p class="text-body-secondary">' . lang('What should the site be built from? Choose one of the ready made starter sites for a new site.') . '</p>
+										' . $liveform->output_field(array(
+										'type' => 'hidden',
+										'id' => 'install_from_folder',
+										'name' => 'install_from_folder'
+										)) . '
+										' . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
+										<div class="text-end mt-3"><button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
+									</div>
+								</div>
+							</div>
+
+							<div class="pg-step-panel" data-panel="2">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-globe2 me-2"></i>' . lang('Software Language') . '
+									</div>
+									<div class="card-body">
+										<div class="row">
+											<div class="col-12 col-md-8 my-2">
+												<label for="default_software_language" class="form-label">' . lang('Default Software Language') . $output_enforcement . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'select',
+												'id' => 'default_software_language',
+												'name' => 'default_software_language',
+												'class' => 'form-select',
+												'options' => get_software_language_options()
+												)) . '
+											</div>
+											<div class="col-12">
+												<div class="alert alert-primary small d-flex gap-2 mb-0">
+													<i class="bi bi-info-circle"></i>
+													<div>' . lang('This is the language of the control panel. It is separate from the language of the content that gets installed, so the two can be different.') . '</div>
+												</div>
+											</div>
+										</div>
+										<div class="d-flex justify-content-between mt-3">
+											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="pg-step-panel" data-panel="3">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-database me-2"></i>' . lang('MySQL Database') . '
+									</div>
+									<div class="card-body">
+										<p class="text-body-secondary">' . lang('An empty database is enough. You can find this information in the databases section of your hosting panel.') . '</p>
+										<div class="row">
+											<div class="col-12 col-md-6 my-2">
+												<label for="db_host" class="form-label">' . lang('Database Hostname') . '</label>
+												<div class="input-group">
+													' . $liveform->output_field(array(
+													'type' => 'text',
+													'name' => 'db_host',
+													'id' => 'db_host',
+													'class' => 'form-control',
+													'value' => 'localhost'
+													)) . '
+													<div class="input-group-text" title="' . lang('e.g. localhost, mysql.example.com or 192.168.0.1') . '">(?)</div>
+												</div>
+											</div>
+											<div class="col-12 col-md-6 my-2">
+												<label for="db_database" class="form-label">' . lang('Database Name') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'text',
+												'name' => 'db_database',
+												'id' => 'db_database',
+												'class' => 'form-control',
+												'autocomplete' => 'database_name'
+												)) . '
+											</div>
+											<div class="col-12 col-md-6 my-2">
+												<label for="db_username" class="form-label">' . lang('Database Username') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'text',
+												'name' => 'db_username',
+												'id' => 'db_username',
+												'class' => 'form-control',
+												'autocomplete' => 'database_username'
+												)) . '
+											</div>
+											<div class="col-12 col-md-6 my-2">
+												<label for="db_password" class="form-label">' . lang('Database Password') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'password',
+												'name' => 'db_password',
+												'id' => 'db_password',
+												'class' => 'form-control',
+												'autocomplete' => 'new-password'
+												)) . '
+											</div>
+										</div>
+										<div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+											<button type="button" class="btn btn-sm btn-outline-primary" id="pg_test_database"><i class="bi bi-hdd-network me-1"></i>' . lang('Test the connection') . '</button>
+											<span class="small text-body-secondary" id="pg_test_hint">' . lang('You can verify the connection before you start the installation.') . '</span>
+										</div>
+										<div class="alert small d-none mt-2 mb-0" id="pg_test_result"></div>
+										<div class="d-flex justify-content-between mt-3">
+											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="pg-step-panel" data-panel="4">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-person me-2"></i>' . lang('Administrator User') . '
+									</div>
+									<div class="card-body">
+										<p class="text-body-secondary">' . lang('The first account that manages the site. Password reset e-mails go to this address.') . '</p>
+										<div class="row">
+											<div class="col-12 col-md-4 my-2">
+												<label for="admin_username" class="form-label">' . lang('Username') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'text',
+												'id' => 'admin_username',
+												'name' => 'admin_username',
+												'class' => 'form-control',
+												'autocomplete' => 'username'
+												)) . '
+											</div>
+											<div class="col-12 col-md-4 my-2">
+												<label for="admin_email_address" class="form-label">' . lang('E-mail Address') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'text',
+												'id' => 'admin_email_address',
+												'name' => 'admin_email_address',
+												'maxlength'=>'100',
+												'inputmode'=>'email',
+												'data-inputmask-alias'=>'email',
+												'class' => 'form-control',
+												'autocomplete' => 'off'
+												)) . '
+											</div>
+											<div class="col-12 col-md-4 my-2">
+												<label for="admin_confirm_email_address" class="form-label">' . lang('Confirm E-mail Address') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'text',
+												'id' => 'admin_confirm_email_address',
+												'name' => 'admin_confirm_email_address',
+												'maxlength'=>'100',
+												'inputmode'=>'email',
+												'data-inputmask-alias'=>'email',
+												'class' => 'form-control',
+												'autocomplete' => 'off'
+												)) . '
+											</div>
+											<div class="col-12 col-md-4 my-2">
+												<label for="admin_password" class="form-label">' . lang('Password') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'password',
+												'id' => 'admin_password',
+												'name' => 'admin_password',
+												'class' => 'form-control',
+												'autocomplete' => 'off'
+												)) . '
+												<div class="pg-strength" id="pg_strength"><i></i><i></i><i></i><i></i></div>
+												<div class="small text-body-secondary" id="pg_strength_text">&nbsp;</div>
+											</div>
+											<div class="col-12 col-md-4 my-2">
+												<label for="admin_confirm_password" class="form-label">' . lang('Confirm Password') . '</label>
+												' . $liveform->output_field(array(
+												'type' => 'password',
+												'id' => 'admin_confirm_password',
+												'name' => 'admin_confirm_password',
+												'class' => 'form-control',
+												'autocomplete' => 'off'
+												)) . '
+											</div>
+										</div>
+								<div class="row">
 						<div class="col-12">
-						  <div class="card my-4">
-							  <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-								  ' . lang('Administrator User') . '
-							  </div>
-							  <div class="card-body">
-								  <div class="row">
-									  <div class="alert alert-primary">' . lang('Please enter information for your new administrator user account.') . '</div>
-									  <div class="col-12 col-md-4 my-2">
-										  <label for="admin_username" class="form-label">' . lang('Username') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'text',
-										  'id' => 'admin_username',
-										  'name' => 'admin_username',
-										  'class' => 'form-control'
-										  )) . '
-									  </div>
-									  <div class="col-12 col-md-4 my-2">
-										  <label for="admin_email_address" class="form-label">' . lang('E-mail Address') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'text',
-										  'id' => 'admin_email_address',
-										  'name' => 'admin_email_address',
-										  'maxlength'=>'100',
-										  'inputmode'=>'email',
-										  'data-inputmask-alias'=>'email',
-										  'class' => 'form-control'
-										  )) . '
-									  </div>
-									  <div class="col-12 col-md-4 my-2">
-										  <label for="admin_confirm_email_address" class="form-label">' . lang('Confirm E-mail Address') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'text',
-										  'id' => 'admin_confirm_email_address',
-										  'name' => 'admin_confirm_email_address',
-										  'maxlength'=>'100',
-										  'inputmode'=>'email',
-										  'data-inputmask-alias'=>'email',
-										  'class' => 'form-control'
-										  )) . '
-									  </div>
-									  <div class="col-12 col-md-4 my-2">
-										  <label for="admin_password" class="form-label">' . lang('Password') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'password',
-										  'id' => 'admin_password',
-										  'name' => 'admin_password',
-										  'class' => 'form-control'
-										  )) . '
-									  </div>
-									  <div class="col-12 col-md-4 my-2">
-										  <label for="admin_confirm_password" class="form-label">' . lang('Confirm Password') . '</label>
-										  ' . $liveform->output_field(array(
-										  'type' => 'password',
-										  'id' => 'admin_confirm_password',
-										  'name' => 'admin_confirm_password',
-										  'class' => 'form-control'
-										  )) . '
-									  </div>
-								  </div>
-							  </div>
-						  </div>
-						</div>
-						<div class="col-12">
-						  <div class="btn-group justify-content-end">
+						  <div class="btn-group justify-content-start">
 							  ' . $liveform->output_field(array(
 							  'type' => 'checkbox',
 							  'id' => 'show_advanced_settings',
@@ -1142,18 +2973,852 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 							  </div>
 						  </div>
 						</div>
+								</div>
+										<div class="d-flex justify-content-between mt-3">
+											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="pg-step-panel" data-panel="5">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-lightning-charge me-2"></i>' . lang('Summary and installation') . '
+									</div>
+									<div class="card-body">
+										<p class="text-body-secondary">' . lang('Everything is ready. Please do not close this window while the installation runs.') . '</p>
+										<div class="pg-review small">
+											<div><span class="text-body-secondary">' . lang('Installation Folder') . '</span><b id="pg_review_folder">-</b></div>
+											<div><span class="text-body-secondary">' . lang('Software Language') . '</span><b id="pg_review_language">-</b></div>
+											<div><span class="text-body-secondary">' . lang('MySQL Database') . '</span><b id="pg_review_database">-</b></div>
+											<div><span class="text-body-secondary">' . lang('Administrator User') . '</span><b id="pg_review_admin">-</b></div>
+											<div><span class="text-body-secondary">' . lang('Version') . '</span><b>' . h($software_version) . '</b></div>
+										</div>
+										<div class="alert alert-warning small d-flex gap-2 mt-3 mb-0">
+											<i class="bi bi-exclamation-triangle"></i>
+											<div>' . lang('The installation resets the Pinegrap tables in the database that you entered. If you are restoring an existing site, it is recommended that you make a backup first.') . '</div>
+										</div>
+										' . $reinstallation_verification . '
+										<div class="d-flex flex-wrap align-items-center gap-2 mt-3" id="pg_install_actions">
+											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+										</div>
+
+										<div class="d-none" id="pg_run_area">
+											<div class="d-flex align-items-center gap-3 mt-3 mb-2">
+												<span class="small text-body-secondary font-monospace" id="pg_run_percent">%0</span>
+												<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_run_bar" style="width:0;"></div></div>
+												<span class="small text-body-secondary text-truncate" style="max-width:14rem;" id="pg_run_now">' . lang('Please Wait') . '</span>
+											</div>
+											<div class="pg-install-console" id="pg_run_console"></div>
+											<div id="pg_run_result"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							</div>
+
+							<aside class="pg-side">
+								<div class="card mb-4">
+									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+										<i class="bi bi-shield-check me-2"></i>' . lang('Server check') . '
+									</div>
+									<div class="card-body pt-0">
+										' . $output_system_checks . '
+									</div>
+								</div>
+								' . $output_changelog . '
+							</aside>
+						</div>
+						</div>
+
 					</div>
-    	  	  	  	<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
-    	  	  	    	<div class="container">
+    	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
-    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success " data-loading-content="' . $output_submit_button_process_label . '"><span class="material-icons me-2">' . $output_submit_button_icon . '</span><span class="btn-text" >' . $output_submit_button_label . '</span></button>
+    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success " data-loading-content="' . $output_submit_button_process_label . '"><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>
-    	  	  	    	</div>
-    	  	  	  	</nav>
+    	  	  	  	</div>
     	  	  	</form>
+				<iframe name="pg_install_frame" id="pg_install_frame" title="installation" style="display:none;width:0;height:0;border:0;"></iframe>
     	  	</div>
     	</div>
-  	</main>' .
+  	</main>
+  	<script type="text/javascript">
+	  	function upgrade_install_switch() {
+	  		if ($("input[name=\'install_type\']").length > 0) {
+				if(	$("#upgrade").is(":checked")) {
+					$("#submit").val("Upgrade");
+					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-2\'></i><span class=\'btn-text\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
+				}
+				if(	$("#install").is(":checked")) {
+					$("#submit").val("Install");
+					$("#submit").html("<i class=\'bi bi-play-fill me-2\'></i><span class=\'btn-text\'>' . lang('Start the installation') . '</span>");
+				}
+    		}
+		}
+
+		// The installation runs in a hidden frame and calls these three functions while it works, so
+		// the output appears inside the card on this page.
+		var pg_install_started = false;
+
+		var pg_install_finished = false;
+
+		// The upgrade runs one version per request (pg_upgrade_start below).  These come from
+		// the server: how many versions are ahead, and whether the screen should start by
+		// itself because an administrator was sent here after the files were updated.
+		var pg_upgrade_total = ' . (int) $upgrade_version_count . ';
+
+		var pg_upgrade_from = "' . escape_javascript($database_version) . '";
+
+		var pg_upgrade_to = "' . escape_javascript($software_version) . '";
+
+		var pg_upgrade_database = "' . escape_javascript(defined('DB_DATABASE') ? DB_DATABASE . '@' . DB_HOST : '') . '";
+
+		var pg_upgrade_first = "' . escape_javascript($upgrade_first_version) . '";
+
+		var pg_install_autostart = ' . (($install_autostart == true) ? 'true' : 'false') . ';
+
+		// the name of the file that the installation reports into
+		function pg_install_make_id() {
+			var id = "";
+			var characters = "0123456789abcdef";
+			for (var index = 0; index < 16; index++) {
+				id += characters.charAt(Math.floor(Math.random() * 16));
+			}
+			return id;
+		}
+
+		var pg_install_seen_steps = {};
+
+		var pg_install_poll_timer = null;
+
+		function pg_install_stream_step(index, seconds, label, detail, state, percent) {
+			var console_element = document.getElementById("pg_run_console");
+			if (!console_element) { return; }
+			if (pg_install_seen_steps[index]) { return; }
+			pg_install_seen_steps[index] = true;
+			var mark = (state === "warning") ? "<span class=\"pg-warning\">&#9650;</span>" : ((state === "error") ? "<span class=\"pg-error\">&#10007;</span>" : "<span class=\"pg-ok\">&#10003;</span>");
+			var line = document.createElement("div");
+			var safe = document.createElement("span");
+			safe.textContent = label;
+			var safe_detail = document.createElement("span");
+			safe_detail.textContent = detail;
+			line.innerHTML = "<span class=\"pg-time\">[" + seconds + " s]</span> " + mark + " " + safe.innerHTML +
+				(detail ? " <span class=\"pg-detail\">" + safe_detail.innerHTML + "</span>" : "");
+			if (state === "error") { line.className = "pg-error"; }
+			console_element.appendChild(line);
+			console_element.scrollTop = console_element.scrollHeight;
+			document.getElementById("pg_run_bar").style.width = percent + "%";
+			document.getElementById("pg_run_percent").textContent = "%" + percent;
+			document.getElementById("pg_run_now").textContent = label;
+		}
+
+		function pg_install_stream_done(title) {
+			if (pg_install_finished === true) { return; }
+			pg_install_finished = true;
+			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
+			document.getElementById("pg_run_bar").style.width = "100%";
+			document.getElementById("pg_run_percent").textContent = "%100";
+			document.getElementById("pg_run_now").textContent = title;
+		}
+
+		function pg_install_stream_complete(html) {
+			pg_install_finished = true;
+			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
+			$("#pg_run_result").html(html);
+		}
+
+		// The progress file carries the steps, what the runner is doing right now, the notes of
+		// every version (which statements were already in place) and, when a step failed, the
+		// version, the message and the statement.  "after" runs once with the answer.
+		function pg_install_poll(after) {
+			$.get(window.location.pathname, {
+				install_action: "progress",
+				progress_id: $("#progress_id").val(),
+				at: new Date().getTime()
+			}, null, "json").done(function(answer) {
+				if ((!answer) || (!answer.steps)) { if (after) { after(null); } return; }
+				$.each(answer.steps, function(index, step) {
+					pg_install_stream_step(step.i, step.s, step.l, step.d, step.t, step.p);
+				});
+				if ((answer.running) && (pg_install_finished !== true)) {
+					document.getElementById("pg_run_now").textContent = answer.running;
+				}
+				if (answer.notes) { pg_install_notes = answer.notes; }
+				if (answer.error) {
+					pg_install_stream_error(answer.error);
+				} else if (answer.done === true) {
+					pg_install_stream_done("' . escape_javascript(lang('The installation is complete')) . '");
+					if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
+				}
+				if (after) { after(answer); }
+			}).fail(function() {
+				if (after) { after(null); }
+			});
+		}
+
+		var pg_install_notes = {};
+
+		// A failed step: the console already carries the red line, this is the explanation and
+		// the way forward.  Every step is safe to repeat, so "try again" simply resubmits.
+		function pg_install_stream_error(error) {
+			if (pg_install_finished === true) { return; }
+			pg_install_finished = true;
+			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
+			document.getElementById("pg_run_now").textContent = "";
+			if ($("#pg_run_result").children().length > 0) { return; }
+			var safe = document.createElement("div");
+			safe.textContent = error.message || "";
+			var safe_statement = document.createElement("div");
+			safe_statement.textContent = error.statement || "";
+			var safe_version = document.createElement("span");
+			safe_version.textContent = error.version || "";
+			var notes = "";
+			if ((error.version) && (pg_install_notes[error.version])) {
+				var safe_notes = document.createElement("div");
+				safe_notes.textContent = pg_install_notes[error.version].join("\n");
+				notes = "<pre class=\"small text-body-secondary mt-2 mb-0\" style=\"white-space:pre-wrap;max-height:10rem;overflow:auto;\">" + safe_notes.innerHTML + "</pre>";
+			}
+			$("#pg_run_result").html(
+				"<div class=\"alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<b>' . escape_javascript(lang('The upgrade stopped at version')) . ' " + safe_version.innerHTML + "</b>" +
+				"<div class=\"small mt-1\">" + safe.innerHTML + "</div>" +
+				(error.statement ? "<div class=\"small font-monospace text-body-secondary mt-1\">" + safe_statement.innerHTML + "</div>" : "") +
+				notes +
+				"<div class=\"small mt-2\">' . escape_javascript(lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.')) . '</div>" +
+				"<div class=\"d-flex gap-2 flex-wrap mt-2\"><button type=\"button\" class=\"btn btn-primary\" onclick=\"pg_install_retry();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" +
+				"</div></div>");
+		}
+
+		// Runs the same request again.  The server continues from the last version it recorded.
+		function pg_install_retry() {
+			if (pg_upgrade_total > 0) { pg_upgrade_resume(); return; }
+			pg_install_started = false;
+			pg_install_finished = false;
+			$("#pg_run_result").empty();
+			$("#submit").trigger("click");
+		}
+
+		// ── The upgrade, one version per request ──────────────────────────────────
+		//
+		// The screen asks the server for the next version, shows what came back and asks
+		// again, until the server says it is done.  The server writes the version number the
+		// moment a step returns, so whatever interrupts a request - a timeout, a closed tab,
+		// a lost connection - loses at most the one version that was running, and every
+		// step is safe to run again.  A long ALTER TABLE therefore lives inside one request
+		// of its own rather than in a request that has to carry a hundred of them.
+		var pg_upgrade_active = false;
+
+		var pg_upgrade_applied = 0;
+
+		var pg_upgrade_line = 0;
+
+		var pg_upgrade_started_at = 0;
+
+		var pg_upgrade_current = "";
+
+		var pg_upgrade_failures = 0;
+
+		var pg_upgrade_lock_waits = 0;
+
+		var pg_upgrade_timer = null;
+
+		var pg_upgrade_success_html = ' . json_encode('
+			<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0">
+				<i class="bi bi-check-circle-fill"></i>
+				<div class="flex-grow-1">
+					<b>' . lang('The upgrade is complete') . '</b> <span class="text-body-secondary">{from} → {to} · {count}</span>
+					<div class="d-flex gap-2 flex-wrap mt-2">
+						<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
+						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
+					</div>
+				</div>
+			</div>') . ';
+
+		function pg_upgrade_seconds() {
+			return ((new Date().getTime() - pg_upgrade_started_at) / 1000).toFixed(1);
+		}
+
+		function pg_upgrade_add_line(label, detail, state) {
+			var percent = Math.min(99, Math.round((pg_upgrade_applied / Math.max(1, pg_upgrade_total)) * 100));
+			pg_install_stream_step(pg_upgrade_line, pg_upgrade_seconds(), label, detail, state, percent);
+			pg_upgrade_line++;
+		}
+
+		function pg_upgrade_start() {
+			if (pg_upgrade_active) { return; }
+			pg_upgrade_active = true;
+			pg_upgrade_started_at = new Date().getTime();
+			pg_upgrade_applied = 0;
+			pg_upgrade_line = 0;
+			pg_upgrade_current = pg_upgrade_first;
+			pg_upgrade_failures = 0;
+			pg_upgrade_lock_waits = 0;
+			pg_install_finished = false;
+			pg_install_seen_steps = {};
+			pg_install_notes = {};
+			$("#pg_run_console").empty();
+			$("#pg_run_result").empty();
+			$("#pg_run_bar").css("width", "0");
+			$("#pg_run_percent").text("%0");
+			$("#pg_run_now").text("' . escape_javascript(lang('Please Wait')) . '");
+			$("#pg_run_area").removeClass("d-none");
+			$("#pg_upgrade_actions").addClass("d-none");
+			$("#pg_upgrade_backup_row").addClass("d-none");
+			$("#pg_install_mode_card").closest(".card").addClass("d-none");
+			pg_upgrade_add_line("' . escape_javascript(lang('Connected to the database')) . '", pg_upgrade_database, "ok");
+			pg_upgrade_add_line("' . escape_javascript(lang('Worked out the version chain')) . '", pg_upgrade_from + " → " + pg_upgrade_to, "ok");
+			pg_upgrade_step();
+		}
+
+		// After a failure or a lost connection: ask again.  The server continues from the last
+		// version it recorded, so the version that stopped is simply run once more.
+		function pg_upgrade_resume() {
+			if (pg_upgrade_active) { return; }
+			pg_upgrade_active = true;
+			pg_upgrade_failures = 0;
+			pg_upgrade_lock_waits = 0;
+			pg_install_finished = false;
+			$("#pg_run_result").empty();
+			if (pg_upgrade_started_at === 0) { pg_upgrade_start(); pg_upgrade_active = true; return; }
+			pg_upgrade_step();
+		}
+
+		function pg_upgrade_step() {
+			if (pg_upgrade_timer) { clearTimeout(pg_upgrade_timer); pg_upgrade_timer = null; }
+			if (pg_upgrade_current) {
+				$("#pg_run_now").text("' . escape_javascript(lang('Version')) . ' " + pg_upgrade_current);
+			}
+			$.ajax({
+				url: window.location.pathname,
+				type: "POST",
+				dataType: "json",
+				timeout: 0,
+				data: { install_action: "upgrade_step", token: $("input[name=token]").val(), at: new Date().getTime() }
+			}).done(function(answer) {
+				pg_upgrade_answer(answer);
+			}).fail(function(xhr, status) {
+				pg_upgrade_failed(xhr, status);
+			});
+		}
+
+		function pg_upgrade_answer(answer) {
+			if ((!answer) || (typeof answer !== "object")) { pg_upgrade_failed(null, "empty"); return; }
+			pg_upgrade_failures = 0;
+			if (answer.session) { pg_upgrade_session_lost(answer.error); return; }
+			if (answer.notes) {
+				$.each(answer.notes, function(version, notes) { pg_install_notes[version] = notes; });
+			}
+			if ((answer.last) && (answer.last.message)) {
+				pg_upgrade_add_line("' . escape_javascript(lang('The last run stopped at')) . ' " + answer.last.version,
+					answer.last.message + (answer.last.statement ? " — " + answer.last.statement : ""), "warning");
+			}
+			if (answer.locked) {
+				// another request holds the lock: a cron, another tab, or the previous request
+				// of this very screen, which the web server gave up on while the server kept going.
+				// The lock goes away with that connection, so we simply ask again in a moment.
+				pg_upgrade_lock_waits++;
+				$("#pg_run_now").text(answer.error || "");
+				if (pg_upgrade_lock_waits === 1) {
+					pg_upgrade_add_line("' . escape_javascript(lang('Another upgrade is running')) . '", answer.error || "", "warning");
+				}
+				if (pg_upgrade_lock_waits > 720) {
+					pg_upgrade_stop("' . escape_javascript(lang('Another upgrade has held the lock for an hour. Refresh this screen to see where it is.')) . '", true);
+					return;
+				}
+				pg_upgrade_timer = setTimeout(pg_upgrade_step, 5000);
+				return;
+			}
+			if (answer.steps) {
+				$.each(answer.steps, function(index, step) {
+					pg_upgrade_applied++;
+					if (step.touched) {
+						pg_upgrade_add_line("' . escape_javascript(lang('Version')) . ' " + step.number, step.detail, "ok");
+					}
+				});
+			}
+			if (!answer.ok) {
+				pg_upgrade_add_line("' . escape_javascript(lang('Version')) . ' " + (answer.failed || "") + " ' . escape_javascript(lang('failed')) . '",
+					(answer.error || "") + (answer.statement ? " — " + answer.statement : ""), "error");
+				pg_upgrade_active = false;
+				pg_install_stream_error({ version: answer.failed, message: answer.error, statement: answer.statement });
+				return;
+			}
+			if (answer.done) {
+				pg_upgrade_active = false;
+				pg_upgrade_add_line("' . escape_javascript(lang('The upgrade is complete')) . '", pg_upgrade_to, "ok");
+				pg_install_stream_done("' . escape_javascript(lang('The upgrade is complete')) . '");
+				var count = "' . escape_javascript(lang('{var:1} versions were applied')) . '".replace("{var:1}", pg_upgrade_applied);
+				if (pg_upgrade_applied === 0) { count = "' . escape_javascript(lang('the versions were applied by the other run')) . '"; }
+				pg_install_stream_complete(pg_upgrade_success_html.replace("{from}", pg_upgrade_from).replace("{to}", pg_upgrade_to).replace("{count}", count));
+				return;
+			}
+			pg_upgrade_current = answer.next || "";
+			pg_upgrade_step();
+		}
+
+		// No answer, or one that is not JSON: the request died on the way, or the web server
+		// gave up on it while the step kept running.  We ask again a few times - while the
+		// server is still busy the lock answers, and when it is done the next version
+		// follows - and then leave it to the person with a button that continues.
+		function pg_upgrade_failed(xhr, status) {
+			if ((xhr) && (xhr.status === 403) && (xhr.responseJSON) && (xhr.responseJSON.session)) {
+				pg_upgrade_session_lost(xhr.responseJSON.error);
+				return;
+			}
+			pg_upgrade_failures++;
+			var what = "";
+			if (status === "parsererror") { what = "' . escape_javascript(lang('the answer could not be read')) . '"; }
+			if (status === "timeout") { what = "' . escape_javascript(lang('timeout')) . '"; }
+			if ((xhr) && (xhr.status)) { what += (what ? " · " : "") + "HTTP " + xhr.status; }
+			if (!what) { what = status || ""; }
+			if (pg_upgrade_failures <= 3) {
+				if (pg_upgrade_failures === 1) {
+					pg_upgrade_add_line("' . escape_javascript(lang('The server did not answer')) . '", what + " · ' . escape_javascript(lang('asking again')) . '", "warning");
+				}
+				pg_upgrade_timer = setTimeout(pg_upgrade_step, 5000);
+				return;
+			}
+			pg_upgrade_add_line("' . escape_javascript(lang('The server did not answer')) . '", what, "error");
+			pg_upgrade_stop("' . escape_javascript(lang('The connection to the server was lost while a version was being applied. The server may still be working on it, or a limit stopped it. The versions before it are recorded, so the upgrade can continue from the same version.')) . '" + (pg_upgrade_current ? " (" + pg_upgrade_current + ", " + what + ")" : ""), false);
+		}
+
+		function pg_upgrade_stop(message, refresh_only) {
+			pg_upgrade_active = false;
+			$("#pg_run_now").text("");
+			var safe = document.createElement("div");
+			safe.textContent = message;
+			$("#pg_run_result").html(
+				"<div class=\"alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<div class=\"small\">" + safe.innerHTML + "</div>" +
+				"<div class=\"d-flex gap-2 flex-wrap mt-2\">" +
+				(refresh_only ? "" : "<button type=\"button\" class=\"btn btn-primary\" onclick=\"pg_upgrade_resume();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Continue')) . '</button>") +
+				"<a class=\"btn btn-outline-secondary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a>" +
+				"</div></div></div>");
+		}
+
+		function pg_upgrade_session_lost(message) {
+			pg_upgrade_active = false;
+			$("#pg_run_now").text("");
+			var safe = document.createElement("div");
+			safe.textContent = message || "";
+			$("#pg_run_result").html(
+				"<div class=\"alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<b>' . escape_javascript(lang('Your session expired')) . '</b>" +
+				"<div class=\"small mt-1\">" + safe.innerHTML + "</div>" +
+				"<div class=\"small mt-1\">' . escape_javascript(lang('The versions that were applied are recorded. Sign in again and open this screen; the upgrade continues from the version that was recorded last.')) . '</div>" +
+				"<div class=\"d-flex gap-2 flex-wrap mt-2\"><a class=\"btn btn-primary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a></div>" +
+				"</div></div>");
+		}
+
+		function pg_install_stream_failed(message) {
+			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
+			$("#pg_run_result").html("<div class=\"alert alert-danger d-flex gap-2 mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div>" + message + "</div></div>");
+		}
+
+		// The install form is one long form, and the wizard only changes how it is presented.
+		// Without JavaScript every step stays visible, so the form still works.
+		var pg_install_step = 1;
+
+		var pg_install_step_titles = {
+			1: "' . escape_javascript(lang('Source')) . '",
+			2: "' . escape_javascript(lang('Software Language')) . '",
+			3: "' . escape_javascript(lang('Database')) . '",
+			4: "' . escape_javascript(lang('Administrator')) . '",
+			5: "' . escape_javascript(lang('Installation')) . '"
+		};
+
+		// Every step checks its own fields before the wizard moves on, so nobody lands on the
+		// summary with an empty database or administrator.  Going back is always allowed.
+		function pg_install_check_step(step) {
+			var problems = [];
+			$("#install_fields .is-invalid").removeClass("is-invalid");
+
+			if (step === 1) {
+				if (!$("#install_from_folder").val()) {
+					problems.push("' . escape_javascript(lang('Please choose what the site should be installed from.')) . '");
+				}
+			}
+
+			if (step === 2) {
+				if (!$("#default_software_language").val()) {
+					$("#default_software_language").addClass("is-invalid");
+					problems.push("' . escape_javascript(lang('Default Language is required.')) . '");
+				}
+			}
+
+			if (step === 3) {
+				var database_fields = {
+					db_host: "' . escape_javascript(lang('Database Hostname is required.')) . '",
+					db_username: "' . escape_javascript(lang('Database Username is required.')) . '",
+					db_database: "' . escape_javascript(lang('Database Name is required.')) . '"
+				};
+				$.each(database_fields, function(field, message) {
+					if (!$.trim($("#" + field).val())) {
+						$("#" + field).addClass("is-invalid");
+						problems.push(message);
+					}
+				});
+			}
+
+			if (step === 4) {
+				var administrator_fields = {
+					admin_username: "' . escape_javascript(lang('Username is required.')) . '",
+					admin_email_address: "' . escape_javascript(lang('E-mail Address is required.')) . '",
+					admin_confirm_email_address: "' . escape_javascript(lang('Confirm E-mail Address is required.')) . '",
+					admin_password: "' . escape_javascript(lang('Password is required.')) . '",
+					admin_confirm_password: "' . escape_javascript(lang('Confirm Password is required.')) . '"
+				};
+				$.each(administrator_fields, function(field, message) {
+					if (!$.trim($("#" + field).val())) {
+						$("#" + field).addClass("is-invalid");
+						problems.push(message);
+					}
+				});
+				if ($.trim($("#admin_email_address").val()) && ($.trim($("#admin_email_address").val()) !== $.trim($("#admin_confirm_email_address").val()))) {
+					$("#admin_email_address, #admin_confirm_email_address").addClass("is-invalid");
+					problems.push("' . escape_javascript(lang('The two administrator e-mail addresses you entered did not match.')) . '");
+				}
+				if ($("#admin_password").val() && ($("#admin_password").val() !== $("#admin_confirm_password").val())) {
+					$("#admin_password, #admin_confirm_password").addClass("is-invalid");
+					problems.push("' . escape_javascript(lang('The two administrator passwords you entered did not match.')) . '");
+				}
+			}
+
+			return problems;
+		}
+
+		// As soon as the database step is left we ask the server whether a site is already in that
+		// database, so the question about replacing it is asked here instead of after the install
+		// button was pressed.
+		function pg_install_check_database_state() {
+			if ((!$.trim($("#db_host").val())) || (!$.trim($("#db_database").val()))) { return; }
+			$.post(window.location.pathname, {
+				install_action: "test_database",
+				token: $("input[name=token]").val(),
+				db_host: $("#db_host").val(),
+				db_username: $("#db_username").val(),
+				db_password: $("#db_password").val(),
+				db_database: $("#db_database").val()
+			}, null, "json").done(function(answer) {
+				if (answer.state === "warning") {
+					$("#pg_reinstall_box").removeClass("d-none");
+				} else if (answer.state === "ok") {
+					$("#pg_reinstall_box").addClass("d-none");
+					$("#reinstall_software").prop("checked", false);
+				}
+			});
+		}
+
+		function pg_install_show_problems(step, problems) {
+			var panel = $(".pg-step-panel[data-panel=" + step + "] .card-body");
+			panel.find(".pg-step-problem").remove();
+			if (problems.length === 0) { return; }
+			var list = "";
+			$.each(problems, function(index, message) { list += "<div>" + message + "</div>"; });
+			panel.prepend("<div class=\"alert alert-danger small d-flex gap-2 pg-step-problem\"><i class=\"bi bi-exclamation-triangle\"></i><div>" + list + "</div></div>");
+		}
+
+		function pg_install_set_step(step) {
+			if (step < 1) { step = 1; }
+			if (step > 5) { step = 5; }
+
+			// walk forward one step at a time, so the first step with a problem is the one we stop on
+			if (step > pg_install_step) {
+				for (var check = pg_install_step; check < step; check++) {
+					var problems = pg_install_check_step(check);
+					if (problems.length > 0) {
+						pg_install_show_problems(check, problems);
+						step = check;
+						break;
+					}
+					pg_install_show_problems(check, []);
+
+					// leaving the database step, so find out what is in that database
+					if (check === 3) {
+						pg_install_check_database_state();
+					}
+				}
+			}
+			pg_install_step = step;
+			$(".pg-step-panel").removeClass("active");
+			$(".pg-step-panel[data-panel=" + step + "]").addClass("active");
+			$(".pg-step").each(function() {
+				var number = parseInt($(this).attr("data-step"), 10);
+				$(this).toggleClass("active", number === step);
+				$(this).toggleClass("done", number < step);
+				$(this).find(".pg-step-dot").html((number < step) ? "<i class=\"bi bi-check-lg\"></i>" : number);
+			});
+			$("#pg_step_number").text(step);
+			$("#pg_step_title").text(pg_install_step_titles[step]);
+			$("#pg_progress_bar").css("width", (step * 20) + "%");
+			$("#install_submit_nav").toggleClass("d-none", step !== 5);
+			if (step === 5) { pg_install_update_review(); }
+			$("html, body").animate({ scrollTop: 0 }, 200);
+		}
+
+		function pg_install_update_review() {
+			var folder = $("#install_from_folder").val();
+			$("#pg_review_folder").text(folder ? folder : "-");
+			$("#pg_review_language").text($("#default_software_language option:selected").text());
+			var database = $("#db_database").val();
+			var host = $("#db_host").val();
+			$("#pg_review_database").text(database ? (database + "@" + host) : "-");
+			var administrator = $("#admin_username").val();
+			var email = $("#admin_email_address").val();
+			$("#pg_review_admin").text(administrator ? (administrator + " · " + email) : "-");
+		}
+
+		function pg_install_select_source(element) {
+			var source = $(element).attr("data-source");
+			$(".pg-source").removeClass("selected");
+			$(element).addClass("selected");
+			$("#pg_zip_area").toggleClass("d-none", source !== "upload");
+			if (source === "starter") {
+				$("#install_from_folder").val($(element).attr("data-folder"));
+			} else if (source === "backup") {
+				$("#install_from_folder").val($("#pg_backup_select").val());
+			} else {
+				$("#install_from_folder").val("");
+			}
+		}
+
+		function pg_install_update_mode() {
+			var upgrading = ($("#upgrade").length > 0) && ($("#upgrade").is(":checked"));
+			$("#install_fields").css("display", "").toggleClass("d-none", upgrading);
+			$("#pg_progress_row").toggleClass("d-none", upgrading);
+			$("#pg_install_hero").toggleClass("d-none", upgrading);
+			$("#pg_upgrade_panel").css("display", "").toggleClass("d-none", !upgrading);
+			$("#pg_install_mode_card").toggleClass("selected", !upgrading);
+			if (upgrading) {
+				$("#install_submit_nav").removeClass("d-none").appendTo("#pg_upgrade_actions");
+				$("#pg_run_area").appendTo("#pg_upgrade_run");
+			} else {
+				$("#install_submit_nav").appendTo("#pg_install_actions");
+				$("#pg_run_area").insertAfter("#pg_install_actions");
+				pg_install_set_step(pg_install_step);
+			}
+		}
+
+		$(document).ready(function() {
+			upgrade_install_switch();
+
+			$("input[name=\'install_type\']").on("click focus keydown", function(){
+				upgrade_install_switch();
+				pg_install_update_mode();
+			});
+
+			$(".pg-install #install_fields").closest("form").addClass("pg-wizard-on");
+
+			$(".pg-step").on("click", function() {
+				pg_install_set_step(parseInt($(this).attr("data-step"), 10));
+			});
+
+			$(".pg-next").on("click", function() {
+				pg_install_set_step(pg_install_step + 1);
+			});
+
+			$(".pg-previous").on("click", function() {
+				pg_install_set_step(pg_install_step - 1);
+			});
+
+			$("#pg_install_mode_card").on("click", function() {
+				$("#install").prop("checked", true);
+				upgrade_install_switch();
+				pg_install_update_mode();
+				$("html, body").animate({ scrollTop: 0 }, 200);
+			});
+
+			$("#pg_back_to_upgrade").on("click", function() {
+				$("#upgrade").prop("checked", true);
+				upgrade_install_switch();
+				pg_install_update_mode();
+				$("html, body").animate({ scrollTop: 0 }, 200);
+			});
+
+			$(".pg-source").not(".pg-mode-card").on("click", function(event) {
+				if ($(event.target).is("select, option")) { return; }
+				pg_install_select_source(this);
+			});
+
+			$("#pg_backup_select").on("change", function() {
+				$("#install_from_folder").val($(this).val());
+			});
+
+			// If the frame finishes without reporting the end, then something went wrong on the
+			// server.  The progress file is read one last time first: a step that failed, or a
+			// fatal error the runner caught on shutdown, is written there with its message, and
+			// that is far more useful than a pointer to the error log.
+			$("#pg_install_frame").on("load", function() {
+				if ((pg_install_started === true) && (pg_install_finished === false)) {
+					pg_install_poll(function(answer) {
+						if ((pg_install_finished === false) && ((!answer) || (!answer.error))) {
+							pg_install_stream_failed("' . escape_javascript(lang('The installation stopped before it finished. Please check the server error log.')) . '");
+						}
+					});
+				}
+			});
+
+			// a rough idea of how strong the administrator password is
+			$("#admin_password").on("input", function() {
+				var value = $(this).val();
+				var score = 0;
+				if (value.length >= 8) { score++; }
+				if (value.length >= 12) { score++; }
+				if (/[A-Z]/.test(value) && /[a-z]/.test(value)) { score++; }
+				if (/[0-9]/.test(value) && /[^A-Za-z0-9]/.test(value)) { score++; }
+				$("#pg_strength i").each(function(index) {
+					$(this).toggleClass("on", index < score);
+				});
+				var labels = ["", "' . escape_javascript(lang('Weak')) . '", "' . escape_javascript(lang('Fair')) . '", "' . escape_javascript(lang('Good')) . '", "' . escape_javascript(lang('Strong')) . '"];
+				$("#pg_strength_text").html(value ? labels[score] : "&nbsp;");
+			});
+
+			// hide the question again as soon as it is answered
+			$("#reinstall_software").on("change", function() {
+				if ($(this).is(":checked")) { $("#pg_reinstall_message").addClass("d-none"); }
+			});
+
+			// A file that is larger than the server accepts never reaches the script, so we say so
+			// here instead of letting the person wait for a page that comes back unchanged.
+			$("#backup_zip").on("change", function() {
+				var limit = parseInt($(this).attr("data-limit"), 10);
+				var warning = $("#pg_zip_too_large");
+				var button = $("button[name=submit_backup_zip]");
+				warning.addClass("d-none").text("");
+				button.prop("disabled", false);
+				if ((!this.files) || (this.files.length === 0) || (!limit)) { return; }
+				var file = this.files[0];
+				if (file.size > limit) {
+					warning.removeClass("d-none").text("' . escape_javascript(lang('This file is larger than the server accepts. Copy the backup folder into the backups folder with FTP instead.')) . '");
+					button.prop("disabled", true);
+				}
+			});
+
+			// test the database connection without writing anything
+			$("#pg_test_database").on("click", function() {
+				var button = $(this);
+				var result = $("#pg_test_result");
+				button.prop("disabled", true);
+				$("#pg_test_hint").text("' . escape_javascript(lang('Please Wait')) . '");
+				result.addClass("d-none");
+				$.post(window.location.pathname, {
+					install_action: "test_database",
+					token: $("input[name=token]").val(),
+					db_host: $("#db_host").val(),
+					db_username: $("#db_username").val(),
+					db_password: $("#db_password").val(),
+					db_database: $("#db_database").val()
+				}, null, "json").done(function(answer) {
+					var style = "alert-danger";
+					if (answer.state === "ok") { style = "alert-success"; }
+					if (answer.state === "warning") { style = "alert-warning"; }
+					result.attr("class", "alert small mt-2 mb-0 " + style).text(answer.message);
+				}).fail(function() {
+					result.attr("class", "alert small mt-2 mb-0 alert-danger").text("' . escape_javascript(lang('The connection could not be tested. Please try again.')) . '");
+				}).always(function() {
+					button.prop("disabled", false);
+					$("#pg_test_hint").text("");
+				});
+			});
+
+			// a copy of the database before the first step, written by the server
+			$("#pg_upgrade_backup").on("click", function() {
+				var button = $(this);
+				var result = $("#pg_upgrade_backup_result");
+				button.prop("disabled", true);
+				$("#submit").prop("disabled", true);
+				result.attr("class", "small text-body-secondary").text("' . escape_javascript(lang('The backup is being written. Depending on the size of the database this takes between a few seconds and a few minutes.')) . '");
+				$.ajax({
+					url: window.location.pathname,
+					type: "POST",
+					dataType: "json",
+					timeout: 0,
+					data: { install_action: "backup_database", token: $("input[name=token]").val() }
+				}).done(function(answer) {
+					if ((answer) && (answer.ok)) {
+						result.attr("class", "small text-success").text("' . escape_javascript(lang('The backup is ready')) . ': data/backups/" + answer.folder + "/sql.sql · " + answer.size + " · " + answer.seconds + " s");
+					} else {
+						result.attr("class", "small text-danger").text(((answer) && (answer.error)) ? answer.error : "' . escape_javascript(lang('The backup could not be written.')) . '");
+						button.prop("disabled", false);
+					}
+				}).fail(function(xhr) {
+					var message = "' . escape_javascript(lang('The backup could not be written.')) . '";
+					if ((xhr) && (xhr.responseJSON) && (xhr.responseJSON.error)) { message = xhr.responseJSON.error; }
+					result.attr("class", "small text-danger").text(message + ((xhr && xhr.status) ? " (HTTP " + xhr.status + ")" : ""));
+					button.prop("disabled", false);
+				}).always(function() {
+					$("#submit").prop("disabled", false);
+				});
+			});
+
+			// The installation itself runs in a hidden frame and reports every step back to this
+			// page, so the output appears right here instead of on another screen.  The upgrade
+			// does not: the screen drives it one version per request (pg_upgrade_start).
+			$("#submit").on("click", function(event) {
+				var upgrading = ($("#upgrade").length > 0) && ($("#upgrade").is(":checked"));
+
+				if ((upgrading) && (pg_upgrade_total > 0)) {
+					event.preventDefault();
+					pg_upgrade_start();
+					return false;
+				}
+
+				if ((!upgrading) && (!$("#pg_reinstall_box").hasClass("d-none")) && (!$("#reinstall_software").is(":checked"))) {
+					event.preventDefault();
+					$("#pg_reinstall_message").removeClass("d-none");
+					$("#pg_reinstall_box")[0].scrollIntoView({ behavior: "smooth", block: "center" });
+					return false;
+				}
+
+				pg_install_started = true;
+				pg_install_finished = false;
+				pg_install_seen_steps = {};
+				$("#pg_run_console").empty();
+				$("#pg_run_result").empty();
+				$("#pg_run_bar").css("width", "0");
+				$("#pg_run_percent").text("%0");
+				$("#progress_id").val(pg_install_make_id());
+				pg_install_poll_timer = setInterval(pg_install_poll, 700);
+				$("#install_form").attr("target", "pg_install_frame");
+				$("#pg_run_area").removeClass("d-none");
+				if (upgrading) {
+					$("#pg_upgrade_actions").addClass("d-none");
+					$("#pg_install_mode_card").closest(".card").addClass("d-none");
+				} else {
+					$("#pg_install_actions").addClass("d-none");
+					$("#pg_reinstall_box").addClass("d-none");
+					$(".pg-step").addClass("disabled").css("pointer-events", "none");
+				}
+				return true;
+			});
+
+			// make sure the hidden field matches the source that is selected on screen
+			if (!$("#install_from_folder").val()) {
+				var selected_source = $(".pg-source.selected").first();
+				if (selected_source.length > 0) {
+					pg_install_select_source(selected_source[0]);
+				}
+			}
+
+			// If the form came back with an error, then open the step that holds it.
+			var error_step = ' . (int) $install_error_step . ';
+
+			pg_install_set_step((error_step > 0) ? error_step : 1);
+
+			pg_install_update_mode();
+
+			// sent here after the software files were updated: start without a click
+			if ((pg_install_autostart) && (pg_upgrade_total > 0) && ($("#upgrade").length > 0)) {
+				$("#upgrade").prop("checked", true);
+				upgrade_install_switch();
+				pg_install_update_mode();
+				pg_upgrade_start();
+			}
+		});
+  	</script>' .
 
 	get_footer();
 
@@ -1180,90 +3845,15 @@ else {
 		// however that should be fine.
 		mysqli_query(db::$con, "SET SESSION sql_mode = ''");
 
-		// if this is not running from an automated upgrade and an administrator is not logged in, then validate username and password fields
-		if (($automated_upgrade == false) && (check_if_administrator_is_logged_in() == false)) {
+		// The install screen locks itself when a site already exists in the database, so by the time
+		// this form can be submitted the session is either logged in as an administrator or it has
+		// authenticated on the lock screen.  We check it again here, because this is the request that
+		// actually changes the site.
+		if (($automated_upgrade == false) && (check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
 
-			$liveform->validate_required_field('upgrade_authentication_username', lang('Email is required.'));
+			log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), $_SESSION['sessionusername']);
 
-			$liveform->validate_required_field('upgrade_authentication_password', lang('Password is required.'));
-
-			// if there is not already an error
-			if ($liveform->check_form_errors() == false) {
-
-				// try to find user from username that was entered
-				$query =
-
-				"SELECT user_id
-
-					FROM user
-
-					WHERE
-
-						(user_role = 0)
-
-						AND
-
-						(
-
-							(user_username = '" . escape($liveform->get_field_value('upgrade_authentication_username')) . "')
-
-							OR (user_email = '" . escape($liveform->get_field_value('upgrade_authentication_username')) . "')
-
-						)
-
-					LIMIT 1";
-
-				$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-				// if a user was not found, prepare error
-				if (mysqli_num_rows($result) == 0) {
-
-					$liveform->mark_error('upgrade_authentication_username', lang('An administrator user could not be found for the email address or username that you supplied.') );
-
-					// else a user was found, so check password
-					
-				}
-				else {
-
-					// try to find user from username and password that were entered
-					$query =
-
-					"SELECT user_id
-
-						FROM user
-
-						WHERE
-
-							(user_role = 0)
-
-							AND
-
-							(
-
-								(user_username = '" . escape($liveform->get_field_value('upgrade_authentication_username')) . "')
-
-								OR (user_email = '" . escape($liveform->get_field_value('upgrade_authentication_username')) . "')
-
-							)
-
-							AND (user_password = '" . md5($liveform->get_field_value('upgrade_authentication_password')) . "')
-
-						LIMIT 1";
-
-					$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-					// if a user was not found, prepare error
-					if (mysqli_num_rows($result) == 0) {
-
-						$liveform->mark_error('upgrade_authentication_password', lang('The password you entered was incorrect. Please remember that passwords are case sensitive.'));
-
-						$liveform->assign_field_value('upgrade_authentication_password', '');
-
-					}
-
-				}
-
-			}
+			exit(lang('Please authenticate as an administrator of this site before you install or upgrade.'));
 
 		}
 
@@ -1274,94 +3864,127 @@ else {
 
 		}
 
-		// Get MySQL version in order to determine if we should set the engine
-		// for new tables that we create.  The engine property is not supported
-		// in old MySQL version so we need to make sure that we don't add it
-		// in order to avoid a query error during udpdate.
-		$mysql_version = db_value("SELECT VERSION()");
-
-		$mysql_version_parts = explode('.', $mysql_version);
-
-		$mysql_major_version = $mysql_version_parts[0];
-
-		$mysql_minor_version = $mysql_version_parts[1];
-
-		// If the MySQL version is at least 4.1 then prepare engine value.
-		// Engine support was actually added in MySQL 4.0.18, however we
-		// don't want to deal with checking the maintenance version, so we are just
-		// going to require 4.1 and higher.  No one but us is using earlier versions anyway.
-		// We define it as a constant so that we can have access to it
-		// in all update functions below.
-		if (
-
-		(
-
-		($mysql_major_version == 4) && ($mysql_minor_version >= 1)) || ($mysql_major_version >= 5)) {
-
-			define('ENGINE', ' ENGINE=MyISAM');
-
-			// Otherwise MySQL version is before 4.1, so do not include engine property
-			
-		}
-		else {
-
-			define('ENGINE', '');
-
-		}
-
 		$database_version = get_database_version();
 
 		$database_version_key = get_version_key($database_version, $versions);
 
-		// get 5.5.0 version key, so we can determine if we should update version in database
-		$version_key_5_5_0 = get_version_key('5.5.0', $versions);
+		// Refuse to upgrade from a version that is not in the version list of this package.  Without
+		// this the loop below would start at the first version and run every step again.
+		if ($database_version_key === false) {
 
-		// loop through all versions
+			$liveform->mark_error('', lang(array(
+				'string' => 'The version in the database ({var:1}) is not part of this package, so the upgrade is not offered. Correct the version in the config table, or install the site again.',
+				'vars' => $database_version
+			)));
+
+			return_to_form();
+
+		}
+
+		// Count what is ahead of us, so the screen can show how far along the upgrade is.  Only the
+		// versions that really do something to the database are reported, otherwise a site that is
+		// years behind would print hundreds of lines.
+		$upgrade_applied_count = 0;
+
+		$upgrade_database_steps = 0;
+
 		foreach ($versions as $version_key => $version) {
 
-			// if version is greater than database version, then run upgrade for this version
-			if ($version_key > $database_version_key) {
+			if ($version_key <= $database_version_key) {
 
-				$function_name = 'upgrade_to_' . str_replace('.', '_', $version['number']);
+				continue;
 
-				// If there is a function for this version, then run function.
-				// Some versions do not need any db updates, so there might not be a function.
-				if (function_exists($function_name)) {
+			}
 
-					$function_name();
+			$upgrade_applied_count++;
 
-				}
+			if ((install_migration_file($version['number']) != '') || (function_exists(install_upgrade_function($version['number'])))) {
 
-				// if version is 5.5.0 or later, then update version in database
-				if ($version_key >= $version_key_5_5_0) {
-
-					$query = "UPDATE config SET version = '" . $version['number'] . "'";
-					$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-				}
+				$upgrade_database_steps++;
 
 			}
 
 		}
 
-		// reset flag so that the site does not indicate that there is a software update available anymore
-		$query = "UPDATE config SET software_update_available = '0'";
+		$install_expected_steps = $upgrade_database_steps + 3;
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		// from here on the page is sent to the browser step by step
+		if ($automated_upgrade == false) {
 
-		// Reset software update check so that it will check again, so site will get new messages
-		// for new version if there are any.
-		db("UPDATE config SET last_software_update_check_timestamp = ''");
+			start_install_stream();
 
-		// if this is being run from an automated upgrade, then display non-HTML message
+			add_install_step(lang('Connected to the database'), DB_DATABASE . '@' . DB_HOST);
+
+			add_install_step(lang('Worked out the version chain'), $database_version . ' → ' . $software_version);
+
+		}
+
+		// The runner takes a lock, applies every version after the one in the database, writes
+		// each number into config.version the moment its step returns, and turns a failing
+		// statement into a reported failure instead of a dead page.  Every step is safe to run
+		// twice, so after a failure the answer is simply to start the upgrade again.
+		$upgrade_result = install_run_upgrades($versions, $database_version_key, array('stream' => ($automated_upgrade == false)));
+
+		if ($upgrade_result['ok'] == false) {
+
+			output_install_upgrade_failure($upgrade_result, $database_version, $automated_upgrade, $automated_upgrade_via);
+
+		}
+
+		if ($automated_upgrade == false) {
+
+			add_install_step(lang('The upgrade is complete'), $software_version);
+
+		}
+
+		// When the upgrade was streamed we answer with a short result, because the screen that
+		// started it is still there and only needs the outcome.
+		if ($install_streaming == true) {
+
+			finish_install_stream();
+
+			print '
+			<div id="pg_stream_result">
+				<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0">
+					<i class="bi bi-check-circle-fill"></i>
+					<div class="flex-grow-1">
+						<b>' . lang('The upgrade is complete') . '</b> <span class="text-body-secondary">' . h($database_version) . ' → ' . h($software_version) . ' · ' . lang(array('string' => '{var:1} versions were applied', 'vars' => $upgrade_applied_count)) . '</span>
+						<div class="d-flex gap-2 flex-wrap mt-2">
+							<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
+							<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
+						</div>
+					</div>
+				</div>
+			</div>
+			<script>pg_install_stream_complete();</script>' . get_footer();
+
+			$liveform->remove_form('install');
+
+			exit();
+
+		}
+
+		// A signed-in administrator who came through software_update.php goes back to the control
+		// panel.  A cron (php from the command line, or the URL with the key) gets a plain text
+		// summary that reads well in a cron log.
 		if ($automated_upgrade == true) {
 
-			header('Location: ../welcome.php');
+			if ($automated_upgrade_via == 'session') {
 
-			print 'complete';
+				header('Location: ../welcome.php');
+
+				print 'complete';
+
+			} else {
+
+				header('Content-Type: text/plain; charset=utf-8');
+
+				print 'ok: ' . $database_version . ' -> ' . $software_version . ' (' . count($upgrade_result['applied']) . ' versions applied)' . "\n";
+
+			}
 
 			// else this is not being run from an automated upgrade, so display full confirmation HTML
-			
+
 		}
 		else {
 
@@ -1468,90 +4091,14 @@ else {
 
 			}
 
-			// if software is already installed and this user is not already logged in as an administrator, then validate authentication fields
-			if (($software_installed == true) && (check_if_administrator_is_logged_in() == false)) {
+			// A site already exists in this database, so this request has to come from an administrator.
+			// The install screen only unlocks after an administrator authenticates, and we verify that
+			// again here, because this is the request that replaces the site.
+			if (($software_installed == true) && (check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false)) {
 
-				$liveform->validate_required_field('install_authentication_username', lang('Email is required.'));
+				log_activity(lang('access denied to submit installation form because an administrator was not authenticated'), $_SESSION['sessionusername']);
 
-				$liveform->validate_required_field('install_authentication_password', lang('Password is required.'));
-
-				// if there is not already an error
-				if ($liveform->check_form_errors() == false) {
-
-					// try to find user from username that was entered
-					$query =
-
-					"SELECT user_id
-
-						FROM user
-
-						WHERE
-
-							(user_role = 0)
-
-							AND
-
-							(
-
-								(user_username = '" . escape($liveform->get_field_value('install_authentication_username')) . "')
-
-								OR (user_email = '" . escape($liveform->get_field_value('install_authentication_username')) . "')
-
-							)
-
-						LIMIT 1";
-
-					$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-					// if a user was not found, prepare error
-					if (mysqli_num_rows($result) == 0) {
-
-						$liveform->mark_error('install_authentication_username', lang('An administrator user could not be found for the email address or username that you supplied.'));
-
-						// else a user was found, so check password
-						
-					}
-					else {
-
-						// try to find user from username and password that were entered
-						$query =
-
-						"SELECT user_id
-
-							FROM user
-
-							WHERE
-
-								(user_role = 0)
-
-								AND
-
-								(
-
-									(user_username = '" . escape($liveform->get_field_value('install_authentication_username')) . "')
-
-									OR (user_email = '" . escape($liveform->get_field_value('install_authentication_username')) . "')
-
-								)
-
-								AND (user_password = '" . md5($liveform->get_field_value('install_authentication_password')) . "')
-
-							LIMIT 1";
-
-						$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-						// if a user was not found, prepare error
-						if (mysqli_num_rows($result) == 0) {
-
-							$liveform->mark_error('install_authentication_password', lang('The password you entered was incorrect. Please remember that passwords are case sensitive.'));
-
-							$liveform->assign_field_value('install_authentication_password', '');
-
-						}
-
-					}
-
-				}
+				exit(lang('Please authenticate as an administrator of this site before you install or upgrade.'));
 
 			}
 
@@ -1741,6 +4288,11 @@ else {
 
 		}
 
+		// from here on the page is sent to the browser step by step
+		start_install_stream();
+
+		add_install_step(lang('Connected to the database'), $liveform->get_field_value('db_database') . '@' . $liveform->get_field_value('db_host'));
+
 		// If the database has tables in it, then get all system tables and then drop
 		// them all before we install new fresh tables.
 		// Even though the sql.sql already contains "DROP TABLE IF EXISTS" commands, we
@@ -1763,6 +4315,8 @@ else {
 				db("DROP TABLE IF EXISTS `" . $table . "`");
 
 			}
+
+			add_install_step(lang('Removed the tables of the old site'), lang(array('string' => '{var:1} tables', 'vars' => count($system_tables))));
 
 		}
 
@@ -1790,17 +4344,23 @@ else {
 
 			COLLATE = " . $character_set . "_unicode_ci");
 
+		add_install_step(lang('Set the character set'), $character_set . '_unicode_ci');
+
 		// Prepare template sql file
 		$database_file = dirname(__FILE__) . '/../data/backups/' . $install_directory_path . '/sql.sql';
 
 		// run all queries from MySQL dump file for template
-		if (parse_mysql_dump($database_file) == false) {
+		$dump_result = parse_mysql_dump($database_file);
 
-			$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . mysqli_error(db::$con));
+		if ($dump_result !== true) {
+
+			$liveform->mark_error('', lang('There was an error while the database was being initialized. Please contact the software provider and include the error that appears next. MySQL error') . ': ' . h($dump_result['error']) . ' — <code>' . h($dump_result['statement']) . '</code>');
 
 			return_to_form();
 
 		}
+
+		add_install_step(lang('Loaded the content of the database'), $install_directory_path . '/sql.sql · ' . lang(array('string' => '{var:1} tables', 'vars' => count(db_values("SHOW TABLES")))));
 
 		// If the MySQL server supports utf8mb4, then convert all tables that were
 		// created above from utf8 to utf8mb4.  The sql.sql file has utf8 set by default
@@ -1957,6 +4517,8 @@ else {
 		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 
 		$user_id = mysqli_insert_id(db::$con);
+
+		add_install_step(lang('Created the administrator account'), $liveform->get_field_value('admin_username') . ' · ' . $liveform->get_field_value('admin_email_address'));
 
 		// Check if appmenu_items exist in users
 		$query = "SHOW COLUMNS FROM user LIKE 'selected_appmenu_items_array'";		
@@ -2233,6 +4795,8 @@ else {
 
 		closedir($handle);
 
+		add_install_step(lang('Copied the files of the site'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..'))))));
+
 		// Deal with layouts now.
 		
 
@@ -2268,6 +4832,8 @@ else {
 		}
 
 		closedir($handle);
+
+		add_install_step(lang('Copied the design templates'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(LAYOUT_DIRECTORY_PATH), array('.', '..'))))));
 
 		// create config.php file
 		
@@ -2372,6 +4938,9 @@ define(\'DB_USERNAME\', \'' . $liveform->get_field_value('db_username') . '\');
 define(\'DB_PASSWORD\', \'' . $liveform->get_field_value('db_password') . '\');
 define(\'DB_DATABASE\', \'' . $liveform->get_field_value('db_database') . '\');
 define(\'ENCRYPTION_KEY\', \'' . generate_encryption_key() . '\'); // DO NOT MODIFY OR SHARE
+// Automated upgrade from a cron job over the web: install/index.php?automated_upgrade=true&secret=<this value>
+// Optional. Undefined or shorter than 16 characters means the key path is closed; php from the command line never needs it.
+// define(\'AUTOMATED_UPGRADE_SECRET\', \'change-this-to-a-long-random-string\');
 define(\'DYNAMIC_REGIONS\', true);
 define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $logo_url . $software_update_check . $email_campaign_job . '
 ?>';
@@ -2388,134 +4957,54 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 		}
 		fwrite($handle, $config_data);
 		fclose($handle);
-			
-		// generate redirection files if doesnt exist.
-		// software do not work properly without them.
-		// if Apache is being used (not IIS), then check if .htaccess file exists, if not generate.
-		if (stristr($_SERVER['SERVER_SOFTWARE'], 'iis') === false && stristr($_SERVER['SERVER_SOFTWARE'], 'nginx') === false) {
-		    if (defined('HTACCESS_FILE_PATH') && !file_exists(HTACCESS_FILE_PATH)) {
-		        file_put_contents(HTACCESS_FILE_PATH,'# The following rules are used by Pinegrap.
-			
-		RewriteEngine on
-			
-		# When the system is accessed from a sub-directory with an Apache alias
-		# (e.g. http://192.168.0.1/~example/), then you might need to uncomment the line
-		# below and update it to point to where the system is installed.  The system
-		# will attempt to automatically set the correct value for the line below during
-		# installation.  You might need to comment out the line below once you launch
-		# your site at a permanent URL without a sub-directory (e.g. http://www.example.com).
-			
-		#RewriteBase /~example/
-			
-		# The following lines redirect all requests to the Pinegrap router,
-		# except for when an actual file or directory exists for the request.
-			
-		RewriteCond %{REQUEST_FILENAME} !-f
-		RewriteCond %{REQUEST_FILENAME} !-d
-		RewriteRule . pinegrap/router.php [L]');
-		    }
-		// else if IIS is being used, then check if web.config file exists, if not generate.
-		} else if (stristr($_SERVER['SERVER_SOFTWARE'], 'iis') == true) {
-		
-		    if (!file_exists(dirname(__FILE__) . '/../../web.config')) {
-		        file_put_contents(dirname(__FILE__) . '/../../web.config','<?xml version="1.0" encoding="UTF-8"?>
-		<configuration>
-		    <system.webServer>
-		        <defaultDocument>
-		            <files>
-		                <clear />
-		                <add value="index.php" />
-		                <add value="index.htm" />
-		                <add value="index.html" />
-		            </files>
-		        </defaultDocument>
-		        <rewrite>
-		            <rules>
-		                <!--
-		                    Blocks every direct request under data/, the same way the
-		                    nginx sample below does.
 
-		                    data/.htaccess says "deny from all", but that is an Apache
-		                    file and IIS ignores it, so without this rule the folder is
-		                    readable over HTTP: config.php, the database backups, and
-		                    every uploaded file in data/files. Uploads take their
-		                    filename from the browser, so a .php file landing there
-		                    would be executed.
+		add_install_step(lang('Wrote the configuration'), 'data/config.php');
 
-		                    Parts of it look protected by accident. A .sql answers 404
-		                    only because IIS has no MIME mapping for that extension,
-		                    which is not a security control; anything with a mapping
-		                    (.json, .txt, .xml, .zip) is served.
+		// Generate the redirection file if it does not exist — the software does
+		// not work without it.
+		//
+		// The content is NOT written here. It comes from includes/server_config.php,
+		// which the running site also reads: a rule added for a new install has to
+		// reach the thousands of sites that already have this file, and the only
+		// way that happens is if both ends read one list. See the header of that
+		// file. It picks the server and the path itself.
+		$server_config_target = pg_server_config_target();
 
-		                    Written as a rewrite rule rather than <security>, because
-		                    <security><authorization> is locked at server level on many
-		                    hosts and a web.config using it makes every request under
-		                    that path fail with 500.19. The rewrite module is already a
-		                    hard requirement here — the rule below depends on it.
-		                -->
-		                <rule name="Block direct access to data" stopProcessing="true">
-		                    <match url="^' . ltrim(PATH, '/') . 'data/" ignoreCase="true" />
-		                    <action type="CustomResponse" statusCode="403" statusDescription="Forbidden" />
-		                </rule>
-		                <rule name="Pinegrap Rule" stopProcessing="true">
-		                    <match url=".*" /> 
-		                    <conditions> 
-		                        <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" /> 
-		                        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" /> 
-		                    </conditions> 
-		                    <action type="Rewrite" url="' . PATH . 'pinegrap/router.php" />
-		                </rule> 
-		            </rules> 
-		        </rewrite>
-		    </system.webServer>
-		</configuration>');
-		    }
-		
-		// else if Nginx is being used, generate nginx.conf.sample
-		} else if (stristr($_SERVER['SERVER_SOFTWARE'], 'nginx') !== false) {
-		
-		    $nginx_conf = '# PineGrap Nginx sample config
-		# Add this inside your server { } block
-		
-		# Deny access to data directory
-		location ^~ ' . PATH . 'data/ {
-		    deny all;
-		    return 403;
-		}
-		
-		# Route all requests through router.php if file/folder not found
-		location ' . PATH . ' {
-		    try_files $uri $uri/ ' . PATH . 'pinegrap/router.php;
-		}
-		';
-		    $nginx_conf_path = dirname(__FILE__) . '/../../nginx.conf.sample';
-		    if (!file_exists($nginx_conf_path)) {
-		        file_put_contents($nginx_conf_path, $nginx_conf);
+		if (!file_exists($server_config_target['file'])) {
+		    @file_put_contents(
+		        $server_config_target['file'],
+		        pg_server_config_default($server_config_target['server']));
+		    add_install_step(lang('Wrote the web server rules'), $server_config_target['name']);
+		} else {
+		    // A file that is already there is the operator's. Only the blocks it
+		    // is missing are added, and nothing that is present is rewritten.
+		    $server_config_repair = pg_server_config_repair(false);
+		    if (($server_config_repair['status'] == 'success') && $server_config_repair['applied']) {
+		        add_install_step(lang('Updated the web server rules'), $server_config_target['name']);
 		    }
 		}
-		
-		// Update RewriteBase in .htaccess if installed in sub-directory (Apache)
-		if ((PATH != '/') && (stristr($_SERVER['SERVER_SOFTWARE'], 'iis') === false) && (stristr($_SERVER['SERVER_SOFTWARE'], 'nginx') === false)) {
-		
-		    $htaccess_content = @file_get_contents(HTACCESS_FILE_PATH);
+
+		// Uncomment RewriteBase when installed in a sub-directory (Apache).
+		//
+		// This one stays here rather than moving into the block list: it is not a
+		// rule that is present or absent, it is a line the default file ships
+		// commented out and that only an alias install (http://host/~example/)
+		// needs uncommenting. Only the exact commented default is replaced, so an
+		// operator who has already set their own RewriteBase keeps it.
+		//
+		// The IIS half of this used to live here too, rewriting the router action
+		// for a sub-directory install with 'pinegrap' typed into the search string
+		// — which did nothing at all on a site whose software folder is called
+		// anything else. The default now carries PATH and SOFTWARE_DIRECTORY from
+		// the start, and a stale target is reported by the System Status check.
+		if ((PATH != '/') && ($server_config_target['server'] == 'apache')) {
+
+		    $htaccess_content = @file_get_contents($server_config_target['file']);
 		    if ($htaccess_content !== false) {
-		        $handle = @fopen(HTACCESS_FILE_PATH, 'w');
+		        $handle = @fopen($server_config_target['file'], 'w');
 		        if ($handle == true) {
 		            $htaccess_content = str_replace('#RewriteBase /~example/', 'RewriteBase ' . PATH, $htaccess_content);
 		            @fwrite($handle, $htaccess_content);
-		            @fclose($handle);
-		        }
-		    }
-		
-		// Update rule action in web.config if installed in sub-directory (IIS)
-		} elseif ((PATH != '/') && (stristr($_SERVER['SERVER_SOFTWARE'], 'iis') == true)) {
-		
-		    $webconfig_content = @file_get_contents(dirname(__FILE__) . '/../../web.config');
-		    if ($webconfig_content !== false) {
-		        $handle = @fopen(dirname(__FILE__) . '/../../web.config', 'w');
-		        if ($handle == true) {
-		            $webconfig_content = str_replace('<action type="Rewrite" url="/pinegrap/router.php" />', '<action type="Rewrite" url="' . PATH . 'pinegrap/router.php" />', $webconfig_content);
-		            @fwrite($handle, $webconfig_content);
 		            @fclose($handle);
 		        }
 		    }
@@ -2534,61 +5023,36 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 		if ($installed_version != $software_version) {
 
-			// Get MySQL version in order to determine if we should set the engine
-			// for new tables that we create.  The engine property is not supported
-			// in old MySQL version so we need to make sure that we don't add it
-			// in order to avoid a query error during udpdate.
-			$mysql_version = db_value("SELECT VERSION()");
-
-			$mysql_version_parts = explode('.', $mysql_version);
-
-			$mysql_major_version = $mysql_version_parts[0];
-
-			$mysql_minor_version = $mysql_version_parts[1];
-
-			// If the MySQL version is at least 4.1 then prepare engine value.
-			// Engine support was actually added in MySQL 4.0.18, however we
-			// don't want to deal with checking the maintenance version, so we are just
-			// going to require 4.1 and higher.  No one but us is using earlier versions anyway.
-			// We define it as a constant so that we can have access to it
-			// in all update functions below.
-			if (
-
-			(
-
-			($mysql_major_version == 4) && ($mysql_minor_version >= 1)) || ($mysql_major_version >= 5)) {
-
-				define('ENGINE', ' ENGINE=MyISAM');
-
-				// Otherwise MySQL version is before 4.1, so do not include engine property
-				
-			}
-			else {
-
-				define('ENGINE', '');
-
-			}
-
 			$installed_version_key = get_version_key($installed_version, $versions);
 
-			// Loop through all the versions in order to determine which we need to update to.
-			foreach ($versions as $version_key => $version) {
+			// A backup taken from a newer package carries a version this package does not know.
+			// Running the whole history against it would be the worst possible answer, so the
+			// site is left as restored and the person is told what to do.
+			if ($installed_version_key === false) {
 
-				// If this version is greater than the installed version, then run update for this
-				// version.
-				if ($version_key > $installed_version_key) {
+				add_install_step(
+					lang(array('string' => 'The version of the backup ({var:1}) is not part of this package', 'vars' => $installed_version)),
+					lang('The site was restored but not upgraded. Install a package that knows this version, then run the upgrade from this screen.'),
+					'warning');
 
-					$function_name = 'upgrade_to_' . str_replace('.', '_', $version['number']);
+			} else {
 
-					// If there is a function for this version, then run function.
-					// Some versions do not need any db updates, so there might not be a function.
-					if (function_exists($function_name)) {
+				// the versions still to come are reported one by one, so the bar keeps moving
+				foreach ($versions as $version_key => $version) {
 
-						$function_name();
+					if (($version_key > $installed_version_key) && ((install_migration_file($version['number']) != '') || (function_exists(install_upgrade_function($version['number']))))) {
+
+						$install_expected_steps++;
 
 					}
 
-					db("UPDATE config SET version = '" . $version['number'] . "'");
+				}
+
+				$upgrade_result = install_run_upgrades($versions, $installed_version_key, array('stream' => true));
+
+				if ($upgrade_result['ok'] == false) {
+
+					output_install_upgrade_failure($upgrade_result, $installed_version, false, '');
 
 				}
 
@@ -2596,10 +5060,17 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 		}
 
+		add_install_step(lang('The installation is complete'), $software_version);
+
 		log_activity(lang('The software was installed'), $liveform->get_field_value('admin_username'));
 
+		// If no mail server was entered under the advanced options, then we do not try to send the
+		// confirmation, because there is nothing to send it with and the message would only be
+		// confusing.  The administrator can set this up later under the email settings.
+		$install_email_sent = false;
+
 		// if an e-mail should be sent to the administrator, then send e-mail
-		if ($liveform->get_field_value('send_email') != 'false') {
+		if (($liveform->get_field_value('send_email') != 'false') && ($liveform->get_field_value('system_smtp_hostname') != '')) {
 
 			// prepare confirmation e-mail to administrator
 			$to = $liveform->get_field_value('admin_email_address');
@@ -2628,47 +5099,182 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			// send e-mail to administrator
 			@mb_send_mail($to, $subject, $body, $headers);
 
+			$install_email_sent = true;
+
 		}
 
-		// output confirmation
-		print
-		get_header() . '
+		// turn the steps that we recorded during the installation into a small console output, so
+		// the person who installed can see what actually happened and how long it took
+		$output_install_log = '';
+
+		foreach ($install_log as $install_step) {
+
+			$output_install_step_detail = '';
+
+			if ($install_step['detail'] != '') {
+
+				$output_install_step_detail = ' <span class="pg-detail">' . h($install_step['detail']) . '</span>';
+
+			}
+
+			$output_install_log .= '<div><span class="pg-time">[' . str_pad(number_format($install_step['seconds'], 1), 5, ' ', STR_PAD_LEFT) . ' s]</span> <span class="pg-ok">&#10003;</span> ' . h($install_step['label']) . $output_install_step_detail . '</div>';
+
+		}
+
+		if ($output_install_log == '') {
+
+			$output_install_log = '<div>' . h(lang('No steps were recorded.')) . '</div>';
+
+		}
+
+		// When the installation was streamed we answer with a short result instead of a whole page,
+		// because the wizard is still on screen and only needs the outcome.
+		if ($install_streaming == true) {
+
+			$install_total_seconds = 0;
+
+			if (count($install_log) > 0) {
+
+				$install_total_seconds = $install_log[count($install_log) - 1]['seconds'];
+
+			}
+
+			$install_result_details =
+				lang(array('string' => '{var:1} seconds', 'vars' => number_format($install_total_seconds, 1))) . ' · ' .
+				lang(array('string' => '{var:1} tables', 'vars' => count(db_values("SHOW TABLES")))) . ' · ' .
+				lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..')))));
+
+			$install_result_email = lang('No mail server was entered, so no confirmation e-mail was sent. Features that rely on e-mail (password resets, form notifications and user invitations) work once you set up e-mail under the settings.');
+
+			if ($install_email_sent == true) {
+
+				$install_result_email = lang('A confirmation e-mail has been sent to your e-mail address.  If you do not receive the confirmation e-mail, then e-mail is probably not configured correctly for your website.  There are features that rely on e-mail (i.e. e-mailing pages, creating users, and etc.), so it is important that you configure e-mail to work.');
+
+			}
+
+			finish_install_stream();
+
+			print '
+			<div id="pg_stream_result">
+				<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0">
+					<i class="bi bi-check-circle-fill"></i>
+					<div class="flex-grow-1">
+						<b>' . lang('The installation is complete') . '</b> <span class="text-body-secondary">' . h($install_result_details) . '</span>
+						<div class="d-flex gap-2 flex-wrap mt-2">
+							<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
+							<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
+						</div>
+						<div class="small text-body-secondary mt-2">' . $install_result_email . '</div>
+						<div class="small text-body-secondary mt-1">' . lang('Your database login information has been stored in the config.php file in the software directory. If you need to change the database login information in the future, you will need to update the config.php file.') . '</div>
+					</div>
+				</div>
+			</div>
+			<script>pg_install_stream_complete();</script>' . get_footer();
+
+			$liveform->remove_form('install');
+
+			$_SESSION['software']['install']['reinstall'] = false;
+
+			exit();
+
+		}
+
+		// The page is already open when the installation was streamed, so the header may not be sent
+		// a second time.  We only close the live output and print the confirmation into the page
+		// that is already there.
+		$output_install_page_start = '';
+
+		$output_install_log_card = '';
+
+		if ($install_streaming == true) {
+
+			finish_install_stream();
+
+		}
+		else {
+
+			$output_install_page_start =
+			get_header() . '
 		<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
 			  <ul class="navbar-nav me-auto">
 				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"  data-loading-content=" "   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 			  </ul>
-			  <ul class="navbar-nav ms-auto">	
-				<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-					<button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-					<ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-						<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-						<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-						<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
-					</ul>
-				</li>
-			  </ul>
-		</nav>
+		</nav>';
+
+			$output_install_log_card = '
+					<div class="card mb-4">
+						<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+							<i class="bi bi-terminal me-2"></i>' . lang('Installation steps') . '
+						</div>
+						<div class="card-body">
+							<div class="pg-install-console">' . $output_install_log . '</div>
+						</div>
+					</div>';
+
+		}
+
+		$output_install_email_notice = '
+					<div class="alert alert-secondary small d-flex gap-2">
+						<i class="bi bi-envelope-exclamation"></i>
+						<div>' . lang('No mail server was entered, so no confirmation e-mail was sent. Features that rely on e-mail (password resets, form notifications and user invitations) work once you set up e-mail under the settings.') . '</div>
+					</div>';
+
+		if ($install_email_sent == true) {
+
+			$output_install_email_notice = '
+					<div class="alert alert-secondary small d-flex gap-2">
+						<i class="bi bi-envelope-check"></i>
+						<div>' . lang('A confirmation e-mail has been sent to your e-mail address.  If you do not receive the confirmation e-mail, then e-mail is probably not configured correctly for your website.  There are features that rely on e-mail (i.e. e-mailing pages, creating users, and etc.), so it is important that you configure e-mail to work.') . '</div>
+					</div>';
+
+		}
+
+		// output confirmation
+		print
+		$output_install_page_start . '
+		<style class="d-none">
+			.pg-install-console {
+				background: #0f1115;
+				color: #d7dee8;
+				border-radius: 1rem;
+				padding: .9rem 1rem;
+				font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				font-size: .8rem;
+				line-height: 1.8;
+				max-height: 320px;
+				overflow: auto;
+			}
+			.pg-install-console .pg-time { color: #6b7688; }
+			.pg-install-console .pg-ok { color: #4ade80; }
+			.pg-install-console .pg-detail { opacity: .6; }
+			.pg-install-logo {
+				padding: 8px;
+				border-radius: 26px;
+				border: 1px solid var(--bs-border-color);
+				background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+			}
+		</style>
 		<main id="content" class="container">
 		    <div class="row">
-		      	<div class="col-12">
-		        	<div class="row mb-2  flex-wrap">
-		        	    <div class="col-12 col-sm-12 text-center text-md-start">
-		        	        <h2 class="d-inline-block ">' . lang('Installation') . '</h2>
-		        	    </div>
-		        	</div>
-		        </div>
-				<div class="col-12 col-md-8 offset-md-2">
-					<div class="card my-5 border-4">
-						<div class="card-body">
-
-							<h4 class="text-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;">check_circle</span><br/>' . lang('Congratulations, the installation is complete!') . '</h4>
-							<p>' . lang('Your database login information has been stored in the config.php file in the software directory. If you need to change the database login information in the future, you will need to update the config.php file.') . '</p>
-							<p>' . lang('A confirmation e-mail has been sent to your e-mail address.  If you do not receive the confirmation e-mail, then e-mail is probably not configured correctly for your website.  There are features that rely on e-mail (i.e. e-mailing pages, creating users, and etc.), so it is important that you configure e-mail to work.') . '</p>
-						</div>
-						<div class="card-footer">
-							<div class="text-center"><a class="btn" href="../" class="button_primary">' . lang('Continue') . '<span class="ms-1 material-icons">arrow_forward</span></a></div>
-						</div>
+				<div class="col-12 col-lg-8 offset-lg-2">
+					<div class="text-center my-4">
+						<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="96" height="96" alt="Pinegrap" class="pg-install-logo mb-3">
+						<h1 class="h3 text-success"><span class="material-icons align-middle" style="font-size:1.6em;line-height:1;">check_circle</span> ' . lang('Congratulations, the installation is complete!') . '</h1>
+						<p class="text-body-secondary mb-0">' . lang(array('string' => 'Pinegrap {var:1} is installed and your administrator account is ready.', 'vars' => $software_version)) . '</p>
 					</div>
+
+					<div class="d-flex gap-2 justify-content-center flex-wrap mb-4">
+						<a class="btn btn-primary" href="../">' . lang('Control Panel') . '<span class="ms-1 material-icons">arrow_forward</span></a>
+						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><span class="me-1 material-icons">visibility</span>' . lang('View Site') . '</a>
+					</div>
+
+					' . $output_install_log_card . '
+
+					<div class="alert alert-primary small d-flex gap-2">
+						<i class="bi bi-info-circle"></i>
+						<div>' . lang('Your database login information has been stored in the config.php file in the software directory. If you need to change the database login information in the future, you will need to update the config.php file.') . '</div>
+					</div>
+					' . $output_install_email_notice . '
 				</div>
 		    </div>
 		</main>' . get_footer();
@@ -2678,6 +5284,1135 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 		$_SESSION['software']['install']['reinstall'] = false;
 
 	}
+
+}
+
+// Opens the page that shows the installation while it runs.  From here on every step that the
+// installer records is sent to the browser as soon as it happens, so the person who is installing
+// can watch what the server is doing instead of looking at a blank tab.
+function start_install_stream() {
+
+	global $install_streaming;
+
+	start_install_log();
+
+	start_install_progress_file();
+
+	$install_streaming = true;
+
+	// turn off everything that would hold the output back
+	@ini_set('zlib.output_compression', 'Off');
+
+	@ini_set('output_buffering', 'Off');
+
+	@ini_set('implicit_flush', '1');
+
+	if (!headers_sent()) {
+
+		header('X-Accel-Buffering: no');
+
+		header('Content-Type: text/html; charset=utf-8');
+
+	}
+
+	while (ob_get_level() > 0) {
+
+		@ob_end_flush();
+
+	}
+
+	@ob_implicit_flush(true);
+
+	print
+
+	get_header() . '
+	<style>
+		.pg-install-console {
+			background: #0f1115;
+			color: #d7dee8;
+			border-radius: 1rem;
+			padding: .9rem 1rem;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+			font-size: .8rem;
+			line-height: 1.8;
+			max-height: 360px;
+			overflow: auto;
+		}
+		.pg-install-console .pg-time { color: #6b7688; }
+		.pg-install-console .pg-ok { color: #4ade80; }
+		.pg-install-console .pg-warning { color: #fbbf24; }
+		.pg-install-console .pg-error { color: #f87171; }
+		.pg-install-console .pg-detail { opacity: .6; }
+		.pg-install-logo {
+			padding: 8px;
+			border-radius: 26px;
+			border: 1px solid var(--bs-border-color);
+			background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+		}
+		#pg_stream_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
+	</style>
+	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+	  	<ul class="navbar-nav me-auto"></ul>
+	</nav>
+	<div class="container-xl" style="max-width:960px;" id="pg_stream_area">
+		<div class="d-flex flex-wrap align-items-center gap-3 pt-4 pb-2">
+			<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="72" height="72" alt="Pinegrap" class="pg-install-logo">
+			<div class="flex-grow-1" style="min-width:16rem;">
+				<h1 class="h4 mb-1" id="pg_stream_title">' . lang('The installation is running') . '</h1>
+				<p class="text-body-secondary mb-0" id="pg_stream_text">' . lang('Please do not close this window. Depending on the server this takes between ten seconds and a minute, and the steps are listed when it is done.') . '</p>
+			</div>
+		</div>
+		<div class="d-flex align-items-center gap-3 mb-3">
+			<span class="small text-body-secondary font-monospace" id="pg_stream_percent">%0</span>
+			<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_stream_bar" style="width:0;"></div></div>
+			<span class="small text-body-secondary text-truncate" style="max-width:16rem;" id="pg_stream_now">' . lang('Please Wait') . '</span>
+		</div>
+		<div class="pg-install-console mb-4" id="pg_stream_console"></div>
+	</div>
+	<script type="text/javascript">
+		// When the installation runs inside the wizard, every step is handed to that page so the
+		// output appears where the person started it.  On its own the page shows the steps itself.
+		function pg_install_host() {
+			try {
+				if ((window.parent) && (window.parent !== window) && (window.parent.pg_install_stream_step)) {
+					return window.parent;
+				}
+			} catch (error) { }
+			return null;
+		}
+		function pg_install_stream_complete() {
+			var host = pg_install_host();
+			var result = document.getElementById("pg_stream_result");
+			if ((host) && (result)) {
+				host.pg_install_stream_complete(result.innerHTML);
+				result.style.display = "none";
+			} else if (result) {
+				var area = document.getElementById("pg_stream_area");
+				if (area) { area.appendChild(result); }
+			}
+		}
+		function pg_install_retry() {
+			var host = pg_install_host();
+			if ((host) && (host.pg_install_retry)) { host.pg_install_retry(); return; }
+			window.location.href = "' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/";
+		}
+		function pg_install_stream_step(index, seconds, label, detail, state, percent) {
+			var host = pg_install_host();
+			if (host) { host.pg_install_stream_step(index, seconds, label, detail, state, percent); return; }
+			var console_element = document.getElementById("pg_stream_console");
+			if (!console_element) { return; }
+			var mark = (state === "warning") ? "<span class=\"pg-warning\">&#9650;</span>" : ((state === "error") ? "<span class=\"pg-error\">&#10007;</span>" : "<span class=\"pg-ok\">&#10003;</span>");
+			var line = document.createElement("div");
+			line.innerHTML = "<span class=\"pg-time\">[" + seconds + " s]</span> " + mark + " " +
+				pg_install_stream_escape(label) +
+				(detail ? " <span class=\"pg-detail\">" + pg_install_stream_escape(detail) + "</span>" : "");
+			console_element.appendChild(line);
+			console_element.scrollTop = console_element.scrollHeight;
+			document.getElementById("pg_stream_bar").style.width = percent + "%";
+			document.getElementById("pg_stream_percent").textContent = "%" + percent;
+			document.getElementById("pg_stream_now").textContent = label;
+		}
+		function pg_install_stream_escape(value) {
+			var element = document.createElement("span");
+			element.textContent = value;
+			return element.innerHTML;
+		}
+		function pg_install_stream_done(title) {
+			var host = pg_install_host();
+			if (host) { host.pg_install_stream_done(title); return; }
+			document.getElementById("pg_stream_bar").style.width = "100%";
+			document.getElementById("pg_stream_percent").textContent = "%100";
+			document.getElementById("pg_stream_now").textContent = "";
+			document.getElementById("pg_stream_title").textContent = title;
+			document.getElementById("pg_stream_text").classList.add("d-none");
+		}
+	</script>
+	<!--' . str_repeat(' ', 4096) . '-->
+	';
+
+	flush_install_stream();
+
+}
+
+// What a failed or locked upgrade run looks like, on every path that can run one: the
+// streamed screen, the plain confirmation page, a cron.  Never returns.
+function output_install_upgrade_failure($upgrade_result, $database_version, $automated_upgrade, $automated_upgrade_via) {
+
+	global $install_streaming, $liveform;
+
+	$locked = !empty($upgrade_result['locked']);
+
+	$failed_version = (string) $upgrade_result['failed'];
+
+	$message = (string) $upgrade_result['error'];
+
+	$statement = (string) $upgrade_result['statement'];
+
+	// a cron reads plain text; the exit code says the same thing to a shell
+	if ($automated_upgrade == true) {
+
+		if ($automated_upgrade_via == 'session') {
+
+			// the administrator came from the control panel and should see the screen
+			header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/');
+
+			exit();
+
+		}
+
+		header('Content-Type: text/plain; charset=utf-8');
+
+		if ($locked) {
+
+			print 'locked: ' . $message . "\n";
+
+		} else {
+
+			print 'error at ' . $failed_version . ': ' . $message . (($statement != '') ? ' :: ' . $statement : '') . "\n";
+
+		}
+
+		exit(1);
+
+	}
+
+	// the streamed answer: the host screen copies pg_stream_result into its own result area
+	write_install_progress_file(true);
+
+	if ($locked) {
+
+		$alert = '
+			<div class="alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0">
+				<i class="bi bi-hourglass-split"></i>
+				<div class="flex-grow-1">
+					<b>' . lang('Another upgrade is running') . '</b>
+					<div class="small">' . h($message) . '</div>
+					<div class="d-flex gap-2 flex-wrap mt-2">
+						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><i class="bi bi-arrow-clockwise me-1"></i>' . lang('Refresh') . '</a>
+					</div>
+				</div>
+			</div>';
+
+	} else {
+
+		$alert = '
+			<div class="alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0">
+				<i class="bi bi-exclamation-triangle-fill"></i>
+				<div class="flex-grow-1">
+					<b>' . lang(array('string' => 'The upgrade stopped at version {var:1}', 'vars' => h($failed_version))) . '</b>
+					<div class="small mt-1">' . h($message) . '</div>
+					' . (($statement != '') ? '<div class="small font-monospace text-body-secondary mt-1">' . h($statement) . '</div>' : '') . '
+					<div class="small mt-2">' . lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.') . '</div>
+					<div class="d-flex gap-2 flex-wrap mt-2">
+						<button type="button" class="btn btn-primary" onclick="pg_install_retry();"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Try again') . '</button>
+						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><i class="bi bi-arrow-left me-1"></i>' . lang('Installation') . '</a>
+					</div>
+				</div>
+			</div>';
+
+	}
+
+	if ($install_streaming == true) {
+
+		print '
+		<div id="pg_stream_result">' . $alert . '</div>
+		<script>pg_install_stream_complete();</script>' . get_footer();
+
+		if (is_object($liveform)) {
+
+			$liveform->remove_form('install');
+
+		}
+
+		exit();
+
+	}
+
+	// no stream: a plain page with the same alert
+	print get_header() . '
+	<div class="container-xl" style="max-width:960px;">' . $alert . '</div>' . get_footer();
+
+	exit();
+
+}
+
+// Closes the page that was opened above.
+function finish_install_stream() {
+
+	write_install_progress_file(true);
+
+	print '<script>pg_install_stream_done(' . json_encode(lang('The installation is complete')) . ');</script>';
+
+	flush_install_stream();
+
+}
+
+// Answers the "test the connection" button on the install screen.  It only reports what the
+// installation itself would find, so nothing is written and nothing is remembered.  This function
+// prints a small json answer and never returns.
+function output_install_database_test() {
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	$response = array('state' => 'error', 'message' => '');
+
+	$posted_token = '';
+
+	if (isset($_POST['token'])) {
+
+		$posted_token = $_POST['token'];
+
+	}
+
+	if (($_SESSION['software']['token'] == '') || ($posted_token != $_SESSION['software']['token'])) {
+
+		$response['message'] = lang('Sorry, we could not accept your request because it appears that your session expired.');
+
+		print json_encode($response);
+
+		exit();
+
+	}
+
+	// A visitor could otherwise use this to look for database servers, so we only allow a handful
+	// of tests before the visitor has to come back later.
+	if (!isset($_SESSION['software']['install']['test_count'])) {
+
+		$_SESSION['software']['install']['test_count'] = 0;
+
+		$_SESSION['software']['install']['test_time'] = time();
+
+	}
+
+	if (($_SESSION['software']['install']['test_time'] + 600) < time()) {
+
+		$_SESSION['software']['install']['test_count'] = 0;
+
+		$_SESSION['software']['install']['test_time'] = time();
+
+	}
+
+	$_SESSION['software']['install']['test_count'] = $_SESSION['software']['install']['test_count'] + 1;
+
+	if ($_SESSION['software']['install']['test_count'] > 25) {
+
+		$response['message'] = lang('Too many connection tests. Please try again later.');
+
+		print json_encode($response);
+
+		exit();
+
+	}
+
+	$test_host = '';
+
+	if (isset($_POST['db_host'])) {
+
+		$test_host = trim($_POST['db_host']);
+
+	}
+
+	$test_username = '';
+
+	if (isset($_POST['db_username'])) {
+
+		$test_username = trim($_POST['db_username']);
+
+	}
+
+	$test_password = '';
+
+	if (isset($_POST['db_password'])) {
+
+		$test_password = $_POST['db_password'];
+
+	}
+
+	$test_database = '';
+
+	if (isset($_POST['db_database'])) {
+
+		$test_database = trim($_POST['db_database']);
+
+	}
+
+	if (($test_host == '') || ($test_username == '') || ($test_database == '')) {
+
+		$response['message'] = lang('Please enter the hostname, the username and the name of the database first.');
+
+		print json_encode($response);
+
+		exit();
+
+	}
+
+	$connection = @mysqli_connect($test_host, $test_username, $test_password);
+
+	if ($connection == false) {
+
+		$response['message'] = lang('A connection to the MySQL server failed. Please correct the hostname, username, and/or password.  MySQL error') . ': ' . mysqli_connect_error();
+
+		print json_encode($response);
+
+		exit();
+
+	}
+
+	if (@mysqli_select_db($connection, $test_database) == false) {
+
+		$response['message'] = lang('A connection to the MySQL server was successful, however the database name that you entered could not be selected. Please correct the database name. If the database name is correct, then the user might not have correct permissions to access the database. MySQL error') . ': ' . mysqli_error($connection);
+
+		@mysqli_close($connection);
+
+		print json_encode($response);
+
+		exit();
+
+	}
+
+	$server_version = @mysqli_get_server_info($connection);
+
+	// see whether a site is already in there, because that is what the installation would replace
+	$site_found = false;
+
+	$table_count = 0;
+
+	$result = @mysqli_query($connection, "SHOW TABLES");
+
+	if ($result != false) {
+
+		while ($row = mysqli_fetch_row($result)) {
+
+			$table_count++;
+
+			if (($row[0] == 'config') || ($row[0] == 'page') || ($row[0] == 'user')) {
+
+				$site_found = true;
+
+			}
+
+		}
+
+	}
+
+	@mysqli_close($connection);
+
+	if ($site_found == true) {
+
+		$response['state'] = 'warning';
+
+		$response['message'] = lang('The connection was successful.') . ' MySQL ' . h($server_version) . ' · ' . lang('A site is already installed in the database that you entered. If you wish to reinstall please check to verify reinstallation.');
+
+	}
+	else {
+
+		$response['state'] = 'ok';
+
+		$response['message'] = lang('The connection was successful.') . ' MySQL ' . h($server_version) . ' · ' . (($table_count == 0) ? lang('The database is empty and ready for the installation.') : lang(array('string' => 'The database holds {var:1} tables that do not belong to Pinegrap. They are left alone.', 'vars' => $table_count)));
+
+	}
+
+	print json_encode($response);
+
+	exit();
+
+}
+
+// The token and the administrator behind a request of the upgrade screen.  Both endpoints
+// below are only reached after the lock, so on a site that exists the session already
+// belongs to an administrator; this is the check that the request that changes the site
+// carries the token of that session.  Prints a json answer and exits when it does not.
+function check_install_upgrade_request() {
+
+	global $install_site_exists;
+
+	$posted_token = '';
+
+	if (isset($_POST['token'])) {
+
+		$posted_token = $_POST['token'];
+
+	}
+
+	if (($_SESSION['software']['token'] == '') || ($posted_token != $_SESSION['software']['token'])) {
+
+		set_response_code(403);
+
+		print json_encode(array('ok' => false, 'session' => true, 'error' => lang('Sorry, we could not accept your request because it appears that your session expired.')));
+
+		exit();
+
+	}
+
+	if (($install_site_exists != true) || ((check_if_administrator_is_logged_in() == false) && (check_install_unlocked() == false))) {
+
+		set_response_code(403);
+
+		print json_encode(array('ok' => false, 'session' => true, 'error' => lang('Please authenticate as an administrator of this site before you install or upgrade.')));
+
+		exit();
+
+	}
+
+	// PHP holds the session file for the whole request, and a schema step can hold it for
+	// minutes.  Nothing below writes to the session, so it is released here: the control
+	// panel stays usable in another tab while a version runs, and a second request from
+	// the same browser meets the upgrade lock instead of waiting in the dark.
+	session_write_close();
+
+}
+
+// Applies the next version and reports it.  The screen calls this again and again until the
+// answer says done; the server writes every version number the moment its step returns, so
+// a request that is cut short costs one version, and that version is run again.  Prints a
+// json answer and never returns.
+function output_install_upgrade_step($versions) {
+
+	global $software_version_key;
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	header('Cache-Control: no-store');
+
+	check_install_upgrade_request();
+
+	$database_version = get_database_version();
+
+	$database_version_key = get_version_key($database_version, $versions);
+
+	if ($database_version_key === false) {
+
+		print json_encode(array('ok' => false, 'error' => lang(array(
+			'string' => 'The version in the database ({var:1}) is not part of this package, so the upgrade is not offered. Correct the version in the config table, or install the site again.',
+			'vars' => $database_version
+		))));
+
+		exit();
+
+	}
+
+	$result = install_run_upgrades($versions, $database_version_key, array('one' => true));
+
+	// where the database is now, and how much is left
+	$version_now = $database_version;
+
+	if (count($result['applied']) > 0) {
+
+		$version_now = $result['applied'][count($result['applied']) - 1];
+
+	}
+
+	$version_now_key = get_version_key($version_now, $versions);
+
+	$remaining = ($version_now_key === false) ? 0 : ($software_version_key - $version_now_key);
+
+	if ($result['done'] == true) {
+
+		log_activity(lang(array('string' => 'The software was upgraded from version {var:1} to {var:2}.', 'vars' => array($database_version, $version_now))), (isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : ''));
+
+	}
+
+	print json_encode(array(
+		'ok' => $result['ok'],
+		'locked' => $result['locked'],
+		'error' => $result['error'],
+		'statement' => $result['statement'],
+		'failed' => $result['failed'],
+		'applied' => $result['applied'],
+		'steps' => $result['steps'],
+		'done' => $result['done'],
+		'next' => $result['next'],
+		'last' => $result['last'],
+		'notes' => install_notes(),
+		'from' => $database_version,
+		'version' => $version_now,
+		'remaining' => $remaining
+	));
+
+	exit();
+
+}
+
+// Writes a copy of the database into data/backups before the upgrade starts.  Prints a json
+// answer and never returns.
+function output_install_database_backup($versions) {
+
+	header('Content-Type: application/json; charset=utf-8');
+
+	header('Cache-Control: no-store');
+
+	check_install_upgrade_request();
+
+	$database_version = get_database_version();
+
+	$result = install_backup_database($database_version);
+
+	if ($result['ok'] == true) {
+
+		log_activity(lang('A backup of the database was written before the upgrade') . ': ' . $result['folder'], (isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : ''));
+
+	}
+
+	print json_encode(array(
+		'ok' => $result['ok'],
+		'error' => $result['error'],
+		'folder' => $result['folder'],
+		'size' => install_size_label($result['bytes']),
+		'seconds' => $result['seconds']
+	));
+
+	exit();
+
+}
+
+// Extracts an uploaded backup archive into the backups folder.  This is only offered when a site
+// exists in the database, which means that the install screen has been unlocked by an
+// administrator, so we never accept an upload from an anonymous visitor.
+function process_install_backup_upload($liveform, $install_site_exists) {
+
+	if ($install_site_exists != true) {
+
+		$liveform->mark_error('', lang('A backup can only be uploaded here after an administrator has unlocked this screen.'));
+
+		return;
+
+	}
+
+	$posted_token = '';
+
+	if (isset($_POST['token'])) {
+
+		$posted_token = $_POST['token'];
+
+	}
+
+	if (($_SESSION['software']['token'] == '') || ($posted_token != $_SESSION['software']['token'])) {
+
+		$liveform->mark_error('', lang('Sorry, we could not accept your request because it appears that your session expired.'));
+
+		return;
+
+	}
+
+	if (!class_exists('ZipArchive')) {
+
+		$liveform->mark_error('', lang('Zip support is not available on this server, so the archive cannot be extracted.'));
+
+		return;
+
+	}
+
+	if ((!isset($_FILES['backup_zip'])) || ($_FILES['backup_zip']['name'] == '')) {
+
+		$liveform->mark_error('', lang('Please select a backup archive to upload.'));
+
+		return;
+
+	}
+
+	$upload = $_FILES['backup_zip'];
+
+	// the server refused the upload before it reached us
+	if ($upload['error'] != UPLOAD_ERR_OK) {
+
+		if (($upload['error'] == UPLOAD_ERR_INI_SIZE) || ($upload['error'] == UPLOAD_ERR_FORM_SIZE)) {
+
+			$liveform->mark_error('', lang(array(
+				'string' => 'The archive is larger than the upload limit of this server, which is {var:1}. Copy the backup folder into the backups folder with FTP instead.',
+				'vars' => ini_get('upload_max_filesize')
+			)));
+
+		}
+		else {
+
+			$liveform->mark_error('', lang('The archive could not be uploaded. Please try again.'));
+
+		}
+
+		return;
+
+	}
+
+	if (!is_uploaded_file($upload['tmp_name'])) {
+
+		$liveform->mark_error('', lang('The archive could not be uploaded. Please try again.'));
+
+		return;
+
+	}
+
+	if (mb_strtolower(pathinfo($upload['name'], PATHINFO_EXTENSION)) != 'zip') {
+
+		$liveform->mark_error('', lang('Only a .zip archive can be uploaded here.'));
+
+		return;
+
+	}
+
+	$zip = new ZipArchive();
+
+	if ($zip->open($upload['tmp_name']) !== true) {
+
+		$liveform->mark_error('', lang('The archive could not be opened. It might be damaged.'));
+
+		return;
+
+	}
+
+	// Work out where the site backup sits inside the archive.  A backup folder is a folder that
+	// holds a database dump, so we look for sql.sql and refuse anything else.  This also stops
+	// someone from unpacking a random archive into the backups folder.
+	$archive_root = false;
+
+	$entry_count = $zip->numFiles;
+
+	$total_size = 0;
+
+	for ($index = 0; $index < $entry_count; $index++) {
+
+		$entry_name = $zip->getNameIndex($index);
+
+		$entry_name = str_replace('\\', '/', $entry_name);
+
+		$statistics = $zip->statIndex($index);
+
+		if ($statistics != false) {
+
+			$total_size = $total_size + $statistics['size'];
+
+		}
+
+		if ($entry_name == 'sql.sql') {
+
+			$archive_root = '';
+
+		}
+		elseif (preg_match('/^([^\/]+)\/sql\.sql$/', $entry_name, $matches)) {
+
+			$archive_root = $matches[1] . '/';
+
+		}
+
+	}
+
+	if ($archive_root === false) {
+
+		$zip->close();
+
+		$liveform->mark_error('', lang('This archive does not look like a site backup, because it does not contain a folder with sql.sql inside it. Nothing was extracted.'));
+
+		return;
+
+	}
+
+	// refuse archives that would fill up the server
+	if (($entry_count > 20000) || ($total_size > 2147483648)) {
+
+		$zip->close();
+
+		$liveform->mark_error('', lang('The archive is too large to be extracted here. Copy the backup folder into the backups folder with FTP instead.'));
+
+		return;
+
+	}
+
+	// name the new folder after the folder inside the archive, or after the archive itself
+	$folder_name = $archive_root;
+
+	if ($folder_name == '') {
+
+		$folder_name = pathinfo($upload['name'], PATHINFO_FILENAME);
+
+	}
+
+	$folder_name = get_clean_backup_folder_name($folder_name);
+
+	if ($folder_name == '') {
+
+		$folder_name = 'backup';
+
+	}
+
+	$backups_path = dirname(__FILE__) . '/../data/backups/';
+
+	$folder_name = get_unique_backup_folder_name($backups_path, $folder_name);
+
+	$destination_path = $backups_path . $folder_name;
+
+	if (!@mkdir($destination_path, 0755, true)) {
+
+		$zip->close();
+
+		$liveform->mark_error('', lang('The backups folder is not writable, so the archive could not be extracted.'));
+
+		return;
+
+	}
+
+	$extracted_files = 0;
+
+	for ($index = 0; $index < $entry_count; $index++) {
+
+		$entry_name = str_replace('\\', '/', $zip->getNameIndex($index));
+
+		// only take what is inside the backup folder of the archive
+		if (($archive_root != '') && (mb_strpos($entry_name, $archive_root) !== 0)) {
+
+			continue;
+
+		}
+
+		$relative_path = mb_substr($entry_name, mb_strlen($archive_root));
+
+		if ($relative_path == '') {
+
+			continue;
+
+		}
+
+		// Rebuild the path from clean parts.  Anything that tries to walk up the tree, and any
+		// part that is empty or only dots, is dropped, so the archive can only write inside of
+		// the folder that we just created.
+		$clean_parts = array();
+
+		foreach (explode('/', $relative_path) as $part) {
+
+			$part = trim($part);
+
+			if (($part == '') || ($part == '.') || ($part == '..')) {
+
+				continue;
+
+			}
+
+			$clean_parts[] = $part;
+
+		}
+
+		if (count($clean_parts) == 0) {
+
+			continue;
+
+		}
+
+		$is_directory = (mb_substr($entry_name, -1) == '/');
+
+		$target_path = $destination_path . '/' . implode('/', $clean_parts);
+
+		if ($is_directory == true) {
+
+			if (!is_dir($target_path)) {
+
+				@mkdir($target_path, 0755, true);
+
+			}
+
+			continue;
+
+		}
+
+		$parent_path = dirname($target_path);
+
+		if (!is_dir($parent_path)) {
+
+			@mkdir($parent_path, 0755, true);
+
+		}
+
+		$contents = $zip->getFromIndex($index);
+
+		if ($contents === false) {
+
+			continue;
+
+		}
+
+		if (@file_put_contents($target_path, $contents) !== false) {
+
+			$extracted_files++;
+
+		}
+
+	}
+
+	$zip->close();
+
+	// The backups folder is already closed to the web, however we also close the new folder, so a
+	// server that ignores the parent rule still cannot serve anything from it.
+	@file_put_contents($destination_path . '/.htaccess', 'deny from all');
+
+	if ($extracted_files == 0) {
+
+		$liveform->mark_error('', lang('The archive was empty, so nothing was extracted.'));
+
+		return;
+
+	}
+
+	// select the folder that we just extracted
+	$liveform->assign_field_value('install_from_folder', $folder_name);
+
+	log_activity(lang(array('string' => 'uploaded a backup archive to the installation screen and extracted it to {var:1}', 'vars' => $folder_name)), $_SESSION['sessionusername']);
+
+	$liveform->add_notice(lang(array(
+		'string' => 'The archive was extracted to {var:1} and selected. {var:2} files were extracted.',
+		'vars' => array($folder_name, $extracted_files)
+	)));
+
+}
+
+// Removes everything from a folder name that we do not want on disk.
+function get_clean_backup_folder_name($folder_name) {
+
+	$folder_name = trim(str_replace('\\', '/', $folder_name), '/ ');
+
+	$folder_name = preg_replace('/[^A-Za-z0-9._\- ]/', '', $folder_name);
+
+	$folder_name = trim(preg_replace('/\s+/', ' ', $folder_name));
+
+	$folder_name = trim($folder_name, '.');
+
+	return mb_substr($folder_name, 0, 100);
+
+}
+
+// Adds a number to the folder name when a folder with that name already exists.
+function get_unique_backup_folder_name($backups_path, $folder_name) {
+
+	if (!file_exists($backups_path . $folder_name)) {
+
+		return $folder_name;
+
+	}
+
+	$counter = 2;
+
+	while (file_exists($backups_path . $folder_name . '-' . $counter)) {
+
+		$counter++;
+
+		// never loop forever
+		if ($counter > 999) {
+
+			break;
+
+		}
+
+	}
+
+	return $folder_name . '-' . $counter;
+
+}
+
+// Outputs the authentication screen that is shown when a site is already installed in the
+// database and this session has not authenticated yet.  Nothing about the site is sent to the
+// browser here, so the backups on the server stay private.  This function never returns.
+function output_install_lock_screen() {
+
+	$error_message = '';
+
+	$wait_seconds = get_install_attempt_wait();
+
+	// if the unlock form was submitted and this visitor is not locked out, then check the login
+	if ((isset($_POST['install_unlock'])) && ($wait_seconds == 0)) {
+
+		$posted_token = '';
+
+		if (isset($_POST['token'])) {
+
+			$posted_token = $_POST['token'];
+
+		}
+
+		if (($_SESSION['software']['token'] == '') || ($posted_token != $_SESSION['software']['token'])) {
+
+			$error_message = lang('Sorry, we could not accept your request because it appears that your session expired.');
+
+		}
+		else {
+
+			$unlock_username = '';
+
+			if (isset($_POST['install_unlock_username'])) {
+
+				$unlock_username = trim($_POST['install_unlock_username']);
+
+			}
+
+			$unlock_password = '';
+
+			if (isset($_POST['install_unlock_password'])) {
+
+				$unlock_password = $_POST['install_unlock_password'];
+
+			}
+
+			if (($unlock_username == '') || ($unlock_password == '')) {
+
+				$error_message = lang('Please enter the email address and password for an administrator of this site.');
+
+			}
+			else {
+
+				// Find an administrator by name, then verify the raw password against
+				// the stored hash (legacy MD5, wrapped or modern) in PHP.
+				// The algo column is asked for only when it exists: this screen is
+				// the one that runs BEFORE the upgrade adds it (pg_user_has_password_algo).
+				$unlock_admin = db_item(
+					"SELECT " . pg_password_select_columns() . "
+						FROM user
+						WHERE
+							(user_role = 0)
+							AND
+							(
+								(user_username = '" . escape($unlock_username) . "')
+								OR (user_email = '" . escape($unlock_username) . "')
+							)
+						LIMIT 1");
+
+				// if an administrator was found and the password checks out, unlock
+				if (is_array($unlock_admin)
+					&& isset($unlock_admin['user_id'])
+					&& pg_password_verify($unlock_admin['user_id'], $unlock_password, $unlock_admin['user_password'], pg_password_row_algo($unlock_admin))) {
+
+					clear_install_attempts();
+
+					set_install_unlocked();
+
+					log_activity(lang('unlocked the installation screen'), $unlock_username);
+
+					header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/');
+
+					exit();
+
+				}
+
+				// else the login was wrong, so count the attempt and slow the visitor down
+				add_install_attempt();
+
+				log_activity(lang('failed to unlock the installation screen'), $unlock_username);
+
+				$wait_seconds = get_install_attempt_wait();
+
+				$error_message = lang('The email address or password that you entered was incorrect.');
+
+			}
+
+		}
+
+	}
+
+	$output_error = '';
+
+	if ($error_message != '') {
+
+		$output_error = '<div class="alert alert-danger d-flex gap-2 py-2 px-3"><i class="bi bi-exclamation-triangle-fill"></i><div>' . h($error_message) . '</div></div>';
+
+	}
+
+	$output_wait = '';
+
+	$output_disabled = '';
+
+	if ($wait_seconds > 0) {
+
+		$output_wait = '<div class="alert alert-warning d-flex gap-2 py-2 px-3"><i class="bi bi-hourglass-split"></i><div>' . lang(array(
+			'string' => 'Too many failed attempts. Please try again in {var:1} minutes.',
+			'vars' => (int) ceil($wait_seconds / 60)
+		)) . '</div></div>';
+
+		$output_disabled = ' disabled';
+
+	}
+
+	print
+
+	get_header() . '
+	<style>
+		.install-lock-logo {
+			padding: 10px;
+			border-radius: 32px;
+			border: 1px solid var(--bs-border-color);
+			background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+		}
+		.install-lock-ghost {
+			height: 54px;
+			border-radius: 1.25rem;
+			border: 2px solid var(--bs-border-color);
+			background: var(--bs-secondary-bg);
+		}
+		.install-lock-ghosts {
+			filter: blur(5px);
+			opacity: .5;
+			user-select: none;
+		}
+	</style>
+	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+		<ul class="navbar-nav ms-auto">
+			<li class="nav-item dropdown no-popover" title="' . lang('Software Theme') . '">
+				<button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+				<ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
+					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
+					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
+					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+				</ul>
+			</li>
+		</ul>
+	</nav>
+	<main id="content" class="container py-4 py-md-5">
+		<div class="row justify-content-center">
+			<div class="col-12" style="max-width:540px;">
+				<div class="text-center mb-4">
+					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="112" height="112" alt="Pinegrap" class="install-lock-logo mb-3">
+					<h1 class="h4 fw-bold mb-2">' . lang('A Pinegrap site is already installed on this server') . '</h1>
+					<p class="text-body-secondary mb-0">' . lang('Verify your identity with an administrator account of the existing site to see the installation and restore options.') . '</p>
+				</div>
+				<div class="card">
+					<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+						<i class="bi bi-lock-fill me-2"></i>' . lang('Authentication') . '
+					</div>
+					<div class="card-body">
+						' . $output_error . $output_wait . '
+						<form method="post" autocomplete="on">
+							' . get_token_field() . '
+							<div class="mb-3">
+								<label class="form-label" for="install_unlock_username">' . lang('Email') . '</label>
+								<input type="text" class="form-control" id="install_unlock_username" name="install_unlock_username" autocomplete="username"' . $output_disabled . '>
+							</div>
+							<div class="mb-3">
+								<label class="form-label" for="install_unlock_password">' . lang('Password') . '</label>
+								<input type="password" class="form-control" id="install_unlock_password" name="install_unlock_password" autocomplete="current-password"' . $output_disabled . '>
+							</div>
+							<button type="submit" class="btn btn-primary w-100" name="install_unlock" value="1"' . $output_disabled . '><i class="bi bi-unlock-fill me-2"></i>' . lang('Unlock') . '</button>
+						</form>
+						<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 small">
+							<a class="link-secondary" href="../forgot_password.php" target="_blank">' . lang('forgot password') . '</a>
+							<span class="text-body-secondary">' . lang('Attempts remaining') . ': <b>' . get_install_attempts_remaining() . '</b></span>
+						</div>
+						<hr>
+						<div class="alert alert-primary d-flex gap-2 py-2 px-3 small mb-2">
+							<i class="bi bi-shield-lock-fill"></i>
+							<div><b>' . lang('Why this screen?') . '</b> ' . lang('The install script is always public. The names of the backups on your server, the database fields and the restore button are not shown to anyone until an administrator has authenticated. The screen stays unlocked for 30 minutes.') . '</div>
+						</div>
+						<div class="alert alert-warning d-flex gap-2 py-2 px-3 small mb-0">
+							<i class="bi bi-clock-history"></i>
+							<div>' . lang('If you can sign in to the control panel, this step is never asked, because your session is recognized automatically.') . '</div>
+						</div>
+					</div>
+				</div>
+				<div class="install-lock-ghosts mt-4" aria-hidden="true">
+					<div class="d-flex gap-3 mb-3"><div class="install-lock-ghost flex-grow-1"></div><div class="install-lock-ghost" style="width:35%;"></div></div>
+					<div class="d-flex gap-3 mb-3"><div class="install-lock-ghost flex-grow-1"></div></div>
+					<div class="d-flex gap-3 mb-3"><div class="install-lock-ghost" style="width:35%;"></div><div class="install-lock-ghost flex-grow-1"></div></div>
+				</div>
+				<p class="text-center small text-body-secondary"><i class="bi bi-lock me-1"></i>' . lang('Installation options appear after the screen is unlocked') . '</p>
+			</div>
+		</div>
+	</main>' .
+
+	get_footer();
+
+	exit();
 
 }
 
@@ -2706,7 +6441,44 @@ function get_footer() {
 function return_to_form()
  {
 
-	header('Location: http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/');
+	global $install_streaming, $liveform;
+
+	// Once the installation is being streamed the page has already started, so we cannot redirect
+	// any more.  We show what went wrong instead and let the visitor go back themselves.  The
+	// errors the form collected are printed here, because the screen that started the
+	// installation shows this answer and nothing else.
+	if (($install_streaming == true) || (headers_sent())) {
+
+		$output_errors = '';
+
+		if (is_object($liveform)) {
+
+			$output_errors = $liveform->output_errors();
+
+		}
+
+		add_install_step(lang('The installation was stopped.'), '', 'error');
+
+		write_install_progress_file(true);
+
+		print '
+		<div id="pg_stream_result">
+			<div class="container-xl px-0" style="max-width:960px;">
+				<div class="alert alert-danger d-flex gap-2 mt-3 mb-2">
+					<i class="bi bi-exclamation-triangle-fill"></i>
+					<div>' . lang('The installation was stopped. Please go back to the installation screen and check the information that you entered.') . '</div>
+				</div>
+				' . $output_errors . '
+				<a class="btn btn-primary mb-4" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><span class="me-1 material-icons">arrow_back</span>' . lang('Installation') . '</a>
+			</div>
+		</div>
+		<script>pg_install_stream_complete();</script>' . get_footer();
+
+		exit();
+
+	}
+
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/');
 
 	exit();
 
@@ -2735,8 +6507,8 @@ function get_version_key($number, $versions)
 function check_if_administrator_is_logged_in()
  {
 
-	// if a username and password are set in the session, then continue to check if username and password are valid and if user is an administrator
-	if ((isset($_SESSION['sessionusername']) == true) && (isset($_SESSION['sessionpassword']) == true)) {
+	// if a signed-in user id is set in the session, check it belongs to an administrator
+	if ((isset($_SESSION['sessionuserid']) == true) && ($_SESSION['sessionuserid'] !== '')) {
 
 		$query =
 
@@ -2748,9 +6520,7 @@ function check_if_administrator_is_logged_in()
 
 				(user_role = '0')
 
-				AND (user_username = '" . escape($_SESSION['sessionusername']) . "')
-
-				AND (user_password = '" . escape($_SESSION['sessionpassword']) . "')";
+				AND (user_id = '" . (int) $_SESSION['sessionuserid'] . "')";
 
 		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 
@@ -2763,47 +6533,156 @@ function check_if_administrator_is_logged_in()
 
 	}
 
-	// if we got here then an administrator is not logged in, so return false
-	return false;
+	// ── Upgrade bridge: the previous release's credentials ──────────────────
+	//
+	// Only while the database is behind the code (install_bridge_open()). In
+	// that window this screen is the only way to the upgrade, and whoever
+	// arrives holds the PREVIOUS release's proof of identity, in one of two
+	// shapes that release used:
+	//
+	//   session   sessionusername + sessionpassword (the MD5 sign-in stored
+	//             server-side) - what software_update.php arrives with right
+	//             after the file swap;
+	//   cookie    software[username] + software[password] (the old remember-me
+	//             pair) - an administrator whose session ended before the
+	//             upgrade ran, but who had ticked "remember me".
+	//
+	// Both are checked the way that release checked them: bare MD5 against
+	// user_password, administrator role only. Refusing them locked 2026.4.3
+	// sites out of their own upgrade. Once config.version has caught up the
+	// bridge closes and this block is dead code; it can go when no supported
+	// site is below 2026.4.4.
+	if ((!isset($_SESSION['sessionuserid'])) && (install_bridge_open() == true)) {
 
-}
+		$legacy_pairs = array();
 
-function parse_mysql_dump($url)
- {
+		if ((isset($_SESSION['sessionusername'])) && ($_SESSION['sessionusername'] !== '')
+			&& (isset($_SESSION['sessionpassword'])) && ($_SESSION['sessionpassword'] !== '')) {
 
-	$file_content = file($url);
+			$legacy_pairs[] = array($_SESSION['sessionusername'], $_SESSION['sessionpassword']);
 
+		}
 
-	$query = '';
-	
+		if ((isset($_COOKIE['software']['username'])) && ($_COOKIE['software']['username'] !== '')
+			&& (isset($_COOKIE['software']['password'])) && ($_COOKIE['software']['password'] !== '')) {
 
-	foreach ($file_content as $sql_line) {
-		
-		$tsl = trim($sql_line);
+			$legacy_pairs[] = array($_COOKIE['software']['username'], $_COOKIE['software']['password']);
 
-		if (($tsl != '') && (mb_substr($tsl, 0, 2) != '--') && (mb_substr($tsl, 0, 1) != '#')) {
-			
-			$query .= $sql_line;
-			
-			if (preg_match("/;\s*$/", $sql_line)) {
-				
-				$result = mysqli_query(db::$con, trim($query));
-				
-				if (!$result) {
+		}
 
-					return false;
+		foreach ($legacy_pairs as $legacy_pair) {
 
-				}
-				
-				$query = '';
+			$legacy_admin_id = db_value(
+				"SELECT user_id FROM user
+					WHERE (user_role = '0')
+						AND (user_username = '" . escape($legacy_pair[0]) . "')
+						AND (user_password = '" . escape($legacy_pair[1]) . "')
+					LIMIT 1");
+
+			if ($legacy_admin_id) {
+
+				return true;
 
 			}
 
 		}
 
+	}
+
+	// if we got here then an administrator is not logged in, so return false
+	return false;
+
+}
+
+// True while the database (config.version) is behind the version this code
+// knows (pg_code_version(), the last line of versions.php): the window in
+// which the bridge above is the only way in. Asked once per request.
+function install_bridge_open() {
+
+	static $open = null;
+
+	if ($open === null) {
+
+		$database_version = (string) db_value("SELECT version FROM config LIMIT 1");
+
+		$code_version = pg_code_version();
+
+		$open = (($database_version !== '') && ($code_version !== '') && (version_compare($database_version, $code_version, '<')));
 
 	}
-	
+
+	return $open;
+
+}
+
+// Runs every statement of a MySQL dump.  The file is read line by line rather than with
+// file(), because a backup of a big site does not fit in memory_limit, and the statement
+// that fails is returned with the error, so the screen can say what went wrong instead of
+// "an error occurred".  Returns true, or array('statement' => ..., 'error' => ...).
+function parse_mysql_dump($url)
+ {
+
+	global $install_progress_running;
+
+	$handle = @fopen($url, 'r');
+
+	if ($handle === false) {
+
+		return array('statement' => basename($url), 'error' => lang('The file could not be opened.'));
+
+	}
+
+	$query = '';
+
+	$count = 0;
+
+	while (($sql_line = fgets($handle)) !== false) {
+
+		$tsl = trim($sql_line);
+
+		if (($tsl == '') || (mb_substr($tsl, 0, 2) == '--') || (mb_substr($tsl, 0, 1) == '#')) {
+
+			continue;
+
+		}
+
+		$query .= $sql_line;
+
+		if (preg_match("/;\s*$/", $sql_line)) {
+
+			$result = mysqli_query(db::$con, trim($query));
+
+			if (!$result) {
+
+				$failed = preg_replace('/\s+/', ' ', trim(mb_substr($query, 0, 160)));
+
+				fclose($handle);
+
+				return array('statement' => $failed, 'error' => mysqli_error(db::$con));
+
+			}
+
+			$query = '';
+
+			$count++;
+
+			// a heartbeat for the screen, so a long dump does not look like a frozen page
+			if (($count % 500) == 0) {
+
+				$install_progress_running = lang(array('string' => 'sql.sql · {var:1} statements', 'vars' => number_format($count)));
+
+				write_install_progress_file(false);
+
+			}
+
+		}
+
+	}
+
+	fclose($handle);
+
+	$install_progress_running = '';
+
 	return true;
 
 }
@@ -3424,8 +7303,15 @@ function get_tables() {
 		'ads',
 		'affiliate_sign_up_form_pages',
 		'allow_new_comments_for_items',
+		'api_apps',
+		'api_idempotency',
+		'api_rate_bucket',
+		'api_request_log',
+		'api_webhook_queue',
+		'api_webhooks',
 		'applied_gift_cards',
 		'arrival_dates',
+		'auth_tokens',
 		'auto_dialogs',
 		'banned_ip_addresses',
 		'billing_information_pages',
@@ -3460,6 +7346,18 @@ function get_tables() {
 		'email_campaign_profiles',
 		'email_campaigns',
 		'email_recipients',
+		'erp_account_transactions',
+		'erp_accounts',
+		'erp_cash_accounts',
+		'erp_cash_transactions',
+		'erp_document_series',
+		'erp_edoc_queue',
+		'erp_invoice_items',
+		'erp_invoices',
+		'erp_parasut_log',
+		'erp_settlements',
+		'erp_waybill_items',
+		'erp_waybills',
 		'excluded_transit_dates',
 		'express_order_pages',
 		'files',
@@ -3468,6 +7366,7 @@ function get_tables() {
 		'form_data',
 		'form_field_options',
 		'form_fields',
+		'form_signatures',
 		'form_item_view_pages',
 		'form_list_view_browse_fields',
 		'form_list_view_filters',
@@ -3479,12 +7378,20 @@ function get_tables() {
 		'key_codes',
 		'log',
 		'login_regions',
+		'marketplace_accounts',
+		'marketplace_categories',
+		'marketplace_category_attributes',
+		'marketplace_category_map',
+		'marketplace_order_map',
+		'marketplace_product_map',
+		'marketplace_sync_queue',
 		'menu_items',
 		'menus',
 		'messages',
 		'next_order_number',
 		'offer_actions',
 		'offer_actions_shipping_methods_xref',
+		'offer_conditions',
 		'offer_rules',
 		'offer_rules_products_xref',
 		'offers',
@@ -3510,6 +7417,8 @@ function get_tables() {
 		'product_groups_images_xref',
 		'product_submit_form_fields',
 		'products',
+		'push_subscriptions',
+		'push_queue',
 		'products_attributes_xref',
 		'products_groups_xref',
 		'products_zones_xref',
@@ -3561,2762 +7470,30 @@ function get_tables() {
 		'zones_countries_xref',
 		'zones_states_xref',
 		'dashboard',
-		'custom_apps',
 		'notifications',
+		'notification_reads',
 		'iyzipay_3ds_state',
 		'order_refunds',
 		'product_barcodes',
 		'shared_components',
 		'perf_log',
 		'perf_stats',
+		'waf_bot_ranges',
 		'waf_log',
 		'waf_rate',
 		'waf_ip_reputation',
 		'chat_conversations',
 		'chat_messages',
 		'cron_runs',
+		'recycle_bin',
 		'seo_issue',
 		'seo_link',
 		'visitor_stats_hourly',
 		'visitor_content_hourly',
 		'local_sale_history',
 		'local_sale_history_items',
+		'designer_presence',
+		'designer_page_lock',
 	);
 
-}
-
-// Add custom shipping form support to express order
-
-
-function upgrade_to_2017_2_1() {
-
-	db("ALTER TABLE express_order_pages ADD shipping_form TINYINT UNSIGNED NOT NULL DEFAULT 0");
-
-	db("ALTER TABLE express_order_pages DROP shipping_address_and_arrival_page_id");
-
-	// Add new form type property to fields because we will need to distiguish between shipping
-	// and billing fields for express order
-	db("ALTER TABLE form_fields ADD form_type ENUM('', 'custom', 'product', 'shipping', 'billing') NOT NULL DEFAULT ''");
-
-	db("ALTER TABLE form_fields ADD INDEX form_type (form_type)");
-
-	// Get all fields in order to set form type
-	
-
-	$fields = db_items(
-
-	"SELECT
-
-			form_fields.id,
-
-			form_fields.product_id,
-
-			page.page_type
-
-		FROM form_fields
-
-		LEFT JOIN page ON form_fields.page_id = page.page_id
-
-		ORDER BY form_fields.id");
-
-	foreach ($fields as $field) {
-
-		$field['form_type'] = '';
-
-		if ($field['page_type'] == 'custom form') {
-
-			$field['form_type'] = 'custom';
-
-		}
-		else if ($field['page_type'] == 'shipping address and arrival') {
-
-			$field['form_type'] = 'shipping';
-
-		}
-		else if (
-
-		$field['page_type'] == 'billing information' or $field['page_type'] == 'express order') {
-
-			$field['form_type'] = 'billing';
-
-		}
-		else if ($field['product_id']) {
-
-			$field['form_type'] = 'product';
-
-		}
-
-		db(
-
-		"UPDATE form_fields
-
-			SET form_type = '" . $field['form_type'] . "'
-
-			WHERE id = '" . $field['id'] . "'");
-
-	}
-
-}
-
-// Update forgot password feature to send token link in email instead of temp password.
-
-
-function upgrade_to_2017_2_2() {
-
-	// Try to find a change random password page, so we can update field names
-	$page_id = db("SELECT page_id FROM page WHERE page_type = 'change random password' LIMIT 1");
-
-	// Change page_type enum from change random password to set password for in page table
-	db("ALTER TABLE page CHANGE page_type page_type ENUM( 'standard', 'change password', 
-
-		'set password', 'email a friend', 'error', 'folder view', 'forgot password', 'login', 
-
-		'logout', 'photo gallery', 'membership confirmation', 'membership entrance', 'my account', 
-
-		'my account profile', 'email preferences', 'view order', 'update address book', 'custom form', 
-
-		'custom form confirmation', 'form list view', 'form item view', 'form view directory', 
-
-		'calendar view', 'calendar event view', 'catalog', 'catalog detail', 'express order', 
-
-		'order form', 'shopping cart', 'shipping address and arrival', 'shipping method', 
-
-		'billing information', 'order preview', 'order receipt', 'registration confirmation', 
-
-		'registration entrance', 'search results', 'affiliate sign up form', 
-
-		'affiliate sign up confirmation', 'affiliate welcome') NOT NULL DEFAULT 'standard'");
-
-	// Find root folder to assign to set-pass page
-	$root_folder = db("SELECT folder_id FROM folder WHERE folder_parent = '0' LIMIT 1");
-
-	// If page id was found, rename change random password to set-pass
-	// And change folder to root
-	if ($page_id != '') {
-
-		db(
-
-		"UPDATE page SET 
-
-				page_type = 'set password', 
-
-				page_name = 'set-pass', 
-
-				page_folder = '" . $root_folder . "' 
-
-			WHERE page_id = '" . $page_id . "' LIMIT 1");
-
-	}
-
-	// If a change random password page was found and there is a custom layout, then update custom layout
-	if ($page_id and file_exists(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php')) {
-
-		// Get the custom layout content
-		$content = file_get_contents(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php');
-
-		// If a custom layout file was found, then continue to update it
-		if ($content) {
-
-			// Backup old file
-			copy(
-
-			LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php',
-
-			LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.bak.php');
-
-			// Remove password verify
-			$content = str_replace('<input type="password" name="new_password_verify" id="new_password_verify" placeholder="Confirm New Password*">', '', $content);
-
-			// Update custom layout
-			file_put_contents(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php', $content);
-
-		}
-
-	}
-
-	// Try to find a forgot password page, so we can update button to send email
-	$page_id = db("SELECT page_id FROM page WHERE page_type = 'forgot password' LIMIT 1");
-
-	// If a forgot password page was found and there is a custom layout, then update custom layout
-	if ($page_id and file_exists(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php')) {
-
-		// Get the custom layout content
-		$content = file_get_contents(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php');
-
-		// If a custom layout file was found, then continue to update it
-		if ($content) {
-
-			// Backup old file
-			copy(
-
-			LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php',
-
-			LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.bak.php');
-
-			$new_label = 'Send Email';
-
-			// Search for two common old labels and replace with new label.
-			$content = str_replace('Email Temporary Password', $new_label, $content);
-
-			$content = str_replace('Send Password', $new_label, $content);
-
-			// Update custom layout
-			file_put_contents(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php', $content);
-
-		}
-
-	}
-
-	// Alter table to handle token to be emailed for reset password. We purposely allow NULL for
-	// the token column, so that we can use a UNIQUE index. Most of the users won't have a token
-	// at any given time, but MySQL allows a UNIQUE index for multiple NULL records (does not allow
-	// that for empty string).
-	db(
-
-	"ALTER TABLE user
-
-		DROP user_random_password,
-
-		ADD token VARCHAR(64),
-
-		ADD token_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD UNIQUE (token)");
-
-}
-
-// Add feature to allow the commerce manager to set whether the key code or offer code should be
-// reported on, for each key code.
-
-
-function upgrade_to_2017_2_3() {
-
-	db("ALTER TABLE key_codes ADD report ENUM('key_code', 'offer_code') NOT NULL DEFAULT 'key_code'");
-
-	// Update existing key codes so that report is set to offer code for single-use key codes,
-	// because that was the previous way that we used to determine if an offer code should be
-	// reported on.
-	db("UPDATE key_codes SET report = 'offer_code' WHERE single_use = '1'");
-
-}
-
-// Add real-time delivery date feature.
-
-
-function upgrade_to_2017_2_4() {
-
-	// Add new real-time rate column because the service column is now going to be used for both
-	// real-time rates and delivery dates.
-	db("ALTER TABLE shipping_methods ADD realtime_rate TINYINT UNSIGNED NOT NULL DEFAULT 0");
-
-	db("UPDATE shipping_methods SET realtime_rate = '1' WHERE service != ''");
-
-	db("ALTER TABLE shipping_methods CHANGE service service ENUM('', 'usps_priority', 'usps_express', 'usps_ground', 'ups_next_day_air', 'ups_next_day_air_early', 'ups_next_day_air_saver', 'ups_2nd_day_air', 'ups_2nd_day_air_am', 'ups_3_day_select', 'ups_ground', 'fedex_first_overnight', 'fedex_priority_overnight', 'fedex_standard_overnight', 'fedex_2_day_am', 'fedex_2_day', 'fedex_express_saver', 'fedex_ground') NOT NULL DEFAULT ''");
-
-	db("ALTER TABLE shipping_rates CHANGE service service ENUM('usps_priority', 'usps_express', 'usps_ground', 'ups_next_day_air', 'ups_next_day_air_early', 'ups_next_day_air_saver', 'ups_2nd_day_air', 'ups_2nd_day_air_am', 'ups_3_day_select', 'ups_ground', 'fedex_first_overnight', 'fedex_priority_overnight', 'fedex_standard_overnight', 'fedex_2_day_am', 'fedex_2_day', 'fedex_express_saver', 'fedex_ground') NOT NULL DEFAULT 'usps_priority'");
-
-	db(
-
-	"ALTER TABLE config
-
-		ADD ups TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD fedex TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD fedex_key VARCHAR(100) NOT NULL DEFAULT '',
-
-		ADD fedex_password VARCHAR(100) NOT NULL DEFAULT '',
-
-		ADD fedex_account VARCHAR(100) NOT NULL DEFAULT '',
-
-		ADD fedex_meter VARCHAR(100) NOT NULL DEFAULT ''");
-
-	// Enable new ups check box if site was using UPS.
-	db("UPDATE config SET ups = '1' WHERE ups_key != ''");
-
-	// Create delivery date cache table in order to minimize requests to carriers.
-	db(
-
-	"CREATE TABLE shipping_delivery_dates (
-
-			id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-
-			service ENUM('usps_priority', 'usps_express', 'usps_ground', 'ups_next_day_air', 'ups_next_day_air_early', 'ups_next_day_air_saver', 'ups_2nd_day_air', 'ups_2nd_day_air_am', 'ups_3_day_select', 'ups_ground', 'fedex_first_overnight', 'fedex_priority_overnight', 'fedex_standard_overnight', 'fedex_2_day_am', 'fedex_2_day', 'fedex_express_saver', 'fedex_ground') NOT NULL DEFAULT 'usps_priority',
-
-			zip_code VARCHAR(50) NOT NULL DEFAULT '',
-
-			ship_date DATE NOT NULL DEFAULT '0000-00-00',
-
-			delivery_date DATE NOT NULL DEFAULT '0000-00-00',
-
-			timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-
-			INDEX combination (service, zip_code, ship_date),
-
-			INDEX timestamp (timestamp)
-
-		)" . ENGINE);
-
-}
-
-// Add handling features in order to determine, more precisely, when a shipment is shipped out.
-
-
-function upgrade_to_2017_2_5() {
-
-	db(
-
-	"ALTER TABLE shipping_methods
-
-		ADD handle_days SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_mon TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_tue TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_wed TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_thu TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_fri TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_sat TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD handle_sun TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_mon TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_tue TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_wed TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_thu TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_fri TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_sat TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD ship_sun TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD end_of_day TIME NOT NULL DEFAULT '00:00:00'");
-
-	// Update existing shipping methods so weekdays are enabled for both handling and shipping.
-	db(
-
-	"UPDATE shipping_methods SET
-
-			handle_mon = '1',
-
-			handle_tue = '1',
-
-			handle_wed = '1',
-
-			handle_thu = '1',
-
-			handle_fri = '1',
-
-			ship_mon = '1',
-
-			ship_tue = '1',
-
-			ship_wed = '1',
-
-			ship_thu = '1',
-
-			ship_fri = '1'");
-
-}
-
-// Add feature to allow only certain countries to require zip code.  Also, adding indexes to increase
-// performance.
-
-
-function upgrade_to_2017_2_6() {
-
-	db(
-
-	"ALTER TABLE countries
-
-		ADD zip_code_required TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD INDEX code (code),
-
-		ADD INDEX default_selected (default_selected)");
-
-	// Update certain countries so that zip code is required.
-	// Source: https://www.ups.com/worldshiphelp/WS16/ENU/AppHelp/Codes/Countries_Territories_Requiring_Postal_Codes.htm
-	
-
-	$zip_code_required_countries = array(
-		'DZ',
-		'AR',
-		'AM',
-		'AU',
-		'AT',
-		'AZ',
-		'A2',
-		'BD',
-		'BY',
-		'BE',
-		'BA',
-		'BR',
-		'BN',
-		'BG',
-		'CA',
-		'IC',
-		'CN',
-		'HR',
-		'CY',
-		'CZ',
-		'DK',
-		'EN',
-		'EE',
-		'FO',
-		'FI',
-		'FR',
-		'GE',
-		'DE',
-		'GR',
-		'GL',
-		'GU',
-		'GG',
-		'HO',
-		'HU',
-		'IN',
-		'ID',
-		'IL',
-		'IT',
-		'JP',
-		'JE',
-		'KZ',
-		'KR',
-		'KO',
-		'KG',
-		'LV',
-		'LI',
-		'LT',
-		'LU',
-		'MK',
-		'MG',
-		'M3',
-		'MY',
-		'MH',
-		'MQ',
-		'YT',
-		'MX',
-		'MN',
-		'ME',
-		'NL',
-		'NZ',
-		'NB',
-		'NO',
-		'PK',
-		'PH',
-		'PL',
-		'PO',
-		'PT',
-		'PR',
-		'RE',
-		'RU',
-		'SA',
-		'SF',
-		'CS',
-		'SG',
-		'SK',
-		'SI',
-		'ZA',
-		'ES',
-		'LK',
-		'NT',
-		'SX',
-		'UV',
-		'VL',
-		'SE',
-		'CH',
-		'TW',
-		'TJ',
-		'TH',
-		'TU',
-		'TN',
-		'TR',
-		'TM',
-		'VI',
-		'UA',
-		'GB',
-		'US',
-		'UY',
-		'UZ',
-		'VA',
-		'VN',
-		'WL',
-		'YA'
-	);
-
-	foreach ($zip_code_required_countries as $country) {
-
-		db("UPDATE countries SET zip_code_required = '1' WHERE code = '" . e($country) . "'");
-
-	}
-
-}
-
-// Add index for order reference code in order to improve performance.  When an order is created
-// a lookup is done in order to check that the new reference code is unique.  Previously, when a
-// site had millions of orders, that lookup could become slow.  That might have caused the customer
-// to experience a 1-2 second delay after adding an item to the cart.
-
-
-function upgrade_to_2017_2_7() {
-
-	// Get orders that do not have a reference code, in order to add a reference code, so that we
-	// can add a unique index further below.  We noticed that one site had a bunch of orders
-	// with no reference code.  We are not sure why.
-	$orders = db_items("SELECT id FROM orders WHERE reference_code = ''");
-
-	if ($orders) {
-
-		// Add a regular index temporarily for performance reasons.
-		db("ALTER TABLE orders ADD INDEX reference_code (reference_code)");
-
-		// Loop through the orders in order to insert a reference code.
-		foreach ($orders as $order) {
-
-			db(
-
-			"UPDATE orders SET reference_code = '" . e(generate_order_reference_code()) . "'
-
-				WHERE id = '" . e($order['id']) . "'");
-
-		}
-
-		// Remove the regular index, because we don't need it anymore and we want to add a unique
-		// index below.
-		db("ALTER TABLE orders DROP INDEX reference_code");
-
-	}
-
-	// Now, add the unique index that we want.
-	db("ALTER TABLE orders ADD UNIQUE reference_code (reference_code)");
-
-}
-
-// Add order shipped auto campaign feature
-
-
-function upgrade_to_2017_2_8() {
-
-	db(
-
-	"ALTER TABLE email_campaign_profiles
-
-		ADD purpose ENUM('commercial', 'transactional') NOT NULL DEFAULT 'commercial',
-
-		CHANGE action action ENUM('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_shipped', 'product_ordered') NOT NULL DEFAULT 'calendar_event_reserved'");
-
-	db(
-
-	"ALTER TABLE email_campaigns
-
-		ADD purpose ENUM('commercial', 'transactional') NOT NULL DEFAULT 'commercial',
-
-		CHANGE action action ENUM('', 'calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'gift_card_ordered', 'order_abandoned', 'order_completed', 'order_shipped', 'product_ordered') NOT NULL DEFAULT ''");
-
-	db("UPDATE email_campaigns SET purpose = 'transactional' WHERE action = 'gift_card_ordered'");
-
-}
-
-// Add feature to allow ul class for menu to be set.
-
-
-function upgrade_to_2017_2_9() {
-
-	db("ALTER TABLE menus ADD class VARCHAR(255) NOT NULL DEFAULT ''");
-
-}
-
-// Add notes feature to key codes.
-
-
-function upgrade_to_2017_2_10() {
-
-	db("ALTER TABLE key_codes ADD notes MEDIUMTEXT NOT NULL DEFAULT ''");
-
-}
-
-// Add MailChimp feature to sync products and orders.
-
-
-function upgrade_to_2017_2_11() {
-
-	db("ALTER TABLE config
-
-		ADD mailchimp TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD mailchimp_key VARCHAR(100) NOT NULL DEFAULT '',
-
-		ADD mailchimp_list_id VARCHAR(100) NOT NULL DEFAULT '',
-
-		ADD mailchimp_store_id VARCHAR(100) NOT NULL DEFAULT '',
-
-		ADD mailchimp_sync_running TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD mailchimp_sync_days SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD mailchimp_sync_limit INT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD mailchimp_automation TINYINT UNSIGNED NOT NULL DEFAULT 0");
-
-	// Set defaults so job will sync the past 3 years of orders, and will sync a max of 200 orders
-	// each time it runs.
-	db("UPDATE config SET mailchimp_sync_days = '1095', mailchimp_sync_limit = '200'");
-
-	db("ALTER TABLE orders
-
-		ADD mailchimp_sync_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD mailchimp_sync_error TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD INDEX mailchimp_sync_timestamp (mailchimp_sync_timestamp)");
-
-	// If there is not already an index for billing_email_address, then add one.  We noticed that
-	// a few sites had customizations where there was already an index for that column.
-	// The index for the billing email address is necessary because we need to look up the total
-	// number of orders and total revenue for a customer, in order to send it to MailChimp.
-	if (!db("SHOW INDEX FROM orders WHERE Column_name = 'billing_email_address'")) {
-
-		db("ALTER TABLE orders ADD INDEX billing_email_address (billing_email_address)");
-
-	}
-
-	db("ALTER TABLE product_groups
-
-		ADD mailchimp_sync_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD INDEX timestamp (timestamp),
-
-		ADD INDEX mailchimp_sync_timestamp (mailchimp_sync_timestamp)");
-
-	db("ALTER TABLE products
-
-		ADD mailchimp_sync_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-
-		ADD INDEX mailchimp_sync_timestamp (mailchimp_sync_timestamp)");
-
-}
-
-// Add feature to allow multiple products for offer rules.
-
-
-function upgrade_to_2017_2_12() {
-
-	db("
-
-		CREATE TABLE offer_rules_products_xref
-
-		(
-
-			offer_rule_id INT UNSIGNED NOT NULL DEFAULT 0,
-
-			product_id INT UNSIGNED NOT NULL DEFAULT 0,
-
-			INDEX offer_rule_id (offer_rule_id),
-
-			INDEX product_id (product_id)
-
-		)" . ENGINE);
-
-	// Get existing offer rules that have a required product in order to move info to new table.
-	$offer_rules = db_items("
-
-		SELECT id, required_product_id FROM offer_rules WHERE required_product_id != '0'");
-
-	// If there are offer rules, the move info to new table.
-	if ($offer_rules) {
-
-		foreach ($offer_rules as $offer_rule) {
-
-			db("
-
-				INSERT INTO offer_rules_products_xref (
-
-					offer_rule_id,
-
-					product_id)
-
-				VALUES (
-
-					'" . e($offer_rule['id']) . "',
-
-					'" . e($offer_rule['required_product_id']) . "')");
-
-		}
-
-	}
-
-	// Remove the old product column that is no longer necessary.
-	db("ALTER TABLE offer_rules DROP required_product_id");
-
-}
-
-// Add custom layout support for form item views.
-
-
-function upgrade_to_2017_2_13() {
-
-	// We have to run the query below because even though we did not support custom layout for form
-	// item views in the past, a form item view might have been set to custom in the DB, if it was
-	// duplicated from another page.  After the update, we want all form item views to have a
-	// system layout, like before.
-	
-
-	db("UPDATE page SET layout_type = 'system', layout_modified = '0'
-
-		WHERE page_type = 'form item view'");
-
-}
-
-//subsription key
-// Add language option and default theme option for software.
-//Theme is Depricated, we are using browser based light/dark theme now.
-function upgrade_to_2019_1_1() {
-
-	db("ALTER TABLE config
-	ADD subscription_key VARCHAR(256) NOT NULL DEFAULT '',
-	ADD software_theme ENUM('coloron','darkon','lighton') NOT NULL DEFAULT 'coloron'");
-
-}
-
-// Add developer pass pin to All Users (default pin:0000)
-//Developers define to config.php to page name and an unlock pin to lock pages.
-//If page name define like below, users redirect to developer_lock.php.
-//Software ask's pin code to unlock and access to page.
-//If user enter pin  correct, software redirect user to page try to access and no redirect developer_lock.php until Pin code is change.
-function upgrade_to_2019_1_2() {
-
-	db("ALTER TABLE user ADD user_devpasspin VARCHAR(4) NOT NULL DEFAULT '0000'");
-
-}
-
-// Here we integrate payment gateway iyzipay api key and secret key
-function upgrade_to_2019_1_3() {
-
-	db("ALTER TABLE config 
-
-		ADD ecommerce_iyzipay_api_key VARCHAR(255) NOT NULL DEFAULT '',
-
-		ADD ecommerce_iyzipay_secret_key VARCHAR(255) NOT NULL DEFAULT ''");
-
-}
-
-// Than update gateway Select and include iyzipay option
-function upgrade_to_2019_1_4() {
-
-	db("ALTER TABLE config CHANGE ecommerce_payment_gateway ecommerce_payment_gateway ENUM('', 'Authorize.Net', 'ClearCommerce', 'First Data Global Gateway', 'PayPal Payflow Pro', 'PayPal Payments Pro', 'Sage', 'Stripe','Iyzipay') NOT NULL DEFAULT ''");
-
-}
-
-function upgrade_to_2019_1_5() {
-
-	db("ALTER TABLE config ADD ecommerce_iyzipay_installment ENUM('1', '2', '3', '6', '9', '12') NOT NULL DEFAULT '1'");
-
-}
-
-function upgrade_to_2019_1_6() {
-
-	db("ALTER TABLE config ADD ecommerce_iyzipay_threeds TINYINT UNSIGNED NOT NULL DEFAULT 0");
-
-}
-
-function upgrade_to_2019_2_3() {
-
-	db("ALTER TABLE config ADD time_format ENUM('twelve_hours', 'twenty_four_hours') NOT NULL DEFAULT 'twelve_hours'");
-
-}
-
-//The Future lets you upload/select multiple images and use it in your product detail page both product and product group.
-function upgrade_to_2020_1_1() {
-
-	db("
-
-	   CREATE TABLE products_images_xref
-
-	   (
-
-		   product INT UNSIGNED NOT NULL DEFAULT 0,
-
-		   file_name VARCHAR(255) DEFAULT ''
-
-	   )" . ENGINE);
-
-	db("
-
-	   CREATE TABLE product_groups_images_xref
-
-	   (
-
-		   product_group INT UNSIGNED NOT NULL DEFAULT 0,
-
-		   file_name VARCHAR(255) DEFAULT ''
-
-	   )" . ENGINE);
-
-}
-
-function upgrade_to_2020_1_5() {
-
-	//this update contains some updates installment options for submit order,order checkout and view order pages to show instalment prices and amounts
-	//payment installment is if there is installment and how many installments
-	db("ALTER TABLE orders ADD payment_installment INT UNSIGNED NOT NULL DEFAULT 1");
-
-	//and installment charge is increase of installments charges.
-	db("ALTER TABLE orders ADD installment_charges INT UNSIGNED NOT NULL DEFAULT 0");
-
-	//it is not out of stock message, it is for new out of stock products fallow method. if this is return to 1 from submit_order page than this product, displayed on out of stock page and welcome page
-	db("ALTER TABLE products
-
-	ADD out_of_stock INT UNSIGNED NOT NULL DEFAULT 0,
-
-	ADD out_of_stock_timestamp INT UNSIGNED NOT NULL DEFAULT 0");
-
-}
-
-// who is online.
-function upgrade_to_2020_1_6() {
-
-	db("ALTER TABLE user ADD user_online_timestamp INT UNSIGNED NOT NULL DEFAULT 0");
-
-}
-
-//default product code
-//this is product image code template for Add Product pages.
-//after product image code loop developed and products support multiple image selection this example may help users to add faster products
-function upgrade_to_2020_1_7() {
-
-	db("ALTER TABLE config ADD product_image_code_template TEXT");
-
-}
-
-function upgrade_to_2020_2_3() {
-
-	db("ALTER TABLE config MODIFY subscription_key VARCHAR(256)");
-
-}
-// Dashboard widget screen options for the welcome page
-function upgrade_to_2021_1_3() {
-	// Create dashboard table with main configuration
-	db("
-		CREATE TABLE dashboard (
-			main_weather_location VARCHAR(255) DEFAULT 'london'
-		)" . ENGINE
-	);
-
-	// Add visual configuration columns
-	db("ALTER TABLE dashboard ADD bg_image VARCHAR(256) NOT NULL DEFAULT 'bg_metapolis'");
-	db("ALTER TABLE dashboard ADD widget_themes ENUM('blur_one', 'blur_two', 'blur_three') NOT NULL DEFAULT 'blur_one'");
-}
-
-//The Future lets you widget activate/deactivate or order them.
-function upgrade_to_2021_1_8() {
-
-	//insert into dashboard order_widget default all widgets active and default order.
-	db("ALTER TABLE dashboard ADD order_widgets VARCHAR(256) NOT NULL DEFAULT '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19'");
-
-}
-
-// Yahoo weather api integration
-function upgrade_to_2021_1_9() {
-	db("ALTER TABLE dashboard ADD weather_app_id VARCHAR(256) DEFAULT ''");
-	db("ALTER TABLE dashboard ADD weather_key VARCHAR(256) DEFAULT ''");
-	db("ALTER TABLE dashboard ADD weather_secret VARCHAR(256) DEFAULT ''");
-}
-
-// Note Widget
-function upgrade_to_2021_1_11() {
-	db("ALTER TABLE dashboard ADD notes_widget_data TEXT");
-	$query = "UPDATE dashboard
-            SET
-            notes_widget_data = 'PGgxPkNvbW1vbiBub3RlIGFyZWEgZm9yIHNpdGUgPHN0cm9uZyBzdHlsZT0iY29sb3I6IHJnYigxMDIsIDE4NSwgMTAyKTsiPmFkbWluaXN0cmF0b3JzPC9zdHJvbmc+PC9oMT48cD48YnI+PC9wPjxwPjxzdHJvbmc+YWRkPC9zdHJvbmc+IG9yIDxzdHJvbmc+ZWRpdDwvc3Ryb25nPiBub3RlcyBoZXJlLjwvcD48cD5vciBsaXN0cyBsaWtlOjwvcD48b2w+PGxpPkxpc3QgY29udGVudDwvbGk+PGxpPkFub3RoZXIgbGlzdCBjb250ZW50PC9saT48L29sPjx1bD48bGk+U3ViIGxpc3QgY29udGVudDwvbGk+PGxpPkFub3RoZXIgc3ViIGxpc3QgY29udGVudDwvbGk+PC91bD4='
-        ";
-	$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-}
-function upgrade_to_2021_1_12() {
-	db("ALTER TABLE dashboard CHANGE widget_themes widget_themes ENUM('blur_one', 'blur_two','blur_three','classic')");
-}
-function upgrade_to_2021_1_14() {
-	db("ALTER TABLE config ADD custom_css TEXT");
-	$query = "UPDATE config
-            SET
-            custom_css = '/* Custom Stylesheet that can overwrite backend CSS files */'
-        ";
-	$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-}
-
-function upgrade_to_2021_3() {
-	db("ALTER TABLE user ADD secret_key VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE user ADD secret_key_iv VARBINARY(32) DEFAULT ''");
-}
-// Custom Applications allow updating website data with a REST API type method.
-function upgrade_to_2021_4_1() {
-
-	db("
-  CREATE TABLE custom_apps
-  (
-    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY
-  )" . ENGINE);
-
-	db("ALTER TABLE custom_apps ADD create_user_id INT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE custom_apps ADD name VARCHAR(256) DEFAULT ''");
-	db("ALTER TABLE custom_apps ADD type VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE custom_apps ADD method ENUM('POST', 'GET')");
-	db("ALTER TABLE custom_apps ADD api_key VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE custom_apps ADD api_key_iv VARBINARY(32) DEFAULT ''");
-	db("ALTER TABLE custom_apps ADD timestamp INT UNSIGNED NOT NULL DEFAULT 0");
-}
-//software gained pin pages to menu features with this upgrade.
-function upgrade_to_2021_4_3() {
-	db("ALTER TABLE user ADD selected_appmenu_items_array TEXT");
-	$query = "UPDATE user
-            SET
-            selected_appmenu_items_array = 'default'
-        ";
-	$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-}
-//Notification system is included in the software. Site activities will now generate notifications.
-function upgrade_to_2021_4_4() {
-
-	db("
-  CREATE TABLE notifications
-  (
-    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY
-  )" . ENGINE);
-
-	db("ALTER TABLE notifications ADD action VARCHAR(100) DEFAULT ''");
-  	db("ALTER TABLE notifications ADD type VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD title VARCHAR(256) DEFAULT ''");
-	db("ALTER TABLE notifications ADD product_id VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD form_id VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD order_id VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD order_total VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD user VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD readed INT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE notifications ADD timestamp INT UNSIGNED NOT NULL DEFAULT 0");
-}
-//Notifications gained link and comment tracking features with this upgrade.
-function upgrade_to_2021_4_7() {
-	db("ALTER TABLE notifications ADD comment_id VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE notifications ADD send_to VARCHAR(500) DEFAULT ''");
-}
-// we add media support to rss fields.
-function upgrade_to_2022_1() {
-	db("ALTER TABLE form_fields CHANGE rss_field rss_field ENUM('category', 'title','description','media')");
-}
-// we add image connect to contact support.
-// if textbox or textarea its save in image and use form data
-// if its file upload input, use file id.
-function upgrade_to_2022_1_1() {
-	db("ALTER TABLE contacts ADD image TEXT");
-	db("ALTER TABLE contacts ADD file_id INT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE form_fields CHANGE contact_field contact_field ENUM('','salutation','first_name','last_name','suffix','nickname','company','title','department','office_location','business_address_1','business_address_2','business_city','business_state','business_country','business_zip_code','business_phone','business_fax','home_address_1','home_address_2','home_city','home_state','home_country','home_zip_code','home_phone','home_fax','mobile_phone','email_address','website','lead_source','opt_in','description','affiliate_name','image')");
-}
-
-// google strutured data is manage by site managers
-// default is disabled
-function upgrade_to_2022_1_2() {
-	db("ALTER TABLE config
-	ADD strutured_data TINYINT UNSIGNED NOT NULL DEFAULT 0");
-}
-// we add option to control visual effects
-// defaul enabled
-function upgrade_to_2022_1_7() {
-	db("ALTER TABLE config
-	ADD advanced_visual_effects INT UNSIGNED NOT NULL DEFAULT 1");
-}
-//auto backup feature is initialize in this upgrade.
-//cron job or with any request can create a simple backup or update last auto backup.
-// last_software_auto_backup using for check last auto backup date, because auto backup can run only once a day for performance and security reasons.
-function upgrade_to_2022_1_8() {
-	db("ALTER TABLE config
-	ADD last_software_auto_backup INT UNSIGNED NOT NULL DEFAULT 0");
-}
-//We used to store software subscription information with "subscription_key" but now it will be stored as "subscription_id". (10 digit a-z 1-9)
-//In addition, the software license key will be stored with the "subscription_key". (16 digit 1-9)
-function upgrade_to_2022_1_9() {
-	$query = "UPDATE config SET subscription_id = subscription_key, subscription_key = ''";
-	$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-}
-
-// We remove default values for these columns, because mysql new releases do not support default for TEXT.
-// new upgrades do not contain default values but old upgraded sites may contain defaults.
-function upgrade_to_2022_2() {
-	db("ALTER TABLE config ALTER custom_css  DROP DEFAULT");
-	db("ALTER TABLE dashboard ALTER notes_widget_data  DROP DEFAULT");
-	db("ALTER TABLE user ALTER selected_appmenu_items_array  DROP DEFAULT");
-}
-
-// local_sale_history table log all local orders with barcode scanned sales.
-// We record online sales and local sales separately.
-// also we create a table for local sale items and connect them with local sale id
-function upgrade_to_2022_2_1() {
-	db(" CREATE TABLE local_sale_history ( id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY )" . ENGINE);
-  	db("ALTER TABLE local_sale_history ADD sale_date INT UNSIGNED NOT NULL DEFAULT 0");
-	db("CREATE TABLE local_sale_history_items (
-		id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		local_sale_id INT UNSIGNED NOT NULL DEFAULT 0, 
-		product_id INT UNSIGNED NOT NULL DEFAULT 0,
-		product_name varchar(100) NOT NULL DEFAULT '',
-		quantity INT UNSIGNED NOT NULL DEFAULT 0,
-		price INT UNSIGNED NOT NULL DEFAULT 0,
-		tax INT UNSIGNED NOT NULL DEFAULT 0
-	)" . ENGINE);
-}
-
-
-// a new menu and pinning menu has been created.
-// pin menu items from the old build cannot fit in the new pin area. So we reset the menu and select the most functional links.
-// Users will be able to pin links up to a certain number if they wish.
-function upgrade_to_2022_2_2() {
-	db("UPDATE user SET selected_appmenu_items_array = 'default' WHERE selected_appmenu_items_array != 'default'");
-}
-
-//enable parasut configuration.
-// this is a e-invoice website used at Turkey.
-//you can merge order and contact data at parasut.com with 2 excel file exported from [all orders] page.
-function upgrade_to_2022_3_2() {
-	db("ALTER TABLE config ADD parasut_tc_in_field ENUM('do not use', 'custom_field_1', 'custom_field_2') NOT NULL DEFAULT 'do not use'");
-	db("ALTER TABLE config ADD enable_parasut INT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE orders ADD parasut_exported INT UNSIGNED NOT NULL DEFAULT 0");
-}
-
-function upgrade_to_2023_1() {
-	db("ALTER TABLE config ADD enable_iyzipay_protected_currency INT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE config ADD iyzipay_protected_currency_code VARCHAR(255) NOT NULL DEFAULT ''");
-
-}
-
-function upgrade_to_2023_2_1() {
-	db("ALTER TABLE comments ADD rating TINYINT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE page ADD comments_rating TINYINT UNSIGNED NOT NULL DEFAULT 0");
-}
-
-
-
-
-function upgrade_to_2026_1() {
-	db("ALTER TABLE short_links ADD file_id VARCHAR(100) DEFAULT ''");
-	db("ALTER TABLE short_links MODIFY destination_type ENUM('page', 'product_group', 'product', 'url', 'file') NOT NULL DEFAULT 'page'");
-	db("ALTER TABLE config ADD indexnow_key VARCHAR(256) NOT NULL DEFAULT ''");
-	db("CREATE TABLE iyzipay_3ds_state (
-    	id INT AUTO_INCREMENT PRIMARY KEY,
-    	conversation_id VARCHAR(64) NOT NULL,
-    	payment_id VARCHAR(64) DEFAULT NULL,
-    	order_id INT NOT NULL,
-    	subtotal_cents INT NOT NULL,
-    	discount_cents INT DEFAULT 0,
-    	installment_charge_cents INT DEFAULT 0,
-    	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    	INDEX (conversation_id),
-    	INDEX (payment_id),
-    	INDEX (order_id)
-	)" . ENGINE);
-	db("ALTER TABLE config ADD ecommerce_troy TINYINT(4) NOT NULL DEFAULT 1");
-	db("ALTER TABLE user MODIFY user_devpasspin VARCHAR(255) NOT NULL DEFAULT ''");
-	db("ALTER TABLE custom_apps ADD permissions JSON NOT NULL");
-}
-
-function upgrade_to_2026_1_1() {
-	// Bot filtering: allowed bots list + block unknown bots toggle.
-	$default_bots = "googlebot\nbingbot\nslurp\nduckduckbot\nbaiduspider\nyandexbot\nsogou\nexabot\nfacebot\nia_archiver";
-	db("ALTER TABLE config ADD allowed_bots TEXT DEFAULT NULL");
-	db("ALTER TABLE config ADD block_unknown_bots TINYINT(1) NOT NULL DEFAULT 0");
-	db("UPDATE config SET allowed_bots = '" . escape($default_bots) . "'");
-}
-
-function upgrade_to_2026_1_2() {
-	// Add composite index on visitors table to speed up the 30-minute deduplication
-	// query that runs on every new session (get_page.php).
-	db("ALTER TABLE visitors ADD INDEX idx_dedup (ip_address, stop_timestamp)");
-}
-
-function upgrade_to_2026_1_3() {
-	// Add hash columns for fast, single-query API authentication (no decrypt loops).
-	// user.secret_key_hash     → WHERE lookup instead of decrypt-all-users
-	// custom_apps.api_key_hash → WHERE lookup instead of decrypt-all-apps
-
-	db("ALTER TABLE user ADD COLUMN secret_key_hash VARCHAR(64) DEFAULT NULL");
-	db("ALTER TABLE user ADD INDEX idx_secret_key_hash (secret_key_hash)");
-
-	db("ALTER TABLE custom_apps ADD COLUMN api_key_hash VARCHAR(64) DEFAULT NULL");
-	db("ALTER TABLE custom_apps ADD INDEX idx_api_key_hash (api_key_hash)");
-
-	// Backfill users: compute HMAC of each plaintext secret key.
-	$users = db_items("SELECT user_id, secret_key, secret_key_iv FROM user WHERE secret_key != '' AND secret_key IS NOT NULL");
-	foreach ($users as $row) {
-		$plain = decode_ssl_keys($row['secret_key'], $row['secret_key_iv']);
-		if ($plain === '') continue;
-		$hash = hash_hmac('sha256', $plain, ENCRYPTION_KEY);
-		db("UPDATE user SET secret_key_hash = '" . escape($hash) . "' WHERE user_id = " . (int)$row['user_id']);
-	}
-
-	// Backfill apps: compute HMAC of each plaintext API key.
-	$apps = db_items("SELECT id, api_key, api_key_iv FROM custom_apps WHERE api_key != '' AND api_key IS NOT NULL");
-	foreach ($apps as $row) {
-		$plain = decode_ssl_keys($row['api_key'], $row['api_key_iv']);
-		if ($plain === '') continue;
-		$hash = hash_hmac('sha256', $plain, ENCRYPTION_KEY);
-		db("UPDATE custom_apps SET api_key_hash = '" . escape($hash) . "' WHERE id = " . (int)$row['id']);
-	}
-}
-
-function upgrade_to_2026_1_4() {
-	// Add type column to orders to distinguish online vs. local (in-store) orders.
-	// Default is 'online' so all existing orders are automatically classified correctly.
-	db("ALTER TABLE orders ADD COLUMN type VARCHAR(20) NOT NULL DEFAULT 'online'");
-	db("ALTER TABLE orders ADD INDEX idx_type (type)");
-}
-
-function upgrade_to_2026_1_5() {
-	// local_sale_history and local_sale_history_items are no longer used.
-	// Local sales are now tracked via orders.type = 'local'.
-	db("DROP TABLE IF EXISTS local_sale_history_items");
-	db("DROP TABLE IF EXISTS local_sale_history");
-}
-
-function upgrade_to_2026_1_6() {
-	// Expand log_ip from varchar(15) to varchar(45) to support IPv6 addresses.
-	// IPv4 max: 15 chars (e.g. 123.123.123.123)
-	// IPv6 max: 39 chars (e.g. 2001:0db8:85a3:0000:0000:8a2e:0370:7334)
-	// varchar(45) also covers IPv4-mapped IPv6 (e.g. ::ffff:192.168.1.1 = 45 chars max)
-	db("ALTER TABLE log MODIFY COLUMN log_ip varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL");
-	db("ALTER TABLE config ADD COLUMN ecommerce_show_product_images TINYINT DEFAULT 1");
-}
-
-
-function upgrade_to_2026_1_11() {
-	// Add class column to menu_items to allow custom CSS classes on individual menu items.
-	db("ALTER TABLE menu_items ADD COLUMN class VARCHAR(255) DEFAULT NULL");
-
-	// Add active_item_class column to menus to allow configurable active item class per menu.
-	db("ALTER TABLE menus ADD COLUMN active_item_class VARCHAR(255) DEFAULT NULL");
-}
-
-function upgrade_to_2026_1_12() {
-	// Add new social networking service columns.
-	// Replaces defunct AddThis (closed 2023) and Google+1 (closed 2019)
-	// with modern URL-based share services.
-	db("ALTER TABLE config ADD COLUMN social_networking_whatsapp TINYINT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE config ADD COLUMN social_networking_telegram TINYINT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE config ADD COLUMN social_networking_pinterest TINYINT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE config ADD COLUMN social_networking_reddit TINYINT UNSIGNED NOT NULL DEFAULT 0");
-	db("ALTER TABLE config ADD COLUMN social_networking_email TINYINT UNSIGNED NOT NULL DEFAULT 0");
-}
-
-function upgrade_to_2026_1_13() {
-	// Add Pay with Iyzico express checkout toggle.
-	// Enables the "İyzico ile Öde" button on the order form,
-	// redirecting customers to Iyzico for payment (similar to 3DS flow).
-	db("ALTER TABLE config ADD COLUMN ecommerce_pay_with_iyzico TINYINT UNSIGNED NOT NULL DEFAULT 0");
-}
-function upgrade_to_2026_1_14() {
-	// Add 'canceled' status to orders, track refunded amounts, and create refund log table.
-	db("ALTER TABLE orders MODIFY COLUMN status ENUM('incomplete','complete','exported','canceled') NOT NULL DEFAULT 'incomplete'");
-	db("ALTER TABLE orders ADD COLUMN refunded_amount INT NOT NULL DEFAULT 0");
-	db("CREATE TABLE order_refunds (
-		id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		order_id INT UNSIGNED NOT NULL,
-		amount_cents INT NOT NULL,
-		refund_type VARCHAR(20) NOT NULL DEFAULT 'refund',
-		transaction_id VARCHAR(255) DEFAULT NULL,
-		notes TEXT DEFAULT NULL,
-		created_at DATETIME NOT NULL,
-		INDEX idx_order_refunds_order_id (order_id)
-	)" . ENGINE);
-
-}
-
-function upgrade_to_2026_1_15() {
-	// Store the full base total (subtotal + tax + shipping, before installment) in 3DS state.
-	// Without this, the total restored on 3DS return was missing tax/shipping.
-	db("ALTER TABLE iyzipay_3ds_state ADD COLUMN base_total_cents INT NOT NULL DEFAULT 0");
-}
-
-function upgrade_to_2026_1_16() {
-	// Barcode feature: per-product barcode storage and label designer settings.
-	db("CREATE TABLE  product_barcodes (
-		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-		product_id  INT UNSIGNED NOT NULL,
-		barcode     VARCHAR(100) NOT NULL,
-		barcode_type VARCHAR(20) NOT NULL DEFAULT 'CODE128',
-		created_at  DATETIME NOT NULL,
-		updated_at  DATETIME NOT NULL,
-		PRIMARY KEY (id),
-		UNIQUE KEY uq_barcode  (barcode),
-		INDEX idx_product_id   (product_id)
-	)" . ENGINE);
-
-	// Config columns: enable toggle, default type, label dimensions, template JSON.
-	db("ALTER TABLE config ADD COLUMN barcode_enabled TINYINT NOT NULL DEFAULT 0");
-	db("ALTER TABLE config ADD COLUMN barcode_default_type VARCHAR(20) NOT NULL DEFAULT 'CODE128'");
-	db("ALTER TABLE config ADD COLUMN barcode_label_width SMALLINT NOT NULL DEFAULT 60");
-	db("ALTER TABLE config ADD COLUMN barcode_label_height SMALLINT NOT NULL DEFAULT 40");
-	db("ALTER TABLE config ADD COLUMN barcode_label_template TEXT");
-}
-
-
-
-function upgrade_to_2026_1_17() {
-	// Allow multiple barcodes per product (drop the unique-per-product constraint
-	// that was accidentally included in 2026.1.16). Each barcode value stays globally unique.
-	// ALTER IGNORE is used so the statement is silently skipped if the key doesn't exist.
-
-	// Drop the unique-per-product constraint only if it exists (sites upgrading
-	// from before 2026.1.15 never had it, so the DROP would fail without this guard).
-	$uq_product_exists = db_value("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = 'product_barcodes' AND index_name = 'uq_product'");
-	if ($uq_product_exists) {
-		db("ALTER TABLE product_barcodes DROP INDEX uq_product");
-	}
-	// Parasut API V4 direct integration.
-	// Adds OAuth2 credential storage to config and API object tracking to orders.
-	// The existing enable_parasut toggle now also activates direct API calls
-	// (e-fatura / e-irsaliye) in addition to the legacy Excel export.
-
-	// Config: API credentials and sandbox flag
-	db("ALTER TABLE config ADD parasut_client_id VARCHAR(255) NOT NULL DEFAULT ''");
-	db("ALTER TABLE config ADD parasut_client_secret VARCHAR(255) NOT NULL DEFAULT ''");
-	db("ALTER TABLE config ADD parasut_username VARCHAR(255) NOT NULL DEFAULT ''");
-	db("ALTER TABLE config ADD parasut_password VARCHAR(255) NOT NULL DEFAULT ''");
-	db("ALTER TABLE config ADD parasut_company_id VARCHAR(50) NOT NULL DEFAULT ''");
-	db("ALTER TABLE config ADD parasut_use_sandbox TINYINT NOT NULL DEFAULT 0");
-
-	// Orders: track the Parasut objects created via API for each order
-	db("ALTER TABLE orders ADD parasut_contact_id VARCHAR(50) NOT NULL DEFAULT ''");
-	db("ALTER TABLE orders ADD parasut_invoice_id VARCHAR(50) NOT NULL DEFAULT ''");
-	db("ALTER TABLE orders ADD parasut_shipment_id VARCHAR(50) NOT NULL DEFAULT ''");	
-	
-	// Parasut contact linking and Turkish tax fields for contacts.
-	// parasut_contact_id: links a Pinegrap contact to its counterpart in Parasut (synced on first invoice).
-	// tax_number: VKN (companies) or TCKN (individuals) — required by Parasut for proper invoicing.
-	// tax_office: Vergi dairesi — required for company invoices in Turkey.
-	db("ALTER TABLE contacts ADD parasut_contact_id VARCHAR(50) NOT NULL DEFAULT ''");
-	db("ALTER TABLE contacts ADD tax_number VARCHAR(20) NOT NULL DEFAULT ''");
-	db("ALTER TABLE contacts ADD tax_office VARCHAR(100) NOT NULL DEFAULT ''");    
-	
-	// Extend parasut_tc_in_field ENUM to support the native contacts.tax_number column.
-    db("ALTER TABLE config MODIFY parasut_tc_in_field ENUM('do not use', 'custom_field_1', 'custom_field_2', 'tax_number') NOT NULL DEFAULT 'do not use'");
-}
-
-function upgrade_to_2026_1_18() {
-    // Add default Parasut product/service ID for invoice line items.
-    // Parasut requires each sales_invoice_detail to reference a product/service entity.
-    db("ALTER TABLE config ADD parasut_default_product_id VARCHAR(50) NOT NULL DEFAULT ''");
-    // Store each product's Parasut counterpart ID so we don't recreate it on every invoice.
-    db("ALTER TABLE products ADD parasut_product_id VARCHAR(50) NOT NULL DEFAULT ''");
-    // Default warehouse (stock location) ID for e-irsaliye shipment document details.
-    // Auto-fetched from Parasut on first use; override in settings for multi-warehouse setups.
-    db("ALTER TABLE config ADD parasut_default_warehouse_id VARCHAR(50) NOT NULL DEFAULT ''");
-}
-
-
-
-function upgrade_to_2026_1_21() {
-    // Visual Pinegrap Editor — tree storage + new layout type value.
-    // style_tree_json holds the JSON tree edited in Visual Pinegrap Editor; style_code is always
-    // the sole render source (generated from the tree on save).
-    db("ALTER TABLE style ADD COLUMN style_tree_json LONGTEXT DEFAULT NULL");
-    db("ALTER TABLE style MODIFY COLUMN style_layout ENUM('','one_column','one_column_email','one_column_mobile','two_column_sidebar_left','two_column_sidebar_right','three_column_sidebar_left','visual_designer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''");
-
-    // Shared Component Library — reusable tree nodes referenced across visual-designer styles.
-    // A shared_ref node in any style's tree_json points to a row here by id (never by name).
-    // name is UNIQUE; duplicate names are silently suffixed ([1], [2]...) at insert time.
-    //
-    // New-install only: the feature ships with this version, so there is no legacy data to
-    // migrate. The placeholder-only invariant (shared_ref.children === []) is enforced at
-    // every write site — JS save-path sanitize, server-side save_system_style sanitize, and
-    // the marker-emitting _render_tree_node — so inline-expanded shared content can never
-    // land in the DB.
-    //
-    // Note: TEXT/LONGTEXT columns cannot have a DEFAULT value in MySQL strict mode.
-    // Only VARCHAR, INT, etc. can have DEFAULT ''. Omit DEFAULT for TEXT/LONGTEXT.
-    db("CREATE TABLE IF NOT EXISTS shared_components (
-        id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        name        VARCHAR(255) NOT NULL DEFAULT '',
-        description TEXT NOT NULL,
-        tree_json   LONGTEXT NOT NULL,
-        tree_hash   VARCHAR(64) NOT NULL DEFAULT '',
-        category    VARCHAR(100) NOT NULL DEFAULT '',
-        created_by  INT UNSIGNED NOT NULL DEFAULT 0,
-        created_at  INT UNSIGNED NOT NULL DEFAULT 0,
-        updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
-        UNIQUE KEY uk_name (name),
-        INDEX idx_updated (updated_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-}
-
-function upgrade_to_2026_1_22() {
-    // System widget support for shared components.
-    // A shared component becomes a "system widget" when it has a "system_region_config" JSON:
-    //   { "regionType": "form_list|catalog|...", "source_page": "blog",
-    //     "templates": { "search": "...", "browse": "...", "item": "...", "pagination": "..." } }
-    // At render time, _expand_shared_refs() detects this field and emits a
-    // <!--pg-system-widget:ID--> marker instead of rendering the static tree.
-    // get_page_content.php then calls _expand_system_widgets() which runs the appropriate
-    // dynamic renderer (get_form_list_view.php, catalog renderer, etc.) using the compiled
-    // templates. URL param namespace: sw{id}_query, sw{id}_browse_field_id, etc.
-    db("ALTER TABLE shared_components ADD COLUMN system_region_config LONGTEXT DEFAULT NULL");
-}
-
-function upgrade_to_2026_1_24() {
-    // Per-page custom CSS, JS, and font imports for system-layout pages (Visual Pinegrap Editor).
-    // CSS and JS are stored inline (MEDIUMTEXT) and injected into the rendered page.
-    // Fonts stores a JSON array of Google Fonts / @import rules.
-    db("ALTER TABLE page ADD COLUMN page_custom_css  MEDIUMTEXT DEFAULT NULL");
-    db("ALTER TABLE page ADD COLUMN page_custom_js   MEDIUMTEXT DEFAULT NULL");
-    db("ALTER TABLE page ADD COLUMN page_custom_fonts TEXT DEFAULT NULL");
-}
-
-function upgrade_to_2026_1_25() {
-    // view_files / toolbar performance: cache expensive per-image computations
-    // directly on the files row so list pages don't have to recompute them.
-    //
-    // - image_width / image_height : cached getimagesize() result. Avoids a disk
-    //   stat + JPEG/PNG header decode per image row in view_files.php (lines
-    //   ~410). Especially painful on OneDrive / network-mounted dev folders.
-    //
-    // - optimization_percent : cached calculate_optimizable_percent() result.
-    //   The original function fully decodes + recompresses every unoptimized
-    //   image just to display a "%" badge. With this column we compute it
-    //   once and reuse it; recompute is triggered only when the user runs
-    //   optimize.php or the file row is replaced.
-    //
-    // All three columns are nullable. NULL means "not computed yet" — the
-    // first view_files render after upgrade fills them in lazily and persists
-    // the result, so subsequent loads are O(1) per row.
-    db("ALTER TABLE files ADD COLUMN image_width SMALLINT UNSIGNED DEFAULT NULL");
-    db("ALTER TABLE files ADD COLUMN image_height SMALLINT UNSIGNED DEFAULT NULL");
-    db("ALTER TABLE files ADD COLUMN optimization_percent TINYINT UNSIGNED DEFAULT NULL");
-}
-
-function upgrade_to_2026_1_23() {
-    // Performance monitor — per-request runtime metrics for admin diagnostics.
-    // Written via register_shutdown_function() (after fastcgi_finish_request when available)
-    // so the request-path overhead is one row insert + a probabilistic retention sweep.
-    //
-    // duration_ms / cpu_*_ms are integers (sub-ms noise is below sampling resolution anyway).
-    // peak_memory_kb stores memory_get_peak_usage(true) / 1024 so 32-bit hosts stay safe.
-    // request_url uses VARCHAR(512) instead of 2083 to keep the index size sane on utf8mb4.
-    db("CREATE TABLE IF NOT EXISTS perf_log (
-        id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        request_url     VARCHAR(512) NOT NULL DEFAULT '',
-        script_name     VARCHAR(255) NOT NULL DEFAULT '',
-        area            VARCHAR(16) NOT NULL DEFAULT 'frontend',
-        method          VARCHAR(8) NOT NULL DEFAULT 'GET',
-        http_status     SMALLINT UNSIGNED NOT NULL DEFAULT 200,
-        duration_ms     INT UNSIGNED NOT NULL DEFAULT 0,
-        peak_memory_kb  INT UNSIGNED NOT NULL DEFAULT 0,
-        cpu_user_ms     INT UNSIGNED NOT NULL DEFAULT 0,
-        cpu_system_ms   INT UNSIGNED NOT NULL DEFAULT 0,
-        user_id         INT UNSIGNED NOT NULL DEFAULT 0,
-        is_ajax         TINYINT(1) NOT NULL DEFAULT 0,
-        log_timestamp   INT UNSIGNED NOT NULL DEFAULT 0,
-        INDEX idx_timestamp (log_timestamp),
-        INDEX idx_duration (duration_ms),
-        INDEX idx_peak_memory (peak_memory_kb),
-        INDEX idx_script (script_name),
-        INDEX idx_area_timestamp (area, log_timestamp)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-}
-
-function upgrade_to_2026_1_26() {
-    // ── Order cancellation feature ──────────────────────────────────────
-    // Customer-facing self-service cancel from the order_view widget.
-    // Refund (when payment was Iyzipay / PayPal) is INTENTIONALLY manual:
-    // the operator decides whether to refund based on policy + gateway
-    // rules. We only mark the order as cancelled in the DB.
-    //
-    // Schema changes:
-    //   1. Extend orders.status enum with 'cancelled'. Some legacy installs
-    //      had 'incomplete' / 'complete' / 'exported' only — the cancel
-    //      endpoint UPDATE would silently store '' on those (enum default-
-    //      fallback) without this ALTER. Done as MODIFY COLUMN so existing
-    //      rows keep their value.
-    //   2. cancelled_at  — unix timestamp when status flipped to cancelled.
-    //                       NULL when the order has never been cancelled.
-    //   3. cancelled_by  — user_id (admin) OR 0 (customer self-service).
-    //                       Lets reports distinguish "operator cancelled X"
-    //                       from "customer cancelled themselves".
-    //   4. cancellation_reason — visitor-typed text (optional, 500 chars).
-    //                            Defensive against future GDPR / dispute logs.
-    db("ALTER TABLE orders MODIFY COLUMN status enum('incomplete','complete','exported','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'incomplete'");
-    db("ALTER TABLE orders ADD COLUMN cancelled_at INT(10) UNSIGNED DEFAULT NULL");
-    db("ALTER TABLE orders ADD COLUMN cancelled_by INT(10) UNSIGNED NOT NULL DEFAULT 0");
-    db("ALTER TABLE orders ADD COLUMN cancellation_reason VARCHAR(500) NOT NULL DEFAULT ''");
-    db("ALTER TABLE orders ADD INDEX idx_cancelled_at (cancelled_at)");
-}
-
-function upgrade_to_2026_1_27() {
-    // ── Refund-status tracking on orders ────────────────────────────────
-    // Companion to 2026.1.26 (cancel feature). When the operator opts in
-    // to automated Iyzipay refunds via ECOMMERCE_ORDER_CANCEL_AUTO_REFUND,
-    // we record the outcome here so reports and the order_view widget can
-    // distinguish "still owed to the customer" from "already refunded" or
-    // "needs manual intervention".
-    //
-    // Enum values:
-    //   ''                  — default / N/A (no cancellation has touched
-    //                          this order yet).
-    //   'pending'           — cancellation completed, refund attempt
-    //                          queued but not yet acknowledged.
-    //   'refunded'          — gateway confirmed the refund succeeded.
-    //   'failed'            — gateway rejected the refund.
-    //   'manual_required'   — auto-refund disabled, or payment method
-    //                          isn't a refundable gateway, or auto-refund
-    //                          threw an exception — operator must process
-    //                          the refund in the gateway dashboard.
-    db("ALTER TABLE orders ADD COLUMN refund_status ENUM('','pending','refunded','failed','manual_required') NOT NULL DEFAULT ''");
-    db("ALTER TABLE orders ADD COLUMN refunded_at INT(10) UNSIGNED DEFAULT NULL");
-    db("ALTER TABLE orders ADD COLUMN refund_reference VARCHAR(255) NOT NULL DEFAULT ''");
-    db("ALTER TABLE orders ADD INDEX idx_refund_status (refund_status)");
-}
-
-function upgrade_to_2026_1_28() {
-    // ── Cart "Save for later" infrastructure ────────────────────────────
-    // Adds a saved_for_later flag on order_items so a cart row can be
-    // hidden from the active cart without being lost. Feature is opt-in
-    // via ECOMMERCE_SAVE_FOR_LATER config define — the column is created
-    // unconditionally so the migration is reversible-safe and the runtime
-    // gate stays in PHP (no per-install schema branching).
-    //
-    // saved_at — unix timestamp; lets future UI sort "Recently saved" or
-    //            prune stale wishlist rows on a cron.
-    db("ALTER TABLE order_items ADD COLUMN saved_for_later TINYINT(1) NOT NULL DEFAULT 0");
-    db("ALTER TABLE order_items ADD COLUMN saved_at INT(10) UNSIGNED DEFAULT NULL");
-    db("ALTER TABLE order_items ADD INDEX idx_saved_for_later (saved_for_later)");
-}
-
-function upgrade_to_2026_2_3() {
-    // ── Repair the 'canceled' / 'cancelled' status split ─────────────────
-    //
-    // History of the bug this fixes:
-    //   * An earlier upgrade added 'canceled' (one L) to the orders.status
-    //     enum. The iyzico cancel flow on view_order.php wrote that value.
-    //   * upgrade_to_2026_1_26() then redefined the enum as
-    //     ('incomplete','complete','exported','cancelled') — two L's — and in
-    //     doing so REMOVED 'canceled' from the allowed set.
-    //
-    // Two consequences on installs that had already used the old flow:
-    //   1. MODIFY COLUMN coerced every existing 'canceled' row to '' (MySQL's
-    //      out-of-range enum fallback) — those orders lost their status.
-    //   2. Every later "cancel" from view_order.php kept writing 'canceled',
-    //      which is now invalid, so it also landed as ''. In strict mode the
-    //      UPDATE failed outright. Either way the order never got cancelled.
-    //
-    // The PHP side is fixed (all cancellation now runs through
-    // process_order_cancellation(), which writes 'cancelled'). This migration
-    // repairs the rows that were already damaged.
-    //
-    // Recovery rule — cancelled_at is the only surviving evidence:
-    //   * cancelled_at set   → the row really was cancelled  → 'cancelled'
-    //   * cancelled_at empty → status was clobbered by the ALTER, and we
-    //                          cannot tell whether it had been exported, so
-    //                          we restore the safe, reversible value
-    //                          'complete'. An operator can re-export or
-    //                          re-cancel from the admin screens.
-    //
-    // Guarded by a column probe because cancelled_at only exists once
-    // upgrade_to_2026_1_26() has run.
-    $has_cancelled_at = db_item("SHOW COLUMNS FROM orders LIKE 'cancelled_at'");
-
-    if ($has_cancelled_at) {
-        db("UPDATE orders
-            SET status = 'cancelled'
-            WHERE status = ''
-              AND cancelled_at IS NOT NULL
-              AND cancelled_at > 0");
-    }
-
-    // Anything still blank predates the cancellation columns entirely.
-    db("UPDATE orders SET status = 'complete' WHERE status = ''");
-}
-
-function upgrade_to_2026_2_4() {
-    // ── Web Application Firewall ─────────────────────────────────────────
-    //
-    // Ships DISABLED. Once an operator turns it on, it defaults to 'monitor',
-    // which records what it would have blocked without blocking anything.
-    // A firewall that starts rejecting traffic the moment it is installed is
-    // how a storefront loses a day of orders.
-
-    db("ALTER TABLE config ADD waf_enabled TINYINT(1) NOT NULL DEFAULT 0");
-    db("ALTER TABLE config ADD waf_mode ENUM('monitor', 'block') NOT NULL DEFAULT 'monitor'");
-    db("ALTER TABLE config ADD waf_sensitivity ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium'");
-    db("ALTER TABLE config ADD waf_signature_scan TINYINT(1) NOT NULL DEFAULT 1");
-    db("ALTER TABLE config ADD waf_rate_limit TINYINT(1) NOT NULL DEFAULT 1");
-    db("ALTER TABLE config ADD waf_rate_limit_requests SMALLINT UNSIGNED NOT NULL DEFAULT 300");
-    db("ALTER TABLE config ADD waf_rate_limit_sensitive SMALLINT UNSIGNED NOT NULL DEFAULT 30");
-    db("ALTER TABLE config ADD waf_auto_ban TINYINT(1) NOT NULL DEFAULT 1");
-    db("ALTER TABLE config ADD waf_auto_ban_threshold SMALLINT UNSIGNED NOT NULL DEFAULT 5");
-    db("ALTER TABLE config ADD waf_auto_ban_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 60");
-    db("ALTER TABLE config ADD waf_block_attack_tools TINYINT(1) NOT NULL DEFAULT 1");
-    db("ALTER TABLE config ADD waf_verify_bots TINYINT(1) NOT NULL DEFAULT 1");
-    db("ALTER TABLE config ADD waf_trusted_proxies TEXT DEFAULT NULL");
-    db("ALTER TABLE config ADD waf_exclusions TEXT DEFAULT NULL");
-    db("ALTER TABLE config ADD waf_blocked_agents TEXT DEFAULT NULL");
-    db("ALTER TABLE config ADD waf_log_retention_days SMALLINT UNSIGNED NOT NULL DEFAULT 30");
-
-    // Last third-party WAF/CDN seen in front of this site (Cloudflare, Sucuri,
-    // Akamai...). Recorded from real request headers and surfaced in Settings
-    // so the operator knows whether this firewall is their first or second
-    // layer of defence.
-    db("ALTER TABLE config ADD waf_external_provider VARCHAR(64) NOT NULL DEFAULT ''");
-    db("ALTER TABLE config ADD waf_external_seen INT UNSIGNED NOT NULL DEFAULT 0");
-
-    // ── Event log ────────────────────────────────────────────────────────
-    // 'action' records what the firewall DID, not what it saw: in monitor
-    // mode an attack is stored as 'would-block'. That distinction is the
-    // whole point of monitor mode.
-    db("CREATE TABLE IF NOT EXISTS waf_log (
-        id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        ip_address    VARCHAR(45) NOT NULL DEFAULT '',
-        action        VARCHAR(16) NOT NULL DEFAULT 'log',
-        rule_id       VARCHAR(40) NOT NULL DEFAULT '',
-        category      VARCHAR(32) NOT NULL DEFAULT '',
-        score         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-        method        VARCHAR(8) NOT NULL DEFAULT '',
-        request_url   VARCHAR(512) NOT NULL DEFAULT '',
-        target        VARCHAR(64) NOT NULL DEFAULT '',
-        matched       VARCHAR(255) NOT NULL DEFAULT '',
-        user_agent    VARCHAR(255) NOT NULL DEFAULT '',
-        user_id       INT UNSIGNED NOT NULL DEFAULT 0,
-        log_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-        INDEX idx_timestamp (log_timestamp),
-        INDEX idx_ip (ip_address),
-        INDEX idx_action_timestamp (action, log_timestamp),
-        INDEX idx_category (category)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // ── Rate limit buckets ───────────────────────────────────────────────
-    // bucket_key is the PRIMARY KEY so the counter can be a single atomic
-    // INSERT ... ON DUPLICATE KEY UPDATE. Two simultaneous requests from one
-    // IP therefore cannot both read the same count and both write count+1.
-    db("CREATE TABLE IF NOT EXISTS waf_rate (
-        bucket_key   VARCHAR(64) NOT NULL PRIMARY KEY,
-        hits         INT UNSIGNED NOT NULL DEFAULT 0,
-        window_start INT UNSIGNED NOT NULL DEFAULT 0,
-        INDEX idx_window (window_start)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // ── Bot verification cache ───────────────────────────────────────────
-    // Reverse DNS is the only way to tell the real Googlebot from anyone who
-    // typed "Googlebot" into their user agent, and it costs real wall-clock
-    // time. Verdicts are cached for a week.
-    db("CREATE TABLE IF NOT EXISTS waf_ip_reputation (
-        ip_address VARCHAR(45) NOT NULL,
-        bot_token  VARCHAR(40) NOT NULL DEFAULT '',
-        verdict    ENUM('verified', 'spoofed', 'unknown') NOT NULL DEFAULT 'unknown',
-        host_name  VARCHAR(255) NOT NULL DEFAULT '',
-        checked_at INT UNSIGNED NOT NULL DEFAULT 0,
-        PRIMARY KEY (ip_address, bot_token),
-        INDEX idx_checked (checked_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // ── Extend the existing IP ban table ─────────────────────────────────
-    //
-    // banned_ip_addresses already existed but held only permanent IPv4 block
-    // entries. Three additions:
-    //   list_type  — the same table now also holds the ALLOW list, so an
-    //                operator can exempt their own office from every rule.
-    //   source     — separates operator entries from automatic bans, which
-    //                matters because settings.php rewrites the manual list
-    //                wholesale and must not wipe automatic bans.
-    //   expires_at — automatic bans always expire. A permanent ban placed by
-    //                a rule is how a customer's whole office gets locked out
-    //                with nobody knowing why.
-    db("ALTER TABLE banned_ip_addresses ADD list_type ENUM('block', 'allow') NOT NULL DEFAULT 'block'");
-    db("ALTER TABLE banned_ip_addresses ADD source ENUM('manual', 'auto') NOT NULL DEFAULT 'manual'");
-    db("ALTER TABLE banned_ip_addresses ADD note VARCHAR(255) NOT NULL DEFAULT ''");
-    db("ALTER TABLE banned_ip_addresses ADD expires_at INT UNSIGNED NOT NULL DEFAULT 0");
-    db("ALTER TABLE banned_ip_addresses ADD created_at INT UNSIGNED NOT NULL DEFAULT 0");
-    db("ALTER TABLE banned_ip_addresses ADD hit_count INT UNSIGNED NOT NULL DEFAULT 0");
-    db("ALTER TABLE banned_ip_addresses ADD INDEX idx_list_type (list_type)");
-    db("ALTER TABLE banned_ip_addresses ADD INDEX idx_expires (expires_at)");
-
-    // Existing rows are operator-placed permanent blocks; label them as such.
-    db("UPDATE banned_ip_addresses
-        SET list_type = 'block', source = 'manual', created_at = UNIX_TIMESTAMP()
-        WHERE created_at = 0");
-}
-
-function upgrade_to_2026_2_5() {
-    // ── Record the visitor's user agent ──────────────────────────────────
-    //
-    // The visitors table stored the address, referrer and landing page but
-    // never the user agent, which made it impossible to answer the one
-    // question that matters when the counter disagrees with Google
-    // Analytics: which client produced these visits?
-    //
-    // The prefix index is what makes "group the last day's visits by client"
-    // affordable on a table that can take six figures of rows per day.
-    db("ALTER TABLE visitors ADD user_agent VARCHAR(255) NOT NULL DEFAULT ''");
-    db("ALTER TABLE visitors ADD INDEX idx_user_agent (user_agent(64))");
-}
-
-function upgrade_to_2026_2_6() {
-    // ── Firewall log: aggregate instead of one row per request ───────────
-    //
-    // As shipped in 2026.2.4 the log wrote one row per event. A single burst
-    // of automated traffic produced thousands of rows carrying identical
-    // information, and during a sustained attack the logging became a bigger
-    // load problem than the attack — the firewall DoSing its own database.
-    //
-    // Events are now folded into a five-minute bucket keyed on
-    // (address, rule, action, category, path). The same attack repeated ten
-    // thousand times is one row with hit_count = 10000, and the write is a
-    // single INSERT ... ON DUPLICATE KEY UPDATE either way, so the table
-    // stops growing under load instead of growing fastest exactly when it
-    // can least afford to.
-    //
-    // The table is dropped rather than altered. It is one version old and
-    // holds nothing but test noise, and adding a UNIQUE key to rows that all
-    // share an empty event_key would fail outright on duplicates.
-    db("DROP TABLE IF EXISTS waf_log");
-
-    db("CREATE TABLE waf_log (
-        id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        event_key     CHAR(40) NOT NULL DEFAULT '',
-        window_start  INT UNSIGNED NOT NULL DEFAULT 0,
-        hit_count     INT UNSIGNED NOT NULL DEFAULT 1,
-        ip_address    VARCHAR(45) NOT NULL DEFAULT '',
-        action        VARCHAR(16) NOT NULL DEFAULT 'log',
-        rule_id       VARCHAR(40) NOT NULL DEFAULT '',
-        category      VARCHAR(32) NOT NULL DEFAULT '',
-        score         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-        method        VARCHAR(8) NOT NULL DEFAULT '',
-        request_url   VARCHAR(512) NOT NULL DEFAULT '',
-        target        VARCHAR(64) NOT NULL DEFAULT '',
-        matched       VARCHAR(255) NOT NULL DEFAULT '',
-        user_agent    VARCHAR(255) NOT NULL DEFAULT '',
-        user_id       INT UNSIGNED NOT NULL DEFAULT 0,
-        log_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
-        last_seen     INT UNSIGNED NOT NULL DEFAULT 0,
-        UNIQUE KEY uniq_event (event_key, window_start),
-        INDEX idx_timestamp (log_timestamp),
-        INDEX idx_last_seen (last_seen),
-        INDEX idx_ip (ip_address),
-        INDEX idx_action_timestamp (action, log_timestamp),
-        INDEX idx_category (category)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // Hard ceiling on stored rows. Time-based retention alone cannot bound
-    // the table: a big enough attack fills it inside the retention window.
-    // The cap is what actually guarantees the log has a maximum size.
-    db("ALTER TABLE config ADD waf_log_max_rows INT UNSIGNED NOT NULL DEFAULT 20000");
-
-    // 30 days was too generous for a table that can take thousands of rows a
-    // minute. Aggregation makes 14 days cheap, and the cap backstops it.
-    db("ALTER TABLE config MODIFY waf_log_retention_days SMALLINT UNSIGNED NOT NULL DEFAULT 14");
-    db("UPDATE config SET waf_log_retention_days = 14 WHERE waf_log_retention_days = 30");
-}
-
-function upgrade_to_2026_2_7() {
-    // ── IPv6 addresses were being truncated on ban ───────────────────────
-    //
-    // banned_ip_addresses.ip_address predates IPv6 in this codebase and was
-    // sized for a dotted-quad — fifteen characters, exactly the width of
-    // 255.255.255.255. An IPv6 address written into it lost everything past
-    // the fifteenth character, which produced a compounding failure:
-    //
-    //   1. waf_auto_ban() looked for an existing row using the FULL address
-    //      and found none, because what was stored was the truncated stub.
-    //   2. It inserted, and MySQL truncated again.
-    //   3. waf_ip_matches() compared the full address against the stub and
-    //      returned false, so the ban was never actually enforced.
-    //   4. The same client re-offended, and step 1 repeated.
-    //
-    // The visible symptom was dozens of identical ban rows for one address
-    // while that address carried on browsing untouched. Both halves of the
-    // bug — the duplicates and the ban doing nothing — are this one column.
-    db("ALTER TABLE banned_ip_addresses MODIFY ip_address VARCHAR(45) NOT NULL DEFAULT ''");
-
-    // Automatic bans are disposable by design (an hour by default) and any
-    // written before the widening may be truncated stubs that can never match
-    // anything. Drop them all; a client that is still attacking earns a new,
-    // correct ban within minutes. Operator entries are left alone.
-    db("DELETE FROM banned_ip_addresses WHERE source = 'auto'");
-
-    // Collapse any remaining duplicates so the unique key below can be added.
-    // Keeps the highest id — the most recently written row.
-    db("DELETE b FROM banned_ip_addresses b
-        INNER JOIN (
-            SELECT ip_address, list_type, source, MAX(id) AS keep_id
-            FROM banned_ip_addresses
-            GROUP BY ip_address, list_type, source
-            HAVING COUNT(*) > 1
-        ) d
-        ON  b.ip_address = d.ip_address
-        AND b.list_type  = d.list_type
-        AND b.source     = d.source
-        AND b.id        <> d.keep_id");
-
-    // Make duplication structurally impossible rather than relying on the
-    // application to check first. With this key in place waf_auto_ban() can
-    // be a single atomic INSERT ... ON DUPLICATE KEY UPDATE, which is also
-    // race-free: two simultaneous requests from one attacker cannot both find
-    // "no existing row" and both insert.
-    db("ALTER TABLE banned_ip_addresses ADD UNIQUE KEY uniq_entry (ip_address, list_type, source)");
-}
-
-function upgrade_to_2026_3_1() {
-    // ── Firewall: store the reference shown to the blocked visitor ────────
-    //
-    // The block page printed a code and told the visitor to quote it to the
-    // site owner. Nothing wrote that code anywhere, so the owner could not
-    // look it up — the page's entire purpose was defeated.
-    db("ALTER TABLE waf_log ADD reference VARCHAR(16) NOT NULL DEFAULT '' AFTER user_id");
-    db("ALTER TABLE waf_log ADD INDEX idx_reference (reference)");
-
-    // ── Performance log: drop indexes nothing reads ──────────────────────
-    //
-    // Every request pays to maintain each index on this table. Checked
-    // against the report's own queries:
-    //
-    //   idx_peak_memory  the memory report orders a derived table, never the
-    //                    base column                              -> unused
-    //   idx_script       the grouping key is a CASE expression, not the bare
-    //                    column                                   -> unused
-    //   idx_duration     the percentile query is already filtered by
-    //                    log_timestamp, so the optimiser takes that index
-    //                                                             -> redundant
-    //
-    // idx_timestamp and idx_area_timestamp carry every real query and stay.
-    // Removing three of five secondary indexes takes roughly half the write
-    // cost off a table that is written on every single page view.
-    $perf_exists = db_item("SHOW TABLES LIKE 'perf_log'");
-
-    if ($perf_exists) {
-        if (db_item("SHOW INDEX FROM perf_log WHERE Key_name = 'idx_peak_memory'")) {
-            db("ALTER TABLE perf_log DROP INDEX idx_peak_memory");
-        }
-
-        if (db_item("SHOW INDEX FROM perf_log WHERE Key_name = 'idx_script'")) {
-            db("ALTER TABLE perf_log DROP INDEX idx_script");
-        }
-
-        if (db_item("SHOW INDEX FROM perf_log WHERE Key_name = 'idx_duration'")) {
-            db("ALTER TABLE perf_log DROP INDEX idx_duration");
-        }
-    }
-}
-
-function upgrade_to_2026_3_2() {
-    // ── Performance monitor: summarise instead of hoarding ───────────────
-    //
-    // One site reached 1,612,330 rows in perf_log. At that size the report
-    // page became the slowest thing on the whole site — 40 seconds to open —
-    // because the percentile query walked 1.5 million rows every time it was
-    // viewed. Meanwhile every visitor request was inserting into that same
-    // table, and the retention sweep was locking rows in it.
-    //
-    // The fix follows what the numbers actually showed: average 48 ms, p95
-    // 241 ms, worst case 101 seconds. The middle of that distribution is
-    // healthy and carries no information. Only the tail is worth storing at
-    // full detail.
-    //
-    //   perf_stats  every request, folded into an hourly bucket per page.
-    //               One INSERT ... ON DUPLICATE KEY UPDATE, and the table
-    //               stops growing with traffic.
-    //   perf_log    only requests slower than the threshold, now carrying the
-    //               address, user agent and query string so a 101-second
-    //               request can actually be investigated.
-    db("CREATE TABLE IF NOT EXISTS perf_stats (
-        bucket_key   CHAR(40) NOT NULL,
-        hour_start   INT UNSIGNED NOT NULL,
-        label        VARCHAR(255) NOT NULL DEFAULT '',
-        area         VARCHAR(16) NOT NULL DEFAULT 'frontend',
-        hits         INT UNSIGNED NOT NULL DEFAULT 0,
-        slow_hits    INT UNSIGNED NOT NULL DEFAULT 0,
-        total_ms     BIGINT UNSIGNED NOT NULL DEFAULT 0,
-        min_ms       INT UNSIGNED NOT NULL DEFAULT 0,
-        max_ms       INT UNSIGNED NOT NULL DEFAULT 0,
-        total_kb     BIGINT UNSIGNED NOT NULL DEFAULT 0,
-        max_kb       INT UNSIGNED NOT NULL DEFAULT 0,
-        total_cpu_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
-        PRIMARY KEY (bucket_key, hour_start),
-        INDEX idx_hour (hour_start),
-        INDEX idx_area_hour (area, hour_start)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // Context for the slow rows. Without these a 101-second entry says only
-    // that something was slow, not whether it was a scraper hammering a
-    // filtered catalogue or a real customer on a product page.
-    $perf_exists = db_item("SHOW TABLES LIKE 'perf_log'");
-
-    if ($perf_exists) {
-        if (!db_item("SHOW COLUMNS FROM perf_log LIKE 'ip_address'")) {
-            db("ALTER TABLE perf_log ADD ip_address VARCHAR(45) NOT NULL DEFAULT ''");
-        }
-
-        if (!db_item("SHOW COLUMNS FROM perf_log LIKE 'user_agent'")) {
-            db("ALTER TABLE perf_log ADD user_agent VARCHAR(255) NOT NULL DEFAULT ''");
-        }
-
-        // The query string was deliberately stripped before, to keep grouping
-        // cardinality down. That reasoning no longer applies: grouping happens
-        // in perf_stats now, and on a slow row the parameters are usually the
-        // whole explanation.
-        if (!db_item("SHOW COLUMNS FROM perf_log LIKE 'query_string'")) {
-            db("ALTER TABLE perf_log ADD query_string VARCHAR(512) NOT NULL DEFAULT ''");
-        }
-
-        // The existing rows are one-per-request records of ordinary traffic —
-        // the exact data this change stops collecting. Keeping them would
-        // leave the table huge and the new slow-request list meaningless,
-        // since every fast request would still be in it.
-        db("TRUNCATE perf_log");
-    }
-}
-
-function upgrade_to_2026_3_3() {
-    // Performance monitor on/off, in Site Settings rather than config.php.
-    //
-    // Defaults to on: the monitor is how a slow page gets noticed at all, and
-    // after the summary rewrite it costs a fraction of a millisecond per
-    // request — on PHP-FPM, after the response has already been sent, so the
-    // visitor waits for none of it.
-    db("ALTER TABLE config ADD perf_monitor TINYINT(1) NOT NULL DEFAULT 1");
-
-    // Discard whatever the summary already holds.
-    //
-    // Before the sanity gate was added, a request whose start time came back
-    // as zero produced a duration of roughly 1.7 trillion milliseconds. MySQL
-    // clamped it to the unsigned ceiling without complaint, and because a
-    // summary row accumulates rather than replaces, that one measurement made
-    // its bucket's average permanently meaningless — one install reported an
-    // average of 595,400,352,033 ms.
-    //
-    // There is no way to tell a poisoned bucket from a healthy one after the
-    // fact, and the table refills within the hour, so the honest move is to
-    // start again.
-    if (db_item("SHOW TABLES LIKE 'perf_stats'")) {
-        db("TRUNCATE perf_stats");
-    }
-}
-
-function upgrade_to_2026_3_4() {
-    // ── Visitor reporting: aggregate at write time ───────────────────────
-    //
-    // Two separate faults, one root cause.
-    //
-    // 1. update_visitor_page_data() only ever wrote landing_page_name, and
-    //    only on a visitor's first page. Everything after that incremented a
-    //    counter and was otherwise discarded. Worse, the name reaching it had
-    //    already had its slug stripped (get_page.php:92 for catalog detail,
-    //    :122 for form item view), so every product recorded as 'urun-detay'
-    //    and every article as 'blog-gorunum'. The question "which article was
-    //    read at 3pm" had no answer anywhere in the database.
-    //
-    // 2. Every report counted raw visitor rows with HOUR(FROM_UNIXTIME(...))
-    //    groupings. At 100,000-200,000 visits a day that is millions of rows
-    //    per month, scanned and sorted into a temporary table on each load.
-    //
-    // Both are fixed by counting when the view happens rather than
-    // reconstructing it later. This is the shape waf_log took in 2026.2.6: a
-    // bucket key plus INSERT ... ON DUPLICATE KEY UPDATE, so a repeated event
-    // increments a counter instead of adding a row.
-    //
-    // No visitor data is removed or altered. The `visitors` table keeps every
-    // column and every row, and view_visitor_report.php's advanced filters
-    // continue to read it directly.
-
-    // Read the ceiling BEFORE the tables exist.
-    //
-    // pg_visitor_rollup_ready() starts returning true the moment
-    // visitor_content_hourly appears, and live counting begins from that
-    // instant. Rows at or below this id were therefore written while nothing
-    // was counting, and are the backfill's job; rows above it are counted
-    // live. Reading the ceiling first means the two ranges cannot overlap.
-    // The handful of page views that land between this read and the CREATE
-    // are missed rather than double-counted, which is the right way round to
-    // be wrong.
-    $max_visitor_id = (int) db_value("SELECT MAX(id) FROM visitors");
-
-    // Site-wide totals: 24 rows per day, 8,760 a year. This is what the
-    // dashboard's three traffic panels read instead of the visitors table.
-    db("CREATE TABLE IF NOT EXISTS visitor_stats_hourly (
-            stat_date    DATE NOT NULL,
-            stat_hour    TINYINT UNSIGNED NOT NULL,
-            new_visitors INT UNSIGNED NOT NULL DEFAULT 0,
-            page_views   INT UNSIGNED NOT NULL DEFAULT 0,
-            PRIMARY KEY (stat_date, stat_hour)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // Per-content totals: one row per (hour, page, item).
-    //
-    // item_type/item_id hold the primary key of what was actually shown, not
-    // its title. A renamed product then renames throughout the report history
-    // instead of leaving stale copies of the old title in old rows.
-    //
-    // The unique key is a sha1 of the bucket rather than the columns
-    // themselves. A composite key over page_name would run to roughly 780
-    // bytes in utf8mb4, past the 767-byte per-column index limit on MySQL 5.6
-    // with COMPACT row format. waf_log's event_key solves the same problem
-    // the same way.
-    db("CREATE TABLE IF NOT EXISTS visitor_content_hourly (
-            id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            bucket_key CHAR(40) NOT NULL,
-            stat_date  DATE NOT NULL,
-            stat_hour  TINYINT UNSIGNED NOT NULL,
-            page_id    INT UNSIGNED NOT NULL DEFAULT 0,
-            page_name  VARCHAR(100) NOT NULL DEFAULT '',
-            item_type  VARCHAR(20) NOT NULL DEFAULT '',
-            item_id    INT UNSIGNED NOT NULL DEFAULT 0,
-            views      INT UNSIGNED NOT NULL DEFAULT 0,
-            PRIMARY KEY (id),
-            UNIQUE KEY uniq_bucket (bucket_key),
-            KEY idx_date_hour (stat_date, stat_hour),
-            KEY idx_date_views (stat_date, views),
-            KEY idx_item (item_type, item_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // Backfill bookkeeping. Kept in config so the work survives a killed
-    // request: this software runs on dozens of server types and the ones with
-    // a hard FastCGI or proxy timeout will cut a long upgrade off mid-flight
-    // no matter what ini_set('max_execution_time') says.
-    if (!db_item("SHOW COLUMNS FROM config LIKE 'visitor_rollup_max_id'")) {
-        db("ALTER TABLE config ADD visitor_rollup_max_id INT UNSIGNED NOT NULL DEFAULT 0");
-    }
-    if (!db_item("SHOW COLUMNS FROM config LIKE 'visitor_rollup_cursor'")) {
-        db("ALTER TABLE config ADD visitor_rollup_cursor INT UNSIGNED NOT NULL DEFAULT 0");
-    }
-    if (!db_item("SHOW COLUMNS FROM config LIKE 'visitor_rollup_done'")) {
-        db("ALTER TABLE config ADD visitor_rollup_done TINYINT(1) NOT NULL DEFAULT 0");
-    }
-
-    db("UPDATE config SET
-            visitor_rollup_max_id = '" . $max_visitor_id . "',
-            visitor_rollup_cursor = 0,
-            visitor_rollup_done   = '" . ($max_visitor_id > 0 ? 0 : 1) . "'");
-}
-
-function upgrade_to_2026_3_5() {
-    // ── Backfill the rollups from existing visitor rows ──────────────────
-    //
-    // Read-only with respect to `visitors`: this reads rows and writes
-    // summaries elsewhere. Nothing in the source table is modified.
-    //
-    // Runs against a time budget and stores its position, because it cannot
-    // assume it will be allowed to finish. Whatever is left over is picked up
-    // a slice at a time when an administrator opens the dashboard, so the
-    // work completes without anyone having to babysit a long-running page.
-    // Third argument forces the table probe to run again: 2026.3.4 created
-    // these tables a moment ago, in this same request.
-    if (function_exists('pg_visitor_backfill_step')) {
-        pg_visitor_backfill_step(20, 20000, true);
-    }
-}
-
-function upgrade_to_2026_3_6() {
-    // ── visitors: MyISAM to InnoDB ───────────────────────────────────────
-    //
-    // MyISAM locks whole tables. update_visitor_page_data() runs an UPDATE on
-    // this table for every page view, and an UPDATE takes an exclusive table
-    // lock, so at this traffic level page views already serialise against one
-    // another. Add a reporting query holding a read lock and every visitor on
-    // the site queues behind it — which is why the dashboard being open made
-    // the site slow.
-    //
-    // MyISAM's concurrent-insert optimisation does not rescue this: it only
-    // applies while the table has no gaps, and a table under constant UPDATE
-    // always has gaps.
-    //
-    // The other reason is recovery. An unclean shutdown leaves a MyISAM table
-    // of this size needing REPAIR TABLE, which can run for hours with the
-    // table unwritable throughout. InnoDB recovers from its log on startup.
-    //
-    // Safe to re-run: if the engine is already InnoDB this does nothing, so a
-    // request killed part-way through simply repeats the ALTER next time.
-    // Checked rather than assumed because ALTER TABLE ... ENGINE cannot be
-    // resumed and is expensive to start over.
-    //
-    // Only `visitors` is converted. search_items carries the FULLTEXT indexes
-    // that get_search_results.php queries with MATCH ... AGAINST, and older
-    // MySQL supports FULLTEXT on MyISAM only.
-    $status = db_item("SHOW TABLE STATUS LIKE 'visitors'");
-
-    if (is_array($status) && isset($status['Engine']) && strtolower($status['Engine']) !== 'innodb') {
-        db("ALTER TABLE visitors ENGINE=InnoDB");
-    }
-}
-
-function upgrade_to_2026_3_7() {
-    // ── Repair: the home page counted as two pages ───────────────────────
-    //
-    // Data repair only, no schema change. Same class of problem as 2026.1.29.
-    //
-    // A site's root is one page recorded under several names — '', '/',
-    // 'index.php', and a legacy 'example.com/'. 2026.3.5's backfill grouped
-    // by whatever string it found, so those became separate rows from the
-    // ones carrying the home page's real name. The dashboard then listed the
-    // home page twice, once under its own name and once as "Homepage", with
-    // its traffic divided between the two entries.
-    //
-    // Rows recorded live were never affected: get_page.php resolves the home
-    // page before tracking runs, so it always writes the real page name.
-    //
-    // Merges rather than deletes, so no view is lost. Counts fold into the
-    // correct bucket and only the stray rows go.
-    if (!db_item("SHOW TABLES LIKE 'visitor_content_hourly'")) {
-        return;
-    }
-
-    $home = db_item("SELECT page_id, page_name FROM page WHERE page_home = 'yes' ORDER BY page_id LIMIT 1");
-
-    if (!is_array($home) || empty($home['page_id'])) {
-        return;
-    }
-
-    $home_id   = (int) $home['page_id'];
-    $home_name = trim($home['page_name']);
-    $aliases   = "'', '/', 'index.php', 'example.com/'";
-
-    // One row per hour at most, so this is a small set even on a busy site
-    // with years of history. Done in PHP rather than as a self-referencing
-    // INSERT ... SELECT with ON DUPLICATE KEY UPDATE, which behaves
-    // differently across MySQL versions when the source and target are the
-    // same table.
-    $strays = db_items(
-        "SELECT id, stat_date, stat_hour, item_type, item_id, views
-         FROM visitor_content_hourly
-         WHERE page_name IN ($aliases) AND page_id <> '$home_id'"
-    );
-
-    if (!is_array($strays)) {
-        return;
-    }
-
-    foreach ($strays as $stray) {
-
-        $bucket_key = sha1(
-            $stray['stat_date'] . '|' . (int) $stray['stat_hour'] . '|' . $home_id
-            . '|' . $stray['item_type'] . '|' . (int) $stray['item_id']
-        );
-
-        db("INSERT INTO visitor_content_hourly
-                (bucket_key, stat_date, stat_hour, page_id, page_name, item_type, item_id, views)
-            VALUES
-                ('" . e($bucket_key) . "', '" . e($stray['stat_date']) . "', " . (int) $stray['stat_hour'] . ",
-                 $home_id, '" . e($home_name) . "', '" . e($stray['item_type']) . "', " . (int) $stray['item_id'] . ",
-                 " . (int) $stray['views'] . ")
-            ON DUPLICATE KEY UPDATE views = views + VALUES(views)");
-
-        db("DELETE FROM visitor_content_hourly WHERE id = '" . (int) $stray['id'] . "'");
-    }
-}
-
-function upgrade_to_2026_3_8() {
-    // ── Rebuild the visitor rollups from `visitors` ──────────────────────
-    //
-    // The first cut of the backfill had two faults that only show up once
-    // real traffic runs through it.
-    //
-    // 1. The two summary tables counted different things. Site totals summed
-    //    visitors.page_views while the per-content table used COUNT(*), which
-    //    counts sessions. The dashboard reads the hour's total from one and
-    //    the busiest item from the other, so it printed "29 page views" with
-    //    "home-1 · 1" underneath.
-    //
-    // 2. visitors.page_views keeps climbing after the rollup starts counting
-    //    live. A session already open at the cutover had its views recorded
-    //    live AND summed again when the backfill reached its row, inflating
-    //    every hour that straddled the upgrade.
-    //
-    // Both are fixed in the writer, but the numbers already stored were
-    // produced by the old one and cannot be corrected in place — a bucket
-    // holds a single total with no record of which half came from where. So
-    // the derived tables are dropped and rebuilt from `visitors`, which has
-    // been the authority all along and is not touched here.
-    //
-    // Cost of the rebuild: item-level detail collected since the upgrade is
-    // re-derived from landing_page_name, so it returns to page level. Only
-    // the summaries lose that; the raw table never had it to begin with, and
-    // page views recorded from now on carry their item as normal.
-    if (!db_item("SHOW TABLES LIKE 'visitor_content_hourly'")) {
-        return;
-    }
-
-    db("TRUNCATE visitor_stats_hourly");
-    db("TRUNCATE visitor_content_hourly");
-
-    // Re-read the ceiling. Everything up to this id now comes from `visitors`
-    // in one consistent pass, so there is no boundary for the two counting
-    // methods to disagree across.
-    $max_visitor_id = (int) db_value("SELECT MAX(id) FROM visitors");
-
-    db("UPDATE config SET
-            visitor_rollup_max_id = '" . $max_visitor_id . "',
-            visitor_rollup_cursor = 0,
-            visitor_rollup_done   = '" . ($max_visitor_id > 0 ? 0 : 1) . "'");
-
-    if (function_exists('pg_visitor_backfill_step')) {
-        pg_visitor_backfill_step(20, 20000, true);
-    }
-}
-
-function upgrade_to_2026_4() {
-    // ── Variant sets can own a product form ──────────────────────────────
-    //
-    // A product form is a set of form_fields rows keyed by product_id. That
-    // model assumes one product per form, which breaks down the moment a
-    // product comes in nine colour/size combinations: the operator would have
-    // to draw the same form nine times.
-    //
-    // The v2 screens keep the runtime model exactly as it is — every product
-    // still owns its own rows, so the catalog, the cart and submit_order.php
-    // are untouched — and add a template above it:
-    //
-    //   form_type = 'product_group', product_group_id = <group>, product_id = 0
-    //       the template, edited once
-    //   form_type = 'product', product_id = <product>, template_field_id > 0
-    //       a copy generated from that template
-    //   form_type = 'product', product_id = <product>, template_field_id = 0
-    //       a field added to one variant by hand, and left alone when the
-    //       template is re-applied
-    //
-    // Existing rows all fall in the last category, which is why both new
-    // columns default to 0 and nothing needs backfilling.
-    $columns = array(
-        'product_group_id'  => "ALTER TABLE form_fields ADD COLUMN product_group_id INT UNSIGNED NOT NULL DEFAULT 0",
-        'template_field_id' => "ALTER TABLE form_fields ADD COLUMN template_field_id INT UNSIGNED NOT NULL DEFAULT 0",
-    );
-
-    foreach ($columns as $column => $sql) {
-        $exists = db_item("SHOW COLUMNS FROM form_fields LIKE '" . $column . "'");
-        if (!$exists) {
-            db($sql);
-        }
-    }
-
-    // Both indexes serve a query that runs on every template edit: "the
-    // template rows of this group" and "the copies made from this template
-    // row". Without them each apply is a full scan of a table that grows with
-    // every product in the catalog.
-    $indexes = db_items("SHOW INDEX FROM form_fields");
-    $existing_indexes = array();
-
-    foreach ($indexes as $index) {
-        $existing_indexes[$index['Key_name']] = TRUE;
-    }
-
-    if (!isset($existing_indexes['idx_product_group'])) {
-        db("ALTER TABLE form_fields ADD INDEX idx_product_group (product_group_id)");
-    }
-
-    if (!isset($existing_indexes['idx_template_field'])) {
-        db("ALTER TABLE form_fields ADD INDEX idx_template_field (template_field_id)");
-    }
-
-    // form_field_options and target_options carry a denormalised owner column
-    // so bulk deletes can find their rows without a join, and add_field.php /
-    // edit_field.php write it generically from $form_type_identifier_id. Both
-    // tables need the new column or a template field with options cannot be
-    // saved at all.
-    $xref_columns = array(
-        'form_field_options' => "ALTER TABLE form_field_options ADD COLUMN product_group_id INT UNSIGNED NOT NULL DEFAULT 0",
-        'target_options'     => "ALTER TABLE target_options ADD COLUMN product_group_id INT UNSIGNED NOT NULL DEFAULT 0",
-    );
-
-    foreach ($xref_columns as $table => $sql) {
-        $exists = db_item("SHOW COLUMNS FROM " . $table . " LIKE 'product_group_id'");
-        if (!$exists) {
-            db($sql);
-        }
-    }
-
-    // The form's own settings live on the group, mirroring the four columns a
-    // product carries. Storing them on one "owner" variant instead would lose
-    // them the day that variant is deleted.
-    $group_columns = array(
-        'form'                    => "ALTER TABLE product_groups ADD COLUMN form TINYINT(1) NOT NULL DEFAULT 0",
-        'form_name'               => "ALTER TABLE product_groups ADD COLUMN form_name VARCHAR(100) NOT NULL DEFAULT ''",
-        'form_label_column_width' => "ALTER TABLE product_groups ADD COLUMN form_label_column_width VARCHAR(3) NOT NULL DEFAULT ''",
-        'form_quantity_type'      => "ALTER TABLE product_groups ADD COLUMN form_quantity_type VARCHAR(30) NOT NULL DEFAULT ''",
-    );
-
-    foreach ($group_columns as $column => $sql) {
-        $exists = db_item("SHOW COLUMNS FROM product_groups LIKE '" . $column . "'");
-        if (!$exists) {
-            db($sql);
-        }
-    }
-}
-
-function upgrade_to_2026_4_1() {
-
-    // Daily rollup for article views.
-    //
-    // submitted_form_views held one row per view. On a site serving 200,000
-    // views a day it had reached eight million rows and 1.1 GB -- 73% of the
-    // whole database, 946 MB of it index. Being MyISAM, every article view took
-    // an exclusive lock on the entire table while four B-trees were updated,
-    // and every other request touching it queued behind that lock. Measured on
-    // the affected site, requests spent 84% of their wall clock waiting rather
-    // than computing, at every hour of the day.
-    //
-    // Two of those four indexes could never be used at all: `submitted_form_id`
-    // repeated the leading column of the composite index, and `page_id` had a
-    // cardinality of six across eight million rows.
-    //
-    // All of it existed to answer one question on one administrator screen --
-    // how many views each article drew in the last N days. The counter readers
-    // see comes from submitted_form_info.number_of_views and is untouched.
-    //
-    // No secondary index here, deliberately. The retention sweep and the
-    // delete-by-page paths scan, but they scan a few thousand rows; paying for
-    // an index on every write to save that is the trade that produced the table
-    // this one replaces.
-    db("CREATE TABLE IF NOT EXISTS submitted_form_view_stats (
-        submitted_form_id INT UNSIGNED NOT NULL DEFAULT 0,
-        page_id           INT UNSIGNED NOT NULL DEFAULT 0,
-        view_date         DATE         NOT NULL DEFAULT '0000-00-00',
-        views             INT UNSIGNED NOT NULL DEFAULT 0,
-        PRIMARY KEY (submitted_form_id, page_id, view_date)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // Bookkeeping for an interruptible backfill.
-    $config_columns = array(
-        'sfv_rollup_cutover' => "ALTER TABLE config ADD sfv_rollup_cutover INT UNSIGNED NOT NULL DEFAULT 0",
-        'sfv_rollup_cursor'  => "ALTER TABLE config ADD sfv_rollup_cursor INT UNSIGNED NOT NULL DEFAULT 0",
-        'sfv_rollup_done'    => "ALTER TABLE config ADD sfv_rollup_done TINYINT(1) NOT NULL DEFAULT 0",
-    );
-
-    foreach ($config_columns as $column => $sql) {
-        if (!db_item("SHOW COLUMNS FROM config LIKE '" . $column . "'")) {
-            db($sql);
-        }
-    }
-
-    // install/index.php never loads init.php, so the session time zone MySQL
-    // would otherwise use is the server default. The live writer buckets with
-    // CURDATE() and the backfill with DATE(FROM_UNIXTIME(...)); if the two
-    // clocks disagree, history and new traffic land on different days and meet
-    // at a seam the width of the offset.
-    if (function_exists('pg_sync_mysql_timezone')) {
-        pg_sync_mysql_timezone();
-    }
-
-    // The ceiling is fixed before anything is written, so the live writer and
-    // the backfill can never cover the same second twice. Views recorded from
-    // this moment go to the rollup; the backfill owns everything before it.
-    $cutover = time();
-
-    $oldest = 0;
-    if (db_item("SHOW TABLES LIKE 'submitted_form_views'")) {
-        // Served by the `timestamp` index, so this is a lookup, not a scan of
-        // eight million rows.
-        $oldest = (int) db_value("SELECT MIN(timestamp) FROM submitted_form_views WHERE timestamp > 0");
-    }
-
-    if ($oldest > 0) {
-        // Start on a day boundary so every chunk maps to exactly one bucket.
-        $cursor = strtotime(date('Y-m-d', $oldest));
-
-        db("UPDATE config SET
-                sfv_rollup_cutover = '" . (int) $cutover . "',
-                sfv_rollup_cursor  = '" . (int) $cursor . "',
-                sfv_rollup_done    = 0");
-    } else {
-        // Nothing to summarise: a fresh install, or a site whose legacy table
-        // was already retired.
-        db("UPDATE config SET
-                sfv_rollup_cutover = '" . (int) $cutover . "',
-                sfv_rollup_cursor  = '" . (int) $cutover . "',
-                sfv_rollup_done    = 1");
-    }
-
-    // Spend a bounded slice here; the form view directory screen carries the
-    // rest a few seconds at a time. Split across page loads rather than run to
-    // completion because IIS FastCGI and nginx end a long request on their own
-    // schedule, and the version number is written only after this returns -- an
-    // upgrade killed midway starts over.
-    //
-    // $recheck bypasses the readiness probe's static cache: the table was
-    // created moments ago in this same request, and a "no" cached before that
-    // would make the backfill skip itself and report success.
-    if (function_exists('pg_sfv_backfill_step')) {
-        pg_sfv_backfill_step(20, true);
-    }
-}
-
-// 2026.4.2 — the release that follows 2026.4.1.
-//
-// One entry point, one step per subsystem. The steps are ordered, not
-// independent: the keyword migration runs before the SEO step because the SEO
-// step is what marks every record stale afterwards, and it has to be the last
-// thing that touches those flags or the first analysis pass would read the old
-// keyword values.
-//
-// Every step is defensive - CREATE TABLE IF NOT EXISTS, SHOW COLUMNS, SHOW
-// INDEX - so an upgrade cut off halfway through can simply be run again. The
-// version is only written once the whole function returns.
-function upgrade_to_2026_4_2() {
-
-	upgrade_2026_4_2_live_chat();
-
-	upgrade_2026_4_2_dashboard_widgets();
-
-	upgrade_2026_4_2_scheduled_task_health();
-
-	upgrade_2026_4_2_page_keywords();
-
-	upgrade_2026_4_2_seo_score();
-
-	upgrade_2026_4_2_speed_signal();
-
-	upgrade_2026_4_2_job_dispatch();
-}
-
-// Live chat.
-//
-// Two tables + twelve config columns. Design notes:
-//  - InnoDB: the conversation row takes an UPDATE on every message and
-//    poll; MyISAM's table-level lock would be wrong here from the start.
-//  - Times are INT UNSIGNED unix timestamps (orders.order_date pattern) —
-//    the DATE '' comparison trap cannot occur.
-//  - ip_address VARCHAR(45): full IPv6 length.
-//  - Deliberately few secondary indexes: a single composite index on
-//    messages serves both the poll (id > since) and history reads.
-//  - The schema carries both channels (backend/site) from the start; the
-//    site channel is enabled in code only, no extra schema step.
-//  - Attachment files go through the existing file pipeline into the files
-//    table; the stored name is fully synthetic, so a non-ASCII filename
-//    cannot reach the filesystem.
-//
-// The typing and attachment columns are declared in the CREATE TABLE rather
-// than added by a later ALTER. No installation has these tables - chat has
-// never shipped - so an ALTER guarded on a column of a table this same
-// function just created would never fire.
-//
-// Every switch starts at 0 (off). Nothing changes on the site until the
-// operator enables chat from the settings screen.
-function upgrade_2026_4_2_live_chat() {
-
-	db("CREATE TABLE IF NOT EXISTS chat_conversations (
-		id                     INT UNSIGNED NOT NULL AUTO_INCREMENT,
-		channel                ENUM('backend','site') NOT NULL DEFAULT 'site',
-		status                 ENUM('open','closed') NOT NULL DEFAULT 'open',
-		initiator_user_id      INT UNSIGNED NOT NULL DEFAULT 0,
-		target_user_id         INT UNSIGNED NOT NULL DEFAULT 0,
-		party_name             VARCHAR(100) NOT NULL DEFAULT '',
-		party_email            VARCHAR(255) NOT NULL DEFAULT '',
-		ip_address             VARCHAR(45)  NOT NULL DEFAULT '',
-		page_url               VARCHAR(500) NOT NULL DEFAULT '',
-		visitor_id             INT UNSIGNED NOT NULL DEFAULT 0,
-		last_message_id        INT UNSIGNED NOT NULL DEFAULT 0,
-		last_message_at        INT UNSIGNED NOT NULL DEFAULT 0,
-		last_message_preview   VARCHAR(120) NOT NULL DEFAULT '',
-		initiator_last_read_id INT UNSIGNED NOT NULL DEFAULT 0,
-		target_last_read_id    INT UNSIGNED NOT NULL DEFAULT 0,
-		initiator_last_seen    INT UNSIGNED NOT NULL DEFAULT 0,
-		target_last_seen       INT UNSIGNED NOT NULL DEFAULT 0,
-		initiator_typing_until INT UNSIGNED NOT NULL DEFAULT 0,
-		target_typing_until    INT UNSIGNED NOT NULL DEFAULT 0,
-		created_at             INT UNSIGNED NOT NULL DEFAULT 0,
-		closed_at              INT UNSIGNED NOT NULL DEFAULT 0,
-		closed_by              INT UNSIGNED NOT NULL DEFAULT 0,
-		PRIMARY KEY (id),
-		KEY idx_target (target_user_id, status, last_message_at),
-		KEY idx_initiator (initiator_user_id, status, last_message_at),
-		KEY idx_channel (channel, status, last_message_at)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-	db("CREATE TABLE IF NOT EXISTS chat_messages (
-		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
-		conversation_id    INT UNSIGNED NOT NULL DEFAULT 0,
-		sender_kind        ENUM('user','visitor','system') NOT NULL DEFAULT 'user',
-		sender_user_id     INT UNSIGNED NOT NULL DEFAULT 0,
-		body               TEXT NOT NULL,
-		attachment_file_id INT UNSIGNED NOT NULL DEFAULT 0,
-		attachment_kind    ENUM('none','image','file') NOT NULL DEFAULT 'none',
-		attachment_name    VARCHAR(255) NOT NULL DEFAULT '',
-		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
-		PRIMARY KEY (id),
-		KEY idx_conversation (conversation_id, id)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-	// config exists on every installation, so these do need the per-column
-	// guard. chat_widget_title empty means the language file's "Live Support".
-	// The visitor file limit is deliberately fixed at one and is not a setting.
-	$config_columns = array(
-		'chat_enabled'              => "ALTER TABLE config ADD chat_enabled TINYINT(1) NOT NULL DEFAULT 0",
-		'chat_site_enabled'         => "ALTER TABLE config ADD chat_site_enabled TINYINT(1) NOT NULL DEFAULT 0",
-		'chat_operator_user_id'     => "ALTER TABLE config ADD chat_operator_user_id INT UNSIGNED NOT NULL DEFAULT 0",
-		'chat_welcome_message'      => "ALTER TABLE config ADD chat_welcome_message VARCHAR(500) NOT NULL DEFAULT ''",
-		'chat_offline_email'        => "ALTER TABLE config ADD chat_offline_email TINYINT(1) NOT NULL DEFAULT 1",
-		'chat_captcha'              => "ALTER TABLE config ADD chat_captcha TINYINT(1) NOT NULL DEFAULT 1",
-		'chat_retention_days'       => "ALTER TABLE config ADD chat_retention_days INT UNSIGNED NOT NULL DEFAULT 60",
-		'chat_widget_theme'         => "ALTER TABLE config ADD chat_widget_theme VARCHAR(10) NOT NULL DEFAULT 'auto'",
-		'chat_widget_color'         => "ALTER TABLE config ADD chat_widget_color VARCHAR(7) NOT NULL DEFAULT '#0d6efd'",
-		'chat_widget_icon'          => "ALTER TABLE config ADD chat_widget_icon VARCHAR(20) NOT NULL DEFAULT 'chat'",
-		'chat_widget_title'         => "ALTER TABLE config ADD chat_widget_title VARCHAR(100) NOT NULL DEFAULT ''",
-		'chat_allow_files'          => "ALTER TABLE config ADD chat_allow_files TINYINT(1) NOT NULL DEFAULT 0",
-		'chat_allow_images'         => "ALTER TABLE config ADD chat_allow_images TINYINT(1) NOT NULL DEFAULT 0",
-		'chat_visitor_image_limit'  => "ALTER TABLE config ADD chat_visitor_image_limit SMALLINT UNSIGNED NOT NULL DEFAULT 5"
-	);
-
-	foreach ($config_columns as $column => $sql) {
-		if (!db_item("SHOW COLUMNS FROM config LIKE '" . $column . "'")) {
-			db($sql);
-		}
-	}
-}
-
-// Dashboard widget 18 changed from Admin Notes to File Management, so the
-// column that stored the note body has nothing left reading or writing it —
-// the Quill editor, its api.php action and the widget markup are all gone.
-//
-// Dropped rather than left in place: it is a free-text TEXT column that ends
-// up in every backup and every database export for as long as it exists, and
-// a note an administrator wrote to themselves is exactly the kind of content
-// that should not outlive the feature that collected it.
-//
-// The id is deliberately reused, so nothing has to be done to
-// dashboard.order_widgets — an existing "…,17,18,19,…" now points at the new
-// widget in the slot the old one occupied.
-//
-// Guarded on SHOW COLUMNS: an install that never had the column (or an
-// upgrade replayed after a partial run) must not fail here.
-function upgrade_2026_4_2_dashboard_widgets() {
-
-	if (db_item("SHOW COLUMNS FROM dashboard LIKE 'notes_widget_data'")) {
-		db("ALTER TABLE dashboard DROP COLUMN notes_widget_data");
-	}
-}
-
-// Scheduled-task health. The cron entries live outside the software — a
-// crontab, Windows Task Scheduler, a hosting control panel — so nothing in the
-// panel can ask whether a job is scheduled. Each job now records that it
-// FINISHED, and the dashboard reads those timestamps: a job that used to
-// finish and no longer does is a job whose schedule has stopped.
-//
-// A table rather than one config column per job. Nine jobs record here today
-// and the shape repeats exactly, so adding the tenth should not need an ALTER.
-// job_name is the primary key, which is what makes the recording write a
-// single INSERT ... ON DUPLICATE KEY UPDATE with no read first.
-//
-// Starts empty on purpose. Every job reads as "never ran" until its next run,
-// and the dashboard shows that in grey rather than red — an installation that
-// was upgraded five minutes ago has not got a broken cron, it has no history.
-function upgrade_2026_4_2_scheduled_task_health() {
-
-	db("CREATE TABLE IF NOT EXISTS cron_runs (
-		job_name    VARCHAR(64) NOT NULL,
-		last_run_at INT UNSIGNED NOT NULL DEFAULT 0,
-		PRIMARY KEY (job_name)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-}
-
-// A page carried two keyword fields that did different halves of one job.
-// page_meta_keywords fed the tag cloud and the search index; page_search_keywords
-// promoted the page in site search. An operator had to fill in both to get the
-// behaviour they expected from either, and the meta keywords field lost the only
-// output of its own when the <meta name="keywords"> tag was dropped.
-//
-// Everything on a page now reads page_search_keywords. This merges the old meta
-// keywords into it first, so that no site loses a tag cloud entry or a search
-// promotion the moment the reads move over, then rebuilds the page rows in
-// tag_cloud_keywords from the merged value.
-//
-// Only item_type = 'page' rows are rebuilt. Product and product group rows in
-// that table are written by the search results page cross reference and are fed
-// by their own keywords column, which is not changing.
-//
-// The work is done a page at a time: merge, then rewrite that one page's tag
-// cloud rows. That matters on a large site. A single DELETE across the whole
-// table followed by a long rebuild leaves the tag cloud empty for as long as the
-// rebuild runs, and a server with a hard FastCGI or proxy timeout can cut the
-// request off in the middle of it - at which point the version was never bumped,
-// so the next attempt would start over from an emptied table. Per page, every
-// step is complete on its own and repeating the upgrade is harmless.
-//
-// Runs before the SEO step, which is what marks every record stale. Reversing
-// the two would leave the first analysis pass scoring the pre-merge keywords.
-function upgrade_2026_4_2_page_keywords() {
-
-	$pages = db_items(
-		"SELECT page_id, page_search, page_search_keywords, page_meta_keywords
-		FROM page
-		WHERE (page_meta_keywords != '') OR (page_search_keywords != '')");
-
-	foreach ($pages as $page) {
-
-		// Search keywords are listed first so an operator's existing promotion
-		// terms keep their order and the meta keywords are appended after them.
-		$merged = merge_keyword_lists($page['page_search_keywords'], $page['page_meta_keywords']);
-
-		if ($merged != $page['page_search_keywords']) {
-
-			db(
-				"UPDATE page
-				SET page_search_keywords = '" . e($merged) . "'
-				WHERE page_id = '" . e($page['page_id']) . "'");
-		}
-
-		// Rewrite this page's tag cloud rows from the merged list. They were
-		// written from page_meta_keywords until now, so all of them are stale.
-		//
-		// The rebuild goes through the same function the rest of the software
-		// uses rather than inserting directly, so the rows end up exactly as a
-		// later edit of this page will expect to find them. That function diffs
-		// the new list against the old one, and it decides two keywords are the
-		// same by comparing the raw strings - a rebuild that deduplicated more
-		// aggressively than that would leave rows it could no longer account
-		// for, and the next edit would delete the page out of the cloud.
-		db(
-			"DELETE FROM tag_cloud_keywords
-			WHERE (item_id = '" . e($page['page_id']) . "') AND (item_type = 'page')");
-
-		update_tag_cloud_keywords_for_page($page['page_id'], $page['page_search'], $merged, 0, '');
-	}
-
-	// Clear rows left behind for pages that carry no keywords or are no longer in
-	// the site search. Earlier versions did not refresh this table on every edit
-	// that could have emptied it, so some sites have entries pointing at pages
-	// that have not been taggable for a while.
-	db(
-		"DELETE FROM tag_cloud_keywords
-		WHERE (item_type = 'page')
-		AND (item_id NOT IN (
-			SELECT page_id FROM page WHERE (page_search = '1') AND (page_search_keywords != '')))");
-}
-
-// SEO score engine.
-//
-// page, products and product_groups have carried seo_score / seo_analysis /
-// seo_analysis_current since the LiveSite era, but nothing ever wrote them: the
-// analyzer itself never shipped, only the schema and the invalidation writes
-// (edit_page.php, save_region_content.php, edit_product_group.php set
-// seo_analysis_current = 0) survived. The engine in seo.php now fills them.
-//
-// The score has four components and each keeps its own column, so that a
-// record whose speed changed is not made to re-run the structure pass:
-//
-//   seo_meta_score   - database fields: title, description, keywords, content.
-//   seo_struct_score - the rendered markup: heading order, alt text, nesting.
-//   seo_link_score   - internal links, and how far the page is from home.
-//   seo_speed_score  - measured server response time, from perf_stats.
-//   seo_score        - the composed number the list screens sort on.
-//
-// The three component columns are NULL until their pass has run once, which is
-// not the same as scoring zero: a record nobody has rendered yet keeps its meta
-// score rather than being punished for a pass that has not happened.
-//
-// Two supporting tables. seo_issue holds findings that are unbounded in number
-// and several per record, which neither the seo_flags bitmask nor the
-// seo_analysis JSON can filter on. seo_link holds one row per link per source
-// record, rewritten per record the same way seo_issue is; nothing in it is
-// fetched over HTTP - a link is resolved against the database in the order
-// router.php dispatches (file, then short link, then page), so "broken" here
-// means the router would not find a destination either. seo_depth is on page
-// only because clicks-from-home is a property of a page, not of a product.
-//
-// seo_flags is a bitmask of failed checks, one bit per problem, so "pages in
-// the sitemap with no title" is a single indexless AND on an INT instead of a
-// JSON scan. idx_seo_score exists because the list screens sort on it.
-function upgrade_2026_4_2_seo_score() {
-
-	db("CREATE TABLE IF NOT EXISTS seo_issue (
-		id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		entity_type  ENUM('page','product','product_group') NOT NULL,
-		entity_id    INT UNSIGNED NOT NULL,
-		code         VARCHAR(48) NOT NULL,
-		severity     ENUM('error','warning','notice') NOT NULL DEFAULT 'notice',
-		occurrences  SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-		source       VARCHAR(32) NOT NULL DEFAULT '',
-		detail       VARCHAR(255) NOT NULL DEFAULT '',
-		KEY idx_entity (entity_type, entity_id),
-		KEY idx_code (code, severity)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-	db("CREATE TABLE IF NOT EXISTS seo_link (
-		id        INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		from_type ENUM('page','product','product_group') NOT NULL,
-		from_id   INT UNSIGNED NOT NULL,
-		to_type   ENUM('page','product','product_group','file','short_link','external','unknown') NOT NULL,
-		to_id     INT UNSIGNED NOT NULL DEFAULT 0,
-		href      VARCHAR(512) NOT NULL,
-		anchor    VARCHAR(160) NOT NULL DEFAULT '',
-		rel       VARCHAR(64) NOT NULL DEFAULT '',
-		KEY idx_from (from_type, from_id),
-		KEY idx_to (to_type, to_id)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-	// Guarded per column rather than per group: a development database that
-	// stopped part way through an earlier form of this upgrade still gets the
-	// columns it is missing instead of none of them.
-	$seo_columns = array(
-		'seo_flags'             => "ADD COLUMN seo_flags INT UNSIGNED NOT NULL DEFAULT 0",
-		'seo_checked_at'        => "ADD COLUMN seo_checked_at INT UNSIGNED NOT NULL DEFAULT 0",
-		'seo_meta_score'        => "ADD COLUMN seo_meta_score TINYINT UNSIGNED NOT NULL DEFAULT 0",
-		'seo_struct_score'      => "ADD COLUMN seo_struct_score TINYINT UNSIGNED DEFAULT NULL",
-		'seo_struct_current'    => "ADD COLUMN seo_struct_current TINYINT UNSIGNED NOT NULL DEFAULT 0",
-		'seo_struct_checked_at' => "ADD COLUMN seo_struct_checked_at INT UNSIGNED NOT NULL DEFAULT 0",
-		'seo_link_score'        => "ADD COLUMN seo_link_score TINYINT UNSIGNED DEFAULT NULL",
-		'seo_speed_score'       => "ADD COLUMN seo_speed_score TINYINT UNSIGNED DEFAULT NULL"
-	);
-
-	foreach (array('page', 'products', 'product_groups') as $table) {
-
-		foreach ($seo_columns as $column => $clause) {
-
-			if (!db_item("SHOW COLUMNS FROM `" . $table . "` LIKE '" . $column . "'")) {
-				db("ALTER TABLE `" . $table . "` " . $clause);
-			}
-		}
-
-		if (!db_item("SHOW INDEX FROM `" . $table . "` WHERE Key_name = 'idx_seo_score'")) {
-			db("ALTER TABLE `" . $table . "` ADD INDEX idx_seo_score (seo_score)");
-		}
-
-		// Seed the meta score from the legacy value for records the old
-		// analyzer had already marked current, so the screens show a real
-		// number instead of a zero until the first pass completes.
-		//
-		// This has to come before the reset below, not after. The two used to
-		// be separate releases with weeks of live traffic between them, which
-		// is what put rows back into seo_analysis_current = 1; run back to back
-		// the reset would leave this UPDATE matching nothing at all.
-		db("UPDATE `" . $table . "` SET seo_meta_score = seo_score WHERE seo_analysis_current = 1");
-
-		// Everything is stale now: the engine is new, the keyword field it
-		// reads was just merged, and no record has been through the structure,
-		// link or speed passes at all. Until the first run the screens report
-		// the score as not yet calculated rather than a false 0.
-		db("UPDATE `" . $table . "` SET seo_analysis_current = 0");
-	}
-
-	if (!db_item("SHOW COLUMNS FROM page LIKE 'seo_depth'")) {
-		db("ALTER TABLE page ADD COLUMN seo_depth TINYINT UNSIGNED DEFAULT NULL");
-	}
-}
-
-// The speed component's two sources.
-//
-// perf_stats has been measuring every request for a while and the SEO score was
-// ignoring it. What stopped the two from meeting is that perf_stats groups by
-// URL and the score is per record, and turning one into the other by parsing
-// the path is the trap this codebase has already paid for: '/katalog/urun-adi'
-// resolves to the catalog detail template, not to the product, so every product
-// would be filed under one page.
-//
-// The answer is not to parse the label afterwards but to write the identity
-// while the request still knows it. perf_monitor_shutdown() runs after the
-// response is sent, in the same process that just rendered the record, so the
-// resolved item is still in memory there.
-//
-// The bucket key gains the record, because one label is not always one record:
-// '[home]' is shared by every page carrying page_home, and a catalogue reached
-// as '/urun-detay?pid=5' has its query string stripped. So existing rows stop
-// being written to and age out within the retention window, and a label behind
-// which several records live now produces one bucket per record per hour.
-//
-// On a large catalogue addressed that way this is a real increase - the same
-// cardinality visitor_content_hourly already carries, but perf_stats has a row
-// cap (PERF_MONITOR_MAX_ROWS, default 200000) that visitor_content_hourly does
-// not. A shop with tens of thousands of SKUs behind one label should raise it,
-// or the retention sweep will trim the window the speed score reads from.
-//
-// The second index is for the Impact column on the Pages screen, which joins
-// visitor_content_hourly on page_id - a column that table had no index on,
-// because the rollup was designed to be read by date and by item like every
-// report before this one. Without it the join is a thirty-day range scan and a
-// temporary table on every list render: exactly the cost the rollup exists to
-// remove, quietly added back to the busiest screen. The product side already
-// had idx_item and is unaffected.
-function upgrade_2026_4_2_speed_signal() {
-
-	if (db_item("SHOW TABLES LIKE 'perf_stats'")) {
-
-		if (!db_item("SHOW COLUMNS FROM perf_stats LIKE 'entity_type'")) {
-			db("ALTER TABLE perf_stats ADD COLUMN entity_type VARCHAR(16) NOT NULL DEFAULT ''");
-		}
-
-		if (!db_item("SHOW COLUMNS FROM perf_stats LIKE 'entity_id'")) {
-			db("ALTER TABLE perf_stats ADD COLUMN entity_id INT UNSIGNED NOT NULL DEFAULT 0");
-		}
-
-		if (!db_items("SHOW INDEX FROM perf_stats WHERE Key_name = 'idx_entity'")) {
-			db("ALTER TABLE perf_stats ADD INDEX idx_entity (entity_type, entity_id)");
-		}
-	}
-
-	if (db_item("SHOW TABLES LIKE 'visitor_content_hourly'")) {
-
-		if (!db_items("SHOW INDEX FROM visitor_content_hourly WHERE Key_name = 'idx_page_date'")) {
-			db("ALTER TABLE visitor_content_hourly ADD INDEX idx_page_date (page_id, stat_date)");
-		}
-	}
-}
-
-// Optional dispatch of the other scheduled jobs from the general job.
-//
-// Every column ships off or empty. The e-mail campaign job in particular sends
-// every campaign whose status is "Ready to Send" the moment it runs, so an
-// upgrade that switched dispatching on by itself would post a site's old,
-// abandoned campaigns. Nothing here changes behaviour until an operator makes
-// a selection on the settings screen.
-//
-// The lock column is separate from the selection so that a run in progress and
-// the operator's choice never overwrite each other.
-function upgrade_2026_4_2_job_dispatch() {
-
-	$config_columns = array(
-		'job_dispatch_enabled'    => "ALTER TABLE config ADD job_dispatch_enabled TINYINT(1) NOT NULL DEFAULT 0",
-		'job_dispatch'            => "ALTER TABLE config ADD job_dispatch VARCHAR(255) NOT NULL DEFAULT ''",
-		'job_dispatch_lock_until' => "ALTER TABLE config ADD job_dispatch_lock_until INT UNSIGNED NOT NULL DEFAULT 0"
-	);
-
-	foreach ($config_columns as $column => $sql) {
-		if (!db_item("SHOW COLUMNS FROM config LIKE '" . $column . "'")) {
-			db($sql);
-		}
-	}
-}
-// 2026.4.3 - per-page search engine indexing.
-//
-// A version of its own rather than another step under 2026.4.2. That number has
-// already been run - the installation the work was done on is past it - and the
-// upgrade loop only calls a version whose key is greater than the one in the
-// database. A step added to a version that has been run is a step that never
-// runs.
-//
-// A page could be kept out of sitemap.xml but there was no way to tell a
-// crawler to stay away from it. Two cases needed one: a page whose content is
-// rendered as a widget somewhere else (a "latest three posts" list dropped in
-// the footer) is a duplicate of a page that is already indexed, and the site
-// search page multiplies into one URL per query while indexing none of them.
-//
-// Two TINYINT columns rather than one string. noindex is the switch the rest of
-// the software branches on - sitemap generation, robots.txt, the page screen -
-// and an integer column keeps those tests the same shape as the sitemap column
-// right next to it. nofollow only qualifies the directive and is forced back to
-// 0 whenever noindex is off, so the pair has three meaningful states and no way
-// to store a fourth.
-//
-// No index on either column. The sitemap and robots.txt builders read the whole
-// page table once per request and pages are counted in hundreds; an index here
-// would be paid for on every page save and never used.
-//
-// Both default to 0, which is exactly today's behaviour, so there is nothing to
-// backfill.
-function upgrade_to_2026_4_3() {
-
-	$page_columns = array(
-		'noindex'  => "ALTER TABLE page ADD noindex TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER sitemap",
-		'nofollow' => "ALTER TABLE page ADD nofollow TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER noindex"
-	);
-
-	foreach ($page_columns as $column => $sql) {
-		if (!db_item("SHOW COLUMNS FROM page LIKE '" . $column . "'")) {
-			db($sql);
-		}
-	}
 }

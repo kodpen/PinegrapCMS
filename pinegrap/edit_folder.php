@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -21,7 +21,11 @@ $user = validate_user();
 validate_area_access($user, 'user');
 
 
-$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php">' . lang('All Folders') . '</a></li>';
+// Cancel and the breadcrumb go back where the operator came from, when the
+// screen that opened this one said where that was. The save already did.
+$back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php');
+
+$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . h($back_url) . '">' . lang('All Folders') . '</a></li>';
 
 $form = new liveform('edit_folder');
 
@@ -64,7 +68,15 @@ if (!$_POST['name']) {
         $folder_parent and check_edit_access($folder_parent)
         and (USER_ROLE < 3 or $user['create_pages'])
     ) {
-        $duplicate = '<nav id="button_bar" class="navigation " aria-label="Button Bar">
+        // duplicate_folder.php forwards this back to edit_folder.php when it is
+    // done, so the button has to carry it through. Same shape the receiving
+    // side builds it in.
+    $send_to = '';
+    if (isset($_REQUEST['send_to']) && ($_REQUEST['send_to'] != '')) {
+        $send_to = '&send_to=' . h(escape_javascript(urlencode($_REQUEST['send_to'])));
+    }
+
+    $duplicate = '<nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_folder.php?id=' . h($_GET['id']) . '' . $send_to . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
@@ -188,19 +200,21 @@ if (!$_POST['name']) {
                 'extra classes'=>'folders',
                 'icon'=>'folder',
                 'heading'=> lang('Edit Folder'),
-                'cancel'=>array('enable'=>'true','url'=>'view_folders.php'),
+                'heading_description' => lang('View and update this folder.'),
+                'cancel'=>array('enable'=>'true','url'=>$back_url),
                 'breadcrumb' => array(
-                    array('label' => lang('All Folders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php'),
+                    array('label' => lang('All Folders'), 'url' => $back_url),
                     array('label' => lang('Edit Folder')),
                 ),
             )
         ) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
                     ' . $form->get_messages() . '
                     <div class="row mb-2  flex-wrap">
                         <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View and update this folder.') . '" title="' . lang('Edit Folder') . '">[' . h($folder_name) . ']</h2>
+
                             ' . $duplicate . '
                         </div>
                     </div>
@@ -217,7 +231,7 @@ if (!$_POST['name']) {
                                         <div class="row">
                                             <div class="col-12 col-md-8 my-2">
                                                 <label for="name" class="form-label">*' . lang('Folder Name') . '</label>
-                                                <input id="name" name="name" type="text" value="' . h($folder_name) . '" class="form-control add-header-content-updater ">
+                                                <input id="name" name="name" type="text" value="' . h($folder_name) . '" class="form-control ">
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                             <div class="col-12 col-md-4  my-2">
@@ -281,7 +295,8 @@ if (!$_POST['name']) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
         $form->remove();
@@ -410,7 +425,7 @@ if (!$_POST['name']) {
 
     
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
     // else send user to the default view
     } else {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_folders.php');

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -34,6 +34,18 @@ $output_email_address_column = '';
 $output_user_start_page_column = '';
 $output_user_contact_column = '';
 $output_last_modified_column = '';
+$output_user_role_column = '';
+$output_private_folder_access_column = '';
+$output_member_user_column = '';
+$output_manage_content_column = '';
+$output_manage_calendars_column = '';
+$output_manage_forms_column = '';
+$output_view_visitors_column = '';
+$output_manage_contacts_column = '';
+$output_manage_email_column = '';
+$output_manage_ecommerce_column = '';
+$output_manage_users_column = '';
+$output_edit_design_column = '';
 $output_email_address_column_header = '';
 $output_user_start_page_column_heading = '';
 $output_user_contact_column_header = '';
@@ -647,6 +659,7 @@ $query =
         user.user_username as username,
         user.user_email as email,
         user.user_role as role,
+        user.user_google_id as user_google_id,
         user.user_manage_contacts as manage_contacts,
         user.user_manage_visitors as manage_visitors,
         user.user_manage_ecommerce as manage_ecommerce,
@@ -670,6 +683,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $username = $row['username'];
     $email = $row['email'];
     $role = $row['role'];
+    $user_google_id_value = $row['user_google_id'];
     $manage_contacts = $row['manage_contacts'];
     $manage_visitors = $row['manage_visitors'];
     $manage_ecommerce = $row['manage_ecommerce'];
@@ -1199,6 +1213,32 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 
 
+    // Sign-in lockout, shown beside the name rather than in a column of its
+    // own: it is empty on almost every row, and a column of blanks costs a
+    // heading and a width on every screen to say nothing.
+    $output_sign_in_lock = '';
+
+    $sign_in_lock = pg_login_lock_state($username, $email);
+
+    if ($sign_in_lock['locked']) {
+
+        $sign_in_lock_minutes = max(1, (int) ceil(($sign_in_lock['until'] - time()) / 60));
+
+        $output_sign_in_lock =
+            ' <span class="badge bg-danger fw-light" title="' . h(lang(array(
+                'string' => 'Signing in is locked after repeated failed attempts. Clears in {var:1} minutes.',
+                'vars'   => $sign_in_lock_minutes))) . '">' . lang('Locked') . '</span>';
+    }
+
+    // Google badge beside the name, next to the sign-in lock, so the admin
+    // can see at a glance which accounts can sign in with Google.
+    $output_google_badge = '';
+    if (!empty($user_google_id_value)) {
+        $output_google_badge =
+            ' <span class="badge bg-light text-dark border fw-light" title="'
+            . h(lang('This account can sign in with Google.')) . '">' . lang('Google') . '</span>';
+    }
+
     if($last_seen >= 1){
         $output_last_seen = '<td class="align-middle">' . get_relative_time(array('timestamp' => $last_seen)) . ' </td>';
     }else{
@@ -1212,7 +1252,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="align-middle">' . h($username) . '</td>
+            <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_google_badge . '</td>
             ' . $output_email_address_column . '
             ' . $output_user_role_column . '
             ' . $output_user_start_page_column . '
@@ -1240,9 +1280,11 @@ echo
             'extra classes'=>'users',
             'icon'=>'account', 
             'heading'=>lang($heading),
+            'heading_description' => ($subheading ?? lang('Panel users and what they can access')),
                     
         )
     ). '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -1251,7 +1293,7 @@ echo
                
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
+                        
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
@@ -1321,7 +1363,8 @@ echo
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 $liveform->remove_form('view_users');

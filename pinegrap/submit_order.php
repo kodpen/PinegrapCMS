@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -703,7 +703,7 @@ function submit_order($type) {
             order_items.product_name,
             order_items.quantity,
             order_items.price,
-            order_items.tax,
+            order_items.tax_total,
             order_items.recurring_payment_period,
             order_items.recurring_number_of_payments,
             order_items.recurring_start_date,
@@ -822,7 +822,8 @@ function submit_order($type) {
         $quantity = $product['quantity'];
 
         $total_price = $product['price'] * $product['quantity'];
-        $total_tax =  $product['tax'] * $product['quantity'];
+        // tax_total is already the whole line, so no quantity here.
+        $total_tax = $product['tax_total'];
 
         // update subtotal
         $subtotal = $subtotal + $total_price;
@@ -1287,15 +1288,19 @@ function submit_order($type) {
     
     /* begin: check that there are no free order items alone in a ship to */
     
+    // products.short_description is the name the shopper sees; order_items.product_name
+    // carries the item code, which means nothing to them in a warning.
     $query =
         "SELECT
-            ship_to_id,
-            product_name
+            order_items.ship_to_id,
+            order_items.product_name,
+            products.short_description
         FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
         WHERE
-            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-            AND (ship_to_id > 0)
-            AND (price <= 0)";
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            AND (order_items.ship_to_id > 0)
+            AND (order_items.price <= 0)";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     $free_order_items = array();
@@ -1318,7 +1323,7 @@ function submit_order($type) {
         
         // if a non-free order item could not be found, add error
         if (mysqli_num_rows($result) == 0) {
-            $liveform->mark_error('free_order_item_error', h($free_order_item['product_name']) . ' is a free item that you have requested to ship with no non-free items.  Free items must be shipped with at least one non-free item. You may update your order so that the item is shipped with at least one non-free item or you may remove the item.');
+            $liveform->mark_error('free_order_item_error', lang(array('string' => '{var:1} is a free item that you have requested to ship with no non-free items. Free items must be shipped with at least one non-free item. You may update your order so that the item is shipped with at least one non-free item or you may remove the item.', 'vars' => array(h($free_order_item['short_description'] != '' ? $free_order_item['short_description'] : $free_order_item['product_name'])))));
         }
     }
     
@@ -2602,7 +2607,7 @@ function submit_order($type) {
 
 
                     case 'Stripe':
-                        require_once(dirname(__FILE__) . '/assets/stripe/lib/Stripe.php');
+                        require_once(dirname(__FILE__) . '/includes/stripe/lib/Stripe.php');
 
                         Stripe::setApiKey(ECOMMERCE_STRIPE_API_KEY);
 
@@ -2653,7 +2658,7 @@ function submit_order($type) {
 
                     case 'Iyzipay':
                     
-                        require_once(dirname(__FILE__) . '/assets/iyzipay-php/IyzipayBootstrap.php');
+                        require_once(dirname(__FILE__) . '/includes/iyzipay-php/IyzipayBootstrap.php');
                         IyzipayBootstrap::init();
                     
                         // Mode
@@ -3231,8 +3236,7 @@ function submit_order($type) {
                             'L_PAYMENTREQUEST_0_NAME' . $line_item_number . '=' . urlencode($product['short_description']) . '&' .
                             'L_PAYMENTREQUEST_0_NUMBER' . $line_item_number . '=' . urlencode($product['product_name']) . '&' .
                             'L_PAYMENTREQUEST_0_AMT' . $line_item_number . '=' . sprintf("%01.2lf", $product['price'] / 100) . '&' .
-                            'L_PAYMENTREQUEST_0_QTY' . $line_item_number . '=' . $product['quantity'] . '&' .
-                            'L_PAYMENTREQUEST_0_TAXAMT' . $line_item_number . '=' . sprintf("%01.2lf", $product['tax'] / 100) . '&';
+                            'L_PAYMENTREQUEST_0_QTY' . $line_item_number . '=' . $product['quantity'] . '&';
                     }
 
                     // if there is an order discount, then add line item for discount
@@ -3372,7 +3376,7 @@ function submit_order($type) {
                 $installment_charge  = 0;
                 $total_witout_installment_charge = 0;
 
-                require_once(dirname(__FILE__) . '/assets/iyzipay-php/IyzipayBootstrap.php');
+                require_once(dirname(__FILE__) . '/includes/iyzipay-php/IyzipayBootstrap.php');
                 IyzipayBootstrap::init();
 
                 $payment_gateway_host = (ECOMMERCE_PAYMENT_GATEWAY_MODE === 'test')
@@ -3785,8 +3789,16 @@ function submit_order($type) {
         // If the user is found, then this order will be connected to the user further below.
         $user_id = db_value("SELECT user_id FROM user WHERE user_email = '" . e($billing_email_address) . "'");
 
-        // If a user does not exist, then create user.
-        if (!$user_id) {
+        // If a user does not exist, then create user - unless the address is
+        // blocked, in which case the order still goes through (the customer
+        // paid; refusing the sale here would be a different decision) but no
+        // account is opened from it.
+        if (!$user_id && pg_email_blocked($billing_email_address)) {
+            log_activity(lang(array(
+                'string' => 'no account created for a blocked email address ({var:1})',
+                'vars'   => array($billing_email_address))), '');
+
+        } elseif (!$user_id) {
 
             // Create a username by using everything before "@" in the email address,
             // and, if necessary, add numbers to the end to make it unique.
@@ -3797,25 +3809,13 @@ function submit_order($type) {
                 'type' => 'lowercase_letters',
                 'length' => 10));
 
-            db(
-                "INSERT INTO user (
-                    user_username,
-                    user_email,
-                    user_password,
-                    user_role,
-                    user_contact,
-                    user_timestamp)
-                VALUES (
-                    '" . e($username) . "',
-                    '" . e($billing_email_address) . "',
-                    '" . md5($random_password) . "',
-                    '3',
-                    '" . $contact_id . "',
-                    UNIX_TIMESTAMP())");
-
-            // Get the new user id which we will use to connect this order
-            // to the new user further below.
-            $user_id = mysqli_insert_id(db::$con);
+            // Auto-registration: create the member with a modern password hash.
+            $user_id = create_member_user(array(
+                'username'   => $username,
+                'email'      => $billing_email_address,
+                'contact_id' => $contact_id,
+                'password'   => $random_password,
+            ));
 
             // Remember email and password in the session, so we can show it on the order receipt.
             $_SESSION['software']['auto_registration']['email_address'] = $billing_email_address;
@@ -3844,8 +3844,13 @@ function submit_order($type) {
             // main account.
             if (!$ghost) {
 
+                $_SESSION['sessionuserid']  = db_value("SELECT user_id FROM user WHERE user_username = '" . escape($username) . "'");
                 $_SESSION['sessionusername'] = $username;
-                $_SESSION['sessionpassword'] = md5($random_password);
+
+                // Bind this fresh session to a device token while the device
+                // limit is on, so it counts toward the limit and can be signed
+                // out from another device. No-op when the limit is off.
+                pg_login_set_device_cookie((int) $_SESSION['sessionuserid'], false);
 
                 log_activity(
                     'user was auto-logged in by order auto-registration',
@@ -4163,6 +4168,19 @@ function submit_order($type) {
              SET order_number = '$order_number'
              WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    // Tell whoever is subscribed that an order was placed.
+    //
+    // Here, once the order number exists, because that is the number every
+    // other system knows the order by. Nothing is sent from this request: the
+    // event is queued and the cron delivers it, so a slow receiver cannot hold
+    // up the customer's confirmation page.
+    require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+
+    api_webhook_enqueue('order.created', array(
+        'id'           => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+        'order_number' => $order_number
+    ));
     
     // we know the order number now, so if gift cards are enabled and there was a gift card error, then e-mail administrator and log activity
     if ((ECOMMERCE_GIFT_CARD == TRUE) && ($gift_card_error == TRUE)) {
@@ -4267,7 +4285,7 @@ function submit_order($type) {
             }
 
             $price = $product['price'] * $product['quantity'];
-            $tax = $product['tax'] * $product['quantity'];
+            $tax = $product['tax_total'];
             $amount = $price + $tax;
             
             // prepare values in a certain way for several payment gateways
@@ -5887,7 +5905,6 @@ function submit_order($type) {
         $short_description = $product['short_description'];
         $quantity = $product['quantity'];
         $product_price = sprintf("%01.2lf", $product['price'] / 100);
-        $product_tax = sprintf("%01.2lf", $product['tax'] / 100);
         $contact_group_id = $product['contact_group_id'];
         $membership_renewal = $product['membership_renewal'];
         $grant_private_access = $product['grant_private_access'];
@@ -5918,6 +5935,12 @@ function submit_order($type) {
                             
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername']));
+            }
+
+            // Sold here, so the marketplace has to be told. Queued, not sent:
+            // a checkout must never wait on somebody else's server.
+            if (function_exists('pg_marketplace_product_changed')) {
+                pg_marketplace_product_changed($product_id);
             }
         }
         
@@ -6724,7 +6747,7 @@ function submit_order($type) {
                         LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
                         WHERE
                             (page.page_id = '" . $product['submit_form_custom_form_page_id'] . "')
-                            AND (page.page_type = 'custom form')");
+                            AND " . pg_form_page_sql('page'));
 
                     // If the custom form page was found, then continue to create submitted form.
                     if ($custom_form_page['id']) {

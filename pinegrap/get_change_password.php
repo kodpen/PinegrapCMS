@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -36,7 +36,17 @@ function get_change_password($properties) {
     $form->set('email_address', 'required', true);
     $form->set('email_address', 'maxlength', 100);
 
-    $form->set('current_password', 'required', true);
+    // A Google-only account (algo 3) has no password yet: the screen becomes
+    // "set a password" - no current-password field, and change_password.php
+    // skips the current-password check for the session's own account.
+    $password_not_set = false;
+    if (USER_LOGGED_IN) {
+        $password_not_set = ((int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . (int) USER_ID . "'") === 3);
+    }
+
+    if (!$password_not_set) {
+        $form->set('current_password', 'required', true);
+    }
 
     // If strong password is enabled, then display password requirements.
     if (STRONG_PASSWORD) {
@@ -68,6 +78,7 @@ function get_change_password($properties) {
         'attributes' => $attributes,
         'strong_password_help' => $strong_password_help,
         'my_account_url' => $my_account_url,
+        'password_not_set' => $password_not_set,
         'system' => $system));
 
     $output = $form->prepare($output);

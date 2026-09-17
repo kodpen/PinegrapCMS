@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,7 +23,7 @@ unset($_SESSION['software']['theme_designer'][$_GET['file_id']]);
 
 // if there is a send to being passed then send the user to the next screen
 if (($_GET['send_to'] ?? '') != '') {
-    header('Location: ' . URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? ''));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? ''));
     exit();
 }
 ?>

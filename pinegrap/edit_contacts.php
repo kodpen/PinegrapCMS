@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -299,7 +299,7 @@ if ($_POST['contacts']) {
 
 // If there is a send to value then send user back to that screen
 if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
     
 // else send user to the default view
 } else {

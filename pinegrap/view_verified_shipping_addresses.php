@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -192,8 +192,10 @@ echo
         'title'=> lang('All Verified Shipping Addresses'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('All Verified Shipping Addresses')
+        'heading'=>lang('All Verified Shipping Addresses'),
+        'heading_description' => lang('All optional shipping addresses that can be selected on Shipping Address & Arrival Pages.'),
     ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -202,7 +204,7 @@ echo
 
                 <div class="row mb-2 flex-wrap">
                     <div class="col-12 text-center text-md-start">
-                        <h2 class="d-inline-block" data-bs-content="' . lang('All optional shipping addresses that can be selected on Shipping Address & Arrival Pages.') . '" title="' . lang('All Verified Shipping Addresses') . '">' . lang('All Verified Shipping Addresses') . '</h2>
+                        
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1" href="add_verified_shipping_address.php?state_id=' . escape(($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '" data-loading-content="' . lang('Loading') . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
                         </nav>
@@ -241,7 +243,8 @@ echo
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 $liveform->remove_form();

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -242,23 +242,21 @@ if (!$_POST) {
             'extra classes'=>'calendar',
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))),
+            'heading_description' => lang('Create a new event on one or more calendars, and publish it at any time.'),
             'cancel'=>array('enable'=>'true','url'=>'view_calendars.php'),
         
             'breadcrumb' => array(array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))))),
         )
     ) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
     ' . get_date_time_picker_format() . '
     ' . get_wysiwyg_editor_code(array('full_description', 'notes', 'no_remaining_spots_message')) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new event on one or more calendars, and publish it at any time.') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))) . '">[' . lang(array('string'=>'new {var:1} name','vars'=>lang('event'))) . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_calendar_event.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -271,7 +269,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4 my-2">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 col-md-8 my-2">
@@ -562,7 +560,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

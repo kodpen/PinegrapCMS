@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -163,18 +163,15 @@ if (!$_POST) {
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('SMTP Settings'),
-        'cancel'=>['enable'=>true,'title'=>lang('Return to Settings'),'onclick'=>"window.location.href='settings.php'"]
+        'heading_description' => lang('Update the Smtp settings for the Software Mail Function.')
     ]) . '
+<main id="content" class="container-fluid">
             ' . get_codemirror_includes() . '
         <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . $liveform->get_warnings() . $liveform->output_notices() . '
                 
-				<div class="row mb-2  flex-wrap">
-					<div class="col-12 col-sm-12 text-center text-md-start">
-						<h2 class="d-inline-block " data-bs-content="' . lang('Update the Smtp settings for the Software Mail Function.') . '" title="' . lang('SMTP Settings') . '">' . lang('SMTP Settings') . '</h2>
-					</div>
-				</div>
+				
                 <form name="form" action="smtp_settings.php" method="post" autocomplete="off"  submitshortcut="submit_save">
                     ' . get_token_field() . '
                     <div class="row">
@@ -267,7 +264,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' . output_footer();
+    
+</main>' . output_footer();
 
     $liveform->remove_form();
     exit;

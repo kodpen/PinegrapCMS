@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,6 +24,11 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
+
+// The image picker on this screen is the one the product screens draw, so the
+// markup, the drop area and the upload rules stay in one place — the copy that
+// used to live here was a second implementation that quietly fell behind.
+include_once('product_builder.php');
 $liveform = new liveform('add_product_group');
 
 if (!$_POST) {
@@ -92,21 +97,19 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Create Product Group'),
+        'heading_description' => lang('Create a new product group and include products and other product groups.'),
         'cancel'=>array('enable'=>'true','url'=>'view_product_groups.php')
     ,
-            'breadcrumb' => array(array('label' => lang('All Product Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'), array('label' => lang('Create Product Group'))),
+            'breadcrumb' => array(array('label' => lang('Product Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'), array('label' => lang('Create Product Group'))),
         ]) . '
+<main id="content" class="container-fluid">
             ' . get_wysiwyg_editor_code(array('full_description', 'details')) . '
         <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new product group and include products and other product groups.') . '" title="' . lang('Create Product Group') . '">[' . lang('new product group') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_product_group.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -119,7 +122,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4 my-2">
                                             <label for="name" class="form-label">*' . lang('Product Group Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control add-header-content-updater ')) . '
+                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
@@ -197,9 +200,9 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 mt-3">
-                                            <div id="software_image_picker_container" ondblclick="software_image_picker({initialize:true});" class="user-select-none sortable-list img-list bg-body-tertiary rounded p-2 row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-4"></div>
-                                            <button type="button" class="btn btn-primary my-3 me-2" onclick="software_image_picker({initialize:true});" ><span class="bi bi-plus-circle me-2"></span>' . lang('Add Image') . '</button>
-                                            <button type="button" class="btn " data-bs-toggle="modal" data-bs-target="#image_code"><span class="material-icons me-2">code</span>' . lang('Code') . '</button>
+                                            ' . pg_pb_render_image_picker(
+                                                    array(),
+                                                    '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
                                             <div class="modal fade" id="image_code" tabindex="-1" aria-labelledby="image_code" aria-hidden="true">
                                                 <div class="modal-dialog modal-lg ">
@@ -223,25 +226,6 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <script>
-                                                $(document).ready(function() {
-                                                    $(".sortable-list").sortable({
-                                                        items: "> div:not(.add_new_item)",
-                                                        placeholder: "col",
-                                                        handle: ".card .card-body",
-                                                        revert: "100",
-                                                        cursorAt: { left: 1 },
-                                                        animation: 150,
-                                                        forcePlaceholderSize: false,
-                                                        forceHelperSize: true,
-                                                        swapThreshold: 1,
-                                                        tolerance: "pointer",
-                                                        zIndex: 9999,
-                                                        cursor: "move",
-                                                        cancel: ".no-drag"
-                                                    });
-                                                });
-                                            </script>
                                         </div>
                                     </div>
                                 </div>
@@ -384,8 +368,9 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
-        output_footer();
+    ' .
+        pg_pb_render_image_picker_assets() .
+        '</main>' . output_footer();
 
 $liveform->remove_form();
 

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
  
@@ -191,6 +191,7 @@ if (!$_POST) {
             'extra classes'=>'campaign',
             'icon'=>'campaign',
             'heading'=> lang('Create Campaign'),
+            'heading_description' => lang('Create a new e-mail campaign to send to all subscribers in selected contact groups.'),
             'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php'),
             'breadcrumb' => array(
                 array('label' => lang('My Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php'),
@@ -198,14 +199,11 @@ if (!$_POST) {
             ),
         )
     ) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new e-mail campaign to send to all subscribers in selected contact groups.') . '" title="' . lang('Create Campaign') . '">[' . lang('Campaign Subject') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_email_campaign.php" method="post" >
                     ' . get_token_field() . '
                     <div class="row">
@@ -218,7 +216,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-2">
                                             <label for="subject" class="form-label">' . lang('Subject') . '</label>
-                                            <input type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control add-header-content-updater" />
+                                            <input type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />
                                         </div>
                                         <div class="col-12 my-1">
                                             <div class="col-12">
@@ -355,7 +353,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
 // else form has been submitted

@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform — System-widget cart POST handler.
+ * Pinegrap - Enterprise Website Platform — System-widget cart POST handler.
  *
  * Forms rendered by `_render_system_widget_shopping_cart` (the Visual
  * Pinegrap Editor's shopping_cart widget) post here so a `header('Location: …')`
@@ -10,7 +10,10 @@
  * gönderme" prompt was the visible symptom.
  *
  * Supported actions (mutually exclusive per POST):
- *   submit_update_cart           — quantities[item_id] map → UPDATE order_items
+ *   submit_update_cart           — quantities[item_id] map → UPDATE order_items;
+ *                                  also product-form data, gift-card recipient
+ *                                  rows and the recurring schedule of every
+ *                                  recurring row
  *   submit_special_offer_code    — special_offer_code → orders.special_offer_code
  *
  * Required fields on every POST:
@@ -310,6 +313,127 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
     }
     if ($_pg_gc_saved > 0) $_pg_log('UPDATE gift_card saved · count=' . $_pg_gc_saved);
 
+    // ── Recurring schedule ─────────────────────────────────────────────
+    // Every recurring row gets its schedule written on every update, the
+    // way legacy shopping_cart.php does: the customer's own choice when the
+    // product lets the customer set it (recurring_payment_period_<id>,
+    // recurring_number_of_payments_<id>, recurring_start_date_<id> — the
+    // legacy field names), the product's defaults otherwise. The gateway
+    // rules are the legacy ones too: ClearCommerce needs 2-999 payments and
+    // always starts today, First Data needs 1-99, everyone else takes any
+    // count (blank = no limit) and a start date that is not in the past.
+    // A row that fails validation keeps its stored schedule and the message
+    // lands on $lf for the widget's Messages node.
+    $_rec_rows = db_items(
+        "SELECT oi.id AS item_id, oi.quantity, oi.recurring_payment_period,
+                p.payment_period, p.recurring_schedule_editable_by_customer,
+                p.number_of_payments AS product_number_of_payments, p.start AS recurring_start_days
+         FROM order_items oi
+         INNER JOIN products p ON p.id = oi.product_id AND p.recurring = 1
+         WHERE oi.order_id = '" . (int)$oid . "'"
+    );
+    $_rec_cc      = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
+    $_rec_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string)ECOMMERCE_PAYMENT_GATEWAY : '';
+    $_rec_periods = function_exists('get_payment_period_options') ? array_values(get_payment_period_options()) : array();
+    $_rec_saved   = 0;
+    foreach ((array)$_rec_rows as $_rr) {
+        $_riid = (int)$_rr['item_id'];
+        if ($_riid <= 0 || (int)$_rr['quantity'] <= 0) continue;
+        $_def = function_exists('_pg_cart_recurring_defaults') ? _pg_cart_recurring_defaults($_rr) : array(
+            'period'     => ((string)$_rr['payment_period'] !== '') ? (string)$_rr['payment_period'] : 'Monthly',
+            'payments'   => (int)$_rr['product_number_of_payments'],
+            'start_date' => date('Y-m-d', time() + (86400 * max(0, (int)$_rr['recurring_start_days']))),
+        );
+        $_period   = $_def['period'];
+        $_payments = (int)$_def['payments'];
+        $_start    = $_def['start_date'];
+
+        if ((int)$_rr['recurring_schedule_editable_by_customer'] === 1) {
+            $_n_period   = 'recurring_payment_period_' . $_riid;
+            $_n_payments = 'recurring_number_of_payments_' . $_riid;
+            $_n_start    = 'recurring_start_date_' . $_riid;
+            $_row_ok = true;
+            $_p = $_c = $_d = '';
+
+            // Frequency: one of the known periods; blank falls back to the
+            // product's, which is what the control was showing anyway.
+            $_p = trim((string)($_POST[$_n_period] ?? ''));
+            if ($_p !== '') {
+                if (in_array($_p, $_rec_periods, true)) {
+                    $_period = $_p;
+                } else {
+                    $lf->mark_error($_n_period, lang('Frequency is required.'));
+                    $_row_ok = false;
+                }
+            }
+
+            // Number of payments: digits only; the gateway sets the range.
+            $_c = trim((string)($_POST[$_n_payments] ?? ''));
+            if ($_c === '') {
+                if ($_rec_cc && ($_rec_gateway === 'ClearCommerce' || $_rec_gateway === 'First Data Global Gateway')) {
+                    $lf->mark_error($_n_payments, lang('Number of Payments is required.'));
+                    $_row_ok = false;
+                } else {
+                    $_payments = 0;
+                }
+            } elseif (!ctype_digit($_c)) {
+                $lf->mark_error($_n_payments, lang('Number of Payments must be a whole number.'));
+                $_row_ok = false;
+            } else {
+                $_payments = (int)$_c;
+                if ($_rec_cc && $_rec_gateway === 'ClearCommerce' && ($_payments < 2 || $_payments > 999)) {
+                    $lf->mark_error($_n_payments, lang('Number of Payments requires a value from 2-999.'));
+                    $_row_ok = false;
+                } elseif ($_rec_cc && $_rec_gateway === 'First Data Global Gateway' && ($_payments < 1 || $_payments > 99)) {
+                    $lf->mark_error($_n_payments, lang('Number of Payments requires a value from 1-99.'));
+                    $_row_ok = false;
+                }
+            }
+
+            // Start date: not on ClearCommerce (bills from today). The widget
+            // posts Y-m-d; the legacy screen's d/m/Y is accepted as well.
+            if ($_rec_cc && $_rec_gateway === 'ClearCommerce') {
+                $_start = date('Y-m-d');
+            } else {
+                $_d = trim((string)($_POST[$_n_start] ?? ''));
+                if ($_d !== '') {
+                    $_iso = '';
+                    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $_d, $_dm) && checkdate((int)$_dm[2], (int)$_dm[3], (int)$_dm[1])) {
+                        $_iso = $_d;
+                    } elseif (function_exists('validate_date') && validate_date($_d)) {
+                        $_iso = prepare_form_data_for_input($_d, 'date');
+                    }
+                    if ($_iso === '') {
+                        $lf->mark_error($_n_start, lang('Start Date must contain a valid date.'));
+                        $_row_ok = false;
+                    } elseif ($_iso < date('Y-m-d')) {
+                        $lf->mark_error($_n_start, lang('Start Date may not contain a date in the past.'));
+                        $_row_ok = false;
+                    } else {
+                        $_start = $_iso;
+                    }
+                }
+            }
+
+            if (!$_row_ok) {
+                // Keep the typed values for the re-render; the row's stored
+                // schedule stays as it was.
+                foreach (array($_n_period => $_p, $_n_payments => $_c, $_n_start => $_d) as $_k => $_v) {
+                    if (isset($_POST[$_k])) $lf->assign_field_value($_k, $_v);
+                }
+                continue;
+            }
+        }
+
+        db("UPDATE order_items
+            SET recurring_payment_period = '" . e($_period) . "',
+                recurring_number_of_payments = '" . (int)$_payments . "',
+                recurring_start_date = '" . e($_start) . "'
+            WHERE id = '" . $_riid . "' AND order_id = '" . (int)$oid . "'");
+        $_rec_saved++;
+    }
+    if ($_rec_saved > 0) $_pg_log('UPDATE recurring schedule saved · count=' . $_rec_saved);
+
     // ── Offline-payment flag (STAFF ONLY) ──────────────────────────────
     // Mirrors the render-side gate in _pg_cart_offline_payment_checkbox():
     // the feature must be on, someone must be logged in, and that user must
@@ -336,7 +460,11 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
         }
     }
 
-    $lf->add_notice(lang('Cart updated.'));
+    // A rejected schedule field already speaks for itself; "Cart updated."
+    // next to it would say the opposite of what happened to that row.
+    if (!$lf->check_form_errors()) {
+        $lf->add_notice(lang('Cart updated.'));
+    }
     $did_mutate = true;
 } else {
     $_pg_log('UPDATE branch SKIPPED · submit_key=' . (array_key_exists('submit_update_cart', $_POST) ? 'YES' : 'NO')
@@ -392,6 +520,102 @@ if (!empty($_POST['pending_offers']) && $oid > 0 && function_exists('add_pending
                  return strncmp($k, 'add_pending_offer_', 18) === 0;
              }))));
     add_pending_offers($lf);
+    $did_mutate = true;
+}
+
+// ── Quick add ───────────────────────────────────────────────────────────
+// The widget's quick-add box (own <form>): pick a product from the group the
+// operator configured and drop it in the cart. Same rules the legacy branch
+// in shopping_cart.php:42-185 applies — availability, per-selection-type
+// field, recipient requirement — but the item goes in through
+// add_order_item(), so pricing, offers and shipping behave exactly as they
+// do everywhere else.
+//
+// Offers are refreshed afterwards: a quick-added item can be the one that
+// qualifies the cart for a discount, and the new offer engine adds the gift
+// itself (apply_offer_gift_to_cart) instead of leaving a pending claim, so
+// the visitor sees the result on the very next render.
+if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')) {
+    $qa_pid = isset($_POST['quick_add_product_id']) ? (int)$_POST['quick_add_product_id'] : 0;
+    $qa_ship_to = isset($_POST['quick_add_ship_to']) ? (string)$_POST['quick_add_ship_to'] : '';
+    $qa_add_name = isset($_POST['quick_add_add_name']) ? (string)$_POST['quick_add_add_name'] : '';
+
+    $qa_product = $qa_pid > 0 ? db_item(
+        "SELECT name, enabled, short_description, price, shippable, selection_type,
+                default_quantity, inventory, inventory_quantity, backorder
+         FROM products WHERE id = '" . e($qa_pid) . "' LIMIT 1") : null;
+
+    if (!$qa_product) {
+        $lf->mark_error('quick_add_product_id', lang('The item that you selected could not be found. Please select a different item to add.'));
+    } elseif (($qa_product['enabled'] != 1)
+              || (($qa_product['inventory'] == 1) && ($qa_product['inventory_quantity'] <= 0) && ($qa_product['backorder'] != 1))) {
+        $qa_desc = trim(((string)$qa_product['name'] !== '' ? (string)$qa_product['name'] : '')
+                 . (((string)$qa_product['name'] !== '' && (string)$qa_product['short_description'] !== '') ? ' - ' : '')
+                 . (string)$qa_product['short_description']);
+        $lf->mark_error('quick_add_product_id', lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => $qa_desc)));
+    } else {
+        // A shippable product on a multi-recipient site has to say who it is
+        // for; everywhere else the question does not exist.
+        $qa_needs_recipient = (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING == true)
+                           && (defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE == 'multi-recipient')
+                           && ($qa_product['shippable'] == 1);
+
+        if ($qa_needs_recipient && ($qa_ship_to === '') && (trim($qa_add_name) === '')) {
+            $lf->mark_error('quick_add_ship_to', lang('The item that you attempted to add requires a recipient.'));
+        } else {
+            $qa_added = false;
+            switch ((string)$qa_product['selection_type']) {
+                case 'checkbox':
+                case 'autoselect':
+                    add_order_item($qa_pid, (int)$qa_product['default_quantity'], 0, $qa_ship_to, $qa_add_name);
+                    $qa_added = true;
+                    break;
+
+                case 'quantity':
+                    $qa_qty = (int)preg_replace('/[^\d]/', '', (string)(isset($_POST['quick_add_quantity']) ? $_POST['quick_add_quantity'] : ''));
+                    if ($qa_qty > 0) {
+                        add_order_item($qa_pid, $qa_qty, 0, $qa_ship_to, $qa_add_name);
+                        $qa_added = true;
+                    } else {
+                        $lf->mark_error('quick_add_quantity', lang('Please enter a valid quantity.'));
+                    }
+                    break;
+
+                case 'donation':
+                    // Same locale-tolerant parse the donation rows use.
+                    $qa_amount = trim((string)(isset($_POST['quick_add_amount']) ? $_POST['quick_add_amount'] : ''));
+                    $qa_amount = preg_replace('/[^\d.,-]/', '', $qa_amount);
+                    if (substr_count($qa_amount, ',') && substr_count($qa_amount, '.')) {
+                        $qa_amount = (strrpos($qa_amount, ',') > strrpos($qa_amount, '.'))
+                            ? str_replace(array('.', ','), array('', '.'), $qa_amount)
+                            : str_replace(',', '', $qa_amount);
+                    } else {
+                        $qa_amount = str_replace(',', '.', $qa_amount);
+                    }
+                    $qa_rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && (float)VISITOR_CURRENCY_EXCHANGE_RATE > 0)
+                        ? (float)VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
+                    $qa_cents = (int)round(((float)$qa_amount / $qa_rate) * 100);
+                    if ($qa_cents > 0) {
+                        add_order_item($qa_pid, 1, $qa_cents, $qa_ship_to, $qa_add_name);
+                        $qa_added = true;
+                    } else {
+                        $lf->mark_error('quick_add_amount', lang('Please enter an amount.'));
+                    }
+                    break;
+
+                default:
+                    add_order_item($qa_pid, max(1, (int)$qa_product['default_quantity']), 0, $qa_ship_to, $qa_add_name);
+                    $qa_added = true;
+            }
+
+            if ($qa_added) {
+                if (function_exists('update_order_item_prices')) update_order_item_prices();
+                if (function_exists('apply_offers_to_cart'))     apply_offers_to_cart();
+                $lf->add_notice(lang('The item has been added to your cart.'));
+                $_pg_log('QUICK ADD · product=' . $qa_pid);
+            }
+        }
+    }
     $did_mutate = true;
 }
 
@@ -460,5 +684,5 @@ $_pg_log('did_mutate=' . ($did_mutate ? '1' : '0') . ' · redirect to=' . $send_
 // Flush session writes so the next request sees the notice + updated order.
 session_write_close();
 
-header('Location: ' . URL_SCHEME . HOSTNAME . $send_to);
+header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to));
 exit;

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -150,7 +150,7 @@ if (!$_POST) {
         
         $output_status = '<select id="status" name="status" class="form-select">' .  $output_status_options . '</select>';
         
-        $output_subject = '<input value="' . h($subject) . '" type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control add-header-content-updater" />';
+        $output_subject = '<input value="' . h($subject) . '" type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />';
         $output_bcc_email_address = '<div class="row"><div class="col-12 col-md-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
         $output_from_name = '<input value="' . h($from_name) . '" type="text" class="form-control" id="from_name" name="from_name" />';
         $output_from_email_address = '<input value="' . h($from_email_address) . '" type="text" class="form-control text-end" id="from_email_address" name="from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
@@ -435,17 +435,19 @@ if (!$_POST) {
             'extra classes'=>'campaign',
             'icon'=>'campaign', 
             'heading'=> lang('Edit Campaign'),
+            'heading_description' => $output_subheading,
             'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php')
         ,
             'breadcrumb' => array(array('label' => lang('My Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php'), array('label' => $output_heading)),
         )
     ) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . $output_subheading . '" title="' . $output_heading . '">[' . h($subject) . ']</h2>
+
                         <p>' . lang(array('string'=>'Created {var:1} by {var:2}.','vars'=>array( get_relative_time(array('timestamp' => $created_timestamp)),h($creator_username) ))) . '</p>
                         ' . $output_button_bar . '
                     </div>
@@ -537,7 +539,8 @@ if (!$_POST) {
                     ' . $output_form_end . '
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
     
 // else form has been submitted
@@ -611,7 +614,7 @@ if (!$_POST) {
 
     // If there is a send to set, then forward user to send to.
     if ($_POST['send_to'] != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
         
     // Otherwise there is not a send to set, so forward user to view e-mail campaigns screen.
     } else {

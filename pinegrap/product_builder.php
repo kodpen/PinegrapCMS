@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -359,7 +359,10 @@ function pg_pb_insert_row($table, $data)
             output_error(lang('Query failed.') . ' (' . h($column) . ')');
         }
         $columns[] = '`' . $column . '`';
-        $values[]  = "'" . e($value) . "'";
+        // A PHP null writes SQL NULL rather than an empty string. Nullable
+        // columns here mean "no value", which a decimal column would otherwise
+        // silently store as zero.
+        $values[]  = ($value === null) ? 'NULL' : "'" . e($value) . "'";
     }
 
     db("INSERT INTO `" . $table . "` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ")");
@@ -389,7 +392,9 @@ function pg_pb_update_row($table, $data, $id_column, $id)
         if (!preg_match('/^[a-z_][a-z_0-9]*$/', $column)) {
             output_error(lang('Query failed.') . ' (' . h($column) . ')');
         }
-        $assignments[] = '`' . $column . '` = \'' . e($value) . '\'';
+        $assignments[] = ($value === null)
+            ? '`' . $column . '` = NULL'
+            : '`' . $column . '` = \'' . e($value) . '\'';
     }
 
     db(
@@ -418,7 +423,7 @@ function pg_pb_managed_product_columns()
 {
     return array(
         'name', 'enabled', 'short_description', 'full_description', 'details',
-        'code', 'keywords', 'image_name', 'price', 'taxable', 'selection_type',
+        'code', 'keywords', 'image_name', 'price', 'taxable', 'tax_rate', 'selection_type',
         'default_quantity', 'minimum_quantity', 'maximum_quantity',
         'title', 'meta_description', 'address_name',
         'inventory', 'inventory_quantity', 'backorder', 'out_of_stock_message',
@@ -523,6 +528,7 @@ function pg_pb_common_from_post()
         'add_comment_only_for_submit_form_update' => $switch('add_comment_only_for_submit_form_update'),
 
         'taxable'                 => $switch('taxable'),
+        'tax_rate'                => parse_tax_rate($post('tax_rate')),
         'selection_type'          => $post('selection_type'),
         'code'                    => $post('code'),
         'keywords'                => $post('keywords'),
@@ -633,7 +639,7 @@ function pg_pb_common_from_post()
 /**
  * Decode and normalise the variant matrix the browser posted.
  *
- * Shape of one row (same contract assets/product_builder.js writes):
+ * Shape of one row (same contract assets/js/product_builder.js writes):
  *
  *   {
  *     "name":              "TSHIRT-RED-S",     // products.name (SKU)
@@ -879,23 +885,33 @@ function pg_pb_create_group($group)
  * Create one product row plus its cross-reference rows.
  *
  * @param array $product   column => value, already prepared
- * @param array $relations keys: images, group_ids, zone_ids, attributes
+ * @param array $relations keys: images, group_ids, zone_ids, attributes,
+ *                         submit_form (the array the form fields are read from,
+ *                         $_POST when the key is absent)
  * @return int product id
  */
 function pg_pb_create_product($product, $relations = array())
 {
-    $images     = isset($relations['images'])     ? $relations['images']     : array();
-    $group_ids  = isset($relations['group_ids'])  ? $relations['group_ids']  : array();
-    $zone_ids   = isset($relations['zone_ids'])   ? $relations['zone_ids']   : array();
-    $attributes = isset($relations['attributes']) ? $relations['attributes'] : array();
+    $images      = isset($relations['images'])      ? $relations['images']      : array();
+    $group_ids   = isset($relations['group_ids'])   ? $relations['group_ids']   : array();
+    $zone_ids    = isset($relations['zone_ids'])    ? $relations['zone_ids']    : array();
+    $attributes  = isset($relations['attributes'])  ? $relations['attributes']  : array();
+    $submit_form = isset($relations['submit_form']) ? $relations['submit_form'] : NULL;
 
     // products.name is the SKU and has to be unique — the matrix can easily
     // produce a collision with an existing product.
     $product['name'] = get_unique_name(array('name' => trim($product['name']), 'type' => 'product'));
 
     $product['image_name'] = $images ? $images[0] : '';
-    $product['user']       = defined('USER_ID') ? USER_ID : 0;
     $product['timestamp']  = time();
+
+    // The screens run inside a session, so USER_ID is the operator. A caller
+    // without one (the API) sets the owner itself and keeps it.
+    if (!isset($product['user'])) {
+        $product['user'] = defined('USER_ID') ? USER_ID : 0;
+    }
+
+    pg_pb_apply_stock_flag($product);
 
     // address_name needs the row's own id to disambiguate, so it is written in
     // a second pass below.
@@ -905,7 +921,7 @@ function pg_pb_create_product($product, $relations = array())
     $product_id = pg_pb_insert_row('products', $product);
 
     if ($address_source === '') {
-        $address_source = trim($product['short_description']);
+        $address_source = isset($product['short_description']) ? trim($product['short_description']) : '';
     }
 
     if ($address_source === '') {
@@ -923,7 +939,7 @@ function pg_pb_create_product($product, $relations = array())
         isset($product['keywords']) ? $product['keywords'] : '',
         !empty($product['enabled']));
 
-    pg_pb_save_submit_form_fields($product_id);
+    pg_pb_save_submit_form_fields($product_id, $submit_form);
 
     foreach (array_slice($images, 1) as $image) {
         pg_pb_insert_row('products_images_xref', array(
@@ -2246,6 +2262,150 @@ function pg_pb_render_attribute_modal()
 
 
 /**
+ * The upload ceilings, shaped for the browser.
+ *
+ * pg_upload_limits() answers in the software's own vocabulary; this is the
+ * three numbers product_builder.js needs and nothing else. Zero means "no
+ * limit", which is what the script falls back to when the block is absent.
+ *
+ * @return array
+ */
+function pg_pb_upload_limits()
+{
+    $limits = pg_upload_limits();
+    $image  = pg_image_settings();
+
+    // shrinkTo and shrinkQuality ride along because they are the same target
+    // the server would have used. A photo too big to reach the server is
+    // scaled in the browser instead, and it has to land on the same number —
+    // two ceilings for the same picture, differing by which side of the wire
+    // it was on, is a difference nobody could explain afterwards.
+    //
+    // Zero when the feature is off, which stops the browser touching pixels
+    // the operator asked to be left alone.
+    return array(
+        'requestMax'    => (int) $limits['request_max'],
+        'fileMax'       => (int) $limits['file_max'],
+        'maxFiles'      => (int) $limits['max_files'],
+        'shrinkTo'      => $image['product_optimize'] ? (int) $image['product_max_dimension'] : 0,
+        'shrinkQuality' => (int) $image['resize_quality']);
+}
+
+
+/**
+ * Just the picker's own styles.
+ *
+ * Split out of pg_pb_render_styles() so the variant set screens can draw the
+ * picker without also pulling in the product screen's wireframe preview, its
+ * sticky section nav and its variant matrix — none of which exist there.
+ * pg_pb_render_styles() calls this, so there is still one copy of the rules.
+ *
+ * @return string CSS, without the surrounding style element
+ */
+function pg_pb_render_image_picker_css()
+{
+    return
+        '            /* Drop area. Dashed until something is dragged over it, then the
+               overlay takes over so the target is unmistakable — a subtle
+               border change on a tall area is easy to miss mid-drag. */
+            .pg-pb-dropzone {
+                position: relative;
+                border: 2px dashed var(--bs-border-color);
+                background: var(--bs-tertiary-bg);
+                transition: border-color .15s ease, background-color .15s ease;
+            }
+            .pg-pb-dropzone.pg-pb-dragging {
+                border-color: var(--bs-primary);
+                background: var(--bs-primary-bg-subtle);
+            }
+            .pg-pb-dropzone-overlay {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--bs-primary-bg-subtle);
+                color: var(--bs-primary-text-emphasis);
+                border-radius: inherit;
+                pointer-events: none;
+                z-index: 2;
+            }
+
+            /* Rounded tiles, and a grab cursor so it reads as draggable. */
+            #software_image_picker_container .item .card-body { border-radius: var(--bs-border-radius); }
+            #software_image_picker_container .item { cursor: grab; }
+            #software_image_picker_container .item:active { cursor: grabbing; }
+
+            /* An <img> is draggable by default, and that native drag competes
+               with the sort. Pressing on a tile started both: the browser tore
+               the picture out as a drag payload, the drop area lit up as if a
+               file were incoming, and the sort never received its mouseup — so
+               its floating copy of the tile was left behind in the list looking
+               like a duplicate. The list is sorted with mouse events, so
+               nothing here needs the native drag. */
+            #software_image_picker_container img,
+            #software_image_picker_container .item {
+                -webkit-user-drag: none;
+                user-drag: none;
+            }
+
+            /* Cover badge on the first picked image. Added by JS so it follows
+               the image when the list is reordered. */
+            #software_image_picker_container .item { position: relative; }
+            #software_image_picker_container .item .pg-pb-cover-badge {
+                position: absolute;
+                top: .35rem;
+                left: .35rem;
+                z-index: 2;
+                pointer-events: none;
+            }';
+}
+
+
+/**
+ * Everything the picker needs on a screen that is not the product screen.
+ *
+ * The product screen already emits all of this as part of its own frame; the
+ * variant set screens draw the picker on its own, so they call this once,
+ * after the form.
+ *
+ * The label list is short on purpose. product_builder.js cannot call lang(),
+ * so a string it uses has to be handed over here — but only the picker half of
+ * that file runs on these screens, and listing labels the matrix would want
+ * would suggest the matrix is there.
+ *
+ * @return string
+ */
+function pg_pb_render_image_picker_assets()
+{
+    $labels = array(
+        'Cover'            => lang('Cover'),
+        'Remove'           => lang('Remove'),
+        'request_failed'   => lang('Sorry, we could not accept your request.'),
+        'upload_rejected'  => lang('Not uploaded, these are not image files: {files}'),
+        'upload_too_big'   => lang('Too big to upload — this server accepts at most {limit} per file: {files}'),
+        'images_shrunk_in_browser' => lang('{count} photo(s) were too large for this server, so they were scaled down in your browser before uploading.'),
+        'images_optimized' => lang('{count} image(s) optimized on upload: {before} -> {after}.'),
+        'image_too_small'  => lang('Smaller than {min} pixels, which Google Merchant Center will not accept from 2027: {files}'));
+
+    return
+        '<style>' . pg_pb_render_image_picker_css() . '</style>
+        <script>
+            /* "<\/" is escaped: a translation containing a literal closing
+               script tag would end this block early and leave the object
+               undefined, which on this screen means every upload going out
+               with an empty CSRF token. */
+            window.PinegrapProductBuilder = {
+                token: ' . str_replace('</', '<\/', encode_json($_SESSION['software']['token'])) . ',
+                uploadLimits: ' . str_replace('</', '<\/', encode_json(pg_pb_upload_limits())) . ',
+                labels: ' . str_replace('</', '<\/', encode_json($labels)) . '
+            };
+        </script>
+        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>';
+}
+
+
+/**
  * The image picker block, reused by every v2 screen.
  *
  * The picker itself lives in backend.src.js. Existing images are rendered here
@@ -2262,6 +2422,40 @@ function pg_pb_render_attribute_modal()
  */
 function pg_pb_render_image_picker($images = array(), $extra_action = '')
 {
+    // Said once, up front, rather than only after a file has been sent. An
+    // operator who knows the photo is going to be scaled anyway stops
+    // exporting 8 MB originals, which is the actual fix; the message after the
+    // upload only reports what already happened.
+    //
+    // Only about files dropped here. Choosing an existing file from the
+    // library changes nothing on disk, and saying otherwise would be a lie
+    // about somebody else's design asset.
+    $image_settings    = pg_image_settings();
+    $output_upload_rule = '';
+
+    if ($image_settings['product_optimize']) {
+
+        $output_upload_rule = lang(array(
+            'string' => 'Uploaded photos are compressed, and scaled down when wider or taller than {var:1} pixels. At least {var:2} pixels is recommended.',
+            'vars'   => array(
+                $image_settings['product_max_dimension'],
+                $image_settings['product_min_dimension'])));
+    }
+
+    // The server's own ceiling, said out loud. The shrinking happens after the
+    // file arrives, so a photo too big to arrive is never shrunk — and the
+    // operator has no way to guess where that line is.
+    $upload_limits = pg_upload_limits();
+
+    if ($upload_limits['file_max'] > 0) {
+
+        $output_upload_rule .= ($output_upload_rule !== '') ? ' ' : '';
+
+        $output_upload_rule .= lang(array(
+            'string' => 'This server accepts at most {var:1} per file; anything bigger is scaled down in your browser first.',
+            'vars'   => array(convert_bytes_to_string($upload_limits['file_max'], 1))));
+    }
+
     $output_tiles = '';
 
     foreach ($images as $image) {
@@ -2319,9 +2513,22 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
 
                 </div>
 
+                ' . (($output_upload_rule !== '')
+                    ? '<div class="form-text mt-2 mb-0"><i class="bi bi-info-circle me-1"></i>' . $output_upload_rule . '</div>'
+                    : '') . '
+
                 <div id="pg_pb_image_progress" class="progress mt-3 d-none" style="height:.4rem;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
                 </div>
+
+                <!--
+                    Filled by reportUpload() in product_builder.js after an
+                    upload: what the compression saved, and which files came in
+                    under the minimum. Not a toast — the warning has to stay on
+                    screen while the operator decides whether to go and find a
+                    bigger photo.
+                -->
+                <div id="pg_pb_image_notice" class="mt-3"></div>
 
                 <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
                     <button type="button" class="btn btn-primary" onclick="software_image_picker({initialize:true});"><i class="bi bi-images me-2"></i>' . lang('Choose from Files') . '</button>
@@ -2350,7 +2557,7 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
                     -->
                     <div class="d-flex align-items-center gap-2 ms-md-auto flex-grow-1 flex-md-grow-0" style="min-width:0;">
                         <label for="pg_pb_upload_folder" class="form-label mb-0 small text-muted text-nowrap">' . lang('Upload to') . '</label>
-                        <select class="form-select form-select-sm" id="pg_pb_upload_folder" name="pg_pb_upload_folder" style="min-width:0; max-width:18rem;">' . select_folder(0, 0) . '</select>
+                        <select class="form-select form-select-sm" id="pg_pb_upload_folder" name="pg_pb_upload_folder" style="min-width:0; max-width:18rem;">' . select_folder(pg_default_upload_folder('product_upload_folder_id'), 0) . '</select>
                     </div>
                     ' . $extra_action . '
                 </div>
@@ -2513,9 +2720,11 @@ function pg_pb_render_styles()
         '<style>
             .border-dashed { border-style: dashed !important; }
 
-            /* Nav links scroll to a section; without this the heading lands
-               flush against the top of the viewport and reads as cut off. */
-            [id^="pg_pb_sec_"] { scroll-margin-top: 3.3rem; }
+            /* The rule that keeps a heading clear of the header now lives in
+               backend.src.css beside the one the settings screen uses: both
+               screens need the same offset for the same reason, and two copies
+               drifted -- this one was 3.3rem against a 50px header, which left
+               three pixels of air. */
 
             /* Active section in the sticky nav. list-group-item-action has no
                "current" state of its own that survives without an href match. */
@@ -2661,60 +2870,7 @@ function pg_pb_render_styles()
                 word-break: break-word;
             }
 
-            /* Drop area. Dashed until something is dragged over it, then the
-               overlay takes over so the target is unmistakable — a subtle
-               border change on a tall area is easy to miss mid-drag. */
-            .pg-pb-dropzone {
-                position: relative;
-                border: 2px dashed var(--bs-border-color);
-                background: var(--bs-tertiary-bg);
-                transition: border-color .15s ease, background-color .15s ease;
-            }
-            .pg-pb-dropzone.pg-pb-dragging {
-                border-color: var(--bs-primary);
-                background: var(--bs-primary-bg-subtle);
-            }
-            .pg-pb-dropzone-overlay {
-                position: absolute;
-                inset: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: var(--bs-primary-bg-subtle);
-                color: var(--bs-primary-text-emphasis);
-                border-radius: inherit;
-                pointer-events: none;
-                z-index: 2;
-            }
-
-            /* Rounded tiles, and a grab cursor so it reads as draggable. */
-            #software_image_picker_container .item .card-body { border-radius: var(--bs-border-radius); }
-            #software_image_picker_container .item { cursor: grab; }
-            #software_image_picker_container .item:active { cursor: grabbing; }
-
-            /* An <img> is draggable by default, and that native drag competes
-               with the sort. Pressing on a tile started both: the browser tore
-               the picture out as a drag payload, the drop area lit up as if a
-               file were incoming, and the sort never received its mouseup — so
-               its floating copy of the tile was left behind in the list looking
-               like a duplicate. The list is sorted with mouse events, so
-               nothing here needs the native drag. */
-            #software_image_picker_container img,
-            #software_image_picker_container .item {
-                -webkit-user-drag: none;
-                user-drag: none;
-            }
-
-            /* Cover badge on the first picked image. Added by JS so it follows
-               the image when the list is reordered. */
-            #software_image_picker_container .item { position: relative; }
-            #software_image_picker_container .item .pg-pb-cover-badge {
-                position: absolute;
-                top: .35rem;
-                left: .35rem;
-                z-index: 2;
-                pointer-events: none;
-            }
+' . pg_pb_render_image_picker_css() . '
 
             /* The support chat bubble is a third-party component pinned to the
                bottom-right of the viewport by output_footer(), and it draws over
@@ -3187,12 +3343,13 @@ function pg_pb_variant_sets_screen()
         'extra classes' => 'products',
         'icon'          => 'store',
         'heading'       => lang('Variant Sets'),
+        'heading_description' => lang('Product groups that present several forms of the same product as one catalog item.'),
         'breadcrumb'    => array(
             // ?mode=products is required, not tidy: without it the session sends
             // the operator straight back here and the breadcrumb becomes a loop.
             array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=products'),
             array('label' => lang('Variant Sets'))),
-    )) .
+    )) . '<main id="content" class="container-fluid">' .
     pg_pb_render_styles() . '
         <div class="row">
             <div class="col-12">
@@ -3202,7 +3359,7 @@ function pg_pb_variant_sets_screen()
 
                 <div class="row mb-2 flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block" data-bs-content="' . lang('Product groups that present several forms of the same product as one catalog item.') . '" title="' . lang('Variant Sets') . '">' . lang('Variant Sets') . '</h2>
+                        
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1" href="add_product.php" data-loading-content="' . lang('Loading') . '"><i class="bi bi-plus-circle me-2"></i>' . lang('Create') . '</a>
                             <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=products" data-loading-content="' . lang('Loading') . '"><i class="bi bi-list-ul me-2"></i>' . lang('All Products') . '</a>
@@ -3236,7 +3393,6 @@ function pg_pb_variant_sets_screen()
                 </div>
             </div>
         </div>
-    </main>
     <script>
     (function ($) {
         "use strict";
@@ -3258,7 +3414,8 @@ function pg_pb_variant_sets_screen()
         });
 
     }(jQuery));
-    </script>' .
+    </script>
+</main>' .
     output_footer();
 
     $liveform->remove_form();
@@ -3688,6 +3845,25 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             ));
     }
 
+    // What a product with no rate of its own is charged at. Shown as the
+    // placeholder so the operator can see what leaving the field empty costs
+    // before deciding to override it. False when the site's own country sits in
+    // no tax zone, in which case there is no figure to show.
+    $pg_default_tax_rate = function_exists('get_default_tax_rate') ? get_default_tax_rate() : false;
+
+    $output_tax_rate_placeholder = ($pg_default_tax_rate !== false)
+        ? format_tax_rate($pg_default_tax_rate)
+        : '';
+
+    $output_tax_rate_value = format_tax_rate($v('tax_rate', ''));
+
+    $output_tax_rate_help = ($pg_default_tax_rate !== false)
+        ? lang(array(
+            'string' => 'Leave empty and the tax zone of the delivery address decides, which is {var:1}% for this site.',
+            'vars'   => $output_tax_rate_placeholder
+        ))
+        : lang('Leave empty and the tax zone of the delivery address decides.');
+
     // Shipping is a store-wide feature: with it off, the switch and every dimension
     // behind it are noise.
     $output_shippable = '';
@@ -3967,6 +4143,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'request_failed'     => lang('Sorry, we could not accept your request.'),
         'no_images_to_apply' => lang('There are no images to apply.'),
         'upload_rejected'    => lang('Not uploaded, these are not image files: {files}'),
+        'images_optimized'   => lang('{count} image(s) optimized on upload: {before} -> {after}.'),
+        'upload_too_big'     => lang('Too big to upload — this server accepts at most {limit} per file: {files}'),
+        'images_shrunk_in_browser' => lang('{count} photo(s) were too large for this server, so they were scaled down in your browser before uploading.'),
+        'image_too_small'    => lang('Smaller than {min} pixels, which Google Merchant Center will not accept from 2027: {files}'),
         'images_applied'     => lang('Images applied to {count} variants.'),
         'Create'             => lang('Create'),
         'Create & Continue'  => lang('Create & Continue'),
@@ -3994,6 +4174,41 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // sections are drawn. Removing the list took them with it and both sections
     // silently disappeared.
 
+    // Side rail.
+    //
+    // A list like this stood here once and was taken out because it shared the
+    // right-hand column with the preview and, on a short viewport, pushed it off
+    // the screen. It comes back outside the form row entirely -- the shell puts
+    // it beside <main> -- so neither the form nor the preview gives up a column
+    // for it. From xl up it is a rail on the left; below that a panel under the
+    // header, the same one every other long screen has.
+    //
+    // Written in the order the sections are drawn, and the rail does not ask to
+    // reorder them: that order is deliberate here.
+    $pg_pb_sections = array(
+        'pg_pb_sec_images'      => array(lang('Images'), 'bi-images'),
+        'pg_pb_sec_basic'       => array(lang('Main Informations'), 'bi-info-circle'),
+        'pg_pb_sec_variants'    => array((($pg_mode === 'edit') ? lang('Product Attributes') : lang('Variants')), 'bi-diagram-3'),
+        'pg_pb_sec_groups'      => array(lang('Parent Product Groups'), 'bi-folder'),
+        'pg_pb_sec_checkout'    => array(lang('Checkout Options'), 'bi-credit-card'),
+        'pg_pb_sec_seo'         => array(lang('Site Search & SEO'), 'bi-search'),
+        'pg_pb_sec_identifiers' => array(lang('RSS Feed'), 'bi-upc-scan'),
+        'pg_pb_sec_advanced'    => array(lang('Advanced Settings'), 'bi-sliders'),
+    );
+
+    // This screen names its own sections, so it loads the builder. The shell
+    // loads the same file for the slot; include_once means one parse either way.
+    include_once(dirname(__FILE__) . '/includes/sections.php');
+
+    // The rail is the shell's, not a column of this screen's own: it sits
+    // beside <main> rather than inside the form row, which is why the preview
+    // column keeps every pixel it had.
+    $pg_pb_nav = pg_section_nav($pg_pb_sections, array(
+        'panes' => '#pg_pb_sections',
+        'label' => lang('Product'),
+        'icon'  => 'bi-box-seam',
+    ));
+
     // A variant set's form template needs the 2026.4 columns. Without them the
     // switch would create a set whose form has nowhere to live, so the section
     // stays off the screen entirely rather than offering something that cannot
@@ -4008,9 +4223,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     print
     pg_page_shell(array(
         'title'         => ($pg_mode === 'edit') ? lang('Edit Product') : lang('Create Product'),
+        'section_nav'   => $pg_pb_nav,
         'extra classes' => 'products',
         'head'          => (($pg_mode === 'edit') && defined('BARCODE_ENABLED') && BARCODE_ENABLED
-            ? '<script src="assets/jsbarcode/JsBarcode.all.min.js"></script>'
+            ? '<script src="assets/lib/JsBarcode/JsBarcode.all.min.js"></script>'
             : ''),
         'icon'          => 'store',
         // The heading names the product being edited. "Edit Product" on every
@@ -4019,11 +4235,14 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'heading'       => ($pg_mode === 'edit')
             ? (($v('short_description') !== '') ? $v('short_description') : $v('name'))
             : lang('Create Product'),
-        'cancel'        => array('enable' => 'true', 'url' => 'view_products.php'),
+        // Cancel and the breadcrumb go back where the operator came from -- the
+        // product group they were standing in, say -- when the screen that
+        // opened this one said where that was.
+        'cancel'        => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php')),
         'breadcrumb'    => array(
-            array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'),
+            array('label' => lang('All Products'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php')),
             array('label' => ($pg_mode === 'edit') ? lang('Edit Product') : lang('Create Product'))),
-    )) .
+    )) . '<main id="content" class="container-fluid">' .
     get_wysiwyg_editor_code(array('full_description', 'details', 'out_of_stock_message', 'order_receipt_message')) .
     pg_pb_render_styles() . '
 
@@ -4064,11 +4283,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     <form name="form" id="pg_pb_form" action="' . (($pg_mode === 'edit') ? 'edit_product.php' : 'add_product.php') . '" method="post">
     ' . (($pg_mode === 'edit') ? '<input type="hidden" name="id" value="' . h($pg_product_id) . '" />' : '') . '
         ' . get_token_field() . '
+        <!-- A save is a fresh request with no query string on it, so where the
+             operator came from travels with the form. -->
+        <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
         <input type="hidden" id="variants_json" name="variants_json" value="" />
         <input type="hidden" id="attributes_meta_json" name="attributes_meta_json" value="" />
 
         <div class="row">
-
             <!--
                 The side column sits on the right, after the form in source order, so
                 keyboard and screen-reader users reach the fields before the
@@ -4080,7 +4301,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             -->
             <div class="col-12 col-lg-8 col-xxl-9 order-1">
 
-                <div class="row">
+                <div class="row" id="pg_pb_sections">
 
                     <!-- ----------------------------------------------- images -->
                     <!-- No card: images are the first thing an operator drops in and
@@ -4188,7 +4409,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'id'      => 'taxable',
                                                 'name'    => 'taxable',
                                                 'label'   => lang('Taxable'),
-                                                
+                                                'panel'   =>
+                                                    '<div class="col-12 col-sm-6 col-lg-4">
+                                                        <label for="tax_rate" class="form-label">' . lang('Tax Rate (%)') . '</label>
+                                                        <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" class="form-control" placeholder="' . h($output_tax_rate_placeholder) . '" value="' . h($output_tax_rate_value) . '" />
+                                                        <div class="form-text">' . $output_tax_rate_help . '</div>
+                                                    </div>',
                                             )) .
                                             // Recurring lives here rather than in a card of its own:
                                             // it changes what the variant rows offer, so it has to be
@@ -4396,7 +4622,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     <div class="col-12 col-lg-8 my-2">
                                         <label class="form-label" for="required_product">' . lang('Requires Product') . '</label>
                                         <select class="form-select" id="required_product" name="required_product">
-                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Product')))) . '-</option>' . select_product() . '
+                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Product')))) . '-</option>' . select_product($v('required_product')) . '
                                         </select>
                                         <div class="form-text">' . lang('The customer must also have this product in the cart.') . '</div>
                                     </div>
@@ -4690,7 +4916,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     <div class="col-12 col-lg-4 my-2">
                                         <label class="form-label" for="contact_group_id">' . lang('Add to Contact Group') . '</label>
                                         <select class="form-select" id="contact_group_id" name="contact_group_id">
-                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Contact Group')))) . '-</option>' . select_contact_group(0, $user) . '
+                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Contact Group')))) . '-</option>' . select_contact_group($v('contact_group_id'), $user) . '
                                         </select>
                                     </div>
                                     <div class="col-12 col-lg-4 my-2">
@@ -4931,7 +5157,6 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     <!-- Outside the form on purpose — see pg_pb_render_attribute_modal(). -->
     ' . pg_pb_render_attribute_modal() . '
-    </main>
     <script>
         /* "<\/" is escaped below because this JSON sits inside a script element: a
            translation containing a literal closing script tag would end the block
@@ -4952,6 +5177,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         singleOptionPerAttribute: ' . (($pg_mode === 'edit') ? 'true' : 'false') . ',
         seoCounters: true,
             barcodeFormat: ' . str_replace('</', '<\/', encode_json($barcode_format)) . ',
+            // What this server takes in one upload. Without it the picker sends
+            // the whole selection as one request and finds out from a discarded
+            // POST that it was too big — see pg_pb_upload_limits().
+            uploadLimits: ' . str_replace('</', '<\/', encode_json(pg_pb_upload_limits())) . ',
             labels: ' . str_replace('</', '<\/', encode_json($labels)) . '
         };
     </script>
@@ -4972,8 +5201,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
         ]);
     </script>
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/product_builder.js') . '"></script>
-    ' . output_footer();
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
+    
+</main>' . output_footer();
 
     $liveform->remove_form();
 }
@@ -5170,11 +5400,21 @@ function pg_pb_update_product($product_id)
     // save that leaves it alone makes the product look untouched.
     $product['timestamp'] = time();
 
+    pg_pb_apply_stock_flag($product, $product_id);
+
     // Everything this screen manages feeds the SEO score, so the stored
     // analysis is stale after any save from here.
     $product['seo_analysis_current'] = 0;
 
     pg_pb_update_row('products', $product, 'id', $product_id);
+
+    // The operator may have changed the price or the stock on this screen, and
+    // there is no cheap way to know which - so it is queued either way. A
+    // marketplace that is told the same numbers twice does nothing with the
+    // second telling; one that is never told is wrong until somebody notices.
+    if (function_exists('pg_marketplace_product_changed')) {
+        pg_marketplace_product_changed($product_id);
+    }
 
     pg_pb_sync_tag_cloud_keywords(
         $product_id,
@@ -5368,11 +5608,18 @@ function pg_pb_validate_product_post($user, $product_id = 0)
  *
  *   The same field is only stored once. The screen can produce two rows for it,
  *   and two values for one field is not a thing the order code can act on.
+ *
+ * $posted defaults to $_POST so the screens keep calling this with one
+ * argument. Callers with no form behind them (the API) pass their own array.
  */
-function pg_pb_save_submit_form_fields($product_id)
+function pg_pb_save_submit_form_fields($product_id, $posted = NULL)
 {
+    if ($posted === NULL) {
+        $posted = $_POST;
+    }
+
     $product_id = (int) $product_id;
-    $page_id    = isset($_POST['submit_form_custom_form_page_id']) ? $_POST['submit_form_custom_form_page_id'] : '';
+    $page_id    = isset($posted['submit_form_custom_form_page_id']) ? $posted['submit_form_custom_form_page_id'] : '';
 
     if (!$product_id) {
         return;
@@ -5387,14 +5634,14 @@ function pg_pb_save_submit_form_fields($product_id)
     foreach (array('create', 'update') as $action) {
 
         $added = array();
-        $last  = isset($_POST['last_submit_form_' . $action . '_field_number'])
-            ? (int) $_POST['last_submit_form_' . $action . '_field_number']
+        $last  = isset($posted['last_submit_form_' . $action . '_field_number'])
+            ? (int) $posted['last_submit_form_' . $action . '_field_number']
             : 0;
 
         for ($number = 1; $number <= $last; $number++) {
 
             $prefix   = 'submit_form_' . $action . '_field_' . $number . '_';
-            $field_id = isset($_POST[$prefix . 'form_field_id']) ? $_POST[$prefix . 'form_field_id'] : '';
+            $field_id = isset($posted[$prefix . 'form_field_id']) ? $posted[$prefix . 'form_field_id'] : '';
 
             if (!$field_id or in_array($field_id, $added)) {
                 continue;
@@ -5412,11 +5659,56 @@ function pg_pb_save_submit_form_fields($product_id)
                 'product_id'    => $product_id,
                 'action'        => $action,
                 'form_field_id' => $field_id,
-                'value'         => isset($_POST[$prefix . 'value']) ? trim($_POST[$prefix . 'value']) : '',
+                'value'         => isset($posted[$prefix . 'value']) ? trim($posted[$prefix . 'value']) : '',
             ));
 
             $added[] = $field_id;
         }
+    }
+}
+
+
+/**
+ * Recalculate the out-of-stock flag from the values about to be written.
+ *
+ * products.out_of_stock is derived, not typed in: orders set it
+ * (submit_order.php:5920, add_order.php:299), the barcode screens and the
+ * inventory API move it both ways. The product screen was the one place that
+ * changed the numbers it is derived from and left the flag alone, so restocking
+ * a product there did not take it out of the "out of stock" list, the dashboard
+ * widget or the front-end message — it stayed flagged until somebody used bulk
+ * edit or scanned it back in.
+ *
+ * Same rule the other writers use (edit_products.php:238,
+ * includes/api/resources/inventory.php:204): not tracking stock means never out
+ * of stock; tracking with nothing left means out of stock.
+ *
+ * The timestamp is only stamped on the way in. It is the "out of stock since"
+ * column on the product list, so re-stamping it on every save of an already
+ * flagged product would keep resetting the age of the problem.
+ */
+function pg_pb_apply_stock_flag(&$product, $product_id = 0)
+{
+    if (!array_key_exists('inventory', $product) and !array_key_exists('inventory_quantity', $product)) {
+        return;
+    }
+
+    $tracking = !empty($product['inventory']);
+    $quantity = isset($product['inventory_quantity']) ? trim((string) $product['inventory_quantity']) : '';
+    $empty    = ($quantity !== '') && ((int) $quantity <= 0);
+
+    $product['out_of_stock'] = ($tracking && $empty) ? '1' : '0';
+
+    if ($product['out_of_stock'] !== '1') {
+        return;
+    }
+
+    $was_flagged = $product_id
+        ? db_value("SELECT out_of_stock FROM products WHERE id = '" . e((int) $product_id) . "'")
+        : '';
+
+    if ($was_flagged != '1') {
+        $product['out_of_stock_timestamp'] = time();
     }
 }
 

@@ -23,8 +23,25 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'administrator');
 
-// ── Collect every visual-designer style with a tree_json ─────────────────────────
-$rows = db_items("SELECT style_id, style_name, style_tree_json, style_code FROM style WHERE style_layout = 'visual_designer' AND style_tree_json IS NOT NULL AND style_tree_json != '' ORDER BY style_name");
+// ── Collect every visual-designer layout with a tree ─────────────────────────
+// Since the multi-page designer the tree and its generated code live on the
+// PAGE (page_tree_json / page_tree_code); one style can own several pages.
+// Each page is checked as its own unit, labelled by page name. The style's
+// own tree/code is the fallback for pages saved before the swap, and the
+// whole scan collapses to the old per-style query on an un-migrated database.
+if (pg_multi_page_design_ready()) {
+    $rows = db_items(
+        "SELECT page.page_id AS style_id, page.page_name AS style_name,
+                " . pg_page_tree_sql_expr() . " AS style_tree_json,
+                COALESCE(NULLIF(page.page_tree_code, ''), style.style_code) AS style_code
+         FROM page
+         INNER JOIN style ON page.page_style = style.style_id
+         WHERE style.style_layout = 'visual_designer'
+         HAVING style_tree_json IS NOT NULL AND style_tree_json != ''
+         ORDER BY style_name");
+} else {
+    $rows = db_items("SELECT style_id, style_name, style_tree_json, style_code FROM style WHERE style_layout = 'visual_designer' AND style_tree_json IS NOT NULL AND style_tree_json != '' ORDER BY style_name");
+}
 
 $total           = 0;
 $dirty_trees     = array(); // styles whose tree_json still has inline shared_ref children
@@ -94,7 +111,7 @@ echo pg_page_shell(array(
     'title'   => 'Shared Component Invariant Check',
     'heading' => 'Shared Component Invariant Check',
     'hide_menu' => true,
-));
+)) . '<main id="content" class="container-fluid">';
 
 $status_ok = (empty($dirty_trees) && empty($dirty_codes));
 $bg_class  = $status_ok ? 'success' : 'warning';
@@ -155,5 +172,5 @@ echo '<div class="card">
         </div>
       </div>';
 
-echo '</main>';
-echo output_footer();
+echo '';
+echo '</main>' . output_footer();

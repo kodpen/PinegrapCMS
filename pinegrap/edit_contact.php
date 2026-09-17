@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -389,16 +389,18 @@ if (!$_POST) {
             'extra classes'=>'contact',
             'icon'=>'contact', 
             'heading'=>lang('Edit Contact'),
+            'heading_description' => lang('View or update this contact\'s information, subscriber status, member status, affiliate status, or contact groups.'),
             'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
         
             'breadcrumb' => array(array('label' => lang('All My Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'), array('label' => lang('Edit Contact'))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break" data-bs-content="' . lang('View or update this contact\'s information, subscriber status, member status, affiliate status, or contact groups.') . '" title="' . lang('Edit Contact') . '">[' . $first_name  . ' ' . $last_name  . ']</h2>
+
                         ' . $output_orders_button . '
                     </div>
                 </div>
@@ -458,7 +460,7 @@ if (!$_POST) {
                                         <div class="col-12 my-2">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $email_address . '" type="text" name="email_address" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                                                <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                                 <a class="btn btn-primary" href="mailto:' . $email_address . '" ><span class="material-icons">email</span></a>
                                             </div>
                                         </div>
@@ -694,7 +696,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
         output_footer();
 
 } else {
@@ -970,7 +973,7 @@ if (!$_POST) {
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
         
     // else send user to the default view
     } else {

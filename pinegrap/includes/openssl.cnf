@@ -1,0 +1,18 @@
+# Minimal OpenSSL configuration, shipped with the software.
+#
+# Key generation asks OpenSSL for a configuration file. On a server where none
+# is installed, or where OPENSSL_CONF points at a path that no longer exists,
+# openssl_pkey_new() fails with "configuration file routines: no such file" and
+# nothing that needs a key pair can work. Windows installations are the usual
+# case; a shared host with a trimmed OpenSSL is the other.
+#
+# Nothing here is secret and nothing here is site-specific. It exists only so
+# that there is always a readable file to hand OpenSSL when the system one is
+# missing. No provider section is declared on purpose: OpenSSL then loads its
+# own defaults, which is what makes this file safe to use as a fallback on any
+# version.
+
+[ req ]
+distinguished_name = req_distinguished_name
+
+[ req_distinguished_name ]

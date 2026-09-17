@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -109,7 +109,7 @@ function get_photo_gallery($properties) {
                     switch ($access_control_type) {
                         case 'private':
                             // if user is not logged in or has an invalid login, send user to login screen
-                            if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                            if (pg_session_signed_in() == FALSE) {
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
                                 exit();
                                 
@@ -129,7 +129,7 @@ function get_photo_gallery($properties) {
                         case 'guest':
                             // if user is not logged in or has an invalid login, and if the user is not browsing the site as a Guest,
                             // then forward user to Registration Entrance screen
-                            if ((validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) 
+                            if ((pg_session_signed_in() == FALSE) 
                                 && ($_SESSION['software']['guest'] !== true)) {
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(get_request_uri()));
                                 exit();
@@ -138,7 +138,7 @@ function get_photo_gallery($properties) {
 
                         case 'registration':
                             // if user is not logged in or has an invalid login, then forward user to Registration Entrance page
-                            if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                            if (pg_session_signed_in() == FALSE) {
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
                                 exit();
                             }
@@ -146,7 +146,7 @@ function get_photo_gallery($properties) {
 
                         case 'membership':
                             // if user is not logged in or has an invalid login, then forward user to Membership Entrance page
-                            if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                            if (pg_session_signed_in() == FALSE) {
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php?send_to=' . urlencode(get_request_uri()));
                                 exit();
                             }
@@ -248,7 +248,7 @@ function get_photo_gallery($properties) {
                             // if user is not logged in or has an invalid login, and if the user is not browsing the site as a Guest, 
                             // then the user does not have access
                             if (
-                                (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) 
+                                (pg_session_signed_in() == FALSE) 
                                 && ($_SESSION['software']['guest'] !== true)
                             ) {
                                 $has_access = FALSE;
@@ -257,14 +257,14 @@ function get_photo_gallery($properties) {
                             
                         case 'registration':
                             // if user is not logged in or has an invalid login, then the user does not have access
-                            if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                            if (pg_session_signed_in() == FALSE) {
                                 $has_access = FALSE;
                             }
                             break;
 
                         case 'membership':
                             // if user is not logged in or has an invalid login, then the user does not have access
-                            if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                            if (pg_session_signed_in() == FALSE) {
                                 $has_access = FALSE;
                             
                             // else if user does not have edit rights to this folder, then we need to validate membership
@@ -730,7 +730,7 @@ function get_photo_gallery($properties) {
                 switch ($access_control_type) {
                     case 'private':
                         // if user is not logged in or has an invalid login, send user to login screen
-                        if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                        if (pg_session_signed_in() == FALSE) {
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
                             exit();
                             
@@ -750,7 +750,7 @@ function get_photo_gallery($properties) {
                     case 'guest':
                         // if user is not logged in or has an invalid login, and if the user is not browsing the site as a Guest,
                         // then forward user to Registration Entrance screen
-                        if ((validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) 
+                        if ((pg_session_signed_in() == FALSE) 
                             && ($_SESSION['software']['guest'] !== true)) {
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(get_request_uri()));
                             exit();
@@ -759,7 +759,7 @@ function get_photo_gallery($properties) {
 
                     case 'registration':
                         // if user is not logged in or has an invalid login, then forward user to Registration Entrance page
-                        if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                        if (pg_session_signed_in() == FALSE) {
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
                             exit();
                         }
@@ -767,7 +767,7 @@ function get_photo_gallery($properties) {
 
                     case 'membership':
                         // if user is not logged in or has an invalid login, then forward user to Membership Entrance page
-                        if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                        if (pg_session_signed_in() == FALSE) {
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php?send_to=' . urlencode(get_request_uri()));
                             exit();
                         }
@@ -868,7 +868,7 @@ function get_photo_gallery($properties) {
                         // if user is not logged in or has an invalid login, and if the user is not browsing the site as a Guest, 
                         // then the user does not have access
                         if (
-                            (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) 
+                            (pg_session_signed_in() == FALSE) 
                             && ($_SESSION['software']['guest'] !== true)
                         ) {
                             $has_access = FALSE;
@@ -877,14 +877,14 @@ function get_photo_gallery($properties) {
                         
                     case 'registration':
                         // if user is not logged in or has an invalid login, then the user does not have access
-                        if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                        if (pg_session_signed_in() == FALSE) {
                             $has_access = FALSE;
                         }
                         break;
 
                     case 'membership':
                         // if user is not logged in or has an invalid login, then the user does not have access
-                        if (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == FALSE) {
+                        if (pg_session_signed_in() == FALSE) {
                             $has_access = FALSE;
                         
                         // else if user does not have edit rights to this folder, then we need to validate membership

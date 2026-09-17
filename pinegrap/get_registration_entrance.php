@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -41,7 +41,7 @@ function get_registration_entrance($properties = array()) {
         if (REMEMBER_ME) {
             // If the visitor checked remember me during the last login,
             // then check the remember me check box by default
-            if ($_COOKIE['software']['remember_me'] == 'true') {
+            if (($_COOKIE['software']['remember_me'] ?? '') == 'true') {
                 $login_form->assign_field_value('login_remember_me', '1');
             }
         }
@@ -54,7 +54,7 @@ function get_registration_entrance($properties = array()) {
         if (REMEMBER_ME) {
             // If the visitor checked remember me during the last login,
             // then check the remember me check box by default
-            if ($_COOKIE['software']['remember_me'] == 'true') {
+            if (($_COOKIE['software']['remember_me'] ?? '') == 'true') {
                 $register_form->assign_field_value('register_remember_me', '1');
             }
         }
@@ -349,6 +349,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                         </table>
+                        ' . pg_google_signin_button(($_GET['send_to'] ?? '')) . '
                     </form>
                 </div>
                 <div style="clear: both"></div>';
@@ -600,7 +601,7 @@ function get_registration_entrance($properties = array()) {
             <input type="hidden" name="send_to" value="' . (isset($_GET['send_to']) ? h(($_GET['send_to'] ?? '')) : '') . '">
             <input type="hidden" name="require_cookies" value="true">
             ' . $allow_guest_hidden_field .
-            $captcha_info['system'];
+            ($captcha_info['system'] ?? '');
 
         $output = render_layout(array(
             'page_id' => $page_id,
@@ -618,8 +619,9 @@ function get_registration_entrance($properties = array()) {
             'register_attributes' => $register_attributes,
             'strong_password_help' => $strong_password_help,
             'opt_in_label' => OPT_IN_LABEL,
-            'captcha_question' => $captcha_info['question'],
-            'register_system' => $register_system));
+            'captcha_question' => ($captcha_info['question'] ?? ''),
+            'register_system' => $register_system,
+            'google_signin' => pg_google_signin_button(($_GET['send_to'] ?? ''))));
 
         $output = $login_form->prepare($output, 'login-form');
         $output = $register_form->prepare($output, 'register-form');

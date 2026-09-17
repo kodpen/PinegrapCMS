@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -24,16 +24,34 @@ validate_token_field();
 
 $liveform->add_fields_to_session();
 
+// A signed-in Google-only account (algo 3) has no current password to type:
+// this request sets the account's FIRST password. The bypass is tied strictly
+// to the session identity - in this mode the posted email cannot pick the
+// account, only the session user's own row is written.
+$pg_set_password_mode = false;
+if (isset($_SESSION['sessionuserid']) && $_SESSION['sessionuserid']) {
+    $pg_set_password_mode = ((int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'") === 3);
+}
+
 // validate required fields
 $liveform->validate_required_field('email_address', lang('Email or username is required.'));
-$liveform->validate_required_field('current_password', lang('Current Password is required.'));
+if (!$pg_set_password_mode) {
+    $liveform->validate_required_field('current_password', lang('Current Password is required.'));
+}
 $liveform->validate_required_field('new_password', lang('New Password is required.'));
 $liveform->validate_required_field('new_password_verify', lang('Please type new password again.'));
 
+// Set-password mode: the account is the session's own; no password exists to
+// verify. Otherwise validate the login as always.
+if ($pg_set_password_mode) {
+    $change_user_id = (int) $_SESSION['sessionuserid'];
+
 // if there is not already an error for email_address and current password fields, validate login
-if (($liveform->check_field_error('email_address') == false) && ($liveform->check_field_error('current_password') == false)) {
-    // if login is not valid, check which part of login is invalid
-    if (validate_login($liveform->get_field_value('email_address'), md5($liveform->get_field_value('current_password'))) == false) {
+} elseif (($liveform->check_field_error('email_address') == false) && ($liveform->check_field_error('current_password') == false)) {
+    // if login is not valid, check which part of login is invalid. Raw password
+    // now; validate_login() returns the user id, which we reuse below.
+    $change_user_id = validate_login($liveform->get_field_value('email_address'), $liveform->get_field_value('current_password'));
+    if ($change_user_id === false) {
         // if email_address exists, password is incorrect, so output error about password being incorrect
         if (validate_username($liveform->get_field_value('email_address')) == true) {
             log_activity('access denied to change password (password invalid) (email or username: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
@@ -94,57 +112,54 @@ if ($liveform->check_form_errors()) {
 // Get the actual username for the user, because the user probably entered
 // an email address for the username field.  We need the actual username
 // because it is important that we store the actual username in the session and cookies.
+// The current password was already verified above; read the canonical username
+// by the id it returned.
 $username = db_value(
-    "SELECT user_username
-    FROM user
-    WHERE
-        (
-            (user_username = '" . escape($liveform->get_field_value('email_address')) . "')
-            OR (user_email = '" . escape($liveform->get_field_value('email_address')) . "')
-        )
-        AND (user_password = '" . escape(md5($liveform->get_field_value('current_password'))) . "')");
+    "SELECT user_username FROM user WHERE user_id = '" . (int) $change_user_id . "'");
 
-// update password for user
+// update password for user with a modern hash
 $query = 
     "UPDATE user 
     SET 
-        user_password = '" . escape(md5($liveform->get_field_value('new_password'))) . "',
+        user_password = '" . escape(pg_password_hash($liveform->get_field_value('new_password'))) . "',
+        user_password_algo = 2,
         user_password_hint = '" . escape($liveform->get_field_value('password_hint')) . "'
-    WHERE user_username = '" . escape($username) . "'";
+        " . pg_password_changed_sql() . "
+    WHERE user_id = '" . (int) $change_user_id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
-// assign username and new password to session
+// A password change invalidates every remembered session: drop them all, then
+// mint one fresh token below for the browser doing the change so it stays in.
+//
+// If this browser's session was pinned, the replacement is pinned too. The pin
+// is the operator's decision about which device this account may use, and a
+// routine password change is not the member's way to overturn it.
+$pinned_before = false;
+if (isset($_COOKIE['software']['auth'])) {
+    $pinned_parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
+    if ($pinned_parts[0] !== '') {
+        $pinned_before = pg_auth_token_pinned($pinned_parts[0]);
+    }
+}
+
+pg_auth_token_revoke_user($change_user_id);
+
+// keep this browser signed in under the same user id
+$_SESSION['sessionuserid']  = $change_user_id;
 $_SESSION['sessionusername'] = $username;
-$_SESSION['sessionpassword'] = md5($liveform->get_field_value('new_password'));
 log_activity("user changed password", $username);
 
-// If remember me is on and the user has chosen to be remembered,
-// and the user is not logged in as a different user,
-// then update cookie with new login information.
-if (
-    (REMEMBER_ME == true)
-    && (isset($_COOKIE['software']['username']) == true)
-    && ($_SESSION['software']['logged_in_as_different_user'] == false)
-) {
-    $secure = false;
+// The revoke above took THIS browser's token with it, so a fresh one has to
+// replace it or the session is unbound and the next request signs it out.
+// pg_login_set_device_cookie() mints the right kind: a remembered 30-day
+// token when the browser was remembered, otherwise a session token (which it
+// creates on every sign-in now, so the session stays listed and revocable).
+if (($_SESSION['software']['logged_in_as_different_user'] ?? false) == false) {
+    $keep_remembered = ((REMEMBER_ME == true) && (isset($_COOKIE['software']['auth']) == true));
+    $new_selector = pg_login_set_device_cookie($change_user_id, $keep_remembered);
 
-    // If secure mode is enabled, then prepare secure cookie values.
-    if (URL_SCHEME == 'https://') {
-        $secure = true;
-    }
-
-    // If PHP version is greater than or equal to 5.2.0 then add cookies
-    // for login info so that user will be logged in automatically and also
-    // use httponly cookie, in order to prevent hacking methods.  PHP before 5.2.0
-    // does not support setting httponly cookies.
-    if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
-        setcookie('software[username]', $username, time() + 315360000, '/', '', $secure, true);
-        setcookie('software[password]', md5($liveform->get_field_value('new_password')), time() + 315360000, '/', '', $secure, true);
-
-    // Otherwise store login info in cookies without httponly cookie.
-    } else {
-        setcookie('software[username]', $username, time() + 315360000, '/', '', $secure);
-        setcookie('software[password]', md5($liveform->get_field_value('new_password')), time() + 315360000, '/', '', $secure);
+    if ($pinned_before && $new_selector && pg_auth_tokens_have_pin()) {
+        db("UPDATE auth_tokens SET pinned = 1 WHERE selector = '" . escape($new_selector) . "'");
     }
 }
 

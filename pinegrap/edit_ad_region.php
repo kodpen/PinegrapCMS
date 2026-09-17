@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -99,7 +99,7 @@ if (!$_POST) {
     if ($user['role'] <= 1) {
         $output_subheading = '<p>' . lang('Page Style Body Tag') . ': <strong>' . h('<ad>' . $output_name . '</ad>') . '</strong></p>';
         
-        $output_name_field_or_value = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100'));
+        $output_name_field_or_value = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100'));
 
     // else the user is a manager, so prepare to just display name value,
     // because we don't want a manager to have access to update the name
@@ -130,17 +130,19 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))),
+        'heading_description' => lang('Update this ad region which displays rotating ad content. (A rename will require its tag to be updated in any page styles.)'),
         'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Ad Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update this ad region which displays rotating ad content. (A rename will require its tag to be updated in any page styles.)') . '" title="' . lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))) . '">[' . $output_name . ']</h2>
+
                         ' . $output_subheading . '
                     </div>
                 </div>
@@ -250,7 +252,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();
@@ -291,7 +294,7 @@ if (!$_POST) {
         
         // if there is a send to, then forward user to send to
         if ($liveform->get_field_value('send_to') != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
             $liveform->remove_form();
         // else there is not a send to, so prepare notice and send user to view ad regions screen
         } else {
@@ -397,7 +400,7 @@ if (!$_POST) {
         
         // if there is a send to, then forward user to send to
         if ($liveform->get_field_value('send_to') != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
             $liveform->remove_form();
         // else there is not a send to, so prepare notice and send user to view ad regions screen
         } else {

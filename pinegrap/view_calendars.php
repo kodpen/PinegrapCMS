@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -145,8 +145,10 @@ pg_page_shell(
         'extra classes'=>'calendar',
         'icon'=>'calendar', 
         'heading'=>lang('Calendars'),
+        'heading_description' => lang('All calendars that I can add events too.'),
     )
 ) . '
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -154,7 +156,7 @@ pg_page_shell(
             ' . $liveform->output_notices() . '
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('All calendars that I can add events too.') . '" title="' . lang('Calendars') . '">' . lang('Calendars') . '</h2>
+                    
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         ' . $output_add_calendar_button . '
                     </nav>
@@ -177,7 +179,8 @@ pg_page_shell(
             </div>
         </div>
     </div>
-</main>' .
+</main>
+' .
 output_footer();
 
 $liveform->remove_form();

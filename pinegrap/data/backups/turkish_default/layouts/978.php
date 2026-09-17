@@ -8,7 +8,7 @@
     <div class="col-lg-8">
     <div class="form-group" style="margin-bottom:-15px">
         <label for="email_address">&#304;leti&#351;im E-postas&#305;</label>
-        <input type="email" name="email_address" id="email_address" placeholder="(Tercih edilirse Hesap E-postas&#305;ndan farkl&#305; olabilir)">
+        <input type="email" name="email_address" id="email_address" autocomplete="off" placeholder="(Tercih edilirse Hesap E-postas&#305;ndan farkl&#305; olabilir)">
     </div>
         
     <div class="form-group">

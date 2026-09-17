@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -64,6 +64,7 @@ if (!$_POST) {
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=> lang('Developer Lock'),
+        'heading_description' => lang('This warning page indicates that the page has been locked by a developer. Enter the correct pin code or contact your developer to access the locked page.'),
         'cancel'=>array(
             'enable'=>true,
             'title'=>lang('Cancel')
@@ -72,20 +73,13 @@ if (!$_POST) {
             array('label' => lang('Developer Lock')),
         ),
     )) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 text-center text-md-start">
-<h2 class="d-inline-block" 
-                            data-bs-content="' . lang('This warning page indicates that the page has been locked by a developer. Enter the correct pin code or contact your developer to access the locked page.') . '" 
-                            title="' . lang('Developer Lock') . '">' 
-                            . lang(array('string'=>'Enter Pin Code To Unlock Page ({var:1})','vars'=>$page_name)) . '
-                        </h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="developer_lock.php" method="post" autocomplete="off">
                     ' . get_token_field() . '
                     <div class="row">

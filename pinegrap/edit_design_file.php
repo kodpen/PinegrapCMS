@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -188,6 +188,7 @@ if (!$_POST['name']) {
             'extra classes'=>'designer',
             'icon'=>'design', 
             'heading'=> lang('Edit Design File'),
+            'heading_description' => lang('Rename, move, delete, or download this design file. (A rename/delete will require any links to this file to be updated. This file will not be viewable to site visitors if placed in a folder that is not public.)'),
             'cancel'=>array(
                 'enable'=>'true',
                 'title'=>lang('Return to Design Files'),
@@ -197,6 +198,7 @@ if (!$_POST['name']) {
             'breadcrumb' => array(array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php'), array('label' => lang('Edit Design File'))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -206,7 +208,7 @@ if (!$_POST['name']) {
 <div class="row mb-2">
                             ' . $output_thumbnail . '
                             <div class="col-12 col-md">
-                                <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Rename, move, delete, or download this design file. (A rename/delete will require any links to this file to be updated. This file will not be viewable to site visitors if placed in a folder that is not public.)') . '" title="' . lang('Edit Design File') . '">[' . $output_file_name . ']</h2>
+                                
                                 <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
                                 <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
                             </div>
@@ -234,7 +236,7 @@ if (!$_POST['name']) {
                                     <div class="row">
                                         <div class="col-12 col-sm-4 my-2">
                                             <label for="name" class="form-label">' . lang('File Name') . '</label>
-                                            <input value="' . $file_name . '" type="text" name="name" id="name" class="form-control  add-header-content-updater" maxlength="100"/>
+                                            <input value="' . $file_name . '" type="text" name="name" id="name" class="form-control " maxlength="100"/>
                                         </div>
                                     </div>
                                 </div>
@@ -286,7 +288,8 @@ if (!$_POST['name']) {
                 </form>
             </div>
         </div>
-    </main>' . output_footer();
+    
+</main>' . output_footer();
     
     $liveform->remove_form('edit_design_file');
 

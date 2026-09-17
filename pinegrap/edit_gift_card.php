@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -262,20 +262,18 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Edit Gift Card'),
+        'heading_description' => lang('Update the properties for this gift card and view the details.'),
         'cancel'=>array('enable'=>'true','url'=>'view_gift_cards.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Gift Cards'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php'), array('label' => lang('Edit Gift Card'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break  ' . $output_status_class . '" data-bs-content="' . lang('Update the properties for this gift card and view the details.') . '" title="' . lang('Edit Gift Card') . '">' . output_gift_card_code($gift_card['code']) . '</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="edit_gift_card.php" method="post" >
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
@@ -357,7 +355,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

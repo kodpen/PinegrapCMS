@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -64,8 +64,8 @@ setcookie('software[affiliate_code]', '', time() - 1000, '/');
 session_start();
 
 // Update session so that editor will be logged in as different user.
+$_SESSION['sessionuserid']  = (int) $_GET['id'];
 $_SESSION['sessionusername'] = $user['username'];
-$_SESSION['sessionpassword'] = $user['password'];
 
 // Remember that user is logged in as a different user, so we don't remove remember me login cookies
 // when the user logs out from this different user account.

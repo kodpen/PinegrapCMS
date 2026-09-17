@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -54,7 +54,7 @@ if (!$_POST) {
 
     $output_header = pg_page_shell( array('cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
             'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Edit Custom Page Style'))),
-        ) );
+        ) ) . '<main id="content" class="container-fluid">';
     
     $output_social_networking_position = '';
 
@@ -189,7 +189,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-8 col-lg-6 my-2">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            <input value="' . h($style_name) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control add-header-content-updater" maxlength="100" required />
+                                            <input value="' . h($style_name) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control" maxlength="100" required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-2">
@@ -251,7 +251,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
         output_footer();
 }
 else
@@ -338,7 +339,7 @@ else
     } else {
         // If there is a send to set, then forward user to send to.
         if ($_POST['send_to'] != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
             exit();
             
         // Otherwise there is not a send to set, so send user to view styles screen.

@@ -1,0 +1,201 @@
+/**
+ * PineGrap - Enterprise Website Platform
+ *
+ * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
+ *
+ * @copyright   2001–2019 Camelback Consulting, Inc.
+ *              2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+/* The guided tour overlay.  Everything derives from Bootstrap theme variables,
+   so the light and dark software themes both come out right without a second
+   set of colours here. */
+
+.pg-tour-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 2050;
+    opacity: 0;
+    transition: opacity .2s ease;
+    /* Transparent itself: the dim is painted by the cut-out's box-shadow.
+       This layer exists to swallow clicks. */
+    background: transparent;
+}
+
+.pg-tour-veil.is-on { opacity: 1; }
+
+/* The cut-out.  Its huge shadow spread is the dim; the element's own box is
+   the part that stays lit.  One element, so the ring travels between controls
+   instead of blinking. */
+.pg-tour-hole {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-radius: 12px;
+    box-shadow:
+        0 0 0 3px var(--bs-primary),
+        0 0 0 6px color-mix(in srgb, var(--bs-primary) 35%, transparent),
+        0 0 0 9999px rgba(0, 0, 0, .58);
+    transition: left .28s cubic-bezier(.4, 0, .2, 1),
+                top .28s cubic-bezier(.4, 0, .2, 1),
+                width .28s cubic-bezier(.4, 0, .2, 1),
+                height .28s cubic-bezier(.4, 0, .2, 1),
+                border-radius .28s cubic-bezier(.4, 0, .2, 1);
+    pointer-events: auto;
+}
+
+/* A dark software theme is already dark, so the same dim reads as "nothing
+   happened".  It has to go further there. */
+[data-bs-theme="dark"] .pg-tour-hole {
+    box-shadow:
+        0 0 0 3px var(--bs-primary),
+        0 0 0 6px color-mix(in srgb, var(--bs-primary) 35%, transparent),
+        0 0 0 9999px rgba(0, 0, 0, .72);
+}
+
+.pg-tour-bubble {
+    position: fixed;
+    z-index: 2060;
+    width: 330px;
+    max-width: calc(100vw - 24px);
+    padding: .95rem 1.05rem 0.8rem;
+    border-radius: .9rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color-translucent);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, .32);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .18s ease, transform .18s ease, left .28s cubic-bezier(.4, 0, .2, 1), top .28s cubic-bezier(.4, 0, .2, 1);
+}
+
+.pg-tour-bubble.is-on { opacity: 1; transform: none; }
+
+.pg-tour-arrow {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--bs-body-bg);
+    border-left: 1px solid var(--bs-border-color-translucent);
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+
+.pg-tour-bubble[data-side="bottom"] .pg-tour-arrow { top: -7px; transform: translateX(-50%) rotate(45deg); }
+.pg-tour-bubble[data-side="top"] .pg-tour-arrow { bottom: -7px; transform: translateX(-50%) rotate(225deg); }
+.pg-tour-bubble[data-side="right"] .pg-tour-arrow { left: -7px; transform: translateY(-50%) rotate(-45deg); }
+.pg-tour-bubble[data-side="left"] .pg-tour-arrow { right: -7px; transform: translateY(-50%) rotate(135deg); }
+.pg-tour-bubble[data-side="none"] .pg-tour-arrow { display: none; }
+
+.pg-tour-count {
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color);
+    margin-bottom: .15rem;
+}
+
+.pg-tour-title {
+    font-size: .98rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0 0 .35rem;
+}
+
+.pg-tour-text {
+    font-size: .855rem;
+    line-height: 1.5;
+    color: var(--bs-secondary-color);
+}
+
+.pg-tour-text kbd {
+    font-size: .75rem;
+    padding: .1rem .32rem;
+    border-radius: .3rem;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color-translucent);
+}
+
+.pg-tour-text .bi { color: var(--bs-primary); }
+
+.pg-tour-foot {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-top: .85rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+
+.pg-tour-dots {
+    display: flex;
+    align-items: center;
+    gap: .28rem;
+    margin: 0 auto;
+}
+
+.pg-tour-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bs-border-color);
+    transition: background .2s ease, width .2s ease;
+}
+
+.pg-tour-dot.is-on { width: 16px; border-radius: 3px; background: var(--bs-primary); }
+
+.pg-tour-btn {
+    border: 0;
+    border-radius: 50rem;
+    padding: .3rem .85rem;
+    font-size: .82rem;
+    line-height: 1.45;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pg-tour-ghost {
+    background: transparent;
+    color: var(--bs-secondary-color);
+}
+
+.pg-tour-ghost:hover { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+
+.pg-tour-primary {
+    background: var(--bs-primary);
+    color: #fff;
+}
+
+.pg-tour-primary:hover { filter: brightness(1.08); }
+
+.pg-tour-btn:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+
+/* Nothing behind the tour scrolls while it is up: a scroll would move the very
+   control the ring is drawn around. */
+body.pg-tour-open { overflow: hidden; }
+
+/* On a phone the bubble stops chasing the control and settles at the bottom,
+   where a thumb can reach it and where it never covers what it describes. */
+@media (max-width: 575.98px) {
+
+    .pg-tour-bubble {
+        left: 8px !important;
+        right: 8px;
+        top: auto !important;
+        bottom: 10px;
+        width: auto;
+        max-width: none;
+    }
+
+    .pg-tour-arrow { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .pg-tour-hole,
+    .pg-tour-bubble,
+    .pg-tour-dot { transition: none !important; }
+}

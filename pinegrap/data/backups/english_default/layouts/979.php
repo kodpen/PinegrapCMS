@@ -7,7 +7,7 @@
         
     <div class="col-sm-6">    
     <div class="form-group">
-        <input type="email" name="email_address" id="email_address" placeholder="Email*">
+        <input type="email" name="email_address" id="email_address" autocomplete="off" placeholder="Email*">
     </div>
     </div>
 

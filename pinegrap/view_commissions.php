@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -162,6 +162,8 @@ if (
 } else {
     $screen = 1;
 }
+
+$output_screen_links = '';
 
 if ($number_of_screens > 1) {
     $output_screen_links .= '
@@ -414,7 +416,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('All Commissions'),
-        'auto_main'=>false,
+        'heading_description' => lang('View all order commissions.'),
     ]);
     $output_advanced_filters_value = 'true';
     $output_advanced_filters_label = lang('Add Advanced Filters');
@@ -425,7 +427,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
 
 // else the advanced filters are on
 } else {
-    $output_header_with_options = pg_page_shell(array('extra classes'=>'filters_active', 'auto_main'=>false));
+    $output_header_with_options = pg_page_shell(array('extra classes'=>'filters_active'));
     $output_advanced_filters_value = 'false';
     $output_advanced_filters_label = lang('Remove Advanced Filters');
     $advanced_filters_icon = 'filter_list_off';
@@ -469,29 +471,14 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
 print
 $output_header_with_options . '     
 ' . $output_advanced_filters . '
-<main id="content" class="container">
+<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('View all order commissions.') . '" title="' . lang('All Commissions') . '">' . lang('All Commissions') . '</h2>
-                </div>
-                <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                    <div class="row justify-content-center justify-content-md-end">
-                        <form id="search" action="view_commissions.php" method="get" name="form" class="search_form col-auto">
-                            <div class="input-group input-group-sm">
-                                <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" data-loading-content=" " title="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
-                                <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Status') . '" for="filter_select">visibility</label>
-                                <select id="status" name="status" class="form-select mt-1 mb-1" title="' . lang('Status') . '" onchange="submit_form(\'search\')"><option value="[' . lang('All') . ']">[' . lang('All') . ']</option>' . $output_status_options . '</select>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">

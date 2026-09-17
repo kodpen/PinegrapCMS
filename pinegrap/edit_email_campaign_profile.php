@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -203,12 +203,14 @@ if (!$_POST) {
             'extra classes'=>'campaign',
             'icon'=>'campaign', 
             'heading'=> lang('Edit Campaign Profile'),
+            'heading_description' => lang('Modify the Campaign that is created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).'),
             'cancel'=>array('enable'=>'true','url'=>'view_email_campaign_profiles.php')
         ,
             'breadcrumb' => array(array('label' => lang('My Campaign Profiles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php'), array('label' => lang('Edit Campaign Profile'))),
         )
     )    . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -216,7 +218,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Modify the Campaign that is created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).') . '" title="' . lang('Edit Campaign Profile') . '">[' . h($email_campaign_profile['name']) . ']</h2>
+
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_email_campaign_profile.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
@@ -244,7 +246,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control add-header-content-updater')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div> 
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
@@ -448,7 +450,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

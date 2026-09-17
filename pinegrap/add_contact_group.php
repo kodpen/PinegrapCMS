@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,22 +39,20 @@ if (!$_POST) {
             'extra classes'=>'contact',
             'icon'=>'contact', 
             'heading'=>lang('Create Contact Group'),
+            'heading_description' => lang('Create a new contact group to collect and organize contacts.'),
             'cancel'=>array('enable'=>'true','url'=>'view_contact_groups.php'),
         
             'breadcrumb' => array(array('label' => lang('All Contact Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contact_groups.php'), array('label' => lang('Create Contact Group'))),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
 
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new contact group to collect and organize contacts.') . '" title="' . lang('Create Contact Group') . '">[' . lang('Contact Group Name') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_contact_group.php" method="post" >
                     ' . get_token_field() . '
                     <div class="row">
@@ -67,7 +65,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang('Contact Group Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'255', 'class'=>'form-control add-header-content-updater', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'255', 'class'=>'form-control', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
 
@@ -117,7 +115,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

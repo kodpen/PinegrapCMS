@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -25,20 +25,20 @@ validate_token_field();
 include_once('liveform.class.php');
 
 // if at least one order was selected
-if ($_POST['orders']) {
+if (!empty($_POST['orders'])) {
 
-    switch ($_POST['action']) {
+    switch ($_POST['action'] ?? '') {
 
         case 'export_orders_for_parasut':
             //This feature is used for invoicing orders via the parasut.com application with the help of a draft excel file.
             /** Include PHPExcel */
-            require_once dirname(__FILE__) . '/assets/phpexcel/PHPExcel.php';
+            require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';
 
             $objPHPExcel1 = new PHPExcel();
             // Create new PHPExcel object with template (1)
-            $objPHPExcel1 = PHPExcel_IOFactory::load("assets/phpexcel/templates/parasut_satis_faturalari.xlsx");
+            $objPHPExcel1 = PHPExcel_IOFactory::load("includes/phpexcel/templates/parasut_satis_faturalari.xlsx");
             // Create new PHPExcel object with template (2)
-            $objPHPExcel2 = PHPExcel_IOFactory::load("assets/phpexcel/templates/parasut_musteri_ve_tedarikciler.xlsx");
+            $objPHPExcel2 = PHPExcel_IOFactory::load("includes/phpexcel/templates/parasut_musteri_ve_tedarikciler.xlsx");
 
             $borderstyleArray = array('borders' => array('allborders' => array('style' => PHPExcel_Style_Border::BORDER_THIN,'color' => array('rgb' => 'b8b8b8'))));
             $organization_name = '';
@@ -366,7 +366,7 @@ if ($_POST['orders']) {
             //Generate a date for zip and file names.
             $output_date = date('Y_m_d_H_i_s',time());
             //location to use as temporary directory.
-            $temps_location = 'assets/phpexcel/temps/';
+            $temps_location = 'includes/phpexcel/temps/';
             //generate parasut temp folder name.
             $temp_folder_name = 'parasut_' . $output_date;
             //check if temp folder is exist else generate one for save excel files inside.
@@ -569,7 +569,7 @@ if ($_POST['orders']) {
         case 'cancel':
 
             // validate_user() returns the PK under "id" — NOT "user_id" (that
-            // is the raw column name, used by the api.php/apps.php auth path).
+            // is the raw column name, used by the api.php auth path).
             // Reading the wrong key silently recorded cancelled_by = 0, which
             // reports interpret as "customer self-service".
             $cancel_admin_user_id = (int) (isset($user['id']) ? $user['id'] : 0);

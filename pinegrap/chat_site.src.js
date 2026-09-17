@@ -1239,12 +1239,82 @@
         });
     }
 
+    // ── Mobile: full-screen window pinned to the visible viewport ───────
+    // Below the phone breakpoint the window fills the screen (CSS). A fixed
+    // element is anchored to the LAYOUT viewport, which the on-screen
+    // keyboard does not shrink: focusing the compose field pushes the window
+    // above the visible area, and on iOS the page scrolls underneath it. The
+    // visual viewport reports the box that is actually on screen, so while
+    // the window is open its position and size are pinned to that box.
+    // Browsers without the API keep the CSS 100dvh behavior.
+
+    var MOBILE_BREAKPOINT = 575.98;
+
+    function isFullscreenLayout() {
+        return (window.innerWidth <= MOBILE_BREAKPOINT);
+    }
+
+    function pinWindowToViewport() {
+        if (!state.open || !isFullscreenLayout()) {
+            releaseWindowViewport();
+            return;
+        }
+
+        try {
+            document.body.classList.add('pgcs-no-scroll');
+        } catch (error) {}
+
+        var viewport = window.visualViewport;
+
+        if (!viewport) {
+            return;
+        }
+
+        win.style.top = viewport.offsetTop + 'px';
+        win.style.left = viewport.offsetLeft + 'px';
+        win.style.width = viewport.width + 'px';
+        win.style.height = viewport.height + 'px';
+    }
+
+    function releaseWindowViewport() {
+        try {
+            document.body.classList.remove('pgcs-no-scroll');
+        } catch (error) {}
+
+        win.style.top = '';
+        win.style.left = '';
+        win.style.width = '';
+        win.style.height = '';
+    }
+
+    function resizeFullscreenWindow() {
+        pinWindowToViewport();
+
+        // The newest message must stay visible when the keyboard opens or
+        // the device rotates.
+        if (state.open) {
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+        }
+    }
+
+    if (window.visualViewport) {
+        // resize = keyboard opened/closed or rotation; scroll = the page
+        // moved under a fixed element (iOS), where only re-pinning is
+        // wanted, not a jump to the newest message.
+        window.visualViewport.addEventListener('resize', resizeFullscreenWindow);
+        window.visualViewport.addEventListener('scroll', pinWindowToViewport);
+    }
+
+    window.addEventListener('resize', resizeFullscreenWindow);
+    window.addEventListener('orientationchange', resizeFullscreenWindow);
+
     function toggleWindow() {
         state.open = !state.open;
 
         if (state.open) {
             root.className = 'pgcs-open';
             storage('pg_chat_site_open', '1');
+            pinWindowToViewport();
 
             stopBgPoll();
             state.unread = 0;
@@ -1266,6 +1336,7 @@
         } else {
             root.className = '';
             storage('pg_chat_site_open', '0');
+            releaseWindowViewport();
             stopPoll();
 
             // While a conversation is active, replies are watched even when

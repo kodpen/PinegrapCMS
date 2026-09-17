@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -162,33 +162,9 @@ if (!$_POST) {
         
         // if username was changed
         if ($sql_update_username) {
-            // If there is a cookie in use, and user is not logged in as a different user,
-            // then update the cookies username.
-            if (
-                (REMEMBER_ME == true)
-                && (isset($_COOKIE['software']['username']) == true)
-                && ($_SESSION['software']['logged_in_as_different_user'] == false)
-            ) {
-                $secure = false;
+            // The remember-me token is keyed by user id, not username, so an
+            // email or username change needs no cookie update at all.
 
-                // If secure mode is enabled, then prepare secure cookie values.
-                if (URL_SCHEME == 'https://') {
-                    $secure = true;
-                }
-
-                // If PHP version is greater than or equal to 5.2.0 then add cookies
-                // for login info so that user will be logged in automatically and also
-                // use httponly cookie, in order to prevent hacking methods.  PHP before 5.2.0
-                // does not support setting httponly cookies.
-                if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
-                    setcookie('software[username]', $liveform->get_field_value('email_address'), time() + 315360000, '/', '', $secure, true);
-
-                // Otherwise store login info in cookies without httponly cookie.
-                } else {
-                    setcookie('software[username]', $liveform->get_field_value('email_address'), time() + 315360000, '/', '', $secure);
-                }
-            }
-            
             // update username in session
             $_SESSION['sessionusername'] = $liveform->get_field_value('email_address');
             

@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -127,6 +127,7 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Edit Menu Item'),
+        'heading_description' => lang('Define the label to display for this menu item and where it links too.'),
         'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php'),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
@@ -134,6 +135,7 @@ if (!$_POST) {
             array('label' => lang('Edit Menu Item')),
         ),
     ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -141,7 +143,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Define the label to display for this menu item and where it links too.') . '" title="' . lang('Edit Menu Item') . '">[' . h($menu_item_name) . ']</h2>
+
                         <p>' . lang('Menu') . ': ' . h($menu_name) . '</p>
                     </div>
                 </div>
@@ -162,7 +164,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label for="name" class="form-label">' . lang('Menu Item Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
@@ -246,7 +248,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

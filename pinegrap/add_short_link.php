@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -22,7 +22,7 @@ validate_area_access($user, 'user');
 
 include_once('liveform.class.php');
 $liveform = new liveform('add_short_link');
-    
+
 // if the form has not been submitted
 if (!$_POST) {
     $destination_type_options = array(
@@ -81,6 +81,7 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page',
             'heading'=>lang('Create Short Link'),
+            'heading_description' => lang('Create a shortcut alias for a Page, Product Group, Product, or URL.'),
             'cancel'=>array('enable'=>'true','url'=>'view_short_links.php'),
             'breadcrumb' => array(
                 array('label' => lang('My Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'),
@@ -88,15 +89,12 @@ if (!$_POST) {
             ),
         )
     )  . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a shortcut alias for a Page, Product Group, Product, or URL.') . '" title="' . lang('Create Short Link') . '">[' . lang('Short Link Name') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_short_link.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -133,7 +131,7 @@ if (!$_POST) {
                                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
-                                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100', 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
+                                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
                                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     </div>
                                                 </div>
@@ -208,7 +206,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();
@@ -242,9 +241,9 @@ if (!$_POST) {
     // If there is not already an error for the name field and it contains invalid characters, then add error.
     if (
         ($liveform->check_field_error('name') == FALSE)
-        && (preg_match('/[^A-Za-z0-9._\-\/]/', $name) == 1)
+        && (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1)
     ) {
-        $liveform->mark_error('name', lang('The name may only contain letters, numbers, periods, underscores, hyphens, and forward slashes.'));
+        $liveform->mark_error('name', lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.'));
     }
 
     // If there is not already an error for the name field,

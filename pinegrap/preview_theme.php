@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -70,7 +70,7 @@ switch (($_GET['mode'] ?? '')) {
         }
         
         // send user back to where they came from, so the user can preview the theme
-        header('Location: ' . URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? ''));
         exit();
         
         break;
@@ -82,7 +82,7 @@ switch (($_GET['mode'] ?? '')) {
         unset($_SESSION['software']['preview_style']);
         
         // send user back to where they came from
-        header('Location: ' . URL_SCHEME . HOSTNAME . ($_GET['send_to'] ?? ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? ''));
         exit();
         
         break;

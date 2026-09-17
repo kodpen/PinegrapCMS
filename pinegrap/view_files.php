@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -339,16 +339,33 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 $output_rows = false;
 
-// Optimize yüzdesi hesaplama eşiği.
-// Optimize edilmemiş görsel sayısı bu değeri geçerse hesaplama yapılmaz,
-// buton görünür ancak yüzde gösterilmez (çökme önlemi).
+// Ceiling for computing the optimize percentage badge.
+//
+// The badge is honest but expensive: the only way to know what a file would
+// save is to compress it, so every unmeasured image on the screen is a full
+// decode and recompress. Past this many of them the page stops computing and
+// shows the button without a number, which is a slower answer than no page at
+// all would be.
 define('OPTIMIZE_PERCENT_THRESHOLD', 30);
 
-$unoptimized_image_types = ['jpg','jpeg','png','gif','bmp','tiff','tif','webp'];
+// The pixel ceiling the resize button aims at, printed in its tooltip so the
+// operator knows what pressing it will do before pressing it.
+$image_settings      = pg_image_settings();
+$image_resize_target = $image_settings['file_max_dimension'];
+
+// Everything drawn as an image. Wider than the list below on purpose: a .tif
+// still has a thumbnail and dimensions even though nothing here can rewrite it.
+$image_types = ['jpg','jpeg','png','gif','bmp','tiff','tif','webp'];
+
+// Exactly what optimize_image() accepts. 'tif' is absent deliberately — that
+// spelling is answered with "we don't support optimizing that type of file",
+// so offering the button for one would hand the operator a certain error.
+$optimizable_image_types = ['jpg','jpeg','png','gif','bmp','tiff','webp'];
+
 $unoptimized_count = 0;
 if ($files) {
     foreach ($files as $f) {
-        if (!$f['optimized'] && in_array(mb_strtolower($f['type']), $unoptimized_image_types)) {
+        if (!$f['optimized'] && in_array(mb_strtolower($f['type']), $image_types, true)) {
             $unoptimized_count++;
         }
     }
@@ -362,6 +379,19 @@ if ($files) {
 
         if ($file['optimized']) {
             $optimized = '<span class="material-icons">task_alt</span>';
+        }
+
+        // Resolved once per row. Two things below need it — the resize button,
+        // which is offered on pixel size rather than on file size, and the
+        // thumbnail — and measuring the same file twice on a synced folder is
+        // the whole cost of this screen.
+        $file_type    = mb_strtolower($file['type']);
+        $is_image     = in_array($file_type, $image_types, true);
+        $image_width  = 0;
+        $image_height = 0;
+
+        if ($is_image) {
+            list($image_width, $image_height) = pg_file_image_dimensions($file);
         }
 
 
@@ -379,22 +409,35 @@ if ($files) {
             $output_check_box = '<input class="form-check-input " type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" />';
             $output_unselectable_class = '';
 
-            // If this file has not been optimized yet, and it is an image type that we support, then
-            // show optimize button and edit image link in actions
-           
-            $file_type ='';
+            // Image actions. Two separate buttons, because they do two
+            // different things: one compresses at the same pixel size, the
+            // other scales the image down first. A design asset placed at exact
+            // dimensions has to survive the first one, so the second says what
+            // it is instead of hiding inside it.
             $output_edit_image_button = '';
-            $output_optimize_button = '';
-            $file_type = mb_strtolower($file['type']);
-            if (    ($file_type == 'jpg')
-                    or ($file_type == 'jpeg')
-                    or ($file_type == 'png')
-                    or ($file_type == 'gif')
-                    or ($file_type == 'bmp')
-                    or ($file_type == 'tiff')
-                    or ($file_type == 'webp')
-                ){
-                    if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
+            $output_optimize_button   = '';
+            $output_resize_button     = '';
+
+            if (in_array($file_type, $optimizable_image_types, true)) {
+
+                    $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
+
+                    // Offered whatever the optimized flag says. An image can be
+                    // fully compressed and still be six times wider than any
+                    // page that shows it, and that is the one case this button
+                    // is for.
+                    if ($image_library_available && pg_image_can_be_resized($image_width, $image_height)) {
+
+                        $output_resize_button =
+                            '<button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2" data-loading-content=" " title="'
+                            . lang(array(
+                                'string' => 'Resize to {var:1} pixels and optimize',
+                                'vars'   => array($image_resize_target))) . '" onclick="window.location.href=\''
+                            . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id'])
+                            . get_token_query_string_field() . '&mode=resize\'"><i class="bi bi-arrows-angle-contract"></i></button>';
+                    }
+
+                    if (!$optimized && $image_library_available) {
 
                         // Use the cached optimization_percent column. It is filled lazily
                         // (only when the row has no value yet AND we are under the
@@ -417,7 +460,7 @@ if ($files) {
             }
 
             $output_edit_buttons = '
-            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_edit_image_button;
+            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_resize_button . $output_edit_image_button;
 
         }
 
@@ -433,31 +476,9 @@ if ($files) {
 
        
 
-        // If the file is an image.
-        if ((mb_strtolower($file['type']) == 'bmp') || (mb_strtolower($file['type']) == 'gif') || (mb_strtolower($file['type']) == 'jpg')|| (mb_strtolower($file['type']) == 'webp') || (mb_strtolower($file['type']) == 'jpeg') || (mb_strtolower($file['type']) == 'png') || (mb_strtolower($file['type']) == 'tif') || (mb_strtolower($file['type']) == 'tiff')) {
-
-            // Use cached image dimensions. Falls back to getimagesize() once per
-            // image when the row doesn't have a cached value yet, then writes the
-            // result back so subsequent renders skip the disk stat / header decode.
-            // This is especially important on OneDrive / network-mounted dev folders.
-            if (
-                ($file['image_width'] !== null && $file['image_width'] !== '')
-                && ($file['image_height'] !== null && $file['image_height'] !== '')
-            ) {
-                $image_width = (int) $file['image_width'];
-                $image_height = (int) $file['image_height'];
-            } else {
-                $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                $image_width = isset($image_size[0]) ? (int) $image_size[0] : 0;
-                $image_height = isset($image_size[1]) ? (int) $image_size[1] : 0;
-                if ($image_width > 0 && $image_height > 0) {
-                    db(
-                        "UPDATE files SET image_width = '" . (int) $image_width
-                        . "', image_height = '" . (int) $image_height
-                        . "' WHERE id = '" . e($file['id']) . "'"
-                    );
-                }
-            }
+        // If the file is an image. Dimensions were resolved at the top of the
+        // row, where the resize button also needed them.
+        if ($is_image) {
 
             // Output the image dimension to the table.
             $output_image_dimensions = lang('width') . ': ' . $image_width . ' px ' . lang('height') . ': ' . $image_height . ' px';
@@ -510,10 +531,12 @@ echo
             'title'=> lang('Files'),
             'extra classes'=>'file',
             'icon'=>'file', 
-            'heading'=>lang('Files'),
+            'heading'=>($heading ?? lang('Files')),
+            'heading_description' => ($subheading ?? lang('Uploaded files available to your pages')),
 
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -521,11 +544,12 @@ echo
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
-                        <h2 class="d-inline-block " data-bs-content="' . $subheading . '" title="' . $heading . '">' . $heading . '</h2>
+                        
                         <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <a class="btn btn-sm btn-primary m-1 " href="add_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="material-icons me-2">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
                             <a class="btn btn-sm btn-primary m-1 " href="create_file.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-outline-primary m-1 " href="view_folders.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-folder2-open me-2"></span>' . lang(array('string'=>'File Manager') ) . '</a>
                         </nav>
                     </div>
                     <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
@@ -584,7 +608,8 @@ echo
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 $liveform->remove_form('view_files');

@@ -58,6 +58,7 @@ if (!$_POST) {
             ),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -105,7 +106,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' . output_footer();
+    
+</main>' . output_footer();
 
     $liveform->remove_form('edit_design_file');
 

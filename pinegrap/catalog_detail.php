@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -92,7 +92,7 @@ if (
     }
     
     $liveform->mark_error('product_id', lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => array(h($product_description)))));
-    header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('current_url'));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('current_url')));
     exit();
 }
 
@@ -122,8 +122,11 @@ if (
     && ($shippable == 1)
 ) {
     if ($_ship_to_val === '' && $_add_name_val === '') {
-        // Case (b) — silently default to "myself" so the order can proceed.
-        $liveform->assign_field_value('ship_to', 'myself');
+        // Case (b) - silently default to the buyer so the order can proceed.
+        // The name has to be the localized one: that is what the picker offers
+        // and what the cart stores, and a second spelling of it would open a
+        // recipient of its own.
+        $liveform->assign_field_value('ship_to', lang('myself'));
     } elseif (in_array($_ship_to_val, $_add_sentinels, true) && $_add_name_val === '') {
         // Case (c) — visitor explicitly picked "Add new" but left name blank.
         $liveform->mark_error('ship_to', lang('Please select or enter a recipient.'));
@@ -162,7 +165,7 @@ if ($selection_type == 'donation') {
     // If the quantity is not valid, then output error.
     if (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 0) {
         $liveform->mark_error('quantity', lang('Please enter a valid quantity.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('current_url'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('current_url')));
         exit();
     }
 
@@ -185,7 +188,7 @@ if (
         'string' => 'Yeterli stok yok. Mevcut: {var:1}',
         'vars'   => array((int)$inventory_quantity),
     )));
-    header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('current_url'));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('current_url')));
     exit();
 }
 
@@ -201,11 +204,18 @@ apply_offers_to_cart();
 // this to keep the visitor on the current catalog page (with `?cart_added=1`
 // appended so a JS toast can fire). Honored only when it's a same-host path
 // (no protocol / domain) to avoid open-redirect risk via a forged POST.
-$next_url_raw = (string)$liveform->get_field_value('next_url');
+$next_url_raw = trim((string)$liveform->get_field_value('next_url'));
 if ($next_url_raw !== '') {
-    // Accept "/path", "/path?query", "?query" — but never absolute http(s)://
-    if (preg_match('#^(?:/|\?)#', $next_url_raw) && stripos($next_url_raw, '://') === false) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $next_url_raw);
+    // A leading "?" keeps the visitor on the home page with a query string.
+    // The authority ends at that "?", so the host cannot be redirected; the
+    // remaining forms all have to survive pg_safe_redirect_path(), which
+    // rejects "//host", "/\host" and the "@host" / ".host" userinfo tricks.
+    $next_url = (mb_substr($next_url_raw, 0, 1) === '?')
+        ? (preg_match('/[\x00-\x1F\x7F]/', $next_url_raw) === 1 ? '' : $next_url_raw)
+        : pg_safe_redirect_path($next_url_raw, '');
+
+    if ($next_url !== '') {
+        header('Location: ' . URL_SCHEME . HOSTNAME . $next_url);
         $liveform->remove_form();
         exit();
     }

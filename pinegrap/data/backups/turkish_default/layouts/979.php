@@ -8,7 +8,7 @@
     <div class="col-sm-6">    
     <div class="form-group">
         <label for="email_address">E-posta*</label>
-        <input type="email" name="email_address" id="email_address">
+        <input type="email" name="email_address" id="email_address" autocomplete="off">
     </div>
     </div>
 

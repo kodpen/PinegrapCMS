@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,20 +39,18 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Create Product Attribute'),
+        'heading_description' => lang('Create a new product attribute.'),
         'cancel'=>array('enable'=>'true','url'=>'view_product_attributes.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Product Attributes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_attributes.php'), array('label' => lang('Create Product Attribute'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new product attribute.') . '" title="' . lang('Create Product Attribute') . '">[' . lang('Product Attribute') . ']</h2>
-                    </div>
-                </div>
+                
                 <form  method="post" class="product_attribute_form">
                     ' . get_token_field() . '
                     <div class="row">
@@ -70,7 +68,7 @@ if (!$_POST) {
                                                 'name' => 'name',
                                                 'id' => 'name',
                                                 'placeholder'=>lang('Attribute Name'),
-                                                'class'=>'form-control add-header-content-updater',
+                                                'class'=>'form-control',
                                                 'maxlength' => '100')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
@@ -128,7 +126,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

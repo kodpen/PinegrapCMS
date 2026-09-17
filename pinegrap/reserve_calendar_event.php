@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -146,7 +146,7 @@ if (
     )
 ) {
     $liveform->mark_error('', 'Sorry, there are no remaining spots.');
-    header('Location: ' . URL_SCHEME . HOSTNAME . $liveform->get_field_value('send_to'));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
     exit();
 }
 

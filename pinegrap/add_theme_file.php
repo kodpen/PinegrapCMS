@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -31,20 +31,18 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Theme'))),
+        'heading_description' => lang('Create a new theme (.css file) and place it in a public folder.'),
         'cancel'=>array('enable'=>'true','url'=>'view_themes.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Themes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php?filter=all_designer_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Theme'))))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
             
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new theme (.css file) and place it in a public folder.') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('Theme'))) . '">[' . lang(array('string'=>'new {var:1}','vars'=>lang('theme'))) . ']</h2>
-                    </div>
-                </div>
+                
                 <form enctype="multipart/form-data" name="form" action="add_theme_file.php" method="post" name="form">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>(isset($_GET['id']) ? $_GET['id'] : ''))) . '
@@ -182,7 +180,8 @@ if (!$_POST) {
                 </script>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form('add_theme_file');

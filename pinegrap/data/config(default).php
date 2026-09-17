@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -42,6 +42,11 @@ define('DB_LEGACY', false);
 ------------------------------ */
 define('CDN', true);                  // Use Google CDN for assets
 define('ENCRYPTION_KEY', 'my-secret'); // Auto-generated during install, do not change
+// Automated upgrade from a cron job over the web:
+//   install/index.php?automated_upgrade=true&secret=<this value>
+// Optional. Undefined or shorter than 16 characters means the key path is closed.
+// A cron that runs php directly (php pinegrap/install/index.php automated_upgrade) never needs it.
+// define('AUTOMATED_UPGRADE_SECRET', 'change-this-to-a-long-random-string');
 define('DYNAMIC_REGIONS', true);       // Allow dynamic PHP regions in pages
 define('PHP_REGIONS', true);           // Allow PHP code in Page Designer regions
 
@@ -70,7 +75,7 @@ define('DKIM_SELECTOR', 'mail');        // Example: 'default'
    Environment / Development
 ------------------------------ */
 define('ENVIRONMENT', 'production'); // 'development' or 'production'
-define('EDITION', 'Premium');        // Edition name (shown in backend footer)
+define('EDITION', 'Community Edition');        // Edition name (shown in backend footer)
 
 /* -----------------------------
    Developer Lock Settings
@@ -87,6 +92,16 @@ const LOCKED_PAGES = array(
   "barcode_menu.php",
   "welcome.php"
 );
+
+/* -----------------------------
+   Sign-in Settings
+------------------------------ */
+// How many days a "Remember Me" sign-in stays valid.
+// These cookies carry a credential, so they expire; the software used to keep
+// them for ten years, which outlived the machines they were stored on.
+// Leave undefined for the default of 30. Clamped to 365.
+// Example: 30
+// define('REMEMBER_ME_DAYS', 30);
 
 /* -----------------------------
    UI / Branding
@@ -245,4 +260,23 @@ define('ALLOW_INSECURE_UPDATE_TLS', false);
 // being renamed.
 define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 
+
+// ── Database availability guard ─────────────────────────────────────────────
+//
+// A bot flooding a form that sends mail can fill max_user_connections, because
+// each request holds its connection across the SMTP round trip. Once the pool
+// is full every request fails inside init.php - before the firewall, which
+// runs 512 lines later. The site then cannot defend itself, and every failed
+// request wrote a full stack trace to the error log.
+//
+// includes/db_guard.php answers 503 and backs off instead. Nothing here needs
+// setting on a healthy site; the defaults are the ones the guard uses.
+
+// Seconds to stop attempting connections after an overload, so the pool can
+// drain. Too long keeps the site down after the database has recovered.
+// define('DB_UNAVAILABLE_BACKOFF', 30);
+
+// Automated upgrade from a cron job over the web: install/index.php?automated_upgrade=true&secret=<this value>
+// Optional. Undefined or shorter than 16 characters means the key path is closed; php from the command line never needs it.
+ define('AUTOMATED_UPGRADE_SECRET', 'change-this-to-a-long-random-string');
 ?>

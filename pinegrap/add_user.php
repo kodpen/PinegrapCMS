@@ -12,12 +12,13 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 include_once('liveform.class.php');
+include_once('includes/user_permissions.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -32,161 +33,89 @@ if (!$_POST) {
 
 
     
-    $output_manage_forms = '';
-    
-    // if forms module is on, then output manage forms checkbox
+    // Selection markup for the permission panels. Built here rather than in
+    // includes/user_permissions.php because the edit screen calls the same
+    // generators with the user's current selections; the helper only lays out
+    // what it is handed.
+    $permission_panels = array(
+        'edit_tree'      => get_acl_folder_tree('edit'),
+        'page_types'     => get_page_type_checkboxes_and_labels(),
+        'common_regions' => get_checkboxes_for_items_user_can_edit('common_regions'),
+        'menus'          => get_checkboxes_for_items_user_can_edit('menus'),
+        'view_tree'      => get_date_picker_format() . get_acl_folder_tree('view'),
+    );
+
     if (FORMS === true) {
-        $output_manage_forms = '<div class="form-check my-2 form-switch"><input type="checkbox" name="manage_forms" id="manage_forms" value="yes" class="form-check-input" /><label class="form-check-label" for="manage_forms">' . lang('Also allow User to access submitted form data for selected folders') . '</label></div>';
+        $permission_panels['manage_forms_switch'] = pg_user_permission_switch(
+            'manage_forms', 'yes', false, lang('Reach the data submitted through forms'));
     }
-    
-    // if calendars module is on, then output manage calendars checkbox
+
     if (CALENDARS === true) {
-        // get all calendars
-        $query =
-            "SELECT
-               id,
-               name
-            FROM calendars
-            ORDER BY name";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         $output_calendars = '';
 
-        // loop through all calendars
+        $result = mysqli_query(db::$con, "SELECT id, name FROM calendars ORDER BY name") or output_error('Query failed.');
+
         while ($row = mysqli_fetch_assoc($result)) {
-            $id = $row['id'];
-            $name = $row['name'];
-            
-            $output_calendars .= '<div class="form-check"><input type="checkbox" name="calendar_' . $id . '" id="calendar_' . $id . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="calendar_' . $id . '"> ' . h($name) . '</label></div>';
+            $output_calendars .= '<div class="form-check"><input type="checkbox" name="calendar_' . $row['id'] . '" id="calendar_' . $row['id'] . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="calendar_' . $row['id'] . '"> ' . h($row['name']) . '</label></div>';
         }
-        
-        $output_manage_calendars =
-            '<div class="col-12 mt-5 mb-1 collapse show" id="manage_calendars_heading_row">
-                <h4 class="fw-bold text-muted">' . lang('Calendar Management Rights') . '</h4>
-            </div>
-            <div class="col-12 my-2 collapse show" id="manage_calendars_row">
-                <div class="form-check form-switch">
-                    <input value="yes" id="manage_calendars" name="manage_calendars" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#calendar_access" />
-                    <label class="form-check-label" for="manage_calendars">' . lang('Allow User to add events to one or more calendars') . '</label>
-                </div>
-                <div class="collapse popover w-100 fade bs-popover-bottom p-0 mb-2" id="calendar_access">
-                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                    <div class="popover-body">
-                        <div class="row">
-                            <div class="col-12 my-1">
-                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                    <div class="card-header border-0 bg-reset">
-                                        <div class="form-check form-switch">
-                                            <input id="multiselect-checkbox-checker-4" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                            <label for="multiselect-checkbox-checker-4" class="form-check-label">' . lang('Select All') . '</label>
-                                        </div>
-                                    </div>
-                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                        ' . $output_calendars . '
-                                    </div>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="publish_calendar_events" name="publish_calendar_events" value="yes" checked="checked" class="form-check-input" />
-                                    <label class="form-check-label" for="publish_calendar_events">' . lang('Also allow User to publish calendar events for selected calendars') . '</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> 
-            </div>';
+
+        $permission_panels['calendars'] = $output_calendars;
     }
-    
-    // If commerce is enabled, then output settings for that.
+
     if (ECOMMERCE === true) {
-        $output_set_offline_payment = '';
-        
-        // if offline payment is enabled, then prepare to output set offline payment
+
+        $output_commerce_switches =
+            pg_user_permission_switch('view_card_data', '1', false, lang('View card data'))
+            . pg_user_permission_switch('manage_ecommerce_reports', '1', false, lang('Manage commerce reports'), lang('Order reports and the shipping report.'));
+
         if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
-            $output_set_offline_payment = '
-            <div class="form-check my-2 form-switch">
-                <input type="checkbox" id="set_offline_payment" name="set_offline_payment" value="1" class="form-check-input" />
-                <label class="form-check-label" for="set_offline_payment">' . lang('Allow User to set offline payment option for orders') . '</label>
-            </div>';
+            $output_commerce_switches .= pg_user_permission_switch('set_offline_payment', '1', false, lang('Set the offline payment option on orders'));
         }
-        
-        $output_manage_ecommerce =
-            '<div class="col-12 mt-5 mb-1 collapse show" id="manage_ecommerce_heading_row">
-                <h4 class="fw-bold text-muted">' . lang('Commerce Management Rights') . '</h4>
-            </div>
-            <div class="col-12 my-2 collapse show" id="manage_ecommerce_row">
-                <div class="form-check mb-2 form-switch">
-                    <input type="checkbox" id="manage_ecommerce" name="manage_ecommerce" value="yes" class="form-check-input collapse-switcher" role="switch" data-bs-target="#view_card_data_container"/>
-                    <label class="form-check-label" for="manage_ecommerce">' . lang('Allow User to manage all commerce (i.e. products, shipping, tax, and orders)') . '</label>
-                </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="view_card_data_container">
-                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                    <div class="popover-body">
-                        <div class="row">
-                            <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="view_card_data" name="view_card_data" value="1" class="form-check-input" />
-                                    <label class="form-check-label" for="view_card_data">' . lang('Also allow User to view card data') . '</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> 
-                <div class="form-check my-2 form-switch">
-                    <input type="checkbox" id="manage_ecommerce_reports" name="manage_ecommerce_reports" value="1" class="form-check-input" />
-                    <label class="form-check-label" for="manage_ecommerce_reports">' . lang('Allow User to manage all commerce reports (i.e. order reports & shipping report)') . '</label>
-                </div>
-                ' . $output_set_offline_payment . '
-            </div>';
+
+        $permission_panels['commerce_switches'] = $output_commerce_switches;
     }
 
-    $output_manage_ads = '';
+    if (defined('ERP_ENABLED') && ERP_ENABLED) {
 
-    // If ads is enabled, then output area for it.
+        // manage_erp is the gate and is rendered by the row itself; only the two
+        // rights that sit behind it belong in the panel.
+        $permission_panels['erp_switches'] =
+            pg_user_permission_switch('manage_erp_cash', '1', false, lang('See cash and bank'), lang('Balances, receipts and payments.'))
+            . pg_user_permission_switch('manage_erp_settings', '1', false, lang('Change ERP settings'), lang('Numbering, default accounts and the Parasut connection.'));
+    }
+
     if (ADS === true) {
-        $output_manage_ads =
-            '<div class="col-12 mt-5 mb-1 collapse show" id="manage_ad_regions_heading_row">
-                <h4 class="fw-bold text-muted">' . lang('Ads Management Rights') . '</h4>
-            </div>
-            <div class="col-12 my-2 collapse show" id="manage_ad_regions_row">
-                <h5>' . lang('Allow User to edit Ads within the selected Ad Regions') . '</h5>
-                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                    <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-6" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-6" class="form-check-label">' . lang('Select All') . '</label>
-                        </div>
-                    </div>
-                    <div class="card-body overflow-auto" style="max-height:300px">
-                        ' . get_checkboxes_for_items_user_can_edit('ad_regions') . '
-                    </div>
-                </div>
-            </div>';
+        $permission_panels['ad_regions'] = get_checkboxes_for_items_user_can_edit('ad_regions');
     }
-    
-    // get all contact groups
-    $query =
-        "SELECT
-           id,
-           name
-        FROM contact_groups
-        ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+    // Contact groups.
     $output_contact_groups = '';
 
-    // loop through all contact groups
+    $result = mysqli_query(db::$con, "SELECT id, name FROM contact_groups ORDER BY name") or output_error('Query failed.');
+
     while ($row = mysqli_fetch_assoc($result)) {
-        $id = $row['id'];
-        $name = $row['name'];
-        
-        $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_group_' . $id . '" id="contact_group_' . $id . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="contact_group_' . $id . '">' . h($name) . '</label></div>';
+        $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_group_' . $row['id'] . '" id="contact_group_' . $row['id'] . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="contact_group_' . $row['id'] . '">' . h($row['name']) . '</label></div>';
     }
-    
+
+    $permission_panels['contact_groups'] = $output_contact_groups;
+
+    // A new account starts with nothing selected, so every gate starts off and
+    // the two page-creation rights keep the defaults the old screen had.
+    $permission_ui = pg_user_permission_ui(array(
+        'values' => array('create_pages' => '1', 'delete_pages' => '1', 'publish_calendar_events' => 'yes'),
+        'panels' => $permission_panels,
+        'counts' => array(),
+    ));
+
     $output_hidden_role = '';
-    
-    // if user that is logged in is a manager then output hidden field for role data
+    $role_cards_disabled = false;
+
+    // A manager may only create users, so the picker is read-only and the role
+    // travels in a hidden field - a disabled control posts nothing.
     if ($user['role'] == 2) {
         $output_hidden_role = '<input type="hidden" name="role" value="3" />';
+        $role_cards_disabled = true;
     }
 
     $output_badge_label_info = '';
@@ -195,22 +124,9 @@ if (!$_POST) {
     // If there is a default badge label in the site settings,
     // then output info about how field can be left blank for default.
     if (BADGE_LABEL != '') {
-        $output_badge_label_info = '<div class="form-text text-end">(' . lang('leave blank for default') . ': "' . h(BADGE_LABEL) . '")</div>';
-        $output_badge_label_placeholder =h(BADGE_LABEL);
+        $output_badge_label_info = '<div class="form-text">(' . lang('leave blank for default') . ': "' . h(BADGE_LABEL) . '")</div>';
+        $output_badge_label_placeholder = h(BADGE_LABEL);
     }
-
-
-    
-    // if user is not an administrator or designer, then prepare to disable role picklist
-    if ($user['role'] <= 1) {    
-        $output_role_disabled_class = '';
-        $output_role_disabled_attribute = '';
-    }else{
-        $output_role_disabled_class =' disabled';
-        $output_role_disabled_attribute = 'disabled="disabled"';
-    }
-
-
 
     print
     pg_page_shell(
@@ -219,6 +135,7 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account',
             'heading'=>lang('Create User'),
+            'heading_description' => lang('Create a new user account, assign privileges, and choose to email login info to User.'),
             'cancel'=>array('enable'=>'true','url'=>'view_users.php'),
             'breadcrumb' => array(
                 array('label' => lang('All My Users'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php'),
@@ -226,230 +143,97 @@ if (!$_POST) {
             ),
         )
     ) . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+<main id="content" class="container-fluid">
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new user account, assign privileges, and choose to email login info to User.') . '" title="' . lang('Create User') . '">[' . lang('Username') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_user.php" method="post">
                     ' . get_token_field() . '
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <input type="hidden" name="contact_id" value="' . h(isset($_GET['contact_id']) ? $_GET['contact_id'] : '') . '" />
-                    <div class="row">
-                        <div class="col-12 col-md-4 col-lg-3 col-xl-2">
-                            <div class="card my-4 position-sticky" style="top:56px;">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('User Role') . '
-                                </label>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12">
-                                            <select name="role" id="role" class="form-select collapse-if-selected' . $output_role_disabled_class . '" ' . $output_role_disabled_attribute . ' data-bs-target="#user_options_row" onchange="change_user_role(this.options[this.selectedIndex].value)">' . select_user_role(3, $user['role']) . '</select>
-                                            <script>
-                                                $(document).ready(function() {
-                                                    change_user_role($("select#role option:selected").val());
-                                                });
-                                            </script>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="card mb-3">
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Role') . '</span>
+                            <span class="small text-body-secondary">' . lang('The role decides which rights the account carries by itself.') . '</span>
                         </div>
-                        <div class="col-12 col-md-8 col-lg-9 col-xl-10">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                ' . lang('Main Informations') . '
+                        <div class="card-body">
+                            ' . pg_user_role_cards(3, $user['role'], $role_cards_disabled) . '
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Account') . '</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12 col-lg-4">
+                                    <label for="username" class="form-label">' . lang('Username') . '</label>
+                                    <input type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
+                                    <div class="form-text">' . lang('Used when signing in.') . '</div>
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 col-md-12 col-lg-6 col-xl-3 my-2">
-                                            <label for="username" class="form-label">' . lang('Username') . '</label>
-                                            <input type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control add-header-content-updater" required />
-                                            <div class="form-text text-end">' . lang('User Account ID') . '</div>
-                                        </div>
-                                        <div class="col-12 col-md-12 col-lg-6 col-xl-5 my-2">
-                                            <label for="username" class="form-label">' . lang('User Start Page') . '</label>
-                                            <select class="form-select" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page() . '</select>
-                                            <div class="form-text text-end">' . lang('Send User to a Specific Page on Login') . '</div>
-                                        </div>
-                                        <div class="col-12 col-md-12 col-lg-6 col-xl-4 my-2">
-                                            <label class="form-label" for="email">' . lang('User Email') . '</label>
-                                            <input value="' . h($email_address) . '" type="email" class="form-control text-end" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
-                                            <div class="form-text text-end">' . lang('Email for Login & Password Retrieval') . '</div>
-                                        </div>
-                                        <div class="col-12 col-md-12 col-lg-6 col-xl-3 my-2">
-                                            <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
-                                            <input type="number" class="form-control text-end" id="reward_points" name="reward_points" maxlength="9"/>
-                                        </div>
-                                        <div class="col-12 my-2 mt-3">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" id="badge" name="badge" value="1" class="form-check-input collapse-switcher" data-bs-target="#badge_row"/>
-                                                <label class="form-check-label" for="badge">' . lang('Show badge next to username') . '</label>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="badge_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-1">
-                                                            <label class="form-label" for="badge_label">' . lang('Badge Label') . '</label>
-                                                            <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control" value="" size="20" maxlength="100" />
-                                                            ' . $output_badge_label_info . '
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                        </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" id="notify_user" name="notify_user" value="1" class="form-check-input"/>
-                                                <label class="form-check-label" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="col-12 col-lg-4">
+                                    <label class="form-label" for="email">' . lang('User Email') . '</label>
+                                    <input value="' . h($email_address) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
+                                    <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
+                                </div>
+                                <div class="col-12 col-lg-4">
+                                    <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
+                                    <select class="form-select" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page() . '</select>
+                                    <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                 </div>
                             </div>
-                            <div class="collapse" id="user_options_row">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('User Access Privileges') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 my-2 collapse" id="user_has_all_permissions">
-                                                <div class="alert alert-warning">' . lang('This user would be have all permissions') . '</div>
-                                            </div>
-                                            <div class="col-12 mt-2 mb-1 collapse show" id="edit_access_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Content Management & Forms Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="edit_access_row">
-                                                <h5>' . lang('Allow User to view and edit pages, files, and custom forms within selected folders') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_acl_folder_tree('edit') . '
-                                                    </div>
-                                                </div>
-                                                <div class="form-check my-2 form-switch"><input type="checkbox" name="create_pages" id="create_pages" value="1" class="form-check-input" checked="checked" /><label class="form-check-label" for="create_pages">' . lang('Also allow User to create/duplicate pages in selected folders') . '</label></div>
-                                                <div class="form-check my-2 form-switch"><input type="checkbox" name="delete_pages" id="delete_pages" value="1" class="form-check-input" checked="checked" /><label class="form-check-label" for="delete_pages">' . lang('Also allow User to delete pages in selected folders') . '</label></div>
-                                                ' . $output_manage_forms . '
-                                                <h5>' . lang('Allow User to set the following page types for pages') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-1" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-1" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_page_type_checkboxes_and_labels() . '
-                                                    </div>
-                                                </div>
-                                            </div>
 
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="shared_content_access_rights_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Shared Content Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="common_regions_access_row">
-                                                <h5>' . lang('Allow User to edit the content within the selected Common Regions') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-2" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-2" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_checkboxes_for_items_user_can_edit('common_regions') . '
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="menus_access_row">
-                                                <h5>' . lang('Allow User to edit Menu Items within the selected Menus') . '</h5>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-header border-0 bg-reset">
-                                                        <div class="form-check form-switch">
-                                                            <input id="multiselect-checkbox-checker-3" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                            <label for="multiselect-checkbox-checker-3" class="form-check-label">' . lang('Select All') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_checkboxes_for_items_user_can_edit('menus') . '
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            ' . $output_manage_calendars . '
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="manage_visitors_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Visitor Report Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="manage_visitors_row">
-                                                <div class="form-check form-switch">
-                                                    <input type="checkbox" id="manage_visitors" name="manage_visitors" value="yes" class="form-check-input" />
-                                                    <label class="form-check-label" for="manage_visitors">' . lang('Allow User to manage all visitor reports') . '</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="manage_contacts_and_manage_emails_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Contact Management & Campaign Management Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="manage_contacts_and_manage_emails_row">
-                                                <div class="form-check form-switch">
-                                                    <input type="checkbox" id="manage_contacts" name="manage_contacts" value="yes" onclick="show_or_hide_contact_group_access()" class="form-check-input" />
-                                                    <label class="form-check-label" for="manage_contacts">' . lang('Allow User to view, edit, import, and export all contacts within any selected contact groups') . '</label>
-                                                </div>
-                                                <div class="form-check form-switch">
-                                                    <input type="checkbox" id="manage_emails" name="manage_emails" value="yes" onclick="show_or_hide_contact_group_access()" class="form-check-input" />
-                                                    <label class="form-check-label" for="manage_emails">' . lang('Allow User to send e-mail campaigns to any selected contact groups') . '</label>
-                                                </div>
-                                                <div class="collapse popover w-100 fade bs-popover-bottom p-0 mb-2" id="contact_group_access">
-                                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                    <div class="popover-body">
-                                                        <div class="row">
-                                                            <div class="col-12 my-1">
-                                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                                    <div class="card-header border-0 bg-reset">
-                                                                        <div class="form-check form-switch">
-                                                                            <input id="multiselect-checkbox-checker-5" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                                            <label for="multiselect-checkbox-checker-5" class="form-check-label">' . lang('Select All') . '</label>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                                        ' . $output_contact_groups . '
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div> 
-                                            </div>
-                                            ' . $output_manage_ecommerce . '
-                                            ' . $output_manage_ads . '
-                                            <div class="col-12 mt-5 mb-1 collapse show" id="view_access_heading_row">
-                                                <h4 class="fw-bold text-muted">' . lang('Private Content Access Rights') . '</h4>
-                                            </div>
-                                            <div class="col-12 my-2 collapse show" id="view_access_row">
-                                                <h5>' . lang('Allow User to view pages, files, and submit custom forms within selected private folders.') . '</h5>
-                                                <div class="alert alert-secondary">' . lang('For selected folders, you can enter an optional expiration date.') . ' (' . lang('leave blank for no expiration') . ').</div>
-                                                <div class="card multiselect-checkbox-container rounded-0 mb-4">
-                                                    <div class="card-body overflow-auto" style="max-height:300px">
-                                                        ' . get_date_picker_format() . '
-                                                        ' . get_acl_folder_tree('view') . '
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                            <hr class="border-secondary-subtle opacity-50 my-3">
+                            <div class="text-uppercase small fw-semibold text-body-secondary mb-2">' . lang('Optional') . '</div>
+
+                            <div class="row g-3">
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
+                                    <input type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" id="badge" name="badge" value="1" class="form-check-input collapse-switcher" data-bs-target="#badge_row"/>
+                                        <label class="form-check-label" for="badge">' . lang('Show badge next to username') . '</label>
+                                    </div>
+                                    <div class="collapse ms-4 mt-1 mb-2" id="badge_row" style="max-width:22rem">
+                                        <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control form-control-sm" value="" size="20" maxlength="100" />
+                                        ' . $output_badge_label_info . '
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" id="notify_user" name="notify_user" value="1" class="form-check-input"/>
+                                        <label class="form-check-label" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="card mb-3 d-none" id="pg_permissions_everything">
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                        </div>
+                        <div class="card-body">
+                            ' . pg_user_permission_everything() . '
+                        </div>
+                    </div>
+
+                    <div class="card mb-3" id="pg_permissions_block">
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                            <span class="small text-body-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="pg-perms" id="pg_permissions" data-pg-empty="' . h(lang('No selection')) . '">' . $permission_ui['rows'] . '
+                            </div>
+                        </div>
+                    </div>
+
+                    ' . $permission_ui['panels'] . '
+
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -460,7 +244,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
 } else {
@@ -582,6 +367,9 @@ if (!$_POST) {
             user_manage_ecommerce,
             user_view_card_data,
             manage_ecommerce_reports,
+            manage_erp,
+            manage_erp_cash,
+            manage_erp_settings,
             user_set_offline_payment,
             user_publish_calendar_events,
             user_set_page_type_email_a_friend,
@@ -611,6 +399,9 @@ if (!$_POST) {
             '" . escape($_POST['manage_ecommerce'] ?? '') . "',
             '" . escape($_POST['view_card_data'] ?? '') . "',
             '" . e($_POST['manage_ecommerce_reports'] ?? '') . "',
+            '" . e($_POST['manage_erp'] ?? '') . "',
+            '" . e($_POST['manage_erp_cash'] ?? '') . "',
+            '" . e($_POST['manage_erp_settings'] ?? '') . "',
             '" . escape($_POST['set_offline_payment'] ?? '') . "',
             '" . escape($_POST['publish_calendar_events'] ?? '') . "',
             '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
@@ -623,6 +414,23 @@ if (!$_POST) {
             '$user[id]')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $user_id = mysqli_insert_id(db::$con);
+
+    // Offers that ask for a new customer read the creation date; user_timestamp
+    // is rewritten on every save and cannot answer that.
+    pg_user_created_stamp($user_id);
+
+    // A new account starts with the notification history already read. Read
+    // state is per person, so without this the first sign-in opens onto every
+    // announcement the site has ever made, none of it theirs to act on.
+    include_once(dirname(__FILE__) . '/includes/notifications.php');
+    pg_notification_seed_user($user_id);
+
+    // A new account's password is as old as the account. Written after the
+    // INSERT rather than inside it so the column list stays valid on a schema
+    // that predates the 2026.4.4 step.
+    if (pg_user_has_password_changed_at()) {
+        db("UPDATE user SET user_password_changed_at = UNIX_TIMESTAMP() WHERE user_id = '" . e($user_id) . "'");
+    }
     
     // insert data into aclfolder table
     $result = mysqli_query(db::$con, "SELECT folder_id FROM folder") or output_error('Query failed');
@@ -829,6 +637,7 @@ if (!$_POST) {
             || ($_POST['manage_emails'] == 'yes')
             || ($_POST['manage_ecommerce'] == 'yes')
             || $_POST['manage_ecommerce_reports']
+            || ($_POST['manage_erp'] ?? '')
             || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
         ) {
             $login = 
@@ -875,7 +684,7 @@ $login"));
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
         
     // else send user to the default view
     } else {

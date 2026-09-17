@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -412,7 +412,7 @@ if (mysqli_num_rows($result) > 0) {
     </nav>
 
 
-    <main id="content" class="container">
+    <main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12">
                 <div class="card mb-4">
@@ -503,7 +503,7 @@ if (mysqli_num_rows($result) > 0) {
         </div>
     </nav>
 
-    <main id="content" class="container">
+    <main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12">
                 <div class="card mb-4">

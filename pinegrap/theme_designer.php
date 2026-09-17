@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1023,9 +1023,9 @@ if (!$_POST) {
             <title>Theme Designer</title>
             ' . get_generator_meta_tag() . '
             ' . output_control_panel_header_includes() . '
-            <link rel="stylesheet" media="screen" type="text/css" href="colorpicker/css/colorpicker.css" />
-            <script type="text/javascript" src="colorpicker/js/colorpicker.js"></script>
-            <script type="text/javascript" src="colorpicker/js/eye.js"></script>
+            <link rel="stylesheet" media="screen" type="text/css" href="assets/lib/colorpicker/css/colorpicker.css" />
+            <script type="text/javascript" src="assets/lib/colorpicker/js/colorpicker.js"></script>
+            <script type="text/javascript" src="assets/lib/colorpicker/js/eye.js"></script>
             ' . get_codemirror_includes() . '
             <script type="text/javascript">
                 

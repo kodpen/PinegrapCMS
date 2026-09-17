@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -27,17 +27,15 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Import Key Codes'),
+        'heading_description' => lang('Import new or overwrite existing key codes.'),
         'cancel'=>array('enable'=>'true','url'=>'view_key_codes.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Key Codes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_key_codes.php'), array('label' => lang('Import Key Codes'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Import new or overwrite existing key codes.') . '" title="' . lang('Import Key Codes') . '">[' . lang('Key Code') . ']</h2>
-                    </div>
-                </div>
+                
                 <form action="import_key_codes.php" method="post" enctype="multipart/form-data">
                     ' . get_token_field() . '
                     <div class="row">
@@ -67,7 +65,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
 
     print $output;

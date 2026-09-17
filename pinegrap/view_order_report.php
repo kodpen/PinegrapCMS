@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,6 +26,10 @@ validate_ecommerce_report_access();
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_order_report');
+
+// Only set below when an existing report is loaded; a new report leaves it
+// blank and the heading falls back to "[new order report]".
+$output_order_report_name = '';
 
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
@@ -407,7 +411,7 @@ if (!$_POST) {
             'field_options[' . $count . '] = new Array();
             field_options[' . $count . ']["name"] = "' . escape_javascript($field_option['name']) . '";
             field_options[' . $count . ']["value"] = "' . escape_javascript($field_option['value']) . '";
-            field_options[' . $count . ']["type"] = "' . escape_javascript($field_option['type']) . '";' . "\n";
+            field_options[' . $count . ']["type"] = "' . escape_javascript($field_option['type'] ?? '') . '";' . "\n";
         
         // if there are value options, then add value options to javascript array
         if (isset($field_option['value_options']) == true) {
@@ -748,6 +752,11 @@ if (!$_POST) {
         $where .= "(orders.order_date >= $start_timestamp) AND (orders.order_date <= $stop_timestamp)";
     }
     
+    // Both are spliced straight into the SQL below, but only set when the
+    // matching filter is in play, so they have to start out empty.
+    $join_order_items = '';
+    $join_ship_tos = '';
+
     // if an order item filter exists, then join order_items table
     if ($order_item_filter_exists == true) {
         $join_order_items = " LEFT JOIN order_items ON orders.id = order_items.order_id";
@@ -785,7 +794,7 @@ if (!$_POST) {
             "SELECT
                 orders.id,
                 SUM(order_items.price * CAST(order_items.quantity AS signed)) as subtotal,
-                SUM(order_items.tax * CAST(order_items.quantity AS signed)) as tax,
+                SUM(order_items.tax_total) as tax,
                 SUM(order_items.shipping * order_items.quantity) as shipping
             FROM order_items
             LEFT JOIN orders on order_items.order_id = orders.id
@@ -836,6 +845,24 @@ if (!$_POST) {
     
     $results = array();
 
+    // Grand totals are accumulated with ++ and += inside the cases below, and
+    // printed after the switch regardless of which case ran.
+    // Group keys and the previous-name trackers the cases below compare against.
+    // The first row of every report reads them before anything has written one.
+    $summarize_by_1_key = 0;
+    $summarize_by_2_key = 0;
+    $summarize_by_3_key = 0;
+    $previous_summarize_by_1_name = '';
+    $previous_summarize_by_2_name = '';
+    $previous_summarize_by_3_name = '';
+
+    $grand_count = 0;
+    $grand_subtotal = 0;
+    $grand_discount = 0;
+    $grand_tax = 0;
+    $grand_shipping = 0;
+    $grand_total = 0;
+
     switch ($number_of_summarize_bys) {
         case 0:
             $orders = array();
@@ -871,6 +898,15 @@ if (!$_POST) {
                 if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
                     $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['total'] = 0;
                 }
                 
                 // if order is complete, use values from query
@@ -929,14 +965,41 @@ if (!$_POST) {
                 if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
                     $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['total'] = 0;
                     
                     $summarize_by_2_key = 0;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
                     
                 // else if we have a new summarize by in summarize by 2, increment key and store name
                 } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
                     $summarize_by_2_key++;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
                 }
                 
                 // if order is complete, use values from query
@@ -1005,25 +1068,79 @@ if (!$_POST) {
                 if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
                     $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['total'] = 0;
                     
                     $summarize_by_2_key = 0;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
                     
                     $summarize_by_3_key = 0;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] = 0;
                     
                 // else if we have a new summarize by in summarize by 2, increment key and store name and reset key and store name for summarize by 3
                 } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
                     $summarize_by_2_key++;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
                     
                     $summarize_by_3_key = 0;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] = 0;
                     
                 // else if we have a new summarize by in summarize by 3, increment key and store name
                 } elseif (mb_strtolower($summarize_by_3_name) !== mb_strtolower($previous_summarize_by_3_name)) {
                     $summarize_by_3_key++;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
+                    // Seed the running totals for this bucket. They are only ever reached
+                    // with += and ++ below, and a bucket is created exactly once, so seeding
+                    // here is what the accumulation was already assuming.
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] = 0;
                 }
                 
                 // if order is complete, use values from query
@@ -1118,11 +1235,13 @@ if (!$_POST) {
             'extra classes'=>'visitor',
             'icon'=>'visitor', 
             'heading'=> lang('Order Report'),
+            'heading_description' => lang('View or update this real-time order report.'),
             'cancel'=>array('enable'=>'true','url'=>'view_order_reports.php')
         ,
             'breadcrumb' => array(array('label' => lang('All Order Reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php'), array('label' => $output_screen_name)),
         )
     ) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -1130,7 +1249,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('View or update this real-time order report.') . '" title="' . $output_screen_name . '">' . h($output_order_report_name) . '</h2>
+
                         ' . $output_edit_button . '
                     </div>
                 </div>
@@ -1145,7 +1264,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-sm-4 my-2">
                                             <label for="name" class="form-label">' . lang('Order Report Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>
                                         <div class="col-12 my-2">
                                             <h4 class="fw-bold text-muted">' . lang('Order Report Layout') . '</h4>
@@ -1541,7 +1660,8 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

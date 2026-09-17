@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -311,8 +311,47 @@ if (MAILCHIMP and ECOMMERCE) {
     mailchimp_sync();
 }
 
+// API housekeeping: age out the request log, the rate buckets and the stored
+// idempotent answers. Throttled to once a day inside the function, so running
+// it on every tick costs one small SELECT.
+require_once(dirname(__FILE__) . '/includes/api/maintenance.php');
+api_maintenance_purge();
+
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('job');
+
+// Webhook deliveries, when the operator has switched them on.
+//
+// Run here rather than through the dispatcher below: that hands out one job per
+// tick and holds a site-wide lock, so an event could wait behind a backup, and a
+// notification that arrives late is most of the way to one that did not arrive.
+// The cost when nothing is queued is one indexed read, which is why it can
+// afford a turn on every tick.
+//
+// The time budget is deliberately small. This is the general job; a receiver
+// that has stopped answering must not be allowed to spend the whole tick here.
+if (pg_cron_job_is_enabled('api_webhook_job')) {
+
+    require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+
+    api_webhook_dispatch(15);
+
+    pg_cron_ran('api_webhook_job');
+
+}
+
+// Device notifications, when the operator has switched them on. Same shape and
+// same reasoning as the webhook pass above: the queue is empty on a site where
+// nobody subscribed a device, which costs one indexed read.
+if (pg_cron_job_is_enabled('push_job')) {
+
+    require_once(dirname(__FILE__) . '/includes/push.php');
+
+    pg_push_queue_run(10);
+
+    pg_cron_ran('push_job');
+
+}
 
 // Optional dispatcher: at most one other scheduled job per tick, and only as
 // the very last thing this script does. Several of those scripts call exit()
@@ -324,6 +363,10 @@ pg_cron_ran('job');
 // The include is at global scope on purpose. Done from inside a function, the
 // job's top-level code would run in that function's local scope, and every
 // variable it set would be invisible to the functions it calls.
+// Migrate a batch of any remaining legacy-MD5 passwords to wrapped hashes. Config
+// gated, so it is one tiny query once the table is done. See pg_password_wrap_run().
+pg_password_wrap_run();
+
 $dispatch_script = pg_cron_dispatch_next();
 
 if ($dispatch_script !== '') {

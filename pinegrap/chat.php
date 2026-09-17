@@ -24,7 +24,7 @@
  * @author  Erdal Güral (Kodpen)
  * @license https://opensource.org/licenses/mit-license.html MIT License
  */
-
+    
 // ── Readiness probe ──────────────────────────────────────────────────────
 
 // The schema appears only after the database upgrade is run, which happens
@@ -77,7 +77,7 @@ function pg_chat_typing_ready()
     return $ready;
 }
 
-// File/image attachments require the 2026.4.4 columns; without them the
+// File/image attachments require the 2026.4.2 columns; without them the
 // attach button is never rendered and the upload endpoints politely refuse.
 function pg_chat_attachments_ready()
 {
@@ -243,6 +243,11 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
         }
     }
 
+    // A file row with folder zero is in no folder at all: the file manager and the files screen both
+    // list one folder at a time, so an attachment written that way was on disk and in the table but
+    // nowhere to be seen. The folder comes from the settings, and falls back to the top folder.
+    $upload_folder_id = pg_default_upload_folder('chat_upload_folder_id');
+
     db("INSERT INTO files (
             name,
             folder,
@@ -254,7 +259,7 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
             timestamp)
         VALUES (
             '" . e($stored_name) . "',
-            '0',
+            '" . e($upload_folder_id) . "',
             '" . e($extension) . "',
             '" . e(filesize($stored_path)) . "',
             '" . e((defined('USER_LOGGED_IN') && USER_LOGGED_IN) ? (int) USER_ID : 0) . "',
@@ -302,6 +307,8 @@ function pg_chat_insert_attachment_message($conversation, $side, $sender_kind, $
             " . $my_seen_column . " = '" . e($now) . "'
         WHERE id = '" . e((int) $conversation['id']) . "'");
 
+    pg_chat_push_peer($conversation, $message_id, $sender_user_id);
+
     return array(
         'id' => (int) $message_id,
         'conversation_id' => (int) $conversation['id'],
@@ -317,6 +324,102 @@ function pg_chat_insert_attachment_message($conversation, $side, $sender_kind, $
             'url' => PATH . $stored['stored_name']
         )
     );
+}
+
+// Conversations this person has not caught up with, in the shape a device
+// notification wants. Read by the service worker after a push wakes it, so the
+// banner can name who is waiting instead of saying only that something
+// happened.
+function pg_chat_unread_for_push($user_id, $limit = 3)
+{
+    $user_id = (int) $user_id;
+    $limit = (int) $limit;
+
+    if (($user_id < 1) || (!pg_chat_ready())) {
+        return array();
+    }
+
+    $rows = db_items("SELECT id, channel, party_name, last_message_preview, last_message_at,
+            initiator_user_id, target_user_id
+        FROM chat_conversations
+        WHERE status = 'open'
+        AND (
+            (initiator_user_id = '" . $user_id . "' AND initiator_last_read_id < last_message_id)
+            OR (target_user_id = '" . $user_id . "' AND target_last_read_id < last_message_id)
+        )
+        ORDER BY last_message_at DESC
+        LIMIT " . (($limit > 0) ? $limit : 3));
+
+    $items = array();
+
+    foreach ($rows as $row) {
+
+        // Who is waiting: the other account on a panel conversation, the name
+        // the visitor gave on a site one.
+        if ($row['channel'] == 'backend') {
+
+            $peer = pg_chat_user_row(pg_chat_peer_id($row, $user_id));
+            $title = ($peer) ? pg_chat_display_name($peer['first_name'], $peer['last_name'], $peer['username']) : lang('New message');
+
+        } else {
+
+            $title = (trim((string) $row['party_name']) != '') ? $row['party_name'] : lang('New message');
+        }
+
+        $items[] = array(
+            'id'        => 'chat-' . (int) $row['id'],
+            'title'     => $title,
+            'body'      => (string) $row['last_message_preview'],
+            'url'       => 'welcome.php?chat=' . (int) $row['id'],
+            'icon'      => 'assets/images/notification-chat.png',
+            'badge'     => 'assets/images/notification-chat-badge.png',
+            'tag'       => 'pg-chat-' . (int) $row['id'],
+            'timestamp' => (int) $row['last_message_at']
+        );
+    }
+
+    return $items;
+}
+
+// Wakes the other end of a conversation, later.
+//
+// Later, because a message someone is already reading on the screen in front of
+// them does not need a banner on their phone as well. The queue holds the row
+// for a minute and drops it unsent if the read mark has moved past the message
+// by the time it comes due, which is what "unanswered" means here.
+//
+// The visitor side of a site conversation is not an account and cannot be
+// woken; the operator side is whoever the conversation was assigned to, or the
+// operator the site is configured with.
+function pg_chat_push_peer($conversation, $message_id, $sender_user_id)
+{
+    $sender_user_id = (int) $sender_user_id;
+
+    if ($conversation['channel'] == 'site') {
+
+        $recipient = (int) $conversation['target_user_id'];
+
+        if (($recipient < 1) && (defined('CHAT_OPERATOR_USER_ID'))) {
+            $recipient = (int) CHAT_OPERATOR_USER_ID;
+        }
+
+        // The operator writing to a visitor has nobody with an account to wake.
+        if ($recipient === $sender_user_id) {
+            $recipient = 0;
+        }
+
+    } else {
+
+        $recipient = pg_chat_peer_id($conversation, $sender_user_id);
+    }
+
+    if ($recipient < 1) {
+        return;
+    }
+
+    include_once(dirname(__FILE__) . '/includes/push.php');
+
+    pg_push_enqueue($recipient, 'chat', $message_id, pg_push_chat_delay());
 }
 
 // ── Permission rules ─────────────────────────────────────────────────────
@@ -350,6 +453,43 @@ function pg_chat_presence($timestamp)
     }
 
     return 'offline';
+}
+
+// Human-readable "last seen" for away/offline users. Empty for online
+// users and for users who never logged in. Relative up to a week, an
+// absolute date beyond that; the exact timestamp travels separately for
+// tooltips.
+function pg_chat_last_seen_label($timestamp)
+{
+    $timestamp = (int) $timestamp;
+
+    if ($timestamp <= 0 || pg_chat_presence($timestamp) == 'online') {
+        return '';
+    }
+
+    $ago = time() - $timestamp;
+
+    if ($ago < 3600) {
+        return lang(array('string' => '{var:1} minutes ago', 'vars' => max(1, (int) floor($ago / 60))));
+    }
+
+    if ($ago < 86400) {
+        return lang(array('string' => '{var:1} hours ago', 'vars' => (int) floor($ago / 3600)));
+    }
+
+    if ($ago < 604800) {
+        return lang(array('string' => '{var:1} days ago', 'vars' => (int) floor($ago / 86400)));
+    }
+
+    return date('d.m.Y', $timestamp);
+}
+
+// Exact "last seen" timestamp for tooltips (empty when never logged in).
+function pg_chat_last_seen_exact($timestamp)
+{
+    $timestamp = (int) $timestamp;
+
+    return ($timestamp > 0) ? date('d.m.Y H:i', $timestamp) : '';
 }
 
 function pg_chat_role_label($role)
@@ -404,6 +544,7 @@ function pg_chat_user_row($user_id)
             user.user_username AS username,
             user.user_online_timestamp AS online_timestamp,
             user.user_email AS email_address,
+            contacts.id AS contact_id,
             contacts.first_name AS first_name,
             contacts.last_name AS last_name,
             contacts.image AS image,
@@ -434,7 +575,23 @@ function pg_chat_user_brief($row)
         'role' => (int) $row['role'],
         'role_label' => pg_chat_role_label($row['role']),
         'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name),
-        'presence' => pg_chat_presence(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0)
+        'presence' => pg_chat_presence(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
+        // "Last seen" for away/offline users (empty for online); the exact
+        // timestamp feeds the hover tooltip.
+        'last_seen' => pg_chat_last_seen_label(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
+        'last_seen_exact' => pg_chat_last_seen_exact(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
+        // Profile links in the panel. Display-only convenience flags — the
+        // edit pages re-check on their own — but they mirror the real gates
+        // so nobody is handed a link that ends in "Access denied":
+        //  - edit_user.php: manager area (role <= 2) AND admin-or-strictly-
+        //    higher rank than the target.
+        //  - edit_contact.php: staff (role <= 2); role 3 is skipped (its
+        //    access depends on contact-group membership).
+        'contact_id' => (int) (isset($row['contact_id']) ? $row['contact_id'] : 0),
+        'can_edit_user' => (defined('USER_ROLE') && (int) USER_ROLE <= 2
+            && ((int) USER_ROLE === 0 || (int) USER_ROLE < (int) $row['role'])),
+        'can_edit_contact' => (defined('USER_ROLE') && (int) USER_ROLE <= 2
+            && (int) (isset($row['contact_id']) ? $row['contact_id'] : 0) > 0)
     );
 }
 
@@ -457,6 +614,7 @@ function pg_chat_online_users()
             user.user_role AS role,
             user.user_username AS username,
             user.user_online_timestamp AS online_timestamp,
+            contacts.id AS contact_id,
             contacts.first_name AS first_name,
             contacts.last_name AS last_name,
             contacts.image AS image,
@@ -822,6 +980,8 @@ function pg_chat_send($conversation_id, $body, $target_user_id = 0)
             " . $my_seen_column . " = '" . e($now) . "'
         WHERE id = '" . e((int) $conversation['id']) . "'");
 
+    pg_chat_push_peer($conversation, $message_id, $me);
+
     return array('status' => 'success', 'data' => array(
         'id' => (int) $message_id,
         'conversation_id' => (int) $conversation['id'],
@@ -985,13 +1145,14 @@ function pg_chat_conversation_list()
     $rows = db_items("
         SELECT
             c.id, c.channel, c.status,
-            c.initiator_user_id, c.target_user_id, c.party_name, c.ip_address,
+            c.initiator_user_id, c.target_user_id, c.party_name, c.party_email, c.ip_address, c.page_url,
             c.last_message_id, c.last_message_at, c.last_message_preview,
             c.initiator_last_read_id, c.target_last_read_id,
             u.user_id AS peer_id,
             u.user_role AS peer_role,
             u.user_username AS peer_username,
             u.user_online_timestamp AS peer_online_timestamp,
+            contacts.id AS peer_contact_id,
             contacts.first_name AS first_name,
             contacts.last_name AS last_name,
             contacts.image AS image,
@@ -1030,7 +1191,15 @@ function pg_chat_conversation_list()
                     isset($row['image_file_id']) ? $row['image_file_id'] : 0,
                     isset($row['image_file_name']) ? $row['image_file_name'] : ''
                 ),
-                'presence' => pg_chat_presence($row['peer_online_timestamp'])
+                'presence' => pg_chat_presence($row['peer_online_timestamp']),
+                'last_seen' => pg_chat_last_seen_label($row['peer_online_timestamp']),
+                'last_seen_exact' => pg_chat_last_seen_exact($row['peer_online_timestamp']),
+                // Same profile-link gates as pg_chat_user_brief.
+                'contact_id' => (int) (isset($row['peer_contact_id']) ? $row['peer_contact_id'] : 0),
+                'can_edit_user' => ((int) USER_ROLE <= 2
+                    && ((int) USER_ROLE === 0 || (int) USER_ROLE < (int) $row['peer_role'])),
+                'can_edit_contact' => ((int) USER_ROLE <= 2
+                    && (int) (isset($row['peer_contact_id']) ? $row['peer_contact_id'] : 0) > 0)
             );
 
             $title = $peer['name'];
@@ -1047,6 +1216,10 @@ function pg_chat_conversation_list()
             // visitors. Captured once at conversation creation
             // (waf_client_ip, real address behind CDN/proxy).
             'ip_address' => (($row['channel'] == 'site') ? (string) $row['ip_address'] : ''),
+            // Visitor context for the header: email under the name, the
+            // page the chat was started from in the hover tooltip.
+            'party_email' => (($row['channel'] == 'site') ? (string) $row['party_email'] : ''),
+            'page_url' => (($row['channel'] == 'site') ? (string) $row['page_url'] : ''),
             // Which operator a site conversation was addressed to. Since
             // role 0 sees all site conversations, this is carried explicitly
             // so another operator's conversation never looks like it was
@@ -1353,6 +1526,12 @@ function pg_chat_render_backend_launcher()
         'ai' => $ai,
         'attach' => array('enabled' => pg_chat_attachments_ready(), 'max' => 5242880),
         'poll' => array('badge' => 60, 'list' => 15, 'conversation' => 5),
+        // Profile edit link targets; the JS appends the id. Rendered only
+        // for peers whose can_edit_user / can_edit_contact flags are true.
+        'urls' => array(
+            'edit_user' => PATH . SOFTWARE_DIRECTORY . '/edit_user.php?id=',
+            'edit_contact' => PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id='
+        ),
         'strings' => array(
             'chat' => lang('Chat'),
             'online_users' => lang('Online Users'),
@@ -1385,11 +1564,13 @@ function pg_chat_render_backend_launcher()
             // the chat tick needs its own keys.
             'delivered' => lang('Message delivered'),
             'seen' => lang('Message seen'),
-            'ip' => lang('IP')
+            'ip' => lang('IP'),
+            'last_seen' => lang('Last seen'),
+            'page' => lang('Page')
         )
     );
 
-    $js_file = 'assets/chat_backend.' . ENVIRONMENT_SUFFIX . '.js';
+    $js_file = 'assets/js/chat_backend.' . ENVIRONMENT_SUFFIX . '.js';
     $js_url = PATH . SOFTWARE_DIRECTORY . '/' . $js_file . '?v=' . @filemtime(dirname(__FILE__) . '/' . $js_file);
 
     $output = '
@@ -1426,6 +1607,22 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-compose input[type="file"] { display: none !important; }
             #pg-chat-root .pg-chat-compose .btn { border-radius: 10px; }
             #pg-chat-root .pg-chat-row-unread { font-weight: 600; }
+            #pg-chat-root .pg-chat-link { color: inherit; text-decoration: none; }
+            #pg-chat-root .pg-chat-link:hover { text-decoration: underline; }
+            /* Phones: the panel fills the screen and stays put. A fixed
+               element is anchored to the LAYOUT viewport, which the
+               on-screen keyboard does not shrink — without this the window
+               is pushed above the visible area as soon as the compose field
+               is focused. 100dvh is the CSS-only floor; the script pins
+               top/height to the visual viewport where that API exists.
+               The header stays fixed at the top, only the message area
+               scrolls. */
+            @media (max-width: 575.98px) {
+                #pg-chat-root .pg-chat-panel { top: 0; left: 0; right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; height: 100dvh; max-height: none; border-radius: 0; box-shadow: none; }
+                #pg-chat-root .pg-chat-panel.pg-chat-open { animation: none; }
+                #pg-chat-root.pg-chat-fullscreen .pg-chat-launcher { display: none; }
+                body.pg-chat-no-scroll { overflow: hidden; }
+            }
         </style>
         <script type="application/json" id="pg-chat-config">' . encode_json($config) . '</script>
         <script src="' . h($js_url) . '" defer></script>';
@@ -1746,6 +1943,8 @@ function pg_chat_site_send($conversation_id, $body, $page_url)
             initiator_last_read_id = '" . e($message_id) . "',
             initiator_last_seen = '" . e($now) . "'
         WHERE id = '" . e((int) $conversation['id']) . "'");
+
+    pg_chat_push_peer($conversation, $message_id, $sender_user_id);
 
     $messages = array(array(
         'id' => (int) $message_id,
@@ -2187,7 +2386,7 @@ function pg_chat_render_site_widget()
         $icon = 'chat';
     }
 
-    // Bubble label from the settings (2026.4.6), e.g. "Technical Support",
+    // Bubble label from the settings (2026.4.2), e.g. "Technical Support",
     // "Sales". Empty falls back to the language file's "Live Support".
     $widget_label = (defined('CHAT_WIDGET_TITLE') && trim((string) CHAT_WIDGET_TITLE) != '')
         ? trim((string) CHAT_WIDGET_TITLE)
@@ -2299,13 +2498,17 @@ function pg_chat_render_site_widget()
 #pg-chat-site .pgcs-cimg.pgcs-solved .pgcs-hole { display: none; }
 #pg-chat-site .pgcs-piece.pgcs-snap { transition: left .18s ease-out; }
 #pg-chat-site .pgcs-error { color: #dc3545; font-size: 12px; margin-top: 6px; display: none; }
-@media (max-width: 480px) {
+@media (max-width: 575.98px) {
   /* Full-screen window on phones: the header stays FIXED at the top, only
-     the message area scrolls. 100dvh shrinks to the visible area when the
-     keyboard opens — the window is not pushed off screen (older browsers
-     without dvh support fall back to 100%). */
+     the message area scrolls. A fixed element is anchored to the LAYOUT
+     viewport, which the on-screen keyboard does not shrink, so focusing the
+     compose field would push the window above the visible area. 100dvh is
+     the CSS-only floor (and the fallback for browsers without dvh support);
+     the script pins top/height to the visual viewport where that API
+     exists. */
   #pg-chat-site .pgcs-window { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; height: 100dvh; max-height: none; border-radius: 0; }
   #pg-chat-site.pgcs-open .pgcs-bubble { display: none; }
+  body.pgcs-no-scroll { overflow: hidden; }
 }
 </style>
 <script type="application/json" id="pg-chat-site-config">' . encode_json($config) . '</script>

@@ -1,0 +1,177 @@
+/*
+ * pg_carousel_layout.css
+ *
+ * Layout + active-thumb styling for the catalog carousel content type.
+ * Loaded once per page by _pg_fancybox_assets_once() (PHP) when at least
+ * one carousel renders.
+ *
+ * Layout primitives:
+ *   .pg-carousel-wrapper                  — flex container around carousel
+ *                                            + thumbnail strip.
+ *   .pg-carousel-wrapper-vertical         — column flow (thumbs above/below).
+ *   .pg-carousel-wrapper-horizontal       — row flow (thumbs left/right).
+ *   .pg-carousel-thumbs-{pos}             — pos-aware modifier on the carousel
+ *                                            itself (used by sd designer too).
+ *
+ * Active thumbnail border:
+ *   `--pg-carousel-active-border` is set on the wrapper as an inline CSS
+ *   variable from PHP (defaults to #0d6efd). Both `:hover` and `.active`
+ *   thumbnails reference it. Designer can override per-instance via the
+ *   carousel options panel "Active thumb border colour" picker.
+ *
+ * Zoom layer:
+ *   `.pg-zoom-layer` — absolute-positioned div appended on first hover
+ *                       carrying a background-image+background-position
+ *                       magnifier. Created by the per-carousel init script.
+ */
+
+/* ── Layout — vertical (top/bottom) ─────────────────────────────────── */
+.pg-carousel-wrapper-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+/* When thumbs are on TOP, the thumb strip element comes first in the
+ * source so flex order is preserved without extra CSS. The .pg-carousel
+ * itself simply renders below it. */
+
+/* ── Layout — horizontal (left/right) ────────────────────────────────── */
+.pg-carousel-wrapper-horizontal {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+}
+.pg-carousel-wrapper-horizontal > .carousel {
+    flex: 1 1 auto;
+    min-width: 0;          /* allow shrinking inside flex row */
+}
+.pg-carousel-wrapper-horizontal > .pg-carousel-thumbs {
+    flex: 0 0 auto;
+    max-height: 600px;     /* reasonable cap so vertical strip doesn't grow forever */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px;          /* room for active border without being clipped */
+}
+/* Right position uses row-reverse so thumbs appear AFTER the carousel
+ * visually but DOM order stays carousel-first (better for screen readers). */
+.pg-carousel-thumbs-right ~ .pg-carousel-thumbs,
+.pg-carousel-wrapper-horizontal:has(.pg-carousel-thumbs-right) {
+    flex-direction: row-reverse;
+}
+
+/* ── Active thumbnail border ─────────────────────────────────────────── */
+.pg-carousel-thumb {
+    border: 2px solid transparent;
+    border-radius: 4px;
+    transition: border-color .15s, transform .15s;
+    box-sizing: border-box;
+}
+.pg-carousel-thumb:hover {
+    border-color: var(--pg-carousel-active-border, #0d6efd);
+    opacity: 0.85;
+}
+.pg-carousel-thumb.active {
+    border-color: var(--pg-carousel-active-border, #0d6efd);
+    opacity: 1;
+}
+/* Anchor wrappers used when lightbox is on — strip native link styling. */
+.pg-carousel-thumb-link {
+    display: inline-block;
+    line-height: 0;
+    text-decoration: none;
+}
+.pg-carousel-thumb-link:hover { text-decoration: none; }
+
+/* ── Hover-zoom layer ────────────────────────────────────────────────── */
+.pg-zoom-on-hover {
+    cursor: zoom-in;
+}
+.pg-zoom-layer {
+    /* Properties set inline by the init script — these are fallbacks */
+    background-color: #fff;
+    z-index: 2;
+}
+
+/* ── Lightbox cursor (Fancybox-triggering anchor) ────────────────────── */
+a[data-fancybox] img,
+.carousel-item a[data-fancybox] {
+    cursor: zoom-in;
+}
+
+/* ── Empty-state placeholder ─────────────────────────────────────────── */
+.pg-carousel-empty {
+    background: #f8f9fa;
+    border: 1px dashed #dee2e6;
+    border-radius: 6px;
+    padding: 32px 16px;
+    text-align: center;
+}
+
+/* ── Unified price block — discount strike-through ───────────────────── */
+/* Used by _pg_format_price_with_discount() across catalog cards, cart    */
+/* rows, product detail, and cross-sell — same visual language for prices */
+/* anywhere a product's price is shown.                                   */
+.pg-price-block {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+}
+.pg-price-block .pg-price,
+.pg-price-block .pg-price-current {
+    font-weight: 600;
+}
+.pg-price-block.has-discount .pg-price-current {
+    color: #198754;          /* Bootstrap success green for the discount */
+}
+.pg-price-block .pg-price-original {
+    color: #dc3545;          /* Bootstrap danger red for the strike */
+    text-decoration: line-through;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+/* Auto-hide bound text elements when the bound value is empty.
+ * Backend emits an empty string for tokens like __original_price_formatted
+ * (when no discount), __details (when product has no details text), or
+ * __short_description (when not set). Without this rule the visitor sees
+ * empty headings / blank cards / orphan badges. The :empty pseudo only
+ * matches elements with NO children (not even whitespace), which is
+ * exactly what an empty token substitution produces.
+ *
+ * Limited to text-content tags so form controls (input/select/textarea)
+ * and structural containers stay visible regardless of their content.
+ * Buttons get a tighter rule below — only hide when their primary text
+ * binding is the only content AND it's empty. */
+:is(h1,h2,h3,h4,h5,h6,p,span,a,div,nav,ol,ul,li,section,article,header,footer,aside)[data-pg-bind]:empty {
+    display: none !important;
+}
+/* Buttons bound to text values — hide when the bound text is empty AND
+ * the button has no other children (icons, badges, etc.). Designer can
+ * add a non-text child to keep the button visible regardless. */
+button[data-pg-bind*="text:"]:empty,
+button.btn[data-pg-bind*="text:"]:empty {
+    display: none !important;
+}
+
+/* ── Variant chooser visual states ───────────────────────────────────── */
+.pg-civ-variant-picker {
+    /* Subtle separator between picker block and surrounding content. */
+}
+.pg-civ-variant-picker .form-label {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+/* Sepete Ekle button while waiting for a complete variant pick. */
+button.pg-civ-awaiting-variant {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+button.pg-civ-out-of-stock {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+.pg-civ-picker-notice {
+    font-size: 0.85rem;
+}

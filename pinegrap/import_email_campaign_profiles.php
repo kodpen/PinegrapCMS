@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -33,10 +33,12 @@ if (!$_POST) {
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('Import Campaign Profiles'),
+        'heading_description' => lang('Import new and update existing campaign profiles.'),
         'cancel'=>array('enable'=>'true','url'=>'view_email_campaign_profiles.php')
     ,
             'breadcrumb' => array(array('label' => lang('My Campaign Profiles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php'), array('label' => lang('Import Campaign Profiles'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -44,7 +46,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Import new and update existing campaign profiles.') . '" title="' . lang('Import Campaign Profiles') . '">[' . lang('Import Campaign Profiles') . ']</h2>
+
                         <div class="alert alert-danger"><p class="mb-0">' . lang('Please be aware that existing campaign profiles will be updated if the name matches.') . '</p></div>
                     </div>
                 </div>
@@ -78,7 +80,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form('import_email_campaign_profiles');

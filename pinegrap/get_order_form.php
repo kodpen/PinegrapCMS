@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -593,6 +593,10 @@ function get_order_form($properties) {
         $start_date = false;
         $quantity = false;
         $system = '';
+        // Set below only for the list layout, but always handed to the layout
+        // renderer, so they have to exist for grid and default too.
+        $checkbox_selections = false;
+        $quantity_selections = false;
 
         if ($product_layout == 'list') {
 

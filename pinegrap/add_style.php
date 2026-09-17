@@ -12,13 +12,22 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
+
+// DEPRECATED — scheduled for removal. The "system or custom" question this
+// screen asked no longer exists: HTML-template styles are created on
+// add_custom_style.php and visual designs on view_system_styles.php. Kept
+// only so bookmarks and older links land somewhere sensible.
+if (!$_POST) {
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_custom_style.php');
+    exit();
+}
 
 include_once('liveform.class.php');
 $liveform = new liveform('add_style');
@@ -31,19 +40,17 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Create Page Style'),
+        'heading_description' => lang('Create a new HTML template that can be associated with one or many Pages.'),
         'cancel'=>array('enable'=>'true','url'=>'view_styles.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Create Page Style'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new HTML template that can be associated with one or many Pages.') . '" title="' . lang('Create Page Style') . '">[' . lang('new page style') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_style.php" method="post" id="question_text">
                     ' . get_token_field() . '
                     <div class="row">
@@ -86,7 +93,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
     output_footer();
     
     $liveform->remove_form();

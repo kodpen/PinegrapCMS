@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -395,12 +395,12 @@ function get_form_view_directory_screen_content($properties) {
     $sql_search = "";
 
     // If the search is enabled, then output search field.
-    if ($_GET[$current_page_id . '_search'] == 'true') {
+    if (($_GET[$current_page_id . '_search'] ?? '') == 'true') {
         // get current URL parts in order to deal with query string parameters
         $url_parts = parse_url(get_request_uri());
         
         // put query string parameters into an array
-        parse_str($url_parts['query'], $query_string_parameters);
+        parse_str($url_parts['query'] ?? '', $query_string_parameters);
         
         $output_hidden_fields = '';
         
@@ -421,7 +421,7 @@ function get_form_view_directory_screen_content($properties) {
                     <span>' . lang('Search by Submitter') . ':</span>
                     <span class="search">
                         <span class="simple">
-                            <input type="text" name="' . $current_page_id . '_query" value="' . h($_GET[$current_page_id . '_query']) . '" class="software_input_text mobile_fixed_width query" style="margin-bottom: 0 !important" placeholder="' . lang('Enter Username') . '" />
+                            <input type="text" name="' . $current_page_id . '_query" value="' . h($_GET[$current_page_id . '_query'] ?? '') . '" class="software_input_text mobile_fixed_width query" style="margin-bottom: 0 !important" placeholder="' . lang('Enter Username') . '" />
                             <input type="submit" title="' . lang('Search by Submitter') . '" value="" class="submit" />
                         </span>
                     </span>
@@ -429,8 +429,8 @@ function get_form_view_directory_screen_content($properties) {
             </div>';
 
         // If the visitor has searched, then prepare SQL filter for the username.
-        if ($_GET[$current_page_id . '_query'] != '') {
-            $sql_search = "AND (SELECT user.user_username FROM user WHERE user.user_id = forms.user_id) LIKE '%" . escape(escape_like($_GET[$current_page_id . '_query'])) . "%'";
+        if (($_GET[$current_page_id . '_query'] ?? '') != '') {
+            $sql_search = "AND (SELECT user.user_username FROM user WHERE user.user_id = forms.user_id) LIKE '%" . escape(escape_like($_GET[$current_page_id . '_query'] ?? '')) . "%'";
         }
     }
     
@@ -458,7 +458,7 @@ function get_form_view_directory_screen_content($properties) {
         // for a custom form or not, so we don't have to check multiple times.
         $remember_pretty_urls = array();
 
-        switch ($_GET['summary']) {
+        switch ($_GET['summary'] ?? '') {
             case 'most_recent':
             default:
                 $output_most_recent_link_style = ' style="font-weight: bold"';

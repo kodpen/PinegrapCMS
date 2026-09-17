@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -23,6 +23,25 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 validate_token_field();
+
+// Nobody resets his/her own password here.
+//
+// The reset revokes every remembered session of the account (the
+// pg_auth_token_revoke_user() call below), so the editor who pressed the button
+// is signed out on the very next request - which is the redirect at the bottom
+// of this file, before the screen carrying the new password gets to render the
+// notice. From then on the password only exists in the e-mail; where mail is
+// not configured it exists nowhere at all, and an administrator doing this to
+// his/her own account locks the site's last administrator out of it.
+//
+// An account's own password is changed from the change password screen, which
+// mints a fresh token for the browser making the change and so keeps it signed
+// in. The button is not drawn on one's own record (edit_user.php), but a screen
+// that does not draw a button is not an access check.
+if ((int) ($_POST['user_id'] ?? 0) === (int) $user['id']) {
+    log_activity(lang('access denied because a user may not reset his/her own password'), $_SESSION['sessionusername']);
+    output_error(lang('Access denied. You may not reset your own password here. Use the change password screen instead.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
 
 // get user information
 $query =
@@ -35,6 +54,7 @@ $query =
         user_manage_emails,
         user_manage_ecommerce,
         manage_ecommerce_reports,
+        manage_erp,
         user_manage_forms,
         user_manage_calendars,
         user_manage_visitors
@@ -57,6 +77,7 @@ $user_manage_contacts = $row['user_manage_contacts'];
 $user_manage_emails = $row['user_manage_emails'];
 $user_manage_ecommerce = $row['user_manage_ecommerce'];
 $manage_ecommerce_reports = $row['manage_ecommerce_reports'];
+$manage_erp = $row['manage_erp'] ?? 0;
 $user_manage_forms = $row['user_manage_forms'];
 $user_manage_calendars = $row['user_manage_calendars'];
 $user_manage_visitors = $row['user_manage_visitors'];
@@ -77,11 +98,17 @@ $random_password = get_random_string(array(
 $query =
     "UPDATE user 
     SET 
-        user_password = '" . md5($random_password) . "', 
+        user_password = '" . escape(pg_password_hash($random_password)) . "', 
+        user_password_algo = 2,
         user_password_hint = '' 
+        " . pg_password_changed_sql() . "
     WHERE user_id = '" . escape($_POST['user_id'] ?? '') . "'";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+// The account's password just changed under it: drop every remembered session,
+// so a lost or shared "remember me" cookie cannot outlive the reset.
+pg_auth_token_revoke_user((int) ($_POST['user_id'] ?? 0));
 
 $login = '';
     
@@ -99,6 +126,7 @@ if (
     || ($user_manage_emails == 'yes')
     || ($user_manage_ecommerce == 'yes')
     || $manage_ecommerce_reports
+    || $manage_erp
     || (count(get_items_user_can_edit('ad_regions', $_POST['user_id'])) > 0)
 ) {
     $login = 
@@ -131,7 +159,7 @@ $liveform_view_users->add_notice('The user\'s password has been reset, and a new
 
 // If there is a send to value then send user back to that screen
 if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
     
 // else send user to the default view
 } else {

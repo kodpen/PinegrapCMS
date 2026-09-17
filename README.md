@@ -130,4 +130,4 @@ Pinegrap began life as **LiveSite**, developed by Camelback Web Architects since
 
 Released under the [MIT License](license.txt).
 
-Copyright © 2001–2019 Camelback Consulting, Inc. · © 2016–2026 Kodpen
+Copyright © 2001–2019 Camelback Consulting, Inc. · © 2017–2026 Kodpen

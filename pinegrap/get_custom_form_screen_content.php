@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -54,7 +54,7 @@ function get_custom_form_screen_content($properties) {
     // If the confirmation type is message and the message should be shown, then show it.
     } else if (
         ($confirmation_type == 'message')
-        && ($_GET[$current_page_id . '_confirmation'] == 'true')
+        && (($_GET[$current_page_id . '_confirmation'] ?? '') == 'true')
     ) {
         $output = '<div class="confirmation_message">' . $confirmation_message . '</div>';
 
@@ -113,7 +113,7 @@ function get_custom_form_screen_content($properties) {
             // if the custom form grants trial membership access,
             // and the user is logged in,
             // then check if user is allowed to submit membership trial form
-            if (($membership == 1) && ($membership_days > 0) && (isset($_SESSION['sessionusername']) == true) && (validate_login($_SESSION['sessionusername'], $_SESSION['sessionpassword']) == true)) {
+            if (($membership == 1) && ($membership_days > 0) && (isset($_SESSION['sessionusername']) == true) && (pg_session_signed_in() == true)) {
                 global $user;
                 
                 // get information about the user
@@ -166,6 +166,7 @@ function get_custom_form_screen_content($properties) {
                     }
 
                     $output_hidden_watcher_fields = '';
+                    $output_hidden_add_watcher_fields = '';
 
                     // If an add watcher value was passed in the query string, then output hidden add watcher fields.
                     // Someone can pass a username or email address in the query string, which allows that
@@ -201,7 +202,7 @@ function get_custom_form_screen_content($properties) {
                     $enctype = '';
                     
                     // if a file upload field exists in the form, then prepare to set enctype for HTML form
-                    if ($form_info['file_upload_exists'] == true) {
+                    if (!empty($form_info['file_upload_exists'])) {
                         $enctype = ' enctype="multipart/form-data"';
                     }
                     
@@ -266,6 +267,8 @@ function get_custom_form_screen_content($properties) {
                     }
 
                     // If save-for-later is enabled, then output save button.
+                    $output_save_button = '';
+
                     if ($save) {
                         $output_save_button = '<button type="submit" name="save_for_later_button" value="Save for Later" class="software_input_submit_secondary">' . lang('Save for Later') . '</button>&nbsp;&nbsp;';
                     }
@@ -536,6 +539,11 @@ function get_custom_form_screen_content($properties) {
 
                                 break;
 
+                            case 'signature':
+                                $signature_fields = true;
+
+                                break;
+
                             case 'pick list':
                                 
                                 $attributes['options'] = array();
@@ -682,6 +690,13 @@ function get_custom_form_screen_content($properties) {
                         $system .= '<input type="hidden" name="folder_id" value="' . h($folder_id_for_default_value) . '">';
                     }
 
+                    // If a signature field is on this form, then load the capture
+                    // script. Same place as the date picker and the editor: the
+                    // screen that found the field is the one that knows it is there.
+                    if (!empty($signature_fields) && function_exists('pg_signature_includes')) {
+                        $system .= pg_signature_includes();
+                    }
+
                     // If there is at least one rich-text editor field,
                     // then output JS for them.
                     if ($wysiwyg_fields) {
@@ -709,7 +724,7 @@ function get_custom_form_screen_content($properties) {
                         if ($date_and_time_fields) {
                             // Include JS file for timepicker.
                             $system .=
-                                '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
+                                '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
 
                             foreach ($date_and_time_fields as $date_and_time_field) {
                                 $system .=

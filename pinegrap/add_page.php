@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -1698,6 +1698,7 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page',
             'heading'=>lang('Create Page'),
+            'heading_description' => lang('Create a new page, place it in a folder, and add any built-in features.'),
             'cancel'=>array('enable'=>'true','url'=>'view_pages.php'),
             'breadcrumb' => array(
                 array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
@@ -1705,6 +1706,7 @@ if (!$_POST) {
             ),
         )
     ) . '
+<main id="content" class="container-fluid">
     <script>
         //language objects for js for this page
         translate["Save"] = "' . lang('Save') . '";
@@ -1715,11 +1717,7 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform_add_page->output_errors() . '
                 ' . $liveform_add_page->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new page, place it in a folder, and add any built-in features.') . '" title="' . lang('Create Page') . '">[' . lang('Page Name') . ']</h2>
-                    </div>
-                </div>
+                
                 <form name="form" action="add_page.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
@@ -1755,7 +1753,7 @@ if (!$_POST) {
                                                 <div class="col-12 col-md-8 col-lg-6 my-2">
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
-                                                        ' . $liveform_add_page->output_field(array('type'=>'text','id'=>'name','name'=>'name','placeholder'=>lang('Page Name'),'maxlength'=>'100', 'class'=>'form-control add-header-content-updater ', 'required'=>'required')) . '
+                                                        ' . $liveform_add_page->output_field(array('type'=>'text','id'=>'name','name'=>'name','placeholder'=>lang('Page Name'),'maxlength'=>'100', 'class'=>'form-control ', 'required'=>'required')) . '
                                                     </div>
                                                 </div>
                                             </div>
@@ -1895,11 +1893,11 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>
     <script>
-    // Indexing switch dependencies — logic in assets/backend.src.js
+    // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
-    </script>' .
+    </script>
+</main>' .
         output_footer();
     
     $liveform_add_page->unmark_errors('add_page');

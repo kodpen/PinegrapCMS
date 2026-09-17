@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -61,6 +61,7 @@ class liveform {
     $onfocus = '';
     $onblur = '';
     $min = '';
+    $step = '';
     $max = '';
     $title = '';
     $placeholder = '';
@@ -134,6 +135,11 @@ class liveform {
         }
         if(isset($attributes['max'])){
             $max = $attributes['max'];
+        }
+        // step belongs with min and max: a number field that takes bounds but
+        // drops the increment rejects every fractional value the bounds allow.
+        if(isset($attributes['step'])){
+            $step = $attributes['step'];
         }
         if(isset($attributes['title'])){
             $title = $attributes['title'];
@@ -311,6 +317,13 @@ class liveform {
                     $output_max = ' max="' . $max . '"';
                 }
 
+                $output_step = '';
+
+                // If there is a step, then output it.
+                if ($step != '') {
+                    $output_step = ' step="' . $step . '"';
+                }
+
                 $output_placeholder = '';
 
                 if ($placeholder != '') {
@@ -326,7 +339,7 @@ class liveform {
                 if($size != ''){
                     $output_size = ' size="' . h($size) . '"';
                 }
-                return "<input type=\"$type\" name=\"" . h($field) . "\" id=\"" . h($id) . "\" value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_placeholder . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"$type\" name=\"" . h($field) . "\" id=\"" . h($id) . "\" value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_placeholder . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'checkbox':
@@ -842,7 +855,7 @@ class liveform {
 
     function check_form_errors()
     {
-        if ($_SESSION['software']['liveforms'][$this->form][$this->index]) {
+        if (!empty($_SESSION['software']['liveforms'][$this->form][$this->index])) {
             foreach ($_SESSION['software']['liveforms'][$this->form][$this->index] as $field) {
                 if (isset($field['error']) && $field['error'] == TRUE) {
                     return TRUE;
@@ -1011,12 +1024,99 @@ class liveform {
         }
     }
     
+    /**
+     * A form-level error: something went wrong that no single field owns.
+     *
+     * Nine places across the software called this and it did not exist, so
+     * every one of them was a blank HTTP 500 — and they are all the FAILURE
+     * paths (config file unreadable, import rejected, designer save refused),
+     * which is why nobody caught it: the reply is only reached once something
+     * has already gone wrong, and instead of the reason the operator got an
+     * empty page.
+     *
+     * Stored under a synthetic field key rather than in a list of its own,
+     * because output_errors() walks the form's entries looking for `error`
+     * and would never see a separate array. Numbered so several errors can be
+     * shown at once — mark_error() on one shared key keeps only the last.
+     */
+    function add_error($error_message = '') {
+        $i = 0;
+        do {
+            $key = '_form_error_' . $i;
+            $i++;
+        } while (isset($_SESSION['software']['liveforms'][$this->form][$this->index][$key]));
+
+        $_SESSION['software']['liveforms'][$this->form][$this->index][$key] = array(
+            'error'         => TRUE,
+            'error_message' => $error_message,
+        );
+    }
+
     function add_notice($notice) {
         $_SESSION['software']['liveforms'][$this->form][$this->index]['notices'][] = $notice;
     }
 
     function add_warning($warning) {
         $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][] = $warning;
+    }
+
+    /**
+     * The errors this form is carrying, as plain strings.
+     *
+     * output_errors() returns them already wrapped in an alert, which is what a
+     * page wants. A caller that answers in JSON -- the settings modal, which
+     * shows what a tool left in the form on its way to it -- needs the messages
+     * themselves.
+     *
+     * @return array
+     */
+    function get_errors()
+    {
+        if (!isset($_SESSION['software']['liveforms'][$this->form][$this->index])) {
+            return array();
+        }
+
+        $messages = array();
+        $marked   = FALSE;
+
+        foreach ($_SESSION['software']['liveforms'][$this->form][$this->index] as $field) {
+
+            if ((!is_array($field)) || (!isset($field['error'])) || ($field['error'] != TRUE)) {
+                continue;
+            }
+
+            $marked = TRUE;
+
+            if ($field['error_message'] != '') {
+                $messages[] = $field['error_message'];
+            }
+        }
+
+        // A field can be marked without a sentence of its own, and
+        // output_errors() answers that with a heading rather than with nothing.
+        if (($marked == TRUE) && (count($messages) == 0)) {
+            $messages[] = lang('An error occurred');
+        }
+
+        return $messages;
+    }
+
+    /**
+     * The notices this form is carrying, as plain strings.
+     *
+     * output_notices() returns them already wrapped in an alert, which is what
+     * a page wants. A caller that answers in JSON -- the settings modal saves
+     * without rendering a page -- needs the messages themselves.
+     *
+     * @return array
+     */
+    function get_notices()
+    {
+        if (!isset($_SESSION['software']['liveforms'][$this->form][$this->index]['notices'])) {
+            return array();
+        }
+
+        return (array) $_SESSION['software']['liveforms'][$this->form][$this->index]['notices'];
     }
 
     function output_notices()

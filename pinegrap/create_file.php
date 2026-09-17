@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -39,21 +39,19 @@ if (!$_POST) {
         'title'=> lang('Create File'),
         'icon'=>'file',
         'heading'=>lang('Create File'),
+        'heading_description' => lang('Create a new editable file'),
         'cancel'=>array('enable'=>'true','url'=>'view_files.php'),
         'breadcrumb' => array(
             array('label' => lang('All My Files'), 'url' => 'view_files.php'),
             array('label' => lang('Create File')),
         ),
     )) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                     ' . $liveform->output_errors() . '
                     ' . $liveform->output_notices() . '
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Create a new editable file') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('File'))) . '">[' . lang(array('string'=>'new {var:1} name','vars'=>lang('file'))) . ']</h2>
-                    </div>
-                </div>
+                
                 <form action="create_file.php" method="post">
                     ' . get_token_field() . '
                     <div class="row justify-content-center">
@@ -66,7 +64,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-2">
                                                     <div class="input-group">
-                                                        <input type="text" name="name" id="name" class="form-control  add-header-content-updater" style="width:70%"/>
+                                                        <input type="text" name="name" id="name" class="form-control " style="width:70%"/>
                                                         <select class="form-select" id="type" name="type" required>
                                                             <option value="txt" selected>.txt</option>
                                                             <option value="json">.json</option>
@@ -133,7 +131,6 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>
 
     ' . get_codemirror_includes() . '
     ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'text')) . '
@@ -170,7 +167,8 @@ if (!$_POST) {
             updateMode("txt");
         });
     </script>
-    ' . output_footer();
+    
+</main>' . output_footer();
 
 } else {
 
@@ -184,6 +182,12 @@ if (!$_POST) {
 
     if (!check_edit_access($folder)) {
         output_error(lang('Access denied.'));
+    }
+
+    // Creating "shell.php" is uploading it with an extra step. The type is a
+    // posted value, not the menu's, so it is checked with the name.
+    if (pg_upload_name_blocked($_POST['name'] . '.' . $type)) {
+        output_error(h(pg_upload_blocked_message($_POST['name'] . '.' . $type)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     

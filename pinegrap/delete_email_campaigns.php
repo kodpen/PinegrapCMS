@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -80,7 +80,7 @@ if ($_POST['email_campaigns']) {
 
 // If there is a send to set, then forward user to send to.
 if ($_POST['send_to'] != '') {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
     
 // Otherwise there is not a send to set, so forward user to view e-mail campaigns screen.
 } else {

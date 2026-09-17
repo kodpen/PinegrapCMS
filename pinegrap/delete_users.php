@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -49,6 +49,11 @@ if ($_POST['users']) {
         if (($user['role'] == 0) || ($user['role'] < $user_role)) {
             // if this user is not an administrator or the number of administrators is greater than one, then we can allow this user to be deleted, so prepare checkbox
             if (($user_role != 0) || ($number_of_administrators > 1)) {
+                // Sign-in tokens first: a token outliving its user is a row
+                // that still names a user_id nobody owns any more, and the
+                // browser holding it keeps presenting it on every request.
+                pg_auth_token_revoke_user($user_id);
+
                 // delete user record
                 $query = "DELETE FROM user WHERE user_id = '" . escape($user_id) . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -108,7 +113,7 @@ if ($_POST['users']) {
 
 // If there is a send to value then send user back to that screen
 if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-    header('Location: ' . URL_SCHEME . HOSTNAME . $_REQUEST['send_to']);
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
     
 // else send user to the default view
 } else {

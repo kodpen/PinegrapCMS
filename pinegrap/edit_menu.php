@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -66,10 +66,12 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Edit Menu Properties'),
+        'heading_description' => lang('Edit shared menu that can be added to any page style and managed by any site manager.'),
         'cancel'=>array('enable'=>'true','url'=>'view_menus.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'), array('label' => lang('Edit Menu Properties'))),
         ]) . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -77,7 +79,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Edit shared menu that can be added to any page style and managed by any site manager.') . '" title="' . lang('Edit Menu Properties') . '">[' . h($row['name']) . ']</h2>
+
                         <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<menu>' . $menu_name . '</menu>') . '</strong></p>
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
@@ -104,7 +106,7 @@ if (!$_POST) {
                                             <label for="name" class="form-label">' . lang('Menu Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<menu>') . '</div>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control add-header-content-updater', 'maxlength'=>'100', 'required'=>'required')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                                 <div class="input-group-text">' . h('</menu>') . '</div>
                                             </div>
                                            
@@ -201,7 +203,8 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>' .
+    
+</main>' .
         output_footer();
     
     $liveform->remove_form();
@@ -233,7 +236,7 @@ if (!$_POST) {
         
         // if the user came from the pages tab, then forward user back to page
         if ($_POST['from'] == 'pages') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $_POST['send_to']);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
             $liveform->remove_form();
         // else the user came from the design tab, so prepare notice and forward user to view menus screen
         } else {

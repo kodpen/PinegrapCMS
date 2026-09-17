@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -67,5 +67,5 @@ switch ($_GET['action']) {
 
 }
 
-go($_GET['url']);
+go(pg_safe_redirect_path($_GET['url'] ?? ''));
 ?>

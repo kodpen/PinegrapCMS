@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -116,7 +116,7 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
     </div>
 </nav>
 
-<main id="content" class="container">
+<main id="content" class="container-fluid">
 	<form name="form">
 		<div class="row">
             <div class="col-xs-12  col-sm-12 col-md-8 col-lg-6 card-group">

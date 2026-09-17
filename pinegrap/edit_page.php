@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -93,6 +93,14 @@ if (!$_POST) {
     $mobile_style_id = $row['mobile_style_id'];
     $page_title = $row['page_title'];
     $page_meta_description = $row['page_meta_description'];
+
+    // A visual-editor page (its own style is a visual design) has no
+    // regions to edit here; an old bookmark or a hand-typed URL lands in the
+    // visual editor instead.
+    if (pg_page_is_visual_design(array('page_style' => $page_style, 'has_tree' => 0))) {
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . pg_page_edit_url(array('page_id' => $page_id, 'page_style' => $page_style)));
+        exit();
+    }
     // seo_checked_at travels with the rest: pg_seo_row_scored() asks it
     // first, and a row without it falls back to seo_analysis_current, which
     // means "the number is up to date" rather than "there is a number". Every
@@ -106,8 +114,8 @@ if (!$_POST) {
         'seo_analysis_current' => $row['seo_analysis_current'],
     );
     $sitemap = $row['sitemap'];
-    $noindex = $row['noindex'];
-    $nofollow = $row['nofollow'];
+    $noindex = (int) ($row['noindex'] ?? 0);
+    $nofollow = (int) ($row['nofollow'] ?? 0);
     $page_type = $row['page_type'];
     $layout_type = $row['layout_type'];
     $comments = $row['comments'];
@@ -3215,48 +3223,40 @@ if (!$_POST) {
         $sitemap_row_style = '';
     }
     
+    // Search engine indexing. The block is only built where the columns behind
+    // it exist: a switch that saves nothing is worse than no switch at all.
+    //
+    // nofollow arrives disabled unless the page is already closed to search
+    // engines, which is the state the master switch would put it in anyway -
+    // bindPageIndexingSwitches() keeps the two in step from then on.
+    $output_noindex_rows = '';
+
+    if (pg_page_noindex_ready() == TRUE) {
+
+        $noindex_checked = ($noindex == 1) ? ' checked="checked"' : '';
+        $nofollow_checked = ($nofollow == 1) ? ' checked="checked"' : '';
+        $nofollow_disabled = ($noindex == 1) ? '' : ' disabled="disabled"';
+
+        $output_noindex_rows =
+            '<div class="col-12 my-3" id="noindex_row">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="noindex" name="noindex" value="1"' . $noindex_checked . '>
+                    <label class="form-check-label" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
+                </div>
+                <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
+                <div class="form-check form-switch mt-3 ms-4">
+                    <input class="form-check-input" type="checkbox" id="nofollow" name="nofollow" value="1"' . $nofollow_checked . $nofollow_disabled . '>
+                    <label class="form-check-label" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
+                </div>
+                <div class="form-text ms-4">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
+            </div>';
+    }
+
     // if sitemap is enabled, then check the checkbox
     $sitemap_checked = '';
 
     if ($sitemap == '1') {
         $sitemap_checked = ' checked="checked"';
-    }
-
-    // Search engine indexing. The block is only built where the columns behind
-    // it exist: a switch that saves nothing is worse than no switch at all.
-    $output_noindex_rows = '';
-
-    if (pg_page_noindex_ready() == TRUE) {
-        $noindex_checked = '';
-        $nofollow_checked = '';
-
-        // nofollow qualifies the noindex directive and is meaningless without
-        // it, so it starts out unavailable and the master switch opens it.
-        $nofollow_disabled = ' disabled="disabled"';
-
-        if ($noindex == '1') {
-            $noindex_checked = ' checked="checked"';
-            $nofollow_disabled = '';
-
-            if ($nofollow == '1') {
-                $nofollow_checked = ' checked="checked"';
-            }
-        }
-
-        $output_noindex_rows =
-            '<div class="col-12 my-3" id="noindex_row">
-                <div class="form-check form-switch">
-                    <input value="1"' . $noindex_checked . ' id="noindex" name="noindex" class="form-check-input" type="checkbox" />
-                    <label class="form-check-label" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
-                </div>
-                <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
-                <div class="form-check form-switch mt-3 ms-4">
-                    <input value="1"' . $nofollow_checked . $nofollow_disabled . ' id="nofollow" name="nofollow" class="form-check-input" type="checkbox" />
-                    <label class="form-check-label" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
-                </div>
-                <div class="form-text ms-4">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
-                <div class="form-text text-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i>' . lang('A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.') . '</div>
-            </div>';
     }
     
     $comments_checked = '';
@@ -3363,13 +3363,17 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page',
             'heading'=>lang('Edit Page'),
-            'cancel'=>array('enable' => 'true', 'url' => 'view_pages.php'),
+            'heading_description' => lang('View and update the page, move it to another folder, or change its built-in features.'),
+            // Cancel and the breadcrumb go back where the operator came from,
+            // when the screen that opened this one said where that was.
+            'cancel'=>array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php')),
             'breadcrumb' => array(
-                array('label' => lang('Pages'), 'url' => 'view_pages.php'),
+                array('label' => lang('Pages'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php')),
                 array('label' => $page_name),
             ),
         )
     ) . '
+<main id="content" class="container-fluid">
     <script>
         //language objects for js for this page
         translate["Save"] = "' . lang('Save') . '";
@@ -3383,7 +3387,7 @@ if (!$_POST) {
                 <div class="row mb-2  flex-wrap">
                     <div class="col-12 col-sm-12 text-center text-md-start">
 ' . $output_subnav_home . '
-                        <h2 class="d-inline-block text-break header-content-for-add-page position-relative" data-bs-content="' . lang('View and update the page, move it to another folder, or change its built-in features.') . '" title="' . lang('Edit Page Properties') . '">[' . h($page_name) . ']</h2>
+                        
                         <p>' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>
                         ' . $output_button_bar . '
                     </div>
@@ -3406,7 +3410,7 @@ if (!$_POST) {
                                                 <div class="col-12 col-md-8 col-lg-6 my-2">
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
-                                                        <input name="name" id="name" type="text" value="' . h($page_name) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control add-header-content-updater" required="required" />
+                                                        <input name="name" id="name" type="text" value="' . h($page_name) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                                     </div>
                                                 </div>
                                                 ' . $output_home_page_rows . '
@@ -3468,6 +3472,7 @@ if (!$_POST) {
                                                 ' . $output_noindex_rows . '
                                                 <div class="col-12">
                                                     ' . pg_seo_render_checklist($seo_row, 'page', $page_id) . '
+                                                    ' . pg_seo_render_run_script() . '
                                                 </div>
                                             </div>
                                         </div>
@@ -3666,17 +3671,17 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    </main>
     <script>
-    // SEO character counters — logic in assets/backend.src.js
+    // SEO character counters — logic in assets/js/backend.src.js
     initSeoCounters([
         { sel: "#title",            counterId: "seo_c_title",            min: 50,  max: 60  },
         { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
     ]);
 
-    // Indexing switch dependencies — logic in assets/backend.src.js
+    // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
-    </script>' .
+    </script>
+</main>' .
     output_footer();
 
     $liveform->remove_form('edit_page');
@@ -3698,8 +3703,7 @@ if (!$_POST) {
             page_search,
             page_search_keywords,
             page_folder,
-            sitemap,
-            " . (pg_page_noindex_ready() ? "noindex, nofollow" : "'0' AS noindex, '0' AS nofollow") . "
+            sitemap
         FROM page
         WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -3716,8 +3720,6 @@ if (!$_POST) {
     $current_search_keywords = $row['page_search_keywords'];
     $current_page_folder = $row['page_folder'];
     $current_sitemap = $row['sitemap'];
-    $current_noindex = $row['noindex'];
-    $current_nofollow = $row['nofollow'];
     
     // if page was selected for delete, check if user has access and then delete page
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
@@ -4823,25 +4825,10 @@ if (!$_POST) {
                 mobile_style_id = '" . escape($_POST['mobile_style_id'] ?? '') . "',";
         }
         
-        $noindex = 0;
-        $nofollow = 0;
-
-        // The two indexing switches only mean something together. nofollow
-        // qualifies the noindex directive and is never emitted on its own, so it
-        // is stored as off whenever the page is open to search engines, and
-        // nothing downstream has to decide which of the two to believe.
-        if (($_POST['noindex'] ?? '') == 1) {
-            $noindex = 1;
-
-            if (($_POST['nofollow'] ?? '') == 1) {
-                $nofollow = 1;
-            }
-        }
-
         // if sitemap was enabled and the selected page type is a valid page type for the sitemap,
         // then include this page in the sitemap
         if (
-            (($_POST['sitemap'] ?? '') == 1)
+            ($_POST['sitemap'] == 1)
             &&
             (
                 ($_POST['type'] == 'standard')
@@ -4868,19 +4855,29 @@ if (!$_POST) {
         } else {
             $sitemap = 0;
         }
+        
+        $noindex = 0;
+        $nofollow = 0;
 
-        // A page that is closed to search engines has no business in the site
-        // map. The switch is disabled on screen while noindex is on, so a
-        // browser never sends it, but a POST does not have to come from that
-        // screen and the two columns have to agree in the database.
+        // nofollow qualifies the noindex directive and is never emitted on its
+        // own, so it is only stored while the page is closed to search engines.
+        if (($_POST['noindex'] ?? '') == 1) {
+            $noindex = 1;
+
+            if (($_POST['nofollow'] ?? '') == 1) {
+                $nofollow = 1;
+            }
+        }
+
+        // A page that is closed to search engines has no business in the site map.
         if ($noindex == 1) {
             $sitemap = 0;
         }
 
-        $sql_noindex_fields = "";
+        $sql_noindex = "";
 
         if (pg_page_noindex_ready() == TRUE) {
-            $sql_noindex_fields =
+            $sql_noindex =
                 "noindex = '" . $noindex . "',
                 nofollow = '" . $nofollow . "',";
         }
@@ -4891,9 +4888,7 @@ if (!$_POST) {
         // has changed, then prepare to clear the current status. Beyond the
         // title and description: the promoted keywords feed the site search
         // check, the name feeds the URL check, and the folder, search and
-        // sitemap switches decide which checks apply to the page at all, and
-        // the indexing switches change the robots tag the structure pass reads
-        // back out of the rendered markup.
+        // sitemap switches decide which checks apply to the page at all.
         if (
             ($current_seo_analysis_current == 1)
             && (
@@ -4904,8 +4899,6 @@ if (!$_POST) {
                 || ((int) $current_page_folder != (int) ($_POST['folder'] ?? 0))
                 || ((int) $current_page_search != (int) ($_POST['search'] ?? 0))
                 || ((int) $current_sitemap != (int) $sitemap)
-                || ((int) $current_noindex != (int) $noindex)
-                || ((int) $current_nofollow != (int) $nofollow)
             )
         ) {
             $sql_seo_analysis_current = "seo_analysis_current = '0',";
@@ -4928,7 +4921,7 @@ if (!$_POST) {
                 page_title = '" . escape($_POST['title'] ?? '') . "',
                 page_meta_description = '" . escape($_POST['meta_description'] ?? '') . "',
                 sitemap = '" . $sitemap . "',
-                $sql_noindex_fields
+                $sql_noindex
                 $sql_seo_analysis_current
                 comments = '" . escape($_POST['comments'] ?? '') . "',
                 comments_label = '" . e($_POST['comments_label'] ?? '') . "',
@@ -4962,6 +4955,18 @@ if (!$_POST) {
             update_multiple_submitted_form_address_names($_POST['id']);
         }
         
+        // Score the page now rather than leaving it for a list visit or the
+        // nightly job. Every field the meta half reads was just written by the
+        // UPDATE above, and the operator is one click away from the card that
+        // shows the number - a card that would otherwise still be showing the
+        // score of what they just replaced.
+        //
+        // The markup half is not run here: nothing on this screen changes it.
+        // Content is saved by save_region_content.php, which runs it there.
+        if (pg_seo_schema_ready()) {
+            pg_seo_recalculate('page', array((int) $page_id));
+        }
+
         log_activity("page ($name) was modified", $_SESSION['sessionusername']);
         
         $send_to = $_POST['send_to'];
@@ -5024,7 +5029,7 @@ if (!$_POST) {
             
         // else we don't need to forward the user to the form designer so forward the user to the page
         } else {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $send_to);
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to));
         }
     }
 }

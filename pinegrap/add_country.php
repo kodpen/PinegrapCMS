@@ -12,7 +12,7 @@
  * @link        https://livesite.com
  *              https://kodpen.com
  * @copyright   2001–2019 Camelback Consulting, Inc.
- *              2016–2026 Kodpen
+ *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
@@ -26,17 +26,14 @@ if (!$_POST) {
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Country'))),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Country')))
-        ,
+        'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Country'))),
+        'heading_description' => lang('Add a new country that can be included in any shipping zone or tax zone.'),
             'breadcrumb' => array(array('label' => lang('All Countries'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_countries.php?filter=all_ad_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Country'))))),
         ]) . '
+<main id="content" class="container-fluid">
                     <div class="row">
                 <div class="col-12">
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Add a new country that can be included in any shipping zone or tax zone.') . '" title="' . lang(array('string'=>'Create {var:1}','vars'=>lang('Country'))) . '">[' . lang(array('string'=>'new {var:1} name','vars'=>lang('Country'))) . ']</h2>
-                        </div>
-                    </div>
+                    
                     <form name="form" action="add_country.php" method="post">
                         ' . get_token_field() . '
                         <div class="row">
@@ -49,7 +46,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Country'))) . '</label>
-                                                <input type="text" name="name" id="name" class="form-control add-header-content-updater" maxlength="50" />
+                                                <input type="text" name="name" id="name" class="form-control" maxlength="50" />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 <div class="form-text">' . lang('Display on Commerce Pages') . '</div>
                                             </div>
@@ -98,7 +95,8 @@ if (!$_POST) {
                     </form>
                 </div>
             </div>
-        </main>' .
+        
+</main>' .
         output_footer();
 
     echo $output;
