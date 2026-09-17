@@ -1035,6 +1035,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
      
 // if mass deletion is allowed and user requested to delete contacts, delete contacts
 } elseif ((MASS_DELETION == true) && (($_GET['submit_data'] ?? '') == 'Delete Contacts')) {
+    // Mass deletion is triggered by a GET form, so require the token to block forged links.
+    validate_token_field();
+
     // get all contacts that need to be deleted
     $query =
         "SELECT contacts.id
@@ -1131,6 +1134,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
 // else, if the user selected to merge contacts, then merge them
 } elseif (($_GET['submit_data'] ?? '') == 'Merge Contacts') {
+    // Mass merge is triggered by a GET form, so require the token to block forged links.
+    validate_token_field();
+
     $contacts_to_merge = array();
     
     // get contacts to be merged information
@@ -2368,6 +2374,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
+                                ' . get_token_field() . '
                                 <a class="btn btn-sm btn-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
