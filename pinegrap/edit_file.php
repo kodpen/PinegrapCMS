@@ -810,7 +810,12 @@ $liveform->remove_form('edit_file');
     }
 
     // WEBP overwrite
-    if (!empty($_POST['convert_webp']) && empty($_POST['convert_webp_create_copy']) && $image) {
+    //
+    // Only for the save buttons: the original is deleted below, so this
+    // must run only when the row is about to be updated with the new name.
+    // Otherwise a Duplicate request would remove a file its record still
+    // points to.
+    if (!empty($_POST['convert_webp']) && empty($_POST['convert_webp_create_copy']) && $image && (!empty($_POST['submit_save']) || !empty($_POST['submit_save_and_return']))) {
         $name = prepare_file_name(pathinfo($name, PATHINFO_FILENAME) . '.webp');
         $file_path = FILE_DIRECTORY_PATH . '/' . $name;
         if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
