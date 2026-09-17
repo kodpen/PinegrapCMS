@@ -1145,7 +1145,7 @@ function get_order_receipt($properties) {
         $output_number_of_installment = '';
         $output_installment_charges = '';
         if(($installment_charges != 0)&&($payment_installment >= 2)){
-            $grand_total = $grand_total + $output_installment_charges;
+            $grand_total = $grand_total + $installment_charges;
             
             $output_number_of_installment = 
                 '<tr class="order_totals data">
@@ -1480,6 +1480,8 @@ function get_order_receipt($properties) {
                 ' . $output_grand_shipping . '
                 ' . $output_gift_card_discount . '
                 ' . $output_surcharge . '
+                ' . $output_number_of_installment . '
+                ' . $output_installment_charges . '
                 <tr class="order_totals data">
                     <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total:</strong></td>
                     <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'html') . $output_unconverted_total . '</strong></td>

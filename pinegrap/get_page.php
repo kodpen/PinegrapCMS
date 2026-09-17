@@ -1732,9 +1732,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						// Loop through all calendar exceptions and separate the ones we need for the event we are working with into $calendar_exceptions
 						foreach ($calendar_event_exceptions as $calendar_event_exception)
 						{
-							if ($calendar_event_exception[calendar_event_id] == $id)
+							if ($calendar_event_exception['calendar_event_id'] == $id)
 							{
-								$calendar_exceptions[] = $calendar_event_exception[recurrence_number];
+								$calendar_exceptions[] = $calendar_event_exception['recurrence_number'];
 							}
 						}
 						// If this is a monthly event and the month type is "day of the week",
