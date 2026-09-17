@@ -163,7 +163,7 @@ function api_openapi_build() {
 		'openapi' => '3.0.3',
 		'info' => array(
 			'title'       => (defined('TITLE') ? TITLE : 'Pinegrap') . ' API',
-			'version'     => api_version(),
+			'version'     => (string)api_version(),
 			'description' => 'Read and write products, stock, orders and customers. '
 				. 'Money is always a whole number of minor units - 1999 is 19.99. '
 				. 'Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null.'

@@ -31,7 +31,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 function api_version() {
 
-	return 'v2';
+	return 1;
 
 }
 
