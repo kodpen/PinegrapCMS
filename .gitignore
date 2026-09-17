@@ -1,0 +1,12 @@
+# Gelistirme agaci ve ic belgeler - asla yayinlanmaz
+/dev/
+/docs/
+
+# Yerel calisma artiklari
+*.log
+/pinegrap/data/temp/
+/pinegrap/data/cache/
+
+# Gercek yapilandirma - depoda yalnizca bos taslak ve config(default).php durur
+config.local.php
+.env
