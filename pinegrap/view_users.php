@@ -100,7 +100,7 @@ if (isset($_REQUEST['sort'])) {
 
 // if order was set, update session
 if (isset($_REQUEST['order'])) {
-    $_SESSION['software']['view_users']['order'] = $_REQUEST['order'];
+    $_SESSION['software']['view_users']['order'] = sql_order_direction($_REQUEST['order'], '');
 }
 
 // If the filter is not default or all my users view.
@@ -676,7 +676,7 @@ $query =
     LEFT JOIN user as user_2 ON user.user_user = user_2.user_id
     $sql_join_contacts_table
     $where
-    ORDER BY $sort_column " . escape(($_SESSION['software']['view_users']['order'] ?? '')) . " ";
+    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_users']['order'] ?? '') . " ";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
     $id = $row['id'];

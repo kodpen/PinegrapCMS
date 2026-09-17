@@ -49,6 +49,11 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
+// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
+if (isset($_SESSION['software']['forms']['view_submitted_forms']['order'])) {
+    $_SESSION['software']['forms']['view_submitted_forms']['order'] = sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'], '');
+}
+
 // get all custom forms (the array will be used in multiple places in this script)
 $query = "SELECT
             page.page_id,
@@ -425,7 +430,7 @@ switch (($_SESSION['software']['forms']['view_submitted_forms']['sort'] ?? '')) 
         break;
 
     case 'Contact':
-        $sort_column = 'contacts.last_name ' . escape(($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '')) . ', contacts.first_name';
+        $sort_column = 'contacts.last_name ' . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '') . ', contacts.first_name';
         break;
 
     case 'User':
@@ -522,7 +527,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
         $sql_data_joins
         $where
-        ORDER BY $sort_column " . escape(($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? ''));
+        ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '');
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $forms = array();
@@ -831,7 +836,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
              LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
              $sql_data_joins
              $where
-             ORDER BY $sort_column " . escape(($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? ''));
+             ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['forms']['view_submitted_forms']['order'] ?? '');
 
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
