@@ -392,7 +392,7 @@ if (!$_POST) {
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
                 
                 // log that the file was deleted
-                log_activity(lang(array('string'=>'file attachment ({var:1}) was deleted because a comment on page ({var:2}) was deleted','vars'=>aray($file_name,get_page_name($page_id)) )), $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'file attachment ({var:1}) was deleted because a comment on page ({var:2}) was deleted','vars'=>array($file_name,get_page_name($page_id)) )), $_SESSION['sessionusername']);
             }
         }
         
@@ -462,7 +462,7 @@ if (!$_POST) {
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
                 
                 // log that the file was deleted
-                log_activity(lang(array('string'=>'file attachment ({var:1}) for a comment on page ({var:2}) was deleted','vars'=>aray($file_name,get_page_name($page_id)) )), $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'file attachment ({var:1}) for a comment on page ({var:2}) was deleted','vars'=>array($file_name,get_page_name($page_id)) )), $_SESSION['sessionusername']);
             }
         }
 
