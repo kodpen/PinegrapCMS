@@ -2352,8 +2352,11 @@ function get_notifications($read_mark) {
                     var output_button_bar = '';
                     // title, description and details arrive from the server as
                     // ready-made HTML (pg_notification_display() escapes the
-                    // row's values and adds the markup). Everything else is a
-                    // raw value and is escaped here before it becomes markup.
+                    // row's values and adds the markup). time is also
+                    // server-built markup: get_relative_time() wraps the
+                    // relative time in a <time> element that carries the
+                    // absolute time as a tooltip. Everything else is a raw
+                    // value and is escaped here before it becomes markup.
                     // The target URL travels in a data attribute and is read
                     // by the delegated click handler below, never spliced into
                     // an inline onclick.
@@ -2365,7 +2368,7 @@ function get_notifications($read_mark) {
                     while (i < data_length) {
                         notification_id = parseInt(response.data[i].id, 10) || 0;
                         notification_user = h(String(response.data[i].user || ''));
-                        notification_time = h(String(response.data[i].time || ''));
+                        notification_time = String(response.data[i].time || '');
                         notification_type = h(String(response.data[i].type || ''));
 
                         response.data[i].description = '<div class="notification-description bg-body-secondary" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
