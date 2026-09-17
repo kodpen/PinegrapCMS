@@ -1,6 +1,11 @@
-# Gelistirme agaci ve ic belgeler - asla yayinlanmaz
+# Gelistirme agaci - asla yayinlanmaz
 /dev/
-/docs/
+
+# Ic belgeler: depoda yalnizca katki rehberleri durur, planlar ve
+# degisiklik gunlugu gelistirme makinasinda kalir
+/docs/*
+!/docs/component-development-guide.md
+!/docs/LANG_USAGE.md
 
 # Yerel calisma artiklari
 *.log

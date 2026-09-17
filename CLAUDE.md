@@ -80,7 +80,7 @@ geriye dönük uyumluluk, güvenlik kapıları).
 - Anahtar **`tr.json`'da bulunmak zorundadır**; yeni string eklediysen
   `tr.json`'a da ekle.
 - Değişken `{var}` / `{var:N}` ile girer, anahtara gömülmez. `lang()`
-  sözdizimi için `docs/LANG_USAGE.md` (depo dışı).
+  sözdizimi için `docs/LANG_USAGE.md`.
 
 ### 4. Yeni dosya başlığı
 
@@ -280,18 +280,17 @@ doğrulayamadığını** yaz (çalışan örnek kurulmadıysa bunu açıkça bel
 
 ## Ayrıntı nerede
 
-Ayrıntılı iç belgeler (planlar, kılavuzlar, değişiklik günlüğü, ~370 KB'lık tam
-bağlam dosyası) **bu depoda değildir**; geliştirme makinasındaki `docs/`
-klasöründe durur:
+Depoda iki katkı rehberi bulunur ve bunlar sandbox'ta okunabilir:
 
-| Konu | Dosya (depo dışı) |
+| Konu | Dosya |
 |---|---|
-| Tüm ayrıntı, gerekçe ve vaka notları | `docs/CLAUDE-tam.md` |
-| Değişiklik günlüğü | `docs/degisiklikler.md` |
-| Palette component yazımı | `docs/component-development-guide.md` |
-| `lang()` sözdizimi | `docs/LANG_USAGE.md` |
-| Yükseltme / migration sistemi | `docs/_plan_upgrade_sistemi.md` |
-| `functions.php` bölünmesi | `docs/_plan_functions_bolme.md` |
+| Palette component yazımı (zorunlu okuma) | `docs/component-development-guide.md` |
+| `lang()` sözdizimi ve kullanımı | `docs/LANG_USAGE.md` |
 
-Bu dosyalara erişimin yoksa **tahmin etme**: yukarıdaki kurallarla yetin,
-emin olmadığın noktayı PR açıklamasında soru olarak yaz.
+Geri kalan iç belgeler — tam bağlam dosyası, değişiklik günlüğü ve konu
+planları — **bilerek depo dışındadır** ve yalnız geliştirme makinasında durur
+(`docs/CLAUDE-tam.md`, `docs/degisiklikler.md`, `docs/_plan_*.md`).
+
+Bu dosyaları sandbox'ta **arama, olmadıklarını sorun sanma ve içeriklerini
+tahmin etme.** Yukarıdaki kurallar günlük işin tamamına yeter; bir kararın
+gerekçesi gerçekten gerekiyorsa PR açıklamasına soru olarak yaz, uydurma.
