@@ -41,6 +41,53 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Panel kayıt akışları yanlış ya da boş değer yazıyordu (2026-09-17)
+
+Dört kayıt akışı sessizce veri bozuyordu. `add_page.php` hızlı sipariş,
+alışveriş sepeti, kargo yöntemi ve sipariş önizleme sayfa türlerinde
+`product_description_type` alanını ön eksiz POST anahtarından okuyordu; alan
+formda `<tür>_product_description_type` adıyla geldiği için her yeni sayfa `''`
+ile oluşturuluyor, strict modda INSERT düşüyordu. `product_builder.php` ürün
+düzenleme ekranında `custom_field_1..4` girdilerini değersiz çiziyordu; ürünü
+herhangi bir sebeple kaydeden kullanıcı dört özel alanı da siliyordu.
+`edit_file.php`'de "WebP'ye dönüştür" işaretlenince `photo.webp` yazılıyor,
+ardından kayıt adımı orijinal `photo.jpg`'yi aynı ada yeniden adlandırıp WebP
+baytlarını JPEG ile eziyordu — dosya `.webp` uzantılı ama JPEG içerikli
+kalıyordu; dal düğme dağıtımından önce koştuğu için Çoğalt da kaydın hâlâ işaret
+ettiği kaynak dosyayı siliyordu. `smtp_settings.php` `EMAIL_CAMPAIGN_JOB` için
+tırnaklı `'false'` yazıyordu; string PHP'de truthy olduğundan kampanya işi
+panelden hiç kapatılamıyordu.
+
+### Düzeltmeler
+
+- Dört ticaret sayfa türü ön ekli alanı okuyor, boşsa `full_description`'a
+  düşüyor; eski kurulumlarda eksik değerle davranış değişmiyor.
+- Ürün ekranı özel alanları `$row`'daki değerle dolduruyor.
+- WebP üzerine yazma dalı yalnız Kaydet / Kaydet ve Dön düğmelerinde koşuyor —
+  orijinal o blokta siliniyor, dolayısıyla yalnız satır güncellenecekken
+  çalışabilir. Dönüşüm başarılıysa kaynak kaldırılıyor ve
+  `$webp_replaced_original` bayrağı SAVE bloğundaki yeniden adlandırmayı
+  atlatıyor; `imagewebp()` başarısızsa `output_error()` ile hata gösteriliyor
+  (`tr.json`'a bir anahtar). Çoğalt ile dal hiç çalışmıyor, kaynak yerinde
+  kalıyor ve kopya oradan alınıyor.
+- `EMAIL_CAMPAIGN_JOB` config'e tırnaksız `true|false` yazılıyor, eski tırnaklı
+  satır önce temizleniyor. Okuma tek yere toplandı: `includes/fn/mail.php`'deki
+  `email_campaign_job_enabled()` boolean'ı da eski `'true'`/`'false'` string
+  biçimlerini de doğru yorumluyor; `api.php`, `includes/fn/cron.php`,
+  `email_campaign_job.php`, kampanya ekranları ve `includes/templates/si.php`
+  buradan okuyor. Yardımcı olmadan config'i yeniden kaydetmemiş her kurulum
+  eski string değerle yaşamaya devam ederdi.
+
+### Doğrulama
+
+`php tools/lint.php` ve `php tools/check_lang.php` temiz; şema değişikliği yok,
+JS dokunulmadı. **Çalışan örnek kurulmadı**: Kaydet / Kaydet ve Dön / Çoğalt
+akışları `convert_webp` kutusuyla çalışma zamanında denenmedi;
+`submit_save` / `submit_save_and_return` alan adları aynı dosyadaki SAVE
+dağıtım koşulundan alındı, render edilen forma karşı yeniden kontrol edilmedi.
+`EMAIL_CAMPAIGN_JOB` yazımı gerçek bir `config.php` üzerinde, ürün ve sayfa
+kayıt akışları çalışma zamanında koşturulmadı.
+
 ## 2026.4.4 — 2026-09-17 turu: beş dal tek gövdede, doğrulama durumu (2026-09-17)
 
 Gün içinde eşzamanlı ajanlarla yürütülen beş iş `main`'e birleştirildi:
