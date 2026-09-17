@@ -9163,7 +9163,7 @@ switch ($action) {
                     } else {
                         $payment_gateway_host = 'https://api.iyzipay.com';
                     }
-                    require_once('assets/iyzipay-php/IyzipayBootstrap.php');
+                    require_once('includes/iyzipay-php/IyzipayBootstrap.php');
                     IyzipayBootstrap::init();
                     $card_binNumber = substr($card_number_without_spaces, 0, 6);
                     // Conversation ID Digits amount
@@ -9383,7 +9383,7 @@ switch ($action) {
             ));
             exit();
         }
-        require_once(dirname(__FILE__) . '/assets/iyzipay-php/IyzipayBootstrap.php');
+        require_once(dirname(__FILE__) . '/includes/iyzipay-php/IyzipayBootstrap.php');
         IyzipayBootstrap::init();
         $eo_inst_host = (ECOMMERCE_PAYMENT_GATEWAY_MODE === 'test')
             ? 'https://sandbox-api.iyzipay.com' : 'https://api.iyzipay.com';
