@@ -183,6 +183,20 @@ function pg_settings_categories()
             ),
         ),
 
+        'api' => array(
+            'label' => lang('API'),
+            'icon'  => 'bi-plug',
+            'description' => lang('The application API: the master switch, HTTPS, the public description, log retention and the upload folder.'),
+            'sections' => array(
+                'pgset-api'         => lang('Application API'),
+                'pgset-api-storage' => lang('Uploads & Logs'),
+            ),
+            'keywords' => array(
+                'pgset-api'         => array('api', 'uygulama', 'application', 'anahtar', 'key', 'https', 'openapi', 'swagger', 'webhook', 'entegrasyon', 'integration'),
+                'pgset-api-storage' => array('gunluk', 'günlük', 'log', 'saklama', 'retention', 'yukleme klasoru', 'upload folder', 'dosya'),
+            ),
+        ),
+
     );
 }
 
@@ -477,6 +491,17 @@ function pg_settings_status($key, $row)
                     'vars'   => $methods,
                     'suffix' => (($methods == 1) ? '' : 's'))));
 
+        case 'api':
+            if (!isset($row['api_enabled'])) {
+                return array('', '');
+            }
+            if (!$on('api_enabled')) {
+                return array('off', lang('API is off'));
+            }
+            return array(
+                'ok',
+                lang('API is on') . ' · ' . ($on('api_require_https') ? lang('HTTPS required') : lang('HTTP allowed')));
+
         case 'system':
             $auto = $on('job_dispatch_enabled');
             $jobs = 0;
@@ -571,6 +596,13 @@ function pg_settings_facts($key, $row)
                 lang('Payment Gateway') => $value('ecommerce_payment_gateway', $dash),
                 lang('Tax')             => $yesno('ecommerce_tax'),
                 lang('Shipping')        => $yesno('ecommerce_shipping'),
+            );
+
+        case 'api':
+            return array(
+                lang('Public API description') => $yesno('api_openapi_public'),
+                lang('Log Retention')          => (isset($row['api_log_retention_days']) ? (int) $row['api_log_retention_days'] : 30) . ' ' . lang('day(s)'),
+                lang('Upload Folder')          => ((isset($row['api_upload_folder_id']) && ((int) $row['api_upload_folder_id'] > 0)) ? lang('Selected') : $dash),
             );
 
         case 'system':
