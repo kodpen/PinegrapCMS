@@ -95,6 +95,58 @@ $file_list = array(
     'mailchimp_settings.php',
     'includes/templates/mailchimp_settings.php',
 
+
+    // The pre-lib/ asset tree, superseded in 2026.4.4 and dropped from the
+    // package. Every library below is also carried under assets/lib, the
+    // bundles moved to assets/js and assets/css, the PHP libraries belong in
+    // includes/, and includes/ now owns the language and template folders.
+    // Installations upgraded from an older package still have these on disk,
+    // so the names stay here until those sites have run the cleanup.
+    'assets/DataTables',
+    'assets/GoldenLayout',
+    'assets/Inputmask-5.x',
+    'assets/Jquery',
+    'assets/JsBarcode',
+    'assets/backend.src.css',
+    'assets/backend.src.js',
+    'assets/bootstrap-5.3.0',
+    'assets/bootstrap-5.3.8',
+    'assets/boxpacker',
+    'assets/chartjs',
+    'assets/chat_backend.min.js',
+    'assets/chat_backend.src.js',
+    'assets/ckeditor_4_20',
+    'assets/class_suggestions.js',
+    'assets/codemirror',
+    'assets/codemirror-5.65.9',
+    'assets/codemirror_modal.js',
+    'assets/colorpicker',
+    'assets/dropzone',
+    'assets/file-explorer',
+    'assets/folder_tree.js',
+    'assets/image_editor',
+    'assets/iyzipay-php',
+    'assets/json2',
+    'assets/lazy',
+    'assets/lightbox',
+    'assets/local',
+    'assets/multiselect-checkbox',
+    'assets/page_designer.css',
+    'assets/page_designer.js',
+    'assets/pg_carousel_layout.css',
+    'assets/pg_civ_variants.js',
+    'assets/pg_lightbox.css',
+    'assets/pg_lightbox.js',
+    'assets/phpexcel',
+    'assets/phpmailer',
+    'assets/product_builder.js',
+    'assets/select2',
+    'assets/stripe',
+    'assets/style_designer.css',
+    'assets/style_designer.js',
+    'assets/templates',
+    'assets/tiny_mce_3_5_10',
+    'assets/vendor',
 );
 
 // Everything the software drops in data/temp is a cache or a scratch file that is written
