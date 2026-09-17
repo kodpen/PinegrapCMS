@@ -3317,6 +3317,16 @@ function prepare_form_data_for_output($data, $type, $prepare_for_html = true, $d
                 }
 
                 break;
+            // Form data of type html is the markup a WYSIWYG text area was
+            // filled in with, and it is printed unescaped. The author may be an
+            // anonymous visitor, so the markup is filtered on the way out too;
+            // this covers rows stored before the filter existed.
+            case 'html':
+                $output = $data;
+                if ($prepare_for_html == false) {
+                    $output = pg_sanitize_rich_text($output);
+                }
+                break;
             default:
                 $output = $data;
                 break;

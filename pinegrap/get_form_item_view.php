@@ -1228,9 +1228,11 @@ function get_form_item_view($properties) {
                         case 'custom':
                             $data = $submitted_form['field_' . $field_id];
 
-                            // if this field is a WYSIWYG field, then do not prepare for HTML
+                            // if this field is a WYSIWYG field, then do not prepare for HTML;
+                            // the markup was typed by the submitter, so it is filtered instead
                             if ($field_wysiwyg == 1) {
                                 $prepare_for_html = FALSE;
+                                $data = pg_sanitize_rich_text($data);
                             }
 
                             break;

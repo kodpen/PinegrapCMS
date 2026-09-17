@@ -207,11 +207,32 @@ function add_recipient($ship_to_name)
     }
 }
 
+// Whether the scheduled e-mail campaign job is switched on in config.php.
+// The define is written as a real boolean, but older installers and settings
+// screens stored it as the quoted strings 'true' / 'false'; the string 'false'
+// is truthy in PHP, so every consumer goes through here instead of testing the
+// constant directly.
+function email_campaign_job_enabled()
+{
+    if (defined('EMAIL_CAMPAIGN_JOB') == false) {
+        return false;
+    }
+
+    $value = EMAIL_CAMPAIGN_JOB;
+
+    if (is_string($value) == true) {
+        $value = strtolower(trim($value));
+        return (($value === 'true') || ($value === '1'));
+    }
+
+    return ($value == true);
+}
+
 function get_email_campaign_status_name($status)
 {
     switch ($status) {
         case 'ready':
-            if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB) {
+            if (email_campaign_job_enabled()) {
                 return lang('Scheduled');
             } else {
                 return lang('Ready to Send');
@@ -360,7 +381,9 @@ function send_comment_email_to_administrators($comment_id)
             $query_string .= '&';
         }
         $query_string .= 'comments=all';
-        $body .= "\n" . lang(array('string' => 'The {var:1} appears at the link below.', 'vars' => $comment_label_lowercase)) . "\n" . "\n" . URL_SCHEME . HOSTNAME . PATH . encode_url_path($page['name']) . $query_string . '#c-' . $comment['id'];
+        // Mailed links use the configured hostname: comments arrive from anonymous
+        // visitors, and a spoofed Host header must not choose where this points.
+        $body .= "\n" . lang(array('string' => 'The {var:1} appears at the link below.', 'vars' => $comment_label_lowercase)) . "\n" . "\n" . URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($page['name']) . $query_string . '#c-' . $comment['id'];
         email(array(
             'to' => $administrator_email_addresses,
             'from_name' => ORGANIZATION_NAME,
@@ -477,7 +500,7 @@ function send_comment_email_to_custom_form_submitter($comment_id)
 
             </div>
 
-            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id) . '?r=' . $reference_code . '&comments=all#c-' . $comment_id) . '">View or Reply</a></div>';
+            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . '?r=' . $reference_code . '&comments=all#c-' . $comment_id) . '">View or Reply</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
         $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
         email(array(
@@ -614,7 +637,7 @@ function send_comment_email_to_watchers($comment_id)
 
             </div>
 
-            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME . PATH . $page_name . $query_string . '#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
+            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . $page_name . $query_string . '#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
         $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
         // loop through all watchers in order to e-mail each one

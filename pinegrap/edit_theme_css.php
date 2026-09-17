@@ -36,7 +36,7 @@ if (!$_POST) {
     $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
 
     $output_breadcrumb_content = '';
-    // Faz 13: conditional breadcrumb parents based on referer screen
+    // Conditional breadcrumb parents based on the referring screen.
     $pg_breadcrumb_items = array();
     if($_REQUEST['from'] == 'edit_design_file'){
         $output_breadcrumb_content =
@@ -221,11 +221,20 @@ if (!$_POST) {
     
     // else, save the file
     } else {
+        // The path is taken from the stored row, never from the posted name:
+        // a posted name is under the caller's control and could point anywhere
+        // on the file system, past the neutralisation that uploads go through.
+        $file_row = db_item("SELECT id, name FROM files WHERE id = '" . (int)($_POST['id'] ?? 0) . "'");
+        $file_name = is_array($file_row) ? (string)$file_row['name'] : '';
+        if (($file_name === '') || ($file_name !== basename($file_name)) || (strpos($file_name, '..') !== false)) {
+            output_error(lang('Sorry, the file could not be found.'));
+        }
+
         // delete the existing file. we have to do this in order to avoid permission errors in certain cirumstances
-        unlink(FILE_DIRECTORY_PATH . '/' . $_POST['name']);
+        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
         
         // update the content in the file
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $_POST['name'], 'w');
+        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
         fwrite($handle, $_POST['code']);
         fclose($handle);
         
@@ -233,14 +242,14 @@ if (!$_POST) {
         $query =
             "UPDATE files 
             SET 
-                size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $_POST['name'])) . "',
+                size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
                 timestamp = UNIX_TIMESTAMP(), 
                 user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
+            WHERE id = '" . (int)$file_row['id'] . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // log the change and add a notice that the file was modified
-        log_activity(lang(array('string'=>'the css for theme file ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'the css for theme file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);
 
         // if the user came from the edit theme file or edit design file screens, then add notice
         if (
@@ -264,7 +273,7 @@ if (!$_POST) {
         } else {
             // send the user to a screen that will reload the theme so that it will clear the user's cache
             // so that the user does not view an old version of the theme
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/reload_theme.php?name=' . urlencode($_POST['name']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/reload_theme.php?name=' . urlencode($file_name) . '&send_to=' . urlencode($_POST['send_to']));
             exit();
         }
     }

@@ -1173,7 +1173,7 @@ function get_express_order($properties) {
                     $name = $order_item['product_name'];
                     $quantity = $order_item['quantity'];
                     $product_price = $order_item['price'] / 100;
-                    $product_tax = $order_item['tax'] / 100;
+                    $product_tax = $order_item['tax_total'] / 100;
                     $offer_id = $order_item['offer_id'];
                     $added_by_offer = $order_item['added_by_offer'];
                     $discounted_by_offer = $order_item['discounted_by_offer'];
@@ -1292,7 +1292,8 @@ function get_express_order($properties) {
                     }
                     
                     $total_price = $product_price * $quantity;
-                    $total_tax = $product_tax * $quantity;
+                    // tax_total already covers the line, so no quantity here.
+                    $total_tax = $product_tax;
                     
                     $output_total_price = prepare_price_for_output($total_price * 100, FALSE, $discounted_price = '', 'html');
                     

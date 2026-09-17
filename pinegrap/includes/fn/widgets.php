@@ -483,6 +483,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             form_fields.name    AS field_name,
             form_fields.label   AS field_label,
             form_fields.type    AS field_type,
+            form_fields.wysiwyg AS field_wysiwyg,
             files.name          AS file_name
          FROM form_data
          LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -526,6 +527,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             if ($field_type === 'file upload' && !empty($r['file_name'])) {
                 $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
                 $value = $output_base . $r['file_name'];
+            }
+            // The value is spliced into the rendered markup as-is, and it was typed
+            // by the submitter. Only a WYSIWYG text area may carry markup, and that
+            // goes through the allow-list filter; everything else is escaped.
+            if ($field_type === 'text area' && !empty($r['field_wysiwyg'])) {
+                $value = pg_sanitize_rich_text($value);
+            } else {
+                $value = h($value);
             }
 
             // Collect every identifier string we might want to match against
@@ -845,6 +854,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.name    AS field_name,
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
+                form_fields.wysiwyg AS field_wysiwyg,
                 files.name          AS file_name
              FROM form_data
              LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -864,11 +874,11 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__id'             => (string)$form_row['id'],
             '__reference'      => (string)$form_row['reference_code'],
             '__submitted_at'   => !empty($form_row['submitted_timestamp']) ? date('Y-m-d H:i', (int)$form_row['submitted_timestamp']) : '',
-            '__submitted_by'   => $submitter_username,
+            '__submitted_by'   => h($submitter_username),
             '__user'           => (string)$form_row['user_id'],
             '__detail_url'     => $self_url !== '' ? $self_url : '#',
-            '__address_name'   => isset($form_row['address_name']) ? (string)$form_row['address_name'] : '',
-            '__tracking_code'  => isset($form_row['tracking_code']) ? (string)$form_row['tracking_code'] : '',
+            '__address_name'   => isset($form_row['address_name']) ? h((string)$form_row['address_name']) : '',
+            '__tracking_code'  => isset($form_row['tracking_code']) ? h((string)$form_row['tracking_code']) : '',
             '__not_found'      => '',  // empty when found — designer's not_found region renders empty
         );
 
@@ -897,6 +907,13 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                     $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
                     $value = $output_base . $r['file_name'];
                 }
+                // Same rule as form_list_view: submitter-typed values are escaped,
+                // WYSIWYG markup is filtered.
+                if ($field_type === 'text area' && !empty($r['field_wysiwyg'])) {
+                    $value = pg_sanitize_rich_text($value);
+                } else {
+                    $value = h($value);
+                }
                 $keys = array();
                 if (!empty($r['field_name']))  $keys[] = (string)$r['field_name'];
                 if (!empty($r['data_name']))   $keys[] = (string)$r['data_name'];
@@ -918,7 +935,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 }
                 // Optional label tokens: __label suffix when toggled on.
                 if ($show_field_labels && !empty($r['field_name'])) {
-                    $values[(string)$r['field_name'] . '__label'] = isset($r['field_label']) ? (string)$r['field_label'] : '';
+                    $values[(string)$r['field_name'] . '__label'] = isset($r['field_label']) ? h((string)$r['field_label']) : '';
                 }
             }
         }
@@ -3336,9 +3353,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
 //   cal_month  — 1-12 (defaults to current month)
 //   cal_year   — four-digit year (defaults to current year)
 //
-// NOTE: If the calendar tables (calendar, calendar_events, or similar) are not
-// present in this installation the function returns a placeholder comment rather
-// than a fatal error.
+// NOTE: If the calendar_events table is not present in this installation the
+// function returns a placeholder comment rather than a fatal error.
 function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
@@ -3411,60 +3427,61 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     $prev_url = $current_url . '?' . http_build_query($prev_params);
     $next_url = $current_url . '?' . http_build_query($next_params);
 
-    // Fetch events for the selected month.
-    // Try the calendar_events table first (native Pinegrap calendar system).
-    // If the table does not exist fall back to an empty array and add a comment.
+    // Fetch events for the selected month from the native calendar_events table.
+    // db_items()/db_value() exit on a failed query, so the table is probed with
+    // SHOW TABLES (which never fails) before its columns are read.
     $events = array();
     $table_error = false;
 
     $month_start = sprintf('%04d-%02d-01', $cal_year, $cal_month);
     $month_end   = date('Y-m-t', mktime(0, 0, 0, $cal_month, 1, $cal_year));
 
-    // Check for native calendar_events table
-    $table_check = @db_value("SELECT 1 FROM calendar_events LIMIT 1");
-    // db_value returns false on error; suppress with @ for table-missing case
-    if ($table_check !== false || $table_check === '1' || $table_check === null) {
-        // Attempt to fetch — if the query fails we catch it silently
+    if (db_value("SHOW TABLES LIKE 'calendar_events'") !== null) {
+        // Event detail links point to the calendar event view page that a calendar
+        // view page is tied to. The widget has no page context, so the first
+        // configured one is used; links are omitted when none is configured.
+        $event_page_name = (string)db_value(
+            "SELECT p.page_name
+             FROM calendar_view_pages cvp
+             INNER JOIN page p ON p.page_id = cvp.calendar_event_view_page_id
+             WHERE cvp.calendar_event_view_page_id > 0
+             ORDER BY cvp.id ASC
+             LIMIT 1"
+        );
+
         $event_rows = db_items(
-            "SELECT ce.event_name, ce.start_date, ce.start_time, ce.description,
-                    p.page_name
+            "SELECT ce.id, ce.name, ce.start_time, ce.all_day, ce.short_description
              FROM calendar_events ce
-             LEFT JOIN page p ON ce.page_id = p.page_id
-             WHERE ce.start_date >= '" . e($month_start) . "'
-               AND ce.start_date <= '" . e($month_end) . "'
-             ORDER BY ce.start_date ASC, ce.start_time ASC
+             WHERE ce.published = 1
+               AND ce.start_time >= '" . e($month_start) . " 00:00:00'
+               AND ce.start_time <= '" . e($month_end) . " 23:59:59'
+             ORDER BY ce.start_time ASC
              LIMIT " . $cal_events_limit
         );
-        if (is_array($event_rows)) {
-            $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-            foreach ($event_rows as $r) {
-                $event_date_ts = strtotime((string)$r['start_date']);
-                if ($event_date_ts && $event_date_ts > 0) {
-                    if ($cal_date_format === 'd M Y') {
-                        $event_date = date('d', $event_date_ts) . ' ' . $month_names_tr[(int)date('n', $event_date_ts)] . ' ' . date('Y', $event_date_ts);
-                    } else {
-                        $event_date = date($cal_date_format, $event_date_ts);
-                    }
+        $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+        foreach ($event_rows as $r) {
+            $event_start_ts = strtotime((string)$r['start_time']);
+            if ($event_start_ts && $event_start_ts > 0) {
+                if ($cal_date_format === 'd M Y') {
+                    $event_date = date('d', $event_start_ts) . ' ' . pg_widget_month_name((int)date('n', $event_start_ts)) . ' ' . date('Y', $event_start_ts);
                 } else {
-                    $event_date = (string)$r['start_date'];
+                    $event_date = date($cal_date_format, $event_start_ts);
                 }
-                $event_time    = (!empty($r['start_time']) && $r['start_time'] !== '00:00:00')
-                    ? substr((string)$r['start_time'], 0, 5)
-                    : '';
-                $event_url = !empty($r['page_name'])
-                    ? $output_base . encode_url_path((string)$r['page_name'])
-                    : '';
-                $events[] = array(
-                    'title'   => (string)$r['event_name'],
-                    'date'    => $event_date,
-                    'time'    => $event_time,
-                    'url'     => $event_url,
-                    'excerpt' => (string)$r['description'],
-                );
+                $event_time = ((int)$r['all_day'] === 0) ? date('H:i', $event_start_ts) : '';
+            } else {
+                $event_date = substr((string)$r['start_time'], 0, 10);
+                $event_time = '';
             }
-        } else {
-            // Table may not exist — flag for diagnostic comment
-            $table_error = true;
+            $event_url = ($event_page_name !== '')
+                ? $output_base . encode_url_path($event_page_name) . '?id=' . (int)$r['id']
+                : '';
+            $events[] = array(
+                'title'   => (string)$r['name'],
+                'date'    => $event_date,
+                'time'    => $event_time,
+                'url'     => $event_url,
+                'excerpt' => (string)$r['short_description'],
+            );
         }
     } else {
         $table_error = true;

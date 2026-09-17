@@ -68,7 +68,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <dt><?=lang('Environment')?></dt>
                                 <dd> <?php if (defined('ENVIRONMENT') and ENVIRONMENT == 'development'): ?> <?=lang('development')?> <?php else: ?> <?=lang('production')?> <?php endif ?> </dd>
                                 <dt><?=lang('Email Campaign Job')?></dt>
-                                <dd> <?php if (defined('EMAIL_CAMPAIGN_JOB') and EMAIL_CAMPAIGN_JOB): ?> <?=lang('On')?> <?php else: ?> <?=lang('Off')?> <?php endif ?> </dd>
+                                <dd> <?php if (email_campaign_job_enabled()): ?> <?=lang('On')?> <?php else: ?> <?=lang('Off')?> <?php endif ?> </dd>
                                 
                             </dl>
                         </div>

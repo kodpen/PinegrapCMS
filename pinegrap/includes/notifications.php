@@ -189,12 +189,19 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 // a reference code, and the sentence around it is built here - so both the
 // dropdown and the push sender have to agree on it. They agree by asking the
 // same function.
+//
+// title, description and details are returned as HTML: the dropdown inserts
+// them as markup (details carries a <br/>), so every value that came from the
+// row is escaped here. The row's title is whatever the creator passed - a
+// comment message typed by an anonymous visitor, a product name, a billing
+// name - and must never reach the panel as markup. pg_notification_body()
+// strips the tags and decodes the entities again for a plain-text banner.
 function pg_notification_display($notification)
 {
 	$action = isset($notification['action']) ? $notification['action'] : '';
 
 	$display = array(
-		'title'       => isset($notification['title']) ? $notification['title'] : '',
+		'title'       => isset($notification['title']) ? h($notification['title']) : '',
 		'description' => '',
 		'details'     => '',
 		'url'         => '#!',
@@ -206,8 +213,8 @@ function pg_notification_display($notification)
 	if ($action == 'new_order') {
 
 		$display['title']   = lang('Congratulations! There is a new successful order.');
-		$display['details'] = lang('Order Number') . ': #' . $notification['title'] . '<br/>' . lang('Total') . ':' . $notification['order_total'];
-		$display['url']     = 'view_order.php?id=' . $notification['order_id'];
+		$display['details'] = lang('Order Number') . ': #' . h($notification['title']) . '<br/>' . lang('Total') . ':' . h($notification['order_total']);
+		$display['url']     = 'view_order.php?id=' . (int) $notification['order_id'];
 		$display['icon']     = 'assets/images/notification-order.png';
 		$display['badge']    = 'assets/images/notification-order-badge.png';
 		$display['action']  = $action;
@@ -215,8 +222,8 @@ function pg_notification_display($notification)
 	} elseif ($action == 'out_stock') {
 
 		$display['title']   = lang('A product out of stock by purchased.');
-		$display['details'] = $notification['title'];
-		$display['url']     = 'edit_product.php?id=' . $notification['product_id'];
+		$display['details'] = h($notification['title']);
+		$display['url']     = 'edit_product.php?id=' . (int) $notification['product_id'];
 		$display['icon']     = 'assets/images/notification-order.png';
 		$display['badge']    = 'assets/images/notification-order-badge.png';
 		$display['action']  = $action;
@@ -224,8 +231,8 @@ function pg_notification_display($notification)
 	} elseif ($action == 'form_submited') {
 
 		$display['title']   = lang('A custom form was submitted.');
-		$display['details'] = lang('Reference Code') . ':' . $notification['title'];
-		$display['url']     = 'edit_submitted_form.php?id=' . $notification['form_id'];
+		$display['details'] = lang('Reference Code') . ':' . h($notification['title']);
+		$display['url']     = 'edit_submitted_form.php?id=' . (int) $notification['form_id'];
 		$display['icon']     = 'assets/images/notification-form.png';
 		$display['badge']    = 'assets/images/notification-form-badge.png';
 		$display['action']  = $action;
@@ -251,9 +258,9 @@ function pg_notification_display($notification)
 
 		$comments_label = ($comment) ? $comment['comments_label'] : '';
 
-		$display['title']       = lang(array('string' => 'There is a new {var:1} exist.', 'vars' => array($comments_label)));
-		$display['description'] = $comments_label . ': ' . $notification['title'];
-		$display['url']         = 'edit_comment.php?id=' . (($comment) ? $comment['id'] : '');
+		$display['title']       = lang(array('string' => 'There is a new {var:1} exist.', 'vars' => array(h($comments_label))));
+		$display['description'] = h($comments_label) . ': ' . h($notification['title']);
+		$display['url']         = 'edit_comment.php?id=' . (($comment) ? (int) $comment['id'] : '');
 		$display['icon']     = 'assets/images/notification-comment.png';
 		$display['badge']    = 'assets/images/notification-comment-badge.png';
 		$display['action']      = $action;

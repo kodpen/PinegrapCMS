@@ -6387,7 +6387,7 @@ switch ($action) {
                         foreach ($output_campaigns as $output_campaign) {
 
                             // Prepare start time display if campaign job is enabled
-                            if (defined('EMAIL_CAMPAIGN_JOB') && EMAIL_CAMPAIGN_JOB) {
+                            if (email_campaign_job_enabled()) {
                                 if (isset($output_campaign['start_time']) && $output_campaign['start_time'] == '0000-00-00 00:00:00') {
                                     $start_time = '';
                                 } else {

@@ -1984,7 +1984,8 @@ function pg_chat_site_send($conversation_id, $body, $page_url)
         if (function_exists('create_notification')) {
             create_notification(array(
                 'action' => 'custom',
-                'title' => lang('New site chat message') . ': ' . h($preview),
+                // Stored raw; pg_notification_display() escapes it for the panel.
+                'title' => lang('New site chat message') . ': ' . $preview,
                 'user' => $operator['username']
             ));
         }

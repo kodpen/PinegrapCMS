@@ -68,15 +68,16 @@ if (!$_POST) {
     $account_options = array();
     $account_options[lang('Choose an account')] = '';
 
+    // liveform prints option labels as-is; account titles come from contact names typed at checkout.
     foreach (erp_accounts(array('status' => 'active')) as $account) {
-        $account_options[$account['title']] = (string) (int) $account['id'];
+        $account_options[h($account['title'])] = (string) (int) $account['id'];
     }
 
     $till_options = array();
     $till_options[lang('Choose a till or bank account')] = '';
 
     foreach ((array) db_items("SELECT id, name FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
-        $till_options[$till['name']] = (string) (int) $till['id'];
+        $till_options[h($till['name'])] = (string) (int) $till['id'];
     }
 
     $method_options = array();
@@ -119,8 +120,8 @@ if (!$_POST) {
                     continue;
                 }
 
-                $label = $open_invoice['account_title'] . ' - ' . $open_invoice['full_number']
-                    . ' - ' . erp_money_out($still_open);
+                $label = h($open_invoice['account_title'] . ' - ' . $open_invoice['full_number']
+                    . ' - ' . erp_money_out($still_open));
                 $invoice_options[$label] = (string) (int) $open_invoice['id'];
             }
 
