@@ -749,6 +749,18 @@
          ödeme tarihi, ürüne KDV istisna kodu. Üçü de internet satışlarının
          e-arşiv faturasında zorunlu ve sistemde hiçbir yerde tutulmuyordu.
 
+  [YENİ] [ŞEMA] Fatura PDF olarak alınıyor. Fatura ekranının araç çubuğundan
+         belge A4 PDF olarak açılır veya indirilir. Belge bir HTML şablonundan
+         üretilir; yazılımla gelen şablonu ERP → Ayarlar'dan düzenleyebilir,
+         son fatura üzerinde önizleyebilir ve varsayılana döndürebilirsiniz.
+         İnternet satışı faturasında ödeme şekli ve tarihi, taşıyıcı ve
+         gönderim tarihi belgede ayrı bir kutuda yer alır.
+
+         Ayarlar → E-Ticaret → ERP kartına Satıcı VKN / TCKN ve Satıcı Vergi
+         Dairesi alanları eklendi; belgenin satıcı bloğunda basılır. Bu
+         özellik PHP 7.1 ve üzeri ister; daha eski PHP'de PDF düğmesi çalışmaz,
+         panelin geri kalanı etkilenmez.
+
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
 
