@@ -143,35 +143,35 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>$from)) . '
                     <table class="field">
                         <tr>
-                            <th colspan="2"><h2>Theme File Name</h2></th>
+                            <th colspan="2"><h2>' . lang('Theme File Name') . '</h2></th>
                         </tr>
                         <tr>
-                            <td>Name:</td>
+                            <td>' . lang('Name') . ':</td>
                             <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'value'=>$file_name, 'size'=>'60', 'maxlength'=>'100')) . '</td>
                         </tr>
                         <tr>
-                            <th colspan="2"><h2>Theme File Access Control</h2></th>
+                            <th colspan="2"><h2>' . lang('Theme File Access Control') . '</h2></th>
                         </tr>
                         <tr>
-                            <td>Folder:</td>
+                            <td>' . lang('Folder') . ':</td>
                             <td><select name="folder">' . select_folder($file_folder) . '</select></td>
                         </tr>
                         <tr>
-                            <td colspan="2"><h2>Theme File Description</h2></td>
+                            <td colspan="2"><h2>' . lang('Theme File Description') . '</h2></td>
                         </tr>
                         <tr>
-                            <td style="vertical-align: top">Description:</td>
+                            <td style="vertical-align: top">' . lang('Description') . ':</td>
                             <td>' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'value'=>$description, 'rows'=>'3', 'cols'=>'50')) . '</td>
                         </tr>
                         <tr>
-                            <td colspan="2"><h2>Activate Theme to Make it Live</h2></td>
+                            <td colspan="2"><h2>' . lang('Activate Theme to Make it Live') . '</h2></td>
                         </tr>
                         <tr>
-                            <td><label for="activated_desktop_theme">Activate for Desktop:</label></td>
+                            <td><label for="activated_desktop_theme">' . lang('Activate for Desktop') . ':</label></td>
                             <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_desktop_theme', 'id'=>'activated_desktop_theme', 'value'=>'1', 'class'=>'checkbox')) . '</td>
                         </tr>
                         <tr>
-                            <td><label for="activated_mobile_theme">Activate for Mobile:</label></td>
+                            <td><label for="activated_mobile_theme">' . lang('Activate for Mobile') . ':</label></td>
                             <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_mobile_theme', 'id'=>'activated_mobile_theme', 'value'=>'1', 'class'=>'checkbox')) . '</td>
                         </tr>
                     </table>
@@ -238,17 +238,17 @@ if (!$_POST) {
         
         // log activity, add a notice to the liveform, and then send the user back to the view themes screen
         log_activity("theme file ($name) was deleted", $_SESSION['sessionusername']);
-        $liveform_view_themes->add_notice('The theme file was deleted successfully.');
+        $liveform_view_themes->add_notice(lang('The theme file was deleted successfully.'));
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_themes.php');
     
     // else then the file was selected to be saved, so save the file
     } else {
         // validate the name field
-        $liveform->validate_required_field('name', 'Name is required.');
+        $liveform->validate_required_field('name', lang('Name is required.'));
         
         // if there are not any errors, and if the name does not contain ".css", then add an error to the liveform
         if (($liveform->check_form_errors() == false) && (mb_strtolower(mb_substr($liveform->get_field_value('name'), mb_strrpos($liveform->get_field_value('name'), '.'))) != '.css')) {
-            $liveform->mark_error('name', 'The name must end with ".css".');
+            $liveform->mark_error('name', lang('The name must end with ".css".'));
         }
         
         // if there is an error, forward user back to edit theme file screen
@@ -259,11 +259,11 @@ if (!$_POST) {
         
         // if file name is invalid, output error
         if ($name == '.htaccess') {
-            $liveform->mark_error('name', 'File name is invalid.');
+            $liveform->mark_error('name', lang('File name is invalid.'));
         }
 
         if (check_name_availability(array('name' => $name, 'ignore_item_id' => $liveform->get_field_value('id'), 'ignore_item_type' => 'file')) == false) {
-            $liveform->mark_error('name', $name . ' already exists.  Please choose a different file name.');
+            $liveform->mark_error('name', lang(array('string' => '{var:1} already exists. Please choose a different file name.', 'vars' => $name)));
         }
         
         // if there is an error, forward user back to add theme file screen
@@ -532,7 +532,7 @@ if (!$_POST) {
             log_activity('theme file (' . $name . ') was deactivated for mobile', $_SESSION['sessionusername']);
         }
         
-        $notice = 'The theme file was edited successfully.';
+        $notice = lang('The theme file was edited successfully.');
         
         $liveform_view_themes->add_notice($notice);
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_themes.php');

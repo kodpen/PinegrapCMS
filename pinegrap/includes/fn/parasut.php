@@ -189,7 +189,7 @@ function _parasut_resolve_edoc_kind($identity, $token)
             'success' => false,
             'kind' => '',
             'alias' => '',
-            'error' => 'Could not check whether the buyer is registered for e-invoice: ' . _parasut_extract_error($result),
+            'error' => lang(array('string' => 'Could not check whether the buyer is registered for e-invoice: {var:1}', 'vars' => array(_parasut_extract_error($result)))),
         ];
     }
 
@@ -214,7 +214,7 @@ function _parasut_resolve_edoc_kind($identity, $token)
             'success' => false,
             'kind' => '',
             'alias' => '',
-            'error' => 'The buyer is registered for e-invoice but Parasut returned no address to send it to.',
+            'error' => lang('The buyer is registered for e-invoice but Parasut returned no address to send it to.'),
         ];
     }
 
@@ -270,7 +270,7 @@ function _parasut_track_job($job_id, $token)
             foreach ((array) $errors as $error) {
                 $messages[] = is_array($error) ? implode(' ', array_map('strval', $error)) : (string) $error;
             }
-            return ['state' => 'failed', 'error' => $messages ? implode(' | ', $messages) : 'The conversion was rejected.'];
+            return ['state' => 'failed', 'error' => $messages ? implode(' | ', $messages) : lang('The conversion was rejected.')];
         }
     }
 
@@ -468,7 +468,7 @@ function parasut_get_token()
         return [
             'success' => false,
             'token' => null,
-            'error' => 'Parasut credentials are not set. Enter them in Settings, E-commerce, Invoicing.',
+            'error' => lang('Parasut credentials are not set. Enter them in Settings, E-commerce, Invoicing.'),
         ];
     }
 
@@ -497,7 +497,7 @@ function parasut_get_token()
             db_value("SELECT RELEASE_LOCK('" . escape($lock_name) . "')");
         }
         $message = $data['error_description'] ?? 'no access token in the response';
-        return ['success' => false, 'token' => null, 'error' => 'Parasut token error: ' . $message];
+        return ['success' => false, 'token' => null, 'error' => lang(array('string' => 'Parasut token error: {var:1}', 'vars' => array($message)))];
     }
 
     _parasut_token_cache_write([
@@ -543,7 +543,7 @@ function parasut_ensure_default_warehouse($token)
     $result = _parasut_request('GET', _parasut_prefix() . '/warehouses?page[size]=1', null, $token);
 
     if ($result['http_code'] !== 200 || empty($result['body']['data'])) {
-        return ['success' => false, 'warehouse_id' => null, 'error' => 'Could not fetch stock locations: ' . _parasut_extract_error($result)];
+        return ['success' => false, 'warehouse_id' => null, 'error' => lang(array('string' => 'Could not fetch stock locations: {var:1}', 'vars' => array(_parasut_extract_error($result))))];
     }
 
     $warehouse_id = (string) $result['body']['data'][0]['id'];
@@ -558,7 +558,7 @@ function parasut_sync_product($product_id, $token)
     $result = mysqli_query(db::$con, "SELECT name, short_description, price, inventory, inventory_quantity, tax_rate, parasut_product_id FROM products WHERE id = '" . escape($product_id) . "' LIMIT 1");
     $product = mysqli_fetch_assoc($result);
     if (!$product) {
-        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => 'Product not found: ' . $product_id];
+        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product not found: {var:1}', 'vars' => array($product_id)))];
     }
 
     $track_stock = !empty($product['inventory']);
@@ -639,14 +639,15 @@ function parasut_sync_product($product_id, $token)
  * Ensure an existing Parasut product has inventory tracking enabled (physical + inventory_tracking=true)
  * AND has at least $needed_qty available stock at the given warehouse.
  *
- * Paraşüt's documented way to add stock to an existing product via API is to create an inflow
+ * Parasut's documented way to add stock to an existing product via API is to create an inflow
  * shipment_document (a "Yeni Gelen İrsaliye" / incoming stock entry). The `/stock_updates` endpoint
  * only works on products that already have stock movements — it cannot seed stock from zero, and
- * returns "Güncellenen stok miktarı bulunamadı" when there is nothing to update.
+ * returns "Güncellenen stok miktarı bulunamadı" ("no updated stock amount found") when there is
+ * nothing to update.
  *
  * @param string      $parasut_product_id
  * @param int         $needed_qty        Minimum stock that must be present for the upcoming outflow.
- * @param string|null $seed_contact_id   Paraşüt contact id to attribute the inflow document to.
+ * @param string|null $seed_contact_id   Parasut contact id to attribute the inflow document to.
  * @param string|null $warehouse_id      Warehouse to credit the stock to.
  * @param string      $token
  * @return array ['success' => bool, 'current_stock' => float, 'error' => string]
@@ -656,7 +657,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
     // 1) Fetch current product state.
     $get = _parasut_request('GET', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), null, $token);
     if ($get['http_code'] !== 200 || empty($get['body']['data'])) {
-        return ['success' => false, 'current_stock' => 0, 'error' => 'Product fetch failed: ' . _parasut_extract_error($get)];
+        return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product fetch failed: {var:1}', 'vars' => array(_parasut_extract_error($get))))];
     }
     $attrs = $get['body']['data']['attributes'] ?? [];
     $is_tracked = !empty($attrs['inventory_tracking']) && (($attrs['product_type'] ?? '') === 'physical');
@@ -676,12 +677,12 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
         ];
         $patch = _parasut_request('PUT', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), $patch_body, $token);
         if (!in_array($patch['http_code'], [200, 201])) {
-            return ['success' => false, 'current_stock' => 0, 'error' => 'Product patch failed: ' . _parasut_extract_error($patch)];
+            return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product patch failed: {var:1}', 'vars' => array(_parasut_extract_error($patch))))];
         }
         $current_stock = 0; // freshly enabled — no stock yet.
     }
 
-    // If the product already has stock movements (e.g. from sales_invoices), Paraşüt allows
+    // If the product already has stock movements (e.g. from sales_invoices), Parasut allows
     // negative stock outflow — no seeding needed. Skip the seed in that case so the main
     // shipment POST runs and its schema probes can fire.
     $has_movements = !empty($attrs['has_stock_movements']);
@@ -696,7 +697,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
             'data' => [
                 'type' => 'shipment_documents',
                 'attributes' => [
-                    'description' => 'Açılış stok girişi (Pinegrap sync)',
+                    'description' => lang('Opening stock entry (Pinegrap sync)'),
                     'issue_date' => date('Y-m-d'),
                     // inflow: true = incoming shipment / stock entry.
                     'inflow' => true,
@@ -712,7 +713,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
                                 'attributes' => [
                                     'quantity' => $seed_qty,
                                     'unit' => 'Adet',
-                                    'description' => 'Açılış stok',
+                                    'description' => lang('Opening stock'),
                                 ],
                                 'relationships' => [
                                     'product' => ['data' => ['type' => 'products', 'id' => (string) $parasut_product_id]],
@@ -729,7 +730,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
             return [
                 'success' => false,
                 'current_stock' => $current_stock,
-                'error' => 'Stock seeding (inflow) failed: ' . _parasut_extract_error($seed),
+                'error' => lang(array('string' => 'Stock seeding (inflow) failed: {var:1}', 'vars' => array(_parasut_extract_error($seed)))),
             ];
         }
         $current_stock += $seed_qty;
@@ -812,7 +813,7 @@ function parasut_sync_contact($order)
 
     if (!in_array($result['http_code'], [200, 201]) || empty($result['body']['data']['id'])) {
         $msg = _parasut_extract_error($result);
-        return ['success' => false, 'parasut_contact_id' => null, 'error' => 'Contact create failed: ' . $msg];
+        return ['success' => false, 'parasut_contact_id' => null, 'error' => lang(array('string' => 'Contact create failed: {var:1}', 'vars' => array($msg)))];
     }
 
     $parasut_contact_id = (string) $result['body']['data']['id'];
@@ -926,9 +927,10 @@ function _parasut_order_vat_rates($order_id, $order)
             return [
                 'success' => false,
                 'rates' => [],
-                'error' => 'Tax rate on file no longer matches the tax charged on order item #' . $item_id
-                    . ' (charged ' . (int) $item['tax_total'] . ', rate ' . $rate . '% gives ' . $expected_tax . ').'
-                    . ' The tax zone or the product rate was changed after this order was placed.',
+                'error' => lang(array(
+                    'string' => 'Tax rate on file no longer matches the tax charged on order item #{var:1} (charged {var:2}, rate {var:3}% gives {var:4}). The tax zone or the product rate was changed after this order was placed.',
+                    'vars' => array($item_id, (int) $item['tax_total'], $rate, $expected_tax),
+                )),
             ];
         }
 
@@ -958,7 +960,7 @@ function parasut_create_invoice($order_id)
     $order = mysqli_fetch_assoc($result);
 
     if (!$order) {
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => 'Order not found.'];
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('Order not found.')];
     }
 
     // An order discount is held on the header and is spread across the tax at the
@@ -970,7 +972,7 @@ function parasut_create_invoice($order_id)
         return [
             'success' => false,
             'parasut_invoice_id' => null,
-            'error' => 'This order carries a discount, which cannot yet be put on the invoice lines. Invoicing it would overcharge the customer, so it was not created.',
+            'error' => lang('This order carries a discount, which cannot yet be put on the invoice lines. Invoicing it would overcharge the customer, so it was not created.'),
         ];
     }
 
@@ -1057,7 +1059,7 @@ function parasut_create_invoice($order_id)
             return [
                 'success' => false,
                 'parasut_invoice_id' => null,
-                'error' => 'This order has no items but does carry tax. Add the items before invoicing it.',
+                'error' => lang('This order has no items but does carry tax. Add the items before invoicing it.'),
             ];
         }
         $detail = [
@@ -1133,9 +1135,10 @@ function parasut_create_invoice($order_id)
         return [
             'success' => false,
             'parasut_invoice_id' => null,
-            'error' => 'Invoice total does not match the order total ('
-                . number_format($built_cents / 100, 2) . ' against ' . number_format($expected_cents / 100, 2)
-                . '). The invoice was not created.',
+            'error' => lang(array(
+                'string' => 'Invoice total does not match the order total ({var:1} against {var:2}). The invoice was not created.',
+                'vars' => array(number_format($built_cents / 100, 2), number_format($expected_cents / 100, 2)),
+            )),
         ];
     }
 
@@ -1172,7 +1175,7 @@ function parasut_create_invoice($order_id)
 
     if (!in_array($inv_result['http_code'], [200, 201]) || empty($inv_result['body']['data']['id'])) {
         $msg = _parasut_extract_error($inv_result);
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => 'Invoice create failed: ' . $msg];
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array('string' => 'Invoice create failed: {var:1}', 'vars' => array($msg)))];
     }
 
     $sales_invoice_id = (string) $inv_result['body']['data']['id'];
@@ -1216,7 +1219,7 @@ function parasut_create_invoice($order_id)
         // list, and marking it here would show a document as filed that never
         // reached the tax authority.
         db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
-        return ['success' => false, 'parasut_invoice_id' => $sales_invoice_id, 'edoc_kind' => $edoc_kind, 'error' => 'Sales invoice created (ID: ' . $sales_invoice_id . ') but e-document failed: ' . $msg];
+        return ['success' => false, 'parasut_invoice_id' => $sales_invoice_id, 'edoc_kind' => $edoc_kind, 'error' => lang(array('string' => 'Sales invoice created (ID: {var:1}) but e-document failed: {var:2}', 'vars' => array($sales_invoice_id, $msg)))];
     }
 
     // The POST was accepted, which means the conversion was queued. Find out
@@ -1231,7 +1234,7 @@ function parasut_create_invoice($order_id)
             'success' => false,
             'parasut_invoice_id' => $sales_invoice_id,
             'edoc_kind' => $edoc_kind,
-            'error' => 'Sales invoice created (ID: ' . $sales_invoice_id . ') but the e-document was rejected: ' . $job['error'],
+            'error' => lang(array('string' => 'Sales invoice created (ID: {var:1}) but the e-document was rejected: {var:2}', 'vars' => array($sales_invoice_id, $job['error']))),
         ];
     }
 
@@ -1297,7 +1300,7 @@ function parasut_create_shipment($order_id)
     $order = mysqli_fetch_assoc($result);
 
     if (!$order) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => 'Order not found.'];
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
     }
 
     // Sync contact.
@@ -1328,15 +1331,16 @@ function parasut_create_shipment($order_id)
     $warehouse_result = parasut_ensure_default_warehouse($token);
     $default_warehouse_id = $warehouse_result['success'] ? $warehouse_result['warehouse_id'] : '';
     if (!$default_warehouse_id) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => 'No Parasut warehouse available: ' . ($warehouse_result['error'] ?? '')];
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang(array('string' => 'No Parasut warehouse available: {var:1}', 'vars' => array(($warehouse_result['error'] ?? ''))))];
     }
 
     $details = [];
     $skipped_count = 0;
     while ($item = mysqli_fetch_assoc($items_result)) {
-        // Skip non-shippable items — Paraşüt shipment_documents can only contain
+        // Skip non-shippable items — Parasut shipment_documents can only contain
         // stock-tracked (physical + inventory_tracking) products. Non-inventory items
-        // (services, digital goods, etc.) are silently excluded from the e-irsaliye.
+        // (services, digital goods, etc.) are silently excluded from the e-irsaliye
+        // (the e-waybill).
         if (empty($item['inventory'])) {
             $skipped_count++;
             continue;
@@ -1350,9 +1354,9 @@ function parasut_create_shipment($order_id)
             $sync = parasut_sync_product($item['product_id'], $token);
             $item_parasut_product_id = $sync['success'] ? $sync['parasut_product_id'] : '';
         }
-        // Guarantee the Paraşüt product is physical + inventory_tracking=true AND has
+        // Guarantee the Parasut product is physical + inventory_tracking=true AND has
         // enough stock. If stock is short, seed it via an inflow shipment_document
-        // (the documented Paraşüt way to add stock to a product via API).
+        // (the documented Parasut way to add stock to a product via API).
         if ($item_parasut_product_id) {
             $ensure = parasut_ensure_product_stock_tracking(
                 $item_parasut_product_id,
@@ -1365,7 +1369,7 @@ function parasut_create_shipment($order_id)
                 return [
                     'success' => false,
                     'parasut_shipment_id' => null,
-                    'error' => 'Stock preparation failed for ' . $item_name . ': ' . $ensure['error'],
+                    'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $ensure['error']))),
                 ];
             }
         }
@@ -1391,7 +1395,7 @@ function parasut_create_shipment($order_id)
         return [
             'success' => false,
             'parasut_shipment_id' => null,
-            'error' => 'This order has no shippable (stock-tracked) items. E-irsaliye cannot be created.',
+            'error' => lang('This order has no shippable (stock-tracked) items. The e-waybill cannot be created.'),
         ];
     }
 
@@ -1426,7 +1430,7 @@ function parasut_create_shipment($order_id)
     // in Parasut that this code cannot see and the operator has to delete by hand.
     if (!in_array($result['http_code'], [200, 201]) || empty($result['body']['data']['id'])) {
         $msg = _parasut_extract_error($result);
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => 'Shipment create failed: ' . $msg];
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang(array('string' => 'Shipment create failed: {var:1}', 'vars' => array($msg)))];
     }
 
     $shipment_id = (string) $result['body']['data']['id'];

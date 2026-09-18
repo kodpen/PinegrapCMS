@@ -1,13 +1,18 @@
 <?php
 /**
- * Parasut E-Invoice Inbox
+ * Pinegrap - Enterprise Website Platform
  *
- * Displays three tabs:
- *   1. Gelen E-Faturalar (purchase_bills) — incoming invoices received via GİB
- *   2. Giden Faturalar (sales_invoices)   — outgoing invoices sent via Parasut
- *   3. VKN Sorgula (e_invoice_inboxes)    — check if a VKN is registered for e-invoice
+ * Parasut e-invoice inbox. Displays three tabs:
+ *   1. Incoming e-invoices (purchase_bills)   — invoices received via GIB, the tax authority
+ *   2. Outgoing invoices (sales_invoices)     — invoices sent via Parasut
+ *   3. VKN lookup (e_invoice_inboxes)         — check whether a tax number is registered for e-invoice
  *
  * Requires ENABLE_PARASUT and PARASUT_COMPANY_ID to be set.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
 include('init.php');
@@ -176,12 +181,12 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
 // ------------------------------------------------------------------
 function _parasut_status_badge($status) {
     $map = [
-        'open'         => ['bg-warning text-dark', 'Açık'],
-        'overdue'      => ['bg-danger',             'Gecikmiş'],
-        'paid'         => ['bg-success',            'Ödendi'],
-        'partially_paid' => ['bg-info text-dark',   'Kısmi Ödendi'],
-        'cancelled'    => ['bg-secondary',          'İptal'],
-        'deleted'      => ['bg-dark',               'Silindi'],
+        'open'         => ['bg-warning text-dark', lang('Open')],
+        'overdue'      => ['bg-danger',             lang('Overdue')],
+        'paid'         => ['bg-success',            lang('Paid')],
+        'partially_paid' => ['bg-info text-dark',   lang('Partially Paid')],
+        'cancelled'    => ['bg-secondary',          lang('Cancelled')],
+        'deleted'      => ['bg-dark',               lang('Deleted')],
     ];
     $info  = $map[$status] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $status))];
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';
@@ -192,12 +197,12 @@ function _parasut_status_badge($status) {
 // ------------------------------------------------------------------
 function _parasut_type_badge($type) {
     $map = [
-        'invoice'       => ['bg-primary',           'Fatura'],
-        'e_invoice'     => ['bg-success',           'E-Fatura'],
-        'e_archive'     => ['bg-info text-dark',    'E-Arşiv'],
-        'e_smm'         => ['bg-warning text-dark', 'E-SMM'],
-        'basic'         => ['bg-secondary',         'Temel'],
-        'refund'        => ['bg-danger',             'İade'],
+        'invoice'       => ['bg-primary',           lang('Invoice')],
+        'e_invoice'     => ['bg-success',           lang('E-Invoice')],
+        'e_archive'     => ['bg-info text-dark',    lang('E-Archive')],
+        'e_smm'         => ['bg-warning text-dark', lang('E-SMM')],
+        'basic'         => ['bg-secondary',         lang('Basic')],
+        'refund'        => ['bg-danger',             lang('Refund')],
     ];
     $info  = $map[$type] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $type))];
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';
@@ -444,7 +449,7 @@ $output_detail_modal = '
                     <tr><td class="text-muted">' . lang('Net') . '</td><td id="modal-net"></td></tr>
                     <tr><td class="text-muted">' . lang('Gross') . '</td><td id="modal-gross"></td></tr>
                     <tr id="modal-desc-row"><td class="text-muted">' . lang('Description') . '</td><td id="modal-desc"></td></tr>
-                    <tr><td class="text-muted">Paraşüt ID</td><td id="modal-id" class="font-monospace small text-muted"></td></tr>
+                    <tr><td class="text-muted">' . lang('Parasut ID') . '</td><td id="modal-id" class="font-monospace small text-muted"></td></tr>
                 </table>
             </div>
             <div class="modal-footer">

@@ -2114,7 +2114,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							}
 							else
 							{
-								$output_channel_title = '[No title available]';
+								$output_channel_title = lang('[No title available]');
 							}
 						}
 					}
@@ -2145,7 +2145,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							}
 							else
 							{
-								$output_channel_description = '[No description available]';
+								$output_channel_description = lang('[No description available]');
 							}
 						}
 					}

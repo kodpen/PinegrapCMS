@@ -1,9 +1,15 @@
 <?php
 /**
- * get_files_for_picker.php
- * Lightweight JSON endpoint used by the style designer's "Yazılımdan Seç"
- * context menu option. Returns CSS / JS / JSON files from the files table
- * so the assets panel can link to existing server-side files.
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Lightweight JSON endpoint used by the style designer's "Select from
+ * software" context menu option. Returns CSS / JS / JSON files from the files
+ * table so the assets panel can link to existing server-side files.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
 $user = validate_user();

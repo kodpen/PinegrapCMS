@@ -6551,18 +6551,6 @@ switch ($action) {
                             $row = mysqli_fetch_row($result);
                             $number_of_email_recipients = $row[0];
 
-                            // Set the "to" value based on campaign type
-                            switch ($output_campaign['type']) {
-                                case 'manual':
-                                    $plural_suffix = ($number_of_email_recipients == 0 || $number_of_email_recipients > 1) ? 's' : '';
-                                    $output_to = number_format($number_of_email_recipients) . ' Contact' . $plural_suffix;
-                                    break;
-
-                                case 'automatic':
-                                    $output_to = h(db_value("SELECT email_address FROM email_recipients WHERE email_campaign_id = '" . $output_campaign['id'] . "'"));
-                                    break;
-                            }
-
                             // Get number of completed recipients
                             $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . $output_campaign['id'] . "' AND complete = '1'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -8804,7 +8792,7 @@ switch ($action) {
                 $response = array(
                     'status' => 'success',
                     'backup_name' => $backup_folder_name,
-                    'message' => 'Layouts copied to backup directory. Creating .htaccess for security reason, please wait...'
+                    'message' => lang('Layouts copied to backup directory. Creating .htaccess for security reason, please wait...')
                 );
                 echo encode_json($response);
                 exit();
@@ -9660,21 +9648,21 @@ switch ($action) {
         // values prefixed `eo_` to avoid clashing with catalog's binding
         // namespace (e.g. catalog also has a `payment_methods` notion).
         $eo_labels = array(
-            'eo_errors_notices'         => 'Hata / Bildirim mesajları (backend doldurur)',
-            'eo_cart_items'             => 'Sepet Öğeleri (backend doldurur — tablo + miktar girişleri)',
-            'eo_shipping'               => 'Teslimat Adresi & Kargo (backend doldurur)',
-            'eo_billing'                => 'Fatura Bilgileri — tüm blok (backend doldurur)',
-            'eo_billing_country_select' => 'Ülke Listesi (backend doldurur — 240 ülke)',
-            'eo_payment'                => 'Ödeme bloğu — tüm blok (backend doldurur)',
-            'eo_payment_methods'        => 'Ödeme Yöntemleri (radyolar — site ayarına göre)',
-            'eo_installment'            => 'Taksit Seçici (Iyzipay BIN sorgusu)',
-            'eo_terms'                  => 'Koşullar Onayı (legacy — yeni tree gerçek checkbox + modal kullanır)',
-            'eo_saved_cart_link'        => 'Sepetim Kayıt Linki (visitor sipariş # ile sepete geri dönebilir)',
-            'eo_upsell_offers'          => 'Upsell Teklifleri (view_offers.php — alert şeridi)',
-            'eo_applied_offers'         => 'Uygulanan Teklifler (sepete uygulanan promosyonlar)',
-            'eo_totals'                 => 'Sipariş Toplamları (backend hesaplar — KDV, kart sürşarjı, toplam)',
-            'eo_submit_button'          => 'Siparişi Tamamla Butonu',
-            'eo_update_button'          => 'Güncelle Butonu (sepet adetleri için)',
+            'eo_errors_notices'         => lang('Errors / notices (filled by backend)'),
+            'eo_cart_items'             => lang('Cart items (filled by backend: table + quantity inputs)'),
+            'eo_shipping'               => lang('Shipping address & carrier (filled by backend)'),
+            'eo_billing'                => lang('Billing details, whole block (filled by backend)'),
+            'eo_billing_country_select' => lang('Country list (filled by backend, 240 countries)'),
+            'eo_payment'                => lang('Payment block, whole block (filled by backend)'),
+            'eo_payment_methods'        => lang('Payment methods (radio buttons, per site setting)'),
+            'eo_installment'            => lang('Installment picker (Iyzipay BIN lookup)'),
+            'eo_terms'                  => lang('Terms consent (legacy; the new tree uses a real checkbox + modal)'),
+            'eo_saved_cart_link'        => lang('Saved cart link (the visitor can return to the cart with the order #)'),
+            'eo_upsell_offers'          => lang('Upsell offers (view_offers.php alert strip)'),
+            'eo_applied_offers'         => lang('Applied offers (promotions applied to the cart)'),
+            'eo_totals'                 => lang('Order totals (computed by backend: VAT, card surcharge, total)'),
+            'eo_submit_button'          => lang('Complete Order button'),
+            'eo_update_button'          => lang('Update button (for cart quantities)'),
         );
         $required_full = array();
         foreach ($eo_req as $k => $_v) $required_full[] = 'eo_' . $k;
@@ -12366,7 +12354,7 @@ switch ($action) {
                                         </div>
                                     </th>
                                     <th class="noVis"><i class="bi bi-file-earmark"></i></th>
-                                    <th class="noVis">Name</th>
+                                    <th class="noVis">' . lang('Name') . '</th>
                                     <th>' . lang('Size') . '</th>
                                     <th>' . lang('Last Modified') . '</th>
                                 </tr>

@@ -59,7 +59,7 @@ $liveform = new liveform('welcome');
 if (($user['role'] == 3) && (no_acl_check($user['id']) == false) && ($user['manage_calendars'] == false) && ($user['manage_forms'] == false) && ($user['manage_visitors'] == false) && ($user['manage_contacts'] == false) && ($user['manage_emails'] == false) && ($user['manage_ecommerce'] == false) && ($user['manage_ecommerce_reports'] == false) && (empty($user['manage_erp'])) && (count(get_items_user_can_edit('ad_regions', $user['id'])) == 0))
 {
     log_activity("access denied to welcome screen", $_SESSION['sessionusername']);
-    output_error('Access denied. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $query = "SELECT * FROM dashboard";
@@ -1925,7 +1925,6 @@ $output_status_popover_script = '
       trigger: "hover"
     });
 </script>';
-$hackme = true;
 print
 pg_page_shell(
     array(
