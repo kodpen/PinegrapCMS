@@ -544,8 +544,8 @@ if ($published == '1') {
     db(
         "UPDATE comments
         SET
-            publish_date_and_time = '',
-            publish_cancel = ''
+            publish_date_and_time = '0000-00-00 00:00:00',
+            publish_cancel = '0'
         WHERE
             (publish_cancel = '1')
             AND (page_id = '" . e($page_id) . "')
