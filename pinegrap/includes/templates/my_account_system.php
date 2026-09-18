@@ -136,7 +136,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php endif ?>
 	</div>
 </div>
-<?php if (USER_MEMBER_ID): ?>
+<?php if (defined('USER_MEMBER_ID') && USER_MEMBER_ID): ?>
 <div class="membership mobile_width" style="margin-bottom: 1em; display: inline-block; vertical-align: top; width: auto;">
 	<div class="heading">Membership</div>
 	<div class="data" style="margin-bottom: 2em">

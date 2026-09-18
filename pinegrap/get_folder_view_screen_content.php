@@ -28,8 +28,12 @@ function get_folder_view_screen_content($properties)
     $output_my_start_page = '';
 
     // If the user has a start page and it is not this folder view page, then continue to check if we should output start page.
+    // USER_START_PAGE_ID exists only for a signed-in session (initialize_user() does
+    // not define it for visitors), and folder view pages are commonly public, so the
+    // constant must be tested for existence before it is read.
     if (
-        (USER_START_PAGE_ID != 0)
+        defined('USER_START_PAGE_ID')
+        && (USER_START_PAGE_ID != 0)
         && (USER_START_PAGE_ID != $current_page_id)
     ) {
         // Get start page name.
