@@ -585,7 +585,11 @@ function api_schema() {
 
 // Routes with no scope requirement. The description of the API is not the API,
 // but it does name every endpoint and parameter, so it is only served without
-// credentials when the operator has deliberately published it.
+// credentials when the operator has deliberately published it - as JSON at
+// /openapi.json and as the console's rendered endpoint list at /docs/endpoints.
+// The console page itself is an empty shell around that list - it holds no
+// endpoint of its own - so it is served to anyone. None of these appear in the
+// generated document: api_openapi_build() reads api_schema() alone.
 function api_open_routes() {
 
 	return array(
@@ -597,6 +601,28 @@ function api_open_routes() {
 			'scope'   => '',
 			'handler' => 'api_openapi_document',
 			'summary' => 'Machine-readable description of this API',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'docs',
+			'method'  => 'GET',
+			'path'    => '/docs',
+			'scope'   => '',
+			'handler' => 'api_console_page',
+			'summary' => 'Interactive console for this API',
+			'description' => 'A page for a developer who holds an application key. Enter the key and the secret in the browser: the description is fetched with them and every endpoint can be called from the page, with the answer shown as it came back. Nothing is stored on the server - the credentials stay in the browser tab and are gone when it closes.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'docs.endpoints',
+			'method'  => 'GET',
+			'path'    => '/docs/endpoints',
+			'scope'   => '',
+			'handler' => 'api_console_endpoints',
+			'summary' => 'The console\'s endpoint list, rendered',
+			'description' => 'The same description as /openapi.json, as the HTML the console places on its page. Served under the same rule.',
 			'params'  => array()
 		)
 

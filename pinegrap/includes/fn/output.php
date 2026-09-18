@@ -20,7 +20,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 
 // this function outputs the includes for the files needed for the control panel
-function output_control_panel_header_includes()
+function output_control_panel_header_includes($include_assistant = true)
 {
     $help_url = '';
     // If the site is not private labeled, then get help URL.  We hide the help button if site
@@ -49,7 +49,12 @@ function output_control_panel_header_includes()
         define('CUSTOM_CSS', '');
     }
 
-
+    // Session-less pages (the public API console) are served under a strict Content Security
+    // Policy and to anonymous readers, so the panel's AI assistant snippet is skipped there.
+    $assistant_snippet = '';
+    if ($include_assistant) {
+        $assistant_snippet = '<script type="module" src="https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js"></script>';
+    }
 
     return '
     <script type="text/javascript">
@@ -131,8 +136,7 @@ function output_control_panel_header_includes()
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     ' . get_codemirror_includes() . '
     <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
-    <script type="module" src="https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js"></script>
-
+    ' . $assistant_snippet . '
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/backend.src.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js') . '"></script>
     <style>' . CUSTOM_CSS . '</style>';
 
@@ -673,7 +677,7 @@ function output_header_secure($properties = false)
     <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
     ' . get_generator_meta_tag() . '
-    ' . output_control_panel_header_includes() . '
+    ' . output_control_panel_header_includes(false) . '
 </head>
 <body' . $output_body_class . '>';
 
