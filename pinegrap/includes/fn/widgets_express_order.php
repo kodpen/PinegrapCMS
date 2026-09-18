@@ -1528,7 +1528,7 @@ function _eo_render_cart_summary($items, $widget_id, $form_id, $fmt, $lf = null,
         $qty       = (int)$it['quantity'];
         $price     = (int)$it['price'];      // cents
         $line      = $price * $qty;
-        $title     = (string)($it['short_description'] !== '' ? $it['short_description'] : $it['product_name']);
+        $title     = (string)(!empty($it['short_description']) ? $it['short_description'] : $it['product_name']);
         $is_gc      = !empty($it['gift_card']);
         $has_form   = !empty($it['form']);
         $form_qt    = isset($it['form_quantity_type']) ? (string)$it['form_quantity_type'] : 'One Form per Product';
@@ -1584,7 +1584,7 @@ function _eo_render_cart_summary($items, $widget_id, $form_id, $fmt, $lf = null,
         if ($has_form && function_exists('_pg_render_cart_item_form_data')) {
             $form_html = _pg_render_cart_item_form_data(
                 $iid, (int)$it['product_id'], $qty,
-                (string)($it['short_description'] !== '' ? $it['short_description'] : $it['product_name']),
+                (string)(!empty($it['short_description']) ? $it['short_description'] : $it['product_name']),
                 $form_qt, $form_id,
                 // The admin-configured `products.form_name` becomes the
                 // fieldset legend inside the renderer — no separate heading

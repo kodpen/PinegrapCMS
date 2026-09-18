@@ -3058,6 +3058,9 @@ function get_express_order($properties) {
             $show_paypal_express_checkout_payment_method = FALSE;
 
             $output_surcharge_rows = '';
+            // Also read by the shipping script below, which is emitted whether
+            // or not the credit/debit card method (which sets it) is shown.
+            $surcharge = 0;
             
             // if a non-recurring or recurring transaction is required and at least one payment method will be outputted,
             // then the payment information should be outputted, so prepare to output it

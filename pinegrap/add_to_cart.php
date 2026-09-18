@@ -16,6 +16,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+	exit;
+}
+
 // Used by things like a myself upsell to add a product to the cart.  Only supports adding to myself
 // recipient for now.
 
@@ -68,6 +72,7 @@ function add_to_cart($request) {
     // Initialize arrays and counters
     $order_items = array();
     $order_total_raw = 0;   // raw numeric total (without symbol)
+    $items_total = '0.00';
     $items_total_info = '';
     $items_quantity = 0;    // total quantity of items in cart
     

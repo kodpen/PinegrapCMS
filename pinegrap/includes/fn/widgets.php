@@ -323,7 +323,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $search_where = '';
     if ($search_active) {
         $sf_in   = implode(',', $search_field_ids);
-        $q_esc   = e($search_query);
+        $q_esc   = e(escape_like($search_query));
         $search_where =
             " AND EXISTS (SELECT 1 FROM form_data fd_q
                           WHERE fd_q.form_id = forms.id
@@ -3466,7 +3466,9 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     $prev_params = array_merge($base_params, array('cal_month' => $prev_month, 'cal_year' => $prev_year));
     $next_params = array_merge($base_params, array('cal_month' => $next_month, 'cal_year' => $next_year));
 
-    $current_url = get_request_uri();
+    // REQUEST_URI carries the current query string; $base_params already
+    // holds those values, so only the path is kept before appending.
+    $current_url = (string)strtok((string)get_request_uri(), '?');
     $prev_url = $current_url . '?' . http_build_query($prev_params);
     $next_url = $current_url . '?' . http_build_query($next_params);
 

@@ -324,7 +324,9 @@ function get_order_form($properties) {
                             <td class="mobile_left" style="vertical-align: top; text-align: right; white-space: nowrap">' . $output_price . '</td>';
 
                     if ($device_type == 'mobile') {
-                        $output_products .= '<td class="mobile_left" style="vertical-align: top">' . $output_selection_heading . '</td>';
+                        // The heading depends on which selection types turned out to be available,
+                        // which is only known once the loop ends, so a placeholder is swapped afterwards.
+                        $output_products .= '<td class="mobile_left" style="vertical-align: top"><!--pg_selection_heading--></td>';
                     }
 
                     $output_products .=
@@ -360,6 +362,8 @@ function get_order_form($properties) {
                 } else {
                     $output_selection_heading = '&nbsp;';
                 }
+
+                $output_products = str_replace('<!--pg_selection_heading-->', $output_selection_heading, $output_products);
 
                 $output_product_table =
                     '<table class="products" style="width: 100%; margin-bottom: 1em">
@@ -556,7 +560,7 @@ function get_order_form($properties) {
                 $output_skip_button .= '&nbsp;&nbsp;&nbsp;';
             }
             
-            $output_skip_button .= '<button type="submit" name="submit_skip" value="' . h($skip_button_label) . '" class="software_input_submit_secondary skip_button">' . $skip_button_label . '</button>';
+            $output_skip_button .= '<button type="submit" name="submit_skip" value="' . h($skip_button_label) . '" class="software_input_submit_secondary skip_button">' . h($skip_button_label) . '</button>';
         }
         
         $output =
@@ -1019,10 +1023,10 @@ function get_order_form($properties) {
 
                 $currency_options = array();
 
-                foreach ($currencies as $currency) {
-                    $label = h($currency['name'] . ' (' . $currency['code'] . ')');
+                foreach ($currencies as $currency_row) {
+                    $label = h($currency_row['name'] . ' (' . $currency_row['code'] . ')');
 
-                    $currency_options[$label] = $currency['id'];
+                    $currency_options[$label] = $currency_row['id'];
                 }
 
                 $form->set('currency_id', 'options', $currency_options);

@@ -3345,10 +3345,10 @@ function get_order_preview($properties) {
 
                 $currency_options = array();
 
-                foreach ($currencies as $currency) {
-                    $label = h($currency['name'] . ' (' . $currency['code'] . ')');
+                foreach ($currencies as $currency_row) {
+                    $label = h($currency_row['name'] . ' (' . $currency_row['code'] . ')');
 
-                    $currency_options[$label] = $currency['id'];
+                    $currency_options[$label] = $currency_row['id'];
                 }
 
                 $form->set('currency_id', 'options', $currency_options);

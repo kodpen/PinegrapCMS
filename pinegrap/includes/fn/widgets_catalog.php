@@ -3579,15 +3579,13 @@ function _civ_normalize_xsell_item($it, $url_prefix, $disc_prices)
     $currency  = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$';
     $pid = isset($it['id']) ? (int)$it['id'] : 0;
 
-    // Tier 1 returns 'price' as decimal string. Tier 2 passes 'price_cents'
-    // (raw cents). Normalize so downstream gets `price_cents`.
+    // Tier 1 (get_cross_sell_items -> get_catalog_item) always returns 'price'
+    // as a decimal currency amount; Tier 2 passes 'price_cents' (raw cents).
+    // The unit follows the source, never the magnitude of the value.
     if (isset($it['price_cents'])) {
         $orig_cents = (int)$it['price_cents'];
     } elseif (isset($it['price']) && is_numeric($it['price'])) {
-        $price_v = (float)$it['price'];
-        // Heuristic: if value > 1000 assume already in cents (legacy
-        // get_catalog_item path); otherwise treat as decimal currency.
-        $orig_cents = ($price_v > 1000) ? (int)$price_v : (int)round($price_v * 100);
+        $orig_cents = (int)round((float)$it['price'] * 100);
     } else {
         $orig_cents = 0;
     }

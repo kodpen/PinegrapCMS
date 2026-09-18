@@ -16,6 +16,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+	exit;
+}
+
 // Checks if at least one of many products is in cart and that there is a certain quantity.
 // Just one of the passed products need to be cart for this function to return true. All of the
 // passed products don't have to be in the cart.
@@ -35,7 +39,7 @@ function check_for_products_in_cart($request) {
         $quantity = 1;
     }
 
-    $recipient = $request['recipient'];
+    $recipient = isset($request['recipient']) ? $request['recipient'] : array();
 
     // If there is no active order then return false.
     if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
@@ -44,7 +48,7 @@ function check_for_products_in_cart($request) {
 
     $sql_recipient = '';
     
-    if ($recipient['id']) {
+    if (!empty($recipient['id'])) {
         $sql_recipient = "AND ship_to_id = '" . e($recipient['id']) . "'";
     }
 
