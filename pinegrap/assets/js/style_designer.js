@@ -1,11 +1,11 @@
 /**
- * PineGrap Visual Pinegrap Editor — Comprehensive Page Builder
+ * Pinegrap Visual Editor — Comprehensive Page Builder
  *
  * Features:
  *  - iframe canvas with Bootstrap 5.3.8 for true WYSIWYG preview
  *  - Drag & drop Bootstrap components (navbar, carousel, card, hero, alert, accordion, tabs)
  *  - Content elements (heading, paragraph, image, divider, spacer, custom HTML)
- *  - PineGrap regions (page, system, common, designer, dynamic, menu, login, ad, cart, etc.)
+ *  - Pinegrap regions (page, system, common, designer, dynamic, menu, login, ad, cart, etc.)
  *  - Responsive preview with resize handle & breakpoint switching
  *  - Quick column layouts for rows
  *  - Tree view / overview panel
@@ -40,6 +40,13 @@ const StyleDesigner = (function () {
             });
         }
         return out;
+    }
+
+    // Locale for Date#toLocaleString: the panel's <html lang>, or the
+    // browser default when the page does not declare one.
+    function _sdLocale() {
+        var l = (document.documentElement && document.documentElement.lang) ? String(document.documentElement.lang) : '';
+        return l || undefined;
     }
 
     // ========================= STATE =========================
@@ -1585,7 +1592,7 @@ const StyleDesigner = (function () {
                 '</div></div>' +
                 row(_sdT('Label'),  '<span class="sd-prop-static">' + esc(src.text || name) + '</span>') +
                 row(_sdT('Field Name'), '<code class="small">' + esc(name) + '</code>') +
-                row('Tip',     '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>')
+                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>')
             );
         }
 
@@ -4405,7 +4412,7 @@ const StyleDesigner = (function () {
         '.sd-img-placeholder .bi-image { font-size:2.5rem; color:rgba(0,0,0,.25); }',
         '.sd-img-ph-hint { font-size:.72rem; color:rgba(0,0,0,.35); }',
         '.sd-wrap[data-content-type="image"] > .sd-img-placeholder { display:flex; }',
-        // Inline componentler (btn, badge) — block-fill etmesin
+        // Inline components (btn, badge) must not fill the block
         '.sd-wrap[data-component-type="btn"], .sd-wrap[data-component-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
         '.sd-wrap[data-content-type="button"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
         // Span / text content is inline on the page; its block wrapper pushed
@@ -4806,7 +4813,7 @@ const StyleDesigner = (function () {
         '.sd-system-placeholder { padding:.75rem 1rem; font-size:.8rem; color:#6366f1; border:2px dashed rgba(99,102,241,.45); border-radius:.35rem; text-align:center; background:rgba(99,102,241,.04); min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; }',
         '.sd-system-tb-name { font-size:.68rem; color:#6366f1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; padding:0 .25rem; pointer-events:none; }',
         '.sd-system-template-band { font-size:.65rem; font-weight:700; color:#6366f1; background:rgba(99,102,241,.08); border-bottom:1px dashed rgba(99,102,241,.3); padding:2px 6px; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; user-select:none; }',
-        // ─── LOOP ALANI ────────────────────────────────────────────────────
+        // ─── LOOP AREA ────────────────────────────────────────────────────
         // Visually-distinct repetition zone inside a system widget. Pseudo-elements
         // for the label band + empty drop hint keep the JS render path simple.
         // Loop area is a runtime *transparent* container — at frontend render
@@ -4853,7 +4860,7 @@ const StyleDesigner = (function () {
         // per-recipient template apart from a regular per-cart-item loop_area.
         '.sd-recipient-loop-band { background:#0d9488; }',
         '.sd-recipient-loop-area { border-color:rgba(13,148,136,.35) !important; }',
-        // ─── LOOP ALANI — table context (EO "Sepetiniz" <tbody> template) ────
+        // ─── LOOP AREA — table context (EO "Your Cart" <tbody> template) ────
         // Real <tr>/<td> equivalents of .sd-loop-band / .sd-loop-area, built
         // by buildTableLoopAreaEl() so the DOM stays valid inside <tbody>.
         // See that function's header comment for the "binme" (overlap) bug
@@ -4998,7 +5005,7 @@ const StyleDesigner = (function () {
             var icon = tb.querySelector('.bi');
             var txt  = tb.querySelector('.sd-vb-txt');
             if (icon) icon.className = dark ? 'bi bi-sun' : 'bi bi-moon';
-            if (txt)  txt.textContent = dark ? 'Light' : 'Dark';
+            if (txt)  txt.textContent = dark ? _sdT('Light') : _sdT('Dark');
         }
 
         // 3. Themes panel mode tabs — only update if this call didn't
@@ -5069,7 +5076,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-grid" title="' + esc(_sdT('Grid Snap (8px)')) + '"><span class="bi bi-grid"></span> <span class="sd-vb-txt">' + esc(_sdT('Grid')) + '</span></button>' +
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('Snapshots')) + '"><span class="bi bi-camera"></span> <span class="sd-vb-txt">Snap</span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('Snapshots')) + '"><span class="bi bi-camera"></span> <span class="sd-vb-txt">' + esc(_sdT('Snap')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
             // Preview renders the UNSAVED canvas in a blank window; this one
             // opens the page as the site actually serves it — theme, common
@@ -5844,7 +5851,7 @@ const StyleDesigner = (function () {
         // Case 1: node itself is toggleable
         var togCls = getNodeToggleableClass(node);
         if (togCls) {
-            var labelMap = { 'modal': 'Modal', 'offcanvas': 'Offcanvas', 'dropdown-menu': 'Dropdown', 'collapse': 'Collapse' };
+            var labelMap = { 'modal': _sdT('Modal'), 'offcanvas': _sdT('Offcanvas'), 'dropdown-menu': _sdT('Dropdown'), 'collapse': _sdT('Collapse') };
             return { targetNode: node, label: labelMap[togCls] || togCls };
         }
         // Case 2: node is a trigger
@@ -5877,7 +5884,7 @@ const StyleDesigner = (function () {
 
     // ── Composite child helpers ────────────────────────────────────────────────
 
-    var COMPOSITE_LABELS     = { 'table-row': _sdT('Table'), 'tab': _sdT('Tabs'), 'list-item': _sdT('List'), 'accordion-section': 'Accordion', 'carousel-slide': 'Carousel', 'btn-group-item': _sdT('Button Group'), 'breadcrumb-item': 'Breadcrumb', 'pagination-item': 'Pagination' };
+    var COMPOSITE_LABELS     = { 'table-row': _sdT('Table'), 'tab': _sdT('Tabs'), 'list-item': _sdT('List'), 'accordion-section': _sdT('Accordion'), 'carousel-slide': _sdT('Carousel'), 'btn-group-item': _sdT('Button Group'), 'breadcrumb-item': _sdT('Breadcrumb'), 'pagination-item': _sdT('Pagination') };
     var COMPOSITE_ADD_LABELS = { 'table-row': _sdT('New Row'), 'tab': _sdT('New Tab'), 'list-item': _sdT('New Item'), 'accordion-section': _sdT('New Section'), 'carousel-slide': _sdT('New Slide'), 'btn-group-item': _sdT('New Button'), 'breadcrumb-item': _sdT('New Page'), 'pagination-item': _sdT('New Page') };
 
     function getCompositeAddType(node) {
@@ -6082,7 +6089,7 @@ const StyleDesigner = (function () {
             var _lastCell = null;
             _allRows.forEach(function(rowNode) {
                 var _isHdr = rowNode.children && rowNode.children.some(function(c) { return c.props && c.props.tag === 'th'; });
-                var _newCell = createNode('semantic', { tag: _isHdr ? 'th' : 'td', customName: _isHdr ? 'Header' : 'Cell' }, [
+                var _newCell = createNode('semantic', { tag: _isHdr ? 'th' : 'td', customName: _isHdr ? _sdT('Header') : _sdT('Cell') }, [
                     createNode('content', { contentType: 'heading', tag: 'span', text: _isHdr ? _sdT('Title') : _sdT('Cell'), cssClass: '' })
                 ]);
                 if (!rowNode.children) rowNode.children = [];
@@ -6349,7 +6356,7 @@ const StyleDesigner = (function () {
                     (isExpanded ? ' sd-ctx-active' : '') +
                     '" data-dd-container-id="' + ddContainer._id + '">' +
                     '<span class="bi ' + (isExpanded ? 'bi-eye-slash' : 'bi-eye') + '"></span> ' +
-                    (isExpanded ? 'Close' : 'Open') + '</button>';
+                    (isExpanded ? esc(_sdT('Close')) : esc(_sdT('Open'))) + '</button>';
                 showHide.style.display = '';
                 var ocBtn = showHide.querySelector('.sd-ctx-dd-open-close');
                 if (ocBtn) ocBtn.addEventListener('click', function() {
@@ -6443,7 +6450,7 @@ const StyleDesigner = (function () {
                 ? '<button type="button" class="sd-ctx-btn' + (isOpen ? ' sd-ctx-active' : '') +
                   '" data-ctx-navbar-collapse="' + collapseId + '">' +
                   '<span class="bi ' + (isOpen ? 'bi-layout-navbar-collapse' : 'bi-layout-navbar') + '"></span> ' +
-                  (isOpen ? 'Close' : 'Open') + '</button>'
+                  (isOpen ? esc(_sdT('Close')) : esc(_sdT('Open'))) + '</button>'
                 : '';
 
             var addItems = navNavId
@@ -7262,7 +7269,7 @@ const StyleDesigner = (function () {
             canvasDoc.body.scrollTop = _scrollY;
         }
         updateBpLabel();
-        // Layout settle ettikten sonra toolbar flip'ini hesapla
+        // Compute the toolbar flip once the layout has settled
         requestAnimationFrame(function() { adjustCanvasToolbars(); updateIconResizeHandle(); });
     }
 
@@ -7377,7 +7384,7 @@ const StyleDesigner = (function () {
             var dupBtn = doc.createElement('button');
             dupBtn.type = 'button';
             dupBtn.className = 'bi bi-copy';
-            dupBtn.title = 'Duplicate';
+            dupBtn.title = _sdT('Duplicate');
             dupBtn.addEventListener('click', function(e) { e.stopPropagation(); onDuplicate(node); });
             if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
             tbBtns.appendChild(dupBtn);
@@ -7385,7 +7392,7 @@ const StyleDesigner = (function () {
             var delBtn = doc.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'sd-del bi bi-trash';
-            delBtn.title = 'Delete';
+            delBtn.title = _sdT('Delete');
             if (_isDeleteProtected(node)) {
                 delBtn.style.opacity = '0.4';
                 delBtn.style.cursor = 'not-allowed';
@@ -8151,7 +8158,7 @@ const StyleDesigner = (function () {
             var dupBtn = doc.createElement('button');
             dupBtn.type = 'button';
             dupBtn.className = 'bi bi-copy';
-            dupBtn.title = 'Duplicate';
+            dupBtn.title = _sdT('Duplicate');
             dupBtn.addEventListener('click', function (e) { e.stopPropagation(); onDuplicate(node); });
             if (!_sdCanEditNode(node)) dupBtn.style.display = 'none';
             tbBtns.appendChild(dupBtn);
@@ -8216,7 +8223,7 @@ const StyleDesigner = (function () {
             var delBtn = doc.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'sd-del bi bi-trash';
-            delBtn.title = 'Delete';
+            delBtn.title = _sdT('Delete');
             if (_isDeleteProtected(node)) {
                 delBtn.style.opacity = '0.4';
                 delBtn.style.cursor = 'not-allowed';
@@ -8293,7 +8300,7 @@ const StyleDesigner = (function () {
                     _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
                 }
             }
-            // Custom _attrs: data-*, aria-*, vs.
+            // Custom _attrs: data-*, aria-*, etc.
             if (node.props._attrs && node.props._attrs.length) {
                 node.props._attrs.forEach(function(a) {
                     if (a.name === 'style') { _attrStyle = a.value || ''; }
@@ -8866,7 +8873,7 @@ const StyleDesigner = (function () {
                 }
                 rg.className = 'sd-region-ph';
                 var ico = regionIcons[node.props.regionType] || 'bi-box';
-                var rl = regionLabels[node.props.regionType] || 'Region';
+                var rl = regionLabels[node.props.regionType] || _sdT('Region');
                 var rn = node.props.regionName ? ': ' + node.props.regionName : '';
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn);
                 return rg;
@@ -9370,7 +9377,7 @@ const StyleDesigner = (function () {
         if (node.props && node.props.customName) return node.props.customName;
         switch (node.type) {
             case 'root': return _sdT('HTML Body');
-            case 'container': return node.props.fluid ? _sdT('Container Fluid') : 'Container';
+            case 'container': return node.props.fluid ? _sdT('Container Fluid') : _sdT('Container');
             case 'semantic':
                 // Promote class-based grid divs to Row / Col labels so the tree
                 // mirrors what the rendered Bootstrap layout actually does. A
@@ -9498,7 +9505,7 @@ const StyleDesigner = (function () {
                         observer.disconnect();
                     }
                 } else {
-                    alert("Image selector is not available.");
+                    alert(_sdT('Image selector is not available.'));
                 }
             });
             // Only set designer hint if user hasn't defined their own tooltip/title (avoid clobbering).
@@ -10284,7 +10291,7 @@ const StyleDesigner = (function () {
             }
             if (!_sysSid) return false;
             var _sysCachedCheck = _sharedCache[_sysSid];
-            if (!_sysCachedCheck || !_sysCachedCheck.system_region_config) return false;  // ortak component'a izin yok
+            if (!_sysCachedCheck || !_sysCachedCheck.system_region_config) return false;  // shared components are not allowed
             // 1-per-widget invariant — scan cached.tree for any existing loop_area.
             // If we're moving the existing loop_area itself (data.node.type === 'loop_area'),
             // skip the count check — it's about to be re-parented, not duplicated.
@@ -10459,7 +10466,7 @@ const StyleDesigner = (function () {
             n = wrapRow;
         }
 
-        // 3. container → container: reddet
+        // 3. container → container: reject
         if (target.type === 'container' && (t === 'container')) {
             undoStack.pop();
             return;
@@ -12050,8 +12057,8 @@ const StyleDesigner = (function () {
                                                 createNode('content', { contentType: 'paragraph', text: _sdT('Feature'), cssClass: 'mb-0 fw-semibold' })
                                             ]),
                                             _ctTh(_sdT('Our Product'), true),
-                                            _ctTh('Rakip A',    false),
-                                            _ctTh('Rakip B',    false)
+                                            _ctTh(_sdT('Competitor A'), false),
+                                            _ctTh(_sdT('Competitor B'), false)
                                         ])
                                     ]),
                                     createNode('semantic', { tag: 'tbody', cssClass: '', customName: _sdT('Table Body') }, [
@@ -12631,7 +12638,7 @@ const StyleDesigner = (function () {
                                     ])
                                 ]),
                                 _fcCol(_sdT('Product'),     [_sdT('Features'), _sdT('Pricing'), _sdT('Changelog'), 'API']),
-                                _fcCol(_sdT('Company'),   [_sdT('About Us'), 'Kariyer', _sdT('Press'), _sdT('Contact us')]),
+                                _fcCol(_sdT('Company'),   [_sdT('About Us'), _sdT('Careers'), _sdT('Press'), _sdT('Contact us')]),
                                 _fcCol(_sdT('Resources'), [_sdT('Documentation'), 'Blog', _sdT('Community'), _sdT('Support')])
                             ]),
                             createNode('semantic', { tag: 'hr', cssClass: 'my-4 border-secondary', customName: _sdT('Divider') }),
@@ -12752,7 +12759,7 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Workflow automation for teams.'), cssClass: 'small text-body-secondary mb-0' })
                                 ]),
                                 _fnCol(_sdT('Product'),     [_sdT('Features'), _sdT('Pricing'), 'API']),
-                                _fnCol(_sdT('Company'),   [_sdT('About Us'), 'Kariyer', _sdT('Contact us')]),
+                                _fnCol(_sdT('Company'),   [_sdT('About Us'), _sdT('Careers'), _sdT('Contact us')]),
                                 _fnCol(_sdT('Resources'), [_sdT('Documentation'), 'Blog', _sdT('Support')])
                             ]),
                             createNode('semantic', { tag: 'hr', cssClass: 'my-3', customName: _sdT('Divider') }),
@@ -13441,10 +13448,10 @@ const StyleDesigner = (function () {
                     return createNode('semantic', { tag: 'footer', cssClass: 'py-5 border-top bg-body-tertiary', customName: _sdT('Footer') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Footer Container') }, [
                             createNode('semantic', { tag: 'div', cssClass: 'row row-cols-2 row-cols-lg-4 g-4 mb-5', customName: _sdT('Footer Links') }, [
-                                _ftrLinkGroup('Company',  [_sdT('About us'),'Careers','Blog','Press']),
-                                _ftrLinkGroup('Product',  ['Features',_sdT('Pricing'),'Changelog','Docs']),
-                                _ftrLinkGroup('Support',  [_sdT('Help center'),'Contact','Status','Community']),
-                                _ftrLinkGroup('Legal',    ['Privacy',_sdT('Terms'),'Security','Cookies'])
+                                _ftrLinkGroup(_sdT('Company'), [_sdT('About us'), _sdT('Careers'), 'Blog', _sdT('Press')]),
+                                _ftrLinkGroup(_sdT('Product'), [_sdT('Features'), _sdT('Pricing'), _sdT('Changelog'), _sdT('Docs')]),
+                                _ftrLinkGroup(_sdT('Support'), [_sdT('Help center'), _sdT('Contact'), _sdT('Status'), _sdT('Community')]),
+                                _ftrLinkGroup(_sdT('Legal'), [_sdT('Privacy'), _sdT('Terms'), _sdT('Security'), _sdT('Cookies')])
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-between align-items-center pt-4 border-top', customName: _sdT('Footer Bar') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('© 2025 Company Name. All rights reserved.'), cssClass: 'mb-0 text-body-secondary small' }),
@@ -13812,8 +13819,8 @@ const StyleDesigner = (function () {
                             mkRow([mkCell('th',_sdT('Head 1')), mkCell('th',_sdT('Head 2')), mkCell('th',_sdT('Head 3'))])
                         ]),
                         createNode('semantic', { tag: 'tbody', customName: _sdT('Table Body') }, [
-                            mkRow([mkCell('td','Cell'), mkCell('td','Cell'), mkCell('td','Cell')]),
-                            mkRow([mkCell('td','Cell'), mkCell('td','Cell'), mkCell('td','Cell')]),
+                            mkRow([mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell'))]),
+                            mkRow([mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell'))]),
                             mkRow([mkCell('td','Cell'), mkCell('td','Cell'), mkCell('td','Cell')])
                         ])
                     ]);
@@ -13897,7 +13904,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'input', cssClass: 'form-control', customName: _sdT('Input'),
                             _attrs: [
                                 { name: 'type', value: 'text' },
-                                { name: 'placeholder', value: 'Username' },
+                                { name: 'placeholder', value: _sdT('Username') },
                                 { name: 'aria-label', value: 'Username' }
                             ]
                         }),
@@ -14270,7 +14277,7 @@ const StyleDesigner = (function () {
                 '</div>' +
                 '<div class="sd-ov-search-box" id="sd-ov-search-wrap">' +
                     '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-ov-search-input" placeholder="Ara..." autocomplete="off">' +
+                    '<input type="text" id="sd-ov-search-input" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">' +
                     '<button type="button" class="sd-ov-collapse-btn" id="sd-ov-collapse-btn" title="' + esc(_sdT('Collapse every branch')) + '"><span class="bi bi-arrows-collapse"></span></button>' +
                 '</div>' +
                 '<div class="sd-overview-tree-wrap" id="sd-overview-tree-wrap"><ul class="sd-tree-list" id="sd-tree-list"></ul></div>' +
@@ -15429,7 +15436,7 @@ const StyleDesigner = (function () {
 
             // Double-click: toggle collapse — guard against firing by accident right after a drag
             sep.addEventListener('dblclick', function() {
-                if (_sepDragged) { _sepDragged = false; return; } // drag olduysa yok say
+                if (_sepDragged) { _sepDragged = false; return; } // ignore when it was a drag
                 _setOvCollapsed(!_ovCollapsed);
                 try { localStorage.setItem(_OV_COL_KEY, _ovCollapsed ? '1' : '0'); } catch(ex) {}
                 if (_ovCollapsed) {
@@ -15516,7 +15523,7 @@ const StyleDesigner = (function () {
                         '<span class="bi bi-palette me-1"></span>' + esc(_sdT('Styles')) + '' +
                         '<span class="sd-attrs-elem-badge" id="sd-styles-elem-badge"></span>' +
                         '<span class="sd-bp-quad-spacer"></span>' +
-                        '<button type="button" class="sd-styles-tool sd-styles-create" id="sd-styles-create" title="Yeni kural ekle">' +
+                        '<button type="button" class="sd-styles-tool sd-styles-create" id="sd-styles-create" title="' + esc(_sdT('Add new rule')) + '">' +
                             '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Create')) + '' +
                         '</button>' +
                         // Extract button: dumps all User Styles (which currently
@@ -15526,7 +15533,7 @@ const StyleDesigner = (function () {
                         '<button type="button" class="sd-styles-tool sd-styles-extract" id="sd-styles-extract" title="' + esc(_sdT('Move all of User Styles into a CSS file — it leaves the head and is loaded from the file')) + '">' +
                             '<span class="bi bi-box-arrow-up-right me-1"></span>' + esc(_sdT('Export to a File')) + '' +
                         '</button>' +
-                        '<input type="text" class="sd-styles-find" id="sd-styles-find" placeholder="Kural ara…">' +
+                        '<input type="text" class="sd-styles-find" id="sd-styles-find" placeholder="' + esc(_sdT('Search rules...')) + '">' +
                     '</div>' +
                     '<div class="sd-bp-quad-body" id="sd-bp-styles">' +
                         '<div class="sd-attrs-empty"><span class="bi bi-cursor"></span> ' + esc(_sdT('No element selected')) + '</div>' +
@@ -16153,14 +16160,14 @@ const StyleDesigner = (function () {
                             '<input type="text" class="sd-styles-decl-name-inp" data-decl-idx="' + i + '" value="' + _stylesEscape(d.name) + '" placeholder="property">' +
                             '<span class="sd-styles-decl-sep">:</span>' +
                             '<input type="text" class="sd-styles-decl-value-inp" data-decl-idx="' + i + '" value="' + _stylesEscape(d.value) + '" placeholder="value">' +
-                            '<button type="button" class="sd-styles-decl-del" data-decl-idx="' + i + '" title="Sil"><span class="bi bi-x"></span></button>' +
+                            '<button type="button" class="sd-styles-decl-del" data-decl-idx="' + i + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-x"></span></button>' +
                         '</div>';
             });
             html += '<div class="sd-styles-decl-add">' +
                         '<input type="text" class="sd-styles-decl-add-name" placeholder="property">' +
                         '<span class="sd-styles-decl-sep">:</span>' +
                         '<input type="text" class="sd-styles-decl-add-value" placeholder="value">' +
-                        '<button type="button" class="sd-styles-decl-add-btn" title="Ekle"><span class="bi bi-plus-lg"></span></button>' +
+                        '<button type="button" class="sd-styles-decl-add-btn" title="' + esc(_sdT('Add')) + '"><span class="bi bi-plus-lg"></span></button>' +
                     '</div>';
             html += '</div></div>';
         }
@@ -16168,7 +16175,7 @@ const StyleDesigner = (function () {
         // ── User Styles (editable, overlay-stored) ──
         // Mirrors the element.style block UI for rules the user wrote via
         // Create / scratch pad. Each rule shown as a card with editable
-        // selector + decl rows + per-rule "+ ekle" + remove buttons.
+        // selector + decl rows + per-rule "+ add" + remove buttons.
         // PAGE OVERLAYS in the matching list below remains a READ-ONLY
         // visual confirmation of what the iframe actually applied.
         var userRules = _parseUserStyles(_userStylesGet());
@@ -16208,7 +16215,7 @@ const StyleDesigner = (function () {
                                 '<input type="text" class="sd-styles-ur-name-inp" data-ur-idx="' + fullIdx + '" data-decl-idx="' + di + '" value="' + _stylesEscape(d.name) + '" placeholder="property">' +
                                 '<span class="sd-styles-decl-sep">:</span>' +
                                 '<input type="text" class="sd-styles-ur-value-inp" data-ur-idx="' + fullIdx + '" data-decl-idx="' + di + '" value="' + _stylesEscape(d.value) + '" placeholder="value">' +
-                                '<button type="button" class="sd-styles-ur-del-decl" data-ur-idx="' + fullIdx + '" data-decl-idx="' + di + '" title="Sil"><span class="bi bi-x"></span></button>' +
+                                '<button type="button" class="sd-styles-ur-del-decl" data-ur-idx="' + fullIdx + '" data-decl-idx="' + di + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-x"></span></button>' +
                             '</div>';
                 });
                 // Add-decl row (per rule)
@@ -16216,7 +16223,7 @@ const StyleDesigner = (function () {
                             '<input type="text" class="sd-styles-ur-add-name" data-ur-idx="' + fullIdx + '" placeholder="property">' +
                             '<span class="sd-styles-decl-sep">:</span>' +
                             '<input type="text" class="sd-styles-ur-add-value" data-ur-idx="' + fullIdx + '" placeholder="value">' +
-                            '<button type="button" class="sd-styles-ur-add-decl" data-ur-idx="' + fullIdx + '" title="Ekle"><span class="bi bi-plus-lg"></span></button>' +
+                            '<button type="button" class="sd-styles-ur-add-decl" data-ur-idx="' + fullIdx + '" title="' + esc(_sdT('Add')) + '"><span class="bi bi-plus-lg"></span></button>' +
                         '</div>';
                 html += '</div>' +  // user-rule-body
                             '<div class="sd-styles-user-rule-foot">}</div>' +
@@ -16640,7 +16647,7 @@ const StyleDesigner = (function () {
 
     // Heuristic selector for the currently-selected element. Prefers a stable
     // id, then a unique-looking custom class, then the tag. Used as the
-    // default value in the "+Kural Ekle" quick input — saves typing for the
+    // default value in the "+ Add Rule" quick input — saves typing for the
     // common case of "I want to style THIS element".
     function _selectorHintForEl(el) {
         if (!el) return '';
@@ -16778,7 +16785,7 @@ const StyleDesigner = (function () {
                         '<input type="text" class="sd-attr-name" data-idx="' + i + '" value="style" placeholder="attr">' +
                         '<span class="sd-attr-sep">:</span>' +
                         '<input type="text" class="sd-attr-val sd-attr-style-val" data-idx="' + i + '" value="' + esc(mergedStyle) + '" placeholder="font-family: …; color: …;">' +
-                        '<button type="button" class="sd-attr-del bi bi-x" data-idx="' + i + '" title="Sil"></button>' +
+                        '<button type="button" class="sd-attr-del bi bi-x" data-idx="' + i + '" title="' + esc(_sdT('Delete')) + '"></button>' +
                     '</div>';
                 return;
             }
@@ -16806,7 +16813,7 @@ const StyleDesigner = (function () {
                         '<input type="text" class="sd-attr-name" data-idx="' + i + '" value="' + esc(attr.name || '') + '" placeholder="attr">' +
                         '<span class="sd-attr-sep">:</span>' +
                         '<input type="text" class="sd-attr-val"  data-idx="' + i + '" value="' + esc(attr.value || '') + '" placeholder="' + esc(_sdT('value')) + '">' +
-                        '<button type="button" class="sd-attr-del bi bi-x" data-idx="' + i + '" title="Sil"></button>' +
+                        '<button type="button" class="sd-attr-del bi bi-x" data-idx="' + i + '" title="' + esc(_sdT('Delete')) + '"></button>' +
                     '</div>';
             }
         });
@@ -16829,7 +16836,7 @@ const StyleDesigner = (function () {
         }
 
         panel.innerHTML =
-            // Sabit: id
+            // Fixed: id
             '<div class="sd-attr-row sd-attr-row-fixed">' +
                 '<span class="sd-attr-name-lbl">id</span>' +
                 '<span class="sd-attr-sep">:</span>' +
@@ -16845,7 +16852,7 @@ const StyleDesigner = (function () {
             '</div>' +
             // Built-in attrs from props (locked)
             (builtinAttrsHtml ? '<div id="sd-attr-builtin">' + builtinAttrsHtml + '</div>' : '') +
-            // Dinamik attrlar
+            // Dynamic attrs
             '<div id="sd-attr-dynamic">' + dynHtml + '</div>' +
             // Footer
             '<div class="sd-attrs-add-row">' +
@@ -16912,7 +16919,7 @@ const StyleDesigner = (function () {
             });
         });
 
-        // ── Class input: enter / space / blur ile ekle + autocomplete ──
+        // ── Class input: add on enter / space / blur + autocomplete ──
         var ci = document.getElementById('sd-class-input');
         if (ci) {
             _attachClassAutocomplete(ci, n);
@@ -16996,7 +17003,7 @@ const StyleDesigner = (function () {
             });
         }
 
-        // ── Yeni attr ekle ──
+        // ── Add a new attr ──
         var addBtn = document.getElementById('sd-attr-add-btn');
         if (addBtn) {
             addBtn.addEventListener('click', function () {
@@ -18829,7 +18836,7 @@ const StyleDesigner = (function () {
             ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i>' + esc(node.props._label) + '</span>'
             : '';
         var lockBadge = (node.type !== 'root' && node.props._locked)
-            ? '<span class="sd-tree-lock-badge bi bi-lock-fill" title="Kilitli"></span>'
+            ? '<span class="sd-tree-lock-badge bi bi-lock-fill" title="' + esc(_sdT('Locked')) + '"></span>'
             : '';
         // Shared / system widget badge — shown after the label in the tree panel
         var sharedBadge = '';
@@ -18845,7 +18852,7 @@ const StyleDesigner = (function () {
         // Note badge — shown when node has a designer note
         var _hasNote = !!(node.props && node.props._notes && ('' + node.props._notes).trim());
         var noteBadge = _hasNote
-            ? '<span class="sd-tree-note-badge bi bi-chat-fill" title="Not mevcut"></span>'
+            ? '<span class="sd-tree-note-badge bi bi-chat-fill" title="' + esc(_sdT('Has a note')) + '"></span>'
             : '';
         // The mark is worth seeing at a glance in both roles: the designer
         // needs to know what they handed over, the content operator needs to
@@ -20409,7 +20416,7 @@ const StyleDesigner = (function () {
                     if (_isCatalogListing) {
                         // Whitelist matches the PHP renderer's _resolve_order switch.
                         html += '<option value="sort_order"' + (selected === 'sort_order' ? ' selected' : '') + '>' + esc(_sdT('Sort order (default)')) + '</option>';
-                        html += '<option value="name"'       + (selected === 'name'       ? ' selected' : '') + '>Ad</option>';
+                        html += '<option value="name"'       + (selected === 'name'       ? ' selected' : '') + '>' + esc(_sdT('Name')) + '</option>';
                         html += '<option value="price"'      + (selected === 'price'      ? ' selected' : '') + '>' + esc(_sdT('Price')) + '</option>';
                         html += '<option value="created_at"' + (selected === 'created_at' ? ' selected' : '') + '>' + esc(_sdT('Date added')) + '</option>';
                         html += '<option value="id"'         + (selected === 'id'         ? ' selected' : '') + '>' + esc(_sdT('Product ID')) + '</option>';
@@ -20497,7 +20504,7 @@ const StyleDesigner = (function () {
                         '</select>'
                     ) : '') +
                     (_searchOn ? row(_sdT('Search label'),
-                        '<input type="text" class="form-control form-control-sm" id="sd-sw-search-label" data-sw-id="' + sid + '" value="' + esc(_searchLbl) + '" maxlength="100" placeholder="Ara...">'
+                        '<input type="text" class="form-control form-control-sm" id="sd-sw-search-label" data-sw-id="' + sid + '" value="' + esc(_searchLbl) + '" maxlength="100" placeholder="' + esc(_sdT('Search...')) + '">'
                     ) : '') +
                     _searchFieldsHtml +
                     row(_sdT('Empty state message'),
@@ -21183,7 +21190,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">^^__special_offer_code_label^^.</div>'
                     ) +
                     row(_sdT('Special Offer Code Message'),
-                        '<textarea class="form-control form-control-sm" id="sd-sw-sc-offer-msg" data-sw-id="' + sid + '" rows="2" maxlength="500" placeholder="Bir teklif kodunuz varsa buraya girin.">' + esc(_scOfferCodeMsg) + '</textarea>' +
+                        '<textarea class="form-control form-control-sm" id="sd-sw-sc-offer-msg" data-sw-id="' + sid + '" rows="2" maxlength="500" placeholder="' + esc(_sdT('If you have an offer code, enter it here.')) + '">' + esc(_scOfferCodeMsg) + '</textarea>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('^^__special_offer_code_message^^. The description above the offer code input.')) + '</div>'
                     ) +
                     row(_sdT('Update Button Label'),
@@ -21467,8 +21474,8 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-receipt', _sdT('View Order Settings'),
                     row(_sdT('Date format'),
                         '<select class="form-select form-select-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
-                            '<option value="d.m.Y"' + (_ovDateFormat === 'd.m.Y' ? ' selected' : '') + '>GG.AA.YYYY (29.01.2026)</option>' +
-                            '<option value="Y-m-d"' + (_ovDateFormat === 'Y-m-d' ? ' selected' : '') + '>YYYY-AA-GG (2026-01-29)</option>' +
+                            '<option value="d.m.Y"' + (_ovDateFormat === 'd.m.Y' ? ' selected' : '') + '>' + esc(_sdT('DD.MM.YYYY (29.01.2026)')) + '</option>' +
+                            '<option value="Y-m-d"' + (_ovDateFormat === 'Y-m-d' ? ' selected' : '') + '>' + esc(_sdT('YYYY-MM-DD (2026-01-29)')) + '</option>' +
                             '<option value="d M Y"' + (_ovDateFormat === 'd M Y' ? ' selected' : '') + '>' + esc(_sdT('DD Mon YYYY (29 January 2026)')) + '</option>' +
                         '</select>'
                     ) +
@@ -21767,9 +21774,9 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Date format'),
                         '<select class="form-select form-select-sm" id="sd-sw-cv-date-format" data-sw-id="' + sid + '">' +
-                            '<option value="d.m.Y"' + (_cvDateFormat === 'd.m.Y' ? ' selected' : '') + '>GG.AA.YYYY</option>' +
-                            '<option value="Y-m-d"' + (_cvDateFormat === 'Y-m-d' ? ' selected' : '') + '>YYYY-AA-GG</option>' +
-                            '<option value="d M Y"' + (_cvDateFormat === 'd M Y' ? ' selected' : '') + '>GG Ay YYYY</option>' +
+                            '<option value="d.m.Y"' + (_cvDateFormat === 'd.m.Y' ? ' selected' : '') + '>' + esc(_sdT('DD.MM.YYYY')) + '</option>' +
+                            '<option value="Y-m-d"' + (_cvDateFormat === 'Y-m-d' ? ' selected' : '') + '>' + esc(_sdT('YYYY-MM-DD')) + '</option>' +
+                            '<option value="d M Y"' + (_cvDateFormat === 'd M Y' ? ' selected' : '') + '>' + esc(_sdT('DD Mon YYYY')) + '</option>' +
                         '</select>'
                     ) +
                     row(_sdT('No events message'),
@@ -24655,7 +24662,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
 
@@ -24721,7 +24728,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlCiv += row(b.label, sel + customInp);
@@ -24762,7 +24769,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlMA += row(b.label, sel + customInp);
@@ -24803,7 +24810,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlLF += row(b.label, sel + customInp);
@@ -24844,7 +24851,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlFP += row(b.label, sel + customInp);
@@ -24885,7 +24892,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlSR += row(b.label, sel + customInp);
@@ -24926,7 +24933,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlReg += row(b.label, sel + customInp);
@@ -24967,7 +24974,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlSC += row(b.label, sel + customInp);
@@ -25008,7 +25015,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlOV += row(b.label, sel + customInp);
@@ -25049,7 +25056,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlMem += row(b.label, sel + customInp);
@@ -25090,7 +25097,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlCF += row(b.label, sel + customInp);
@@ -25136,7 +25143,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlCV += row(b.label, sel + customInp);
@@ -25181,7 +25188,7 @@ const StyleDesigner = (function () {
                 var customInp =
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
-                    ' placeholder="ozel_token_adi"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
                 rowsHtmlEO += row(b.label, sel + customInp);
@@ -25768,14 +25775,14 @@ const StyleDesigner = (function () {
                     if (hasCls('btn-' + btnVariants[vi]))          { currentVariant = btnVariants[vi]; break; }
                 }
                 h += row(_sdT('Variant'), '<select class="form-select form-select-sm" data-btn-variant>' +
-                    [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success','Success'],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]].map(function(o) {
+                    [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]].map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === currentVariant ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>');
                 h += row(_sdT('Outlined'), swAttr('data-btn-outlined', isOutlined));
             } else {
                 currentVariant = n.props.variant || 'primary';
                 isOutlined = !!(n.props.outline);
-                h += row(_sdT('Variant'), sel('variant', [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success','Success'],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]], currentVariant));
+                h += row(_sdT('Variant'), sel('variant', [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]], currentVariant));
                 h += row(_sdT('Outlined'), sw('outline', isOutlined));
             }
         }
@@ -26087,7 +26094,7 @@ const StyleDesigner = (function () {
         var isTableRow = tag === 'tr';
         var isTableCell = (tag === 'th' || tag === 'td');
 
-        // Ek paneller
+        // Extra panels
         var textTags2 = ['h1','h2','h3','h4','h5','h6','p','span','a','button'];
         var isProgressBar = clsList.indexOf('progress-bar') !== -1;
         // Interactive tags (a/button/button-input): unified panel replaces tag row, link section, old button section
@@ -27228,7 +27235,7 @@ const StyleDesigner = (function () {
                 }).join('') +
                 '</select>'
             ) +
-            row('Auto-close',
+            row(_sdT('Auto-close'),
                 '<select class="form-select form-select-sm" data-dropdown-trigger-prop="autoclose">' +
                 [['true',_sdT('On every click (default)')],['inside',_sdT('On a click inside')],['outside',_sdT('On a click outside')],['false',_sdT('Close manually')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === autoClose ? ' selected' : '') + '>' + opt[1] + '</option>';
@@ -27354,9 +27361,9 @@ const StyleDesigner = (function () {
         var h = '';
         h += row(_sdT('Slides'),
             '<div class="btn-group btn-group-sm w-100">' +
-            '<button type="button" class="btn btn-outline-secondary" data-cr-action="remove-slide" data-cr-node-id="' + n._id + '" title="Remove last slide"' + (slideCount <= 1 ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
+            '<button type="button" class="btn btn-outline-secondary" data-cr-action="remove-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Remove last slide')) + '"' + (slideCount <= 1 ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
             '<span class="btn btn-outline-secondary disabled" style="cursor:default">' + slideCount + '</span>' +
-            '<button type="button" class="btn btn-outline-secondary" data-cr-action="add-slide" data-cr-node-id="' + n._id + '" title="Add slide"' + (slideCount >= 8 ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
+            '<button type="button" class="btn btn-outline-secondary" data-cr-action="add-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Add slide')) + '"' + (slideCount >= 8 ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
             '</div>');
         h += row(_sdT('Transition'),
             '<div class="btn-group btn-group-sm w-100">' +
@@ -27409,7 +27416,7 @@ const StyleDesigner = (function () {
                 h += row(capFirst(key), sw(key, val));
             } else if (key === 'type' || key === 'variant' || key === 'bg' || key === 'theme') {
                 var opts = key === 'type' || key === 'variant' || key === 'bg' ?
-                    [['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success','Success'],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]] :
+                    [['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]] :
                     [['light',_sdT('Light')],['dark',_sdT('Dark')]];
                 h += row(capFirst(key), sel(key, opts, String(val)));
             } else if (key === 'expand') {
@@ -27749,7 +27756,7 @@ const StyleDesigner = (function () {
             );
         }
 
-        // Ek paneller
+        // Extra panels
         var textCts = ['heading','paragraph','link','button'];
         var linkSection2   = ct === 'link'   ? propsLinkOptions(n) : '';
         var buttonSection2 = ct === 'button' ? propsButtonOptions(n) : '';
@@ -28443,21 +28450,21 @@ const StyleDesigner = (function () {
             _posSubRows.map(function(sr) { return '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + sr.label + '</span>' + sr.ctrl + '</div>'; }).join('') +
             '</div>';
 
-        var _widthRow = mkExpandRow('Width',
+        var _widthRow = mkExpandRow(_sdT('Width'),
             '<input type="text" class="form-control form-control-sm" data-prop="width"    value="' + esc(p.width    || '') + '" placeholder="e.g. 100%">',
             [
                 { label: _sdT('Min'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="minWidth"  value="' + esc(p.minWidth  || '') + '" placeholder="e.g. 200px">', val: p.minWidth  },
                 { label: _sdT('Max'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="maxWidth"  value="' + esc(p.maxWidth  || '') + '" placeholder="e.g. 960px">', val: p.maxWidth  }
             ]
         );
-        var _heightRow = mkExpandRow('Height',
+        var _heightRow = mkExpandRow(_sdT('Height'),
             '<input type="text" class="form-control form-control-sm" data-prop="height"   value="' + esc(p.height   || '') + '" placeholder="e.g. auto">',
             [
                 { label: _sdT('Min'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="minHeight" value="' + esc(p.minHeight || '') + '" placeholder="e.g. 200px">', val: p.minHeight },
                 { label: _sdT('Max'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="maxHeight" value="' + esc(p.maxHeight || '') + '" placeholder="e.g. 800px">', val: p.maxHeight }
             ]
         );
-        var _overflowRow = mkExpandRow('Overflow',
+        var _overflowRow = mkExpandRow(_sdT('Overflow'),
             mkOverflowSel('overflow', p.overflow),
             [
                 { label: 'X', ctrl: mkOverflowSel('overflowX', p.overflowX), val: p.overflowX },
@@ -28477,7 +28484,7 @@ const StyleDesigner = (function () {
             _arPresetSel += '</select>';
             _arHtml += '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Preset')) + '</span>' + _arPresetSel + '</div>';
             if (_arValue === 'custom') {
-                _arHtml += mkStyleRow('Value', 'aspectRatioCustom', p.aspectRatioCustom, 'e.g. 56.25%');
+                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, 'e.g. 56.25%');
             }
         }
 
@@ -28512,9 +28519,9 @@ const StyleDesigner = (function () {
         '</div>';
 
         var _dsBody = '<div class="sd-sp-section">' +
-            mkRespRow('Display', 'd-',     dispValues,  'Default') +
+            mkRespRow(_sdT('Display'), 'd-',     dispValues,  _sdT('Default')) +
             _posRow +
-            mkRespRow('Float',   'float-', floatValues, 'Default') +
+            mkRespRow(_sdT('Float'),   'float-', floatValues, _sdT('Default')) +
             _zIdxRow +
             _widthRow +
             _heightRow +
@@ -28539,18 +28546,18 @@ const StyleDesigner = (function () {
         var gapValues      = [['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']];
 
         var _fxBody = '<div class="sd-sp-section">' +
-            mkRespRow(_sdT('Flex Container'),  'd-',                flexContValues, 'Default') +
-            mkRespRow('Direction',       'flex-',             dirValues,      'Default') +
-            mkRespRow('Grow',            'flex-',             growValues,     'Default') +
-            mkRespRow('Shrink',          'flex-',             shrinkValues,   'Default') +
-            mkRespRow('Fill',            'flex-',             fillValues,     'Default') +
-            mkRespRow(_sdT('Justify Content'), 'justify-content-',  jcValues,       'Default') +
-            mkRespRow(_sdT('Align Items'),     'align-items-',      aiValues,       'Default') +
-            mkRespRow(_sdT('Align Content'),   'align-content-',    acValues,       'Default') +
-            mkRespRow('Wrap',            'flex-',             wrapValues,     'Default') +
-            mkRespRow(_sdT('Align Self'),      'align-self-',       asValues,       'Default') +
-            mkRespRow('Order',           'order-',            orderValues,    'Default') +
-            mkRespRow('Gap',             'gap-',              gapValues,      'Default') +
+            mkRespRow(_sdT('Flex Container'),  'd-',                flexContValues, _sdT('Default')) +
+            mkRespRow(_sdT('Direction'),       'flex-',             dirValues,      _sdT('Default')) +
+            mkRespRow(_sdT('Grow'),            'flex-',             growValues,     _sdT('Default')) +
+            mkRespRow(_sdT('Shrink'),          'flex-',             shrinkValues,   _sdT('Default')) +
+            mkRespRow(_sdT('Fill'),            'flex-',             fillValues,     _sdT('Default')) +
+            mkRespRow(_sdT('Justify Content'), 'justify-content-',  jcValues,       _sdT('Default')) +
+            mkRespRow(_sdT('Align Items'),     'align-items-',      aiValues,       _sdT('Default')) +
+            mkRespRow(_sdT('Align Content'),   'align-content-',    acValues,       _sdT('Default')) +
+            mkRespRow(_sdT('Flex Wrap'),       'flex-',             wrapValues,     _sdT('Default')) +
+            mkRespRow(_sdT('Align Self'),      'align-self-',       asValues,       _sdT('Default')) +
+            mkRespRow(_sdT('Flex Order'),      'order-',            orderValues,    _sdT('Default')) +
+            mkRespRow(_sdT('Gap'),             'gap-',              gapValues,      _sdT('Default')) +
         '</div>';
         var fxHtml = as(_sdT('Flexbox'), _fxBody);
 
@@ -28575,13 +28582,13 @@ const StyleDesigner = (function () {
         }
 
         var spDefs = [
-            ['Padding',        'p-',  ['p-sm-',  'p-md-',  'p-lg-',  'p-xl-',  'p-xxl-' ], false],
+            [_sdT('Padding'),        'p-',  ['p-sm-',  'p-md-',  'p-lg-',  'p-xl-',  'p-xxl-' ], false],
             [_sdT('Padding Start'),  'ps-', ['ps-sm-', 'ps-md-', 'ps-lg-', 'ps-xl-', 'ps-xxl-'], false],
             [_sdT('Padding Top'),    'pt-', ['pt-sm-', 'pt-md-', 'pt-lg-', 'pt-xl-', 'pt-xxl-'], false],
             [_sdT('Padding Bottom'), 'pb-', ['pb-sm-', 'pb-md-', 'pb-lg-', 'pb-xl-', 'pb-xxl-'], false],
             [_sdT('Padding End'),    'pe-', ['pe-sm-', 'pe-md-', 'pe-lg-', 'pe-xl-', 'pe-xxl-'], false],
             null,
-            ['Margin',         'm-',  ['m-sm-',  'm-md-',  'm-lg-',  'm-xl-',  'm-xxl-' ], true],
+            [_sdT('Margin'),         'm-',  ['m-sm-',  'm-md-',  'm-lg-',  'm-xl-',  'm-xxl-' ], true],
             [_sdT('Margin Start'),   'ms-', ['ms-sm-', 'ms-md-', 'ms-lg-', 'ms-xl-', 'ms-xxl-'], true],
             [_sdT('Margin Top'),     'mt-', ['mt-sm-', 'mt-md-', 'mt-lg-', 'mt-xl-', 'mt-xxl-'], true],
             [_sdT('Margin Bottom'),  'mb-', ['mb-sm-', 'mb-md-', 'mb-lg-', 'mb-xl-', 'mb-xxl-'], true],
@@ -28628,7 +28635,7 @@ const StyleDesigner = (function () {
 
         // Border options
         var borderSides = ['', 'border', 'border-0', 'border-top', 'border-bottom', 'border-start', 'border-end'];
-        var borderSideLabels = { '': 'None', 'border': 'All', 'border-0': 'Remove', 'border-top': 'Top', 'border-bottom': 'Bottom', 'border-start': 'Start', 'border-end': 'End' };
+        var borderSideLabels = { '': _sdT('None'), 'border': _sdT('All'), 'border-0': _sdT('Remove'), 'border-top': _sdT('Top'), 'border-bottom': _sdT('Bottom'), 'border-start': _sdT('Start'), 'border-end': _sdT('End') };
         var clsArr2 = cls.split(' ');
         var foundBorderSide = '';
         borderSides.forEach(function(s) { if (s && clsArr2.indexOf(s) !== -1) foundBorderSide = s; });
@@ -28789,7 +28796,7 @@ const StyleDesigner = (function () {
                         '<div class="sd-bcp-trigger-wrap">' +
                             '<button type="button" class="sd-bcp-trigger" id="sd-bcp-trigger">' +
                                 '<span class="sd-bcp-swatch" style="' + (_swatchStyle ? 'background:' + _swatchStyle + ';' : '') + '"></span>' +
-                                '<span class="sd-bcp-trigger-label">' + esc(_grad.type !== 'none' ? (_grad.type === 'linear' ? 'Linear' : 'Radial') + ' Gradient' : (_bgCol || 'None')) + '</span>' +
+                                '<span class="sd-bcp-trigger-label">' + esc(_grad.type !== 'none' ? (_grad.type === 'linear' ? _sdT('Linear Gradient') : _sdT('Radial Gradient')) : (_bgCol || _sdT('None'))) + '</span>' +
                             '</button>' +
                             (_bgHasVal ? '<button type="button" class="sd-bcp-clear-btn" id="sd-bcp-clear" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
                         '</div>' +
@@ -30530,7 +30537,7 @@ const StyleDesigner = (function () {
                 var activate = this.checked;
                 var n = selectedNode;
 
-                // Parent nav-item bul
+                // Find the parent nav-item
                 var parentNavItem = findParentNode(n._id, tree, null);
 
                 // When activating: clear active from every sibling nav-item/nav-link in the same navbar-nav
@@ -31554,7 +31561,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-gf-modal-left">' +
                         '<div class="sd-gf-toolbar">' +
                             '<span class="bi bi-search sd-gf-search-icon"></span>' +
-                            '<input type="text" id="sd-gf-search" class="sd-gf-search" placeholder="Font ara...">' +
+                            '<input type="text" id="sd-gf-search" class="sd-gf-search" placeholder="' + esc(_sdT('Search fonts...')) + '">' +
                         '</div>' +
                         '<div id="sd-gf-list" class="sd-gf-list"></div>' +
                     '</div>' +
@@ -32241,7 +32248,7 @@ const StyleDesigner = (function () {
             for (var i=0; i<files.length; i++) { if (files[i].id === fileId) { file = files[i]; idx = i; break; } }
             if (!file) return;
             _ctxTarget = { kind: 'file', type: type, id: fileId };
-            var tgl = file.enabled === false ? 'Aktive Et' : 'Deaktive Et';
+            var tgl = file.enabled === false ? _sdT('Activate') : _sdT('Deactivate');
             // Locked sentinels (Bootstrap CSS / Icons / Bundle JS) are reorderable
             // and toggleable but never renamed, duplicated, removed or deleted
             // — they stand in for the framework's CDN inclusion.
@@ -32344,7 +32351,7 @@ const StyleDesigner = (function () {
         function showFontCtx(family, x, y) {
             var gf = null; for (var i=0; i<gfAdded.length; i++) { if (gfAdded[i].family === family) { gf = gfAdded[i]; break; } }
             _ctxTarget = { kind: 'font', id: family };
-            var tgl = gf && gf.enabled === false ? 'Aktive Et' : 'Deaktive Et';
+            var tgl = gf && gf.enabled === false ? _sdT('Activate') : _sdT('Deactivate');
             buildCtx([
                 { label: tgl,  action: 'toggle', icon: 'bi-toggles' },
                 { divider: true },
@@ -33139,7 +33146,7 @@ const StyleDesigner = (function () {
                 if (tPane) tPane.style.display = (tab === 'themes') ? '' : 'none';
                 // Update header title to mirror the active tab
                 var hdrTitle = document.getElementById('sd-assets-header-title');
-                if (hdrTitle) hdrTitle.textContent = (tab === 'themes') ? 'Themes' : 'Design';
+                if (hdrTitle) hdrTitle.textContent = (tab === 'themes') ? _sdT('Themes') : _sdT('Design');
                 // Re-render the Theme panel when switching to it — picks up
                 // any changes the bottom Styles panel made while we were
                 // looking at the Design tab.
@@ -33226,7 +33233,7 @@ const StyleDesigner = (function () {
                 '<div class="sd-gf-det-head">' +
                     '<div class="sd-gf-det-title">' + family + '</div>' +
                     (existing
-                        ? '<span class="sd-gf-det-status sd-gf-det-status-added"><span class="bi bi-check2-circle me-1"></span>Eklendi</span>'
+                        ? '<span class="sd-gf-det-status sd-gf-det-status-added"><span class="bi bi-check2-circle me-1"></span>' + esc(_sdT('Already added')) + '</span>'
                         : '<span class="sd-gf-det-status">' + esc(_sdT('Not added yet')) + '</span>') +
                 '</div>' +
                 '<div class="sd-gf-det-preview-card">' +
@@ -34681,7 +34688,7 @@ const StyleDesigner = (function () {
             // Refresh the "System" tab so the new widget appears in "In this design".
             // Do NOT refresh the "Shared" tab — system widgets are excluded from there.
             if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
-            sdToast('"' + esc(newName) + '" eklendi.' + (type ? '' : _sdT('Choose the content type in the right-hand panel.')), 'success');
+            sdToast(_sdT('"{var}" added.', esc(newName)) + (type ? '' : ' ' + _sdT('Choose the content type in the right-hand panel.')), 'success');
         });
     }
 
@@ -35192,7 +35199,7 @@ const StyleDesigner = (function () {
                                                                 { name: 'type',                value: 'button' },
                                                                 { name: 'data-pg-qty-action', value: 'dec' },
                                                                 { name: 'tabindex',           value: '-1' },
-                                                                { name: 'aria-label',         value: 'Decrease' }
+                                                                { name: 'aria-label',         value: _sdT('Decrease') }
                                                             ]
                                                         }, []),
                                                         createNode('semantic', {
@@ -35215,7 +35222,7 @@ const StyleDesigner = (function () {
                                                                 { name: 'type',                value: 'button' },
                                                                 { name: 'data-pg-qty-action', value: 'inc' },
                                                                 { name: 'tabindex',           value: '-1' },
-                                                                { name: 'aria-label',         value: 'Increase' }
+                                                                { name: 'aria-label',         value: _sdT('Increase') }
                                                             ]
                                                         }, [])
                                                     // max-width, not width: a hard
@@ -35958,14 +35965,14 @@ const StyleDesigner = (function () {
                                                 _ciTd('%0', 'text-end')
                                             ]),
                                             createNode('semantic', { tag: 'tr', cssClass: '' }, [
-                                                _ciTd('Havale / EFT'),
+                                                _ciTd(_sdT('Bank Transfer / EFT')),
                                                 _ciTd(_sdT('A direct transfer to our bank account')),
                                                 _ciTd('%0', 'text-end')
                                             ]),
                                             createNode('semantic', { tag: 'tr', cssClass: '' }, [
                                                 _ciTd(_sdT('Cash on Delivery')),
                                                 _ciTd(_sdT('Cash or card on delivery')),
-                                                _ciTd('+9,90 TL', 'text-end')
+                                                _ciTd(_sdT('+9.90 TL'), 'text-end')
                                             ]),
                                             createNode('semantic', { tag: 'tr', cssClass: '' }, [
                                                 _ciTd(_sdT('3 Instalments')),
@@ -37670,7 +37677,7 @@ const StyleDesigner = (function () {
                    '        <link rel="stylesheet" href="' + googleFontUrl(f) + '">\n';
         }).join('');
 
-        var code = '<!DOCTYPE html>\n\n<html lang="en">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title></title>\n\n' +
+        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(document.documentElement.lang || 'en') + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title></title>\n\n' +
             '        <meta name="viewport" content="width=device-width, initial-scale=1">\n\n' +
             '        <meta_tags></meta_tags>\n\n        <stylesheet></stylesheet>\n\n' +
             (fontImports ? fontImports + '\n' : '') +
@@ -37875,7 +37882,7 @@ const StyleDesigner = (function () {
             if ((Date.now() - record.timestamp) > 7 * 24 * 60 * 60 * 1000) {
                 localStorage.removeItem(_autosaveKey()); return;
             }
-            var dateStr = new Date(record.timestamp).toLocaleString('tr-TR');
+            var dateStr = new Date(record.timestamp).toLocaleString(_sdLocale());
             _showAutosavePrompt(dateStr + (record.styleName ? ' · "' + record.styleName + '"' : ''), record);
         } catch(e) { try { localStorage.removeItem(_autosaveKey()); } catch(e2) {} }
     }
@@ -38039,7 +38046,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-fr-status" id="sd-fr-status">—</div>' +
                 '</div>' +
                 '<div class="sd-fr-footer">' +
-                    '<button type="button" class="sd-fr-btn" id="sd-fr-count">Say</button>' +
+                    '<button type="button" class="sd-fr-btn" id="sd-fr-count">' + esc(_sdT('Count matches')) + '</button>' +
                     '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-fr-replace-all">' + esc(_sdT('Replace All')) + '</button>' +
                 '</div>' +
             '</div>';
@@ -38126,7 +38133,7 @@ const StyleDesigner = (function () {
             '<div class="sd-note-modal" role="dialog" aria-modal="true">' +
                 '<div class="sd-note-header">' +
                     '<span class="bi bi-chat-left-text me-2"></span>' +
-                    '<span class="sd-note-title">Not — <em>' + typeLabel + '</em></span>' +
+                    '<span class="sd-note-title">' + esc(_sdT('Note')) + ' — <em>' + typeLabel + '</em></span>' +
                     '<button type="button" class="sd-note-close bi bi-x-lg" id="sd-note-close" title="' + esc(_sdT('Close')) + '"></button>' +
                 '</div>' +
                 '<div class="sd-note-body">' +
@@ -38256,7 +38263,7 @@ const StyleDesigner = (function () {
             var autosaveSnap = _readAutosaveAsSnapshot();
             var html = '<div class="sd-snap-hdr"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Snapshots')) + '' +
                 '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn"></button></div>' +
-                '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>Yeni Snapshot</button>';
+                '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>' + esc(_sdT('New Snapshot')) + '</button>';
             if (!snaps.length && !autosaveSnap) {
                 html += '<div class="sd-snap-empty">' + esc(_sdT('There is no snapshot yet')) + '</div>';
             } else {
@@ -38268,7 +38275,7 @@ const StyleDesigner = (function () {
                     html += '<div class="sd-snap-item sd-snap-item-autosave">' +
                         '<div class="sd-snap-info">' +
                             '<div class="sd-snap-name"><span class="bi bi-cloud-arrow-down me-1"></span>' + esc(autosaveSnap.name) + '</div>' +
-                            '<div class="sd-snap-date">' + new Date(autosaveSnap.timestamp).toLocaleString('tr-TR') + '</div>' +
+                            '<div class="sd-snap-date">' + new Date(autosaveSnap.timestamp).toLocaleString(_sdLocale()) + '</div>' +
                         '</div>' +
                         '<div class="sd-snap-acts">' +
                             '<button class="sd-snap-load" data-id="__autosave__">' + esc(_sdT('Load')) + '</button>' +
@@ -38278,10 +38285,10 @@ const StyleDesigner = (function () {
                 snaps.slice().reverse().forEach(function(snap) {
                     html += '<div class="sd-snap-item">' +
                         '<div class="sd-snap-info"><div class="sd-snap-name">' + esc(snap.name) + '</div>' +
-                        '<div class="sd-snap-date">' + new Date(snap.timestamp).toLocaleString('tr-TR') + '</div></div>' +
+                        '<div class="sd-snap-date">' + new Date(snap.timestamp).toLocaleString(_sdLocale()) + '</div></div>' +
                         '<div class="sd-snap-acts">' +
                         '<button class="sd-snap-load" data-id="' + esc(snap.id) + '">' + esc(_sdT('Load')) + '</button>' +
-                        '<button class="sd-snap-del bi bi-trash" data-id="' + esc(snap.id) + '" title="Sil"></button>' +
+                        '<button class="sd-snap-del bi bi-trash" data-id="' + esc(snap.id) + '" title="' + esc(_sdT('Delete')) + '"></button>' +
                         '</div></div>';
                 });
                 html += '</div>';
@@ -38588,7 +38595,7 @@ const StyleDesigner = (function () {
                 var _lmLabel = document.getElementById('sd-last-modified-label');
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {
                     var _lmDate = new Date(res.data.saved_ts * 1000);
-                    var _lmStr  = _lmDate.toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                    var _lmStr  = _lmDate.toLocaleString(_sdLocale(), { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
                     _lmLabel.textContent = _lmStr + ' · ' + res.data.saved_by;
                 }
                 // New tabs learn their page ids, every baseline resets, the
@@ -41098,7 +41105,7 @@ const StyleDesigner = (function () {
             var states = _assetsApi.getSentinelStates();
             function _stateLabel(name, entry) {
                 if (!entry) return name + ' (' + _sdT('none') + ')';
-                return name + ' — ' + (entry.enabled === false ? 'Aktive Et' : 'Deaktive Et');
+                return name + ' — ' + (entry.enabled === false ? _sdT('Activate') : _sdT('Deactivate'));
             }
             items.push({ id: 'act_tg_bs_css',   label: _stateLabel('Bootstrap CSS',    states.bsCss),    icon: 'bi-bootstrap',
                 action: function() { _assetsApi.toggleSentinel('bootstrap-css');   } });
