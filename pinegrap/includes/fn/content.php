@@ -313,6 +313,8 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit')
 function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, $label_column_width, $office_use_only, $liveform, $interface, $editable = false, $device_type = 'desktop', $folder_id_for_default_value = 0, $reference_code_field_id = 0, $express_order_form_type = '', $prefix = '')
 {
     $form_info = array();
+    // built up field by field below, so it has to start out empty
+    $form_info['content'] = '';
     // if page id is not equal to 0, then this is a page form
     if ($page_id != 0) {
         // get page type
@@ -605,7 +607,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
             }
         }
-        $output_spacing_row_class = 'class="spacing_row' . ($field['office_use_only'] ? ' software_office_use_only" ' : '" ');
+        // office_use_only is only selected for custom forms
+        $output_spacing_row_class = 'class="spacing_row' . (!empty($field['office_use_only']) ? ' software_office_use_only" ' : '" ');
         // if field should have spacing above, add spacing
         if ($field['spacing_above']) {
             $form_info['content'] .= '<tr ' . $output_spacing_row_class . $output_hidden_style . '>

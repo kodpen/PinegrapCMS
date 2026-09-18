@@ -919,7 +919,8 @@ function output_header($properties = false)
             </li>';
 
 
-    //output feedback form url for different languages
+    //output feedback form url for different languages (English form for any other language)
+    $output_feedback_url = 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
     if (lang(array('info' => '')) === 'en') {
         $output_feedback_url = 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
     } else if (lang(array('info' => '')) === 'tr') {
@@ -1756,10 +1757,12 @@ function output_menu($properties = false)
         if (USER_ROLE != 3) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_short_link.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))) . '</a>';
         }
-        // PAGES > Auto Dialogs
-        $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-circle-square bi-me-2\'>' . lang('Auto Dialogs') . '</a>';
-        $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_auto_dialog.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Auto Dialog'))) . '</a>';
+        // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
+        if ($user['role'] < 3) {
+            $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-circle-square bi-me-2\'>' . lang('Auto Dialogs') . '</a>';
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_auto_dialog.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Auto Dialog'))) . '</a>';
+        }
         // PAGES > Comments
         $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-chat-square-quote bi-me-2\'>' . lang('Comments') . '</a>';

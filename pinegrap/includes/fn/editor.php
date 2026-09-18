@@ -680,7 +680,6 @@ function get_codemirror_includes()
         <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/lint/lint.css">
         <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/addon/display/fullscreen.css">
         <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/theme/pastel-on-dark.css">
-        <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/theme/pastel-on-dark.css">
         <script  src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/codemirror-5.65.9/codemirror.js"></script>
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/linters/jshint.js"></script>
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/codemirror/linters/jsonlint.js"></script>

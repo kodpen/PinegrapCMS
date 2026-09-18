@@ -58,10 +58,11 @@ function get_dominant_area_color($file_path)
             $g = ($rgb >> 8) & 0xFF;
             $b = $rgb & 0xFF;
 
-            // Round color to reduce noise (group similar tones)
-            $r = round($r / 32) * 32;
-            $g = round($g / 32) * 32;
-            $b = round($b / 32) * 32;
+            // Round color to reduce noise (group similar tones). Rounding pushes
+            // values from 240 up to 256, which is one past a byte, so clamp.
+            $r = min(255, round($r / 32) * 32);
+            $g = min(255, round($g / 32) * 32);
+            $b = min(255, round($b / 32) * 32);
 
             $hex = sprintf("#%02x%02x%02x", $r, $g, $b);
 
