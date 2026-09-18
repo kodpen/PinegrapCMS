@@ -67,8 +67,9 @@ function erp_invoice_returned_total($invoice_id)
  *
  * Besides the quantity, each line carries the tax already credited back on it
  * (returned_tax), so a further return can take no more than what is left. A
- * return line has no link to its parent line, so, as when a return is
- * cancelled, the lines are matched on product.
+ * return line names the parent line it was taken from (parent_line_id); lines
+ * written before that link existed carry 0 and are matched on product instead,
+ * which is exact as long as the parent has one line per product.
  *
  * @param int $invoice_id
  * @return array
@@ -84,7 +85,8 @@ function erp_returnable_lines($invoice_id)
                 WHERE d.parent_invoice_id = '" . $invoice_id . "'
                   AND d.doc_type = 'return'
                   AND d.status <> 'cancelled'
-                  AND r.product_id = i.product_id) AS returned_tax
+                  AND (r.parent_line_id = i.id
+                       OR (r.parent_line_id = 0 AND r.product_id = i.product_id))) AS returned_tax
         FROM erp_invoice_items i
         WHERE i.invoice_id = '" . $invoice_id . "' ORDER BY i.line_no ASC, i.id ASC");
 
@@ -310,9 +312,13 @@ function erp_invoice_return($data)
     foreach ($built['lines'] as $line) {
         $line_no++;
 
+        // parent_line_id is what lets the quantity go back to the right line
+        // when this return is cancelled: two lines of the same product on one
+        // invoice cannot be told apart by product alone.
         $ok = erp_query("INSERT INTO erp_invoice_items SET
                 invoice_id = '" . $return_id . "',
                 line_no = '" . $line_no . "',
+                parent_line_id = '" . (int) $line['parent_line_id'] . "',
                 product_id = '" . (int) $line['product_id'] . "',
                 description = '" . escape($line['description']) . "',
                 quantity = '" . number_format($line['quantity'], 4, '.', '') . "',
@@ -412,7 +418,10 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         return $fail(lang('That invoice has been cancelled.'));
     }
 
-    if ((int) db_value("SELECT COUNT(*) FROM erp_settlements WHERE invoice_id = '" . $invoice_id . "'") > 0) {
+    // The gift card allocation the invoice itself posted does not count: it
+    // was never an operator's decision, and it is reversed below along with
+    // the document that made it.
+    if (erp_invoice_receipt_count($invoice_id) > 0) {
         return $fail(lang('Money has been allocated to this invoice, so it cannot be cancelled. Undo the settlement first.'));
     }
 
@@ -451,6 +460,15 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         return $fail($error);
     }
 
+    // The gift card credit goes the same way: reversed by an opposite
+    // movement, and its allocation removed, so the account reads as if the
+    // invoice had never been raised.
+    if (!$is_return && !erp_unsettle_gift_card($invoice_id, $created_by)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     if (erp_query("UPDATE erp_invoices SET status = 'cancelled', updated_at = '" . time() . "'
         WHERE id = '" . $invoice_id . "'") === false) {
         $error = erp_db_error();
@@ -459,16 +477,30 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
     }
 
     // A cancelled return gives the goods back to the parent, so the parent can
-    // be returned again.
+    // be returned again. Each return line names the parent line it was taken
+    // from; a line written before that link existed falls back to the first
+    // parent line with the same product, which is all it ever knew.
     if ($is_return) {
-        foreach ((array) db_items("SELECT product_id, quantity FROM erp_invoice_items
+        foreach ((array) db_items("SELECT parent_line_id, product_id, quantity FROM erp_invoice_items
             WHERE invoice_id = '" . $invoice_id . "'") as $line) {
 
-            if (erp_query("UPDATE erp_invoice_items
-                SET returned_qty = GREATEST(0, returned_qty - " . number_format((float) $line['quantity'], 4, '.', '') . ")
-                WHERE invoice_id = '" . (int) $invoice['parent_invoice_id'] . "'
-                  AND product_id = '" . (int) $line['product_id'] . "'
-                LIMIT 1") === false) {
+            $quantity = number_format((float) $line['quantity'], 4, '.', '');
+
+            if ((int) $line['parent_line_id'] > 0) {
+                $ok = erp_query("UPDATE erp_invoice_items
+                    SET returned_qty = GREATEST(0, returned_qty - " . $quantity . ")
+                    WHERE id = '" . (int) $line['parent_line_id'] . "'
+                      AND invoice_id = '" . (int) $invoice['parent_invoice_id'] . "'");
+            } else {
+                $ok = erp_query("UPDATE erp_invoice_items
+                    SET returned_qty = GREATEST(0, returned_qty - " . $quantity . ")
+                    WHERE invoice_id = '" . (int) $invoice['parent_invoice_id'] . "'
+                      AND product_id = '" . (int) $line['product_id'] . "'
+                    ORDER BY line_no ASC, id ASC
+                    LIMIT 1");
+            }
+
+            if ($ok === false) {
                 $error = erp_db_error();
                 erp_tx_rollback();
                 return $fail($error);

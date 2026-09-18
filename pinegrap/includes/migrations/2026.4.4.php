@@ -120,6 +120,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_invoice_document();   // 4.47
 
 	upgrade_2026_4_4_offline_payment_awaiting(); // 4.48
+
+	upgrade_2026_4_4_erp_return_line_link();   // 4.50
 }
 
 
@@ -2580,5 +2582,38 @@ function upgrade_2026_4_4_offline_payment_awaiting() {
 	install_add_column('config', 'ecommerce_offline_payment_cancel_days', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Bank transfer orders show as awaiting payment until the payment is recorded, and unpaid ones can be cancelled automatically after a set number of days.');
+
+}
+
+// 4.50 - a return line points at the invoice line it was taken from.
+//
+// erp_invoice_items had no link from a return line back to the parent line, so
+// cancelling a return handed the quantity back by product_id ... LIMIT 1. Two
+// lines of the same product on one invoice - a different price, a different
+// discount - cannot be told apart that way, and the wrong line could end up
+// returnable again while the right one stayed used up. parent_line_id records
+// the link and both the tax cap on a further return and the cancel read it.
+//
+// Rows written before this step are filled in where the parent invoice has
+// exactly one line for the product, which is the only case the old match was
+// exact in. Where it has several the link stays 0 and those rows keep the
+// product match, so the step can run again without touching them twice.
+function upgrade_2026_4_4_erp_return_line_link() {
+
+	install_add_column('erp_invoice_items', 'parent_line_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_index('erp_invoice_items', 'idx_parent_line', "KEY idx_parent_line (parent_line_id)");
+
+	db("UPDATE erp_invoice_items r
+		INNER JOIN erp_invoices d ON r.invoice_id = d.id AND d.doc_type = 'return'
+		INNER JOIN (
+			SELECT invoice_id, product_id, MIN(id) AS line_id, COUNT(*) AS line_count
+			FROM erp_invoice_items
+			GROUP BY invoice_id, product_id
+		) p ON p.invoice_id = d.parent_invoice_id AND p.product_id = r.product_id AND p.line_count = 1
+		SET r.parent_line_id = p.line_id
+		WHERE r.parent_line_id = 0");
+
+	install_note('Return lines now record the invoice line they were taken from, so cancelling a return restores the right line.');
 
 }

@@ -754,6 +754,13 @@
          faturayı kapanmış bulursa sizinle mutabakat yapamaz, o yüzden
          eşleştirmeyi her zaman siz seçersiniz.
 
+         Tek istisna hediye kartıdır. Siparişin hediye kartıyla ödenen kısmı
+         sipariş anında, o siparişe karşı ödenmiştir; fatura kesilirken bu
+         tutar cariye alacak yazılır ve faturaya bağlanır. Tamamı hediye
+         kartıyla ödenen sipariş kesildiği anda "ödendi" olur, kısmen ödenen
+         yalnız kalanı bekler. Bu bağ faturanın iptalini engellemez; iptalde
+         alacak da ters kayıtla geri alınır.
+
   [YENİ] İade faturası ve iptal. Kesilmiş bir fatura düzenlenmez — belge
          karşı tarafın elinde. Onun yerine iki yol var:
 

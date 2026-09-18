@@ -101,7 +101,7 @@ if (!$_POST) {
         'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
         'breadcrumb' => array(
             array('label' => lang('Accounts'), 'url' => $list_url),
-            array('label' => h($account['title'])),
+            array('label' => $account['title']),
         ),
     ]) . '
 <main id="content" class="container-fluid">
@@ -172,6 +172,15 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     $account_id = (int) $liveform->get_field_value('id');
+
+    // This screen only edits. Without an existing account behind the id the
+    // save would fall through to an insert and create a record nobody asked for.
+    if (($account_id <= 0) || (erp_account($account_id) === null)) {
+        $liveform->remove_form();
+        $liveform_list = new liveform('erp_accounts');
+        $liveform_list->mark_error('_error', lang('The account could not be found.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php');
+    }
 
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
 

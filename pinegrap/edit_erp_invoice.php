@@ -74,8 +74,9 @@ $is_cancelled = ((string) $invoice['status'] === 'cancelled');
 
 // Cancelling is for a document nothing has been hung on yet. Once money has
 // been allocated to it or goods have come back against it, the way out is a
-// return, not a quiet withdrawal.
-$can_cancel = (!$is_cancelled && empty($settlements) && empty($returns));
+// return, not a quiet withdrawal. The gift card allocation the invoice posted
+// for itself is not somebody's money and is reversed with the document.
+$can_cancel = (!$is_cancelled && (erp_invoice_receipt_count($invoice_id) === 0) && empty($returns));
 $can_return = (!$is_cancelled && !$is_return && ($invoice['doc_type'] === 'invoice'));
 
 $status_labels = array(
@@ -246,7 +247,7 @@ pg_page_shell([
         'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
         'breadcrumb' => array(
             array('label' => lang('Invoices'), 'url' => $list_url),
-            array('label' => h($invoice['full_number'])),
+            array('label' => $invoice['full_number']),
         ),
     ]) . '
 <main id="content" class="container-fluid">
