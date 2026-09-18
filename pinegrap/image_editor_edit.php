@@ -366,6 +366,7 @@ if (!$_POST)
                             <input type="hidden" name="send_to" value="' . $send_to . '" />
                             <input type="hidden" name="object_type" value="' . $object_type . '" />
                             <input type="hidden" name="object_id" value="' . $object_id . '" />
+                            <input type="hidden" name="column_to_update" value="' . h($_GET['column_to_update'] ?? '') . '" />
                             <input type="hidden" name="image_file" value="" />
                             <input type="hidden" name="save_option" value="" />
                             <div class="d-flex justify-content-end">
@@ -375,7 +376,7 @@ if (!$_POST)
                                         <option ' . $output_jpg_selected  . 'value="jpg">jpg</option>
                                         <option ' . $output_png_selected . 'value="png">png</option>
                                         <option ' . $output_webp_selected  . 'value="webp">webp</option>
-                                        <option ' . $output_gif_selected  . 'value="webp">gif</option>
+                                        <option ' . $output_gif_selected  . 'value="gif">gif</option>
 
                                     </select>
                                 </div>
@@ -694,9 +695,9 @@ else
     $column_to_update = '';
 
     // if there is a column to update, then set it so that it can be used later on in various places
-    if ($_GET['column_to_update'])
+    if (($_POST['column_to_update'] ?? '') != '')
     {
-        $column_to_update = $_GET['column_to_update'];
+        $column_to_update = $_POST['column_to_update'];
     }
 
     switch ($object_type)

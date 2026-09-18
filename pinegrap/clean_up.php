@@ -197,9 +197,9 @@ while ($row = mysqli_fetch_assoc($result)) {
     $files[] = $row['name']; 
 }
 // get files from files/ directory
-foreach(glob('files/*.*') as $directory_file) {
-    //remove files/ directory name from them
-    $directory_files[] = str_replace('files/','',$directory_file);
+foreach(glob(FILE_DIRECTORY_PATH . '/*.*') as $directory_file) {
+    // Keep only the base name so it can be compared with the files table.
+    $directory_files[] = basename($directory_file);
 }
 // find files that exist on directory but not exist in db
 $file_directory_files_diff = array_diff($directory_files, $files);
@@ -282,6 +282,7 @@ if (!$_POST) {
         $liveform = new liveform('settings');
         $liveform->add_notice(lang('Congratulations, the files or folders that need to be deleted were not found'));
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
+        exit();
     }
     
     print
