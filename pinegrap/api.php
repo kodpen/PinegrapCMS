@@ -161,6 +161,10 @@ if (
     and ($action != 'get_unselected_products')
 
     and ($action != 'upload_file')
+
+    // Arranging the dashboard is open to every backend role, so the action
+    // is exempted from the role <= 1 gate below; the case block checks the
+    // session and the token for itself.
     and ($action != 'update_dashboard_widgets')
     and ($action != 'software_backup')
     and ($action != 'software_update')
@@ -8500,6 +8504,20 @@ switch ($action) {
         break;
 
     case 'update_dashboard_widgets':
+
+        // The action sits on the general gate's exemption list because every
+        // panel role may arrange its dashboard, and that gate would turn away
+        // anyone above role 1. The exemption also skips the session and token
+        // checks, so they happen here: without them an anonymous POST could
+        // reset or reorder the site-wide layout.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
+
+        validate_token();
 
         // What the dashboard stores is positions: one widget id per position,
         // in order, hidden cards included. The only other value the screen

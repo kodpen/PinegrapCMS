@@ -26,6 +26,7 @@ function get_view_order_screen_content($properties)
     // read when the totals and the layout are assembled.
     $subtotal = 0;
     $grand_tax = 0;
+    $grand_shipping = 0;
     $order_discount = 0;
     $output_shipping = '';
     $output_discount = '';

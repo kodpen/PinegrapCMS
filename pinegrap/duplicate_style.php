@@ -42,6 +42,13 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $style = mysqli_fetch_assoc($result);
 
+// The id comes straight from the query string, so it can point at a style
+// that was deleted meanwhile. Without this the INSERT below would still run
+// and leave an unnamed, untyped style row behind.
+if (!$style) {
+    output_error(lang('Sorry, the item could not be found.'), 404);
+}
+
 $original_style_name = $style['name'];
 
 $new_style_name = get_unique_name(array(
@@ -82,7 +89,7 @@ $query =
         '" . escape($style['additional_body_classes']) . "',
         '" . escape($style['collection']) . "',
         '" . e($style['layout_type']) . "',
-        '" . escape($style['tree_json']) . "',
+        " . (($style['tree_json'] === null) ? 'NULL' : "'" . escape($style['tree_json']) . "'") . ",
         '" . escape($user['id']) . "',
         UNIX_TIMESTAMP())";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

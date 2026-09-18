@@ -499,8 +499,10 @@ if (!$_POST) {
     
     // if there are no date filters, then prepare to output date changer
     if ($date_filter_exists == false) {
-        // if the date has not been set in the session yet, populate start and stop days with default, which is the past week
-        if (isset($_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month']) == false) {
+        // if the date has not been set in the session yet (or an older session
+        // still holds a non-numeric value), populate start and stop days with default, which is the past week
+        if ((isset($_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month']) == false)
+            || !ctype_digit((string) $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'])) {
             $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'] = date('m', time() - 2678400);
             $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'] = date('d', time() - 2678400);
             $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] = date('Y', time() - 2678400);
@@ -511,13 +513,21 @@ if (!$_POST) {
             
         // else if the date has been passed in the query string, then set date in session
         } elseif (isset($_GET['start_month']) == true) {
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'] = $_GET['start_month'];
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'] = $_GET['start_day'];
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] = $_GET['start_year'];
-            
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_month'] = $_GET['stop_month'];
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_day'] = $_GET['stop_day'];
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_year'] = $_GET['stop_year'];
+            // The date changer links send zero-padded integers, but the query
+            // string can carry anything. The year math and mktime() calls below
+            // reject strings on PHP 8, and a value that reached the session would
+            // break the report on every later request, so only a real calendar
+            // range is stored; anything else keeps the previous range.
+            $requested_range = array();
+            foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $date_part) {
+                $requested_range[$date_part] = (int) ($_GET[$date_part] ?? 0);
+            }
+            if (checkdate($requested_range['start_month'], $requested_range['start_day'], $requested_range['start_year'])
+                && checkdate($requested_range['stop_month'], $requested_range['stop_day'], $requested_range['stop_year'])) {
+                foreach ($requested_range as $date_part => $value) {
+                    $_SESSION['software']['statistics']['view_visitor_report'][$session_index][$date_part] = sprintf(substr($date_part, -4) == 'year' ? '%04d' : '%02d', $value);
+                }
+            }
         }
         
         $decrease_year['start_month'] = '01';

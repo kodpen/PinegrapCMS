@@ -2170,21 +2170,21 @@ if (!$_POST) {
             $properties = array(
                 'page_id' => $page_id,
                 'form_name' => $_POST['custom_form_form_name'],
-                'enabled' => $_POST['custom_form_enabled'],
-                'quiz' => $_POST['custom_form_quiz'],
+                'enabled' => ($_POST['custom_form_enabled'] ?? 0),
+                'quiz' => ($_POST['custom_form_quiz'] ?? 0),
                 'quiz_pass_percentage' => $_POST['custom_form_quiz_pass_percentage'],
                 'label_column_width' => $_POST['custom_form_label_column_width'],
                 'watcher_page_id' => $_POST['custom_form_watcher_page_id'],
-                'save' => $_POST['custom_form_save'],
+                'save' => ($_POST['custom_form_save'] ?? 0),
                 'submit_button_label' => $_POST['custom_form_submit_button_label'],
-                'auto_registration' => $_POST['custom_form_auto_registration'],
-                'submitter_email' => $_POST['custom_form_submitter_email'],
+                'auto_registration' => ($_POST['custom_form_auto_registration'] ?? 0),
+                'submitter_email' => ($_POST['custom_form_submitter_email'] ?? 0),
                 'submitter_email_from_email_address' => $_POST['custom_form_submitter_email_from_email_address'],
                 'submitter_email_subject' => $_POST['custom_form_submitter_email_subject'],
                 'submitter_email_format' => $_POST['custom_form_submitter_email_format'],
                 'submitter_email_body' => $_POST['custom_form_submitter_email_body'],
                 'submitter_email_page_id' => $_POST['custom_form_submitter_email_page_id'],
-                'administrator_email' => $_POST['custom_form_administrator_email'],
+                'administrator_email' => ($_POST['custom_form_administrator_email'] ?? 0),
                 'administrator_email_to_email_address' => $_POST['custom_form_administrator_email_to_email_address'],
                 'administrator_email_bcc_email_address' => $_POST['custom_form_administrator_email_bcc_email_address'],
                 'administrator_email_subject' => $_POST['custom_form_administrator_email_subject'],
@@ -2192,26 +2192,26 @@ if (!$_POST) {
                 'administrator_email_body' => $_POST['custom_form_administrator_email_body'],
                 'administrator_email_page_id' => $_POST['custom_form_administrator_email_page_id'],
                 'contact_group_id' => $custom_form_contact_group_id,
-                'membership' => $_POST['custom_form_membership'],
+                'membership' => ($_POST['custom_form_membership'] ?? 0),
                 'membership_days' => $_POST['custom_form_membership_days'],
                 'membership_start_page_id' => $_POST['custom_form_membership_start_page_id'],
-                'private' => $_POST['custom_form_private'],
+                'private' => ($_POST['custom_form_private'] ?? 0),
                 'private_folder_id' => $custom_form_private_folder_id,
                 'private_days' => $_POST['custom_form_private_days'],
                 'private_start_page_id' => $_POST['custom_form_private_start_page_id'],
                 'confirmation_type' => $_POST['custom_form_confirmation_type'],
                 'confirmation_message' => prepare_rich_text_editor_content_for_input($_POST['custom_form_confirmation_message']),
                 'confirmation_page_id' => $_POST['custom_form_confirmation_page_id'],
-                'confirmation_alternative_page' => $_POST['custom_form_confirmation_alternative_page'],
+                'confirmation_alternative_page' => ($_POST['custom_form_confirmation_alternative_page'] ?? 0),
                 'confirmation_alternative_page_contact_group_id' => $_POST['custom_form_confirmation_alternative_page_contact_group_id'],
                 'confirmation_alternative_page_id' => $_POST['custom_form_confirmation_alternative_page_id'],
                 'return_type' => $_POST['custom_form_return_type'],
                 'return_message' => prepare_rich_text_editor_content_for_input($_POST['custom_form_return_message']),
                 'return_page_id' => $_POST['custom_form_return_page_id'],
-                'return_alternative_page' => $_POST['custom_form_return_alternative_page'],
+                'return_alternative_page' => ($_POST['custom_form_return_alternative_page'] ?? 0),
                 'return_alternative_page_contact_group_id' => $_POST['custom_form_return_alternative_page_contact_group_id'],
                 'return_alternative_page_id' => $_POST['custom_form_return_alternative_page_id'],
-                'pretty_urls' => $_POST['custom_form_pretty_urls']
+                'pretty_urls' => ($_POST['custom_form_pretty_urls'] ?? 0)
             );
             
             // If hooks are enabled and the user is a designer or administrator then prepare property for PHP hook code.
@@ -2221,7 +2221,7 @@ if (!$_POST) {
 
             // If commerce is enabled and the user has access to commerce, then save offer properties.
             if ((ECOMMERCE) && (USER_MANAGE_ECOMMERCE)) {
-                $properties['offer'] = $_POST['custom_form_offer'];
+                $properties['offer'] = ($_POST['custom_form_offer'] ?? 0);
                 $properties['offer_id'] = $_POST['custom_form_offer_id'];
                 $properties['offer_days'] = $_POST['custom_form_offer_days'];
                 $properties['offer_eligibility'] = $_POST['custom_form_offer_eligibility'];
@@ -2691,7 +2691,7 @@ if (!$_POST) {
 
     // get style so that we can create regions
     // if default was selected for style
-    if ($_POST['style'] == 0) {
+    if (($_POST['style'] ?? 0) == 0) {
         $style = get_style($_POST['folder']);
     // else default was not selected
     } else {

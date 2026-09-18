@@ -38,6 +38,13 @@ if (!$_POST) {
        WHERE style_id = '" . escape($_REQUEST['id']) . "'";
     $result = mysqli_query(db::$con, $query);
     $row = mysqli_fetch_array($result);
+
+    // The id comes from the request and can point at a style that was
+    // deleted meanwhile; without this the screen renders an empty editor.
+    if (!$row) {
+        output_error(lang('Sorry, the item could not be found.'), 404);
+    }
+
     $style_id = $row['style_id'];
     $style_name = $row['style_name'];
     $style_timestamp = $row['style_timestamp'];
