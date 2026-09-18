@@ -232,7 +232,9 @@ if (!$_POST) {
 
     log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$name)), $_SESSION['sessionusername']);
 
-    $liveform->add_notice(lang('The file was created successfully.'));
+    // The notice must be attached to the form rendered by view_files.php.
+    $liveform_view_files = new liveform('view_files');
+    $liveform_view_files->add_notice(lang('The file was created successfully.'));
     header('Location: view_files.php');
     exit();
 }

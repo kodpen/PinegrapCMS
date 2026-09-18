@@ -646,8 +646,13 @@ $liveform->remove_form('edit_file');
     $row = mysqli_fetch_array($result);
 
     $name = prepare_file_name($_POST['name']);
+    // $file_path is the target of the final rename; the in-place image tools
+    // below must read and write the file under its stored name, because the
+    // posted name may differ and does not exist on disk until the rename.
     $file_path = FILE_DIRECTORY_PATH . '/' . $name;
     $file_extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $stored_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+    $stored_file_extension = strtolower(pathinfo($row['name'], PATHINFO_EXTENSION));
 
     // DELETE
     if (!empty($_POST['delete'])) {
@@ -700,9 +705,9 @@ $liveform->remove_form('edit_file');
         // Imagick preferred — positive angle = clockwise
         if (class_exists('Imagick')) {
             try {
-                $img = new Imagick($file_path);
+                $img = new Imagick($stored_file_path);
                 $img->rotateImage(new ImagickPixel('none'), $rotate_left ? -90 : 90);
-                $img->writeImage($file_path);
+                $img->writeImage($stored_file_path);
                 $img->destroy();
                 $rotated = true;
             } catch (Exception $e) {
@@ -713,42 +718,42 @@ $liveform->remove_form('edit_file');
         // GD fallback — positive angle = counter-clockwise (opposite of Imagick)
         if (!$rotated) {
             $angle_gd = $rotate_left ? 90 : -90;
-            switch ($file_extension) {
+            switch ($stored_file_extension) {
                 case 'jpg': case 'jpeg':
-                    $img = imagecreatefromjpeg($file_path);
+                    $img = imagecreatefromjpeg($stored_file_path);
                     if ($img !== false) {
                         $rot = imagerotate($img, $angle_gd, 0);
-                        imagejpeg($rot, $file_path, 90);
+                        imagejpeg($rot, $stored_file_path, 90);
                         imagedestroy($img); imagedestroy($rot);
                         $rotated = true;
                     }
                     break;
                 case 'png':
-                    $img = imagecreatefrompng($file_path);
+                    $img = imagecreatefrompng($stored_file_path);
                     if ($img !== false) {
                         $transparent = imagecolorallocatealpha($img, 0, 0, 0, 127);
                         $rot = imagerotate($img, $angle_gd, $transparent);
                         imagesavealpha($rot, true);
-                        imagepng($rot, $file_path);
+                        imagepng($rot, $stored_file_path);
                         imagedestroy($img); imagedestroy($rot);
                         $rotated = true;
                     }
                     break;
                 case 'gif':
-                    $img = imagecreatefromgif($file_path);
+                    $img = imagecreatefromgif($stored_file_path);
                     if ($img !== false) {
                         $rot = imagerotate($img, $angle_gd, 0);
-                        imagegif($rot, $file_path);
+                        imagegif($rot, $stored_file_path);
                         imagedestroy($img); imagedestroy($rot);
                         $rotated = true;
                     }
                     break;
                 case 'webp':
                     if (function_exists('imagecreatefromwebp')) {
-                        $img = imagecreatefromwebp($file_path);
+                        $img = imagecreatefromwebp($stored_file_path);
                         if ($img !== false) {
                             $rot = imagerotate($img, $angle_gd, 0);
-                            imagewebp($rot, $file_path, 90);
+                            imagewebp($rot, $stored_file_path, 90);
                             imagedestroy($img); imagedestroy($rot);
                             $rotated = true;
                         }
@@ -756,10 +761,10 @@ $liveform->remove_form('edit_file');
                     break;
                 case 'bmp':
                     if (function_exists('imagecreatefrombmp')) {
-                        $img = imagecreatefrombmp($file_path);
+                        $img = imagecreatefrombmp($stored_file_path);
                         if ($img !== false) {
                             $rot = imagerotate($img, $angle_gd, 0);
-                            imagejpeg($rot, $file_path, 90);
+                            imagejpeg($rot, $stored_file_path, 90);
                             imagedestroy($img); imagedestroy($rot);
                             $rotated = true;
                         }
@@ -774,9 +779,9 @@ $liveform->remove_form('edit_file');
         // cache that is only refilled when it is empty — so leaving them alone
         // here left the file list printing the pre-rotation size for ever, and
         // the resize button deciding on it.
-        @clearstatcache(true, $file_path);
+        @clearstatcache(true, $stored_file_path);
 
-        $rotated_size = @getimagesize($file_path);
+        $rotated_size = @getimagesize($stored_file_path);
 
         $sql_rotated_dimensions = '';
 
@@ -787,7 +792,7 @@ $liveform->remove_form('edit_file');
         }
 
         $query = "UPDATE files SET
-            size = '" . escape(filesize($file_path)) . "',
+            size = '" . escape(filesize($stored_file_path)) . "',
             " . $sql_rotated_dimensions . "
             timestamp = UNIX_TIMESTAMP(),
             user = '" . $user['id'] . "'
@@ -809,11 +814,11 @@ $liveform->remove_form('edit_file');
 
     // WEBP CONVERSION
     if (!empty($_POST['convert_webp'])) {
-        switch ($file_extension) {
-            case 'jpg': case 'jpeg': $image = imagecreatefromjpeg($file_path); break;
-            case 'png': $image = imagecreatefrompng($file_path); break;
-            case 'gif': $image = imagecreatefromgif($file_path); break;
-            case 'bmp': $image = imagecreatefrombmp($file_path); break;
+        switch ($stored_file_extension) {
+            case 'jpg': case 'jpeg': $image = imagecreatefromjpeg($stored_file_path); break;
+            case 'png': $image = imagecreatefrompng($stored_file_path); break;
+            case 'gif': $image = imagecreatefromgif($stored_file_path); break;
+            case 'bmp': $image = imagecreatefrombmp($stored_file_path); break;
         }
     }
 
@@ -1024,11 +1029,13 @@ $liveform->remove_form('edit_file');
         copy(FILE_DIRECTORY_PATH . '/' . $original_name, $new_file_path);
 
         // Fetch folder and description from DB
-        $query = "SELECT folder, description FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
+        $query = "SELECT folder, description, design FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
-        $sql_design = ($user['role'] <= 1) ? "'1'," : "'0',";
+        // The copy keeps the source file's design flag instead of deriving it
+        // from the current user's role.
+        $sql_design = "'" . (int) $row['design'] . "',";
 
         // Insert new file record
         $query = "INSERT INTO files (

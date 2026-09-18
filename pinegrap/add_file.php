@@ -317,7 +317,7 @@ if (!$_POST) {
     validate_token_field();
 
     // If the user didn't select a file then output error.
-    if ($_FILES['file']['name'][0] == '') {
+    if (empty($_FILES['file']['name'][0])) {
         output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
@@ -596,30 +596,30 @@ if (!$_POST) {
     }
 
 
-    if($_POST['uploadreturn'] == 'true'){
+    if(($_POST['uploadreturn'] ?? '') == 'true'){
 
-        if ($_POST['fallback'] == 'true') {
+        if (($_POST['fallback'] ?? '') == 'true') {
 
             $url_parameters = '';
-            if($_POST['CKEditorFuncNum']){
+            if(!empty($_POST['CKEditorFuncNum'])){
                 $url_parameters = 'CKEditorFuncNum=' . h(urlencode($_POST['CKEditorFuncNum']));
             }
             
-            if($_POST['SingleImage']){
+            if(!empty($_POST['SingleImage'])){
                 if($url_parameters != ''){
                     $url_parameters .= '&';
                 }
                 $url_parameters .= 'SingleImage=' . h(urlencode($_POST['SingleImage']));
             }
             
-            if($_POST['file_input_name']){
+            if(!empty($_POST['file_input_name'])){
                 if($url_parameters != ''){
                     $url_parameters .= '&';
                 }
                 $url_parameters .= 'file_input_name=' . h(urlencode($_POST['file_input_name']));
             }
             
-            if($_POST['send_to']){
+            if(!empty($_POST['send_to'])){
                 if($url_parameters != ''){
                     $url_parameters .= '&';
                 }
@@ -633,7 +633,7 @@ if (!$_POST) {
         // If visitor has an old browser and did not use drag-and-drop,
         // then forward visitor to next scren.  Drag-and-drop uses AJAX post
         // to this script, so we don't need to forward visitor anywhere in that case.
-        if ($_POST['fallback'] == 'true') {
+        if (($_POST['fallback'] ?? '') == 'true') {
             // If there is a send to value then send user back to that screen
             if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
                 header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));

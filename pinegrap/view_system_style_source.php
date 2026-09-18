@@ -22,9 +22,9 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 include_once('liveform.class.php');
-$liveform = new liveform('view_system_style_source', $_REQUEST['id']);
-$liveform->assign_field_value('id', $_REQUEST['id']);
-$liveform->assign_field_value('send_to', $_REQUEST['send_to']);
+$liveform = new liveform('view_system_style_source', ($_REQUEST['id'] ?? ''));
+$liveform->assign_field_value('id', ($_REQUEST['id'] ?? ''));
+$liveform->assign_field_value('send_to', ($_REQUEST['send_to'] ?? ''));
 
 // get style information
 $style = db_item(

@@ -121,12 +121,13 @@ $query =
     ORDER BY $sort_column $asc_desc";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$files = array();
 while ($row = mysqli_fetch_assoc($result)) {
     $files[] = $row;
 }
 $output_rows = '';
 
-// Optimize yüzdesi hesaplama eşiği (view_files.php ile aynı mantık).
+// Threshold for the optimization percentage (same logic as view_files.php).
 $unoptimized_image_types = ['jpg','jpeg','png','gif','bmp','tiff','tif','webp'];
 $unoptimized_count = 0;
 if ($files) {

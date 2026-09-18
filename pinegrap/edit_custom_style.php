@@ -36,7 +36,7 @@ if (!$_POST) {
        FROM style
        LEFT JOIN user ON style.style_user = user.user_id
        WHERE style_id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query);
+    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_array($result);
 
     // The id comes from the request and can point at a style that was
@@ -334,7 +334,7 @@ else
     if (($_POST['submit_save'] ?? '') == 'Save') {
         $send_to = '' ;
 
-        if ($_POST['send_to'] != '') {
+        if (($_POST['send_to'] ?? '') != '') {
             $send_to = '&send_to=' . urlencode($_POST['send_to']);
         }
 
@@ -345,7 +345,7 @@ else
     // so determine where the user should be sent.
     } else {
         // If there is a send to set, then forward user to send to.
-        if ($_POST['send_to'] != '') {
+        if (($_POST['send_to'] ?? '') != '') {
             header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
             exit();
             

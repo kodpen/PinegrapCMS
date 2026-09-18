@@ -55,7 +55,7 @@ echo
     <html lang="en">
         <head>
             <meta charset="utf-8">
-            <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($_GET['name']) . '" />
+            <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($_GET['name'] ?? '') . '" />
             ' . $output_javascript . '
         </head>
         <body style="background-color: black !important; background-image: none !important"></body>

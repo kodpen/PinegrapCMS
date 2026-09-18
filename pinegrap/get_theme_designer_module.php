@@ -26,27 +26,33 @@ $output = '';
 $object_id = 'base_object';
 
 // get the file id
-$file_id = $_GET['file_id'];
+$file_id = ($_GET['file_id'] ?? '');
 
 // get the module id
-$module_id = $_GET['module_id'];
+$module_id = ($_GET['module_id'] ?? '');
 
 // get the area name from the module id
-preg_match('/site_wide|site_border|site_top|site_header|area_border|area_header|page_border|page_wrapper|page_header|page_content_left|page_content_right|page_content|sidebar|page_footer|area_footer|site_footer_border|site_footer|ad_region|menu_region/i', $module_id, $matches);
-$area_name = $matches[0];
+$area_name = '';
+if (preg_match('/site_wide|site_border|site_top|site_header|area_border|area_header|page_border|page_wrapper|page_header|page_content_left|page_content_right|page_content|sidebar|page_footer|area_footer|site_footer_border|site_footer|ad_region|menu_region/i', $module_id, $matches) > 0) {
+    $area_name = $matches[0];
+}
 
 // set the module id as the last opened module in the session
 $_SESSION['software']['theme_designer'][$file_id]['last_opened_module'] = $module_id;
 
 // if this is a ad region, then get the ad region name and module id so that we can get the modules below
-if (($area_name == 'ad_region') && ((preg_match('/ad_region_(.*?)_[ad_region_layout|ad_region_background_borders_and_spacing|ad_region_menu|ad_region_menu_item|ad_region_menu_item_hover]/i', $module_id, $matches) > 0))) {
+//
+// The region name is captured lazily and the module suffix is anchored to the
+// end of the id, so a region name that itself contains underscores is kept
+// whole instead of being cut at its first underscore.
+if (($area_name == 'ad_region') && ((preg_match('/^ad_region_(.*?)_(?:ad_region_layout|ad_region_background_borders_and_spacing|ad_region_menu|ad_region_menu_item|ad_region_menu_item_hover|ad_region_previous_and_next_buttons|background_borders_and_spacing|text|headings_general|heading_[1-6]|paragraph|links|links_hover|image_primary|image_secondary)$/i', $module_id, $matches) > 0))) {
     $object_id = $matches[1];
-    $module_id = preg_replace('/ad_region_' . $object_id . '/i', '', $module_id);
+    $module_id = preg_replace('/ad_region_' . preg_quote($object_id, '/') . '/i', '', $module_id);
 
 // else if this is a menu region, then get the menu name and module id so that we can get the modules below
-} elseif (($area_name == 'menu_region') && ((preg_match('/menu_region_(.*?)_[menu_region_layout|menu_region_background_borders_and_spacing|menu_region_menu_item|menu_region_menu_item_hover|menu_region_submenu_background_borders_and_spacing|menu_region_submenu_menu_item|menu_region_submenu_menu_item_hover]/i', $module_id, $matches) > 0))) {
+} elseif (($area_name == 'menu_region') && ((preg_match('/^menu_region_(.*?)_(?:menu_region_layout|menu_region_background_borders_and_spacing|menu_region_menu_item|menu_region_menu_item_hover|menu_region_submenu_background_borders_and_spacing|menu_region_submenu_menu_item|menu_region_submenu_menu_item_hover)$/i', $module_id, $matches) > 0))) {
     $object_id = $matches[1];
-    $module_id = preg_replace('/menu_region_' . $object_id . '/i', '', $module_id);
+    $module_id = preg_replace('/menu_region_' . preg_quote($object_id, '/') . '/i', '', $module_id);
     
 // else if there is an row and column object, then get the object and module id so that we can get the modules below
 } elseif (preg_match('/.*?_(r\d*c\d*)_*?/i', $module_id, $matches) > 0) {

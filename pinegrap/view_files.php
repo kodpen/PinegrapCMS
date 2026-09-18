@@ -320,6 +320,7 @@ $query =
     WHERE " . $where . "
     ORDER BY $sort_column $asc_desc";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$files = array();
 while ($row = mysqli_fetch_assoc($result)) {
 
     // if user has access to file then continue

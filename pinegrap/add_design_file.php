@@ -104,7 +104,7 @@ if (!$_POST) {
                     if (send_to) {
                         window.location = send_to;
                     } else {
-                        window.location = "view_files.php";
+                        window.location = "view_design_files.php";
                     }
                     
                 });

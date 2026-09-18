@@ -124,7 +124,7 @@ $file_id = mysqli_insert_id(db::$con);
 
 log_activity("file ($file_name) was created", $_SESSION['sessionusername']);
 
-echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "/' . escape_javascript($file_name) . '", "")</script>';
+echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "' . escape_javascript(OUTPUT_PATH . encode_url_path($file_name)) . '", "")</script>';
 exit();
 
 // Create a function that will go through the whole folder tree in correct order
