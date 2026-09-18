@@ -451,7 +451,7 @@ function upgrade_2026_4_4_designer_collab() {
 	// says so before the round trip, and custom_form.php checks it again on
 	// submit — a client-side rule alone is a suggestion, not a rule.
 	//
-	// The message travels with it: "geçersiz" tells the visitor nothing, and
+	// The message travels with it: a bare "invalid" tells the visitor nothing, and
 	// the person who wrote the pattern is the only one who knows what shape
 	// they wanted.
 	install_add_column('form_fields', 'validation_regex',   "VARCHAR(255) NOT NULL DEFAULT ''");
