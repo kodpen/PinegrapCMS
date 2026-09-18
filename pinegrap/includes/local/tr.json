@@ -11648,5 +11648,6 @@
     "{var:1} Photo": "{var:1} Fotoğraf",
     "{var:1} Photos": "{var:1} Fotoğraf",
     "{var:1} installments": "{var:1} Taksit",
-    "{var:1}% surcharge has been added.": "%{var:1} ek ücret eklendi."
+    "{var:1}% surcharge has been added.": "%{var:1} ek ücret eklendi.",
+    "{var:1} will be removed.": "{var:1} kaldırılacak."
 }

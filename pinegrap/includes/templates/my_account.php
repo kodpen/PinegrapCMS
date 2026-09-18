@@ -339,7 +339,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?=h(lang('Update'))?>
 				</a>
 				<?php endif ?>
-				<a href="<?=h($recipient['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" onclick="return confirm('<?=h(escape_javascript($recipient['ship_to_name']))?> will be removed.')">
+				<a href="<?=h($recipient['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" onclick="return confirm('<?=h(escape_javascript(lang(array('string' => '{var:1} will be removed.', 'vars' => array($recipient['ship_to_name'])))))?>')">
 				<?=h(lang('Remove'))?>
 				</a>
 			</td>

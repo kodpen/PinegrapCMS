@@ -98,7 +98,7 @@ if (!defined('PG_INIT_LOADED')) {
 					
 					?>
 				<div class="form-group">
-					<input type="text" name="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" id="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" class="form-control" placeholder="or add name">
+					<input type="text" name="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" id="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_add_name" class="form-control" placeholder="<?=h(lang('or add name'))?>">
 				</div>
 				<?php endif ?>
 				<?php endif ?>
