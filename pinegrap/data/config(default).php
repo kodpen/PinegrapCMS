@@ -240,6 +240,14 @@ define('SEO_ANALYZE_FULL_REFRESH_DAYS', 7);
 // not on the default search path. Leave empty to use the system store.
 define('CURL_CA_BUNDLE', '');
 
+// Where "Update" on the System Status card's CA certificate bundle row fetches
+// the current Mozilla root list from, to replace data/cacert.pem. Leave empty
+// for curl.se's published copy. A mirror must be an https address: the file
+// decides which certificates outbound connections will trust, and anything
+// else is refused. The payment library's own copy under includes/ is never
+// touched by this; it ships with software releases.
+define('CA_BUNDLE_SOURCE_URL', '');
+
 // Last resort for a host with no usable CA store at all. Leaving this true
 // means update packages are accepted without proof of where they came from.
 define('ALLOW_INSECURE_UPDATE_TLS', false);

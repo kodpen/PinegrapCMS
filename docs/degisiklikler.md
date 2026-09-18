@@ -103,6 +103,71 @@ temiz.
 **Açık kalan:** 12/24 ay eşikleri uygun mu, yoksa başka bir aralık mı
 isteniyor?
 
+## 2026.4.4 — Bakım ve Araçlar: CA sertifika paketini güncelle (2026-09-18)
+
+`data/cacert.pem` — operatörün `CURL_CA_BUNDLE` ile gösterdiği Mozilla kök
+listesi — Ocak 2023 tarihli kalmıştı (137 kök); güncel curl.se dosyası Ağustos
+2026 / 121 kök. Listeyi yenilemenin tek yolu FTP ile dosya değiştirmekti ve
+bunu kimse yapmıyordu; sonuç, hiçbir şeyi değişmeyen sitede "cURL error 60".
+
+### Satır ve düğme
+
+Sistem Durumu kartının Bakım ve Araçlar sütununa "CA sertifika paketi" satırı
+eklendi (`api.php`, widget 2). Satır açılınca dosya yolu, Mozilla başlık
+tarihi, kök sayısı, kaynak adres ve çalışan yapılandırmanın durumu listelenir:
+`CURL_CA_BUNDLE` bu dosyayı gösteriyor / başka bir dosyayı gösteriyor
+(yolu ile) / tanımsız, sistem deposu kullanılıyor. Ödeme kütüphanesinin kendi
+kopyasının sürümle yenilendiği ve burada dokunulmadığı bir cümleyle söylenir.
+**Güncelle** düğmesi yalnız yöneticiye (rol 0) çizilir; öteki roller satırı
+görür, düğmeyi görmez — reddedecek bir denetim kimseye teklif edilmez.
+
+### `pg_ca_bundle_update()` — `includes/fn/update.php`
+
+`pg_curl_tls()` yanına kondu, çünkü aynı sorunun öteki yarısıdır. Akış:
+kaynak adres (`https://curl.se/ca/cacert.pem`, ya da `config.php`'de
+`CA_BUNDLE_SOURCE_URL`; **yalnız https**, aksi indirmeden reddedilir;
+yönlendirmeler `CURLPROTO_HTTPS` ile sınırlı) → `pg_curl_tls()` ile
+doğrulanmış indirme (`pinegrap_user_agent()`, `PROXY_ADDRESS`) → denetim
+sırası: boyut 50 KB–2 MB, `## Certificate data from Mozilla as of:` başlığı
+`strtotime` ile okunuyor, en az 100 `BEGIN CERTIFICATE`, her blokun bitiş
+işareti var ve `openssl_x509_read()` ile ayrışıyor, **sonra** tarih: kurulu
+dosyadan eskiyse eskiye dönüş reddedilir, aynı tarihse "zaten güncel" döner
+(`unchanged`), kurulu dosyanın başlığı yoksa tarih koşulu yok. Yapı
+denetimleri tarihten önce koşar; ilk taslakta tarih önce koşuyordu ve 60
+sertifikalık bir dosya "zaten güncel" diye raporlanıyordu.
+
+Yazım atomik: `data/temp/` içinde `tempnam()`, kurulu dosyanın izinleri
+kopyalanır, `rename()` ile hedefin üzerine (Windows için `copy()` yedeği).
+`tempnam()` sistem temp'ine kaçmışsa reddedilir — dosya sistemleri arası
+`rename()` kopyadır, atomik değildir. Ardından
+`data/temp/system_status_cache.json` silinir (PR #29'un yaş kontrolü hemen
+yeni tarihi okusun), `log_activity()` mesajın tamamını yazar.
+
+Hedef her zaman `data/cacert.pem`. `includes/iyzipay-php/cacert.pem`
+bütünlük kapsamında olduğu için araç ona dokunmaz.
+
+### Uç ve güvenlik
+
+`api.php` → `ca_bundle_update`: `validate_user()`, rol 0 dışı `Access
+denied.`, `validate_token()`, `session_write_close()` (indirme uzun sürebilir),
+sonuç `pg_health_job()` ile satırın altındaki panele düşer. Genel kapının
+(rol ≤ 1) arkasında bırakıldı; öteki üç iş gibi muaf tutulmadı, çünkü bu iş
+zaten yöneticiye özeldir. Kullanıcıdan URL ya da yol alınmaz; tek girdi
+`config.php` sabitidir.
+
+`data/config(default).php`'ye `CA_BUNDLE_SOURCE_URL` (boş = curl.se) eklendi,
+`CURL_CA_BUNDLE`'ın yanına. Bu değişiklik kod değiştirir; `cacert.pem`'in
+kendisi PR #27 ile yenilenir.
+
+Doğrulama: sandbox'ta curl.se erişilemez; kendinden imzalı sertifikalı yerel
+https sunucusu ve `CA_BUNDLE_SOURCE_URL` ile başarı yolu (Ocak 2023 → Ağustos
+2026, 121 kök, birebir aynı dosya), aynı dosya (zaten güncel), eski dosya
+(eskiye dönüş reddi), 60 ve 36 sertifikalık dosyalar, başlıksız rastgele
+içerik, bozuk PEM bloğu (8/121 ayrışmadı), 404, http şeması, TLS hatası
+(cURL 60 + `pg_curl_tls_hint()`), Manager ve Designer rolü, GET, eksik/yanlış
+belirteç, oturumsuz istek; hedef her ret sonrasında birebir aynı kaldı.
+Gerçek curl.se indirmesi sandbox'tan doğrulanmadı.
+
 ## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
 
 Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve
