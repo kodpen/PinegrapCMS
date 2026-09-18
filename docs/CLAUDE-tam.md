@@ -1633,6 +1633,37 @@ Aktif cart query'si `saved_for_later = 0` filter'ı uygular — saved item'lar c
 
 ---
 
+### Gecikmiş alacak hatırlatmaları (2026-09-18, migration 4.55)
+
+`includes/erp/notify.php`, `erp_overdue_check($force, $from_job)`. Dönem
+başına tek özet, yalnız eşiği **ilk kez** geçen belgeler; duyurulan belge
+`erp_invoices.overdue_notified_at` ile damgalanır ve bir daha listelenmez
+(yalnız "hâlâ açık" toplamında sayılır). Eşik `ERP_OVERDUE_NOTIFY_DAYS`
+(0 = kapalı), cari `erp_accounts.overdue_notify_days` > 0 ise onunki.
+
+- **Teslimat kanalı yazılmaz, mevcut olan çağrılır.** Panel
+  `create_notification(action 'erp_overdue')`; cihaz aynı satır için
+  `pg_push_enqueue_notification()` (core.php'deki sipariş çağrısının aynısı);
+  e-posta `email(type 'system', format 'html')`. Yeni bir bildirim türü
+  = `pg_notification_visible()`'a bir dal + `pg_notification_display()`'e bir
+  dal; başka yere metin yazılmaz (service worker ve zil aynı fonksiyondan
+  okur).
+- **Zamanlama ikili:** kayıt defterinde `erp_overdue_job` (86400) + panodan
+  saatte bir denemeyle `erp_overdue_check()` (WAF bot listesi deseni,
+  `config.erp_overdue_notify_checked`). Dönem "an" üzerinden hesaplanır
+  (`erp_overdue_notify_slot`): geç gelen kontrol dönemi atlamaz, erken gelen
+  iki kez göndermez. İş betiği saati beklemez.
+- Zilde aynı anda tek özet: okunmamış önceki `erp_overdue` satırı silinir.
+  Panel anahtarı kapalı, cihaz açıkken satır yine yazılır ve herkes için
+  okunmuş işaretlenir (banner satırdan beslenir).
+- Alıcı listesi boşsa `ECOMMERCE_EMAIL_ADDRESS`, o da boşsa `EMAIL_ADDRESS`;
+  iki yedek alternatiftir, ikisine birden gitmez.
+- **`config` tablosuna yeni VARCHAR eklenmez, TEXT eklenir.** Satırın VARCHAR
+  sütunları utf8mb4'te ~63 KB; 65535 baytlık InnoDB satır sınırına birkaç yüz
+  bayt kaldı. `erp_overdue_notify_recipients VARCHAR(500)` yükseltmede 1118
+  (Row size too large) verdi, `TEXT DEFAULT NULL` yapıldı (`waf_exclusions`
+  deseni). Kısa sabit alanlar (TINYINT/INT/ENUM) sorun değil.
+
 ## Dosya Yapısı (Önemli Dosyalar)
 
 | Dosya | Açıklama |

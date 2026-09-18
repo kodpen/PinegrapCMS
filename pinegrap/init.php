@@ -664,6 +664,15 @@ define('ERP_SELLER_TAX_OFFICE', $row['erp_seller_tax_office'] ?? '');
 define('ERP_FX_ENABLED', isset($row['erp_fx_enabled']) ? (int) $row['erp_fx_enabled'] : 0);
 define('ERP_FX_CURRENCIES', $row['erp_fx_currencies'] ?? 'USD,EUR,GBP');
 define('ERP_FX_AUTO_DIFF', isset($row['erp_fx_auto_diff']) ? (int) $row['erp_fx_auto_diff'] : 1);
+// Overdue receivable reminders; zero days is off. The switches default on so
+// that setting the days is the only step.
+define('ERP_OVERDUE_NOTIFY_DAYS', isset($row['erp_overdue_notify_days']) ? (int) $row['erp_overdue_notify_days'] : 0);
+define('ERP_OVERDUE_NOTIFY_PANEL', isset($row['erp_overdue_notify_panel']) ? (int) $row['erp_overdue_notify_panel'] : 1);
+define('ERP_OVERDUE_NOTIFY_EMAIL', isset($row['erp_overdue_notify_email']) ? (int) $row['erp_overdue_notify_email'] : 1);
+define('ERP_OVERDUE_NOTIFY_PUSH', isset($row['erp_overdue_notify_push']) ? (int) $row['erp_overdue_notify_push'] : 1);
+define('ERP_OVERDUE_NOTIFY_RECIPIENTS', $row['erp_overdue_notify_recipients'] ?? '');
+define('ERP_OVERDUE_NOTIFY_FREQUENCY', (($row['erp_overdue_notify_frequency'] ?? 'daily') === 'weekly') ? 'weekly' : 'daily');
+define('ERP_OVERDUE_NOTIFY_HOUR', isset($row['erp_overdue_notify_hour']) ? (int) $row['erp_overdue_notify_hour'] : 9);
 define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');

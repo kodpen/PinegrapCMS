@@ -41,6 +41,78 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Gecikmiş alacak bildirimleri: panel, e-posta ve cihaz bildirimi (2026-09-18)
+
+**Belirti.** Yaşlandırma raporu kimin geciktiğini gösteriyor, ama kimseye
+haber vermiyordu: gecikmeyi görmek için rapora bakmak gerekiyordu. Ürün
+sahibinin isteği, ayarlardan belirlenen X günü geçen alacaklar için panel
+bildirimi ve e-posta idi; PWA/cihaz bildirimi de sistemde hazır olduğu için
+üçüncü kanal olarak eklendi.
+
+**Çözüm.** `includes/erp/notify.php` — `erp_overdue_check($force, $from_job)`.
+Dönem başına **tek özet**: eşiği (`config.erp_overdue_notify_days`, 0 = kapalı;
+cari `erp_accounts.overdue_notify_days` > 0 ise onun eşiği) geçen açık satış
+faturalarından **ilk kez duyurulanlar** listelenir, daha önce duyurulanlar
+yalnız "önceki hatırlatmalardan hâlâ açık: N belge, toplam" satırında sayılır.
+Yeni belge yoksa hiçbir şey gönderilmez — her sabah aynı listeyi tekrarlayan
+bir hatırlatma bir kez okunur, sonra görmezden gelinir; duran toplam zaten
+pano kartında. Duyurulan belge `erp_invoices.overdue_notified_at` ile
+damgalanır (tablo değil sütun: soru belge başına ve ikili, günlük sorguya
+join eklemez, sonra fatura ekranında "hatırlatıldı" olarak gösterilebilir).
+
+**Teslimat için yeni hiçbir şey yazılmadı.** Panel: `create_notification()`
+(`action = 'erp_overdue'`, `title` = adet, `order_total` = biçimli toplam —
+sipariş satırının numara/toplam taşıdığı gibi); görünürlük merdivenine
+(`includes/notifications.php`) `erp_overdue → ERP_ENABLED && manage_erp` dalı
+ve `pg_notification_display()`'e cümle + `erp_invoices.php?filter=overdue`
+bağlantısı eklendi. Zilde aynı anda tek özet durur: okunmamış öncekisi
+silinir, okunmuşlar tarihçe olarak kalır. Cihaz: aynı satır
+`pg_push_enqueue_notification()` ile kuyruğa yazılır (core.php'nin sipariş
+için yaptığı çağrının aynısı); merdiven kimlere gideceğini seçer,
+`push_job`/`job.php` dağıtır, service worker metni `push_pending` ile aynı
+`pg_notification_display()`'den alır. E-posta: `email()` (`type = 'system'`,
+HTML; `prepare_page_for_email` + metin alternatifi helper'dan gelir), gövde
+`erp_overdue_notify_digest_html()` — satır içi stilli tek tablo (cari, belge,
+vade, gün, açık tutar), bağlantı. Alıcılar `erp_overdue_notify_recipients`;
+boşsa `ECOMMERCE_EMAIL_ADDRESS`, o da boşsa `EMAIL_ADDRESS`.
+
+**Zamanlama.** Kayıt defterine (`pg_cron_jobs()`) `erp_overdue_job`
+(86400 sn, dağıtıcıda) ve `erp_overdue_job.php` (kapı
+`update_exchange_rates.php` ile aynı: arka plan koşusu ya da
+`validate_erp_access`). Ayrıca `erp_dashboard.php` her yüklemede
+`erp_overdue_check()` çağırır — WAF bot listelerinin yaptığı gibi
+`config.erp_overdue_notify_checked` ile saatte bir deneme; cron'u olmayan
+site özeti hatırlatma saatinden sonraki ilk panel ziyaretinde alır.
+Dönem hesabı **an** üzerinden: günlük = bugünün (geçmemişse dünün) saati,
+haftalık = bu (ya da önceki) pazartesinin saati; `sent_at` o andan eskiyse
+özet borçludur. Böylece geç gelen kontrol (salı günü ilk ziyaret, gece koşan
+iş) haftayı atlamaz. İş betiği saati beklemez (`$from_job`): dağıtıcının
+denk geldiği tik'te, gece yarısından itibaren dönem sayılır.
+
+**Şema (4.55).** `config`: `erp_overdue_notify_days` (0), `_panel` (1),
+`_email` (1), `_push` (1), `_recipients` TEXT, `_frequency`
+ENUM(daily,weekly), `_hour` (9), `_checked`, `_sent_at`;
+`erp_accounts.overdue_notify_days`; `erp_invoices.overdue_notified_at`.
+Anahtarlar açık gelir ki gün sayısını girmek tek adım olsun. **`_recipients`
+TEXT'tir, VARCHAR değil:** `config` satırının VARCHAR sütunları utf8mb4'te
+~63 KB tutuyor ve 65535 baytlık InnoDB satır sınırına birkaç yüz bayt kaldı;
+VARCHAR(500) ile yükseltme 1118 (Row size too large) verdi (sandbox'ta
+görüldü). TEXT satır dışında saklanır. 4.54 başka bir
+PR'ın (makbuz `payment_method` ENUM); numara boşluğu o birleşene kadar
+beklenen durumdur.
+
+**Ayarlar.** pgset-erp kartında yeni grup: eşik, sıklık, saat, üç anahtar
+(cihaz anahtarı VAPID anahtarı yokken "önce ana ekrana ekle" ipucunu
+gösterir), alıcılar (yalnız geçerli adresler saklanır). Cari formunda
+"Hatırlatma eşiği (gün)" (vade günü alanıyla aynı doğrulama: 0–3650 tam
+sayı), içe/dışa aktarımda aynı adlı sütun.
+
+**Ertelenenler (v2).** İkinci uyarı (X+30), fatura başına erteleme,
+ERP menüsünde rozet, müşteriye hatırlatma e-postası (`erp_accounts.email`
+hazır; dışa dönük posta ayrı PR ve cari başına vazgeçme ister).
+
+---
+
 ## 2026.4.4 — Vade takibi, yaşlandırma raporu ve ERP gösterge paneli (2026-09-18)
 
 **Belirti.** `erp_invoices.due_date` her yazıcıda dolduruluyordu ama hiçbir

@@ -113,7 +113,7 @@ function erp_export_columns($profile)
             // exported here can be loaded back.
             return array(lang('Name'), lang('Type'), lang('Taxpayer'), lang('VKN / TCKN'), lang('Tax Office'), lang('E-mail Address'),
                 lang('Phone Number'), lang('Address'), lang('District'), lang('City'), lang('Postal Code'), lang('Country'),
-                lang('Currency'), lang('Status'), lang('Notes'), lang('Balance'), lang('Account ID'));
+                lang('Currency'), lang('Status'), lang('Notes'), lang('Reminder threshold (days)'), lang('Balance'), lang('Account ID'));
 
         case 'csv_invoices':
             return array(lang('Invoice Number'), lang('Date'), lang('Due Date'), lang('Direction'), lang('Document Type'), lang('Status'),
@@ -436,6 +436,7 @@ function erp_export_rows_csv_accounts($accounts, $profile)
             erp_export_currency($a['currency'], $profile),
             isset($words['status'][$a['status']]) ? $words['status'][$a['status']] : (string) $a['status'],
             (string) $a['notes'],
+            (string) (int) ($a['overdue_notify_days'] ?? 0),
             erp_export_amount($a['balance'], $profile),
             (string) (int) $a['id'],
         );
