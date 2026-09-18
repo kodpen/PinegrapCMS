@@ -310,7 +310,7 @@ $pg_settings_cards[] = '
                                         <div class="pg-f-lg">
                                             <label for="signature_tsa_url" class="form-label">' . lang('Time Stamp Authority Address') . '</label>
                                             <input type="text" name="signature_tsa_url" id="signature_tsa_url" maxlength="255" class="form-control" value="' . h($signature_tsa_url) . '" placeholder="https://sunucu.example/tsr" />
-                                            <div class="form-text">' . lang('Leave empty to take no time stamp; signatures are stored exactly as they are today. Free authorities produce a real, verifiable token but are not licensed providers, so their stamp is not a "nitelikli zaman damgası" in the sense Turkish law gives that term.') . '</div>
+                                            <div class="form-text">' . lang('Leave empty to take no time stamp; signatures are stored exactly as they are today. Free authorities produce a real, verifiable token but are not licensed providers, so their stamp is not a "qualified time stamp" in the sense Turkish law gives that term.') . '</div>
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="signature_tsa_auth" class="form-label">' . lang('Credentials') . '</label>
