@@ -161,7 +161,7 @@ function update_order($request) {
 
         // If this recipient was just shipped, then remember that order was just shipped, so we
         // know below whether to create auto email campaigns or not for entire order.
-        if ($recipient['shipped']) {
+        if (!empty($recipient['shipped'])) {
             $order['shipped'] = true;
         }
 
@@ -175,7 +175,7 @@ function update_order($request) {
     log_activity('Shipping info for order (' . $order['order_number'] . ') was updated.');
 
     // If at least one recipient was just shipped, then check if email needs to be sent to customer.
-    if ($order['shipped']) {
+    if (!empty($order['shipped'])) {
 
         // Allow mail-merge fields, like ^^order_number^^ to be put in the subject or body of email.
 

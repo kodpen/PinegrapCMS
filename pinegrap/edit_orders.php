@@ -27,6 +27,9 @@ include_once('liveform.class.php');
 // if at least one order was selected
 if (!empty($_POST['orders'])) {
 
+    // Counted by each action below.
+    $number_of_orders = 0;
+
     switch ($_POST['action'] ?? '') {
 
         case 'export_orders_for_parasut':
