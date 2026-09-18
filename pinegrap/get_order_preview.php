@@ -771,7 +771,7 @@ function get_order_preview($properties) {
                             $address .= h($zip_code);
                         }
 
-                        if ($zip_code) {
+                        if ($country) {
                             if ($address) {
                                 $address .= ', ';
                             }
@@ -961,7 +961,7 @@ function get_order_preview($properties) {
                             $address .= h($zip_code);
                         }
 
-                        if ($zip_code) {
+                        if ($country) {
                             if ($address) {
                                 $address .= ', ';
                             }

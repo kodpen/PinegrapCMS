@@ -1860,7 +1860,7 @@ if (!$_POST) {
             
         // else the user is updating an existing order report, so log activity, remove form, and add notice in a certain way
         } else {
-            log_activity(lang(array('string'=>'order report ({var:1}) was created','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string'=>'order report ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
             $liveform->remove_form();
             $liveform->add_notice(lang('The order report has been saved, and the results appear below.') . $order_date_filter_message);
         }

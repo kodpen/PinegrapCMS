@@ -87,8 +87,8 @@ if (!defined('PG_INIT_LOADED')) {
                             Tracking Number<?php if (count($recipient['shipping_tracking_numbers']) > 1):?>s<?php endif;?>:
                         	<?php foreach ($recipient['shipping_tracking_numbers'] as $key => $shipping_tracking_number):?>
                         		<?php if ($key != 0):?>, <?php endif; ?>
-                            		<?php if( get_shipping_tracking_url($shipping_tracking_number['number'],$ship_to['shipping_method_code']) != '' ):?>
-                            			<a href="<?=get_shipping_tracking_url($shipping_tracking_number['number'],$ship_to['shipping_method_code'])?>" target="_blank"><?=h($shipping_tracking_number['number'])?></a>
+                            		<?php if( get_shipping_tracking_url($shipping_tracking_number['number'],$recipient['shipping_method_code']) != '' ):?>
+                            			<a href="<?=get_shipping_tracking_url($shipping_tracking_number['number'],$recipient['shipping_method_code'])?>" target="_blank"><?=h($shipping_tracking_number['number'])?></a>
                             		<?php else:?>
                             			<?=h($shipping_tracking_number['number'])?>
                             		<?php endif;?>
@@ -371,7 +371,7 @@ if (!defined('PG_INIT_LOADED')) {
 					<?php endif ?>
 				</td>
                 <?php if($status != 'incomplete'):?>
-				    <?php if ($shipped_quantities_exist = TRUE ):?>
+				    <?php if ($shipped_quantities_exist):?>
                     	<td class="text-center">
                             <?php if ($item['shipped_quantity'] > 0):?>
                             	(<?=number_format($item['shipped_quantity'])?>)
@@ -794,7 +794,7 @@ if (!defined('PG_INIT_LOADED')) {
 					<?php endif ?>
 				</td>
                 <?php if($status != 'incomplete'):?>
-				    <?php if ($shipped_quantities_exist = TRUE ):?>
+				    <?php if ($shipped_quantities_exist):?>
                     	<td class="text-center">
                             <?php if ($item['shipped_quantity'] > 0):?>
                             	(<?=number_format($item['shipped_quantity'])?>)

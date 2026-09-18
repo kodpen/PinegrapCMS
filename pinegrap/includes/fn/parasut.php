@@ -1139,9 +1139,12 @@ function parasut_create_invoice($order_id)
         ];
     }
 
-    // Guard against null/zero order_date — strtotime("0000-00-00") returns epoch.
-    $ts = strtotime($order['order_date'] ?? '');
-    $issue_date = ($ts && $ts > 0) ? date('Y-m-d', $ts) : date('Y-m-d');
+    // orders.order_date is a UNIX timestamp; fall back to today when it is missing or zero.
+    $ts = (int) ($order['order_date'] ?? 0);
+    if ($ts <= 0) {
+        $ts = time();
+    }
+    $issue_date = date('Y-m-d', $ts);
 
     // Map currency code to Parasut-accepted values.
     // Parasut accepts: TRL, USD, EUR, GBP. TRY is the ISO code but Parasut uses TRL.
@@ -1395,9 +1398,12 @@ function parasut_create_shipment($order_id)
         ];
     }
 
-    // Guard against null/zero order_date — strtotime("0000-00-00") returns epoch.
-    $ts = strtotime($order['order_date'] ?? '');
-    $issue_date = ($ts && $ts > 0) ? date('Y-m-d', $ts) : date('Y-m-d');
+    // orders.order_date is a UNIX timestamp; fall back to today when it is missing or zero.
+    $ts = (int) ($order['order_date'] ?? 0);
+    if ($ts <= 0) {
+        $ts = time();
+    }
+    $issue_date = date('Y-m-d', $ts);
 
     $body = [
         'data' => [

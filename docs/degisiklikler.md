@@ -310,6 +310,66 @@ geri çekildi, her render'daki yedi `InstallmentInfo::retrieve()` çağrısı ve
 denetimsiz yanıt okuması olduğu gibi duruyor. Taksit bilgisinin önbelleklenmesi
 ayrı karar bekliyor.
 
+## 2026.4.4 — Sipariş ekranları: makbuz, yazdırma, kargo takibi ve Paraşüt tarihi (2026-09-18)
+
+**Belirti (issue #37).** (1) Sipariş indirimi olan ve alt toplamı sıfır kalan
+siparişlerde vergi düzeltmesi `$subtotal`'a bölüyordu; PHP 8'de makbuz, düz
+metin e-posta ve sipariş görüntüleme ekranı `DivisionByZeroError` ile
+kırılıyordu. (2) Taksitli siparişin düz metin e-posta makbuzu taksit farkını
+hiç toplamıyordu: e-postadaki toplam, HTML makbuz ve panelin gösterdiğinden
+düşüktü. (3) Paraşüt fatura ve irsaliye tarihi `strtotime()` ile
+`orders.order_date`'ten türetiliyordu; alan UNIX zaman damgası olduğu için
+sonuç her zaman bugüne düşüyordu. (4) `print_order.php` Sevk Edilen ve özel
+ürün alanı sütunlarının başlığını basıyor, hücreleri hesaplayıp hiç
+yazdırmıyordu; sevk edilemez tabloda başlıklar `<th>` içinde olmadığı için
+sütunlar kayıyordu. (5) Kargo takip bağlantıları tanımsız `$ship_to`
+değişkenini okuyordu, bu yüzden panelde, hesabım ekranında ve özel şablonda
+hiç oluşmuyordu. (6) Boş `if` gövdeleri yüzünden misafir siparişlerinde
+`edit_user.php?id=` bağlantılı boş "Kullanıcı" satırı basılıyordu; şablonda
+`=` / `==` karışıklığı Sevk Edilen hücresini koşulsuz yapıp bayrağı
+bozuyordu; özel ürün alanı 2 siliniyor, alan 3 tanımsız kalıyordu. (7) Kontrol
+panelinden gelen önizleme (`from=control_panel`) uyarıyı ekleyip sahiplik
+kontrolüne düşüyor, her seferinde hata veriyordu. (8) Makbuz ve önizlemede
+ülke, posta kodu varsa ekleniyordu.
+
+**Düzeltme.** Bölme `($subtotal > 0) && ($order_discount > 0)` ile kapılandı
+ve `$subtotal` / `$grand_tax` en başta sıfırlandı; sıfır alt toplamda vergi
+düzeltmesi zaten anlamsızdır, bu yüzden sessizce atlanır. Düz metin makbuz
+`payment_installment` ve `installment_charges` alanlarını okur; fark yalnız
+`payment_installment >= 2` iken toplama eklenir ve mevcut "Taksit Sayısı" /
+"Taksit Farkı" anahtarlarıyla yazılır — HTML makbuzla aynı kural, aynı
+metin. Paraşüt tarihi `(int)` zaman damgasından üretilir, sıfırsa bugüne
+düşer. Yazdırma ekranı `$output_shipped_quantity`'yi basar; özel alan
+hücreleri `<td>` olarak kurulur, başlıklar `<th>`'e alındı. Kargo takibi için
+`ship_tos.shipping_method_code` sorgulara eklendi ve
+`get_shipping_tracking_url()`'e yerel değişkenle / `$recipient` anahtarıyla
+verilir. Kontrol paneli önizlemesi uyarıyı basıp hemen döner; bulunamadı ve
+sahiplik kontrolleri yalnız gerçek isteklerde koşar. Ayrıca `edit_orders.php`
+`$number_of_orders`, `update_order.php` `!empty(...['shipped'])`,
+`view_order.php` kişi görseli `$contact_image`, rapor güncelleme günlüğü
+"değiştirildi" metni.
+
+Dosyalar: `get_order_receipt.php`, `get_order_receipt_in_plain_text.php`,
+`get_view_order_screen_content.php`, `get_order_preview.php`,
+`includes/templates/view_order.php`, `view_order.php`, `print_order.php`,
+`includes/fn/parasut.php`, `edit_orders.php`, `update_order.php`,
+`view_order_report.php`, `includes/local/tr.json` (bir anahtar).
+
+### Doğrulama
+
+`php -l` (dokunulan dosyalar), `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı; ekranların hiçbiri
+çalışma zamanında render edilmedi — yazdırma tablosu hizası, kargo
+bağlantıları, taksitli düz metin toplamı ve Paraşüt tarihi gerçek siparişle
+doğrulanmadı.
+
+**Açık kalan:** `submit_order.php` içindeki aynı bölme bu turun dosyaları
+dışında kaldığı için dokunulmadı. `view_commissions.php` sayfalama bulgusu
+başka dala devredildi; `get_order_preview.php` iyzipay taksit tablosu ürün
+sahibi kararıyla (CLAUDE.md 12. kural) dondurulduğu için değiştirilmedi.
+
+---
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

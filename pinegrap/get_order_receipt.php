@@ -114,6 +114,11 @@ function get_order_receipt($properties) {
 
     if ($layout_type == 'system') {
 
+        // Both are only accumulated by non-recurring items, but they are always read
+        // when the totals are assembled below.
+        $subtotal = 0;
+        $grand_tax = 0;
+
         // set shipping to false until we find out that this is a shipping order
         $shipping = false;
         
@@ -769,7 +774,7 @@ function get_order_receipt($properties) {
                             $address .= h($zip_code);
                         }
 
-                        if ($zip_code) {
+                        if ($country) {
                             if ($address) {
                                 $address .= ', ';
                             }
@@ -955,7 +960,7 @@ function get_order_receipt($properties) {
                             $address .= h($zip_code);
                         }
 
-                        if ($zip_code) {
+                        if ($country) {
                             if ($address) {
                                 $address .= ', ';
                             }
@@ -1052,7 +1057,7 @@ function get_order_receipt($properties) {
         // if tax is on, update grand total and prepare tax row
         if (ECOMMERCE_TAX == true) {
             // if there is an order discount, adjust tax
-            if ($order_discount > 0) {
+            if (($subtotal > 0) && ($order_discount > 0)) {
                 $grand_tax = $grand_tax - ($grand_tax * ($order_discount / $subtotal));
             }
 

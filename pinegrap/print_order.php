@@ -105,7 +105,6 @@ $accent_color = '';
 
 // These cells are only filled in for some order/product types, but they are always printed
 // in the tables further down.
-$output_shipped_quantity_field = '';
 $output_custom_field_1_cell = '';
 $output_custom_field_2_cell = '';
 $output_custom_field_3_cell = '';
@@ -439,13 +438,13 @@ if ($payment_method != '') {
 }
 $output_user_row = '';
 // If this order has a user, then show user info.
-if ($username != '') {}
+if ($username != '') {
     $output_user_row =
         '<div class="row" >
             <span class="translateable col text-muted">' . lang('User') . ':</span>
             <span class="col text-end"><a class="link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a></span>
         </div>';
-//}
+}
 $output_contact_row = '';
 // If this order has a contact, then show contact info.
 if ($contact_id != '') {
@@ -1082,49 +1081,25 @@ if ($ship_to_exists == true) {
                         </div>
                     </div>';
             }
-            $output_custom_field_1 = '';
+            $output_custom_field_1_cell = '';
             // If the first custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1 ='
-                    <div class="col-12 col-sm-6 col-md-auto">
-                        <div class="p-2  h-100 rounded">
-                            <div class="h-50 text-center text-muted">' . $output_custom_field_1_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_1']) .'</div>
-                        </div>
-                    </div>';
+                $output_custom_field_1_cell = '<td>' . h($order_item['custom_field_1']) . '</td>';
             }
-            $output_custom_field_2= '';
+            $output_custom_field_2_cell = '';
             // If the second custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2 ='
-                <div class="col-12 col-sm-6 col-md-auto">
-                    <div class="p-2  h-100 rounded">
-                        <div class="h-50 text-center text-muted">' . $output_custom_field_2_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_2']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_2_cell = '<td>' . h($order_item['custom_field_2']) . '</td>';
             }
-            $output_custom_field_2 = '';
+            $output_custom_field_3_cell = '';
             // If the third custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3 ='
-                <div class="col-12 col-sm-6 col-md-auto">
-                    <div class="p-2  h-100 rounded">
-                        <div class="h-50 text-center text-muted">' . $output_custom_field_3_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_3']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_3_cell = '<td>' . h($order_item['custom_field_3']) . '</td>';
             }
-            $output_custom_field_4 = '';
+            $output_custom_field_4_cell = '';
             // If the fourth custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4 ='
-                <div class="col-12 col-sm-6 col-md-auto">
-                    <div class="p-2  h-100 rounded">
-                        <div class="h-50 text-center text-muted">' . $output_custom_field_4_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_4']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_4_cell = '<td>' . h($order_item['custom_field_4']) . '</td>';
             }
             $output_gift_cards = '';
             
@@ -1289,7 +1264,7 @@ if ($ship_to_exists == true) {
                         <td>' . $output_product_name . '</td>
                         <td>' . $short_description . '</td>
                         <td>' . $quantity . '</td>
-                        <td>' . $output_shipped_quantity_field . '</td>
+                        <td>' . $output_shipped_quantity . '</td>
                         <td style="text-align: right">' . prepare_amount($product_price) . '</td>
                         <td style="text-align: right">' . prepare_amount($product_total) . '</td>
                         <td>' . $output_recurring_payment_period . '</td>
@@ -1326,22 +1301,22 @@ if ($ship_to_exists == true) {
     $output_custom_field_1_heading = '';
     // If the first custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-        $output_custom_field_1_heading =  h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL);
+        $output_custom_field_1_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '</th>';
     }
     $output_custom_field_2_heading = '';
     // If the second custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-        $output_custom_field_2_heading = h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL);
+        $output_custom_field_2_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '</th>';
     }
     $output_custom_field_3_heading = '';
     // If the third custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-        $output_custom_field_3_heading = h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL);
+        $output_custom_field_3_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '</th>';
     }
     $output_custom_field_4_heading = '';
     // If the fourth custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-        $output_custom_field_4_heading = h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL);
+        $output_custom_field_4_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '</th>';
     }
 
     $output_order_details .=
@@ -1473,49 +1448,25 @@ if ($ship_to_exists == true) {
                     </div>
                 </div>';
         }
-        $output_custom_field_1 = '';
+        $output_custom_field_1_cell = '';
         // If the first custom product field is active, then output cell for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-            $output_custom_field_1 ='
-            <div class="col-12 col-sm-6 col-md-auto">
-                <div class="p-2  h-100 rounded">
-                    <div class="h-50 text-center text-muted">' . $output_custom_field_1_heading . '</div>
-                    <div class="h-50 text-center">' . h($order_item['custom_field_1']) .'</div>
-                </div>
-            </div>';
+            $output_custom_field_1_cell = '<td>' . h($order_item['custom_field_1']) . '</td>';
         }
-        $output_custom_field_2 = '';
+        $output_custom_field_2_cell = '';
         // If the second custom product field is active, then output cell for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-            $output_custom_field_2 ='
-            <div class="col-12 col-sm-6 col-md-auto">
-                <div class="p-2  h-100 rounded">
-                    <div class="h-50 text-center text-muted">' . $output_custom_field_2_heading . '</div>
-                    <div class="h-50 text-center">' . h($order_item['custom_field_2']) .'</div>
-                </div>
-            </div>';
+            $output_custom_field_2_cell = '<td>' . h($order_item['custom_field_2']) . '</td>';
         }
         $output_custom_field_3_cell = '';
         // If the third custom product field is active, then output cell for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-            $output_custom_field_3 ='
-            <div class="col-12 col-sm-6 col-md-auto">
-                <div class="p-2  h-100 rounded">
-                    <div class="h-50 text-center text-muted">' . $output_custom_field_3_heading . '</div>
-                    <div class="h-50 text-center">' . h($order_item['custom_field_3']) .'</div>
-                </div>
-            </div>';
+            $output_custom_field_3_cell = '<td>' . h($order_item['custom_field_3']) . '</td>';
         }
-        $output_custom_field_4 = '';
+        $output_custom_field_4_cell = '';
         // If the fourth custom product field is active, then output cell for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-            $output_custom_field_4 ='
-            <div class="col-12 col-sm-6 col-md-auto">
-                <div class="p-2  h-100 rounded">
-                    <div class="h-50 text-center text-muted">' . $output_custom_field_4_heading . '</div>
-                    <div class="h-50 text-center">' . h($order_item['custom_field_4']) .'</div>
-                </div>
-            </div>';
+            $output_custom_field_4_cell = '<td>' . h($order_item['custom_field_4']) . '</td>';
         }
         $output_gift_cards = '';
         
