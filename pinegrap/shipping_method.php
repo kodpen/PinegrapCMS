@@ -280,7 +280,7 @@ if ($liveform->check_form_errors() == false) {
             $original_shipping_cost = $shipping_cost;
             
             // update shipping cost to contain discount
-            $shipping_cost = $shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100));
+            $shipping_cost = (int) round($shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100)));
         }
     }
     
@@ -301,7 +301,7 @@ if ($liveform->check_form_errors() == false) {
             zone_id = '" . $zone_id . "',
             shipping_cost = '$shipping_cost',
             original_shipping_cost = '$original_shipping_cost',
-            offer_id = '" . ($offer['id'] ?? '') . "',
+            offer_id = '" . (int) ($offer['id'] ?? 0) . "',
             complete = '1'
         WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
