@@ -128,6 +128,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_account_snapshot();   // 4.51
 
 	upgrade_2026_4_4_erp_export_log();         // 4.52
+
+	upgrade_2026_4_4_erp_cash_payment_method(); // 4.54
 }
 
 
@@ -2787,5 +2789,50 @@ function upgrade_2026_4_4_erp_export_log() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Accounts, invoices and receipts can be exported as CSV or as a spreadsheet for an accounting package, and the export remembers what has already gone out.');
+
+}
+
+
+// 4.54 - cheque as a payment method on till movements.
+//
+// The receipt form offered a cheque option, but erp_cash_transactions.payment_method
+// was created as ENUM('cash','transfer','card','other') without it. The connection
+// runs without strict mode (core.php sets sql_mode to ''), so MySQL did not reject
+// the value: it stored the empty member instead, and the receipt lost its method
+// without any error being raised. The enum is widened rather than mapping cheque
+// onto 'other', because a cheque is followed up differently from cash - it has
+// a due date and can bounce - and folding it away would hide that from the books.
+//
+// Rows already holding '' are left alone on purpose. Nothing in the row says
+// whether it was meant as cheque or as credit card (the form posted a wrong
+// value for both), so a blind repair would invent history; they are shown with
+// an empty method until someone who knows corrects them.
+//
+// Asked for first: MODIFY on an enum rewrites the table, and this step has to
+// be free to run twice.
+function upgrade_2026_4_4_erp_cash_payment_method() {
+
+	$column = install_column_info('erp_cash_transactions', 'payment_method');
+
+	if (!$column) {
+
+		install_skipped(lang('erp_cash_transactions.payment_method does not exist, skipped'));
+
+		return;
+
+	}
+
+	if (strpos((string) $column['Type'], "'cheque'") !== false) {
+
+		install_skipped(lang('erp_cash_transactions.payment_method already knows about cheque'));
+
+		return;
+
+	}
+
+	install_modify_column('erp_cash_transactions', 'payment_method',
+		"ENUM('cash','transfer','card','cheque','other') NOT NULL DEFAULT 'cash'");
+
+	install_note('Receipts can be recorded as paid by cheque.');
 
 }
