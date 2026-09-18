@@ -295,15 +295,20 @@ if (!$_POST) {
     }
     
     // get field with largest sort order in this form, so we can prefill position field with an appropriate value
-    $query = "SELECT id
-             FROM form_fields
-             WHERE $form_type_filter
-             ORDER BY sort_order DESC
-             LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = false;
+    // Only when a form is identified (page, product group or product); without
+    // one the filter is empty and the query would fail with its SQL text shown.
+    if (!empty($form_type_filter)) {
+        $query = "SELECT id
+                 FROM form_fields
+                 WHERE $form_type_filter
+                 ORDER BY sort_order DESC
+                 LIMIT 1";
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    }
     
     // if no fields were found then this field is the first field
-    if (mysqli_num_rows($result) == 0) {
+    if (!$result || mysqli_num_rows($result) == 0) {
         $position = 'top';
     
     // else this field is not the first field, so store field id in position value
