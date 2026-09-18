@@ -3071,6 +3071,25 @@ mi" sorusunun **tek** cevabı odur (`TRUST_PROXY_SSL_HEADERS`,
 aşamasından, CSP ile gider. `Permissions-Policy` `(self)` ile yazılır,
 `()` ile değil; `payment` bilerek yok.
 
+**Güvenli Mod HTTPS görülmeyen istekten açılamaz (2026-09-18).**
+`firewall.save.php` yalnız KAPALI → AÇIK geçişinde (`URL_SCHEME` `http://`
+iken `secure_mode` işaretli gelirse) `check_if_request_is_secure()` sorar;
+yanlışsa `$liveform->add_error()` ile hata bırakır, `$url_scheme`'i
+`URL_SCHEME`'e geri çeker ve `return` eder — kaydın tamamı yazılmaz
+(`contact.save.php` Mailchimp kalıbı). İki mesaj: `check_proxy_ssl_headers()`
+doğruysa "proxy HTTPS bildiriyor ama sunucu düz HTTP görüyor —
+`TRUST_PROXY_SSL_HEADERS` ya da Full mod", yanlışsa "HTTPS sunucuya hiç
+ulaşmıyor — sertifika kur"; ikisi de `test_secure_mode.php`'ye bağlanır ve
+"bu ayarı HTTPS üzerinden açılmış bir oturumdan kaydedin" ile biter (SSL'i
+çalışan ama panele `http://localhost`'tan giren yönetici böyle geçer).
+Yüklem bilerek `pg_request_is_https()` **değil**: o, opt-in olmadan da
+`X-Forwarded-Proto`'ya güvenir ve Cloudflare Flexible kurulumunu geçirir.
+Zaten açıkken kaydetmek ve kapatmak denetlenmez — kilitlenen sitenin çıkışı
+kapatmaktır. `screen.php` artık `check_form_errors()` doğruysa
+`log_activity` ve "kaydedildi" bildirimini atlar (pane yolu
+`settings_pane.php` bunu zaten yapıyordu); yönlendirme aynı kalır, hatayı
+`output_errors()` gösterir.
+
 **Yerleşik CSP öğrenmek için yazılmıştır.** Satır içi kod ve `'unsafe-eval'`
 serbest, yazılımın kendi CDN'leri (jsDelivr, jQuery, DataTables, CodeMirror,
 Google Fonts, Cloudflare beacon'ları) listeli, geri kalan her üçüncü taraf

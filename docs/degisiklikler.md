@@ -168,6 +168,62 @@ içerik, bozuk PEM bloğu (8/121 ayrışmadı), 404, http şeması, TLS hatası
 belirteç, oturumsuz istek; hedef her ret sonrasında birebir aynı kaldı.
 Gerçek curl.se indirmesi sandbox'tan doğrulanmadı.
 
+## 2026.4.4 — Güvenli Mod, HTTPS görülmeyen istekten açılamaz (2026-09-18)
+
+Güvenlik Duvarı ekranındaki **Güvenli Mod** anahtarı her kayıtta koşulsuz
+yazılıyordu. Sunucunun düz HTTP gördüğü bir istekten (sertifika yok, ya da SSL
+önde bir proxy/CDN'de bitiyor — Cloudflare "Flexible") açılınca `init.php` her
+isteği `https://`'e yönlendiriyor, o da aynı düz HTTP bacağından geri geliyor ve
+site — panel dahil — kilitleniyordu. Ekrandaki uyarı kutusu ve
+`test_secure_mode.php` bunu anlatıyordu ama kayıt engellemiyordu.
+
+### Yalnız KAPALI → AÇIK geçişinde kapı
+
+`includes/settings/firewall.save.php` `$url_scheme`'i belirledikten hemen
+sonra bakar: `URL_SCHEME` `http://` iken `secure_mode` işaretli gelmiş ve
+`check_if_request_is_secure()` yanlışsa `$liveform->add_error()` ile hata
+bırakır, `$url_scheme`'i `URL_SCHEME`'e geri çeker ve `return` eder — ekranın
+hiçbir alanı yazılmaz (`contact.save.php`'nin Mailchimp kalıbı). Yüklem
+`pg_request_is_https()` **değil**: o, `TRUST_PROXY_SSL_HEADERS` opt-in'i
+olmadan da `X-Forwarded-Proto`'ya güvenir ve tam da kilitlenen Flexible
+kurulumunu geçirirdi. `check_if_request_is_secure()` doğrudan TLS'i her zaman,
+proxy başlıklarını yalnız opt-in ile sayar — HSTS'in de kullandığı tek "https
+mi" tanımı. Zaten açıkken kaydetmek ve kapatmak denetlenmez; kilitlenen sitenin
+çıkışı kapatmaktır.
+
+İki mesaj, `check_proxy_ssl_headers()` seçer: başlık HTTPS diyorsa "proxy/CDN
+HTTPS bildiriyor ama sunucu düz HTTP görüyor — `TRUST_PROXY_SSL_HEADERS`'ı aç
+ya da proxy'yi Full (uçtan uca) moda al"; demiyorsa "HTTPS sunucuya hiç
+ulaşmıyor — önce sertifika kur". İkisi de `test_secure_mode.php`'ye bağlanır
+(`firewall.php`'deki uyarı kutusuyla aynı `https://HOSTNAME_SETTING…` biçimi)
+ve "bu ayarı HTTPS üzerinden açılmış bir oturumdan kaydedin" ile biter: SSL'i
+çalışan ama panele `http://localhost`'tan giren yönetici böyle geçer. Pane
+yolunda (`settings_pane.php`) etiketler sökülür, bağlantı metni düz kalır.
+Üç yeni `tr.json` anahtarı, mevcut Güvenli Mod anahtarlarının yanında.
+
+### `screen.php`: hatalı kayıt "kaydedildi" demez
+
+Tam sayfa yolu `includes/settings/screen.php` kayıt modülü erken `return`
+etse de `log_activity('settings were modified')` yazıyor ve "Site Ayarları
+kaydedildi" bildirimini ekliyordu; Mailchimp hatası da böyle hem hata hem
+"kaydedildi" gösteriyordu. Artık ikisi `!$liveform->check_form_errors()`
+kapısının içinde — `fragment.php`/`settings_pane.php`'nin zaten yaptığı gibi.
+Yönlendirme değişmedi; hata oturumda kalır ve `output_errors()` gösterir.
+Şema, migration yok; `REQUIRE_SECURE_MODE` ve `init.php` dokunulmadı; uyarı
+kutusu aynı.
+
+### Doğrulama
+
+Sandbox'ta (PHP 8.4 yerleşik sunucu, MariaDB) tam sayfa formuyla:
+düz HTTP + `secure_mode=1` → "HTTPS ulaşmıyor" hatası, `url_scheme` `http://`
+kaldı, "kaydedildi" yok; `X-Forwarded-Proto: https` ile → "proxy" hatası;
+`TRUST_PROXY_SSL_HEADERS=true` + aynı başlık → kayıt geçti, `https://`
+yazıldı, yönlendirme `https://…`; zaten `https://` iken düz HTTP'den
+`secure_mode=1` (`REQUIRE_SECURE_MODE=false`) → kaydedildi, engellenmedi;
+`http://` iken kapalı kayıt ve `https://` iken kapatma → kaydedildi.
+`tools/lint.php` ve `tools/check_lang.php` temiz. Pane yolu (modal) tarayıcıda
+denenmedi; oradaki hata dalı zaten vardı.
+
 ## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
 
 Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve
