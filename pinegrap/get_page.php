@@ -840,35 +840,12 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                         // media field informations
 						$media_field = mysqli_fetch_assoc($result);
 
-
-
-
-                        $query = "SELECT 
-                        data,
-                        file_id
-                        FROM form_data 
-                        WHERE (form_data.form_field_id = '" . $media_field['id'] . "') 
-                        LIMIT 1";
-                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-                        if (mysqli_num_rows($result) > 0)
-                        {
-                            // media data informations
-                            $media_data = mysqli_fetch_assoc($result);
-                            //first we check file if uploaded
-                            if($media_data['file_id'] != 0){
-                                $sql_select_media = "(SELECT form_data.file_id FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . $media_field['id'] . "') LIMIT 1) AS media_file,";
-                                //else no file id so we check data
-                            }else{
-                                if($media_data['data'] != ''){
-                                    $sql_select_media = "(SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . $media_field['id'] . "') LIMIT 1) AS media_text,";
-                                } 
-                            }
-
-                        }
-
-
-                        
-						    
+                        // Select both the uploaded file id and the text value for every
+                        // submitted form; which one is used is decided per row below,
+                        // because one form may hold a file and another a URL.
+                        $sql_select_media =
+                            "(SELECT form_data.file_id FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . $media_field['id'] . "') LIMIT 1) AS media_file, " .
+                            "(SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . $media_field['id'] . "') LIMIT 1) AS media_text,";
 					}
 
 					$sql_select_description = "";
@@ -1266,7 +1243,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						$output_rss_media = '';
 						// If there is a media_file, then output it.
                         // it mean file is uploaded we check files
-                        if($submitted_form['media_file'] != 0){
+                        if(!empty($submitted_form['media_file'])){
                            
                             $query = "SELECT 
                             id,
@@ -1291,9 +1268,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             }
                             //else no media_file so we check media_text for data 
                         }else{
-                            if($submitted_form['media_text'] != ''){
+                            if(!empty($submitted_form['media_text'])){
                                 // we cant check length or media type here so we randomly fill them.
-                                $output_rss_media = '<enclosure url="' . h(urlencode($submitted_form['media_text'])) . '" length="50000" type="image/jpeg"/>';
+                                $output_rss_media = '<enclosure url="' . h($submitted_form['media_text']) . '" length="50000" type="image/jpeg"/>';
                             } 
                         }
 						
@@ -1669,7 +1646,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                         published = '1'
 
                         $sql_where";
-			$result = mysqli_query(db::$con, $query);
+			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 			$calendar_events = array();
 			// Add each event information to array
 			while ($row = mysqli_fetch_assoc($result))
@@ -1684,7 +1661,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                         recurrence_number
 
                     FROM calendar_event_exceptions";
-			$result = mysqli_query(db::$con, $query);
+			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 			$calendar_event_exceptions = array();
 			// Place all of the exceptions into an array
 			while ($row = mysqli_fetch_assoc($result))

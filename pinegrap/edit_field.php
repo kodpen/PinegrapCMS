@@ -265,6 +265,10 @@ if ($page_id != 0) {
 include_once('liveform.class.php');
 $liveform = new liveform('edit_field');
 
+// The breadcrumb ends with this screen; the product group branch has two parents.
+$pg_breadcrumb_items = isset($pg_breadcrumb_parent_items) ? $pg_breadcrumb_parent_items : (isset($pg_breadcrumb_parent) ? array($pg_breadcrumb_parent) : array());
+$pg_breadcrumb_items[] = array('label' => $output_form_designer_content_heading);
+
 if (!$_POST) {
     // get field data
     $query = "SELECT *
@@ -297,6 +301,9 @@ if (!$_POST) {
     $quiz_answer = $row['quiz_answer'];
     $information = $row['information'];
 
+    $sql_trigger_select = '';
+    $sql_trigger_join = '';
+
     // If this is a pick list, then get trigger info.
     if ($type == 'pick list') {
         $sql_trigger_select = ", form_fields.name AS target_form_field_name";
@@ -322,6 +329,11 @@ if (!$_POST) {
     
     // loop through all field options in order to prepare list of options
     foreach ($options as $option) {
+        // Only pick lists select a trigger target; other types have no such column.
+        if (!isset($option['target_form_field_name'])) {
+            $option['target_form_field_name'] = '';
+        }
+
         $output_options .= "\n";
         
         $output_options .= h($option['label']);
@@ -542,11 +554,8 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
         'heading_description' => $output_form_designer_content_subheading,
-        'cancel'=>array('enable'=>'true','url'=>'view_fields.php'),
-        'breadcrumb' => array(
-            $pg_breadcrumb_parent,
-            array('label' => $output_form_designer_content_heading),
-        ),
+        'cancel'=>array('enable'=>'true','url'=>'view_fields.php?' . $form_type_identifier_id . '=' . (int) ${$form_type_identifier_id}),
+        'breadcrumb' => $pg_breadcrumb_items,
     ]) . '
 <main id="content" class="container-fluid">
             ' . get_wysiwyg_editor_code(array('information')) . '

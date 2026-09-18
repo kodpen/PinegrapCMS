@@ -365,7 +365,7 @@ function get_photo_gallery($properties) {
                         'id' => $child_folder['id'], 
                         'name' => $child_folder['name'], 
                         'number_of_photos' => $number_of_photos, 
-                        'thumbnail_name' => $photos_in_album[0]['name']
+                        'thumbnail_name' => isset($photos_in_album[0]) ? $photos_in_album[0]['name'] : ''
                     );
                
             }
@@ -388,10 +388,15 @@ function get_photo_gallery($properties) {
                             $closed_last_row = FALSE;
                         }
                         
-                        // Get the dimensions of the image
-                        $image_size = getimagesize(FILE_DIRECTORY_PATH . '/' . $album['thumbnail_name']);
-                        $image_width = $image_size[0];
-                        $image_height = $image_size[1];
+                        $image_width = 0;
+                        $image_height = 0;
+
+                        // Get the dimensions of the image (an empty album has no thumbnail).
+                        if ($album['thumbnail_name'] != '') {
+                            $image_size = getimagesize(FILE_DIRECTORY_PATH . '/' . $album['thumbnail_name']);
+                            $image_width = $image_size[0];
+                            $image_height = $image_size[1];
+                        }
                         
                         // get scaled dimensions of the image
                         $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $thumbnail_max_size);
@@ -410,8 +415,12 @@ function get_photo_gallery($properties) {
                             $output_thumbnail_height = ' height="' . $thumbnail_dimensions['height'] . '"';
                         }
                         
-                        // output the image tag
-                        $output_album_thumbnail_image_tag = '<img id="album_' . $album['id'] . '" class="image" src="' . OUTPUT_PATH . h(encode_url_path($album['thumbnail_name'])) . '"' . $output_thumbnail_width . $output_thumbnail_height . ' title="" alt="' . h($album['name']) . '" border="0" />';
+                        // output the image tag (none when the album has no photos yet)
+                        $output_album_thumbnail_image_tag = '';
+
+                        if ($album['thumbnail_name'] != '') {
+                            $output_album_thumbnail_image_tag = '<img id="album_' . $album['id'] . '" class="image" src="' . OUTPUT_PATH . h(encode_url_path($album['thumbnail_name'])) . '"' . $output_thumbnail_width . $output_thumbnail_height . ' title="" alt="' . h($album['name']) . '" border="0" />';
+                        }
                         
                         // if mode is edit then add the edit button to the image
                         if ($editable == TRUE) {
@@ -977,8 +986,8 @@ function get_photo_gallery($properties) {
                 'name' => $child_folder['name'],
                 'url' => PATH . encode_url_path($page_name) . '?folder_id=' . $child_folder['id'],
                 'number_of_photos' => $number_of_photos,
-                'image_name' => $photos_in_album[0]['name'],
-                'image_url' => PATH . encode_url_path($photos_in_album[0]['name']));
+                'image_name' => isset($photos_in_album[0]) ? $photos_in_album[0]['name'] : '',
+                'image_url' => isset($photos_in_album[0]) ? PATH . encode_url_path($photos_in_album[0]['name']) : '');
         }
         
         $photos = array();

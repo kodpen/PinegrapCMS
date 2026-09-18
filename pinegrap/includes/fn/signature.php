@@ -162,6 +162,18 @@ function pg_signature_exists($form_id, $form_field_id)
     return (pg_signature_record($form_id, $form_field_id) !== false);
 }
 
+// Removes the signature records of a submitted form. Called wherever a
+// submission is deleted, because the table has no foreign key to forms and the
+// drawn PNG is removed with the form's other files.
+function pg_signature_delete($form_id)
+{
+    if (!pg_signature_ready()) {
+        return false;
+    }
+
+    return db("DELETE FROM form_signatures WHERE form_id = '" . e((int) $form_id) . "'");
+}
+
 // The drawing, decoded from what the browser sent and re-encoded from its
 // pixels.
 //
@@ -450,22 +462,35 @@ function pg_signature_field($field)
     $label = isset($field['label']) ? (string) $field['label'] : '';
     $required = !empty($field['required']);
 
-    // A form redisplayed after an error carries what was drawn before.
-    $form = function_exists('liveform') ? liveform('custom_form') : null;
+    // A form redisplayed after an error carries what was drawn before. The
+    // visitor's custom form keeps its liveform under the page id and the
+    // control panel's add screen under 'add_submitted_form' with the page id as
+    // index; whichever holds a value for this field is used.
     $value = '';
     $strokes = '';
 
-    if (is_object($form) && method_exists($form, 'get_field')) {
-        $stored = $form->get_field($id);
+    if (class_exists('liveform')) {
+        $page_id = isset($field['page_id']) ? (int) $field['page_id'] : (int) db_value("SELECT page_id FROM form_fields WHERE id = '" . e($id) . "'");
 
-        if (is_array($stored) && isset($stored['value']) && is_string($stored['value'])) {
-            $value = $stored['value'];
-        }
+        $forms = array(
+            new liveform((string) $page_id),
+            new liveform('add_submitted_form', $page_id),
+        );
 
-        $stored_strokes = $form->get_field($id . '_strokes');
+        foreach ($forms as $form) {
+            $stored = $form->get_field($id);
 
-        if (is_array($stored_strokes) && isset($stored_strokes['value']) && is_string($stored_strokes['value'])) {
-            $strokes = $stored_strokes['value'];
+            if (is_array($stored) && isset($stored['value']) && is_string($stored['value']) && ($stored['value'] !== '')) {
+                $value = $stored['value'];
+
+                $stored_strokes = $form->get_field($id . '_strokes');
+
+                if (is_array($stored_strokes) && isset($stored_strokes['value']) && is_string($stored_strokes['value'])) {
+                    $strokes = $stored_strokes['value'];
+                }
+
+                break;
+            }
         }
     }
 

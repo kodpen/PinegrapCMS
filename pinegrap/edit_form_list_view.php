@@ -503,6 +503,9 @@ if (!$_POST) {
     $output_browse_container_style = ' style="display: none"';
 
     // If the MySQL version is new then prepare browse.
+    // The browse field list is always shown on this screen.
+    $calendar_view_calendars_row_style = '';
+
     if ($mysql_version_new == true) {
         // Show browse container.
         $output_browse_container_style = '';
@@ -577,7 +580,7 @@ if (!$_POST) {
                     if (($field['type'] == 'date') || ($field['type'] == 'date and time')) {
                         $output_date_format_field = 
                             '<label for="browse_field_' . $field['id'] . '_date_format" class="form-label">' . lang('Format') . '</label>
-                            <input value="' . h($browse_fields[$field['id']]['date_format']) . '" name="browse_field_' . $field['id'] . '_date_format" id="browse_field_' . $field['id'] . '_date_format" type="text" class="form-control" size="20" maxlength="255" />';
+                            <input value="' . h(isset($browse_fields[$field['id']]) ? $browse_fields[$field['id']]['date_format'] : '') . '" name="browse_field_' . $field['id'] . '_date_format" id="browse_field_' . $field['id'] . '_date_format" type="text" class="form-control" size="20" maxlength="255" />';
                     }
 
                     // If this field is an active browse field, then check check box.
@@ -611,7 +614,7 @@ if (!$_POST) {
                         }
                     }
 
-                    $output_number_of_columns = $browse_fields[$field['id']]['number_of_columns'];
+                    $output_number_of_columns = isset($browse_fields[$field['id']]) ? $browse_fields[$field['id']]['number_of_columns'] : '';
 
                     // If the number of columns is blank or 0, then set it to the default.
                     if (($output_number_of_columns == 0) || ($output_number_of_columns == '')) {
@@ -1012,7 +1015,6 @@ if (!$_POST) {
     db(
         "UPDATE form_list_view_pages
         SET
-            $sql_collection_a_fields
             order_by_1_standard_field = '" . e($order_by_1_standard_field) . "',
             order_by_1_form_field_id = '" . e($order_by_1_form_field_id) . "',
             order_by_1_type = '" . e($_POST['order_by_1_type'] ?? '') . "',

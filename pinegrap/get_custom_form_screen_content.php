@@ -160,7 +160,7 @@ function get_custom_form_screen_content($properties) {
                         $output_connect_to_contact_field = '<input type="hidden" name="connect_to_contact" value="' . h($_GET['connect_to_contact']) . '" />';
                         
                         // if connect to contact is off then output notice
-                        if (trim(mb_strtolower($_GET['connect_to_contact'] == 'false'))) {
+                        if (trim(mb_strtolower($_GET['connect_to_contact'])) == 'false') {
                             $form->add_notice(lang('The connect to contact feature has been disabled for this visit to this form, so your contact information will not be prefilled and will not be updated.'));
                         }
                     }

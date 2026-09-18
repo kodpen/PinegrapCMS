@@ -601,6 +601,56 @@ ağını `mysqli_query ... or output_error` ile aşan dört eski adım bu turda
 elde alınmadı; yayınlanmış sürümler kapalı olduğu için migration dosyaları
 kapsam dışı.
 
+## 2026.4.4 — Genel sayfa render'ı ve form görünümleri: GA purchase, sosyal paylaşım, katalog code bloğu, imza kayıtları (2026-09-18)
+
+**Belirti (issue #35).** (1) Sipariş fişindeki `gtag` purchase betiği
+`currency: :` yazıyor, sipariş numarasını ikinci bir `currency` anahtarı
+olarak basıyordu; JS sözdizimi hatası yüzünden e-ticaret dönüşümü GA'ya hiç
+gitmiyordu. (2) İkinci sosyal paylaşım kapısı eski ADDTHIS/PLUSONE
+bayraklarını sınıyordu; yalnız WhatsApp/Telegram/Pinterest/Reddit/E-posta
+açık olan sitede düğmeler basılmıyordu. (3) `get_catalog.php` ürün grubu
+`code` bloğunu hesaplıyor ama iki düzende de `$code`'a yazmıyordu; blok hiç
+render edilmiyordu. (4) `get_form_item_view.php` `check_edit_access()`'e
+`db()` sonucunu (mysqli_result) veriyordu; giriş yapmış her rol-3 üye
+TypeError alıyordu. (5) Dizin ekranı `x[]=1` gibi bir dizi parametresini
+`h()`'ye verip çöküyordu. (6) Gönderilen form silinince `form_signatures`
+satırı geride kalıyordu. (7) RSS akışında medya alanı tipi site genelindeki
+ilk `form_data` satırından seçiliyor, enclosure URL'si bütün olarak
+`urlencode()` ediliyordu. (8) Widget modundaki form liste görünümü bağlantıları
+`page_id` önekiyle yazılıp `sw{widget}` önekiyle okunuyordu; sayfalama ve
+sıralama çalışmıyordu. (9) Alan ekleme/düzenleme ekranında "İptal" kimliksiz
+`view_fields.php`'ye gidip 404 veriyordu; imza alanı tip adı boş çıkıyordu.
+Bunların yanında `$_GET['page']`, boş albüm, tanımsız `$output_data`,
+`$sql_trigger_*`, `$sql_collection_a_fields` gibi bir dizi uyarı ve
+öncelik hatası (`mb_strtolower($x) == 'false'`) vardı.
+
+**Düzeltme.** GA betiği `currency` ve `transaction_id`'yi birer kez basar.
+Sosyal paylaşım için `$social_networking_enabled` bir kez, güncel ağ
+listesinden hesaplanır ve iki kapı da onu okur — iki yerde ayrı liste
+tutulması bu hatayı doğurmuştu. Katalogda her iki düzen hesaplanan bloğu
+`$code`'a yazar; özel düzen `product_groups.image_name` ile tek görsel
+yedeğini korur. `pg_signature_delete($form_id)` (`includes/fn/signature.php`)
+üç silme yolunda (`delete_submitted_forms.php`, `edit_submitted_form.php`,
+`view_submitted_forms.php`) `form_data` silindikten sonra çağrılır; imza
+tablosu hazır değilse `false` döner. Aynı dosyadaki hata sonrası yeniden
+gösterim `function_exists('liveform')` yerine sayfa kimliğiyle kurulan iki
+liveform'u (`$page_id` ve `add_submitted_form`) denetler; önerilen
+`new liveform('custom_form')` hiçbir şey geri getirmezdi çünkü ziyaretçi
+formu o adla saklanmaz. RSS medya tipi artık form başına alt sorguyla
+seçilir. Widget bağlantıları `$pk_*` değişkenlerini kullanır. İptal bağlantısı
+`view_fields.php?{identifier}={value}` olur. Şema değişikliği yok.
+
+### Doğrulama
+
+`php -l` dokunulan 18 dosyada temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: GA çıktısı,
+katalog `^^image_loop^^` render'ı, widget bağlantıları, RSS enclosure, imza
+geri yükleme ve imza satırı silme yalnız kod okuması ve statik denetimle
+doğrulandı. `product_groups_images_xref` tablosunun `legacy.php`
+migration'ıyla var olduğu varsayıldı.
+
+**Açık kalan:** yok; 23 bulgunun tamamı düzeltildi.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

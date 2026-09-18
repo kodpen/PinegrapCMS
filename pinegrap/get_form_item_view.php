@@ -47,7 +47,7 @@ function get_form_item_view($properties) {
     // notice.
     if (
         !$form_id and empty($_GET['r'])
-        and check_edit_access(db("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'"))
+        and check_edit_access(db_value("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'"))
     ) {
 
         $output =

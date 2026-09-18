@@ -76,6 +76,9 @@ if ($_POST['forms']) {
             // delete form data
             $query = "DELETE FROM form_data WHERE (form_id = '" . escape($form_id) . "') AND (form_id != '0')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // delete signature records for this submitted form
+            pg_signature_delete($form_id);
             
             // delete views for this submitted form that the form view directory feature uses
             pg_sfv_delete_views('submitted_form_id', $form_id);

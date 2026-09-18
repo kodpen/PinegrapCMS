@@ -1350,7 +1350,7 @@ function get_form_list_view($properties) {
                     $browse_filter_query_string_custom .= '&';
                 }
                 
-                $browse_filter_query_string_custom .= $page_id . '_browse_field_id=' . $browse_field['id'];
+                $browse_filter_query_string_custom .= $pk_browse_field . '=' . $browse_field['id'];
 
                 $browse_field['number_of_filters'] = count($browse_field['filters']);
 
@@ -1408,7 +1408,7 @@ function get_form_list_view($properties) {
 
                     // Otherwise we should not use a shortcut, so prepare link to this page.
                     } else {
-                        $filter['url'] = $url_parts['path'] . $browse_filter_query_string_custom . '&' . $page_id . '_browse_filter=' . urlencode($filter['name']) . '#' . $page_id . '_system';
+                        $filter['url'] = $url_parts['path'] . $browse_filter_query_string_custom . '&' . $pk_browse_filter . '=' . urlencode($filter['name']) . '#' . $page_id . '_system';
                     }
 
                     // Store the db data value of the name, before we
@@ -2074,6 +2074,7 @@ function get_form_list_view($properties) {
         ) {
             $filters[] = array(
                 'form_field_id' => $liveform->get_field_value($pk_browse_field),
+                'standard_field' => '',
                 'operator' => 'is equal to',
                 'value' => $liveform->get_field_value($pk_browse_filter),
                 'date_format' => $selected_browse_field_date_format
@@ -2194,7 +2195,7 @@ function get_form_list_view($properties) {
                     $operand_1 = "(SELECT files.name FROM form_data LEFT JOIN files ON form_data.file_id = files.id WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . $filter['form_field_id'] . "') LIMIT 1)";
 
                 // Otherwise if there is a date format for this filter, then use MySQL to format operand 1.
-                } else if ($filter['date_format'] != '') {
+                } else if (($filter['date_format'] ?? '') != '') {
                     // Start MySQL date format off with the PHP date format.
                     $mysql_date_format = $filter['date_format'];
 
@@ -3372,7 +3373,7 @@ function get_form_list_view($properties) {
                     $pagination_url .= '&';
                 }
                 
-                $pagination_url .= $page_id . '_page_number=';
+                $pagination_url .= $pk_page_number . '=';
                 
                 $output_pagination_url = h($pagination_url);
                 
@@ -3390,7 +3391,7 @@ function get_form_list_view($properties) {
                 }
                 
                 // create pagination page numbers array that will store the page numbers that will be outputted
-                $pagination_pages_numbers = array();
+                $pagination_page_numbers = array();
                 
                 // store the first page number
                 $pagination_page_numbers[] = 1;
@@ -3422,7 +3423,7 @@ function get_form_list_view($properties) {
                 // loop through all pagination page numbers
                 foreach ($pagination_page_numbers as $key => $pagination_page_number) {
                     // if last pagination page number is less than one less than this page number, then output ellipsis
-                    if ($pagination_page_numbers[$key - 1] < ($pagination_page_number - 1)) {
+                    if (($key > 0) && ($pagination_page_numbers[$key - 1] < ($pagination_page_number - 1))) {
                         $output_pagination .= '<span>...</span>';
                     }
                     

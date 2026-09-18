@@ -138,6 +138,31 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $style_type = $row['style_type'] ?? '';
     $style_head = $row['style_head'] ?? '';
     $social_networking_position = $row['social_networking_position'] ?? '';
+
+    // Social sharing is available when the site setting is on and either the
+    // advanced type is selected or at least one simple-type network is enabled.
+    // Computed once here so every gate below tests the same list of networks.
+    $social_networking_enabled =
+        (SOCIAL_NETWORKING == TRUE)
+        &&
+        (
+            (SOCIAL_NETWORKING_TYPE == 'advanced')
+            ||
+            (
+                (SOCIAL_NETWORKING_TYPE == 'simple')
+                &&
+                (
+                    (SOCIAL_NETWORKING_FACEBOOK == TRUE)
+                    || (SOCIAL_NETWORKING_TWITTER == TRUE)
+                    || (SOCIAL_NETWORKING_LINKEDIN == TRUE)
+                    || (SOCIAL_NETWORKING_WHATSAPP == TRUE)
+                    || (SOCIAL_NETWORKING_TELEGRAM == TRUE)
+                    || (SOCIAL_NETWORKING_PINTEREST == TRUE)
+                    || (SOCIAL_NETWORKING_REDDIT == TRUE)
+                    || (SOCIAL_NETWORKING_EMAIL == TRUE)
+                )
+            )
+        );
     $collection = $row['collection'] ?? '';
     $layout_type = $row['layout_type'] ?? '';
     $style_layout = $row['style_layout'] ?? '';
@@ -644,7 +669,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // then get the path in a specific way, because we can't use short links with an address name in the path
         if (
             (($page_type == 'catalog') || ($page_type == 'catalog detail'))
-            && (mb_strpos($_GET['page'], '/') !== FALSE)
+            && (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE))
         ) {
             // get address name from the current path
             $address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
@@ -955,9 +980,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $output_ecommerce_tracking_data .=
                     "\n" .
                     '    gtag(\'event\', \'purchase\', {' . "\n" .
-                    '        currency: : \'' . BASE_CURRENCY_CODE . '\',' . "\n" .
+                    '        currency: \'' . BASE_CURRENCY_CODE . '\',' . "\n" .
                     '        transaction_id: \'' . $order['order_number'] . '\',' . "\n" .
-                    '        currency: \'' . $order['order_number'] . '\',' . "\n" .
                     '        affiliation: \'' . escape_javascript(ORGANIZATION_NAME) . '\',' . "\n" .
                     '        value: \'' . $order['total'] / 100 . '\',' . "\n" .
                     '        shipping: \'' . $order['shipping'] / 100 . '\',' . "\n" .
@@ -1591,14 +1615,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $output_links = '';
                 
                 // if there is a previous menu item, then output the previous link
-                if (is_array($menu_sequence[$current_menu_item_array_index - 1]) == TRUE) {
+                if (($current_menu_item_array_index > 0) && isset($menu_sequence[$current_menu_item_array_index - 1]) && (is_array($menu_sequence[$current_menu_item_array_index - 1]) == TRUE)) {
                     $output_links = '<a href="' . OUTPUT_PATH . h($menu_sequence[$current_menu_item_array_index - 1]['link_page_name']) . '" class="previous">&lt;</a>&nbsp;&nbsp;&nbsp;';
                 }
                 
                 $next_menu_item_array_index = 0;
                 
                 // if there is a next menu item, then set it
-                if (is_array($menu_sequence[$current_menu_item_array_index + 1]) == TRUE) {
+                if (isset($menu_sequence[$current_menu_item_array_index + 1]) && (is_array($menu_sequence[$current_menu_item_array_index + 1]) == TRUE)) {
                     $next_menu_item_array_index = $current_menu_item_array_index + 1;
                 }
                 
@@ -2104,25 +2128,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 )
                 ||
                 (
-                    (SOCIAL_NETWORKING == TRUE)
-                    &&
-                    (
-                        (
-                            (SOCIAL_NETWORKING_TYPE == 'simple')
-                            &&
-                            (
-                                (SOCIAL_NETWORKING_FACEBOOK == TRUE)
-                                || (SOCIAL_NETWORKING_TWITTER == TRUE)
-                                || (SOCIAL_NETWORKING_LINKEDIN == TRUE)
-                                || (SOCIAL_NETWORKING_WHATSAPP == TRUE)
-                                || (SOCIAL_NETWORKING_TELEGRAM == TRUE)
-                                || (SOCIAL_NETWORKING_PINTEREST == TRUE)
-                                || (SOCIAL_NETWORKING_REDDIT == TRUE)
-                                || (SOCIAL_NETWORKING_EMAIL == TRUE)
-                            )
-                        )
-                        || (SOCIAL_NETWORKING_TYPE == 'advanced')
-                    )
+                    ($social_networking_enabled == TRUE)
                     && ($social_networking_position != 'disabled')
                     && ($email == FALSE)
                     && ($mode != 'edit')
@@ -2195,7 +2201,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // if there is not a search query then output RSS button
                         if ((isset($_GET[$system_region_properties['page_id'] . '_query']) == FALSE) && (isset($_GET['query']) == FALSE)) {
                             // if an address name has been passed in the current URL, then prepare RSS button link with address name
-                            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+                            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 // get address name
                                 $address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                                 
@@ -2267,7 +2273,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         
                     case 'catalog detail':
                         // If there is a forward slash in the page name then determine if we should prepare the RSS URL.
-                        if (mb_strpos($_GET['page'], '/') !== FALSE) {
+                        if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                             $item = get_catalog_item_from_url();
 
                             // if the item that is being viewed is a product group, then prepare RSS URL.
@@ -2468,22 +2474,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // We don't show social buttons in edit mode in order to increase
             // performance for the editor.
             if (
-                (SOCIAL_NETWORKING == TRUE)
-                &&
-                (
-                    (
-                        (SOCIAL_NETWORKING_TYPE == 'simple')
-                        &&
-                        (
-                            (SOCIAL_NETWORKING_FACEBOOK == TRUE)
-                            || (SOCIAL_NETWORKING_TWITTER == TRUE)
-                            || (SOCIAL_NETWORKING_ADDTHIS == TRUE)
-                            || (SOCIAL_NETWORKING_PLUSONE == TRUE)
-                            || (SOCIAL_NETWORKING_LINKEDIN == TRUE)
-                        )
-                    )
-                    || (SOCIAL_NETWORKING_TYPE == 'advanced')
-                )
+                ($social_networking_enabled == TRUE)
                 && ($social_networking_position != 'disabled')
                 && ($email == FALSE)
                 && ($mode != 'edit')
@@ -3145,7 +3136,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                     // if there is a forward slash in the page name then get item information (we will use this in several places below) and output edit container if necessary
                     // we will use this information in several places below
-                    if (mb_strpos($_GET['page'], '/') !== FALSE) {
+                    if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                         $item = array();
                         $item = get_catalog_item_from_url();
                         
@@ -3481,7 +3472,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     switch($system_region_properties['page_type']) {
                         case 'catalog':
                             // if there is a forward slash in the page name then get the items id
-                            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+                            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 $item = get_catalog_item_from_url();
                                 $item_id = $item['id'];
                                 
@@ -3503,7 +3494,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         
                         case 'catalog detail':
                             // if there is a forward slash in the page name then get the items information
-                            if (mb_strpos($_GET['page'], '/') !== FALSE) {
+                            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 $item = get_catalog_item_from_url();
                                 $item_id = $item['id'];
                                 
@@ -3526,7 +3517,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 $item_type = 'calendar_event';
 
                             // Otherwise if an id was passed through the URL, then use that for the calendar event id.
-                            } else if ($_GET['id']) {
+                            } else if (!empty($_GET['id'])) {
                                 $item_id = $_GET['id'];
                                 $item_type = 'calendar_event';
                             }
@@ -5143,7 +5134,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // if page is a catalog or a catalog detail page, and if meta data for item exists, then set item meta data for page
     if (($page_type == 'catalog') || (($page_type == 'catalog detail'))) {
         // if there is a forward slash in the page name then get the items information
-        if (mb_strpos($_GET['page'], '/') !== FALSE) {
+        if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
             $item = get_catalog_item_from_url();
         }
         
@@ -5772,11 +5763,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // or the page that is set matches this page, then show it.
                         if (
                             (
-                                (!$_COOKIE['software']['auto_dialog_' . $auto_dialog['id']])
+                                (empty($_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]))
                                 ||
                                 (
                                     ($auto_dialog['frequency'])
-                                    && (($current_timestamp - $_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]) >= ($auto_dialog['frequency'] * 3600))
+                                    && (($current_timestamp - (int) $_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]) >= ($auto_dialog['frequency'] * 3600))
                                 )
                             )
                             &&
