@@ -126,6 +126,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_return_line_link();   // 4.50
 
 	upgrade_2026_4_4_erp_account_snapshot();   // 4.51
+
+	upgrade_2026_4_4_erp_export_log();         // 4.52
 }
 
 
@@ -2753,5 +2755,37 @@ function upgrade_2026_4_4_erp_account_snapshot() {
 		WHERE i.account_title = '' AND i.status <> 'draft'");
 
 	install_note('Invoices now keep a copy of the account title, tax details and address as they were when the document was issued.');
+
+}
+
+
+// ERP: which records left the system in which export file (2026.4.4, 4.52).
+//
+// An export is a hand-off to another program - an accountant's package, a
+// spreadsheet - and the operator has to be able to ask "what have I not sent
+// yet" and to find the run a record went out in. That is a fact about the
+// record, kept per profile: the same invoice can go to two programs and be new
+// to each. erp_parasut_log is not the place for it; that table is the trace of
+// HTTP calls to one API, and a file export makes no call.
+//
+// One row per record per run. The run token groups a file's rows so the
+// screen can list runs, and the (entity, doc_id, profile) key answers the
+// "not yet exported" question with one index lookup.
+function upgrade_2026_4_4_erp_export_log() {
+
+	install_create_table('erp_export_log', "CREATE TABLE erp_export_log (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		entity     VARCHAR(20) NOT NULL DEFAULT '',
+		doc_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		profile    VARCHAR(40) NOT NULL DEFAULT '',
+		run_token  CHAR(32) NOT NULL DEFAULT '',
+		created_by INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_doc (entity, doc_id, profile),
+		KEY idx_run (run_token)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Accounts, invoices and receipts can be exported as CSV or as a spreadsheet for an accounting package, and the export remembers what has already gone out.');
 
 }

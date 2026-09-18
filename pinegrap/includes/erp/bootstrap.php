@@ -39,3 +39,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/settlement.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/document.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/export.php');

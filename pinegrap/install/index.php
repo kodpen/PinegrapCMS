@@ -7335,6 +7335,7 @@ function get_tables() {
 		'erp_cash_transactions',
 		'erp_document_series',
 		'erp_edoc_queue',
+		'erp_export_log',
 		'erp_invoice_items',
 		'erp_invoices',
 		'erp_parasut_log',
