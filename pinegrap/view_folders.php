@@ -131,7 +131,7 @@ if ($explorer_area == 'catalog') {
         $initial_mode = 'shared';
     } elseif (isset($_GET['view']) && ($_GET['view'] == 'backups') && ($user['role'] <= 2)) {
         $initial_mode = 'backups';
-    } elseif (isset($_GET['view']) && ($_GET['view'] == 'short_links')) {
+    } elseif (isset($_GET['view']) && ($_GET['view'] == 'short_links') && ($user['role'] <= 2)) {
         $initial_mode = 'short_links';
     }
 
@@ -1373,8 +1373,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li class="area-files"><button type="button" class="dropdown-item" id="all_files_menu_item"><span class="bi bi-file-earmark-image me-2"></span><?php echo lang('Files'); ?></button></li>
                 <li class="area-files"><button type="button" class="dropdown-item" id="all_images_menu_item"><span class="bi bi-images me-2"></span><?php echo lang('Pictures'); ?></button></li>
                 <li class="area-files"><button type="button" class="dropdown-item" id="all_pages_menu_item"><span class="bi bi-window-stack me-2"></span><?php echo lang('Pages'); ?></button></li>
-                <li class="area-files"><button type="button" class="dropdown-item" id="short_links_menu_item"><span class="bi bi-link-45deg me-2"></span><?php echo lang('Short Links'); ?></button></li>
                 <?php if ($user['role'] <= 2) { ?>
+                <li class="area-files"><button type="button" class="dropdown-item" id="short_links_menu_item"><span class="bi bi-link-45deg me-2"></span><?php echo lang('Short Links'); ?></button></li>
                 <li class="area-files"><button type="button" class="dropdown-item" id="shared_menu_item"><span class="bi bi-shield-lock me-2"></span><?php echo lang('Shared Folders'); ?></button></li>
                 <li class="area-files"><button type="button" class="dropdown-item" id="backups_menu_item"><span class="bi bi-database me-2"></span><?php echo lang('Backups'); ?></button></li>
                 <?php } ?>
@@ -1422,7 +1422,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <div class="tree-row area-files" id="all_files_quick"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image text-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
             <div class="tree-row area-files" id="all_images_quick"><span class="tree-toggle"></span><span class="bi bi-images text-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
             <div class="tree-row area-files" id="all_pages_quick"><span class="tree-toggle"></span><span class="bi bi-window-stack text-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
+            <?php if ($user['role'] <= 2) { ?>
             <div class="tree-row area-files" id="short_links_quick"><span class="tree-toggle"></span><span class="bi bi-link-45deg text-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
+            <?php } ?>
             <div class="tree-row area-catalog" id="all_products_quick"><span class="tree-toggle"></span><span class="bi bi-box2-heart text-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
             <!-- A variant set is a group whose display type is 'select': one
                  product in several forms rather than a category. view_products.php
@@ -10621,7 +10623,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('all_files_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === ''));
         document.getElementById('all_images_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === 'images'));
         document.getElementById('all_pages_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === 'pages'));
-        document.getElementById('short_links_quick').classList.toggle('active', state.mode === 'short_links');
+        var shortLinksRow = document.getElementById('short_links_quick');
+        if (shortLinksRow) { shortLinksRow.classList.toggle('active', state.mode === 'short_links'); }
 
         var sharedRow = document.getElementById('shared_quick');
         if (sharedRow) { sharedRow.classList.toggle('active', state.mode === 'shared'); }
@@ -10892,8 +10895,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.getElementById('all_images_menu_item').addEventListener('click', function () { enterAllFiles('images'); });
     document.getElementById('all_pages_quick').addEventListener('click', function () { enterAllFiles('pages'); });
     document.getElementById('all_pages_menu_item').addEventListener('click', function () { enterAllFiles('pages'); });
-    document.getElementById('short_links_quick').addEventListener('click', function () { enterShortLinks(); });
-    document.getElementById('short_links_menu_item').addEventListener('click', function () { enterShortLinks(); });
+    // Drawn for managers and above only, like the shared and backup rows below.
+    if (document.getElementById('short_links_quick')) {
+        document.getElementById('short_links_quick').addEventListener('click', function () { enterShortLinks(); });
+        document.getElementById('short_links_menu_item').addEventListener('click', function () { enterShortLinks(); });
+    }
     document.getElementById('new_short_link_button').addEventListener('click', function () { openShortLinkWizard(); });
 
     document.getElementById('create_backup_button').addEventListener('click', function () { createBackup(); });

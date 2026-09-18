@@ -106,6 +106,116 @@ bekler; #68 bu yüzden açık kalır.
 kurulmadı; CLI koşusu, dağıtıcı include'u, panelde `sitemap_check`
 çağrısı ve form gönderim akışları yalnız kod okumasıyla doğrulandı.
 
+## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
+
+**Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
+ve `english_default/sql.sql`) `config` satırında `debug = 1` taşıyordu.
+`init.php` bu değeri `DEBUG` sabitine bağlar ve `output_error()` sabit
+açıkken başarısız sorgunun metnini `mysqli_error` çıktısıyla birlikte
+ziyaretçiye basar. Kurulum sihirbazı bu alana dokunmadığı için taze kurulan
+her site, ayarlar ekranında "Ayrıntılı Veritabanı Hataları" kapatılana
+kadar her sorgu hatasında SQL parçalarını ve veritabanı adını dışarı
+sızdırıyordu (#88, FUNC-6). Aynı kararda (#88, F21) özel form yönetici
+bildirim e-postasının varsayılan biçiminin `plain_text` olması istendi:
+`html` biçimi bir e-posta sayfası seçilmeden kaydedilirse gövde boş kalır ve
+PHPMailer "Message body empty" ile gönderimi düşürür.
+
+**Çözüm.** İki başlangıç dökümünde `config` satırındaki `debug` değeri
+`1` → `0` yapıldı; dosyalarda başka hiçbir bayt değişmedi. `data/backups/`
+klasörüne dokunulmaz kuralının tek istisnasıdır ve yalnız bu değer için
+verilmiştir. Bildirim biçimi için kod değişikliği gerekmedi:
+`add_page.php` şablonunda `plain_text` radyosu ilk commit'ten beri
+`checked`, `custom_form_pages.administrator_email_format` sütununun
+şema varsayılanı da `'plain_text'`. Karar, mevcut durumun kayda geçirilmesi
+oldu; `html` + boş sayfa ile kaydedilmiş mevcut kayıtlar bilinçli olarak
+değiştirilmedi (veri taşıma yok).
+
+Rol matrisi maddeleri (#88 D1, D2, D3) bilinçli model olarak onaylandı ve
+değişmedi: `'manager'` kapısı Designer (1) ve Manager (2) için site
+yönetiminin tamamını açar, yalnız `config.php` düzeyindeki ayarlar ve
+gelişmiş tasarım alanları rol 0 / rol 1'e ayrılmıştır; Görsel Sayfa Editörü
+rol 2 ve 3'e içerik modunda açık kalır; tema önizlemesi Manager'a açık
+kalır.
+
+### Doğrulama
+
+Çalışma kopyası ikinci bir veritabanına sihirbazla (turkish_default) taze
+kuruldu: kurulum sonrası `SELECT debug, version FROM config` → `0 |
+2026.4.4`; ziyaretçi ana sayfası, `view_pages.php` ve
+`settings_general.php` 200 döndü, PHP hata günlüğüne satır düşmedi.
+`add_page.php` GET (ca5196c sandbox'ı ve bu dal) her ikisinde `plain_text`
+radyosu `checked`; varsayılanlarla oluşturulan özel form sayfasında
+`administrator_email_format = 'plain_text'` kaydedildi. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** `english_default` ile kurulum koşturulmadı (aynı tek değer
+değişti, döküm ayrıştırılarak doğrulandı). Mevcut sitelerde `html` biçimli
+ve e-posta sayfasız kayıtlar hâlâ boş gövde üretir; #88 F21 seçeneği (b)
+(otomatik özet gövdesi) ayrı bir karar konusudur.
+
+## 2026.4.4 — Kısa linkler rol 3'e kapatıldı (2026-09-18)
+
+**Karar (Erdal, 2026-09-18, #73 üzerinden):** Rol 3 (User) kısa linkleri
+göremez, ekleyemez, düzenleyemez, silemez. Sayfa ve dosyaların güvenliği ve
+erişimi **klasör bazlı** kontrol edilir; kısa link hiçbir klasöre ait
+değildir, dolayısıyla klasör ile yetki dağıtımının dışında kalır. Eski kod bu
+boşluğu klasör kontrolünü kısa linkin *hedef* sayfasının klasörüne uygulayarak
+ve `url`/`file` tipinde "oluşturan kullanıcı" kuralıyla kapatmaya çalışıyordu;
+ekranlar arasında tutarsızdı (`add_short_link.php` manager kapılıydı,
+`view_short_links.php` ve `edit_short_link.php` user kapılı, Dosya
+Yöneticisi'nin kısa link alanı rol 3'e listeleme/yeniden adlandırma/silme
+veriyordu). Artık tek kural var: kısa link alanı rol 0–2'nin hakkıdır.
+
+**Ne değişti:**
+
+- `view_short_links.php`, `edit_short_link.php`: kapı `validate_area_access($user, 'manager')`.
+  Rol 3'e özel filtreleme ve "hedef sayfanın klasörüne düzenleme hakkı" kontrolleri
+  kaldırıldı (artık erişilemez koddu). Oluştur düğmesi koşulsuz basılıyor.
+- `view_folder_and_files_f.php` (`pg_explorer_handle`): `explorer_short_link*`
+  ile başlayan her API eylemi (listeleme dahil) rol 3 için tek yerde
+  `Access denied` ile reddediliyor. `pg_short_link_visible()` yalnız rolü
+  soruyor; `create`/`duplicate` içindeki tekil rol 3 kontrolleri ve
+  `pg_short_link_read_request()` içindeki klasör hakkı kontrolü kaldırıldı.
+- `view_folders.php`: `?view=short_links` rol 3 için `browse` moduna düşer;
+  sol menü ve ağaçtaki "Kısa Linkler" girişleri `role <= 2` ile çiziliyor
+  (Paylaşılan Klasörler / Yedekler ile aynı kalıp), JS dinleyicileri öğe yoksa
+  bağlanmıyor.
+- `includes/fn/output.php`: Sayfalar menüsündeki "Kısa Linkler" ve "Kısa Link
+  Oluştur" girişleri rol 3'e gösterilmiyor; `pg_page_facts()` sayfa panelinde
+  kısa link satırını rol 3'e basmıyor.
+- `api.php`: son güncellemeler listesi kısa linkleri yalnız rol 0–2'ye ekliyor;
+  komut paleti (`backend_search`) "Kısa Linkler" hızlı eylemini `$can_manage`
+  ile veriyor.
+- `editor_select_page_or_file.php`: CKEditor bağlantı seçicisindeki "Kısa
+  Linkler" sekmesi rol 3'e çizilmiyor; `type=short_link` istenirse sayfalar
+  sekmesine düşüyor.
+
+Şema değişikliği yok, yeni dil anahtarı yok.
+
+### Doğrulama
+
+Sandbox (MariaDB + `php -S`, 2026.4.4 şeması) üzerinde rol 3 (klasör 87'de
+düzenleme hakkı olan), rol 2 ve rol 0 kullanıcılarıyla curl:
+
+- Önce (main, `ca5196c`): rol 3 `view_short_links.php`'de iki kısa linki
+  listeledi, `add_short_link.php` ve `edit_short_link.php?id=1|2` 200 açıldı,
+  `explorer_short_link_rename` başarıyla yazdı, sol menüde girişler vardı.
+- Sonra: rol 3 için dört klasik ekran, `submit_delete` ve `add` POST'ları
+  "Erişim reddedildi" (DB satırı değişmedi); `explorer_short_links_list /
+  _options / _create / _rename / _delete` `{"status":"error"}`;
+  `view_folders.php?view=short_links` `mode: 'browse'`, menü/ağaç öğeleri yok;
+  komut paletinde ve editör seçicisinde giriş yok.
+- Rol 2: listeleme 200, `add_short_link.php` POST → satır yazıldı,
+  `edit_short_link.php` POST → ad ve URL güncellendi, `submit_delete` → satır
+  silindi; Dosya Yöneticisi listesi `success`, `?view=short_links`
+  `mode: 'short_links'`. Rol 0 aynı şekilde çalışıyor.
+- `php tools/lint.php`, `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Dosya Yöneticisi'nin rol 3 için JavaScript tarafı (öğeler
+kaldırıldıktan sonra sayfa hatasız yükleniyor mu) tarayıcısız doğrulanamadı;
+null korumaları Paylaşılan/Yedekler kalıbıyla aynı. Mevcut kurulumlarda rol 3
+kullanıcılarının daha önce oluşturduğu kısa linkler duruyor, yalnız yönetici
+ve üstü görüp düzenleyebilir.
 
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
@@ -309,6 +419,19 @@ akışları yalnız kod okunarak doğrulandı.
 mevcut ödeme yöntemi satırları onarılmadı (veri migration'ı gerekir, bu turda
 şema/migration kapalı). `lang('Cheque')` anahtarı artık bu dosyada
 kullanılmıyor, `tr.json`'da bırakıldı.
+
+**Devamı (2026-09-18, ürün sahibi kararı):** çek `Diğer`'e katlanmaz;
+`erp_cash_transactions.payment_method` ENUM'una `cheque` eklendi (alt adım
+4.54, `upgrade_2026_4_4_erp_cash_payment_method()`, önce `install_column_info`
+ile bakar, yeniden koşturulabilir) ve `Çek` seçeneği makbuz formuna geri
+geldi. `''` kalan satırlar körlemesine onarılmaz: satır çek mi kart mı
+söylemez. Beyaz liste formdan yazma yoluna taşındı — `erp_post_receipt()`
+değeri `erp_cash_payment_methods()` listesine karşı denetler ve liste dışı
+değeri `cash`'e düşürmek yerine hata döner; `erp_cash_post()` denetlemez,
+çünkü makbuz iptali eski satırın yöntemini (boş üye dahil) ters kayda
+kopyalar ve o yol kapanmamalı. Sandbox'ta adım iki kez koşturuldu (ikincisi
+atlandı), `cheque`/`card` makbuzları o değerle yazıldı, `foo` ve boş değer
+satır üretmeden reddedildi, boş yöntemli eski bir makbuz iptal edilebildi.
 
 ## 2026.4.4 — PHP 8 altında tanımsız sabit ve null okuma düzeltmeleri (2026-09-18)
 

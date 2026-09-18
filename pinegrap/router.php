@@ -151,10 +151,10 @@ mysqli_query(db::$con, "SET NAMES '" . $mysql_character_set . "' COLLATE '" . $m
 // script is run then it will know it does not need to connect to the database.
 define('DB_CONNECTED', true);
 
-// Disable MySQL strict mode, because later versions of MySQL enable strict mode by default,
-// and Pinegrap is not compatible with strict mode.  This will also remove all other sql modes,
-// however that should be fine.
-mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+// Pin the session sql_mode instead of inheriting the server default, which differs
+// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+// so only NO_ENGINE_SUBSTITUTION is kept.
+mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
 // If this site has enabled the legacy MySQL connection in the config.php and it is using a version
 // of PHP that supports that (i.e. before PHP 7), then create a legacy DB connection.  Sites might
