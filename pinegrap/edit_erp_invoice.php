@@ -7,7 +7,11 @@
  * An issued invoice is not edited. It is a document that has already been
  * handed to somebody, so a mistake on it is corrected by a credit note against
  * it rather than by quietly changing what it says. The lines are shown as they
- * were written, with the figure each one was checked against.
+ * were written, with the figure each one was checked against. The one field
+ * that may change afterwards is the note at the foot of the document: the
+ * ledger does not depend on it.
+ *
+ * A draft is not a document yet; it is sent on to the draft editor.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -30,7 +34,7 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 $invoice_id = (int) ($_REQUEST['id'] ?? 0);
 
 $invoice = ($invoice_id > 0)
-    ? db_item("SELECT i.*, a.title AS account_title, a.tax_number, a.tax_office, o.order_number
+    ? db_item("SELECT i.*, a.title AS live_account_title, a.tax_number AS live_tax_number, a.tax_office AS live_tax_office, o.order_number
         FROM erp_invoices i
         LEFT JOIN erp_accounts a ON i.account_id = a.id
         LEFT JOIN orders o ON i.order_id = o.id
@@ -42,9 +46,27 @@ if (!is_array($invoice)) {
     exit();
 }
 
+// A draft has no number and no movement; it is edited, not read.
+if ((string) $invoice['status'] === 'draft') {
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . $invoice_id);
+}
+
 if ($_POST) {
 
     validate_token_field();
+
+    if (($_POST['erp_action'] ?? '') === 'notes') {
+
+        $notes = mb_substr(trim((string) ($_POST['notes'] ?? '')), 0, 5000);
+
+        if (db("UPDATE erp_invoices SET notes = '" . escape($notes) . "', updated_at = '" . time() . "' WHERE id = '" . $invoice_id . "'") !== false) {
+            $liveform->add_notice(lang('The note has been saved.'));
+        } else {
+            $liveform->mark_error('_error', lang('The note could not be saved.'));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+    }
 
     if (($_POST['erp_action'] ?? '') === 'cancel') {
 
@@ -193,9 +215,30 @@ $output_order = ((int) $invoice['order_id'] > 0)
     ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
     : '<span class="text-body-secondary">&mdash;</span>';
 
+// The counterparty as it read when the document was issued; the live card
+// only for documents written before the copy existed.
+$has_snapshot = (trim((string) ($invoice['account_title'] ?? '')) !== '');
+$account_title = $has_snapshot ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
+$account_tax_number = $has_snapshot ? (string) $invoice['account_tax_number'] : (string) $invoice['live_tax_number'];
+$account_tax_office = $has_snapshot ? (string) $invoice['account_tax_office'] : (string) $invoice['live_tax_office'];
+
 $output_account = ((int) $invoice['account_id'] > 0)
-    ? '<a href="edit_erp_account.php?id=' . (int) $invoice['account_id'] . '">' . h($invoice['account_title']) . '</a>'
-    : h($invoice['account_title']);
+    ? '<a href="edit_erp_account.php?id=' . (int) $invoice['account_id'] . '">' . h($account_title) . '</a>'
+    : h($account_title);
+
+if (!$liveform->field_in_session('notes')) {
+    $liveform->assign_field_value('notes', (string) ($invoice['notes'] ?? ''));
+}
+
+$output_supplier = '';
+if (((string) $invoice['direction'] === 'purchase') && (trim((string) $invoice['supplier_invoice_no']) !== '')) {
+    $supplier_date = (string) $invoice['supplier_invoice_date'];
+    $output_supplier = '
+                        <div class="col-12 col-sm-6 col-lg-3 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Supplier Invoice Number') . '</div>
+                            <div>' . h($invoice['supplier_invoice_no']) . (($supplier_date !== '' && $supplier_date !== '0000-00-00') ? ' <span class="text-body-secondary">' . h(prepare_form_data_for_output($supplier_date, 'date')) . '</span>' : '') . '</div>
+                        </div>';
+}
 
 // The internet sale block: an e-archive invoice for a sale made over the
 // internet has to state how and when it was paid, who carried the goods and
@@ -288,7 +331,7 @@ pg_page_shell([
                         </div>
                         <div class="col-12 col-sm-6 col-lg-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('VKN / TCKN') . '</div>
-                            <div>' . h($invoice['tax_number'] ?: '—') . ' <span class="text-body-secondary">' . h($invoice['tax_office']) . '</span></div>
+                            <div>' . h($account_tax_number ?: '—') . ' <span class="text-body-secondary">' . h($account_tax_office) . '</span></div>
                         </div>
                         <div class="col-12 col-sm-4 col-lg-2 my-2">
                             <div class="form-label text-body-secondary">' . lang('Date') . '</div>
@@ -308,6 +351,7 @@ pg_page_shell([
                             <div><a href="edit_erp_invoice.php?id=' . (int) $invoice['parent_invoice_id'] . '">' . h((string) db_value("SELECT full_number FROM erp_invoices WHERE id = '" . (int) $invoice['parent_invoice_id'] . "'")) . '</a></div>
                         </div>'
                             : '') . '
+                        ' . $output_supplier . '
                     </div>
                     ' . ($is_foreign
                         ? '<div class="row border-top mt-2 pt-2">
@@ -355,6 +399,31 @@ pg_page_shell([
                     </table>
                 </div>
             </div>
+
+            <form name="notes_form" action="edit_erp_invoice.php" method="post">
+                ' . get_token_field() . '
+                <input type="hidden" name="id" value="' . $invoice_id . '" />
+                <input type="hidden" name="erp_action" value="notes" />
+                <div class="card my-4">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        ' . lang('Notes') . '
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-lg-9 my-2">
+                                ' . $liveform->output_field(array(
+                                    'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
+                                    'class' => 'form-control', 'rows' => '2', 'maxlength' => '5000',
+                                    'aria-label' => lang('Notes'))) . '
+                                <div class="form-text">' . lang('Printed at the foot of the document. The only part of an issued invoice that may still be changed; the figures and the lines cannot.') . '</div>
+                            </div>
+                            <div class="col-12 col-lg-3 my-2 d-flex align-items-start">
+                                <button type="submit" name="submit_notes" value="Save" class="btn btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-save me-2"></span><span class="btn-text">' . lang('Save the Note') . '</span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
 
             <div class="card my-4">
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">

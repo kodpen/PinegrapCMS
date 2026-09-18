@@ -5,7 +5,9 @@
  * ERP - the invoice register.
  *
  * This screen only lists. Raising an invoice from an order is
- * add_erp_invoice.php, and a document is read on edit_erp_invoice.php.
+ * add_erp_invoice.php, typing one in is add_erp_manual_invoice.php, a draft
+ * is edited on edit_erp_invoice_draft.php and a document is read on
+ * edit_erp_invoice.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,7 +25,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_invoices');
 
-$invoices = (array) db_items("SELECT i.*, a.title AS account_title, o.order_number
+$invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order_number
     FROM erp_invoices i
     LEFT JOIN erp_accounts a ON i.account_id = a.id
     LEFT JOIN orders o ON i.order_id = o.id
@@ -57,9 +59,19 @@ foreach ($invoices as $invoice) {
     $id = (int) $invoice['id'];
     $status = (string) $invoice['status'];
 
-    $open = erp_invoice_open_amount($invoice);
+    // A draft has no number yet and opens in the editor rather than as a document.
+    $is_draft = ($status === 'draft');
 
-    $output_link_url = 'edit_erp_invoice.php?id=' . $id;
+    // Nothing is owed on a draft: no movement has been posted for it.
+    $open = $is_draft ? 0 : erp_invoice_open_amount($invoice);
+
+    // The title as it was when the document was issued; the live card for
+    // documents written before the copy existed.
+    $account_title = (trim((string) $invoice['account_title']) !== '') ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
+    $output_link_url = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
+    $output_number = $is_draft
+        ? '<span class="text-body-secondary fst-italic">' . lang('Draft') . '</span>'
+        : h($invoice['full_number']);
 
     $order_cell = ((int) $invoice['order_id'] > 0)
         ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
@@ -73,11 +85,11 @@ foreach ($invoices as $invoice) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . ($is_draft ? lang('Edit') : lang('View')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi ' . ($is_draft ? 'bi-pencil' : 'bi-eye') . '"></i></button>
             </td>
-            <td class="align-middle text-nowrap chart_label">' . h($invoice['full_number']) . '</td>
+            <td class="align-middle text-nowrap chart_label" data-order="' . h($is_draft ? ('~' . $id) : $invoice['full_number']) . '">' . $output_number . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($invoice['issue_date']) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
-            <td style="max-width:240px" class="text-nowrap text-truncate align-middle">' . h($invoice['account_title']) . '</td>
+            <td style="max-width:240px" class="text-nowrap text-truncate align-middle">' . h($account_title) . '</td>
             <td class="align-middle">' . h($direction_labels[$invoice['direction']] ?? $invoice['direction']) . '</td>
             <td class="align-middle ' . ($status_classes[$status] ?? '') . '">' . h($status_labels[$status] ?? $status) . '</td>
             <td class="align-middle">' . $order_cell . '</td>
@@ -108,7 +120,8 @@ pg_page_shell([
                 <div class="col-12 text-center text-md-start">
 
                     <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1" href="add_erp_invoice.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string' => 'Invoice an Order')) . '</a>
+                        <a class="btn btn-sm btn-primary m-1" href="add_erp_manual_invoice.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('New Invoice') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary m-1" href="add_erp_invoice.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-receipt me-2"></span>' . lang(array('string' => 'Invoice an Order')) . '</a>
                     </nav>
                 </div>
             </div>

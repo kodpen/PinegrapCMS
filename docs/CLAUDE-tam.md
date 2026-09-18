@@ -873,7 +873,8 @@ $tarih)` o gün ya da öncesindeki son günü verir. Kur farkı:
 transaction'ı içinde tek `kind='fx_diff'` satırı (`doc_type='fx_diff'`,
 `doc_id=fatura` idempotens anahtarı), tutar `Σ tahsis.amount_base − (grand_total_base −
 Σ iade.grand_total_base)`. Siparişten fatura her zaman ana para birimi;
-dövizli fatura elle girilir (`add_erp_invoice.php` → `erp_invoice_create_manual()`).
+dövizli fatura elle girilir (`add_erp_manual_invoice.php` → satır editörü,
+aşağıda "Elle fatura ve satır editörü").
 
 **`erp_invoice_items.tax_total` bilerek `tax` değil** — `order_items.tax`
 birim vergidir, fatura satırı satırın toplam vergisini tutar. Ad farkı okuma
@@ -1005,6 +1006,76 @@ numara tüketmez.
 Demo verisi bu kuralı uygulamıyordu; `_seed_demo.php` düzeltildi ve mevcut
 satırlar `_seed_fix_discount_tax.php` ile onarıldı (yalnız hatanın imzasını
 taşıyanlar; tekrar koşturulabilir).
+
+### Elle fatura ve satır editörü: taslak → kesim
+
+Siparişten fatura `add_erp_invoice.php`'de kalır (yalnız sipariş seçici).
+Elle fatura **`add_erp_manual_invoice.php`** (yeni) ve taslak düzenleme
+**`edit_erp_invoice_draft.php`** (yeni); ortak form ve POST okuyucusu
+`includes/erp/invoice_form.php` (`erp_invoice_form_cards()`,
+`erp_invoice_form_read()`, `erp_invoice_form_prefill()`), satır JS'i
+`assets/js/erp_invoice_editor.js` (düz `<script src>`, `.min` ikizi yok —
+`ENVIRONMENT_SUFFIX` ile servis edilmez). Panel JSON uçları
+`get_erp_products.php?q=` (ürün arama, `escape_like`, LIMIT 20) ve
+`get_erp_rate.php?currency=&date=` (`erp_fx_rate_for()` sarmalayıcısı); ikisi
+de GET, salt okunur, `validate_user()` + `validate_erp_access()` kapılı.
+
+**Taslak sınırı.** `status = 'draft'` = başlık + satırlar, **numara alınmaz,
+defter kaydı atılmaz, seri sayacına dokunulmaz.** `uniq_number(direction,
+series, number, issue_year)` tek boş numaralı satıra izin verdiği için taslak
+sahte seride durur: `series = '_D'` (`ERP_DRAFT_SERIES`), `issue_year = 0`,
+`number = id` (INSERT'in hemen ardından aynı transaction'da UPDATE),
+`full_number = ''`. Gerçek bir seriye `_D` adı verilemez; `erp_invoice_issue()`
+bunu reddeder. Taslak her kayıtta bütünüyle yeniden yazılır (satırlar DELETE +
+INSERT; taslağın satırlarına iade bağı olamaz). Kesim (`erp_invoice_issue()`):
+`FOR UPDATE` ile durum kontrolü, satırlar DB'den okunup
+`erp_manual_lines_build()` ile **yeniden hesaplanır (başlık toplamlarına
+güvenilmez)**, `erp_next_number()`, başlık UPDATE, `erp_account_post()`,
+`erp_account_refresh_balance()` — tek transaction. Kesilmiş fatura yine
+salt-okunur; `edit_erp_invoice.php` taslağı editöre yönlendirir ve kesilmiş
+faturada yalnız `notes` düzenlenir (`erp_action=notes`, token'lı POST).
+Taslak **silinir**, iptal edilmez (`erp_invoice_draft_delete()`); kesilmiş
+fatura eskisi gibi `erp_invoice_cancel()` ile ters kayıtla iptal edilir.
+
+**`includes/erp/invoice_manual.php` bölünmesi:** `erp_manual_lines_build()`
+(saf; satır başına `discount_rate` → `discount_amount = erp_apply_rate()`,
+KDV kalan matrahtan, toplamlar köprüyle aynı sözleşme: `grand_total =
+subtotal − discount_total + tax_total`; 200 satır tavanı
+`ERP_MANUAL_MAX_LINES`), `erp_manual_header_build()`,
+`erp_invoice_draft_save($data, $id)`, `erp_invoice_issue($id, $user)`,
+`erp_invoice_draft_delete($id)`. **`erp_invoice_create_manual($data)` imzası
+ve dönüş dizisi korunur** — artık `draft_save + issue` tek transaction'da
+(iç içe sayaç); API gibi tek-çağrı kullanıcılar için. Dövizli taslak kursuz
+kaydedilebilir (`exchange_rate = 0`, kaynak boş); kesimde kur yoksa
+`erp_fx_rate_for(currency, issue_date)` denenir, o da yoksa reddedilir. Yazılan
+kur kayıtlıyla eşitse kaynak feed kalır, değilse `manual`.
+
+**Form alanları `lines[n][field]` dizisidir.** `liveform::add_fields_to_session()`
+dizi değeri olduğu gibi saklar, `get_field_value('lines')` diziyi geri verir
+(iç değerler trim edilmez, PHP tarafı kendi trim'ler). Satır girdileri yine
+`output_field()` ile basılır, değer `value` ile açıkça verilir (alan adı
+oturumda olmadığı için oturum değeri devreye girmez). `<template>` satırı
+`__INDEX__` yer tutucusuyla basılır, JS klonlar. Ürün seçimi kısayoldur, kilit
+değil: `product_id` gizli alanda durur, ürün adı değişince 0'a düşer. JS
+toplamları `erp_kurus`/`erp_line_total`/`erp_apply_rate`'i aynen taklit eder
+(tam kuruş, `Math.round`); PHP her kayıtta yeniden hesaplar, ikisi uyuşmazsa
+bu bir hatadır.
+
+**Cari anlık görüntüsü (4.51).** `erp_invoices.account_title / account_tax_number
+/ account_tax_office / account_address / account_city / account_country_code /
+account_email` — kesim anında `erp_invoice_snapshot_account()` (`accounts.php`)
+ile karttan kopyalanır (taslak kaydında da kopyalanır, kesimde yeniden);
+sipariş köprüsü de aynı yardımcıyı çağırır. `document.php`, `edit_erp_invoice.php`
+ve `erp_invoices.php` **önce kopyayı okur**, `account_title` boşsa canlı
+karta düşer (eski belgeler için geri uyum; migration backfill'i kesilmiş eski
+faturaları doldurur). Posta kodu ve ilçe adres satırına katlanır (`adres,
+posta kodu ilçe`). Join alias'ları `live_*` oldu — `a.title AS account_title`
+yazmak artık sütunu gölgeler, yeni sorgularda yapmayın.
+
+Belge verisine eklenenler (şablon değişmedi, yalnız yer tutucu): satırda
+`unit` (UN/ECE birim kodu, `C62` varsayılan), başlıkta `is_purchase`,
+`supplier_invoice_no`, `supplier_invoice_date` (alış faturasında tedarikçinin
+numarası; bizim numaramız yine `purchase_invoice` serisinden).
 
 ### Fatura belgesi: şablon, HTML, PDF (2026-09-17, PR #4)
 
@@ -1888,6 +1959,7 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.51) | `_erp_account_snapshot`: `erp_invoices.account_title VARCHAR(255)`, `account_tax_number VARCHAR(32)`, `account_tax_office VARCHAR(100)`, `account_address VARCHAR(255)`, `account_city VARCHAR(100)`, `account_country_code CHAR(2)`, `account_email VARCHAR(255)` (hepsi `NOT NULL DEFAULT ''`) — cari kartın kesim anındaki kopyası; kesilmiş eski faturalar canlı karttan geri doldurulur (`WHERE account_title = '' AND status <> 'draft'`), yeniden koşturulabilir |
 | `2026.4.4` (4.50) | `_erp_return_line_link`: `erp_invoice_items.parent_line_id INT UNSIGNED NOT NULL DEFAULT 0` + `idx_parent_line` (iade satırı → ana fatura satırı; iade iptali doğru satırı geri açar); tekil ürün eşleşmesi olan eski satırlar geri doldurulur, çoklu olanlar 0 kalır — yeniden koşturulabilir |
 | `2026.4.4` (4.49) | `_erp_foreign_currency`: `amount_try → amount_base` (`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`), `grand_total_try → grand_total_base` (`erp_invoices`) — yeni ad varsa atlanır, tip/null/default `install_column_info`'dan —, `currency_rates` tablosu (`UNIQUE (rate_date, base_code, currency_code)`, `rate DECIMAL(18,8)` = ana / 1 birim döviz), `config.erp_fx_enabled TINYINT(1) DEFAULT 0` / `erp_fx_currencies VARCHAR(64) DEFAULT 'USD,EUR,GBP'` / `erp_fx_auto_diff TINYINT(1) DEFAULT 1`, `erp_invoices.exchange_rate_source` ve `erp_cash_transactions.exchange_rate_source VARCHAR(32)` |
 | `2026.4.4` (4.48) | `_offline_payment_awaiting`: `orders.payment_method` ENUM'una `'Pay With Iyzico'` eklendi (mevcut liste `install_column_info` ile okunup korunur, ENUM değilse atlanır), `config.ecommerce_offline_payment_cancel_days TINYINT UNSIGNED NOT NULL DEFAULT 0` (0 = otomatik iptal yok) |

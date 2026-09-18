@@ -831,6 +831,29 @@
          okunur. Ülkeye özel bir kur kaynağı yoktur. Mağazadan gelen sipariş
          her zaman ana para biriminde faturalanır.
 
+  [YENİ] Elle fatura ve satır editörü. Faturalar → Yeni Fatura ile mağaza
+         dışı bir satışı ya da tedarikçinin faturasını satır satır
+         girebilirsiniz: ürün araması satırı doldurur ama her şey
+         düzenlenebilir kalır; miktar, birim, birim fiyat, satır iskontosu
+         (yüzde) ve KDV oranı ayrı ayrı yazılır, toplamlar yazarken görünür.
+         Satır ekleyip çıkarabilirsiniz; vade tarihi ve belgenin altına
+         yazdırılan not da buradadır. Alış faturasında tedarikçinin kendi
+         numarası ve tarihi de kaydedilir; bizim numaramız alış serisinden
+         gelir. Döviz açıksa para birimi ve kur bu ekranda seçilir; boş
+         bırakılan kur, düzenleme tarihinin kayıtlı kuruyla dolar.
+
+         Fatura önce taslak olarak saklanabilir. Taslak numara almaz, cariye
+         kayıt atmaz ve seriyi ilerletmez; listede "Taslak" diye görünür,
+         istediğiniz kadar düzenlenir ve hazır olduğunda "Faturayı Kes" ile
+         sıradaki numarayı alır. Vazgeçtiğiniz taslak silinir; kesilmiş
+         fatura eskisi gibi ters kayıtla iptal edilir. Kesilmiş faturada
+         yalnız not değiştirilebilir; rakamlar ve satırlar değişmez.
+
+  [YENİ] [ŞEMA] Fatura, cari hesabın unvanını, vergi numarasını, vergi
+         dairesini ve adresini kesildiği anki hâliyle üzerinde taşır. Cari
+         kartı sonradan değişse de belge kesildiği gün ne dediyse onu der.
+         Daha önce kesilmiş faturalar bugünkü karttan doldurulur.
+
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
 

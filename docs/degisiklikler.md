@@ -855,6 +855,65 @@ semantiği ve `backend.src.js` seçicilerinin statik okunmasına dayanır.
 **Açık kalan:** yok. `clean_up.php` içindeki eski günlük referansı ayrı dalda
 (`r2-h-orphan-legacy-files`) ele alınıyor.
 
+## 2026.4.4 — ERP: elle fatura ve satır editörü, taslak durumu, cari anlık görüntüsü (2026-09-18)
+
+**Neden.** #111 ile gelen "elle fatura" kartı yalnız döviz açıkken görünüyor,
+altı sabit satır alıyor, ürün araması, iskonto, birim, vade ve not bilmiyor,
+satır ekleyip çıkaramıyordu; kaydettiği anda numara harcıyordu. Mağaza dışı bir
+satış ya da tedarikçi faturası girmek isteyen operatörün elinde yarım bir form
+vardı. Ayrıca fatura cariyi canlı karttan okuyordu: unvan ya da vergi dairesi
+sonradan değişince kesilmiş belge hiç söylemediği bir şeyi söylüyordu.
+
+**Karar (ürün sahibi).** (1) Gerçek bir taslak durumu var — kaydet, dön, kes.
+(2) Alış faturası aynı editörde; tedarikçinin numarası ve tarihi
+`supplier_invoice_no/_date` sütunlarında (daha önce boş duruyordu), bizim
+numaramız `purchase_invoice` serisinden. (3) Cari unvan / vergi no / adres
+faturaya **kopyalanır** (alt adım 4.51). (4) Satır iskontosu oran olarak girilir
+(`discount_rate` saklanır, `discount_amount` türetilip saklanır).
+
+**Taslak neden sahte seride.** `uniq_number(direction, series, number,
+issue_year)` tek boş numaralı satıra izin verir. Taslak `series = '_D'`,
+`issue_year = 0`, `number = id` ile durur; numara, defter kaydı ve seri sayacı
+kesime kadar dokunulmaz — "numara belge kaydedilince harcanır" kuralı
+(`numbering.php`) taslakla bozulmaz. Kesim başlık toplamlarına güvenmez,
+satırları DB'den okuyup yeniden hesaplar; sonra `erp_next_number()` +
+`erp_account_post()` + bakiye tek transaction'da. Taslak silinir, iptal edilmez:
+çevirecek bir şey yoktur.
+
+**Neden kopya, neden şimdi.** Kararı verdiren e-belge değil, şu an kesilen
+belgenin yarın aynı okunması. Kopya kesim anında alınır
+(`erp_invoice_snapshot_account()`, hem elle hem sipariş köprüsü), belge ve
+ekranlar önce kopyayı okur, boşsa canlı karta düşer; migration kesilmiş eski
+faturaları bugünkü karttan doldurur. Sütun adları `erp_accounts`'u aynalar
+(`account_tax_number`, `VARCHAR(32)` — yabancı vergi numarası sığsın diye
+karttaki 11'den geniş). Posta kodu ve ilçe adres satırına katlandı: belge
+adresi tek blok basıyor, ayrı sütun taşımanın karşılığı yoktu.
+
+**Dosyalar.** Yeni: `add_erp_manual_invoice.php`, `edit_erp_invoice_draft.php`,
+`includes/erp/invoice_form.php`, `get_erp_products.php`, `get_erp_rate.php`,
+`assets/js/erp_invoice_editor.js`. `invoice_manual.php` bölündü
+(`erp_manual_lines_build`, `erp_manual_header_build`, `erp_invoice_draft_save`,
+`erp_invoice_issue`, `erp_invoice_draft_delete`); `erp_invoice_create_manual()`
+imzası ve dönüşü korunarak ince sarmalayıcı oldu. `add_erp_invoice.php` yalnız
+sipariş seçici; `edit_erp_invoice.php` taslağı editöre yönlendirir, kesilmiş
+faturada yalnız `notes` düzenlenir; `erp_invoices.php` araç çubuğuna "Yeni
+Fatura", taslak satırında numara yerine "Taslak". `document.php` satıra `unit`,
+başlığa `is_purchase`/`supplier_invoice_*` ekler (şablon değişmedi).
+
+**Doğrulama (sandbox, gerçek HTTP POST).** Üç satırlı taslak (ürün aramadan
+biri, %10 iskontolu biri, KDV 20/10/0): `subtotal 155990 − discount 3000 +
+tax 26698 = 179688`, defter kaydı yok, seri 13'te kaldı. Düzenleme sonrası
+`320676`; kesim `PGF2026000000014`, borç 320676, bakiye +320676; PDF `%PDF`;
+iptal ters kayıtla bakiyeyi eski değerine döndürdü. Alış: `purchase_invoice=1`,
+alacak 285000, belge verisinde `SUP-2026-77`. Döviz: kursuz EUR taslağı kesimi
+reddedildi, kur girilince (`48.123456`, 2026-09-17) kesildi,
+`grand_total_base = 13715185`, kaynak `test`; yazılan kur 50 → `manual`,
+`14250000`. Döviz kapalıyken para birimi alanı basılmıyor. Taslak silme
+satırları ve başlığı kaldırdı; `erp_invoice_create_manual()` tek çağrıda kesti,
+reddedilen çağrı arkasında taslak bırakmadı. `get_erp_products.php` oturumsuz
+302'ye düşer. Doğrulanamayan: gerçek tarayıcıda JS etkileşimi (ürün seçimi,
+canlı toplam) yalnız statik okuma ve söz dizimi denetimiyle kontrol edildi.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

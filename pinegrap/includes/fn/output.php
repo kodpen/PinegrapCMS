@@ -2403,6 +2403,8 @@ function output_menu($properties = false)
         case 'edit_erp_account.php':
         case 'erp_invoices.php':
         case 'add_erp_invoice.php':
+        case 'add_erp_manual_invoice.php':
+        case 'edit_erp_invoice_draft.php':
         case 'add_erp_return.php':
         case 'edit_erp_invoice.php':
         case 'erp_cash.php':
