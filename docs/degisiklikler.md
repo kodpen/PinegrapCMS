@@ -102,6 +102,28 @@ indirilebilir. Şema değişikliği yok, yeni lang anahtarı yok.
 `php -l pinegrap/pi.php`, `php -l pinegrap/si.php`, `php tools/lint.php`,
 `php tools/check_lang.php` temiz. Çalışan bir kurulumda denenmedi.
 
+## 2026.4.4 — api.php: update_dashboard_widgets oturumsuz yazılabiliyordu (2026-09-18)
+
+`update_dashboard_widgets` eylemi genel kapının muafiyet listesindeydi: kapı
+rol ≤ 1 istediğinden, her panel rolünün kendi panosunu düzenleyebilmesi için
+eylem oradan bilerek çıkarılmıştı. Ancak muafiyet oturum ve token denetimini
+de atlıyor, case bloğu ise ikisini de kendi başına yapmıyordu. Sonuç: giriş
+yapmamış bir istemci `{"action":"update_dashboard_widgets","widgets":["default"]}`
+gövdesiyle site geneli pano düzenini (`dashboard.order_widgets`) sıfırlayabiliyor,
+herhangi bir id listesiyle de yeniden sıralayabiliyordu. Düzeltme: case bloğunun
+başına `USER_LOGGED_IN` kapısı ve `validate_token()` eklendi (chat_* bloğuyla
+aynı kalıp). Muafiyet yerinde bırakıldı, çünkü genel kapının rol kısıtı burada
+istenmiyor. Şema ve lang anahtarı değişmedi. Etki pano düzeniyle sınırlıydı,
+veri kaybı yok. Eylem ve muafiyet 2026.4.4'ten eski olduğundan yayımlanmış
+2026.4.3 de çıkarımla etkileniyor; 2026.4.4 iç tur 4.9 kaydı yalnız değeri
+filtrelemişti. İstemci `welcome.php` (`pg_save_widget_order`) zaten `token`
+gönderiyor, sürükleme ve sıfırlama davranışı değişmiyor.
+
+### Doğrulama
+
+`php -l pinegrap/api.php`, `php tools/lint.php` ve `php tools/check_lang.php`
+temiz. Çalışan örnekte denenmedi.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
