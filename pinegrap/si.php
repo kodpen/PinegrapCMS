@@ -17,10 +17,6 @@
  */
 
 require('init.php');
-// Hostname, server IP, PHP/MySQL versions, disable_functions and the embedded
-// phpinfo are server-level information: administrator-only.
-$user = validate_user();
-validate_area_access($user, 'administrator');
 
 echo output_header_secure(array('title'=>lang('System Info'),'icon'=>'setting'));
 
