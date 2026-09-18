@@ -2,7 +2,7 @@
 
 **English** | [Türkçe](README.tr.md)
 
-![PHP Version](https://img.shields.io/badge/PHP-7.0%20--%208.5-777BB4?style=flat-square&logo=php)
+![PHP Version](https://img.shields.io/badge/PHP-7.1%20--%208.5-777BB4?style=flat-square&logo=php)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-success?style=flat-square)
 
@@ -25,7 +25,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 
 ### Key Features
 
-* **Broad Compatibility:** Runs seamlessly across PHP 7.0 to PHP 8.5.
+* **Broad Compatibility:** Runs seamlessly across PHP 7.1 to PHP 8.5.
 * **Server Support:** Compatible with Apache, Nginx, and Microsoft IIS (including automatic web routing and `.htaccess` / `web.config` rewrite handling).
 * **Enterprise Architecture:** Robust form management (`liveform`), dynamic page engine, and secure session handling.
 * **Customizable UI:** Built-in support for modern themes and Bootstrap 5 integration.
@@ -76,7 +76,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 
 ## System Requirements
 
-* **PHP:** Version 7.0 up to 8.5
+* **PHP:** Version 7.1 up to 8.5
 * **Database:** MySQL / MariaDB
 * **Web Server:** Apache (with `mod_rewrite`), Nginx, or IIS
 * **Extensions:** `mysqli`, `gd`, `curl`, `mbstring` (recommended: `zip` and `openssl` for software updates)
