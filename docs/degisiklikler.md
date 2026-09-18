@@ -41,6 +41,56 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Geliştirme kalıntıları kaldırıldı: get_folder_tree.php, check_shared_invariant.php, responsive DataTables anahtarı (2026-09-18)
+
+**Belirti.** Üç kalıntı, üçü de #73'te incelendi ve kaldırılmalarına karar
+verildi. (1) `assets/js/backend.src.js` içindeki DataTables bloğu
+`datatable-no-responsive` sınıfını okuyup `options.responsive = false`
+yazıyordu: hiçbir tablo o sınıfı taşımıyor, ayarın tek değeri zaten kapalı.
+Responsive DataTables istenen bir özellik değil; bir ara eklenip geri alınmış,
+anahtarı kalmıştı. (2) `check_shared_invariant.php`, paylaşılan bileşen
+placeholder değişmezi geliştirilirken yazılmış tek seferlik bir tanı sayfasıydı;
+depoda ona giden tek satır yoktu (yalnız bu günlükte adı geçiyor), kuralı
+tasarımcının kayıt yolu zaten uyguluyor. (3) `get_folder_tree.php`, klasik
+klasör ağacı ekranının XML ucuydu; ekranı süren `assets/folder_tree.js`
+2026.4.4 içinde kaldırılıp `clean_up.php` listesine girmişti, uç ise kaldı.
+`backend.src.css` içinde yalnız o ekranın kullandığı `#folder_tree`
+seçicileri (11 satır) hiçbir elemanla eşleşmiyordu.
+
+**Düzeltme.** Blok yorumuyla birlikte silindi; `backend.src.js`
+`output_header()` tarafından doğrudan basılıyor, min ikizi yok. İki dosya
+silindi ve `clean_up.php` listesine eklendi: Temizle aracı (Ayarlar →
+Araçlar) yalnız listede olup diskte bulunan adları gösterir ve siler, o
+yüzden yeni kurulumda hiç görünmez, 2026.4.3'ten yükselen sitede ilk
+çalıştırmada ikisini listeleyip kaldırır. CSS'te `#folder_tree` seçicileri
+düşürüldü, `#product_group_tree` ikizleri olduğu gibi duruyor
+(`get_product_group_tree.php` hâlâ kullanıyor). `get_acl_folder_tree()`
+farklı bir fonksiyondur, dokunulmadı. Responsive uzantısı ayrı bir dosya
+değil, `assets/lib/DataTables/datatables.js` paketinin parçası; üçüncü taraf
+pakete dokunulmadı.
+
+### Doğrulama
+
+- `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+- Sandbox'ta (worktree sunucusu :8003, Playwright/Chromium) `view_folders.php`,
+  `view_users.php`, `view_gift_cards.php`, `view_key_codes.php`,
+  `view_products.php` yönetici oturumuyla açıldı: JS sayfa hatası yok
+  (tek hata giriş sayfasında, `code.jquery.com` sandbox'ta engelli olduğu
+  için; ortam kaynaklı). DataTables kuruldu, arama ("zzq-nomatch-xx" →
+  "No matching records found", temizlenince eski sayı), sayfa uzunluğu 10'a
+  çekilip Sonraki: "Showing 11 to 20 of 31 entries". Dosya Yöneticisi ağacı
+  (`#explorer_tree_root`) 7 öğe ile çizildi.
+- Sunucu erişim günlüğünde tarayıcı oturumlarından silinen iki uca hiç istek
+  yok; yalnız bilinçli curl denemeleri var (302 → `/staff-home`).
+- `clean_up.php` canlı çalıştırıldı: iki ad diske sahte dosya olarak konup GET
+  atıldı → "Temizlenebilecek 4 dosya bulundu" listesinde ikisi de var; POST →
+  302 `welcome.php#settings`, ikisi de diskten silindi.
+
+**Açık kalan:** Dosya bütünlüğü referansı (`hash_reference.json`) yayında
+yeniden üretilecek; üretilmezse iki dosya "missing" görünür. Yükselen sitede
+dosyalar Temizle aracı çalıştırılana kadar diskte durur (bu, listedeki diğer
+kalıntılarla aynı davranış).
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
