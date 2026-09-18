@@ -145,9 +145,11 @@ function db_connect()
         output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''));
     }
 
-    // Disable MySQL strict mode for compatibility (clear other modes too).
+    // Pin the session sql_mode instead of inheriting the server default, which differs
+    // between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+    // so only NO_ENGINE_SUBSTITUTION is kept.
     if (db::$con) {
-        @mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+        @mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
     }
 
     // Legacy mysql extension support (only if explicitly enabled and functions exist).
