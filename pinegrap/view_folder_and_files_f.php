@@ -2172,17 +2172,12 @@ function pg_short_link_rows($where = '', $recycled = false)
 // rename, the duplicate and the delete cannot drift apart from each other:
 // above a basic user everything is visible; a basic user sees a link whose
 // page sits in a folder they may edit, and the ones they made themselves.
-function pg_short_link_visible($user, $row, $folders)
+// Short links belong to no folder, so the folder-based rights that decide
+// what a plain user may see do not reach them: the area is a right of roles
+// 0-2 and a user (role 3) sees none of them.
+function pg_short_link_visible($user)
 {
-    if ($user['role'] < 3) {
-        return true;
-    }
-
-    if (($row['destination_type'] == 'url') || ($row['destination_type'] == 'file')) {
-        return ((int) $row['created_user_id'] == (int) $user['id']);
-    }
-
-    return (check_folder_access_in_array($row['folder_id'], $folders) == true);
+    return ($user['role'] < 3);
 }
 
 // Every short link this person may see, live or binned. The listing, the bin
@@ -2190,12 +2185,11 @@ function pg_short_link_visible($user, $row, $folders)
 // different set than the others.
 function pg_short_link_visible_rows($user, $recycled = false)
 {
-    $folders = ($user['role'] == 3) ? get_folders_that_user_has_access_to($user['id']) : array();
     $out = array();
 
     foreach (pg_short_link_rows('', $recycled) as $row) {
 
-        if (pg_short_link_visible($user, $row, $folders) == false) {
+        if (pg_short_link_visible($user) == false) {
             continue;
         }
 
@@ -2219,10 +2213,7 @@ function pg_short_link_by_id($user, $id, $recycled = false)
         return null;
     }
 
-    $row = $rows[0];
-    $folders = ($user['role'] == 3) ? get_folders_that_user_has_access_to($user['id']) : array();
-
-    return (pg_short_link_visible($user, $row, $folders) == true) ? $row : null;
+    return (pg_short_link_visible($user) == true) ? $rows[0] : null;
 }
 
 // Where the link lands, written the way a person would read it.
@@ -2447,21 +2438,9 @@ function pg_short_link_read_request($request, $user)
             break;
     }
 
-    // The page has to exist, and a basic user has to be allowed to edit the
-    // folder it sits in -- otherwise a short link is a way around folder
-    // rights.
-    if ($page_id > 0) {
-
-        $folder_id = db_value("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'");
-
-        if ($folder_id === null) {
-            return array('error' => $page_field, 'message' => lang('The page does not exist.'));
-        }
-
-        if (($user['role'] == 3) && (check_edit_access($folder_id) == false)) {
-            log_activity(lang('access denied to add short link for page because user does not have edit rights to page'), $_SESSION['sessionusername']);
-            return array('error' => $page_field, 'message' => lang('Sorry, you do not have access to that page.'));
-        }
+    // The page has to exist.
+    if (($page_id > 0) && (db_value("SELECT page_folder FROM page WHERE page_id = '" . e($page_id) . "'") === null)) {
+        return array('error' => $page_field, 'message' => lang('The page does not exist.'));
     }
 
     return array(
@@ -3270,6 +3249,13 @@ function pg_catalog_copy_group($group_id, $target_id, $user, $depth = 0, &$creat
 function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 {
     $type = isset($request['type']) ? $request['type'] : '';
+
+    // Every short link action, the listing included, is a right of roles
+    // 0-2: short links sit outside the folder-based rights model, so a user
+    // (role 3) is refused here rather than filtered further down.
+    if ((strpos($type, 'explorer_short_link') === 0) && ($user['role'] == 3)) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
 
     switch ($type) {
 
@@ -7323,12 +7309,6 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // this action is never called.
         case 'explorer_short_link_create':
 
-            // Creating a short link is a right of roles 0-2; the classic
-            // add_short_link.php screen applies the same rule.
-            if ($user['role'] == 3) {
-                respond(array('status' => 'error', 'message' => lang('Access denied')));
-            }
-
             $short_link_read = pg_short_link_read_request($request, $user);
 
             if (isset($short_link_read['error'])) {
@@ -7534,12 +7514,6 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // into.  Copy then paste therefore means the same thing duplicate
         // does: a second link to the same place, under a free name.
         case 'explorer_short_link_duplicate':
-
-            // Duplicating makes a new short link, which is a right of roles
-            // 0-2; the classic add_short_link.php screen applies the same rule.
-            if ($user['role'] == 3) {
-                respond(array('status' => 'error', 'message' => lang('Access denied')));
-            }
 
             $short_link_made = array();
             $short_link_failed = array();
