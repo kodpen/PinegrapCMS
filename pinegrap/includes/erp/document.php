@@ -229,11 +229,11 @@ function erp_invoice_document_data($invoice_id)
 
     $invoice = ($invoice_id > 0)
         ? db_item("SELECT i.*,
-                a.title AS account_title, a.is_person AS account_is_person,
-                a.tax_number AS account_tax_number, a.tax_office AS account_tax_office,
-                a.address AS account_address, a.district AS account_district,
-                a.city AS account_city, a.country_code AS account_country_code,
-                a.postcode AS account_postcode, a.email AS account_email, a.phone AS account_phone,
+                a.title AS live_title, a.is_person AS live_is_person,
+                a.tax_number AS live_tax_number, a.tax_office AS live_tax_office,
+                a.address AS live_address, a.district AS live_district,
+                a.city AS live_city, a.country_code AS live_country_code,
+                a.postcode AS live_postcode, a.email AS live_email, a.phone AS live_phone,
                 o.order_number
             FROM erp_invoices i
             LEFT JOIN erp_accounts a ON i.account_id = a.id
@@ -267,19 +267,38 @@ function erp_invoice_document_data($invoice_id)
         'logo_data_uri' => $logo['data_uri'],
     );
 
-    $account = array(
-        'title' => (string) $invoice['account_title'],
-        'is_person' => ((int) $invoice['account_is_person'] === 1),
-        'tax_number' => (string) $invoice['account_tax_number'],
-        'tax_office' => (string) $invoice['account_tax_office'],
-        'address' => (string) $invoice['account_address'],
-        'district' => (string) $invoice['account_district'],
-        'city' => (string) $invoice['account_city'],
-        'country' => (string) $invoice['account_country_code'],
-        'postcode' => (string) $invoice['account_postcode'],
-        'email' => (string) $invoice['account_email'],
-        'phone' => (string) $invoice['account_phone'],
-    );
+    // The counterparty is the copy taken when the document was issued. An
+    // invoice written before the copy existed reads the live card instead;
+    // the copy keeps the postcode and district inside the address line.
+    if (trim((string) ($invoice['account_title'] ?? '')) !== '') {
+        $account = array(
+            'title' => (string) $invoice['account_title'],
+            'is_person' => ((int) $invoice['live_is_person'] === 1),
+            'tax_number' => (string) $invoice['account_tax_number'],
+            'tax_office' => (string) $invoice['account_tax_office'],
+            'address' => (string) $invoice['account_address'],
+            'district' => '',
+            'city' => (string) $invoice['account_city'],
+            'country' => (string) $invoice['account_country_code'],
+            'postcode' => '',
+            'email' => (string) $invoice['account_email'],
+            'phone' => (string) $invoice['live_phone'],
+        );
+    } else {
+        $account = array(
+            'title' => (string) $invoice['live_title'],
+            'is_person' => ((int) $invoice['live_is_person'] === 1),
+            'tax_number' => (string) $invoice['live_tax_number'],
+            'tax_office' => (string) $invoice['live_tax_office'],
+            'address' => (string) $invoice['live_address'],
+            'district' => (string) $invoice['live_district'],
+            'city' => (string) $invoice['live_city'],
+            'country' => (string) $invoice['live_country_code'],
+            'postcode' => (string) $invoice['live_postcode'],
+            'email' => (string) $invoice['live_email'],
+            'phone' => (string) $invoice['live_phone'],
+        );
+    }
 
     $doc_type = (string) $invoice['doc_type'];
     $is_return = ($doc_type === 'return');
@@ -356,6 +375,9 @@ function erp_invoice_document_data($invoice_id)
         'carrier_vkn' => (string) $invoice['carrier_vkn'],
         'web_address' => (string) $invoice['web_address'],
         'notes' => (string) ($invoice['notes'] ?? ''),
+        'is_purchase' => ((string) $invoice['direction'] === 'purchase'),
+        'supplier_invoice_no' => (string) ($invoice['supplier_invoice_no'] ?? ''),
+        'supplier_invoice_date' => erp_document_date($invoice['supplier_invoice_date'] ?? ''),
     );
 
     $rows = (array) db_items("SELECT * FROM erp_invoice_items
@@ -372,6 +394,7 @@ function erp_invoice_document_data($invoice_id)
             'no' => (int) $row['line_no'],
             'description' => (string) $row['description'],
             'quantity' => rtrim(rtrim(number_format((float) $row['quantity'], 4, '.', ''), '0'), '.'),
+            'unit' => (string) $row['unit_code'],
             'unit_price' => $money((int) $row['unit_price']),
             'discount' => ($discount > 0) ? $money($discount) : '',
             'has_discount' => ($discount > 0),

@@ -124,6 +124,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_foreign_currency();   // 4.49
 
 	upgrade_2026_4_4_erp_return_line_link();   // 4.50
+
+	upgrade_2026_4_4_erp_account_snapshot();   // 4.51
 }
 
 
@@ -2712,5 +2714,44 @@ function upgrade_2026_4_4_erp_return_line_link() {
 		WHERE r.parent_line_id = 0");
 
 	install_note('Return lines now record the invoice line they were taken from, so cancelling a return restores the right line.');
+
+}
+
+
+// ERP: the account as it read when the invoice was issued (2026.4.4, 4.51).
+//
+// An invoice names its counterparty; the account card is edited afterwards -
+// a company renames itself, moves, changes its tax office - and a document
+// that reads the card live starts saying something it never said. The
+// snapshot is taken when the invoice is issued and never touched again; the
+// document reads the snapshot and falls back to the live card only for
+// invoices written before this step.
+function upgrade_2026_4_4_erp_account_snapshot() {
+
+	install_add_column('erp_invoices', 'account_title', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_tax_number', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_tax_office', "VARCHAR(100) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_address', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_city', "VARCHAR(100) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_country_code', "CHAR(2) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_email', "VARCHAR(255) NOT NULL DEFAULT ''");
+
+	// Issued documents written before the snapshot existed take the card as
+	// it reads today: the best record there is of what they said. Drafts are
+	// left alone; they copy the card when they are issued. Re-runnable: only
+	// rows with an empty snapshot are touched.
+	db("UPDATE erp_invoices i
+		INNER JOIN erp_accounts a ON i.account_id = a.id
+		SET i.account_title = a.title,
+			i.account_tax_number = a.tax_number,
+			i.account_tax_office = a.tax_office,
+			i.account_address = TRIM(CONCAT(a.address,
+				CASE WHEN TRIM(CONCAT(a.postcode, ' ', a.district)) <> '' THEN CONCAT(', ', TRIM(CONCAT(a.postcode, ' ', a.district))) ELSE '' END)),
+			i.account_city = a.city,
+			i.account_country_code = a.country_code,
+			i.account_email = a.email
+		WHERE i.account_title = '' AND i.status <> 'draft'");
+
+	install_note('Invoices now keep a copy of the account title, tax details and address as they were when the document was issued.');
 
 }

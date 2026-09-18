@@ -542,6 +542,15 @@ function erp_invoice_from_order($order_id, $options = array())
     }
 
     $invoice_id = (int) mysqli_insert_id(db::$con);
+
+    // The customer as the card reads at the moment of issue; the document
+    // prints this copy, however the card is edited afterwards.
+    if (!erp_invoice_snapshot_account($invoice_id, $account_id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     $line_no = 0;
 
     foreach ($built['lines'] as $line) {

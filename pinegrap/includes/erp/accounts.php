@@ -279,3 +279,44 @@ function erp_accounts_sync_contacts($created_by = 0)
 
     return array('created' => $created, 'existing' => count($rows) - $created);
 }
+
+/**
+ * Copy the account onto an invoice as it reads right now.
+ *
+ * The card is edited afterwards - a company renames itself, moves, changes
+ * its tax office - and a document that reads the card live starts saying
+ * something it never said. The copy is taken when the document is issued;
+ * a draft copies it too, so the editor shows what will be printed, and copies
+ * it again on issue. The postcode and district fold into the address line:
+ * the document prints the address as one block.
+ *
+ * Runs inside the caller's transaction and never opens one.
+ *
+ * @param int $invoice_id
+ * @param int $account_id
+ * @return bool  false when the account is missing or the write failed
+ */
+function erp_invoice_snapshot_account($invoice_id, $account_id)
+{
+    $account = erp_account((int) $account_id);
+
+    if (!is_array($account)) {
+        return false;
+    }
+
+    $locality = trim((string) ($account['postcode'] ?? '') . ' ' . (string) ($account['district'] ?? ''));
+    $address = trim((string) ($account['address'] ?? ''));
+    if ($locality !== '') {
+        $address = ($address !== '') ? ($address . ', ' . $locality) : $locality;
+    }
+
+    return (erp_query("UPDATE erp_invoices SET
+            account_title = '" . escape(mb_substr((string) $account['title'], 0, 255)) . "',
+            account_tax_number = '" . escape(mb_substr((string) $account['tax_number'], 0, 32)) . "',
+            account_tax_office = '" . escape(mb_substr((string) $account['tax_office'], 0, 100)) . "',
+            account_address = '" . escape(mb_substr($address, 0, 255)) . "',
+            account_city = '" . escape(mb_substr((string) $account['city'], 0, 100)) . "',
+            account_country_code = '" . escape(substr((string) $account['country_code'], 0, 2)) . "',
+            account_email = '" . escape(mb_substr((string) $account['email'], 0, 255)) . "'
+        WHERE id = '" . (int) $invoice_id . "'") !== false);
+}
