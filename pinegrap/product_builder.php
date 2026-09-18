@@ -3381,7 +3381,7 @@ function pg_pb_variant_sets_screen()
                                     <select id="status" name="status" class="form-select mt-1 mb-1" title="' . lang('Enabled') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
                                     <select id="parent" name="parent" class="form-select mt-1 mb-1" title="' . lang('Parent Product Group') . '" onchange="submit_form(\'search_form\')">' . $output_parent_options . '</select>
                                     ' . ($filters_active
-                                        ? '<a class="btn btn-outline-secondary mt-1 mb-1 no-submit" href="view_products2.php?status=&amp;parent=0" title="' . lang('Clear Filters') . '"><i class="bi bi-x-lg"></i></a>'
+                                        ? '<a class="btn btn-outline-secondary mt-1 mb-1 no-submit" href="view_products.php?mode=variant_sets&amp;status=&amp;parent=0" title="' . lang('Clear Filters') . '"><i class="bi bi-x-lg"></i></a>'
                                         : '') . '
                                 </div>
                             </form>

@@ -290,7 +290,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         'vars'   => array($variant_count),
         'suffix' => ($variant_count === 1) ? '' : 's')) . '</p>';
 
-    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products2.php">' . lang('Variant Sets') . '</a></li>';
+    $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets">' . lang('Variant Sets') . '</a></li>';
     $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
 
     $pg_breadcrumb_parent_items = array(

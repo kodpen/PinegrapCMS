@@ -282,8 +282,7 @@ print
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             
-            <form action="delete_comment.php" method="post" class="disable_shortcut">
-                ' . get_token_field() . '
+            <div class="disable_shortcut">
                 <div class="card my-4">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
@@ -305,7 +304,7 @@ print
                         </table>
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </main>

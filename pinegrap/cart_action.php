@@ -27,59 +27,17 @@
 
 include('init.php');
 
-// ── GET self-test ───────────────────────────────────────────────────────
-// Hitting this URL directly with GET prints a tiny status page instead of
-// silently redirecting. Lets the operator verify that the URL is reachable
-// and that init.php loaded cleanly. POSTs continue normally below.
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_POST)) {
-    header('Content-Type: text/plain; charset=utf-8');
-    echo "Pinegrap cart_action.php — POST handler (GET self-test).\n\n";
-    echo "init.php loaded:        OK\n";
-    echo "ECOMMERCE constant:     " . (defined('ECOMMERCE') ? (ECOMMERCE ? 'true' : 'false') : 'UNDEFINED') . "\n";
-    echo "OUTPUT_PATH:            " . (defined('OUTPUT_PATH') ? OUTPUT_PATH : 'UNDEFINED') . "\n";
-    echo "OUTPUT_SOFTWARE_DIR:    " . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'UNDEFINED') . "\n";
-    echo "URL_SCHEME + HOSTNAME:  " . (defined('URL_SCHEME') ? URL_SCHEME : '?') . (defined('HOSTNAME') ? HOSTNAME : '?') . "\n";
-    echo "session_id:             " . session_id() . "\n";
-    echo "session order_id:       " . (isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : '0') . "\n";
-    echo "data/cart_action.log:   " . (file_exists(dirname(__FILE__) . '/data/cart_action.log') ? 'exists' : 'missing') . "\n";
-    echo "log file size:          " . (file_exists(dirname(__FILE__) . '/data/cart_action.log') ? filesize(dirname(__FILE__) . '/data/cart_action.log') . ' bytes' : '-') . "\n";
-    echo "\nLast 30 log lines:\n";
-    echo str_repeat('-', 60) . "\n";
-    if (file_exists(dirname(__FILE__) . '/data/cart_action.log')) {
-        $_lines = @file(dirname(__FILE__) . '/data/cart_action.log');
-        if (is_array($_lines)) {
-            $_tail = array_slice($_lines, -30);
-            foreach ($_tail as $_l) echo $_l;
-        }
-    }
-    exit;
+// Nothing to process on a direct GET: send the visitor back to the page
+// they came from. go() only honours same-host targets, so a foreign or
+// missing referrer lands on the home page.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    go(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
 }
-
-// ── Debug log (one rotating file) ───────────────────────────────────────
-// Writes every invocation to data/cart_action.log so we can diagnose why
-// updates / coupons aren't taking. Lines: ISO timestamp · POST keys · $oid
-// · resulting mutations. Trim if file grows past 1MB.
-$_pg_log_path = dirname(__FILE__) . '/data/cart_action.log';
-$_pg_log = function ($msg) use ($_pg_log_path) {
-    @file_put_contents(
-        $_pg_log_path,
-        '[' . date('c') . '] ' . $msg . "\n",
-        FILE_APPEND | LOCK_EX
-    );
-    if (@filesize($_pg_log_path) > 1048576) {
-        @unlink($_pg_log_path);
-    }
-};
-$_pg_log('ENTER cart_action.php · POST=' . json_encode(array_keys($_POST))
-       . ' · qty_keys=' . (isset($_POST['quantities']) && is_array($_POST['quantities'])
-                              ? json_encode(array_keys($_POST['quantities']))
-                              : 'NONE'));
 
 // Resolve the active session order. initialize_order creates one when
 // missing, so $oid is always > 0 after this call.
 initialize_order();
 $oid = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
-$_pg_log('order_id=' . $oid);
 
 // liveform handle — used to surface "Cart updated" / coupon errors via the
 // session messages pipeline so the cart widget's Messages content node can
@@ -95,7 +53,6 @@ $did_mutate = false;
 // by an older btn renderer. The mere PRESENCE of the key marks intent.
 if (isset($_POST['submit_update_cart']) && $oid > 0) {
     $qty_arr = (isset($_POST['quantities']) && is_array($_POST['quantities'])) ? $_POST['quantities'] : array();
-    $_pg_log('UPDATE branch entered · qty_arr=' . json_encode($qty_arr));
     $applied = 0;
     foreach ($qty_arr as $iid => $q) {
         $iid = (int)$iid;
@@ -160,9 +117,6 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
         }
         $don_applied++;
     }
-    if ($don_applied > 0) $_pg_log('UPDATE donations applied · count=' . $don_applied);
-
-    $_pg_log('UPDATE applied · count=' . $applied);
 
     // ── Per-item product-form data save ────────────────────────────────
     // The cart widget renders order-form fields for products carrying
@@ -248,7 +202,6 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
                  '" . (int)$qn . "', '', '" . e($store_type) . "', '0')");
         $_pg_form_saved++;
     }
-    if ($_pg_form_saved > 0) $_pg_log('UPDATE form_data saved · count=' . $_pg_form_saved);
 
     // ── Per-item gift-card data save ───────────────────────────────────
     // Gift cards do NOT go through form_fields/form_data — they have their
@@ -311,7 +264,6 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
             $_pg_gc_saved++;
         }
     }
-    if ($_pg_gc_saved > 0) $_pg_log('UPDATE gift_card saved · count=' . $_pg_gc_saved);
 
     // ── Recurring schedule ─────────────────────────────────────────────
     // Every recurring row gets its schedule written on every update, the
@@ -432,7 +384,6 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
             WHERE id = '" . $_riid . "' AND order_id = '" . (int)$oid . "'");
         $_rec_saved++;
     }
-    if ($_rec_saved > 0) $_pg_log('UPDATE recurring schedule saved · count=' . $_rec_saved);
 
     // ── Offline-payment flag (STAFF ONLY) ──────────────────────────────
     // Mirrors the render-side gate in _pg_cart_offline_payment_checkbox():
@@ -456,7 +407,6 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
         if ($_off_can) {
             $_off_val = !empty($_POST['offline_payment_allowed']) ? 1 : 0;
             db("UPDATE orders SET offline_payment_allowed = '$_off_val' WHERE id = '$oid'");
-            $_pg_log('UPDATE offline_payment_allowed=' . $_off_val);
         }
     }
 
@@ -466,9 +416,6 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
         $lf->add_notice(lang('Cart updated.'));
     }
     $did_mutate = true;
-} else {
-    $_pg_log('UPDATE branch SKIPPED · submit_key=' . (array_key_exists('submit_update_cart', $_POST) ? 'YES' : 'NO')
-           . ' · oid=' . $oid);
 }
 
 // ── Apply / clear coupon ────────────────────────────────────────────────
@@ -515,10 +462,6 @@ if (isset($_POST['submit_special_offer_code']) && $oid > 0) {
 // land on $lf via mark_error and surface in the widget's message area after
 // the redirect below.
 if (!empty($_POST['pending_offers']) && $oid > 0 && function_exists('add_pending_offers')) {
-    $_pg_log('PENDING OFFERS branch entered · keys='
-           . json_encode(array_values(array_filter(array_keys($_POST), function ($k) {
-                 return strncmp($k, 'add_pending_offer_', 18) === 0;
-             }))));
     add_pending_offers($lf);
     $did_mutate = true;
 }
@@ -612,7 +555,6 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                 if (function_exists('update_order_item_prices')) update_order_item_prices();
                 if (function_exists('apply_offers_to_cart'))     apply_offers_to_cart();
                 $lf->add_notice(lang('The item has been added to your cart.'));
-                $_pg_log('QUICK ADD · product=' . $qa_pid);
             }
         }
     }
@@ -678,8 +620,6 @@ $send_to = isset($_POST['send_to']) ? (string)$_POST['send_to'] : '/';
 if (!preg_match('#^(?:/|\?)#', $send_to) || stripos($send_to, '://') !== false) {
     $send_to = '/';
 }
-
-$_pg_log('did_mutate=' . ($did_mutate ? '1' : '0') . ' · redirect to=' . $send_to);
 
 // Flush session writes so the next request sees the notice + updated order.
 session_write_close();
