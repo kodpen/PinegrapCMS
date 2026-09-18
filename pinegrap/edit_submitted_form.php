@@ -780,7 +780,7 @@ if (!$_POST) {
                                             ' . $output_affiliate_code . '
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <div class="form-text">' . lang('Referring URL') . '</div>
-                                                ' . h($http_referer_text ? '<a class="link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a>' : '-') . '
+                                                ' . ($http_referer_text ? '<a class="link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a>' : '-') . '
                                             </div>
                                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                                 <div class="form-text">' . h(MEMBER_ID_LABEL) . '</div>
@@ -903,6 +903,9 @@ if (!$_POST) {
         // delete form data
         $query = "DELETE FROM form_data WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // delete signature records for this submitted form
+        pg_signature_delete($_POST['id'] ?? 0);
         
         // delete views for this submitted form that the form view directory feature uses
         pg_sfv_delete_views('submitted_form_id', $_POST['id']);

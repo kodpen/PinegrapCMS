@@ -236,6 +236,10 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     $output_form_designer_content_subheading = lang('Create a new field on this product form.');
 }
 
+// The breadcrumb ends with this screen; the product group branch has two parents.
+$pg_breadcrumb_items = isset($pg_breadcrumb_parent_items) ? $pg_breadcrumb_parent_items : (isset($pg_breadcrumb_parent) ? array($pg_breadcrumb_parent) : array());
+$pg_breadcrumb_items[] = array('label' => $output_form_designer_content_heading);
+
 // if the form has not been submitted yet, then prepare to output form
 if (!$_POST) {
     // intialize output variables
@@ -331,11 +335,8 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
         'heading_description' => $output_form_designer_content_subheading,
-        'cancel'=>array('enable'=>'true','url'=>'view_fields.php'),
-        'breadcrumb' => array(
-            $pg_breadcrumb_parent,
-            array('label' => $output_form_designer_content_heading),
-        ),
+        'cancel'=>array('enable'=>'true','url'=>'view_fields.php?' . $form_type_identifier_id . '=' . urlencode($_REQUEST[$form_type_identifier_id])),
+        'breadcrumb' => $pg_breadcrumb_items,
     ]) . '
 <main id="content" class="container-fluid">
             ' . get_wysiwyg_editor_code(array('information')) . '
@@ -907,7 +908,7 @@ if (!$_POST) {
     /* end: update sort orders for fields */
     
     // if this is a product form, then update last modified info for product
-    if ($form_type == 'product form') {
+    if ($form_type == 'product') {
         $query = "UPDATE products
                  SET
                     user = '" . $user['id'] . "',
@@ -915,8 +916,8 @@ if (!$_POST) {
                  WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
-    // else this is a form for a page, so update last modified info for page
-    } else {
+    // else if this is a form for a page (a variant set's form template has no page), so update last modified info for page
+    } else if ($form_type != 'product_group') {
         $query = "UPDATE page
                  SET
                     page_timestamp = UNIX_TIMESTAMP(),
