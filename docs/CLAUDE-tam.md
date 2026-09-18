@@ -552,6 +552,14 @@ Referans iki türlü olur ve ikisi farklı işlenir (2026-09-12):
 - Yayın: üretilen dosya olduğu gibi kodpen.com'a
   `pinegrap_hash_referance[SÜRÜM].json` adıyla yüklenir; içine başka bir şey
   yazılmaz.
+- **cacert.pem tazelendi mi?** `pinegrap/data/cacert.pem` (operatörün
+  `CURL_CA_BUNDLE` ile gösterdiği kopya) ve `includes/iyzipay-php/cacert.pem`
+  (iyzipay istemcisinin `CURLOPT_CAINFO` ile kendiliğinden kullandığı kopya)
+  Mozilla kök sertifika paketidir; yayın öncesi ikisi de
+  `https://curl.se/ca/cacert.pem`'in güncel hâliyle değiştirilir ve bayt bayt
+  aynı olmalıdır. `data/` hash kapsamı dışındadır; iyzipay kopyası `includes/`
+  içinde olduğu için onu değiştirdikten sonra `_software_create_hash.php`
+  yeniden çalıştırılmalı.
 
 ---
 
