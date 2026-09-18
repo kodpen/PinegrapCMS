@@ -512,7 +512,7 @@ function api_schema() {
 			'summary' => 'Upload a file',
 			'description' => 'Images and PDFs only, and the bytes have to be what the name claims - the file is opened and checked rather than trusted. SVG is not accepted: it is markup, it can carry script, and the site serves it inline. The folder is the one the operator chose for applications and cannot be named in the request. Send the bytes as content_base64, or a source_url for this site to fetch - that fetch resolves the name once, pins the address it checked and refuses anything on this network.',
 			'params'  => array(
-				array('name' => 'name',           'in' => 'body', 'type' => 'string', 'max_length' => 190, 'description' => 'File name with its extension. Taken from source_url when it is left out. A name already in use gets a [1] suffix rather than replacing anything.'),
+				array('name' => 'name',           'in' => 'body', 'type' => 'string', 'max_length' => 190, 'description' => 'File name. The extension is optional: when it is left out it is taken from the address, or from the content when the address has none. The whole name is taken from source_url when it is left out. A name already in use gets a [1] suffix rather than replacing anything.'),
 				array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'The file itself, base64 encoded. Send this or source_url.'),
 				array('name' => 'source_url',     'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'An address for this site to fetch the file from. Send this or content_base64.'),
 				array('name' => 'description',    'in' => 'body', 'type' => 'string', 'max_length' => 500),
