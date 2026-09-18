@@ -41,6 +41,55 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Sayfa Tasarımcısı bölge oluşturma ve panel JS çalışma zamanı hataları (2026-09-18)
+
+**Belirti (issue #46).** (1) `page_designer.js` içinde bölge oluşturma
+modalının submit işleyicisi ve `cregionButton`/`dregionButton` dinleyicileri
+`open_item()` içinde bağlanıyordu; her öğe açılışında bir kopya daha eklendiği
+için tek bir "Oluştur" tıklaması açılan öğe sayısı kadar bölge yaratıyordu.
+(2) `get_items_in_style` başarı işleyicisi `var` bildirmeden `dynamic_regions`
+adına dizi atıyordu; closure'daki özellik bayrağı API dizisiyle eziliyor ve
+ilk stil analizinden sonra dinamik bölge düğmeleri devre dışı kalıyordu.
+(3) Ctrl+D geri dönüş dalı tanımsız `nav_menu_reset()` çağırıyordu.
+(4) Stil öğe listesinde ve arama sonuçlarında bölge adları `h()` olmadan
+HTML'e basılıyordu. (5) `backend.src.js` barkod/etiket editöründe görsel
+URL'si değişince ok fonksiyonu tanımsız `self` üzerinden `render()` çağırıp
+TypeError fırlatıyordu; `PG_TOKEN` ise hiç var olmayan `SOFTWARE_TOKEN`
+globalini yokladığı için her API çağrısı boş token ile gidiyordu.
+(6) `prepare_content_for_html()` karakter tablosu mojibake olmuştu, aksanlı
+karakterler artık varlığa çevrilmiyordu; `$("#create_button").value = …`
+jQuery nesnesinde hiçbir şey yapmıyordu; overlay rengi `##e3e3e3ab` geçersizdi.
+
+**Düzeltme.** Bölge işleyicileri `init` içine, iki CodeMirror örneği
+oluşturulduktan sonra bir kez bağlanır; açık öğenin editörü closure
+düzeyindeki `editor` değişkeninde tutulur ve editör açık değilse submit erken
+döner — dinleyiciyi `off()` ile temizlemek yerine bir kez bağlamak seçildi,
+çünkü sorun bağlama yerinin yanlışlığıydı ve `off()` aynı öğedeki başka
+işleyicileri de düşürürdü. Analiz sonucu dizileri `style_*` önekli yerel
+değişkenlere alındı; bayrak ve arama fonksiyonu değişkenleri dokunulmadı.
+Bölge adları `h()` ile kaçırıldı, tasarımcıdaki sabit İngilizce başlıklar
+`labels` üzerinden `lang()`e bağlandı (`page_designer.php`, `tr.json`'a dört
+anahtar). Barkod editöründe `this.render(); this._fireChange()` kardeş geri
+çağrılarla aynı kalıba getirildi; `PG_BARCODE_API` aynı dosyadaki
+`pg_api_url()`den, `PG_TOKEN` küçük harfli `software_token` globalinden okunur;
+`sendHeartbeat()` da aynı arama kalıbına indirildi. Karakter tablosu 96 varlık
+adından `\uXXXX` kaçışlarıyla yeniden üretildi ve döngü
+`RegExp.prototype.compile` yerine `split/join` kullanır. `frontend.src.js`
+içindeki aynı tablonun kopyası bu değişikliğin dışında bırakıldı.
+
+### Doğrulama
+
+`php -l`, `tools/lint.php` ve `tools/check_lang.php` temiz; iki JS dosyası
+Node ile sözdizimi denetiminden geçti, karakter tablosu Node'da `&`, `<`,
+`é`, `½`, `©`, `ß` girdileriyle sınandı. Çalışan bir örnek kurulmadı: Sayfa
+Tasarımcısı'nda birden fazla öğe açıp bölge oluşturma, Ctrl+D, barkod
+editöründe görsel URL değişimi ve API token'ı tarayıcıda denenmedi.
+
+**Açık kalan:** `backend.src.js` genel sortable seçenekleri ve DataTables
+`responsive` ayarı bu değişiklikten çıkarılıp ayrı dala devredildi;
+`frontend.src.js` içindeki `prepare_content_for_html` kopyası aynı bozuk
+tabloyu taşıyor ve düzeltilmeyi bekliyor.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
