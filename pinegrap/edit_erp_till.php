@@ -57,7 +57,10 @@ if (!$_POST) {
         return h(erp_fx_enabled() ? erp_money_out_currency((int) $kurus, $till_currency, $show_sign) : erp_money_out((int) $kurus, $show_sign));
     };
 
-    $movements = (array) db_items("SELECT c.*, a.title AS account_title
+    // A receipt that was cancelled is still in the book, struck through, next
+    // to the reversal that cancelled it; the reversal row is what says so.
+    $movements = (array) db_items("SELECT c.*, a.title AS account_title,
+            (SELECT r.id FROM erp_cash_transactions r WHERE r.doc_type = 'cancel' AND r.doc_id = c.id LIMIT 1) AS reversal_id
         FROM erp_cash_transactions c
         LEFT JOIN erp_accounts a ON c.account_id = a.id
         WHERE c.cash_account_id = '" . $till_id . "'
@@ -78,10 +81,21 @@ if (!$_POST) {
         $amount = (int) $movement['amount'];
         $running += ($in ? $amount : -$amount);
 
+        $is_receipt = in_array((string) $movement['doc_type'], array('collection', 'payment'), true);
+        $is_cancelled = ((int) $movement['reversal_id'] > 0);
+
+        $output_description = h($movement['description']);
+        if ($is_receipt) {
+            $output_description = '<a href="erp_receipt.php?id=' . (int) $movement['id'] . '" class="link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['id'])) . '</a>';
+        }
+        if ($is_cancelled) {
+            $output_description = '<span class="text-decoration-line-through text-body-secondary">' . $output_description . '</span> <span class="badge text-bg-secondary">' . lang('Cancelled') . '</span>';
+        }
+
         $output_movements .= '
         <tr>
             <td class="align-middle text-nowrap">' . h(prepare_form_data_for_output($movement['doc_date'], 'date')) . '</td>
-            <td class="align-middle">' . h($movement['description']) . '</td>
+            <td class="align-middle">' . $output_description . '</td>
             <td class="align-middle">' . h($movement['account_title']) . '</td>
             <td class="align-middle text-end ' . ($in ? 'text-success' : 'text-danger') . '">'
                 . ($in ? '+' : '&minus;') . $money($amount, false) . '</td>

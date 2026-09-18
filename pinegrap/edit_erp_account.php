@@ -95,10 +95,17 @@ if (!$_POST) {
             ? ' <span class="text-body-secondary small">' . h(erp_money_out_currency((int) $row['amount'], $row_currency, false)) . '</span>'
             : '';
 
+        // A receipt or payment opens on its own screen, where it can be
+        // allocated or cancelled.
+        $output_description = h($row['description']);
+        if (in_array((string) $row['doc_type'], array('collection', 'payment'), true) && ((int) $row['doc_id'] > 0)) {
+            $output_description = '<a href="erp_receipt.php?id=' . (int) $row['doc_id'] . '" class="link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $row['doc_id'])) . '</a>';
+        }
+
         $output_statement_rows .= '
             <tr>
                 <td class="align-middle text-nowrap">' . h(prepare_form_data_for_output($row['doc_date'], 'date')) . '</td>
-                <td class="align-middle">' . h($row['description']) . '</td>
+                <td class="align-middle">' . $output_description . '</td>
                 <td class="align-middle text-end">' . ($is_debit ? h(erp_money_out((int) $row['amount_base'], false)) . $output_fc : '') . '</td>
                 <td class="align-middle text-end">' . ($is_debit ? '' : h(erp_money_out((int) $row['amount_base'], false)) . $output_fc) . '</td>
                 <td class="align-middle text-end">' . h(erp_money_out((int) $row['running_balance'])) . '</td>

@@ -2411,6 +2411,7 @@ function output_menu($properties = false)
         case 'add_erp_till.php':
         case 'edit_erp_till.php':
         case 'add_erp_receipt.php':
+        case 'erp_receipt.php':
         case 'add_erp_transfer.php':
         case 'erp_waybills.php':
         case 'erp_settings.php':
