@@ -41,6 +41,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Sayfa, klasör, bölge ve liste ekranları: klasör döngüsü, sıralama, toplu düzenleme (2026-09-18)
+
+**Belirti (issue #39).** (1) `edit_folder.php` bir klasörün üst klasörünü
+kendisine ya da kendi alt klasörlerinden birine çevirmeye izin veriyordu;
+ağaç döngüye giriyor, klasör yolunu çözen özyineleme sonsuza sarıyordu.
+(2) `view_ads.php`, `view_containers.php`, `editor_select_page_or_file.php`
+ve `view_referral_sources.php` listelerinde sütun başlığına tıklamak
+sıralamayı değiştirmiyordu: `switch` blokları İngilizce literal'le
+karşılaştırıyor, oysa istekte `lang()` ile çevrilmiş başlık geliyordu;
+`view_containers.php` sıralama parametresini oturuma hiç yazmıyor,
+`view_referral_sources.php` yönü her zaman `desc`e zorluyordu.
+(3) `mass_edit.php` gönderilen değeri doğruluk testiyle ("truthy") okuduğu
+için sayfa başlığı, meta açıklaması ya da arama anahtar kelimeleri
+boşaltılamıyordu; sayfa adı `h()` olmadan basılıyordu. (4) `view_pages.php`
+etkin form işareti satır başına sıfırlanmadığından ilk etkin formdan sonraki
+her satırda görünüyordu; `view_regions.php` ve `view_ads.php`'de oluşturan /
+son değiştiren kullanıcı adı önceki satırdan sarkıyordu. (5) `edit_page.php`
+teklif satırı `add_page.php`'den farklı kapılanıyor ve yanlış stil
+değişkenini kullanıyordu; `calendar_view_pages` `page_id` yerine
+autoincrement `id` ile aranıyordu; form tasarımcısı yönlendirme testi
+tanımsız değişken okuyordu. (6) `edit_login_region.php` ve `edit_menu.php`
+doğrulama hatası sonrası form yeniden çizilirken `$row` yüklenmediğinden
+tanımsız indeks uyarısı veriyordu; `edit_dynamic_region.php` etiketi
+"Designer Region" idi; `view_log.php` `mark_error()`'a alan adı yerine mesaj
+geçiyor ve yanlış formu siliyordu; `add_folder.php` ve
+`duplicate_page_f.php` eksik satır / eksik istek anahtarında uyarı ya da
+`die()` ile düşüyordu.
+
+**Düzeltme.** (1) `edit_folder.php` UPDATE öncesi gönderilen üst klasörden
+köke kadar `folder_parent` zincirini ziyaret kümesiyle yürür; zincir taşınan
+klasörün kendisine ulaşırsa `output_error()` ile durur. Neden ekranın
+içinde yerel bir yürüyüş: `pg_explorer_is_self_or_descendant()` yalnız
+`view_folder_and_files_f.php` içinde tanımlı ve bu ekran onu include
+etmiyor; salt bu kontrol için dosyanın tamamını yüklemek yerine aynı
+mantık birkaç `db_value()` adımıyla yazıldı. Kök (0) hedefi denetim dışı.
+(2) Sıralama `switch`lerinde `case` etiketleri ve varsayılan değer
+`lang()`den geçer, böylece istekle aynı dilde karşılaştırılır;
+`view_containers.php` `sort`/`order` parametrelerini `view_files.php`
+deseniyle oturuma yazar, yön `sql_order_direction()` ile beyaz listeden
+geçer; `view_referral_sources.php` yön zorlaması kaldırıldı, sıralama
+seçilmediğinde eskisi gibi en yeni üstte kalır. (3) `mass_edit.php`
+`isset()` + mevcut değerden farklılık testiyle okur: boş gönderim artık
+geçerli bir "temizle" isteğidir. (4)–(6) Satır başı sıfırlamalar, `isset()`
+kapıları, `??` varsayılanları, `lang('Invalid request.')` ile
+`output_error()`; `edit_login_region.php` ve `edit_menu.php` satırı her
+durumda id ile yükler ve satır yoksa hata verir.
+
+### Doğrulama
+
+`php -l` dokunulan 19 PHP dosyasında temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: klasör döngüsü
+reddi (elle hazırlanmış POST), dört liste ekranında tarayıcıda sütun
+sıralaması, toplu düzenlemede boşaltma davranışı ve form dışı sayfa
+türlerinde `edit_page.php` form tasarımcısı yönlendirmesi çalışma anında
+denenmedi; yalnız kod okuma ve statik denetimle doğrulandı.
+
+**Açık kalan:** `edit_short_link.php` için yalnız "kayıt yok" kapısı
+eklendi; rol-3 erişim denetimindeki `file` / `product` / `product_group`
+hedef türleri karar bekliyor, değiştirilmedi.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
