@@ -256,7 +256,7 @@ if (!$_POST) {
     $_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'] = $page_to_preview_id;
     
     // get page style properties
-    $query = "SELECT style_name, style_layout FROM style WHERE style_id = '$style_id'";
+    $query = "SELECT style_name, style_layout FROM style WHERE style_id = '" . escape($style_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $page_style_name = $row['style_name'];
@@ -273,7 +273,7 @@ if (!$_POST) {
             region_type,
             region_name
         FROM system_style_cells
-        WHERE style_id = '$style_id'
+        WHERE style_id = '" . escape($style_id) . "'
         ORDER BY
             area,
             `row`, # Backticks for reserved word.
@@ -2575,7 +2575,7 @@ function prepare_theme_designer_post_data($post_data = array())
 function is_system_page_style($style_id)
 {
     // check to see if this is a system page style
-    $query = "SELECT style_type FROM style WHERE style_id = '" . $style_id . "'";
+    $query = "SELECT style_type FROM style WHERE style_id = '" . escape($style_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     

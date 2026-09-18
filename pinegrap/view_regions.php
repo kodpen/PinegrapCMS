@@ -46,7 +46,7 @@ switch ($filter) {
         // if order was set, update session
         if (isset($_REQUEST['order'])) {
             // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = $_REQUEST['order'];
+            $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
         }
         
         
@@ -83,7 +83,7 @@ switch ($filter) {
         }
         
         if (!empty($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'])) {
-            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? '');
+            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] ?? '');
         } elseif ($sort_column == 'last_modified_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_ad_regions']['order'] = 'desc';
@@ -228,7 +228,7 @@ switch ($filter) {
         // if order was set, update session
         if (isset($_REQUEST['order'])) {
             // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = $_REQUEST['order'];
+            $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
         }
         
         
@@ -280,7 +280,7 @@ switch ($filter) {
         }
         
         if (!empty($_SESSION['software']['design']['view_regions']['all_login_regions']['order'])) {
-            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? '');
+            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_login_regions']['order'] ?? '');
         } elseif ($sort_column == 'last_modified_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_login_regions']['order'] = 'desc';
@@ -420,7 +420,7 @@ switch ($filter) {
         // if order was set, update session
         if (isset($_REQUEST['order'])) {
             // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = $_REQUEST['order'];
+            $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
         }
         
         
@@ -460,7 +460,7 @@ switch ($filter) {
             }
             
             if (!empty($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'])) {
-                $asc_desc = ($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? '');
+                $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] ?? '');
             } elseif ($sort_column == 'dregion_timestamp') {
                 $asc_desc = 'desc';
                 $_SESSION['software']['design']['view_regions']['all_dynamic_regions']['order'] = 'desc';
@@ -545,7 +545,7 @@ switch ($filter) {
         // if order was set, update session
         if (isset($_REQUEST['order'])) {
             // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = $_REQUEST['order'];
+            $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
         }
         
        
@@ -581,7 +581,7 @@ switch ($filter) {
         }
 
         if (!empty($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'])) {
-            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? '');
+            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] ?? '');
         } elseif ($sort_column == 'cregion_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_designer_regions']['order'] = 'desc';
@@ -666,7 +666,7 @@ switch ($filter) {
         // if order was set, update session
         if (isset($_REQUEST['order'])) {
             // store sort in session
-            $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = $_REQUEST['order'];
+            $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = sql_order_direction($_REQUEST['order'], '');
         }
         
        
@@ -703,7 +703,7 @@ switch ($filter) {
         }
 
         if (!empty($_SESSION['software']['design']['view_regions']['all_common_regions']['order'])) {
-            $asc_desc = ($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? '');
+            $asc_desc = sql_order_direction($_SESSION['software']['design']['view_regions']['all_common_regions']['order'] ?? '');
         } elseif ($sort_column == 'cregion_timestamp') {
             $asc_desc = 'desc';
             $_SESSION['software']['design']['view_regions']['all_common_regions']['order'] = 'desc';

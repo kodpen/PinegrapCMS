@@ -860,7 +860,7 @@ if (!$_POST) {
                         '" . e($_POST[$form_type_identifier_id]) . "',
                         '$form_field_id',
                         '$option_id',
-                        '$target_option')");
+                        '" . e($target_option) . "')");
             }
             
             $count++;

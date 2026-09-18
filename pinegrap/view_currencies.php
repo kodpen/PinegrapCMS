@@ -33,6 +33,11 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
+// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
+if (isset($_SESSION['software']['ecommerce']['view_currencies']['order'])) {
+    $_SESSION['software']['ecommerce']['view_currencies']['order'] = sql_order_direction($_SESSION['software']['ecommerce']['view_currencies']['order'], '');
+}
+
 
 
 // if the sort is not set yet, then default it to empty so that the switch below falls
@@ -100,7 +105,7 @@ $query =
     FROM currencies
     LEFT JOIN user as created_user ON currencies.created_user_id = created_user.user_id
     LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? ''));
+    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['ecommerce']['view_currencies']['order'] ?? '');
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 

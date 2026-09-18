@@ -38,6 +38,11 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
+// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
+if (isset($_SESSION['software']['view_short_links']['order'])) {
+    $_SESSION['software']['view_short_links']['order'] = sql_order_direction($_SESSION['software']['view_short_links']['order'], '');
+}
+
 // avoid undefined index warning
 $sort = isset($_SESSION['software']['view_short_links']['sort']) ? ($_SESSION['software']['view_short_links']['sort'] ?? '') : null;
 
@@ -102,7 +107,7 @@ $query =
     LEFT JOIN products ON short_links.product_id = products.id
     LEFT JOIN user AS created_user ON short_links.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON short_links.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['view_short_links']['order'] ?? ''));
+    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_short_links']['order'] ?? '');
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);
 

@@ -38,7 +38,7 @@ if (isset($_REQUEST['sort'])) {
 // if order was set, update session
 if (isset($_REQUEST['order'])) {
     // store sort in session
-    $_SESSION['software']['design']['view_themes']['order'] = $_REQUEST['order'];
+    $_SESSION['software']['design']['view_themes']['order'] = sql_order_direction($_REQUEST['order'], '');
 }
 
 
@@ -80,7 +80,7 @@ switch (($_SESSION['software']['design']['view_themes']['sort'] ?? '')) {
 }
 
 if (!empty($_SESSION['software']['design']['view_themes']['order'])) {
-    $asc_desc = ($_SESSION['software']['design']['view_themes']['order'] ?? '');
+    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_themes']['order'] ?? '');
 } elseif ($sort_column == 'timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['design']['view_themes']['order'] = 'desc';
