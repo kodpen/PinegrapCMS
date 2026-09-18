@@ -41,6 +41,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Ziyaretçi sayfalarında tanımsız USER_* sabitleri (2026-09-18)
+
+**Belirti.** `initialize_user()` (`includes/fn/auth.php`) `USER_START_PAGE_ID`,
+`USER_TIMEZONE`, `USER_MEMBER_ID` ve `USER_EXPIRATION_DATE` sabitlerini yalnız
+oturum açmış kullanıcı dalında tanımlıyor; ziyaretçi dalı sadece
+`USER_LOGGED_IN`, `USER_ID`, `USER_CONTACT_ID`, `USER_USERNAME`,
+`USER_EMAIL_ADDRESS` tanımlıyor. Buna karşılık `get_folder_view_screen_content.php`
+(satır 32–36) `USER_START_PAGE_ID`'yi, `get_my_account.php` (26–27, 122–123)
+`USER_START_PAGE_ID` ile `USER_TIMEZONE`'u, `includes/templates/my_account.php`
+ve `my_account_system.php` ise `USER_MEMBER_ID` / `USER_EXPIRATION_DATE`'i
+giriş kontrolü yapmadan okuyordu. PHP 8'de tanımsız sabit ölümcül `Error`
+olduğundan herkese açık bir klasördeki "Klasör Görünümü" sayfası her anonim
+isteğe HTTP 500 (beyaz sayfa) veriyordu; PHP 7'de aynı satır sabit adını
+dizge olarak kullanıp `get_page_name('USER_START_PAGE_ID')` çağırıyordu,
+yani sessizce yanlış çalışıyordu. Sunuculardaki 2026.4.3 bu hatayı taşıyor.
+
+**Düzeltme.** Sabitler ziyaretçi dalında `0`/`''` ile tanımlanmadı; tüketen
+kod bunları "oturum açmış kullanıcının değeri" olarak yorumluyor ve boş bir
+varsayılan, eksik girişi gizleyip özelliği atlamak yerine yanlış veriyle
+çalıştırırdı. Bunun yerine okuma yapılan yerler kapatıldı:
+
+- `get_folder_view_screen_content.php`: "Başlangıç Sayfam" bağlantısı yalnız
+  `defined('USER_START_PAGE_ID')` iken hesaplanıyor; bağlantı zaten oturum
+  açmış kullanıcıya ait bir özellik.
+- `get_my_account.php`: `get_my_account()` oturum açmış kullanıcı yokken hiçbir
+  sabiti okumadan `''` döndürüyor. `get_page.php` ziyaretçiyi "Hesabım" tipi
+  sayfadan kayıt girişine yönlendiriyor, ancak `get_page_content()` bu kapı
+  olmadan da çağrılıyor (e-posta gövdesi üretimi, SEO analizi); aynı ölümcül
+  hata o yollarda da geçerliydi.
+- `includes/templates/my_account.php`, `my_account_system.php`: üyelik bloğu
+  `defined('USER_MEMBER_ID') && USER_MEMBER_ID` ile açılıyor; `USER_EXPIRATION_DATE`
+  okumaları bu bloğun içinde kalıyor.
+
+`_render_system_widget_my_account()` (tasarımcı widget'ı) zaten
+`USER_LOGGED_IN` kontrolü yapıyordu, dokunulmadı.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19, MariaDB 10.11) üzerinde koşturuldu. Başlangıç sitesinin
+`folder view` ve `my account` sayfaları herkese açık klasöre kopyalandı
+(`test-folder-view-public`, `test-my-account-public`). Düzeltme öncesi anonim
+`GET /test-folder-view-public` → HTTP 500, 0 bayt; hata günlüğü
+`Uncaught Error: Undefined constant "USER_START_PAGE_ID" in
+get_folder_view_screen_content.php:32` (`get_page_content.php:2709` ←
+`get_page.php:2684`). Düzeltme sonrası aynı istek → HTTP 200, klasör ağacı ve
+"erişebildiğiniz sayfa bulunamadı" iletisiyle gerçek içerik; o URI için yeni
+günlük satırı yok. Yönetici olarak dört sayfa (`/test-folder-view-public`,
+`/test-my-account-public`, `/my-account`, `/my-account-content`) öncesi ve
+sonrası yakalanıp karşılaştırıldı: yalnız görüntülenme sayacı ve "son
+düzenleme" süresi değişti; "Başlangıç Sayfam" bağlantısı ve hesap bilgileri
+aynı. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** "Hesabım" tipi bir sayfa anonim ziyaretçiye `get_page.php:282`
+yönlendirmesi nedeniyle hiç ulaşmıyor; `get_my_account()` içindeki erken dönüş
+bu yüzden ön yüzden koşturarak doğrulanamadı, yalnız kodla ve yönetici
+oturumunda içeriğin değişmediğiyle doğrulandı. E-posta/SEO yollarında
+`get_page_content()` ile "Hesabım" sayfasının üretildiği senaryo koşturulmadı.
+
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
