@@ -908,7 +908,7 @@ if ($row[0] > 0) {
     $url_parts = parse_url(pg_safe_redirect_path($send_to));
 
     // Put query string parameters into an array in order to prepare new query string.
-    parse_str($url_parts['query'], $query_string_parameters);
+    parse_str(isset($url_parts['query']) ? $url_parts['query'] : '', $query_string_parameters);
 
     $query_string = '';
 

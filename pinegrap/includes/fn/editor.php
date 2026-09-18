@@ -56,7 +56,7 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             // Otherwise use activated theme.
         } else {
             // get theme name differently based on the device type (i.e. desktop or mobile)
-            switch ($_SESSION['software']['device_type']) {
+            switch (isset($_SESSION['software']['device_type']) ? $_SESSION['software']['device_type'] : 'desktop') {
                 // if the device type is desktop then get the activated desktop theme name
                 case 'desktop':
                 default:
@@ -373,7 +373,7 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             // Otherwise use activated theme.
         } else {
             // get theme name differently based on the device type (i.e. desktop or mobile)
-            switch ($_SESSION['software']['device_type']) {
+            switch (isset($_SESSION['software']['device_type']) ? $_SESSION['software']['device_type'] : 'desktop') {
                 // if the device type is desktop then get the activated desktop theme name
                 case 'desktop':
                 default:

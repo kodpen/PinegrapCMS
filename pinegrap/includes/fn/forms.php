@@ -98,7 +98,7 @@ function get_preview_style($properties)
     // theme designer, or if the theme that is being edited in the theme designer
     // is the same as the theme that is being previewed, then check if we should use
     // a preview style instead of the activated style.
-    if ((isset($_SESSION['software']['preview_theme_id']) == true) && (($_GET['edit_theme'] != 'true') || ($_GET['theme_id'] == $_SESSION['software']['preview_theme_id']))) {
+    if ((isset($_SESSION['software']['preview_theme_id']) == true) && (((isset($_GET['edit_theme']) ? $_GET['edit_theme'] : '') != 'true') || ((isset($_GET['theme_id']) ? $_GET['theme_id'] : '') == $_SESSION['software']['preview_theme_id']))) {
         // If the selected theme is the activated theme, then get style in a certain way.
         if (($_SESSION['software']['preview_theme_id']) && ($_SESSION['software']['preview_theme_id'] == db_value("SELECT id FROM files WHERE activated_" . $device_type . "_theme = '1'"))) {
             // If a style has been selected, then use that style.
@@ -1797,6 +1797,17 @@ function select_offer_action_type($offer_action_type = '')
 // output options for drop-down selection for selecting a field type
 function select_field_type($field_type = '', $form_type = 'custom')
 {
+    $text_box_status = '';
+    $text_area_status = '';
+    $pick_list_status = '';
+    $radio_button_status = '';
+    $check_box_status = '';
+    $file_upload_status = '';
+    $date_status = '';
+    $date_and_time_status = '';
+    $email_address_status = '';
+    $information_status = '';
+    $time_status = '';
     $signature_status = '';
 
     switch ($field_type) {
@@ -2557,7 +2568,7 @@ function create_or_update_page_type_record($page_type, $properties)
         $values = '';
         foreach ($properties as $field => $value) {
             $columns .= $field;
-            $values .= "'" . e($value) . "'";
+            $values .= "'" . e(isset($value) ? $value : '') . "'";
             if ($count < count($properties)) {
                 $columns .= ', ';
                 $values .= ', ';
@@ -2765,7 +2776,7 @@ function get_login_region_content($login_region_id)
             if (REMEMBER_ME == true) {
                 // if the form has not been submitted yet and the visitor checked remember me during the last login,
                 // then check the remember me check box by default
-                if (($liveform->field_in_session('email') == false) && ($_COOKIE['software']['remember_me'] == 'true')) {
+                if (($liveform->field_in_session('email') == false) && (isset($_COOKIE['software']['remember_me'])) && ($_COOKIE['software']['remember_me'] == 'true')) {
                     $liveform->assign_field_value('remember_me', '1');
                 }
                 $output_remember_me = '<div>' . $liveform->output_field(array(
@@ -3525,7 +3536,7 @@ function get_dynamic_value($dynamic_value, $dynamic_value_attribute = '')
             return date('Y-m-d H:i:s', time() - (86400 * $dynamic_value_attribute));
             break;
         case 'viewer':
-            return $_SESSION['sessionusername'];
+            return isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '';
             break;
         case 'viewers email address':
             $viewers_email_address = '';

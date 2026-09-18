@@ -105,7 +105,7 @@ $output_enforcement ='';
 // dedect user language from list, default is en
 function dedect_user_language(){
 	$supportedLanguages=['en','tr'];
-	$lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
+	$lang = substr(isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '', 0, 2);
 	if(!in_array($lang,$supportedLanguages)){
 		$lang='en';
 	}

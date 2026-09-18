@@ -4757,7 +4757,7 @@ function get_express_order($properties) {
                                 // (e.g. the form has not been submitted by the customer),
                                 // then set default value.
                                 if (!$form->field_in_session($html_name)) {
-                                    $value_from_query_string = trim($_GET['value_' . $field['id']]);
+                                    $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
 
                                     // If a default value was passed in the query string,
                                     // then use that.
