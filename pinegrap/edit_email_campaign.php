@@ -33,8 +33,8 @@ if ($user['role'] == 3) {
     
     // if user did not create this e-mail campaign, then output error
     if ($created_user_id != $user['id']) {
-        log_activity(lang('access denied to send e-mail campaign because user is not the creator of the e-mail campaign'), $_SESSION['sessionusername']);
-        output_error_in_popup(lang('Access denied.'));
+        log_activity(lang('access denied to edit e-mail campaign because user is not the creator of the e-mail campaign'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied.'));
     }
 }
 
@@ -105,7 +105,6 @@ if (!$_POST) {
         $output_button_bar =
             '<nav id="button_bar" class="navigation " aria-label="Button Bar">
                 <div class=" btn-group btn-group-sm flex-wrap">
-                    ' . $output_product_form_designer_button . '
                     <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1">send</span>' . lang('Send Campaign') . '</a>
                 </div>
             </nav>';
@@ -121,6 +120,10 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                 <input type="hidden" name="id" value="' . h($_GET['id']) . '">';
+        
+        $ready_status = '';
+        $paused_status = '';
+        $cancelled_status = '';
         
         switch ($status) {
             case 'ready':
@@ -408,6 +411,8 @@ if (!$_POST) {
 
             break;
     }
+    
+    $output_start_time_rows = '';
     
     // if an e-mail campaign job is setup on the server, then allow e-mail campaign to be scheduled
     if (email_campaign_job_enabled()) {

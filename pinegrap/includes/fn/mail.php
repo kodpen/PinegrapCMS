@@ -998,6 +998,7 @@ function create_auto_email_campaigns($properties)
         // We don't create campaigns if the scheduled date and time is in the past.
         if ($start_timestamp >= $current_timestamp) {
             $start_date_and_time = date('Y-m-d H:i:s', $start_timestamp);
+            $status = 'ready';
             // Create e-mail campaign.
             db("INSERT INTO email_campaigns (
 
@@ -1106,12 +1107,7 @@ function create_auto_email_campaigns($properties)
 
                     '" . e($email_address) . "',
 
-                    '" . e($contact['id']) . "')");
-            //BUG FIX FOR SERVER WE USED
-            // wasnt auto create email compaign with email compaign profile, I do enter my Mysql and update email compaign without change and its added to email compaign.
-            // so here I do update it with action problem fixed. may another server dont need this update free to try just remove db UPDATE status for a try
-            db("UPDATE email_campaigns SET email_campaigns.status = 'ready' WHERE id = '$email_campaign_id'");
-            //
+                    '" . (isset($contact['id']) ? (int) $contact['id'] : 0) . "')");
             // Get user-friendly action name for log message.
             switch ($action) {
                 case 'calendar_event_reserved':
@@ -1264,7 +1260,7 @@ function email($properties)
     $mail = new PHPMailer(true);
 
     // Language setting
-    if (lang(array('info')) == 'tr') {
+    if (lang(array('info' => '')) == 'tr') {
         $mail->setLanguage('tr', PG_FUNCTIONS_DIR . '/includes/phpmailer/language/');
     }
 
