@@ -109,7 +109,7 @@ if (!$_POST) {
         'cancel' => array('enable' => 'true', 'url' => 'edit_erp_invoice.php?id=' . $invoice_id),
         'breadcrumb' => array(
             array('label' => lang('Invoices'), 'url' => $list_url),
-            array('label' => h($invoice['full_number']), 'url' => $invoice_url),
+            array('label' => $invoice['full_number'], 'url' => $invoice_url),
             array('label' => lang('Return an Invoice')),
         ),
     ]) . '

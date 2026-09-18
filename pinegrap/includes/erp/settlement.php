@@ -16,6 +16,12 @@
  * cannot reconcile with you, and the correction costs more than the entry saved.
  * The allocation is always somebody's decision.
  *
+ * The one allocation nobody decides is the gift card. The part of an order paid
+ * with one was paid when the order was placed, against this order and no
+ * other, so the invoice raised for it arrives already settled by that amount
+ * (erp_settle_gift_card). It is still money in: the customer's account is
+ * credited, so the balance shows what is actually left to collect.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -201,6 +207,140 @@ function erp_settle($data)
 }
 
 /**
+ * Settle the part of an invoice that was paid with a gift card.
+ *
+ * Called from inside the transaction that raises the invoice. The gift card is
+ * money the shop already holds, so nothing moves through a till; what happens
+ * is a credit on the customer's account, of kind collection, and the allocation
+ * of that credit to the invoice. Without the credit the account would carry the
+ * gift card amount as owed forever; without the allocation the invoice would
+ * stay open for money that was paid before it was raised.
+ *
+ * The movement is marked doc_type gift_card so a cancellation can find and
+ * reverse it, and so the receipt screens can tell it from money somebody
+ * collected.
+ *
+ * @param array $data  invoice_id, account_id, amount (kurus), doc_date,
+ *                     description, created_by
+ * @return bool
+ */
+function erp_settle_gift_card($data)
+{
+    $invoice_id = (int) ($data['invoice_id'] ?? 0);
+    $account_id = (int) ($data['account_id'] ?? 0);
+    $amount = (int) ($data['amount'] ?? 0);
+
+    if (($invoice_id <= 0) || ($account_id <= 0) || ($amount <= 0)) {
+        return false;
+    }
+
+    $doc_date = (string) ($data['doc_date'] ?? date('Y-m-d'));
+
+    $txn_id = erp_account_post(array(
+        'account_id' => $account_id,
+        'doc_date' => $doc_date,
+        'kind' => 'collection',
+        'direction' => 'credit',
+        'amount' => $amount,
+        // The order was priced in the store's base currency, so the credit is
+        // a base movement and its own base value.
+        'currency' => erp_base_currency(),
+        'exchange_rate' => 1,
+        'exchange_rate_source' => 'base',
+        'amount_base' => $amount,
+        'doc_type' => 'gift_card',
+        'doc_id' => $invoice_id,
+        'description' => (string) ($data['description'] ?? ''),
+        'created_by' => (int) ($data['created_by'] ?? 0),
+    ));
+
+    if ($txn_id === false) {
+        return false;
+    }
+
+    return erp_settle(array(
+        'invoice_id' => $invoice_id,
+        'account_txn_id' => $txn_id,
+        'account_id' => $account_id,
+        'amount' => $amount,
+        'amount_base' => $amount,
+        'doc_date' => $doc_date,
+        'created_by' => (int) ($data['created_by'] ?? 0),
+    ));
+}
+
+/**
+ * Take back the gift card credit posted for an invoice that is being cancelled.
+ *
+ * Runs inside the caller's transaction. The credit is reversed by an opposite
+ * movement rather than deleted, like every other correction in the ledger, and
+ * the allocation rows that pointed at it go. The invoice status is left to the
+ * caller, which is about to set it to cancelled.
+ *
+ * @param int $invoice_id
+ * @param int $created_by
+ * @return bool
+ */
+function erp_unsettle_gift_card($invoice_id, $created_by = 0)
+{
+    $invoice_id = (int) $invoice_id;
+
+    $credits = (array) db_items("SELECT id, account_id, doc_date, amount, description
+        FROM erp_account_transactions
+        WHERE doc_type = 'gift_card' AND doc_id = '" . $invoice_id . "' AND direction = 'credit'");
+
+    foreach ($credits as $credit) {
+        $reversed = erp_account_post(array(
+            'account_id' => (int) $credit['account_id'],
+            'doc_date' => date('Y-m-d'),
+            'kind' => 'adjustment',
+            'direction' => 'debit',
+            'amount' => (int) $credit['amount'],
+            'currency' => erp_base_currency(),
+            'exchange_rate' => 1,
+            'exchange_rate_source' => 'base',
+            'amount_base' => (int) $credit['amount'],
+            'doc_type' => 'cancel',
+            'doc_id' => $invoice_id,
+            'description' => lang(array(
+                'string' => '{var:1} cancelled',
+                'vars' => (string) $credit['description'],
+            )),
+            'created_by' => (int) $created_by,
+        ));
+
+        if ($reversed === false) {
+            return false;
+        }
+
+        if (erp_query("DELETE FROM erp_settlements
+            WHERE invoice_id = '" . $invoice_id . "' AND account_txn_id = '" . (int) $credit['id'] . "'") === false) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * How many allocations on an invoice came from money somebody collected.
+ *
+ * The gift card allocation the invoice posted for itself is left out: it is
+ * not a decision anyone took, so it is not a reason to refuse a cancellation.
+ *
+ * @param int $invoice_id
+ * @return int
+ */
+function erp_invoice_receipt_count($invoice_id)
+{
+    return (int) db_value("SELECT COUNT(*)
+        FROM erp_settlements s
+        LEFT JOIN erp_account_transactions t ON s.account_txn_id = t.id
+        WHERE s.invoice_id = '" . (int) $invoice_id . "'
+          AND (t.id IS NULL OR t.doc_type <> 'gift_card')");
+}
+
+/**
  * Undo one allocation. The money stays where it is; only the pairing goes.
  *
  * @param int $settlement_id
@@ -274,11 +414,13 @@ function erp_open_invoices($account_id, $limit = 200)
  */
 function erp_invoice_settlements($invoice_id)
 {
-    return (array) db_items("SELECT s.*, t.description, t.kind, t.doc_id AS cash_id,
-            c.name AS cash_account_name
+    // The till is only reached through a receipt: a movement of another kind
+    // (a gift card credit, say) has a doc_id of its own that is not a till row.
+    return (array) db_items("SELECT s.*, t.description, t.kind, t.doc_type AS source_type,
+            t.doc_id AS cash_id, c.name AS cash_account_name
         FROM erp_settlements s
         LEFT JOIN erp_account_transactions t ON s.account_txn_id = t.id
-        LEFT JOIN erp_cash_transactions ct ON t.doc_id = ct.id
+        LEFT JOIN erp_cash_transactions ct ON t.doc_id = ct.id AND t.doc_type = ct.doc_type
         LEFT JOIN erp_cash_accounts c ON ct.cash_account_id = c.id
         WHERE s.invoice_id = '" . (int) $invoice_id . "'
         ORDER BY s.doc_date ASC, s.id ASC");

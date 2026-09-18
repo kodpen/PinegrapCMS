@@ -55,11 +55,16 @@ function erp_db_error()
  * Nested calls are counted rather than opened again: MySQL has no nested
  * transactions, and a second START would silently commit the first.
  *
+ * The depth lives in one place, $GLOBALS['_erp_tx_depth'], and the three
+ * functions below all read and write that same counter. A second counter that
+ * only one of them reset would leave the next posting in the request believing
+ * a transaction was already open when none was.
+ *
  * @return bool
  */
 function erp_tx_begin()
 {
-    static $depth = 0;
+    $depth = erp_tx_depth();
 
     if ($depth === 0) {
         if (!@mysqli_begin_transaction(db::$con)) {
@@ -67,10 +72,19 @@ function erp_tx_begin()
         }
     }
 
-    $depth++;
-    $GLOBALS['_erp_tx_depth'] = $depth;
+    $GLOBALS['_erp_tx_depth'] = $depth + 1;
 
     return true;
+}
+
+/**
+ * How many erp_tx_begin() calls are waiting for their commit.
+ *
+ * @return int
+ */
+function erp_tx_depth()
+{
+    return isset($GLOBALS['_erp_tx_depth']) ? (int) $GLOBALS['_erp_tx_depth'] : 0;
 }
 
 /**
@@ -80,7 +94,7 @@ function erp_tx_begin()
  */
 function erp_tx_commit()
 {
-    $depth = isset($GLOBALS['_erp_tx_depth']) ? (int) $GLOBALS['_erp_tx_depth'] : 0;
+    $depth = erp_tx_depth();
 
     if ($depth <= 1) {
         $GLOBALS['_erp_tx_depth'] = 0;

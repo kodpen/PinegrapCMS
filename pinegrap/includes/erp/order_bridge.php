@@ -453,7 +453,8 @@ function erp_invoice_from_order($order_id, $options = array())
     $built = erp_order_lines($order, $items);
 
     // What the customer was actually charged. A gift card is a means of
-    // payment, so it is added back: the invoice states the whole sale.
+    // payment, so it is added back: the invoice states the whole sale, and the
+    // gift card settles its share of it once the document exists.
     $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
 
     if ($built['totals']['grand_total'] !== $expected) {
@@ -579,7 +580,32 @@ function erp_invoice_from_order($order_id, $options = array())
         'created_by' => (int) ($options['created_by'] ?? 0),
     ));
 
-    if (($posted === false) || !erp_account_refresh_balance($account_id)) {
+    if ($posted === false) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    // The gift card part of the total was paid when the order was placed, so
+    // the invoice does not wait for it: the account is credited and the credit
+    // is allocated to the invoice, both inside this transaction. A sale paid
+    // entirely by gift card is therefore issued and paid in the same breath.
+    $gift_card = min((int) $totals['gift_card_total'], (int) $totals['grand_total']);
+
+    if (($gift_card > 0) && !erp_settle_gift_card(array(
+        'invoice_id' => $invoice_id,
+        'account_id' => $account_id,
+        'amount' => $gift_card,
+        'doc_date' => $issue_date,
+        'description' => $numbered['full'] . ' - ' . lang('Gift Card'),
+        'created_by' => (int) ($options['created_by'] ?? 0),
+    ))) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    if (!erp_account_refresh_balance($account_id)) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);

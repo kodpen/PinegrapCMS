@@ -45,7 +45,9 @@ if (!$_POST) {
         $liveform->assign_field_value('is_active', ((int) $till['is_active'] === 1) ? '1' : '0');
         $liveform->assign_field_value('bank_name', $till['bank_name']);
         $liveform->assign_field_value('iban', $till['iban']);
-        $liveform->assign_field_value('opening_balance', erp_money_out_currency((int) $till['opening_balance'], (string) $till['currency'], false));
+        // The sign stays on: erp_kurus() reads a leading minus back, and an
+        // opening balance shown without it would be saved as a positive figure.
+        $liveform->assign_field_value('opening_balance', erp_money_out_currency((int) $till['opening_balance'], (string) $till['currency']));
         $liveform->assign_field_value('currency', strtoupper(trim((string) $till['currency'])));
     }
 
@@ -104,7 +106,7 @@ if (!$_POST) {
         'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
         'breadcrumb' => array(
             array('label' => lang('Cash and Bank'), 'url' => $list_url),
-            array('label' => h($till['name'])),
+            array('label' => $till['name']),
         ),
     ]) . '
 <main id="content" class="container-fluid">
