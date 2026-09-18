@@ -41,6 +41,50 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Cari hesap CSV içe aktarma (2026-09-18)
+
+**Belirti.** Modülü açan bir mağazanın elinde çoğu zaman bir cari listesi
+zaten vardır — eski programdan, muhasebeciden ya da bir Excel'den. Cari
+kartlar tek tek `add_erp_account.php` ile giriliyordu; toplu almanın yolu
+yoktu. Mevcut içe aktarıcılar (`import_contacts.php` vb.) tek adımda, sabit
+virgül ayırıcı ve UTF-8 varsayımıyla çalıştığı için Türkçe Excel'in
+`;` ayırıcı ve Windows-1254 ile yazdığı dosyayı bozuyor, kolonları tahmin
+edip hatasını ancak veritabanına yazdıktan sonra gösteriyordu.
+
+**Çözüm.** `erp_accounts_import.php` tek adreste üç adım: dosya yüklenir ve
+`data/temp/` altında oturuma bağlı bir jetonla bekletilir; sütunlar TR/EN
+başlık eş anlamlılarıyla alanlara eşlenir ve ilk 20 satır her satıra ne
+yapılacağıyla (oluşturulacak / zaten var / dosyada tekrar / hata) gösterilir;
+son adımda dosyanın tamamı yazılır ve satır satır sonuç listelenir. Hiçbir
+şey son adımdan önce `erp_accounts`'a yazılmaz. Okuma, ayırıcı ve karakter
+kümesi algılama, doğrulama ve eşleşme mantığı `includes/erp/import.php`
+içinde HTML'siz saf fonksiyonlardır ve komut satırından denenebilir.
+Ayırıcı ilk satırda tırnak dışındaki `;` `,` ve sekme sayılarak seçilir;
+UTF-8 olmayan baytlar Windows-1254 olarak okunur (ISO-8859-9'un üst
+kümesi), BOM atılır, CR-only satır sonları düzeltilir.
+
+Eşleşme sırası vergi numarası → e-posta → tam ad; ad yalnız satırda vergi
+numarası ve e-posta ikisi de yokken denenir, çünkü aynı adı iki gerçek kişi
+taşıyabilir ve önizlemede "ada göre eşleşti" ayrıca işaretlenir. Kullanıcı
+eşleşeni güncelle/atla seçer; güncelleme yalnız dosyanın verdiği sütunları
+yazar, bakiye sütunlarına hiç dokunulmaz. Yazım 100 satırlık partiler
+halinde `erp_tx_begin/commit` içinde yapılır; başarısız parti bütünüyle geri
+alınır, sonraki partiler devam eder. Dosya sınırı 5 MB. Şema değişikliği
+yok; `created_by`/`created_at` kaydın nereden geldiğini zaten söyler.
+
+**Varsayılan ülke.** `erp_account_save()` ve `erp_account_for_contact()`
+ülke boşken `'TR'` yazıyordu. Pinegrap her yerde kurulur; yeni
+`erp_default_country_code()` mağazanın `countries.default_selected` ile
+seçtiği ülkeyi verir, seçim yoksa `''`. İçe aktarmada ülke sütunu olmayan
+satır bu varsayılanı alır. Para birimi zaten `erp_base_currency()` idi.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` ve `import.php` için
+komut satırı öz-testi (ayırıcı, BOM/Windows-1254, başlık tahmini, satır
+doğrulama, dosya içi tekrar, birleştirme) temiz. Sandbox denemesi PR
+açıklamasında.
+
 ## 2026.4.4 — Veritabanına yazılan değerler: kampanya kilidi, menü kopyası, ERP ödeme yöntemi, kuruş yuvarlama (2026-09-18)
 
 **Belirti.** `email_campaign_job.php`, `calendar_event_reserved` alıcıları
