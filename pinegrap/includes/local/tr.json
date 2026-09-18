@@ -12214,5 +12214,8 @@
     "Tax ID": "VKN",
     "Generated at": "Oluşturulma",
     "Labels": "Etiketler",
-    "The language code of the site, for the html lang attribute": "Sitenin dil kodu, html lang özniteliği için"
+    "The language code of the site, for the html lang attribute": "Sitenin dil kodu, html lang özniteliği için",
+    "Choose a payment method.": "Bir ödeme yöntemi seçin.",
+    "erp_cash_transactions.payment_method does not exist, skipped": "erp_cash_transactions.payment_method yok, atlandı",
+    "erp_cash_transactions.payment_method already knows about cheque": "erp_cash_transactions.payment_method çek üyesini zaten içeriyor"
 }

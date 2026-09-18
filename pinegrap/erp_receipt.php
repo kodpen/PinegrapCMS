@@ -144,6 +144,7 @@ $method_labels = array(
     'cash' => lang('Cash'),
     'transfer' => lang('Bank transfer'),
     'card' => lang('Card'),
+    'cheque' => lang('Cheque'),
     'other' => lang('Other'),
 );
 
