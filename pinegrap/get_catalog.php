@@ -59,6 +59,7 @@ function get_catalog($properties) {
     if ($layout_type == 'system') {
     
         $search_query = '';
+        $code = '';
 
         // If the clear button was not clicked, then get search query value.
         if (isset($_GET[$page_id . '_simple_clear']) == false) {
@@ -122,40 +123,30 @@ function get_catalog($properties) {
             }
 
             $full_description = $row['full_description'];
-            $image_results = '';
-            //check if type is product group or product
-            if($item['type'] == 'product group'){
-    	        //check for image list from product_groups_images_xref
-    	        $item_images = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = '" . $item['id'] . "'";
-                $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
-	        } else {
-    	        //check for image list from products_images_xref
-    	        $item_images = "SELECT product,file_name FROM products_images_xref WHERE product = '" . $item['id'] . "'";
-                $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
-            }
-            //if product image xref or product group  xref exist. this mean this selected multiple product image
-            //and if code has ^^image_loop_start^^ and ^^image_url^^ and ^^image_loop_end^^. with these we can make an ease loop
-            if( (mysqli_num_rows($image_results) != 0)&&
-                (strpos($row['code'], '^^image_url^^') !== false)&&
-                (strpos($row['code'], '^^image_loop_start^^') !== false)&&
-                (strpos($row['code'], '^^image_loop_end^^') !== false)
-            ){        
-                $code_header_position = strpos($row['code'], '^^image_loop_start^');//number
-                $code_content_position = strpos($row['code'], '^^image_url^^');
-                $code_footer_position = strpos($row['code'], '^^image_loop_end^');//number
-                $code_header = substr( $row['code'], 0 ,strpos($row['code'], '^^image_loop_start^') );
-                $code_content_raw = substr( $row['code'], (strpos($row['code'], '^^image_loop_start^') + 20) , (strpos($row['code'], '^^image_loop_end^') - strpos($row['code'], '^^image_loop_start^')  - 20) );
-                $code_footer = substr($row['code'], strpos($row['code'], '^^image_loop_end^') + 18 );
+            $code = $row['code'];
 
-                while ($image = mysqli_fetch_assoc($image_results)){
-                    $code_content .= str_replace("^^image_url^^", OUTPUT_PATH . $image['file_name'] , $code_content_raw );
+            // The code block may carry an image loop (^^image_loop_start^^ ... ^^image_url^^ ... ^^image_loop_end^^)
+            // that is repeated once for every image attached to this product group.
+            if (
+                (strpos($code, '^^image_url^^') !== false)
+                && (strpos($code, '^^image_loop_start^^') !== false)
+                && (strpos($code, '^^image_loop_end^^') !== false)
+            ) {
+                $image_results = mysqli_query(db::$con, "SELECT file_name FROM product_groups_images_xref WHERE product_group = '" . escape($current_product_group_id) . "'") or output_error('Query failed.');
+
+                // Without attached images the code is output as it is.
+                if (mysqli_num_rows($image_results) != 0) {
+                    $code_header = substr($code, 0, strpos($code, '^^image_loop_start^^'));
+                    $code_content_raw = substr($code, (strpos($code, '^^image_loop_start^^') + 20), (strpos($code, '^^image_loop_end^^') - strpos($code, '^^image_loop_start^^') - 20));
+                    $code_footer = substr($code, strpos($code, '^^image_loop_end^^') + 18);
+                    $code_content = '';
+
+                    while ($image = mysqli_fetch_assoc($image_results)) {
+                        $code_content .= str_replace('^^image_url^^', OUTPUT_PATH . $image['file_name'], $code_content_raw);
+                    }
+
+                    $code = $code_header . $code_content . $code_footer;
                 }
-
-                $item['code'] = $code_header.$code_content.$code_footer;
-
-            }else{
-                // else there is only one image selected and no spacial code elements so we output code directly.
-                $item['code'] = $row['code'];
             }
             
         // else search is enabled and there is a search query, so set mode
@@ -1481,7 +1472,8 @@ function get_catalog($properties) {
                 "SELECT
                     enabled,
                     full_description,
-                    code
+                    code,
+                    image_name
                 FROM product_groups
                 WHERE id = '" . escape($current_product_group_id) . "'";
             $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
@@ -1498,50 +1490,34 @@ function get_catalog($properties) {
                 return error(lang('Sorry, the item is not currently available.'), 410);
             }
 
-            $full_description = $row['full_description'];   
-            if(isset($item)){
-                //check if type is product group or product
-                if($item['type'] == 'product group'){
-                    //check for image list from product_groups_images_xref
-                    $item_images = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = '" . $item['id'] . "'";
-                    $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
-                } else {
-                    //check for image list from products_images_xref
-                    $item_images = "SELECT product,file_name FROM products_images_xref WHERE product = '" . $item['id'] . "'";
-                    $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
-                }
-            }
-            //if code has ^^image_loop_start^^ and ^^image_url^^ and ^^image_loop_end^^. with these we can make an ease loop
-            if( (strpos($row['code'], '^^image_url^^') !== false)&&
-                (strpos($row['code'], '^^image_loop_start^^') !== false)&&
-                (strpos($row['code'], '^^image_loop_end^^') !== false)
-            ){        
-                $code_header_position = strpos($row['code'], '^^image_loop_start^');//number
-                $code_content_position = strpos($row['code'], '^^image_url^^');
-                $code_footer_position = strpos($row['code'], '^^image_loop_end^');//number
-                $code_header = substr( $row['code'], 0 ,strpos($row['code'], '^^image_loop_start^') );
-                $code_content_raw = substr( $row['code'], (strpos($row['code'], '^^image_loop_start^') + 20) , (strpos($row['code'], '^^image_loop_end^') - strpos($row['code'], '^^image_loop_start^')  - 20) );
-                $code_footer = substr($row['code'], strpos($row['code'], '^^image_loop_end^') + 18 );
+            $full_description = $row['full_description'];
+            $code = $row['code'];
 
-                
-                //if product image xref or product group  xref exist. this mean this selected multiple product image
-                if(isset($image_results) && mysqli_num_rows($image_results) != 0){
-                    while ($image = mysqli_fetch_assoc($image_results)){
-                        $code_content .= str_replace("^^image_url^^", PATH . encode_url_path($image['file_name']) , $code_content_raw );
-                    }
-                    $item['code'] = $code_header.$code_content.$code_footer;
-                }else{
-                    //else if less an image selected and only one image selected, but there is code for action we output single image
-                    if($item['image_name']){
-                        $code_single_content = str_replace("^^image_url^^", PATH . encode_url_path($item['image_name']) , $code_content_raw );
-                        $item['code'] = $code_header.$code_single_content.$code_footer;
-                    }else{
-                        $item['code'] ='';
-                    }
+            // The code block may carry an image loop (^^image_loop_start^^ ... ^^image_url^^ ... ^^image_loop_end^^)
+            // that is repeated once for every image attached to this product group.
+            if (
+                (strpos($code, '^^image_url^^') !== false)
+                && (strpos($code, '^^image_loop_start^^') !== false)
+                && (strpos($code, '^^image_loop_end^^') !== false)
+            ) {
+                $code_header = substr($code, 0, strpos($code, '^^image_loop_start^^'));
+                $code_content_raw = substr($code, (strpos($code, '^^image_loop_start^^') + 20), (strpos($code, '^^image_loop_end^^') - strpos($code, '^^image_loop_start^^') - 20));
+                $code_footer = substr($code, strpos($code, '^^image_loop_end^^') + 18);
+                $code_content = '';
+
+                $image_results = mysqli_query(db::$con, "SELECT file_name FROM product_groups_images_xref WHERE product_group = '" . escape($current_product_group_id) . "'") or output_error('Query failed.');
+
+                while ($image = mysqli_fetch_assoc($image_results)) {
+                    $code_content .= str_replace('^^image_url^^', PATH . encode_url_path($image['file_name']), $code_content_raw);
                 }
-            }else{
-                // else there is no code spacial elements so we output direct code.
-                $item['code'] = $row['code'];
+
+                // Without attached images fall back to the group's own image.
+                if (($code_content == '') && ($row['image_name'] != '')) {
+                    $code_content = str_replace('^^image_url^^', PATH . encode_url_path($row['image_name']), $code_content_raw);
+                }
+
+                // A loop with nothing to show outputs no code at all.
+                $code = ($code_content != '') ? $code_header . $code_content . $code_footer : '';
             }
             
             if ($full_description and $editable) {

@@ -227,7 +227,7 @@ function get_search_results($properties) {
                         $increment_value = mb_substr_count(mb_strtolower($pregion_content), mb_strtolower($query));
                         
                         if($increment_value != 0) {
-                            $pages[$this_page_id] = $pages[$this_page_id] + $increment_value;
+                            $pages[$this_page_id] = (isset($pages[$this_page_id]) ? $pages[$this_page_id] : 0) + $increment_value;
                         }
                     }
                 }
@@ -314,7 +314,7 @@ function get_search_results($properties) {
                 $get_access_control = get_access_control_type($comment['page_folder']);
                 
                 // if the user is logged in, and if this is a private page, then check to see if the user has view access
-                if (($_SESSION['sessionusername'] != '') && ($get_access_control == 'private')) {
+                if ((($_SESSION['sessionusername'] ?? '') != '') && ($get_access_control == 'private')) {
                     $access_check = check_private_access($comment['page_folder']);
 
                     // if the user is a manger or above, or if this is a basic user and if they have access to view the page, then allow access
@@ -330,7 +330,7 @@ function get_search_results($properties) {
                     $increment_value = $increment_value + mb_substr_count(mb_strtolower($comment['message']), mb_strtolower($query));
                     
                     // add comment to the array
-                    $pages_with_comment_matches[$comment['page_id']] = $pages_with_comment_matches[$comment['page_id']] + $increment_value;
+                    $pages_with_comment_matches[$comment['page_id']] = (isset($pages_with_comment_matches[$comment['page_id']]) ? $pages_with_comment_matches[$comment['page_id']] : 0) + $increment_value;
                 }
             }
             
