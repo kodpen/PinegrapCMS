@@ -41,14 +41,9 @@ switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
         $sort_column = 'timestamp';
 }
 
+// Newest first until a column heading is clicked.
 if (isset($_GET['sort']) && $_GET['sort']) {
-    $asc_desc = isset($_GET['order']) ? $_GET['order'] : '';
-} else {
-    $asc_desc = 'asc';
-}
-
-if (($sort_column == 'sort_order') && (empty($_GET['order']))) {
-    $asc_desc = 'asc';
+    $asc_desc = sql_order_direction(isset($_GET['order']) ? $_GET['order'] : '');
 } else {
     $asc_desc = 'desc';
 }

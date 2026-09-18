@@ -178,9 +178,6 @@ if (!$_POST) {
     } else {
         $asc_desc = 'DESC';
     }
-    if((isset($_GET['sort']) && ($_GET['sort'] == 'log_timestamp')) && (!isset($_GET['order']) || !$_GET['order'])) {
-        $asc_desc = 'ASC';
-    }
 
     // Determine whether to include error_log entries (only for admins and if enabled in settings)
     $include_error_logs = (defined('USER_ROLE') && (USER_ROLE < 1) && !empty($_SESSION['software']['settings']['view_log']['error_log']));
@@ -766,7 +763,7 @@ if (!$_POST) {
     </script>
 </main>' . output_footer();
 
-     $liveform->remove_form('settings');
+     $liveform->remove_form();
 } else {
 
     
@@ -817,7 +814,7 @@ if (!$_POST) {
                 ))
             );
         } else {
-            $liveform->mark_error(lang('No site log were deleted'));
+            $liveform->mark_error('', lang('No site log were deleted'));
         }
     }
     
@@ -850,7 +847,7 @@ if (!$_POST) {
         if ($deleted > 0) {
             $liveform->add_notice(lang(array('string'=>'{var:1} error_log file(s) deleted.','vars'=>array($deleted))));
         } else {
-            $liveform->mark_error(lang('No error_log files were deleted.'));
+            $liveform->mark_error('', lang('No error_log files were deleted.'));
         }
     }
     

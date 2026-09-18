@@ -119,29 +119,29 @@ if (isset($_SESSION['software']['ads']['view_ads']['sort']) == false) {
 }
 
 switch (($_SESSION['software']['ads']['view_ads']['sort'] ?? '')) {
-    case 'Name':
+    case lang('Name'):
         $sort_column = 'ads.name';
         break;
         
-    case 'Ad Region':
+    case lang('Ad Region'):
         $sort_column = 'ad_regions.name';
         break;
         
-    case 'Display Type':
+    case lang('Display Type'):
         $sort_column = 'ad_regions.display_type';
         break;
 
-    case 'Created':
+    case lang('Created'):
         $sort_column = 'ads.created_timestamp';
         break;
 
-    case 'Last Modified':
+    case lang('Last Modified'):
         $sort_column = 'ads.last_modified_timestamp';
         break;
 
     default:
         $sort_column = 'ads.last_modified_timestamp';
-        $_SESSION['software']['ads']['view_ads']['sort'] = 'Last Modified';
+        $_SESSION['software']['ads']['view_ads']['sort'] = lang('Last Modified');
         $_SESSION['software']['ads']['view_ads']['order'] = 'desc';
         break;
 }
@@ -250,13 +250,13 @@ if ($ads) {
 
         $created_username = '';
         
-        if ($ad['created_username'] != '') {
+        if (isset($ad['created_username']) && ($ad['created_username'] != '')) {
             $created_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($ad['created_username']) ) ) );
         }
         
         $last_modified_username = '';
         
-        if ($product_attribute['last_modified_username'] != '') {
+        if (isset($ad['last_modified_username']) && ($ad['last_modified_username'] != '')) {
             $last_modified_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($ad['last_modified_username']) ) ) );
         }
 

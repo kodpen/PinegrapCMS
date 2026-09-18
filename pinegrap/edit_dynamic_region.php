@@ -63,7 +63,7 @@ if (!isset($_POST['name'])) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 col-md-6 my-2">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Designer Region'))) . '</label>
+                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Dynamic Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<dregion>') . '</div>
                                                 <input value="' . h($dregion_name) . '" name="name" id="name" type="text" class="form-control" maxlength="100" />

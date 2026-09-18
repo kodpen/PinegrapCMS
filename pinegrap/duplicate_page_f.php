@@ -167,6 +167,10 @@ function duplicate_page($request) {
 
     $original_page_name = $page_name;
 
+    // Single page duplicates pass only the page id.
+    $request['find_replace_keywords'] = $request['find_replace_keywords'] ?? '';
+    $request['folder'] = $request['folder'] ?? 0;
+
     if ($request['find_replace_keywords']) {
 
         require_once(dirname(__FILE__) . '/find_replace.php');
@@ -321,7 +325,7 @@ function duplicate_page($request) {
     update_tag_cloud_keywords_for_page($new_page['id'], $page_search, $page_search_keywords, 0, '');
 
     // get region info
-    $result=mysqli_query(db::$con, "SELECT pregion_content, pregion_order, collection FROM pregion WHERE pregion_page = '" . e($page_id) . "' ORDER BY pregion_order") or die ('Query failed');
+    $result=mysqli_query(db::$con, "SELECT pregion_content, pregion_order, collection FROM pregion WHERE pregion_page = '" . e($page_id) . "' ORDER BY pregion_order") or output_error('Query failed');
     // create duplicate regions
     while($row=mysqli_fetch_array($result)) {
 

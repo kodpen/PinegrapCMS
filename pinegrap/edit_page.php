@@ -2654,10 +2654,10 @@ if (!$_POST) {
                     </div>
                 </div>';
 
-            // If commerce is enabled, then output grant offer rows.
-            if (ECOMMERCE) {
+            // If commerce is enabled and the user has access to commerce, then output grant offer rows.
+            if ((ECOMMERCE) && (USER_MANAGE_ECOMMERCE)) {
                 $output_forms_page_type_properties .=
-                    '<div class="col-12 my-2" id="custom_form_offer_row" style="' . $custom_form_private_row_style . '">
+                    '<div class="col-12 my-2" id="custom_form_offer_row" style="' . $custom_form_offer_row_style . '">
                         <div class="form-check form-switch">
                             <input value="1"' . $custom_form_offer_checked . ' id="custom_form_offer" name="custom_form_offer" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#toggle_custom_form_offer" />
                             <label class="form-check-label" for="custom_form_offer">' . lang('Grant Offer') . '</label>
@@ -4025,6 +4025,12 @@ if (!$_POST) {
                 }
             }
             
+            // The current form flags are only looked up inside the matching
+            // page type case below, but the form designer redirect test reads
+            // them for every page type.
+            $current_shipping_address_and_arrival_form = '';
+            $current_billing_information_form = '';
+
             // if we can update the page type, then update page type and tag cloud table if needed
             if ($update_page_type == true) {
                 // if the page type was changed and the original page type was a search results page type, then remove the keywords for the products and product groups if there are any to remove
@@ -4475,7 +4481,7 @@ if (!$_POST) {
                             "SELECT
                                default_view
                             FROM calendar_view_pages
-                            WHERE id = '" . e($_POST['id'] ?? '') . "'";
+                            WHERE page_id = '" . e($_POST['id'] ?? '') . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
@@ -4833,7 +4839,7 @@ if (!$_POST) {
         // if sitemap was enabled and the selected page type is a valid page type for the sitemap,
         // then include this page in the sitemap
         if (
-            ($_POST['sitemap'] == 1)
+            (($_POST['sitemap'] ?? 0) == 1)
             &&
             (
                 ($_POST['type'] == 'standard')

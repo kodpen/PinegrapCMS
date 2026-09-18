@@ -146,6 +146,9 @@ if (!$_POST['name']) {
         }
     }
     
+    // assume that a child item does not exist until we find out otherwise
+    $child_exists = false;
+
     // is there a child folder in this folder?
     $query = "SELECT folder_id FROM folder WHERE folder_parent = '" . escape($_GET['id']) . "' LIMIT 1";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed');
@@ -369,7 +372,22 @@ if (!$_POST['name']) {
         // if parent has changed then execute
         if ($folder != $row['folder_parent'])
         {
-            
+            // Refuse a move into the folder itself or into its own subtree:
+            // select_folder() hides those options, but the posted value is
+            // not bound to the form. A cycle would detach the branch from the
+            // root and make change_level() recurse without end. The walk keeps
+            // a visited set so an already broken chain cannot loop either.
+            $moved_folder_id = (int) ($_POST['id'] ?? 0);
+            $ancestor_id = (int) $folder;
+            $visited_folder_ids = array();
+            while (($ancestor_id > 0) && (isset($visited_folder_ids[$ancestor_id]) == false)) {
+                if ($ancestor_id == $moved_folder_id) {
+                    output_error(lang(array('string'=>'A folder cannot be moved into itself ({var:1}).','vars'=>array(h(trim($_POST['name']))))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+                }
+                $visited_folder_ids[$ancestor_id] = true;
+                $ancestor_id = (int) db_value("SELECT folder_parent FROM folder WHERE folder_id = '" . e($ancestor_id) . "'");
+            }
+
             // find level of folder being moved
             $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
             $row=mysqli_fetch_array($result);

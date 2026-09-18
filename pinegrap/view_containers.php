@@ -24,6 +24,21 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_containers');
 
+// if sort was set, update session
+if (isset($_REQUEST['sort'])) {
+    // store sort in session
+    $_SESSION['software']['ecommerce']['view_containers']['sort'] = $_REQUEST['sort'];
+
+    // clear order
+    $_SESSION['software']['ecommerce']['view_containers']['order'] = '';
+}
+
+// if order was set, update session
+if (isset($_REQUEST['order'])) {
+    // store order in session
+    $_SESSION['software']['ecommerce']['view_containers']['order'] = sql_order_direction($_REQUEST['order'], '');
+}
+
 // if the sort is not set yet, then default it to empty so that the switch below falls
 // through to its default case
 if (isset($_SESSION['software']['ecommerce']['view_containers']['sort']) == false) {

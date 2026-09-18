@@ -188,7 +188,7 @@ if (!$_POST) {
     
     // if there is an error, forward user back to edit menu screen
     if ($liveform->check_form_errors() == true) {
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_menu_item.php?menu_id=' . $menu_id . '&from=' . urlencode($_POST['from']) . '&send_to=' . urlencode($_POST['send_to']));
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_menu_item.php?menu_id=' . $menu_id . '&from=' . urlencode($_POST['from'] ?? '') . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
         exit();
     }
     

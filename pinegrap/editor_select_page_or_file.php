@@ -103,25 +103,25 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
         }
 
         switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
-            case 'URL':
+            case lang('URL'):
                 $sort_column = 'url';
                 break;
 
-            case 'Folder':
+            case lang('Folder'):
                 $sort_column = 'folder_name';
                 break;
                 
-            case 'Page Type':
+            case lang('Page Type'):
                 $sort_column = 'page_type';
                 break;
 
-            case 'Last Modified':
+            case lang('Last Modified'):
                 $sort_column = 'last_modified_timestamp';
                 break;
 
             default:
                 $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['editor_select_page_or_file']['sort'] = 'Last Modified';
+                $_SESSION['software']['editor_select_page_or_file']['sort'] = lang('Last Modified');
                 $_SESSION['software']['editor_select_page_or_file']['order'] = 'desc';
                 break;
         }
@@ -245,25 +245,25 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
         }
 
         switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
-            case 'URL':
+            case lang('URL'):
                 $sort_column = 'url';
                 break;
 
-            case 'Folder':
+            case lang('Folder'):
                 $sort_column = 'folder_name';
                 break;
                 
-            case 'Size':
+            case lang('Size'):
                 $sort_column = 'size';
                 break;
 
-            case 'Last Modified':
+            case lang('Last Modified'):
                 $sort_column = 'last_modified_timestamp';
                 break;
 
             default:
                 $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['editor_select_page_or_file']['sort'] = 'Last Modified';
+                $_SESSION['software']['editor_select_page_or_file']['sort'] = lang('Last Modified');
                 $_SESSION['software']['editor_select_page_or_file']['order'] = 'desc';
                 break;
         }
@@ -393,25 +393,25 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
         }
 
         switch (($_SESSION['software']['editor_select_page_or_file']['sort'] ?? '')) {
-            case 'URL':
+            case lang('URL'):
                 $sort_column = 'url';
                 break;
 
-            case 'Destination URL':
+            case lang('Destination URL'):
                 $sort_column = 'destination_url';
                 break;
 
-            case 'Folder':
+            case lang('Folder'):
                 $sort_column = 'folder_name';
                 break;
 
-            case 'Last Modified':
+            case lang('Last Modified'):
                 $sort_column = 'last_modified_timestamp';
                 break;
 
             default:
                 $sort_column = 'last_modified_timestamp';
-                $_SESSION['software']['editor_select_page_or_file']['sort'] = 'Last Modified';
+                $_SESSION['software']['editor_select_page_or_file']['sort'] = lang('Last Modified');
                 $_SESSION['software']['editor_select_page_or_file']['order'] = 'desc';
                 break;
         }

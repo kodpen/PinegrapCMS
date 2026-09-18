@@ -142,6 +142,8 @@ switch ($filter) {
             $slideshow_continuous = $row['slideshow_continuous'];
             $created_timestamp = $row['created_timestamp'];
             $last_modified_timestamp = $row['last_modified_timestamp'];
+            $created_username = '';
+            $last_modified_username = '';
             
             if (isset($row['created_username']) == TRUE) {
                 $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['created_username']) ) ) );
@@ -338,6 +340,8 @@ switch ($filter) {
             $logged_in_footer = $row['logged_in_footer'];
             $created_timestamp = $row['created_timestamp'];
             $last_modified_timestamp = $row['last_modified_timestamp'];
+            $created_username = '';
+            $last_modified_username = '';
             
             if (isset($row['created_username']) == TRUE) {
                 $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['created_username']) ) ) );
