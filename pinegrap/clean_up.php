@@ -196,7 +196,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
     $files[] = $row['name']; 
 }
-// get files from files/ directory
+// Get the files stored in the upload directory.
 foreach(glob(FILE_DIRECTORY_PATH . '/*.*') as $directory_file) {
     // Keep only the base name so it can be compared with the files table.
     $directory_files[] = basename($directory_file);
@@ -349,11 +349,14 @@ if (!$_POST) {
     $output_counter_info = '';
     $deleted_names = array();
 
+    // Orphans were detected under FILE_DIRECTORY_PATH, so delete them there.
+    // Re-check the file right before unlinking so a concurrent upload or a
+    // file removed elsewhere does not emit a warning.
     foreach($file_directory_files_diff as $file){
-        if($file){
-            unlink('files/'. $file);
+        $orphan_path = FILE_DIRECTORY_PATH . '/' . $file;
+        if($file && is_file($orphan_path) && unlink($orphan_path)){
             $file_counter++;
-            $deleted_names[] = 'files/' . $file;
+            $deleted_names[] = 'data/files/' . $file;
         }
     }
 
