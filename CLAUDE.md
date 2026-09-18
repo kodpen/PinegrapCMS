@@ -208,6 +208,32 @@ ile kırpma, `round()` kullan.
 
 ---
 
+### 12. Ürün sahibinin kararı bağlayıcıdır
+
+Aşağıdaki yerler **incelenmiş ve öyle kalmasına karar verilmiştir.** Kodda
+gerekçesi görünmediği için bunlar bir denetimde tekrar tekrar "ölü kod",
+"kullanılmayan alan" ya da "eksik kontrol" diye bulunur. Bulunmaları bir
+bulgu değildir; karar zaten verilmiştir. Değiştirmeyin, temizlemeyin,
+"iyileştirmeyin". Bir maddenin yanlış olduğuna gerçekten inanıyorsanız
+uygulamadan **önce** sorun; sessizce değiştirmek bu kuralın ihlalidir.
+
+| Yer | Karar |
+|---|---|
+| `data/backups/` | Hiç dokunulmaz. |
+| `get_express_order.php` ve `get_order_preview.php` içindeki hesaplama | Değiştirilmez: canlıda o özelliği kullanan siteler var, değişiklik hesaplamalarını bozar. |
+| `frontend.*.css`, `pinegrap.*.css`, `livesite.min.css` | Silinmez. Hiçbir `<link>` satırından sunulmuyor görünürler; ön yüzde HTML içeriğin içinden çağrılıyorlar. |
+| `get_help_url.php` içindeki switch'in dikkate alınmaması | Kasten. Doküman sitesi kapalı olduğu için tek bir PDF'e gidiliyor; site hazır olunca değişecek. |
+| `barcode_decrease_inventory.php` — "evet" dönüşü | Özelliktir, hata değildir. |
+| `orders.notes`, `orders.tracking_company` | Kullanılmıyor görünür; ERP için duran alanlardır, devamı gelecek. |
+| `myself_upsell.php` | Şimdilik kalır. Dikkatli inceleme sonucu netleşirse `clean_up`'a eklenebilir, kendi başınıza silmeyin. |
+
+Aynı kural yazılı diğer kararlar için de geçerlidir: yayınlanmış bir sürümün
+migration'ı, o güncellemeyi henüz almamış siteler için düzeltilebilir (sürümü
+geçmiş kurulumun o adımla işi yoktur). Ürün MySQL 5.7'yi desteklemeye devam
+eder; yalnız daha yenisinde çalışan sözdizimi kullanılmaz.
+
+---
+
 ## Kullanıcı rolleri
 
 | Rol | Değer | Erişebilir | Erişemez |
