@@ -68,12 +68,6 @@ Yöneticisi'nin `explorer_short_link_create` / `explorer_short_link_duplicate`
 eylemleri sunucu tarafında rol 3'ü reddeder; menüdeki ve liste ekranındaki
 "Oluştur" ile sayfa bilgi kartındaki eylem rol 3'e gösterilmez. Mevcut
 bağlantıları düzenleme ve silme (`edit_short_link.php`) değişmedi.
-
-### Doğrulama
-
-`php -l` dokunulan dokuz PHP dosyasında temiz; `php tools/lint.php` ve
-`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: CLI koşusu,
-`job.php` dağıtım yolu ve anonim GET'in reddi tarayıcıda denenmedi.
 `includes/` değiştiği için yayından önce bütünlük özeti yeniden üretilmeli.
 
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
