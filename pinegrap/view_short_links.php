@@ -119,7 +119,7 @@ if (USER_ROLE == 3) {
             default:
                 // If the user does not have edit access to the page's folder, then remove short link.
                 if (check_folder_access_in_array($short_link['folder_id'], $folders_that_user_has_access_to) == false) {
-                    unset($short_link);
+                    unset($short_links[$key]);
                 }
 
                 break;
@@ -127,7 +127,7 @@ if (USER_ROLE == 3) {
             case 'url':
                 // If this user is not the user that created the short link, then remove short link.
                 if (USER_USERNAME != $short_link['created_username']) {
-                    unset($short_link);
+                    unset($short_links[$key]);
                 }
 
                 break;

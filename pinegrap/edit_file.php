@@ -642,7 +642,7 @@ $liveform->remove_form('edit_file');
     validate_token_field();
 
     $file_id = escape($_POST['id'] ?? '');
-    $result = mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . $file_id . "'") or output_error('Query failed');
+    $result = mysqli_query(db::$con, "SELECT name, folder FROM files WHERE id = '" . $file_id . "'") or output_error('Query failed');
     $row = mysqli_fetch_array($result);
 
     $name = prepare_file_name($_POST['name']);
@@ -681,6 +681,21 @@ $liveform->remove_form('edit_file');
 
     if ((trim((string) $_POST['name']) !== (string) $row['name']) && pg_upload_name_blocked($_POST['name'])) {
         output_error(h(pg_upload_blocked_message($_POST['name'])) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    // DESTINATION FOLDER
+    //
+    // The check at the top of the file covers the folder the file is in now.
+    // Every write below that stores $_POST['folder'] -- the WebP copy, the
+    // raster copy and the save itself -- would otherwise land the file in a
+    // folder the user has no edit rights to.
+    if (
+        isset($_POST['folder'])
+        && ((int) $_POST['folder'] != (int) $row['folder'])
+        && (check_edit_access($_POST['folder']) == false)
+    ) {
+        log_activity(lang('access denied because user does not have access to modify folder'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // DESIGN FIELD

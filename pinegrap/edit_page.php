@@ -25,8 +25,14 @@ $liveform = new liveform('edit_page');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The folder check below decides who may edit or delete the page, so it has
+// to run on the id the handler further down reads: $_POST for a submit, $_GET
+// for the form. $_REQUEST can also be fed by a cookie of the same name, which
+// would let the check pass on one page while the handler changes another.
+$requested_page_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
+
 // get page's folder in order to validate folder access
-$result = mysqli_query(db::$con, "SELECT page_id, page_folder FROM page WHERE page_id = '" . escape($_REQUEST['id']) . "'") or output_error('Query failed.');
+$result = mysqli_query(db::$con, "SELECT page_id, page_folder FROM page WHERE page_id = '" . escape($requested_page_id) . "'") or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 if (!$row['page_id']) {
@@ -3933,6 +3939,54 @@ if (!$_POST) {
             exit();
         }
         
+        // The gate at the top of the file covers the folder the page is in
+        // now; moving the page needs edit rights to the destination as well,
+        // the same check add_page.php makes for a new page.
+        if (
+            ((int) $current_page_folder != (int) ($_POST['folder'] ?? 0))
+            && (check_edit_access($_POST['folder'] ?? '') == false)
+        ) {
+            log_activity(lang('access denied because user does not have access to modify folder'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // Whether this user may set a page to the given type: roles above
+        // basic user may set any type, a basic user needs the matching flag.
+        // add_page.php applies the same list to a new page.
+        $user_can_set_page_type = function ($page_type) use ($user) {
+            return (
+                ($user['role'] < 3)
+                || ($page_type == 'standard')
+                || (($page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
+                || (($page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
+                || (($page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
+                || (($page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
+                || (($page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
+                || (($page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
+                || (($page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
+                || (($page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
+                || (($page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
+                || (($page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
+                || (($page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
+                || (($page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
+                || (($page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
+                || (($page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
+                || (($page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
+                || (($page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
+                || (($page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
+                || (($page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
+                || (($page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
+                || (($page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
+            );
+        };
+
+        // A type the software does not know would not fit the page_type
+        // column, so the page keeps its current type instead. The value is
+        // read from $_POST in every step below, so it is corrected there.
+        if (get_page_type_name((string) ($_POST['type'] ?? '')) === null) {
+            $_POST['type'] = $current_page_type;
+        }
+
         // if the page type is catalog or catalog detail then check the name for slashes
         if (($_POST['type'] == 'catalog') || ($_POST['type'] == 'catalog detail')) {
             // if there is a slash in the page name, then output an error
@@ -3984,30 +4038,13 @@ if (!$_POST) {
             $pretty_urls_old = check_if_pretty_urls_are_enabled($_POST['id']);
         }
         
-        // if user is above a user role or current page type is accessible by this user, then prepare to save page type
+        // If the user may set the current page type, and the type the page is
+        // being changed to as well, then prepare to save page type. The second
+        // test is what keeps a basic user from turning a standard page into a
+        // type they were never given.
         if (
-            ($user['role'] < 3)
-            || ($current_page_type == 'standard')
-            || (($current_page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-            || (($current_page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-            || (($current_page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-            || (($current_page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-            || (($current_page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-            || (($current_page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-            || (($current_page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-            || (($current_page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-            || (($current_page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-            || (($current_page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-            || (($current_page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-            || (($current_page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-            || (($current_page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-            || (($current_page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-            || (($current_page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-            || (($current_page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-            || (($current_page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-            || (($current_page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-            || (($current_page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-            || (($current_page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
+            $user_can_set_page_type($current_page_type)
+            && (($_POST['type'] == $current_page_type) || $user_can_set_page_type($_POST['type']))
         ) {
             // assume that we can update the page type until we find out otherwise
             $update_page_type = true;
