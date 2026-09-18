@@ -26,7 +26,7 @@ window.pgLang = function (key) {
         localStorage.setItem("pinegrap backend color scheme", theme);
         document.cookie = `prefers-color-scheme=${resolvedTheme}`;
 
-        // CodeMirror temasını buradan güncellemek için bir fonksiyon tetikleyelim
+        // Push the resolved theme to every CodeMirror instance on the page.
         updateCodeMirrorTheme(resolvedTheme);
     };
 
@@ -233,7 +233,7 @@ $(document).ready(function () {
                     if (value == 'Export Orders For Parasut') {
                         $('#xlsl_setup_modal').modal('hide');
                         //reload this page to show user exported orders.
-                        $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: ##e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
+                        $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
                         $('body').attr('style', 'overflow:hidden');
                         setTimeout(function () {
                             window.location.reload();
@@ -420,13 +420,13 @@ $(document).ready(function () {
     $('form:not(.disable_shortcut)').each(function () {
         var form = $(this);
 
-        // Hedef butonun name'i form attribute'undan okunur, yoksa 'submit_save'
+        // The target button name comes from the form's submitshortcut attribute, default 'submit_save'.
         var shortcutName = form.attr('submitshortcut') || 'submit_save';
 
-        // Öncelikle bu name'e sahip butonu bul
+        // Look for the button with that name first.
         var button = form.find('button[name="' + shortcutName + '"]');
 
-        // Eğer bulunamazsa fallback olarak ilk submit butonunu al
+        // Fall back to the first submit button when there is none.
         if (!button.length) {
             button = form.find('[type=submit]:first');
         }
@@ -2723,14 +2723,12 @@ function tagin(el, option = {}) {
 
 
 function prepare_content_for_html(content) {
-    var chars = new Array('&', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '\"', '�', '<', '>', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�', '�');
+    var chars = new Array('&', '\u00e0', '\u00e1', '\u00e2', '\u00e3', '\u00e4', '\u00e5', '\u00e6', '\u00e7', '\u00e8', '\u00e9', '\u00ea', '\u00eb', '\u00ec', '\u00ed', '\u00ee', '\u00ef', '\u00f0', '\u00f1', '\u00f2', '\u00f3', '\u00f4', '\u00f5', '\u00f6', '\u00f8', '\u00f9', '\u00fa', '\u00fb', '\u00fc', '\u00fd', '\u00fe', '\u00ff', '\u00c0', '\u00c1', '\u00c2', '\u00c3', '\u00c4', '\u00c5', '\u00c6', '\u00c7', '\u00c8', '\u00c9', '\u00ca', '\u00cb', '\u00cc', '\u00cd', '\u00ce', '\u00cf', '\u00d0', '\u00d1', '\u00d2', '\u00d3', '\u00d4', '\u00d5', '\u00d6', '\u00d8', '\u00d9', '\u00da', '\u00db', '\u00dc', '\u00dd', '\u00de', '\u20ac', '\u0022', '\u00df', '\u003c', '\u003e', '\u00a2', '\u00a3', '\u00a4', '\u00a5', '\u00a6', '\u00a7', '\u00a8', '\u00a9', '\u00aa', '\u00ab', '\u00ac', '\u00ad', '\u00ae', '\u00af', '\u00b0', '\u00b1', '\u00b2', '\u00b3', '\u00b4', '\u00b5', '\u00b6', '\u00b7', '\u00b8', '\u00b9', '\u00ba', '\u00bb', '\u00bc', '\u00bd', '\u00be');
 
     var entities = new Array('amp', 'agrave', 'aacute', 'acirc', 'atilde', 'auml', 'aring', 'aelig', 'ccedil', 'egrave', 'eacute', 'ecirc', 'euml', 'igrave', 'iacute', 'icirc', 'iuml', 'eth', 'ntilde', 'ograve', 'oacute', 'ocirc', 'otilde', 'ouml', 'oslash', 'ugrave', 'uacute', 'ucirc', 'uuml', 'yacute', 'thorn', 'yuml', 'Agrave', 'Aacute', 'Acirc', 'Atilde', 'Auml', 'Aring', 'AElig', 'Ccedil', 'Egrave', 'Eacute', 'Ecirc', 'Euml', 'Igrave', 'Iacute', 'Icirc', 'Iuml', 'ETH', 'Ntilde', 'Ograve', 'Oacute', 'Ocirc', 'Otilde', 'Ouml', 'Oslash', 'Ugrave', 'Uacute', 'Ucirc', 'Uuml', 'Yacute', 'THORN', 'euro', 'quot', 'szlig', 'lt', 'gt', 'cent', 'pound', 'curren', 'yen', 'brvbar', 'sect', 'uml', 'copy', 'ordf', 'laquo', 'not', 'shy', 'reg', 'macr', 'deg', 'plusmn', 'sup2', 'sup3', 'acute', 'micro', 'para', 'middot', 'cedil', 'sup1', 'ordm', 'raquo', 'frac14', 'frac12', 'frac34');
 
     for (var i = 0; i < chars.length; i++) {
-        myRegExp = new RegExp();
-        myRegExp.compile(chars[i], 'g');
-        content = content.replace(myRegExp, '&' + entities[i] + ';');
+        content = content.split(chars[i]).join('&' + entities[i] + ';');
     }
 
     return content;
@@ -4784,7 +4782,7 @@ function change_page_type(page_type) {
         )
     ) {
 
-        $("#create_button").value = "Save & Continue";
+        $("#create_button").val("Save & Continue");
         $("#create_button .btn-text").text(lang("Save & Continue"));
 
         // else the submit button should contain the normal "Save"
@@ -4807,7 +4805,7 @@ function show_or_hide_billing_information_custom_billing_form() {
     // if the form is enabled and the form was not originally enabled, then show notice and update the submit button to contain "Save & Continue"
     if ((document.getElementById('billing_information_form').checked == true) && (original_billing_information_form != 1)) {
         document.getElementById('billing_information_form_notice').style.display = '';
-        $("#create_button").value = "Save & Continue";
+        $("#create_button").val("Save & Continue");
         $("#create_button .btn-text").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
@@ -4827,7 +4825,7 @@ function toggle_express_order_custom_shipping_form() {
         original_express_order_shipping_form != 1
     ) {
         document.getElementById('express_order_shipping_form_notice').style.display = '';
-        $("#create_button").value = "Save & Continue";
+        $("#create_button").val("Save & Continue");
         $("#create_button .btn-text").text(lang("Save & Continue"));
         // Otherwise the form is disabled or the form was already enabled, so do not show notice and
         // update the submit button to contain "Save"
@@ -4850,7 +4848,7 @@ function show_or_hide_express_order_custom_billing_form() {
     // if the form is enabled and the form was not originally enabled, then show notice and update the submit button to contain "Save & Continue"
     if ((document.getElementById('express_order_form').checked == true) && (original_express_order_form != 1)) {
         document.getElementById('express_order_form_notice').style.display = '';
-        $("#create_button").value = "Save & Continue";
+        $("#create_button").val("Save & Continue");
         $("#create_button .btn-text").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
@@ -4875,7 +4873,7 @@ function show_or_hide_custom_shipping_form() {
     // if the form is enabled and the form was not originally enabled, then show notice and update the submit button to contain "Save & Continue"
     if ((document.getElementById('shipping_address_and_arrival_form').checked == true) && (original_shipping_address_and_arrival_form != 1)) {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = '';
-        $("#create_button").value = "Save & Continue";
+        $("#create_button").val("Save & Continue");
         $("#create_button .btn-text").text(lang("Save & Continue"));
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
@@ -5916,7 +5914,7 @@ function initialize_style_designer() {
 
 function generateIndexNowKey() {
     try {
-        // UUID üretimi (tarayıcı destekliyorsa)
+        // Prefer a real UUID when the browser supports it.
         if (typeof crypto.randomUUID === "function") {
             const uuidPart = crypto.randomUUID().replace(/-/g, "");
             const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
@@ -6125,9 +6123,7 @@ function editBarcodeTemplate(opts) {
             $btn.prop('disabled', true).text(_L('Saving...'));
             var templateJson = JSON.stringify(editor.getTemplate());
 
-            var apiUrl = (typeof OUTPUT_PATH !== 'undefined' && typeof SOFTWARE_DIRECTORY !== 'undefined')
-                ? OUTPUT_PATH + SOFTWARE_DIRECTORY + '/api.php'
-                : 'api.php';
+            var apiUrl = pg_api_url();
 
             fetch(apiUrl, {
                 method: 'POST',
@@ -6988,11 +6984,11 @@ function bindPageIndexingSwitches(ids) {
     /* ═══════════════════════════════════════════════════════════════════
        HELPER UTILITIES
     ═══════════════════════════════════════════════════════════════════ */
-    const PG_BARCODE_API = (typeof SOFTWARE_DIRECTORY !== 'undefined')
-        ? (typeof OUTPUT_PATH !== 'undefined' ? OUTPUT_PATH : '/') + SOFTWARE_DIRECTORY + '/api.php'
-        : 'api.php';
+    // pg_api_url() and the software_token global are defined by the backend
+    // header script; the function declaration is hoisted, so it is available here.
+    const PG_BARCODE_API = pg_api_url();
 
-    const PG_TOKEN = (typeof SOFTWARE_TOKEN !== 'undefined') ? SOFTWARE_TOKEN : '';
+    const PG_TOKEN = (typeof software_token !== 'undefined') ? software_token : '';
 
     function api(action, data) {
         return fetch(PG_BARCODE_API, {
@@ -7480,7 +7476,7 @@ function bindPageIndexingSwitches(ids) {
                 inp.type = 'text'; inp.className = 'form-control form-control-sm';
                 inp.value = el.src || '';
                 inp.placeholder = pgLang('e.g. uploads/logo.png');
-                inp.addEventListener('change', () => { el.src = inp.value; self.render(); self._fireChange(); });
+                inp.addEventListener('change', () => { el.src = inp.value; this.render(); this._fireChange(); });
                 imgRow.appendChild(inp);
 
                 // File picker button — uses Pinegrap system picker if available
@@ -8131,13 +8127,8 @@ function pg_background_calls_allowed() {
     function sendHeartbeat() {
         var apiUrl = pg_api_url();
 
-        // Use software_token defined globally
-        var token = '';
-        if (typeof SOFTWARE_TOKEN !== 'undefined') {
-            token = SOFTWARE_TOKEN;
-        } else if (typeof software_token !== 'undefined') {
-            token = software_token;
-        }
+        // software_token is defined globally by the backend header script.
+        var token = (typeof software_token !== 'undefined') ? software_token : '';
 
         if (!token) return;
 

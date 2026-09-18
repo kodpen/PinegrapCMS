@@ -11981,7 +11981,6 @@
     "New Snapshot": "Yeni Snapshot",
     "No products match this selection.": "Bu seçim için ürün bulunamadı.",
     "Overflow": "Taşma",
-    "Padding": "İç Boşluk",
     "Please add one \"Use Page\" system region before continuing.": "Devam etmeden önce bir \"Sayfayı Kullan\" sistem bölgesi ekleyin.",
     "Please select a region name.": "Lütfen bir bölge adı seçin.",
     "Radial Gradient": "Radyal Gradyan",
@@ -12010,5 +12009,9 @@
     "Zoom in": "Yakınlaştır",
     "Zoom out": "Uzaklaştır",
     "custom_token_name": "ozel_token_adi",
-    "e.g. uploads/logo.png": "örn. uploads/logo.png"
+    "e.g. uploads/logo.png": "örn. uploads/logo.png",
+    "Help about the system tags": "Sistem etiketleri hakkında yardım",
+    "Toggle Fullscreen": "Tam ekranı aç/kapat",
+    "Console": "Konsol",
+    "The System Tags": "Sistem Etiketleri"
 }

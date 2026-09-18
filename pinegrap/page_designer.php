@@ -170,6 +170,10 @@ echo pg_page_shell(
                 "Creating":"' . lang('Creating') . '",
                 "Create & Add":"' . lang('Create & Add') . '",
                 "Please choose a region type to create":"' . lang('Please choose a region type to create') . '",
+                "Help about the system tags":"' . lang('Help about the system tags') . '",
+                "Toggle Fullscreen":"' . lang('Toggle Fullscreen') . '",
+                "Console":"' . lang('Console') . '",
+                "The System Tags":"' . lang('The System Tags') . '",
 
              
             }
