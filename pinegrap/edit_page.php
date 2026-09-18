@@ -282,6 +282,12 @@ if (!$_POST) {
         }
     }
     
+    // The page type area below is only prepared when this user may set the
+    // page's type; the form template prints these three either way.
+    $output_button_bar = '';
+    $output_page_type_selector = '';
+    $output_page_type_properties = '';
+
     // if user is above a user role or page type is accessible by this user, then prepare to output page type area
     if (
         ($user['role'] < 3)
@@ -507,7 +513,6 @@ if (!$_POST) {
         $custom_form_return_type_page_checked = '';
         $calendar_view_calendar_check_boxes = '';
         $calendar_event_view_calendar_check_boxes = '';
-        $output_button_bar = '';
 
         switch($page_type) {
             case 'email a friend':
