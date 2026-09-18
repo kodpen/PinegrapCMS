@@ -748,6 +748,65 @@ editöründe görsel URL değişimi ve API token'ı tarayıcıda denenmedi.
 `frontend.src.js` içindeki `prepare_content_for_html` kopyası aynı bozuk
 tabloyu taşıyor ve düzeltilmeyi bekliyor.
 
+## 2026.4.4 — Stil Tasarımcısı: paylaşımlı widget ağaçlarında düzenleme yolları ve varlık hijyeni (2026-09-18)
+
+**Belirti.** `assets/js/style_designer.js` içinde paylaşımlı/sistem widget
+ağaçları ayrı bir önbellekte (`_sharedCache`) tutulur, ama düzenleme
+yollarının çoğu düğümü yalnız ana sayfa ağacında arıyordu
+(`findNodeById(nodeId, tree)`, `findParentNode`). Sonuç: bir sistem widget'ı
+içindeki öğe seçilip özellik panelinden sınıf, metin, öznitelik, tablo
+seçenekleri veya nav "aktif" durumu değiştirildiğinde işleyici düğümü
+bulamıyor ve sessizce hiçbir şey yapmıyordu. Aynı sorun ağaç/kanvas sağ tık
+menüsündeki Çoğalt/Sil/Yapıştır'da, çoklu seçim Delete tuşunda, araç çubuğu
+silmesinde ve Ctrl+V'de vardı; denetim panelinin "Git" düğmesi ile kanvas
+rozetleri de widget içindeki düğümü seçemiyordu. `_sdRetargetLabels` ise
+`tree: null` girdileri atlayıp `_sharedDirty`'yi konumsal indeksle
+işaretlediği için yanlış widget'ı kirli sayabiliyordu. Ayrıca `_bcpClose`
+belge dinleyicisi her `bindPropEvents` çağrısında yeniden ekleniyor; başlangıç
+ağaçları `g-g-4` / `justify-content-space-between` gibi geçersiz sınıflar
+üretiyor; kutu modeli tıklama döngüsü Bootstrap 5'te olmayan `m-6…m-10`
+yazıyor; varlık panelinde dosya/font adları `esc()` olmadan `innerHTML`'e
+giriyor; api.php ve çıkış yedek adresleri `pinegrap/` ya da kök-mutlak yol
+varsayıyor, tema önizleme bağlantısı `/` ile başlıyordu — alt klasör
+kurulumlarında 404. `style_designer.css`'te tanımsız `--sd-border`, kesik
+`.sd-gf-list::-web` seçicisi ve 33 satır Türkçe yorum vardı; birkaç varlık
+dosyasının başlığı `PineGrap` yazıyor ve yorumlar iç belge referansı taşıyordu.
+
+**Düzeltme.** Tüm işleyiciler `_findNodeAnywhereById` / `_sdAnyParent` ile
+arar ve isabet aldığı ağacın sahibini `_sharedDirty[sid]` olarak işaretler;
+`_flushDirtyShared` değişmemiş ağaçları zaten atladığı için aramanın hemen
+ardından işaretlemek güvenlidir. Bu yollar artık paylaşımlı ağaçlara
+ulaşabildiğinden `onDelete`/`onDuplicate`'in `loop_area` koruması
+`_blockDeleteWithToast` ve yeni `_blockDuplicateWithToast` ile onlara da
+uygulanır; çoklu seçim geri alma taneciği değişmesin diye eylem başına tek
+`saveState()`/`render()` korunur, hedefler `onDelete`/`onDuplicate`'e tek tek
+yönlendirilmez. Yapıştırma hedefi yeni `_sdPasteTarget()` yardımcısından
+gelir. `_sdRetargetLabels` `{tree, sid}` çiftleri üzerinde döner. `_bcpClose`
+tek belge dinleyicisi olarak bir kez bağlanır ve açık açılır pencereyi tıklama
+anında çözer. Yedek adresler `(window.OUTPUT_PATH || '/') + software_directory`
+ile kurulur; `_pgExit` yedeği `_pgLeaveEmpty` ve `designer_screen.php` ile aynı
+`view_system_styles.php` hedefine alındı. Başlangıç ağaçları geçerli
+Bootstrap değerleri (`gutter '4'`, `justify 'between'`, `_attrs` ile style)
+kullanır; kutu modeli döngüsü `mkSpSel` ile aynı aralığa çekildi; varlık
+panelindeki tüm adlar `esc()` ile basılır. CSS'te `var(--sd-panel-border)`
+kullanıldı, kesik satır silindi, yorumlar İngilizceye çevrildi; başlıklar
+`Pinegrap` oldu. `chat_backend.min.js` yorumsuz olduğu için dokunulmadı.
+`data-table-responsive` sarma/çözme işleyicisi değiştirilmedi ve hâlâ yalnız
+sayfa ağacında çalışır.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` ve dokunulan JS dosyalarında
+`node --check` temiz. Çalışan örnek kurulmadı, Stil Tasarımcısı tarayıcıda
+açılmadı; paylaşımlı widget yolları ve alt klasör yedek adresleri yalnız kod
+okuma ve sözdizimi denetimiyle doğrulandı. Tema bağlantısı değişikliği
+`window.OUTPUT_PATH`'in `/` ile bittiğini varsayar (dosyadaki diğer
+kullanımlar gibi).
+
+**Açık kalan:** `data-table-responsive` sarma/çözme işleyicisi paylaşımlı
+ağaçlarda çalışmıyor; `style_designer.js` başlığındaki `PineGrap` yazımı ayrı
+i18n dalına bırakıldı.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

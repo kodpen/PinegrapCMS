@@ -3121,8 +3121,10 @@ const StyleDesigner = (function () {
                             && !hasLockedAncestor(n)
                             && !_isDeleteProtected(n);
                     }).forEach(function(n) {
-                        var p = findParent(n, tree);
-                        if (p) p.children = p.children.filter(function(c) { return c !== n; });
+                        var owner = _sdAnyParent(n);
+                        if (!owner) return;
+                        owner.parent.children = owner.parent.children.filter(function(c) { return c !== n; });
+                        if (owner.sid) _sharedDirty[owner.sid] = true;
                     });
                     selectedNodes = [];
                     selectedNode = null;
@@ -5497,7 +5499,8 @@ const StyleDesigner = (function () {
                     themeLink.rel = 'stylesheet';
                     canvasDoc.head.appendChild(themeLink);
                 }
-                themeLink.href = '/' + themeStr + '?t=' + new Date().getTime();
+                // Theme files are addressed from the site root, which is not "/" on a subfolder install.
+                themeLink.href = (window.OUTPUT_PATH || '/') + themeStr + '?t=' + new Date().getTime();
             } else if (themeLink) {
                 themeLink.remove();
             }
@@ -14090,6 +14093,17 @@ const StyleDesigner = (function () {
         }
         return true;
     }
+    // Loop_area is a singleton inside its system widget — duplicating it
+    // would orphan tokens and break the per-row render.
+    function _blockDuplicateWithToast(node) {
+        if (!_isDeleteProtected(node)) return false;
+        if (typeof sdToast === 'function') {
+            sdToast(node.type === 'loop_area'
+                ? _sdT('A loop area is a required part of the system widget — it cannot be copied.')
+                : _sdT('This area cannot be copied because it contains a loop area.'), 'warning');
+        }
+        return true;
+    }
 
     function onDelete(node) {
         if (!_sdMayEdit(node)) return;
@@ -14113,17 +14127,7 @@ const StyleDesigner = (function () {
         // Duplicating is adding: it belongs with delete and drag, not with
         // text. Ctrl+D and the toolbar button reached it without asking.
         if (!_sdMayEdit(node)) return;
-        // Loop_area is a singleton inside its system widget — duplicating
-        // it would orphan tokens and break the per-row render. Same guard
-        // as onDelete applies here.
-        if (_isDeleteProtected(node)) {
-            if (typeof sdToast === 'function') {
-                sdToast(node.type === 'loop_area'
-                    ? _sdT('A loop area is a required part of the system widget — it cannot be copied.')
-                    : _sdT('This area cannot be copied because it contains a loop area.'), 'warning');
-            }
-            return;
-        }
+        if (_blockDuplicateWithToast(node)) return;
         saveState();
         // Two parent-lookup strategies, mirroring onDelete:
         //   1. Main page tree (designer-edited tree)
@@ -18586,14 +18590,16 @@ const StyleDesigner = (function () {
                 saveState();
                 var lastCloned = null;
                 targets.forEach(function(tgt) {
+                    if (_blockDuplicateWithToast(tgt)) return;
                     var cloned = cloneTree(tgt);
                     (function reId(n) { n._id = gid(); if (n.children) n.children.forEach(reId); })(cloned);
-                    var parent = findParent(tgt, tree);
-                    if (parent) {
-                        var idx = parent.children.indexOf(tgt);
-                        parent.children.splice(idx + 1, 0, cloned);
+                    var owner = _sdAnyParent(tgt);
+                    if (owner) {
+                        var idx = owner.parent.children.indexOf(tgt);
+                        owner.parent.children.splice(idx + 1, 0, cloned);
                         expandAncestors(cloned, tree);
                         lastCloned = cloned;
+                        if (owner.sid) _sharedDirty[owner.sid] = true;
                     }
                 });
                 selectedNodes = [];
@@ -18603,8 +18609,11 @@ const StyleDesigner = (function () {
             items.push(_sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete') + (multi ? ' (' + targets.length + ')' : ''), danger: true, handler: function() {
                 saveState();
                 targets.forEach(function(tgt) {
-                    var parent = findParent(tgt, tree);
-                    if (parent) parent.children = parent.children.filter(function(c) { return c._id !== tgt._id; });
+                    if (_blockDeleteWithToast(tgt)) return;
+                    var owner = _sdAnyParent(tgt);
+                    if (!owner) return;
+                    owner.parent.children = owner.parent.children.filter(function(c) { return c._id !== tgt._id; });
+                    if (owner.sid) _sharedDirty[owner.sid] = true;
                 });
                 selectedNodes = [];
                 if (targets.indexOf(selectedNode) !== -1) selectedNode = null;
@@ -18691,15 +18700,17 @@ const StyleDesigner = (function () {
             _sdGuardItem({ icon: 'bi-clipboard-check', label: _sdT('Paste'), disabled: !(clipboardNodes && clipboardNodes.length), handler: function() {
                 saveState();
                 var _lp = null;
+                var _pt = _sdPasteTarget();
+                var _par = _pt.parent;
                 clipboardNodes.forEach(function(cn) {
                     var _cl = cloneTree(cn);
                     (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_cl);
-                    var _par = (selectedNode && selectedNode !== tree) ? (findParent(selectedNode, tree) || tree) : tree;
                     var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
                     if (_idx !== -1) _par.children.splice(_idx + 1, 0, _cl);
                     else { if (!_par.children) _par.children = []; _par.children.push(_cl); }
                     _lp = _cl;
                 });
+                if (_pt.sid) _sharedDirty[_pt.sid] = true;
                 selectedNodes = [];
                 if (_lp) selectedNode = _lp;
                 render();
@@ -18708,10 +18719,12 @@ const StyleDesigner = (function () {
                 saveState();
                 var lc = null;
                 targets.filter(function(n) { return n.type !== 'root'; }).forEach(function(tgt) {
-                    var p = findParent(tgt, tree); if (!p) return;
+                    if (_blockDuplicateWithToast(tgt)) return;
+                    var owner = _sdAnyParent(tgt); if (!owner) return;
                     var cl = cloneTree(tgt);
                     (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(cl);
-                    p.children.splice(p.children.indexOf(tgt) + 1, 0, cl);
+                    owner.parent.children.splice(owner.parent.children.indexOf(tgt) + 1, 0, cl);
+                    if (owner.sid) _sharedDirty[owner.sid] = true;
                     lc = cl;
                 });
                 selectedNodes = []; if (lc) selectedNode = lc;
@@ -18721,8 +18734,11 @@ const StyleDesigner = (function () {
             _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete') + (multi ? ' (' + targets.length + ')' : ''), danger: true, handler: function() {
                 saveState();
                 targets.filter(function(n) { return n.type !== 'root' && !n.props._locked && !hasLockedAncestor(n); }).forEach(function(n) {
-                    var p = findParent(n, tree);
-                    if (p) p.children = p.children.filter(function(c) { return c !== n; });
+                    if (_blockDeleteWithToast(n)) return;
+                    var owner = _sdAnyParent(n);
+                    if (!owner) return;
+                    owner.parent.children = owner.parent.children.filter(function(c) { return c !== n; });
+                    if (owner.sid) _sharedDirty[owner.sid] = true;
                 });
                 selectedNodes = []; selectedNode = null;
                 render();
@@ -26517,12 +26533,14 @@ const StyleDesigner = (function () {
     function _sdRetargetLabels(oldId, newId) {
         oldId = String(oldId || '');
         if (oldId === '' || oldId === String(newId || '')) return;
-        var roots = [tree];
+        // Each root carries its own sid: placeholder cache entries (tree
+        // null) are skipped, so the sid cannot be read back by position.
+        var roots = [{ tree: tree, sid: 0 }];
         Object.keys(_sharedCache).forEach(function (k) {
             var c = _sharedCache[k];
-            if (c && c.tree) roots.push(c.tree);
+            if (c && c.tree) roots.push({ tree: c.tree, sid: parseInt(k, 10) });
         });
-        roots.forEach(function (root, i) {
+        roots.forEach(function (r) {
             var hit = false;
             (function walk(n) {
                 if (!n) return;
@@ -26535,11 +26553,8 @@ const StyleDesigner = (function () {
                     });
                 }
                 if (Array.isArray(n.children)) n.children.forEach(walk);
-            })(root);
-            if (hit && i > 0) {
-                var sid = parseInt(Object.keys(_sharedCache)[i - 1], 10);
-                if (sid) _sharedDirty[sid] = true;
-            }
+            })(r.tree);
+            if (hit && r.sid) _sharedDirty[r.sid] = true;
         });
     }
 
@@ -26561,6 +26576,17 @@ const StyleDesigner = (function () {
         var p = findParent(node, tree);
         if (p) return { parent: p, sid: 0 };
         return _findParentInShared(node);
+    }
+
+    // Where a clipboard paste lands: beside the selected node — in the page
+    // tree or in the shared widget that owns it — or at the root when nothing
+    // (or the root itself) is selected. Returns { parent, sid }.
+    function _sdPasteTarget() {
+        if (selectedNode && selectedNode !== tree) {
+            var owner = _sdAnyParent(selectedNode);
+            if (owner) return owner;
+        }
+        return { parent: tree, sid: 0 };
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
@@ -26948,7 +26974,8 @@ const StyleDesigner = (function () {
         var isBordered  = cls.indexOf('table-bordered')       !== -1;
         var isBorderless= cls.indexOf('table-borderless')     !== -1;
         var isSmall     = cls.indexOf('table-sm')             !== -1;
-        var tPar = findParent(n, tree);
+        var tParOwner = _sdAnyParent(n);
+        var tPar = tParOwner ? tParOwner.parent : null;
         var isResponsive = tPar && tPar.type === 'semantic' && tPar.props.tag === 'div' &&
             (tPar.props.cssClass || '').split(/\s+/).indexOf('table-responsive') !== -1;
 
@@ -29125,13 +29152,21 @@ const StyleDesigner = (function () {
                 }
             });
 
-            // Click outside → close
-            document.addEventListener('click', function _bcpClose(e) {
-                if (!popup.classList.contains('sd-bcp-open')) return;
-                if (popup.contains(e.target) || trigger.contains(e.target)) return;
-                popup.classList.remove('sd-bcp-open');
-                document.removeEventListener('click', _bcpClose);
-            });
+            // Click outside → close. Bound once per document: this block runs
+            // on every panel render, and a per-render listener that unhooks
+            // itself only after its popup was opened and closed piles up for
+            // every popup that is re-rendered before being opened.
+            popup._sdBcpTrigger = trigger;
+            if (!document._sdBcpCloseBound) {
+                document._sdBcpCloseBound = true;
+                document.addEventListener('click', function (e) {
+                    var open = document.getElementById('sd-bcp-popup');
+                    if (!open || !open.classList.contains('sd-bcp-open')) return;
+                    var trg = open._sdBcpTrigger;
+                    if (open.contains(e.target) || (trg && trg.contains(e.target))) return;
+                    open.classList.remove('sd-bcp-open');
+                });
+            }
 
             // Tab switching
             popup.querySelectorAll('[data-bcp-tab]').forEach(function(btn) {
@@ -29350,7 +29385,8 @@ const StyleDesigner = (function () {
                 saveState();
                 var prefix = this.dataset.bm;
                 var current = this.innerText;
-                var cycle = (prefix.startsWith('m')) ? ['-','0','1','2','3','4','5','6','7','8','9','10','auto'] : ['-','0','1','2','3','4','5','6','7','8','9','10'];
+                // Bootstrap 5 ships the spacing scale 0-5 only (see mkSpSel).
+                var cycle = (prefix.startsWith('m')) ? ['-','0','1','2','3','4','5','auto'] : ['-','0','1','2','3','4','5'];
                 var nextIndex = cycle.indexOf(current) + 1;
                 if (nextIndex >= cycle.length) nextIndex = 0;
                 var nextVal = cycle[nextIndex];
@@ -29510,8 +29546,10 @@ const StyleDesigner = (function () {
                 var toggleCls = this.getAttribute('data-modal-cls');
                 var nodeId    = this.getAttribute('data-modal-dlg-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
                 var idx = arr.indexOf(toggleCls);
@@ -29529,8 +29567,10 @@ const StyleDesigner = (function () {
                 var newFull = this.value;
                 var nodeId  = this.getAttribute('data-modal-dlg-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var allFs = ['modal-fullscreen','modal-fullscreen-sm-down','modal-fullscreen-md-down','modal-fullscreen-lg-down','modal-fullscreen-xl-down','modal-fullscreen-xxl-down'];
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
@@ -29577,8 +29617,10 @@ const StyleDesigner = (function () {
                 var newPos = this.value;
                 var nodeId = this.getAttribute('data-oc-node-id');
                 if (!nodeId || !newPos) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var ALL_POS = ['offcanvas-start','offcanvas-end','offcanvas-top','offcanvas-bottom'];
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
@@ -29598,8 +29640,10 @@ const StyleDesigner = (function () {
             el.addEventListener('change', function() {
                 var nodeId = this.getAttribute('data-oc-header-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
                 var idx = arr.indexOf('d-none');
@@ -29617,8 +29661,10 @@ const StyleDesigner = (function () {
                 var newResp = this.value;
                 var nodeId  = this.getAttribute('data-oc-node-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var allResp = ['offcanvas-sm','offcanvas-md','offcanvas-lg','offcanvas-xl','offcanvas-xxl'];
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
@@ -29814,8 +29860,10 @@ const StyleDesigner = (function () {
             sel.addEventListener('change', function() {
                 var nodeId = this.getAttribute('data-cardgroup-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 var target = parseInt(this.value, 10) || 1;
                 if (!n.children) n.children = [];
                 var cards = n.children.filter(function(c) {
@@ -29974,8 +30022,10 @@ const StyleDesigner = (function () {
                 var action = this.getAttribute('data-cr-action');
                 var nodeId = this.getAttribute('data-cr-node-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 var innerNode = null, indicatorsNode = null;
                 (n.children || []).forEach(function(c) {
                     var ccls = c.props ? (c.props.cssClass || '').split(/\s+/) : [];
@@ -30031,8 +30081,10 @@ const StyleDesigner = (function () {
                 var mode   = this.getAttribute('data-cr-toggle');
                 var nodeId = this.getAttribute('data-cr-node-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
                 var fi = arr.indexOf('carousel-fade');
@@ -30050,8 +30102,10 @@ const StyleDesigner = (function () {
             el.addEventListener('change', function() {
                 var nodeId = this.getAttribute('data-cr-node-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var arr = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
                 var idx = arr.indexOf('carousel-dark');
@@ -30069,8 +30123,10 @@ const StyleDesigner = (function () {
                 var which  = this.getAttribute('data-cr-section-vis');
                 var nodeId = this.getAttribute('data-cr-node-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var targets = [];
                 (n.children || []).forEach(function(c) {
@@ -30098,8 +30154,10 @@ const StyleDesigner = (function () {
                 var attrName = this.getAttribute('data-cr-attr');
                 var nodeId   = this.getAttribute('data-cr-node-id');
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var val = this.value || '';
                 var attrs = n.props._attrs || [];
@@ -30127,8 +30185,10 @@ const StyleDesigner = (function () {
                 var nodeId   = this.getAttribute('data-cr-node-id');
                 var inverse  = this.getAttribute('data-cr-inverse') === '1';
                 if (!nodeId) return;
-                var n = findNodeById(nodeId, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(nodeId);
+                if (!hit) return;
+                var n = hit.node;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
                 saveState();
                 var attrs = n.props._attrs || [];
                 var idx = -1;
@@ -30479,10 +30539,12 @@ const StyleDesigner = (function () {
                 saveState();
                 var activate = this.checked;
                 var n = selectedNode;
+                var _navOwner = _sdAnyParent(n);
+                if (_navOwner && _navOwner.sid) _sharedDirty[_navOwner.sid] = true;
 
                 // When activating: clear active from every sibling nav-item in the same navbar-nav
                 if (activate) {
-                    var parentNav = findParentNode(n._id, tree, null);
+                    var parentNav = _navOwner ? _navOwner.parent : null;
                     if (parentNav && parentNav.children) {
                         parentNav.children.forEach(function(sibling) {
                             if (sibling._id === n._id) return;
@@ -30536,13 +30598,16 @@ const StyleDesigner = (function () {
                 saveState();
                 var activate = this.checked;
                 var n = selectedNode;
+                var _linkOwner = _sdAnyParent(n);
+                if (_linkOwner && _linkOwner.sid) _sharedDirty[_linkOwner.sid] = true;
 
-                // Find the parent nav-item
-                var parentNavItem = findParentNode(n._id, tree, null);
+                // Parent nav-item
+                var parentNavItem = _linkOwner ? _linkOwner.parent : null;
 
                 // When activating: clear active from every sibling nav-item/nav-link in the same navbar-nav
                 if (activate && parentNavItem) {
-                    var grandParent = findParentNode(parentNavItem._id, tree, null);
+                    var _itemOwner = _sdAnyParent(parentNavItem);
+                    var grandParent = _itemOwner ? _itemOwner.parent : null;
                     if (grandParent && grandParent.children) {
                         grandParent.children.forEach(function(sibling) {
                             if (sibling._id === parentNavItem._id) return;
@@ -31999,12 +32064,6 @@ const StyleDesigner = (function () {
                 // those classes is already loaded by output_header() on the
                 // designer page, so dropping the HTML in is enough.
                 folderSel.innerHTML = optsHtml;
-                // (legacy block removed)
-                /* removed: legacy folder build dead code start */ if(false){var _x=(function(f){
-                    var indent = '';
-                    for (var i = 0; i < (f.level || 0); i++) indent += '  ';
-                    return '<option value="' + f.id + '">' + indent + f.name.replace(/</g, '&lt;') + '</option>';
-                });} /* end legacy block */
 
                 // Restore last-chosen folder if its <option> still exists in the
                 // freshly rendered list; otherwise leave the server-selected
@@ -32204,7 +32263,7 @@ const StyleDesigner = (function () {
                 var ic = f.type === 'css' ? 'bi-filetype-css' : (f.type === 'json' ? 'bi-filetype-json' : 'bi-filetype-js');
                 return '<div class="sd-fp-item" data-fp-url="' + f.url.replace(/"/g, '&quot;') + '" data-fp-name="' + f.name.replace(/"/g, '&quot;') + '" data-fp-type="' + f.type + '">' +
                     '<span class="bi ' + ic + ' sd-fp-item-icon"></span>' +
-                    '<span class="sd-fp-item-name">' + f.name + '</span>' +
+                    '<span class="sd-fp-item-name">' + esc(f.name) + '</span>' +
                     '</div>';
             }).join('');
             listEl.innerHTML = html;
@@ -32410,7 +32469,7 @@ const StyleDesigner = (function () {
                 var extBadge = (f.type === 'external-css' || f.type === 'external-js') ? '<span class="sd-as-badge-ext">ext</span>' : '';
                 var offBadge = f.enabled === false ? '<span class="sd-as-badge-off">off</span>' : '';
                 var lockBadge = f.locked ? '<span class="sd-as-badge-lock" title="' + esc(_sdT('A system file — it cannot be deleted')) + '"><span class="bi bi-lock-fill"></span></span>' : '';
-                item.innerHTML = '<span class="bi ' + ic + ' sd-as-item-icon"></span><span class="sd-as-item-name">' + f.name + '</span>' + extBadge + offBadge + lockBadge;
+                item.innerHTML = '<span class="bi ' + ic + ' sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(f.name) + '</span>' + extBadge + offBadge + lockBadge;
                 // Locked entries point at fixed CDN URLs — clicking opens nothing
                 // (no rename, no content edit), but right-click still surfaces
                 // up/down/toggle so the user can reorder or disable them.
@@ -32466,7 +32525,7 @@ const StyleDesigner = (function () {
                 var item = document.createElement('div');
                 item.className = 'sd-as-item' + (f.enabled === false ? ' sd-as-item-disabled' : '');
                 var offBadge = f.enabled === false ? '<span class="sd-as-badge-off">off</span>' : '';
-                item.innerHTML = '<span class="bi bi-type-bold sd-as-item-icon"></span><span class="sd-as-item-name">' + f.family + '</span><span class="sd-as-item-wts">' + f.weights.join(',') + '</span>' + offBadge;
+                item.innerHTML = '<span class="bi bi-type-bold sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(f.family) + '</span><span class="sd-as-item-wts">' + esc(f.weights.join(',')) + '</span>' + offBadge;
                 item.addEventListener('contextmenu', function(e) { e.preventDefault(); e.stopPropagation(); showFontCtx(f.family, e.clientX, e.clientY); });
                 listEl.appendChild(item);
             });
@@ -33650,7 +33709,7 @@ const StyleDesigner = (function () {
                     btn.className = 'sd-styles-extract-item';
                     btn.innerHTML =
                         '<span class="bi bi-file-earmark-code me-2"></span>' +
-                        '<span class="sd-styles-extract-item-name">' + t.name.replace(/[<>&"]/g, '') + '</span>' +
+                        '<span class="sd-styles-extract-item-name">' + esc(t.name) + '</span>' +
                         (t._file ? '<span class="sd-styles-extract-item-tag">disk</span>' : '<span class="sd-styles-extract-item-tag">inline</span>');
                     btn.addEventListener('click', function () {
                         _closePicker();
@@ -36384,7 +36443,7 @@ const StyleDesigner = (function () {
                 ]);
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
-                        createNode('row', { gutter: 'g-4', justify: '', align: '', cssClass: '' }, [
+                        createNode('row', { gutter: '4', justify: '', align: '', cssClass: '' }, [
                             // Left column — items only
                             createNode('col', { xs: '12', sm: '', md: '8', lg: '', xl: '', xxl: '',
                                                offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
@@ -36686,7 +36745,7 @@ const StyleDesigner = (function () {
                         ]),
 
                         // ── 2-COLUMN BODY ───────────────────────────────
-                        createNode('row', { gutter: 'g-4', justify: '', align: '', cssClass: '' }, [
+                        createNode('row', { gutter: '4', justify: '', align: '', cssClass: '' }, [
 
                             // LEFT COL: items + addresses
                             createNode('col', { xs: '12', sm: '', md: '8', lg: '', xl: '', xxl: '',
@@ -37030,7 +37089,7 @@ const StyleDesigner = (function () {
                 var loopArea = createNode('loop_area', {}, [
                     createNode('semantic', { tag: 'div', cssClass: 'card card-body mb-3 py-3 d-flex flex-row align-items-start gap-3', customName: _sdT('Event Row') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'text-center bg-primary text-white rounded px-2 py-1', customName: _sdT('Date Badge'),
-                            style: 'min-width:48px' }, [
+                            _attrs: [{ name: 'style', value: 'min-width:48px' }] }, [
                             createNode('content', { contentType: 'paragraph',
                                 text: _sdT('Day'), cssClass: 'fw-bold mb-0 lh-1',
                                 _bindings: { text: '__event_date' } }),
@@ -37053,7 +37112,7 @@ const StyleDesigner = (function () {
                 ]);
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
-                        createNode('row', { gutter: '', justify: 'space-between', align: 'center', cssClass: 'mb-3' }, [
+                        createNode('row', { gutter: '', justify: 'between', align: 'center', cssClass: 'mb-3' }, [
                             createNode('col', { xs: '', sm: '', md: '', lg: '', xl: '', xxl: '',
                                                offsetXs: '', offsetMd: '', order: '', cssClass: 'col' }, [
                                 createNode('content', { contentType: 'heading', tag: 'h4',
@@ -39403,7 +39462,7 @@ const StyleDesigner = (function () {
     function _pgApiPost(sub, extra) {
         var body = { action: 'designer', sub_action: sub, token: _pgToken() };
         if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
-        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + 'pinegrap/api.php');
+        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
         return fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
                             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                .then(function (r) { return r.json(); });
@@ -39531,7 +39590,7 @@ const StyleDesigner = (function () {
             window._pgCollabUnloadBound = true;
             var bye = function () {
                 if (!_collab.key) return;
-                var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + 'pinegrap/api.php');
+                var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
                 var body = JSON.stringify({ action: 'designer', sub_action: 'leave',
                                             session_key: _collab.key, token: _pgToken() });
                 try {
@@ -40409,7 +40468,8 @@ const StyleDesigner = (function () {
     }
 
     function _pgExit(url) {
-        var target = url || (_design && _design.exitUrl) || ((window.OUTPUT_PATH || '/') + 'pinegrap/view_styles.php');
+        var target = url || (_design && _design.exitUrl) ||
+                     ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/view_system_styles.php');
         var go = function () { _suppressUnloadWarn = true; window.location.href = target; };
         if (!isDirty()) { go(); return; }
         if (typeof window.pgConfirm === 'function') {
@@ -41946,7 +42006,7 @@ const StyleDesigner = (function () {
             b.textContent = '!';
             b.addEventListener('click', function (e) {
                 e.stopPropagation(); e.preventDefault();
-                var n = findNodeById(id, tree);
+                var n = _sdFindNodeForEl(id, wrap);
                 if (n) { selectedNode = n; selectedNodes = []; render(); }
                 openValidationPanel(true);
             });
@@ -42057,8 +42117,9 @@ const StyleDesigner = (function () {
         panel.querySelector('#sd-val-close').addEventListener('click', function() { panel.remove(); });
         panel.querySelectorAll('.sd-val-goto').forEach(function(b) {
             b.addEventListener('click', function() {
-                var n = findNodeById(this.dataset.nid, tree);
-                if (!n) return;
+                var hit = _findNodeAnywhereById(this.dataset.nid);
+                if (!hit) return;
+                var n = hit.node;
                 scrollTreeToNode(n);
                 selectedNode = n; selectedNodes = [];
                 render();
@@ -42237,8 +42298,11 @@ const StyleDesigner = (function () {
                 if (selectedNodes.length > 1) {
                     saveState();
                     selectedNodes.filter(function(n) { return n.type !== 'root' && !n.props._locked && !hasLockedAncestor(n); }).forEach(function(n) {
-                        var p = findParent(n, tree);
-                        if (p) p.children = p.children.filter(function(c) { return c !== n; });
+                        if (_blockDeleteWithToast(n)) return;
+                        var owner = _sdAnyParent(n);
+                        if (!owner) return;
+                        owner.parent.children = owner.parent.children.filter(function(c) { return c !== n; });
+                        if (owner.sid) _sharedDirty[owner.sid] = true;
                     });
                     selectedNodes = [];
                     selectedNode = null;
@@ -42265,15 +42329,17 @@ const StyleDesigner = (function () {
                 e.preventDefault();
                 saveState();
                 var _lastP = null;
+                var _kpt = _sdPasteTarget();
+                var _par = _kpt.parent;
                 clipboardNodes.forEach(function(cn) {
                     var _clone = cloneTree(cn);
                     (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_clone);
-                    var _par = (selectedNode && selectedNode !== tree) ? (findParent(selectedNode, tree) || tree) : tree;
                     var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
                     if (_idx !== -1) _par.children.splice(_idx + 1, 0, _clone);
                     else { if (!_par.children) _par.children = []; _par.children.push(_clone); }
                     _lastP = _clone;
                 });
+                if (_kpt.sid) _sharedDirty[_kpt.sid] = true;
                 selectedNodes = [];
                 if (_lastP) selectedNode = _lastP;
                 render();

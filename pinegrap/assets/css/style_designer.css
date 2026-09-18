@@ -1,5 +1,5 @@
 /* ============================================
-   PineGrap Style Designer — Visual Page Builder
+   Pinegrap Style Designer — Visual Page Builder
    Bootstrap Studio-like drag & drop interface
    ============================================ */
 
@@ -296,7 +296,7 @@
 .sd-panel-bottom.collapsed { height: 28px !important; overflow: hidden; }
 .sd-panel-bottom.sd-resizing { transition: none; }
 
-/* ── Vertical resize handle (alt paneli yukarı/aşağı boyutlandır) ── */
+/* ── Vertical resize handle (resizes the bottom panel up/down) ── */
 .sd-bp-vresize {
     position: absolute;
     top: 0; left: 0; right: 0;
@@ -478,7 +478,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 /* Read-only system Bootstrap attributes in the props panel */
 .sd-sys-attrs {
     padding: .25rem .5rem .3rem;
-    border-top: 1px solid var(--sd-border);
+    border-top: 1px solid var(--sd-panel-border);
 }
 .sd-sys-attr-row {
     display: grid;
@@ -653,7 +653,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-pick-group > .form-control { flex:1 1 auto; min-width:0; }
 .sd-pick-group > .sd-pick-btn { flex:0 0 auto; white-space:nowrap; padding:.1rem .5rem; font-size:.7rem; }
 
-/* Code-edit rows (HTML / PHP): no visible input, just a "Düzenle" button */
+/* Code-edit rows (HTML / PHP): no visible input, just an "Edit" button */
 .sd-prop-control-edit { display:flex; justify-content:flex-end; }
 .sd-prop-control-edit > .btn { padding:.15rem .55rem; font-size:.7rem; }
 .sd-prop-control-edit .sd-edit-hint { opacity:.65; font-weight:400; font-size:.65rem; margin-left:.25rem; }
@@ -718,7 +718,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     color: var(--sd-text); border-radius: 3px; outline: none; transition: border .15s;
     box-shadow: none;
 }
-/* Koyu tema için belirgin chevron (Bootstrap'ın default light SVG'si koyu arka planda kaybolur) */
+/* Visible chevron for the dark theme (Bootstrap's default light SVG disappears on a dark background) */
 .sd-prop-control select.form-select,
 .sd-prop-control select,
 .sd-sp-row > select,
@@ -747,7 +747,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-sp-row > select option,
 .sd-sp-bp-item > select option { background: var(--sd-panel-bg); color: var(--sd-text); }
 .sd-prop-control textarea { resize:vertical; min-height:60px; font-family:monospace; font-size:.7rem; height: auto; }
-/* input-group içindeki select'e de uygulanır (href file picker vb.) */
+/* Also applies to a select inside an input-group (href file picker etc.) */
 .sd-prop-control .input-group > select.form-select { height: 28px; }
 /* Normalize input-group corner radius to match other panel inputs */
 .sd-prop-control .input-group {
@@ -954,7 +954,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-bm-v.pl { left: 4px; top: 50%; transform: translateY(-50%); }
 .sd-bm-v.pr { right: 4px; top: 50%; transform: translateY(-50%); }
 
-/* ── Attributes Kolonu (bottom panel sağ) ── */
+/* ── Attributes column (bottom panel, right) ── */
 .sd-bp-attrs-col {
     width: 270px;
     min-width: 270px;
@@ -1045,7 +1045,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-class-input::placeholder { color: var(--sd-text-muted); opacity: .5; }
 
-/* Attr satırları */
+/* Attr rows */
 .sd-attr-row {
     display: flex; align-items: center; gap: 0;
     padding: .15rem .5rem;
@@ -1077,7 +1077,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-attr-del:hover { color: var(--sd-danger); }
 
-/* ── Tree Drag & Drop göstergeleri ── */
+/* ── Tree drag & drop indicators ── */
 .sd-tree-drag-src { opacity: .4; }
 /* Sibling drop indicators — dashed accent line with a soft glow so it reads
    as "this is where the dragged item will land", not as a permanent border. */
@@ -1182,10 +1182,10 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    LEFT PANEL SPLIT — Components (top) + Overview (bottom)
    ══════════════════════════════════════════════ */
 
-/* Sol panel flex container artık flex-direction:column */
+/* Left panel flex container is now flex-direction:column */
 .sd-panel-left { overflow-y: hidden !important; }
 
-/* Bileşenler bölgesi — header+search sabit, items scroll */
+/* Components region — header+search fixed, items scroll */
 .sd-comp-section {
     flex: 1;
     overflow: hidden;
@@ -1268,7 +1268,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     line-height: 1.5;
 }
 
-/* Panel başlıkları (Components, Options, Overview aynı görünümde) */
+/* Panel headers (Components, Options, Overview share one look) */
 .sd-panel-header {
     display: flex;
     align-items: center;
@@ -1286,7 +1286,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-panel-header .bi { font-size: .6rem; }
 
-/* Yatay ayraç (sürükle ile yeniden boyutlandır) */
+/* Horizontal divider (drag to resize) */
 .sd-left-vsep {
     height: 5px;
     min-height: 5px;
@@ -1308,7 +1308,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background-repeat: repeat;
 }
 
-/* Overview bölgesi — altta */
+/* Overview region — at the bottom */
 .sd-overview-section {
     display: flex;
     flex-direction: column;
@@ -1318,12 +1318,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     overflow: hidden;       /* clip content when collapsing */
 }
 
-/* Overview başlığı — `.sd-panel-header` ile aynı görünümü paylaşır.
-   Detaylı kurallar: section başında "Overview: header + sub-tabs" bloğu. */
+/* Overview header — shares the look of `.sd-panel-header`.
+   Detailed rules: the "Overview: header + sub-tabs" block at the section start. */
 .sd-overview-header { border-top: 1px solid var(--sd-panel-border); }
 .sd-overview-header .bi { font-size: .6rem; }
 
-/* Ortak arama kutusu: Overview, Components ve Options panelleri aynı stili paylaşır */
+/* Shared search box: the Overview, Components and Options panels use one style */
 .sd-ov-search-box,
 .sd-props-search-wrap {
     display: flex;
@@ -1349,7 +1349,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-ov-search-box input::placeholder,
 .sd-props-search-wrap input::placeholder { color: var(--sd-text-muted); opacity: .6; }
 
-/* Tree sarıcı — kaydırılabilir */
+/* Tree wrapper — scrollable */
 .sd-overview-tree-wrap {
     flex: 1;
     overflow-y: auto;
@@ -1748,7 +1748,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-styles-find:focus { border-color: #4d8ef0; }
 
-/* Attrs scrollable içerik */
+/* Attrs scrollable content */
 .sd-bp-attrs-scroll {
     flex: 1;
     overflow-y: auto;
@@ -1757,7 +1757,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-bp-attrs-scroll::-webkit-scrollbar { width: 4px; }
 .sd-bp-attrs-scroll::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 2px; }
 
-/* Styles paneli — DevTools-vari rule grupları */
+/* Styles panel — DevTools-like rule groups */
 .sd-styles-section { padding: .25rem .5rem .35rem; border-bottom: 1px solid var(--sd-panel-border); }
 .sd-styles-section-hdr {
     display: flex; align-items: center; gap: .35rem;
@@ -1783,7 +1783,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     margin-top: 2px;
 }
 
-/* Computed paneli — düz tablo */
+/* Computed panel — plain table */
 .sd-computed-row {
     display: flex; gap: .5rem;
     padding: .15rem .5rem;
@@ -1954,7 +1954,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-styles-ur-del-decl:hover { background: rgba(220,53,69,.18); color: #ff6b6b; }
 .sd-styles-ur-add-decl:hover { background: rgba(13,110,253,.18); color: #6ea8fe; }
 
-/* User Styles scratch-pad (Styles tab alt kısmı) */
+/* User Styles scratch-pad (bottom part of the Styles tab) */
 .sd-styles-writer { background: rgba(13,110,253,.04); }
 .sd-styles-writer .sd-styles-section-hdr { display: flex; align-items: center; gap: .35rem; }
 .sd-styles-quick-row {
@@ -2004,7 +2004,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-styles-apply:hover { background: #345aa6; }
 .sd-styles-pad-hint { color: #6e7681; font-size: .65rem; }
 
-/* ── Attr satırı: sabit (id, class) ── */
+/* ── Attr row: fixed (id, class) ── */
 .sd-attr-row-fixed {
     background: rgba(255,255,255,.012);
 }
@@ -2024,7 +2024,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     font-weight: 600;
     padding-top: 3px;
 }
-/* ":" ayırıcı */
+/* ":" separator */
 .sd-attr-sep {
     font-size: .72rem;
     color: var(--sd-text-muted);
@@ -2033,12 +2033,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     line-height: 1;
     margin-top: 1px;
 }
-/* class satırında chip-input sarmalayıcı */
+/* Chip-input wrapper on the class row */
 .sd-attr-class-wrap {
     flex: 1;
     min-width: 0;
 }
-/* Silme butonunun yer tutucu (sabit satırlarda) */
+/* Placeholder for the delete button (on fixed rows) */
 .sd-attr-del-ph {
     width: 18px;
     flex-shrink: 0;
@@ -2113,7 +2113,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-html-tree::-webkit-scrollbar { width: 5px; height: 5px; }
 .sd-html-tree::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 3px; }
 
-/* HTML tree satır */
+/* HTML tree row */
 .sd-ht-row {
     display: flex;
     align-items: center;
@@ -2157,7 +2157,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-ht-content { color: #d4a574; margin: 0 2px; }
 .sd-ht-preview { color: #6a737d; font-style: italic; margin-left: 5px; }
 
-/* Attributes tab badge — seçili elementin tag'ı */
+/* Attributes tab badge — the selected element's tag */
 .sd-attrs-elem-badge {
     display: inline;
     margin-left: .35rem;
@@ -2175,10 +2175,10 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 
 /* ══════════════════════════════════════════════════
-   PROPERTIES PANEL — Tabs kaldırıldı, tek scroll
+   PROPERTIES PANEL — tabs removed, one scroll
 ══════════════════════════════════════════════════ */
 
-/* sd-props-appear-section kaldırıldı — Appearance artık Options ile aynı akışta */
+/* sd-props-appear-section removed — Appearance now flows together with Options */
 
 /* ── Spacing panel — Bootstrap Studio style ── */
 .sd-sp-section {
@@ -2186,7 +2186,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-sp-divider {
     height: 1px;
-    background: var(--sd-border);
+    background: var(--sd-panel-border);
     margin: 6px 0;
 }
 .sd-sp-row {
@@ -2233,7 +2233,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     margin-left: 22px;
     margin-bottom: 4px;
     padding: 3px 0 3px 8px;
-    border-left: 2px solid var(--sd-border);
+    border-left: 2px solid var(--sd-panel-border);
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -3545,7 +3545,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     transform: scale(1.15);
 }
 
-/* ========== Overview: header + sub-tabs (Ağaç ↔ Notlar) ========== */
+/* ========== Overview: header + sub-tabs (Tree ↔ Notes) ========== */
 /* Mirrors the right panel's Design/Themes pattern: panel header on top
    (clickable, collapses everything), full-width tab strip below, content
    under that. Tree-collapse-all moved into the search row. */
@@ -4224,7 +4224,7 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-gf-det-wt.active .sd-gf-det-wt-num { color: #e6edf3; }
 
-/* ── Actions row: Ekle / Güncelle + Kaldır ── */
+/* ── Actions row: Add / Update + Remove ── */
 .sd-gf-det-actions {
     display: flex;
     gap: .5rem;
@@ -4261,7 +4261,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     border-color: #f85149;
 }
 
-/* File Picker Modal ("Yazılımdan Seç") */
+/* File Picker Modal ("Select from software") */
 #sd-file-picker {
     position: fixed;
     inset: 0;
@@ -4627,7 +4627,7 @@ body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; us
 .sd-as-item-locked .sd-as-item-name { color: #8b949e; }
 
 /* ============================================================
-   Create-options mini-modal (Yeni / Yükle picks folder + design + desc)
+   Create-options mini-modal (New / Upload picks folder + design + desc)
    ============================================================ */
 #sd-as-create-opts {
     position: fixed; inset: 0; z-index: 100050;
@@ -4897,7 +4897,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 .sd-gf-list { overflow-y: auto; }
 .sd-gf-list::-webkit-scrollbar { width: 3px; }
-.sd-gf-list::-web
 /* ============================================================
    UI IMPROVEMENTS — Polish pass
    ============================================================ */
@@ -5204,7 +5203,7 @@ body.sd-view-mode .sd-pane-locked > *:not(#sd-page-locked-note) { pointer-events
 .sd-readonly #sd-main-redo,
 .sd-readonly #sd-duplicate-page { opacity: .4; pointer-events: none; }
 
-/* ── Seçenekler editor (select / radio / checkbox) ───────────────────────
+/* ── Choices editor (select / radio / checkbox) ──────────────────────────
    The choice list is a property of the ELEMENT, so this sits in the normal
    element panel, not behind a form. Compact rows: value, label, default,
    remove — nothing that needs a modal. */
@@ -5225,7 +5224,7 @@ body.sd-view-mode .sd-pane-locked > *:not(#sd-page-locked-note) { pointer-events
 }
 .sd-choice-hint { font-size: .64rem; color: var(--sd-text-muted, #8b9ab0); margin-top: .2rem; line-height: 1.5; }
 /* Overview tree: folded children (a <select>'s options are edited in the
-   Seçenekler panel, so the tree shows a count instead of five rows). */
+   Choices panel, so the tree shows a count instead of five rows). */
 .sd-tree-fold-badge {
     display: inline-block;
     margin-left: 4px;
