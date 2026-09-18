@@ -3109,16 +3109,51 @@ function update_config_define($content, $key, $value, $type = 'string') {
         return str_replace('?>', "define('" . $key . "', " . $bool_val . ");\r\n?>", $content);
     }
 
-    $safe_value = str_replace("'", "\\'", $value);
+    // Backslashes are escaped along with the quote: a value ending in a
+    // backslash would otherwise escape the closing quote and leave config.php
+    // with an unterminated string, which takes the whole site down.
+    $safe_value = addcslashes($value, "\\'");
+    $define = "define('" . $key . "', '" . $safe_value . "');";
     $line = "/define\s*\(\s*'" . $safe_key . "'\s*,\s*" . pg_config_define_value_pattern() . "\s*\);/i";
     if (preg_match($line, $content)) {
-        return preg_replace(
-            $line,
-            "define('" . $key . "', '" . $safe_value . "');",
-            $content
-        );
+        // The replacement is user data, so "$1" and "\\" in it must stay
+        // literal rather than being read as back-references.
+        return preg_replace($line, addcslashes($define, '\\$'), $content);
     }
-    return str_replace('?>', "define('" . $key . "', '" . $safe_value . "');\r\n?>", $content);
+    return str_replace('?>', $define . "\r\n?>", $content);
+}
+
+// Replace data/config.php with $content.
+//
+// The text goes to a sibling temp file first and is renamed over the original,
+// so a request that includes config.php while a save is in progress never sees
+// a truncated or empty file. Empty content is refused: every caller builds the
+// new text from a read of the current file, and a failed read must not become
+// an empty config. When the data directory itself is not writable but the file
+// is (the documented 777-on-the-file setup), the write falls back to in place.
+// Returns true when config.php holds the new content.
+function pg_write_config_file($content) {
+    if (!is_string($content) || (trim($content) === '')) {
+        return false;
+    }
+
+    $length = strlen($content);
+    $temp = dirname(CONFIG_FILE_PATH) . '/config.' . uniqid('tmp') . '.php';
+
+    if (@file_put_contents($temp, $content, LOCK_EX) === $length) {
+        // Keep the mode the operator gave config.php; the temp file was
+        // created with the default umask.
+        $mode = @fileperms(CONFIG_FILE_PATH);
+        if ($mode !== false) {
+            @chmod($temp, $mode & 0777);
+        }
+        if (@rename($temp, CONFIG_FILE_PATH)) {
+            return true;
+        }
+    }
+    @unlink($temp);
+
+    return (@file_put_contents(CONFIG_FILE_PATH, $content, LOCK_EX) === $length);
 }
 
 // Remove a define() line entirely (called when value is empty)
