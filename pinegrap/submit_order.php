@@ -1459,7 +1459,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
                         
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                     
@@ -1470,7 +1470,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
                         
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -1522,7 +1522,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
 
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -1868,7 +1868,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -2000,7 +2000,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -2128,7 +2128,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -2294,7 +2294,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -3359,8 +3359,8 @@ function submit_order($type) {
                 
                 // if mode is not paypal_express_checkout_return, then prepare to send SetExpressCheckout request to PayPal
                 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
-                    $paypal_express_checkout_returnurl = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
-                    $paypal_express_checkout_cancelurl = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id);
+                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
+                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id);
                     
                     $post_data =
                         'METHOD=SetExpressCheckout&' .
@@ -3449,7 +3449,7 @@ function submit_order($type) {
                     $liveform->mark_error('paypal_express_checkout', h($paypal_express_checkout_error_message));
 
                     // send user back to previous screen
-                    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                     exit();
                 }
                 
@@ -7843,7 +7843,7 @@ function submit_order($type) {
     $liveform->remove_form($type_value);
 
     // send user to next page (with ?order_id=N for the order_view widget)
-    $next_page_url = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($next_page_id);
+    $next_page_url = URL_SCHEME . HOSTNAME . PATH . get_page_name($next_page_id);
     if ($completed_order_id > 0) {
         $next_page_url .= (strpos($next_page_url, '?') === false ? '?' : '&')
                        . 'order_id=' . $completed_order_id;
