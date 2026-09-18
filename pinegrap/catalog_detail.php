@@ -162,8 +162,12 @@ if ($selection_type == 'donation') {
     
 // else product is not a donation, so just prepare quantity
 } else {
-    // If the quantity is not valid, then output error.
-    if (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 0) {
+    // If the quantity is not a whole number of at least one, then output error.
+    // Zero passes the digit check but would create a cart line with quantity 0.
+    if (
+        (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 0)
+        || ((int) $liveform->get_field_value('quantity') < 1)
+    ) {
         $liveform->mark_error('quantity', lang('Please enter a valid quantity.'));
         header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('current_url')));
         exit();
