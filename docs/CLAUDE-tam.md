@@ -1215,7 +1215,7 @@ reddediliyordu — aynı ekrandaki toplu iptal ise çalışıyordu
 farklı cevap.
 
 **`validate_user()` PK'yı `id` anahtarıyla döndürür, `user_id` değil.**
-(`user_id` ham kolon adı; `api.php` / `apps.php` auth yolunda o geçerli.)
+(`user_id` ham kolon adı; `api.php` ve `includes/api/auth.php` (dış API) o adı kullanır.)
 Yanlış anahtarı okumak `cancelled_by = 0` yazıyordu — raporlar bunu "müşteri
 kendi iptal etti" diye yorumlar.
 
@@ -3550,7 +3550,7 @@ Proxy başlıkları yalnızca peer bilinen bir proxy ise kabul edilir (Cloudflar
 aralıkları gömülü, gerisi `waf_trusted_proxies`). Aksi hâlde saldırgan başlığı
 uydurup IP yasağını atlar.
 
-`check_banned_ip_addresses()` ve `apps.php` artık bunu kullanır.
+`check_banned_ip_addresses()` ve dış API (`includes/api/auth.php`, `router.php`) bunu kullanır.
 
 ### Geriye dönük uyumluluk
 
@@ -6186,53 +6186,27 @@ Tablo tanımları `$all_table_defs` dizisinde, her tanım şu alanları içerir:
 - ECOMMERCE kontrolü: `products`, `product_groups` tabloları için
 - ADS kontrolü: `ads` tablosu için
 
-## REST API — apps.php / apps_settings.php
+## REST API — apps.php / apps_settings.php (kaldırıldı, 2026.4.4)
 
-### Şifreleme Mimarisi (`user` tablosu)
+> **Tarihsel not.** `apps.php`, `apps_settings.php` ve `custom_apps` tablosu
+> 2026.4.4'te kaldırıldı (`clean_up.php` silme listesi +
+> `install_drop_table('custom_apps')`, bkz. `includes/migrations/2026.4.4.php`).
+> Yerini **dış API** aldı: giriş dosyası `integration.php`, kod
+> `includes/api/` (auth, scopes, ratelimit, router, resources/, outbound/),
+> panel ekranları `api_settings.php` / `api_docs.php`. Yetki modeli için
+> yukarıdaki **"Dış API yetki kalıbı (`integration.php`, 2026.4.4)"** bölümüne bak.
 
-| Kolon | Amaç | Açıklama |
-|---|---|---|
-| `secret_key` | Güvenli saklama | AES-256-CBC, her şifrelemede rastgele IV |
-| `secret_key_iv` | IV değeri | `encrypt_string_with_iv()` ile üretilir |
-| `secret_key_hash` | Hızlı DB arama | `hash_hmac('sha256', $plain, ENCRYPTION_KEY)` — deterministik |
+Eski akış, karşılaştırma için: uygulamaya ait `custom_apps.api_key` + **kullanıcıya**
+ait `user.secret_key` (AES-256-CBC, `secret_key_hash` ile deterministik arama),
+izinler `has_permission($permissions, $action, 'read|edit')`. İki anahtar iki ayrı
+varlığa aitti — herhangi bir kişinin secret'ı herhangi bir uygulamanın key'ini
+açıyordu, rotasyon yoktu; yeni API bu yüzden key ve secret'ı uygulamaya taşıdı.
+`user.secret_key*` kolonları hesap tablosunda bilerek bırakıldı (kolon düşürme
+riski değmedi); artık hiçbir kod okumaz.
 
-```sql
--- Migration (bir kez çalıştır)
-ALTER TABLE user ADD COLUMN secret_key_hash VARCHAR(64) DEFAULT NULL;
-CREATE INDEX idx_user_secret_key_hash ON user (secret_key_hash);
-```
+### apps.php Doğrulama Akışı (kaldırıldı)
 
-**Neden iki yapı?**  
-`encrypt_string_with_iv()` her çağrıda farklı ciphertext üretir (random IV). Dolayısıyla `WHERE secret_key = ?` çalışmaz. Hash deterministik olduğu için `WHERE secret_key_hash = ?` ile tek sorguda kullanıcı bulunur. Decrypt döngüsü YOK.
-
-### apps.php Doğrulama Akışı
-
-```php
-// 1. api_key → custom_apps tablosunda ara
-$query = "SELECT ... FROM custom_apps WHERE api_key_hash = '...' LIMIT 1";
-
-// 2. secret_key → user tablosunda ara (decrypt yok!)
-$secret_hash = hash_hmac('sha256', $SECRET, ENCRYPTION_KEY);
-$query = "SELECT ... FROM user WHERE secret_key_hash = '$secret_hash' LIMIT 1";
-```
-
-### Güvenlik Kuralları
-
-- `$_REQUEST` yerine `array_merge($_GET, $_POST)` — Cookie injection önler
-- `hash_equals()` yerine artık DB sorgusu (timing-safe değil, ama DB latency bunu maskeler)
-- Hata mesajları birleşik: `"Invalid credentials."` — hangi alan yanlış olduğu belirtilmez
-- `h()` JSON response içinde KULLANILMAZ — JSON encoding kendi escaping'ini yapar
-- Endpoint izinleri: `has_permission($permissions, $action, 'read|edit')`
-
-### Yeni Endpoint'ler
-
-| Endpoint | İzin | GET | POST |
-|---|---|---|---|
-| `product` | ecommerce | read/edit | read/edit |
-| `pages` | — | read/edit | read/edit |
-| `users` | role < 2 | read/edit | read/edit |
-| `visitors` | manage_visitors | read | — |
-| `site_settings` | — | read/edit | read/edit |
+Yukarıdaki nota bak; güncel doğrulama `includes/api/auth.php` içindedir.
 
 ---
 

@@ -2288,10 +2288,12 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         $member_id = (string)db_value("SELECT member_id FROM contacts WHERE id = '" . (int)$order['contact_id'] . "' LIMIT 1");
     }
 
-    // Resolve order notes — column doesn't exist on every install.
-    // The legacy schema in data/backups/turkish_default/sql.sql has no
-    // `notes` column; some upgraded installs do (apps.php selects it).
-    // Probe once via SHOW COLUMNS to avoid a hard-fail SELECT.
+    // Resolve order notes — the column doesn't exist on every install.
+    // No migration creates orders.notes (or orders.tracking_company) yet;
+    // they exist only where they were added by hand. Both are reserved
+    // for the ERP module, which will add them through its own migration;
+    // once that ships this probe becomes unnecessary. Until then, probe
+    // once via SHOW COLUMNS so the SELECT never hard-fails.
     static $_order_view_has_notes_col = null;
     if ($_order_view_has_notes_col === null) {
         $_probe = db_value("SHOW COLUMNS FROM orders LIKE 'notes'");

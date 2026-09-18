@@ -53,7 +53,7 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 
 * Mail-merge değişkenleri ve izin (opt-in) yönetimiyle zamanlanmış e-posta kampanyaları
 * MailChimp senkronizasyonu, kişi yönetimi, satış ortaklığı ve komisyon takibi
-* Kısa linkler, canlı destek modülü ve özel entegrasyonlar için REST API (`apps.php`)
+* Kısa linkler, canlı destek modülü ve özel entegrasyonlar için dış API (`integration.php`, kapsamlı anahtar/secret)
 
 **Güvenlik**
 
