@@ -18,7 +18,7 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'user');
+validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 $liveform = new liveform('edit_short_link');
@@ -50,33 +50,6 @@ if ($short_link === null) {
 }
 
 $short_link_file_id = $short_link['file_id'];
-
-
-// If this user has a user role then determine if user has access to short link.
-// A user has access to a short link if he/she has edit rights to the short link's page
-// or for url type: created the short link.
-if (USER_ROLE == 3) {
-    // Determine if the user has access to the short link differently based on the destination type.
-    switch ($short_link['destination_type']) {
-        default:
-            // If the user does not have edit access to the page's folder, then output error.
-            if (check_edit_access($short_link['folder_id']) == false) {
-                log_activity(lang('access denied to edit short link because user does not have edit rights to page'), $_SESSION['sessionusername']);
-                output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-            }
-
-            break;
-
-        case 'url':
-            // If this user is not the user that created the short link, then output error.
-            if (USER_ID != $short_link['created_user_id']) {
-                log_activity(lang('access denied to edit short link because user did not create short link'), $_SESSION['sessionusername']);
-                output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-            }
-
-            break;
-    }
-}
 
 // If the form was not just submitted then output form.
 if (!$_POST) {
@@ -521,26 +494,6 @@ if (!$_POST) {
                 // If the selected page does not exist, then add error.
                 if ($row[0] == 0) {
                     $liveform->mark_error($page_field_name, lang('The page does not exist.'));
-                }
-            }
-
-            // If there is not already an error and the user has a user role,
-            // then check if user has edit rights to page.
-            if (
-                ($liveform->check_form_errors() == FALSE)
-                && (USER_ROLE == 3)
-            ) {
-                // Get the page's folder in order to check if the user has edit rights to the page.
-                $query = "SELECT page_folder AS folder_id FROM page WHERE page_id = '" . escape($page_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                $folder_id = $row['folder_id'];
-
-                // If the user does not have edit rights to the page's folder, then log activity and add error.
-                if (check_edit_access($folder_id) == false) {
-                    
-                    log_activity(lang('access denied to edit short link for page because user does not have edit rights to page'), $_SESSION['sessionusername']);
-                    $liveform->mark_error($page_field_name, lang('Sorry, you do not have access to that page.'));
                 }
             }
         }

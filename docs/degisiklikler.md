@@ -88,6 +88,72 @@ genel vade 30, cari A 0 / cari B 45 ile elle faturalar +30 / +45 gün vadeli;
 form üzerinden yazılan tarih korunur; CSV içe aktarma → dışa aktarma
 `payment_days` gidip geldi. Ayrıntı PR açıklamasında.
 
+---
+
+## 2026.4.4 — Kısa linkler rol 3'e kapatıldı (2026-09-18)
+
+**Karar (Erdal, 2026-09-18, #73 üzerinden):** Rol 3 (User) kısa linkleri
+göremez, ekleyemez, düzenleyemez, silemez. Sayfa ve dosyaların güvenliği ve
+erişimi **klasör bazlı** kontrol edilir; kısa link hiçbir klasöre ait
+değildir, dolayısıyla klasör ile yetki dağıtımının dışında kalır. Eski kod bu
+boşluğu klasör kontrolünü kısa linkin *hedef* sayfasının klasörüne uygulayarak
+ve `url`/`file` tipinde "oluşturan kullanıcı" kuralıyla kapatmaya çalışıyordu;
+ekranlar arasında tutarsızdı (`add_short_link.php` manager kapılıydı,
+`view_short_links.php` ve `edit_short_link.php` user kapılı, Dosya
+Yöneticisi'nin kısa link alanı rol 3'e listeleme/yeniden adlandırma/silme
+veriyordu). Artık tek kural var: kısa link alanı rol 0–2'nin hakkıdır.
+
+**Ne değişti:**
+
+- `view_short_links.php`, `edit_short_link.php`: kapı `validate_area_access($user, 'manager')`.
+  Rol 3'e özel filtreleme ve "hedef sayfanın klasörüne düzenleme hakkı" kontrolleri
+  kaldırıldı (artık erişilemez koddu). Oluştur düğmesi koşulsuz basılıyor.
+- `view_folder_and_files_f.php` (`pg_explorer_handle`): `explorer_short_link*`
+  ile başlayan her API eylemi (listeleme dahil) rol 3 için tek yerde
+  `Access denied` ile reddediliyor. `pg_short_link_visible()` yalnız rolü
+  soruyor; `create`/`duplicate` içindeki tekil rol 3 kontrolleri ve
+  `pg_short_link_read_request()` içindeki klasör hakkı kontrolü kaldırıldı.
+- `view_folders.php`: `?view=short_links` rol 3 için `browse` moduna düşer;
+  sol menü ve ağaçtaki "Kısa Linkler" girişleri `role <= 2` ile çiziliyor
+  (Paylaşılan Klasörler / Yedekler ile aynı kalıp), JS dinleyicileri öğe yoksa
+  bağlanmıyor.
+- `includes/fn/output.php`: Sayfalar menüsündeki "Kısa Linkler" ve "Kısa Link
+  Oluştur" girişleri rol 3'e gösterilmiyor; `pg_page_facts()` sayfa panelinde
+  kısa link satırını rol 3'e basmıyor.
+- `api.php`: son güncellemeler listesi kısa linkleri yalnız rol 0–2'ye ekliyor;
+  komut paleti (`backend_search`) "Kısa Linkler" hızlı eylemini `$can_manage`
+  ile veriyor.
+- `editor_select_page_or_file.php`: CKEditor bağlantı seçicisindeki "Kısa
+  Linkler" sekmesi rol 3'e çizilmiyor; `type=short_link` istenirse sayfalar
+  sekmesine düşüyor.
+
+Şema değişikliği yok, yeni dil anahtarı yok.
+
+### Doğrulama
+
+Sandbox (MariaDB + `php -S`, 2026.4.4 şeması) üzerinde rol 3 (klasör 87'de
+düzenleme hakkı olan), rol 2 ve rol 0 kullanıcılarıyla curl:
+
+- Önce (main, `ca5196c`): rol 3 `view_short_links.php`'de iki kısa linki
+  listeledi, `add_short_link.php` ve `edit_short_link.php?id=1|2` 200 açıldı,
+  `explorer_short_link_rename` başarıyla yazdı, sol menüde girişler vardı.
+- Sonra: rol 3 için dört klasik ekran, `submit_delete` ve `add` POST'ları
+  "Erişim reddedildi" (DB satırı değişmedi); `explorer_short_links_list /
+  _options / _create / _rename / _delete` `{"status":"error"}`;
+  `view_folders.php?view=short_links` `mode: 'browse'`, menü/ağaç öğeleri yok;
+  komut paletinde ve editör seçicisinde giriş yok.
+- Rol 2: listeleme 200, `add_short_link.php` POST → satır yazıldı,
+  `edit_short_link.php` POST → ad ve URL güncellendi, `submit_delete` → satır
+  silindi; Dosya Yöneticisi listesi `success`, `?view=short_links`
+  `mode: 'short_links'`. Rol 0 aynı şekilde çalışıyor.
+- `php tools/lint.php`, `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Dosya Yöneticisi'nin rol 3 için JavaScript tarafı (öğeler
+kaldırıldıktan sonra sayfa hatasız yükleniyor mu) tarayıcısız doğrulanamadı;
+null korumaları Paylaşılan/Yedekler kalıbıyla aynı. Mevcut kurulumlarda rol 3
+kullanıcılarının daha önce oluşturduğu kısa linkler duruyor, yalnız yönetici
+ve üstü görüp düzenleyebilir.
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters

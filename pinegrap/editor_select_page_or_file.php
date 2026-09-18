@@ -33,6 +33,11 @@ if (isset($_SESSION['software']['editor_select_page_or_file']['type']) == false)
     $_SESSION['software']['editor_select_page_or_file']['type'] = 'page';
 }
 
+// Short links are a manager-and-up area, so a user (role 3) gets the pages tab instead.
+if ((USER_ROLE == 3) && ($_SESSION['software']['editor_select_page_or_file']['type'] == 'short_link')) {
+    $_SESSION['software']['editor_select_page_or_file']['type'] = 'page';
+}
+
 // If folder is not set yet, set to "all".
 if (isset($_SESSION['software']['editor_select_page_or_file']['folder_id']) == false) {
     $_SESSION['software']['editor_select_page_or_file']['folder_id'] = 'all';
@@ -465,31 +470,14 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             // Assume that this short link should not be included until we find out otherwise.
             $include = false;
 
-            // If this user has edit access to this short link,
-            // and this short link is within the scope of the selected folder,
+            // If this short link is within the scope of the selected folder,
             // then continue to determine if this short link should be included in results.
             if (
+                (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') == 'all')
+                ||
                 (
-                    (USER_ROLE < 3)
-                    ||
-                    (
-                        ($short_link['destination_type'] != 'url')
-                        && (check_folder_access_in_array($short_link['folder_id'], $folders_that_user_has_access_to) == true)
-                    )
-                    ||
-                    (
-                        ($short_link['destination_type'] == 'url')
-                        && (USER_USERNAME == $short_link['created_username'])
-                    )
-                )
-                &&
-                (
-                    (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') == 'all')
-                    ||
-                    (
-                        ($short_link['destination_type'] != 'url')
-                        && (in_array($short_link['folder_id'], $folders) == true)
-                    )
+                    ($short_link['destination_type'] != 'url')
+                    && (in_array($short_link['folder_id'], $folders) == true)
                 )
             ) {
                 // If an access control type has been selected, then determine if short link
@@ -751,7 +739,7 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
 
                         <a class="btn btn-outline-secondary my-2' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">desktop_windows</span>' . lang('Pages') . '</a>
                         <a class="btn btn-outline-secondary my-2' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">insert_drive_file</span>' . lang('Files') . '</a>
-                        <a class="btn btn-outline-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>
+                        ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>' : '') . '
                     </div>
                 </form>
             </nav>
