@@ -334,6 +334,44 @@ function api_files_content_matches($extension, $path) {
 
 }
 
+// The extension the bytes ask for, when a name came without one. The map covers
+// exactly the types api_files_allowed_types() accepts, so whatever is appended
+// here is later held to api_files_content_matches() like a typed extension.
+// Returns '' when the type is unknown, not accepted, or finfo is missing.
+function api_files_extension_from_bytes($bytes) {
+
+	if (!function_exists('finfo_open')) {
+
+		return '';
+
+	}
+
+	$map = array(
+		'image/jpeg'      => 'jpg',
+		'image/png'       => 'png',
+		'image/gif'       => 'gif',
+		'image/webp'      => 'webp',
+		'application/pdf' => 'pdf'
+	);
+
+	$finfo = @finfo_open(FILEINFO_MIME_TYPE);
+
+	if (!$finfo) {
+
+		return '';
+
+	}
+
+	$mime = @finfo_buffer($finfo, $bytes);
+
+	finfo_close($finfo);
+
+	$mime = strtolower(trim((string)$mime));
+
+	return isset($map[$mime]) ? $map[$mime] : '';
+
+}
+
 function api_files_create($params) {
 
 	$app = api_current_app();
@@ -401,14 +439,26 @@ function api_files_create($params) {
 	}
 
 	// The name decides the extension, and the extension decides what the file
-	// is allowed to be. A name that was not sent is taken from the address.
+	// is allowed to be. A name that was not sent is taken from the address, and
+	// a name sent without an extension is completed from the address first and
+	// from the bytes themselves second, so a caller may say "piksums" and get
+	// piksums.png. The completed extension is still checked against the content
+	// below, like any extension the caller typed.
 	$name = isset($params['name']) ? trim((string)$params['name']) : '';
 
-	if (($name === '') && $has_url) {
+	$url_basename = '';
+
+	if ($has_url) {
 
 		$path_part = (string)@parse_url((string)$params['source_url'], PHP_URL_PATH);
 
-		$name = trim(basename($path_part));
+		$url_basename = trim(basename($path_part));
+
+	}
+
+	if (($name === '') && $has_url) {
+
+		$name = $url_basename;
 
 	}
 
@@ -419,6 +469,34 @@ function api_files_create($params) {
 	}
 
 	$extension = strtolower((string)pathinfo($name, PATHINFO_EXTENSION));
+
+	if ($extension === '') {
+
+		$guessed = '';
+
+		if ($url_basename !== '') {
+
+			$guessed = strtolower((string)pathinfo($url_basename, PATHINFO_EXTENSION));
+
+		}
+
+		if ($guessed === '') {
+
+			$guessed = api_files_extension_from_bytes($bytes);
+
+		}
+
+		// Only a type this endpoint accepts is appended; anything else falls
+		// through to the same refusal a wrong extension gets.
+		if (($guessed !== '') && in_array($guessed, api_files_allowed_types(), true)) {
+
+			$name .= '.' . $guessed;
+
+			$extension = $guessed;
+
+		}
+
+	}
 
 	if (!in_array($extension, api_files_allowed_types(), true)) {
 
