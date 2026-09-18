@@ -132,6 +132,13 @@ $file['name'] = $row['name'];
 $file['folder_id'] = $row['folder_id'];
 $file['attachment'] = $row['attachment'];
 
+// The DKIM signing key lives in the file directory so the mailer can read it,
+// and older installations registered it in a public folder. It must never
+// leave the server, whatever folder its record sits in.
+if (mb_strtolower($file['name']) === 'dkim.key') {
+    output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+}
+
 // If a file directory path is not set, then set it to the default which is a path
 // inside the software directory. A custom file directory path is used when
 // an adminstrator wants the file directory to be located in a different area.
