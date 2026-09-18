@@ -1017,6 +1017,7 @@ class liveform {
     function unmark_errors() {
         if (isset($_SESSION['software']['liveforms'][$this->form][$this->index]) && $_SESSION['software']['liveforms'][$this->form][$this->index]) {
             foreach ($_SESSION['software']['liveforms'][$this->form][$this->index] as $field => $value) {
+                if (!is_array($value)) continue;
                 $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error'] = FALSE;
                 $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = '';
             }

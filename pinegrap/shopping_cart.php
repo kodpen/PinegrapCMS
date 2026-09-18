@@ -696,7 +696,7 @@ if (isset($_POST['special_offer_code'])) {
                 offers.end_date,
                 offers.scope
             FROM offers
-            WHERE offers.code = '" . e($offer_code) . "'";
+            WHERE offers.code = '" . e($offer_code ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // if an offer was found for special offer code, then continue to check if there is an active offer
