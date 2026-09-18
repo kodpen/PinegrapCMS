@@ -3093,8 +3093,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // below and is offered wherever making one makes sense: among the
         // short links themselves, and among the pages -- which is where
         // somebody is standing when they think "this page needs a short
-        // address".
-        var shortLink = (insideShortLinks() || ((state.mode === 'all') && (state.allFilter === 'pages')));
+        // address". A plain user is not offered it, because the server
+        // refuses the create for that role.
+        var shortLink = (state.caps.role < 3) && (insideShortLinks() || ((state.mode === 'all') && (state.allFilter === 'pages')));
 
         // The backup folder creates none of the four, and two things nothing
         // else does: a backup, and a file put there by hand -- an archive

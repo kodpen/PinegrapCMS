@@ -31,8 +31,9 @@ if (!defined('PG_ERP_ENTRY')) {
  *
  * Two things reduce it, and they are not the same thing: money that came in
  * (settlements) and goods that went back (returns). Both stop it being
- * collectable, so both count here, while only the first makes the invoice
- * "paid" - which is why the status is worked out somewhere else.
+ * collectable, so both count here. The status is worked out somewhere else
+ * (erp_invoice_refresh_paid) and measures the money against the same figure,
+ * so the two never disagree about whether anything is left to collect.
  *
  * A return document has nothing to collect against it; it is the credit.
  *
@@ -72,6 +73,18 @@ function erp_invoice_open_amount($invoice)
  * added to drifts, and once it has drifted there is nothing left to check it
  * against.
  *
+ * The money is measured against what the invoice still asks for, which is its
+ * total less what has been returned against it - the same figure
+ * erp_invoice_open_amount() works from. Measured against the full total, an
+ * invoice with a partial return could never be paid: the receipt screen would
+ * refuse the missing kurus as "already closed" while the status sat at
+ * partially_paid. Only money makes an invoice paid, though: an invoice that
+ * was returned in full and never collected on stays issued, because nothing
+ * was collected on it.
+ *
+ * Called after a settlement moves and after a return is raised or cancelled,
+ * since both change the answer.
+ *
  * A cancelled or draft invoice keeps its status - neither is waiting to be paid.
  *
  * @param int $invoice_id
@@ -81,7 +94,8 @@ function erp_invoice_refresh_paid($invoice_id)
 {
     $invoice_id = (int) $invoice_id;
 
-    $invoice = db_item("SELECT grand_total, status, order_id FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
+    $invoice = db_item("SELECT grand_total, status, order_id, payment_date FROM erp_invoices
+        WHERE id = '" . $invoice_id . "' LIMIT 1");
 
     if (!is_array($invoice)) {
         return false;
@@ -93,32 +107,46 @@ function erp_invoice_refresh_paid($invoice_id)
     $status = (string) $invoice['status'];
 
     if (($status !== 'cancelled') && ($status !== 'draft')) {
+        $due = (int) $invoice['grand_total'] - erp_invoice_returned_total($invoice_id);
+
         if ($paid <= 0) {
             $status = 'issued';
-        } elseif ($paid >= (int) $invoice['grand_total']) {
+        } elseif ($paid >= $due) {
             $status = 'paid';
         } else {
             $status = 'partially_paid';
         }
     }
 
+    // The day the invoice was paid off is the day of the receipt that closed
+    // it. Only filled in when the document does not already state one: an
+    // internet sale carries the gateway's date from the order.
+    $payment_date = '';
+    if (($status === 'paid') && ((string) ($invoice['payment_date'] ?? '0000-00-00') === '0000-00-00')) {
+        $payment_date = (string) db_value("SELECT COALESCE(MAX(doc_date), '') FROM erp_settlements
+            WHERE invoice_id = '" . $invoice_id . "'");
+    }
+
     $updated = (erp_query("UPDATE erp_invoices
         SET paid_total = '" . $paid . "',
             status = '" . escape($status) . "',
+            " . (($payment_date !== '') ? "payment_date = '" . escape($payment_date) . "'," : '') . "
             updated_at = '" . time() . "'
         WHERE id = '" . $invoice_id . "'") !== false);
 
     // A receipt that settles the invoice is the confirmed payment moment for a
-    // bank transfer, so the order learns its payment date here. Runs inside the
-    // caller's transaction, so it rolls back with the receipt, and only touches
-    // an offline order still unpaid: a card order already carries the gateway's
-    // date, and an operator who pressed Payment Received first keeps theirs.
-    if ($updated && ($status === 'paid') && ((int) $invoice['order_id'] > 0)) {
-        erp_query("UPDATE orders
-            SET paid_at = '" . time() . "'
-            WHERE id = '" . (int) $invoice['order_id'] . "'
-              AND payment_method = 'Offline Payment'
-              AND paid_at = 0");
+    // bank transfer, so the order is marked paid here, through the same helper
+    // the order screen's Payment Received button uses (a no-op once paid_at is
+    // set, and it logs the activity). Runs inside the caller's transaction, so
+    // it rolls back with the receipt. Only an offline order is touched: a card
+    // order already carries the gateway's date.
+    if ($updated && ($status === 'paid') && ((int) $invoice['order_id'] > 0) && function_exists('pg_order_mark_paid')) {
+        $order_id = (int) $invoice['order_id'];
+        $payment_method = (string) db_value("SELECT payment_method FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
+
+        if ($payment_method === 'Offline Payment') {
+            pg_order_mark_paid($order_id, 0);
+        }
     }
 
     return $updated;

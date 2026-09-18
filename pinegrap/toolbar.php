@@ -42,6 +42,13 @@ $seo_score = $row['seo_score'];
 $sitemap = $row['sitemap'];
 $folder_archived = $row['folder_archived'];
 
+// The bar describes a page of the site, so it is shown under the same test
+// the site applies before serving that page: whoever may not view the page's
+// folder gets the access error here as well, not the page's name and actions.
+if (check_view_access($page_folder) == false) {
+    output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 if ($page_home == 'yes') {
     $page_name = '<span class="bi bi-house text-success ms-2" title="' . lang('Homepage') . '"> ' . $page_name . '</span>';
 } else {

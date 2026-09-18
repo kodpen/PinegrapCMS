@@ -4225,7 +4225,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $folders_that_user_has_access_to = array();
                         
                         // If the user is a basic user then get the folders they have access to.
-                        if ($user['role'] == 3) {
+                        if (isset($user['role']) && ($user['role'] == 3)) {
                             $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
                         }
                         
