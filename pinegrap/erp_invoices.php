@@ -59,14 +59,15 @@ foreach ($invoices as $invoice) {
     $id = (int) $invoice['id'];
     $status = (string) $invoice['status'];
 
-    $open = erp_invoice_open_amount($invoice);
+    // A draft has no number yet and opens in the editor rather than as a document.
+    $is_draft = ($status === 'draft');
+
+    // Nothing is owed on a draft: no movement has been posted for it.
+    $open = $is_draft ? 0 : erp_invoice_open_amount($invoice);
 
     // The title as it was when the document was issued; the live card for
     // documents written before the copy existed.
     $account_title = (trim((string) $invoice['account_title']) !== '') ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
-
-    // A draft has no number yet and opens in the editor rather than as a document.
-    $is_draft = ($status === 'draft');
     $output_link_url = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
     $output_number = $is_draft
         ? '<span class="text-body-secondary fst-italic">' . lang('Draft') . '</span>'
