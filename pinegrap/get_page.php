@@ -2481,9 +2481,6 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 	{
 		$output_channel_title = lang(array('string'=>'No feed is available for {var:1}','vars'=>h($page_name)));
 		$output_channel_description = lang(array('string'=>'The page ({var:1}) must be in a Public Folder, and it must be either a Form List View, Calendar View, Catalog, Catalog Detail, or Order Form before a feed can be created.','vars'=>$page_name));
-
-
-		'';
 		set_response_code(404);
 	}
 	// set content type header for XML

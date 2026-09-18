@@ -599,15 +599,6 @@ function get_search_results($properties) {
                         
                         // if there is a catalog detail page selected, then output link to catalog detail page
                         if ($catalog_detail_page_id != 0) {
-                            // if item is a product group, then set id name
-                            if ($item['type'] == 'product group') {
-                                $id_name = 'product_group_id';
-                                
-                            // else item is a product, so set id name
-                            } else {
-                                $id_name = 'product_id';
-                            }
-                            
                             $output_link_start = '<a href="' . OUTPUT_PATH . h(encode_url_path(get_page_name($catalog_detail_page_id))) . '/' . h(encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type']))) . '?previous_url_id=' . urlencode(generate_url_id()) . '">';
                             $output_link_end = '</a>';
                         }
@@ -868,15 +859,6 @@ function get_search_results($properties) {
                         
                         // if there is a catalog detail page selected, then output link to catalog detail page
                         if ($catalog_detail_page_id != 0) {
-                            // if item is a product group, then set id name
-                            if ($item['type'] == 'product group') {
-                                $id_name = 'product_group_id';
-                                
-                            // else item is a product, so set id name
-                            } else {
-                                $id_name = 'product_id';
-                            }
-                            
                             $output_link_start = '<a href="' . OUTPUT_PATH . h(encode_url_path(get_page_name($catalog_detail_page_id))) . '/' . h(encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type']))) . '?previous_url_id=' . urlencode(generate_url_id()) . '">';
                             $output_link_end = '</a>';
                         }

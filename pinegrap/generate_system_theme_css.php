@@ -105,8 +105,8 @@ function generate_system_theme_css($css_properties)
     $output .= 'body' . "\r\n" . 
         '{' . "\r\n" . 
         'padding: 0.01em;' . "\r\n" . 
-        'margin: 0em 0em 0em 0em;' . "\r\n";
-        'font-size: 100%;' . "\r\n";  //don't inherit OS browser style defaults
+        'margin: 0em 0em 0em 0em;' . "\r\n" .
+        'font-size: 100%;' . "\r\n";  // Do not inherit the OS/browser default font size.
         
     $global_font_family = 'sans-serif';  // set default if none
          
@@ -143,11 +143,9 @@ function generate_system_theme_css($css_properties)
     // if there is a font size property, then add it
     if ($site_wide_properties['base_object']['text']['font_size'] != '') {
         $output .= 'font-size: ' . $site_wide_properties['base_object']['text']['font_size'] . ';' . "\r\n";
-        '}' . "\r\n";
     // else set a default font size of .75em which is about 12px
     } else {
         $output .= 'font-size: .75em;' . "\r\n";
-        '}' . "\r\n";
         $site_wide_properties['base_object']['text']['font_size'] = '.75em';
     }
     
