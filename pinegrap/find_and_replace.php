@@ -24,8 +24,8 @@ validate_area_access($user, 'designer');
 include_once('liveform.class.php');
 $liveform = new liveform('find_and_replace');
 
-// ── Tablo tanımları ──────────────────────────────────────────────────────────
-// edit_url  : {kolon_adı} yer tutucuları item değerleri ile doldurulur
+// ── Table definitions ────────────────────────────────────────────────────────
+// edit_url  : {column_name} placeholders are filled from the item values
 // extra_join: Find sorgusuna eklenen JOIN ifadesi (opsiyonel)
 // url_raw   : true ise OUTPUT_SOFTWARE_DIRECTORY prefix eklenmez (tam URL)
 $all_table_defs = [
@@ -47,11 +47,11 @@ $all_table_defs = [
         'table'        => 'pregion',
         'id_column'    => 'pregion_id',
         'name_column'  => 'pregion_name',
-        // page tablosuyla JOIN → page_name üzerinden frontend URL elde edilir
+        // JOIN with the page table → the frontend URL comes from page_name
         'extra_select' => ['page.page_name AS pregion_page_name'],
         'extra_join'   => 'LEFT JOIN page ON pregion.pregion_page = page.page_id',
         'columns'      => ['pregion_content'],
-        // Sayfanın frontend URL'si — kendi içinden düzenlenir
+        // The page's frontend URL — edited from the page itself
         'edit_url'     => '{pregion_page_name}',
         'url_raw'      => true,   // OUTPUT_PATH . page_name (software dir olmadan)
     ],
@@ -96,7 +96,7 @@ $all_table_defs = [
 
 ];
 
-// E-ticaret aktifse ürün tablolarını ekle
+// Add the product tables when e-commerce is enabled
 if (defined('ECOMMERCE') && ECOMMERCE === true) {
     $all_table_defs['products'] = [
         'label'        => lang('Products'),
@@ -148,7 +148,7 @@ $all_table_defs['comments'] = [
     'url_raw'      => false,
 ];
 
-// Reklamlar aktifse ekle
+// Add when ads are enabled
 if (defined('ADS') && ADS === true) {
     $all_table_defs['ads'] = [
         'label'        => lang('Ads'),
@@ -163,7 +163,7 @@ if (defined('ADS') && ADS === true) {
     ];
 }
 
-// ── Eşleşme bağlamı (context snippet) ────────────────────────────────────────
+// ── Match context (context snippet) ──────────────────────────────────────────
 function find_match_context($text, $find, $case_sensitive, $is_regex, $context_len = 80) {
     if ($is_regex) {
         $flags = 'u' . ($case_sensitive ? '' : 'i');
@@ -189,8 +189,8 @@ function find_match_context($text, $find, $case_sensitive, $is_regex, $context_l
 }
 
 // ── Edit URL builder ──────────────────────────────────────────────────────────
-// url_raw=true  → OUTPUT_PATH . page_name  (frontend sayfası)
-// url_raw=false → OUTPUT_PATH . SOFTWARE_DIRECTORY . '/' . url (backend sayfası)
+// url_raw=true  → OUTPUT_PATH . page_name  (frontend page)
+// url_raw=false → OUTPUT_PATH . SOFTWARE_DIRECTORY . '/' . url (backend page)
 function build_find_edit_url($pattern, $item, $url_raw = false) {
     if (!$pattern) return '';
     $url = $pattern;
@@ -219,7 +219,7 @@ function build_find_where($columns, $find, $case_sensitive, $is_regex) {
     return implode(' OR ', $parts);
 }
 
-// ── GET: form göster ─────────────────────────────────────────────────────────
+// ── GET: show the form ───────────────────────────────────────────────────────
 if (!$_POST) {
 
     $scope_html = '';
@@ -374,7 +374,7 @@ if (!$_POST) {
 
     $liveform->remove_form();
 
-// ── POST: işle ───────────────────────────────────────────────────────────────
+// ── POST: process ────────────────────────────────────────────────────────────
 } else {
     validate_token_field();
     $liveform->add_fields_to_session(array('trim' => false));
@@ -391,7 +391,7 @@ if (!$_POST) {
     $action         = isset($_POST['submit_button']) ? $_POST['submit_button'] : 'Find & Replace';
     $selected_scope = isset($_POST['scope']) ? $_POST['scope'] : array_keys($all_table_defs);
 
-    // Regex geçerlilik kontrolü
+    // Regex validity check
     if ($use_regex) {
         $flags = 'u' . ($case_sensitive ? '' : 'i');
         if (@preg_match('/' . $find . '/' . $flags, '') === false) {
@@ -400,7 +400,7 @@ if (!$_POST) {
         }
     }
 
-    // Seçilen kapsama göre tablo listesini filtrele
+    // Filter the table list by the selected scope
     $tables = array_intersect_key($all_table_defs, array_flip($selected_scope));
 
     // ────────────────────────────────────────────────────────────────────────
@@ -414,7 +414,7 @@ if (!$_POST) {
 
         foreach ($tables as $key => $def) {
 
-            // SELECT oluştur: id + name + extra + aranacak sütunlar
+            // Build the SELECT: id + name + extra + the columns to search
             $select_cols = array_merge(
                 [$def['id_column'], $def['name_column']],
                 $def['extra_select'],
@@ -437,7 +437,7 @@ if (!$_POST) {
                 $col_matches = [];
 
                 foreach ($def['columns'] as $col) {
-                    // Kaç eşleşme var?
+                    // How many matches?
                     if ($use_regex) {
                         $flags = 'u' . ($case_sensitive ? '' : 'i');
                         $cnt   = (int) @preg_match_all('/' . $find . '/' . $flags, $item[$col]);
@@ -477,13 +477,13 @@ if (!$_POST) {
             }
         }
 
-        // Eşleşme bulunamadı
+        // No matches found
         if (!$total_matches) {
             $liveform->mark_error('find', lang('Sorry, no matches were found. Please try entering different text to find.'));
             go($_SERVER['PHP_SELF']);
         }
 
-        // Sonuç HTML'i oluştur
+        // Build the result HTML
         $results_html = '';
         foreach ($find_results as $group) {
             $rows = '';
@@ -527,7 +527,7 @@ if (!$_POST) {
             </div>';
         }
 
-        // Özet
+        // Summary
         $summary = number_format($total_matches) . ' '
             . lang('matches found in')
             . ' ' . number_format($total_records) . ' '

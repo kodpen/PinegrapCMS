@@ -28,8 +28,8 @@
  * editable in its own right; and the attribute matrix is deliberately absent,
  * because a screen that edits one variant and can also add variants lets the
  * operator create a variant of a variant. Variant sets are edited on
- * edit_product_group.php. See CLAUDE.md, "Ürün Düzenleme ve Set Düzenleme
- * Ayrı Ekranlardır".
+ * edit_product_group.php; product editing and set editing are deliberately
+ * separate screens.
  *
  * Replaces the screen of the same name; every column the old one wrote is
  * written here, which was checked column by column rather than by eye.

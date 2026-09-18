@@ -17,7 +17,7 @@ if (!defined('INSTALL_OR_UPDATE')) {
 
 function upgrade_to_2026_1_13() {
 	// Add Pay with Iyzico express checkout toggle.
-	// Enables the "İyzico ile Öde" button on the order form,
+	// Enables the "Pay with Iyzico" button on the order form,
 	// redirecting customers to Iyzico for payment (similar to 3DS flow).
 	install_add_column('config', 'ecommerce_pay_with_iyzico', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 }

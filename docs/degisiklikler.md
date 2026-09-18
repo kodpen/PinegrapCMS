@@ -132,6 +132,61 @@ yeniden üretilecek; üretilmezse iki dosya "missing" görünür. Yükselen site
 dosyalar Temizle aracı çalıştırılana kadar diskte durur (bu, listedeki diğer
 kalıntılarla aynı davranış).
 
+## 2026.4.4 — Kaynak metin yalnız İngilizce: hızlı sipariş koşulları, tasarımcı slug'ları, yer tutucu görsel (2026-09-18)
+
+**Belirti.** Ürün sahibinin kararı (#73): yazılım genelinde Türkçe metin ve
+yorum yalnız `changelog.txt` ve `includes/local/tr.json` içinde bulunabilir.
+Depo taramasında bunun dışında kalan yerler vardı: (1)
+`includes/fn/widgets_express_order.php` içindeki eski (monolitik düzen)
+koşul bloğu — cümle, modal başlığı, kabul düğmesi ve `_eo_default_terms_html()`
+gövdesi — düz Türkçe literal'di, yani İngilizce dilli bir site bile koşul
+penceresinde Türkçe metin görüyordu. (2) `style_designer.js` `SW_TYPES`
+listesindeki widget ad slug'ları (`form-listesi`, `urun-detay`, `hesabim` …)
+ve `_swAutoName()` fallback'i `'sayfa'` Türkçe'ydi. (3)
+`duplicate_products.php` beş etiketi, `print_packing_slip.php` `<title>`'ı
+dile göre dallanıp Türkçe yazıyordu, `assets/images/no-image.svg` Türkçe
+altyazı taşıyordu. (4) Bir avuç Türkçe kod yorumu (`find_and_replace.php`,
+`material-icons.css`, migration dosyalarında alıntı kelimeler vb.).
+
+**Düzeltme.** Metinler İngilizce yazıldı ve `lang()` / `_sdT()` ile geçirildi;
+Türkçe karşılıklar `tr.json`'a değer olarak girdi, böylece Türkçe siteler
+aynı sözcükleri görür. Koşul bloğu tasarımcı ağacının zaten sahip olduğu
+anahtarları (`1. General Terms`, `the sales agreement and the terms of use`
+…) yeniden kullanır; iki render yolu aynı metni basar. Slug'lar
+`_sdT('form-list')` gibi İngilizce anahtardan geçer, `_swAutoName()` çeviriyi
+ve sayfa fallback'ini `_swSlug()` ile temizler: Türkçe kurulumda widget adı
+öncekiyle aynı (`ana-sayfa-form-listesi-widget`, `sayfa-siparis-widget`),
+İngilizce kurulumda İngilizce (`home-form-list-widget`, `page-cart-widget`).
+`no-image.svg` statik dosya olduğu için çalışma anında çevrilemez; altyazı
+İngilizce ("No image available") yapıldı. Yorumlar İngilizceye çevrildi;
+iç plan belgelerine atıf yapanlar teknik gerekçeyi doğrudan yazar.
+
+**Yayınlanmış siteye etkisi.** İngilizce dilli kurulumlarda eski koşul
+penceresi ve tasarımcı otomatik widget adları artık İngilizce; Türkçe
+kurulumlarda değişiklik yok. Yer tutucu görselin altyazısı her kurulumda
+İngilizce.
+
+### Doğrulama
+
+Sandbox (Türkçe kurulum, worktree :8004): eski koşul bölümü ve modal
+`_eo_render_terms_section()` / `_eo_render_terms_modal_html()` sunucudan
+render edildi, on beş Türkçe metnin tümü `tr.json` değerleriyle çıktı,
+İngilizce anahtar sızıntısı yok. Tasarımcı ekranı (`edit_system_style.php`)
+`sdDesign.i18n` içinde slug anahtarlarını taşıyor; `SW_TYPES` +
+`_swAutoName()` hunk'ı Node'da sunulan sözlükle çalıştırıldı (yukarıdaki
+adlar). `duplicate_products.php`, `print_packing_slip.php` (Sevk İrsaliyesi),
+`find_and_replace.php`, `edit_product.php`, `edit_offer.php`,
+`view_offers.php`, `download_assistant.php` ve `no-image.svg` :8004'ten
+yüklendi. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Tasarımcıda paletten sistem widget'ı sürükleyip gerçek
+sayfa oluşturma sandbox'ta denenemedi (CDN'den jQuery yüklenmiyor, proxy
+engeli). Depo taramasının geri kalanı (2. tur oturumunun dosyaları,
+`includes/api|erp|settings`) bu PR'ın dışında; liste PR yorumundaki
+`turkish_scan.md` içinde.
+
+---
+
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
 **Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip

@@ -11457,5 +11457,22 @@
     "Secret key": "Gizli anahtar",
     "Forget": "Unut",
     "The key and the secret stay in this browser tab only: they are sent with the calls you make from here and nowhere else, and they are gone when the tab closes.": "Anahtar ve gizli anahtar yalnız bu tarayıcı sekmesinde durur: buradan yaptığınız çağrılarla gönderilir, başka hiçbir yere gitmez ve sekme kapandığında silinir.",
-    "Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.": "Bir uç nokta belirtiyorsa DELETE'in bir POST karşılığı vardır - aynı adresin POST'a yanıt vermesi ya da bir /delete adresi - DELETE fiilini uygulamaya ulaşmadan reddeden sunucular için."
+    "Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.": "Bir uç nokta belirtiyorsa DELETE'in bir POST karşılığı vardır - aynı adresin POST'a yanıt vermesi ya da bir /delete adresi - DELETE fiilini uygulamaya ulaşmadan reddeden sunucular için.",
+    "This text can be customized by the operator:": "Bu metin operatör tarafından özelleştirilebilir:",
+    "Designer → Express Order Settings → Terms Text (HTML)": "Tasarımcı → Hızlı Sipariş Ayarları → Koşullar Metni (HTML)",
+    "form-list": "form-listesi",
+    "form-detail": "form-detay",
+    "product-detail": "urun-detay",
+    "my-account": "hesabim",
+    "login": "giris",
+    "forgot-password": "sifremi-unuttum",
+    "search": "arama",
+    "registration": "uye-kaydi",
+    "checkout": "odeme",
+    "membership": "uyelik",
+    "The new letter replaces the 1 character removed from the ID and Short Description fields.": "Yeni harf ID ve Kısa Açıklama alanından silinen 1 karakter yerine eklenecek yeni harftir.",
+    "Number of Letters to Remove": "Silinecek Harf Sayısı",
+    "Add +1 for each space as well": "Her boşluk için de +1 ekleyin",
+    "Word or Letter to Add": "Eklenecek Kelime veya Harf",
+    "Duplicate Selected": "Seçilenleri Çoğalt"
 }

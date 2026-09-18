@@ -2,8 +2,8 @@
  * Material Icons - Self-hosted
  * Source: https://fonts.googleapis.com/icon?family=Material+Icons
  * Self-hosted to avoid blocking external font request on every backend page.
- * Pinegrap'ın yeni geliştirmelerinde Bootstrap Icons tercih edilir; bu dosya
- * legacy Material Icons kullanan eski kodları desteklemek içindir.
+ * New Pinegrap code uses Bootstrap Icons; this file only supports the
+ * legacy screens that still use Material Icons.
  */
 @font-face {
     font-family: 'Material Icons';

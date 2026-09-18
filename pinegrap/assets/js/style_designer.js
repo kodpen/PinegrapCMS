@@ -34490,24 +34490,28 @@ const StyleDesigner = (function () {
      * ===================================================================== */
 
     // The content kinds a system widget can be. This one list feeds the
-    // palette's "Yeni" group, the type select in the widget panel and the
-    // auto-name, so a kind added here shows up in all three.
+    // palette's "New" group, the type select in the widget panel and the
+    // auto-name, so a kind added here shows up in all three. The slug is
+    // the widget's default name part; it goes through the dictionary so a
+    // site gets it in its own language, and through _swSlug() in
+    // _swAutoName() so a translation with accented letters still yields a
+    // clean name.
     var SW_TYPES = [
-        { type: 'form_list_view',    label: _sdT('Form List View'),  slug: 'form-listesi',    icon: 'bi-list-ul' },
-        { type: 'form_item_view',    label: _sdT('Form Item View'),    slug: 'form-detay',      icon: 'bi-file-earmark-text' },
-        { type: 'catalog_listing',   label: _sdT('Catalog'),          slug: 'katalog',         icon: 'bi-grid' },
-        { type: 'catalog_item_view', label: _sdT('Catalog Detail'),                slug: 'urun-detay',      icon: 'bi-box-seam' },
-        { type: 'my_account',        label: _sdT('My Account'),                   slug: 'hesabim',         icon: 'bi-person-circle' },
-        { type: 'login_form',        label: _sdT('Login'),               slug: 'giris',           icon: 'bi-box-arrow-in-right' },
-        { type: 'forgot_password',   label: _sdT('Forgot Password'),           slug: 'sifremi-unuttum', icon: 'bi-key' },
-        { type: 'search_results',    label: _sdT('Search Results'),           slug: 'arama',           icon: 'bi-search' },
-        { type: 'registration',      label: _sdT('Registration Entrance'),                 slug: 'uye-kaydi',       icon: 'bi-person-plus' },
-        { type: 'shopping_cart',     label: _sdT('Shopping Cart'),          slug: 'sepet',           icon: 'bi-cart3' },
-        { type: 'express_order',     label: _sdT('Express Order'),  slug: 'odeme',           icon: 'bi-credit-card' },
-        { type: 'order_view',        label: _sdT('View Order'),       slug: 'siparis',         icon: 'bi-receipt' },
-        { type: 'membership',        label: _sdT('Membership Entrance'),        slug: 'uyelik',          icon: 'bi-patch-check' },
+        { type: 'form_list_view',    label: _sdT('Form List View'),  slug: _sdT('form-list'),    icon: 'bi-list-ul' },
+        { type: 'form_item_view',    label: _sdT('Form Item View'),    slug: _sdT('form-detail'),      icon: 'bi-file-earmark-text' },
+        { type: 'catalog_listing',   label: _sdT('Catalog'),          slug: _sdT('catalog'),         icon: 'bi-grid' },
+        { type: 'catalog_item_view', label: _sdT('Catalog Detail'),                slug: _sdT('product-detail'),      icon: 'bi-box-seam' },
+        { type: 'my_account',        label: _sdT('My Account'),                   slug: _sdT('my-account'),         icon: 'bi-person-circle' },
+        { type: 'login_form',        label: _sdT('Login'),               slug: _sdT('login'),           icon: 'bi-box-arrow-in-right' },
+        { type: 'forgot_password',   label: _sdT('Forgot Password'),           slug: _sdT('forgot-password'), icon: 'bi-key' },
+        { type: 'search_results',    label: _sdT('Search Results'),           slug: _sdT('search'),           icon: 'bi-search' },
+        { type: 'registration',      label: _sdT('Registration Entrance'),                 slug: _sdT('registration'),       icon: 'bi-person-plus' },
+        { type: 'shopping_cart',     label: _sdT('Shopping Cart'),          slug: _sdT('cart'),           icon: 'bi-cart3' },
+        { type: 'express_order',     label: _sdT('Express Order'),  slug: _sdT('checkout'),           icon: 'bi-credit-card' },
+        { type: 'order_view',        label: _sdT('View Order'),       slug: _sdT('order'),         icon: 'bi-receipt' },
+        { type: 'membership',        label: _sdT('Membership Entrance'),        slug: _sdT('membership'),          icon: 'bi-patch-check' },
         { type: 'custom_form',       label: _sdT('Custom Form'),                 slug: 'form',            icon: 'bi-ui-checks' },
-        { type: 'calendar_view',     label: _sdT('Calendar View'), slug: 'takvim',          icon: 'bi-calendar-event' }
+        { type: 'calendar_view',     label: _sdT('Calendar View'), slug: _sdT('calendar'),          icon: 'bi-calendar-event' }
     ];
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
@@ -34532,9 +34536,9 @@ const StyleDesigner = (function () {
     // its name if it has one, "page" while it is still untitled.
     function _swAutoName(regionType, page) {
         var p = page || (typeof _pgActivePage === 'function' ? _pgActivePage() : null);
-        var pageSlug = _swSlug(p ? p.page_name : '') || 'sayfa';
+        var pageSlug = _swSlug(p ? p.page_name : '') || _swSlug(_sdT('page')) || 'page';
         var info = _swTypeInfo(regionType);
-        return pageSlug + (info ? '-' + info.slug : '') + '-widget';
+        return pageSlug + (info ? '-' + _swSlug(info.slug) : '') + '-widget';
     }
     // Is `name` still the one the editor gave the widget (optionally with the
     // server's uniqueness suffix)? Only such a name is replaced when the kind
