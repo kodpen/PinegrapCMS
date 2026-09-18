@@ -1066,7 +1066,7 @@
                 <?=h($billing_company)?><br>
             <?php endif ?>
 
-            <?php if ($$billing_address_1): ?>
+            <?php if ($billing_address_1): ?>
             	<?=h($billing_address_1)?><br>
             <?php endif ?>            
 

@@ -4207,7 +4207,7 @@ function submit_order($type) {
             card_number = '" . e($processed_card_number) . "',
             expiration_month = '" . e($expiration_month) . "',
             expiration_year = '" . e($expiration_year) . "',
-            cardholder = '" . e($liveform->get('cardholder')) . "',
+            cardholder = '" . e($liveform->get('cardholder') ?? '') . "',
             card_verification_number = '" . e($card_verification_number) . "',";
     } else {
         $sql_credit_debit_card_values = "";

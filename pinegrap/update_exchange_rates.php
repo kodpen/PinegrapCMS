@@ -18,7 +18,17 @@
 
 include('init.php');
 
-$user_id = (($_GET['send_to'] ?? '')) ? validate_user()['id'] : 0;
+// A background run (crontab, or the general job's dispatcher) has no user.
+// Every other request is a web request and must come from a signed-in user
+// who may manage currencies, the same gate view_currencies.php uses; without
+// it an anonymous GET rewrote every exchange rate from the public feeds.
+if (pg_cron_is_background_run()) {
+    $user_id = 0;
+} else {
+    $user = validate_user();
+    validate_ecommerce_access($user);
+    $user_id = $user['id'];
+}
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_currencies');

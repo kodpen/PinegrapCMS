@@ -53,7 +53,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 
 * Scheduled e-mail campaigns with mail-merge variables and opt-in management
 * MailChimp synchronization, contact management, affiliate & commission tracking
-* Short links, live chat module, and a REST API (`apps.php`) for custom integrations
+* Short links, live chat module, and an external API (`integration.php`, key/secret with scopes) for custom integrations
 
 **Security**
 

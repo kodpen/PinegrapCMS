@@ -144,7 +144,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?php endif ?>
 		</dl>
 	</div>
-	<?php if (USER_MEMBER_ID): ?>
+	<?php if (defined('USER_MEMBER_ID') && USER_MEMBER_ID): ?>
 	<div class="col-sm-6">
 		<h2>Membership</h2>
 		<dl class="dl-horizontal">

@@ -119,7 +119,7 @@ echo pg_page_shell(
     ' . get_codemirror_includes() . '
     <script>
         init_page_designer({
-            url: "' . escape_javascript($_GET['url']) . '",
+            url: "' . escape_javascript($_GET['url'] ?? '') . '",
             starting_item_type: "' . $starting_item_type . '",
             starting_item_id: "' . $starting_item_id . '",
             query: "' . $page_designer_query . '",

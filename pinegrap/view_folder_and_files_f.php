@@ -7284,6 +7284,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // this action is never called.
         case 'explorer_short_link_create':
 
+            // Creating a short link is a right of roles 0-2; the classic
+            // add_short_link.php screen applies the same rule.
+            if ($user['role'] == 3) {
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
+
             $short_link_read = pg_short_link_read_request($request, $user);
 
             if (isset($short_link_read['error'])) {
@@ -7489,6 +7495,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // into.  Copy then paste therefore means the same thing duplicate
         // does: a second link to the same place, under a free name.
         case 'explorer_short_link_duplicate':
+
+            // Duplicating makes a new short link, which is a right of roles
+            // 0-2; the classic add_short_link.php screen applies the same rule.
+            if ($user['role'] == 3) {
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
 
             $short_link_made = array();
             $short_link_failed = array();

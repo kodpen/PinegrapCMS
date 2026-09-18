@@ -2471,7 +2471,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $order_number = $row['order_number'];
         $username = $row['username'];
         $tracking_code = $row['tracking_code'];
-        $member_id = $row['member_id'];
+        $member_id = $row['member_id'] ?? '';
         $affiliate_code = $row['affiliate_code'];
         $card_number = $row['card_number'];
         $order_type = $row['type'];

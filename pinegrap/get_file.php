@@ -16,6 +16,16 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// This script is dispatched by router.php, which defines the db class and
+// opens the connection before requiring it. get_file.php is a real file, so
+// the rewrite rules let a direct request reach it without the router; that
+// request has no database at all and would die on the first query below.
+// Answer it with a plain 404 instead: files are served by their own URL.
+if (!class_exists('db', false)) {
+    header('HTTP/1.1 404 Not Found');
+    exit;
+}
+
 // Shared sign-in primitives (pg_auth_token_verify, pg_load_user_row and the
 // token revoke). This file still never loads functions.php; the token check
 // moved to includes/authentication.php so both sides run the same one, and
@@ -131,6 +141,13 @@ $file['id'] = $row['id'];
 $file['name'] = $row['name'];
 $file['folder_id'] = $row['folder_id'];
 $file['attachment'] = $row['attachment'];
+
+// The DKIM signing key lives in the file directory so the mailer can read it,
+// and older installations registered it in a public folder. It must never
+// leave the server, whatever folder its record sits in.
+if (mb_strtolower($file['name']) === 'dkim.key') {
+    output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+}
 
 // If a file directory path is not set, then set it to the default which is a path
 // inside the software directory. A custom file directory path is used when
