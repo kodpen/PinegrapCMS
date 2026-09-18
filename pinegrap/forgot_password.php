@@ -162,6 +162,14 @@ db(
 // Host header: this endpoint takes anonymous posts, so a spoofed header would
 // otherwise mail the victim a reset link that hands the token to another host.
 
+// The reset link points at the 'set password' page; fall back to the script
+// itself when no page of that type exists so the link is not just the host.
+$set_password_url = get_page_type_url('set password');
+
+if ($set_password_url === false) {
+    $set_password_url = PATH . SOFTWARE_DIRECTORY . '/set_password.php';
+}
+
 email(array(
     'to' => $email,
     'from_name' => ORGANIZATION_NAME,
@@ -170,7 +178,7 @@ email(array(
     'body' =>
         lang('We received a request to reset your password. You can reset your password by clicking the link below.') . "\n" .
         "\n" .
-        URL_SCHEME . HOSTNAME_SETTING . get_page_type_url('set password') . '?k=' . $token['token'] . "\n" .
+        URL_SCHEME . HOSTNAME_SETTING . $set_password_url . '?k=' . $token['token'] . "\n" .
         "\n" .
         lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.') ));
 

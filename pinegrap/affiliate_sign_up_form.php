@@ -82,7 +82,7 @@ if (!isset($_POST['submit'])) {
         }
     }
 
-    $liveform->validate_required_field('phone_number', lang(array('string'=>'{var:1} is required.','vars'=>lang('Zip/Postal Code') )));
+    $liveform->validate_required_field('phone_number', lang(array('string'=>'{var:1} is required.','vars'=>lang('Phone') )));
     $liveform->validate_required_field('email_address', lang(array('string'=>'{var:1} is required.','vars'=>lang('Email') )) );
     $liveform->validate_required_field('affiliate_code', lang(array('string'=>'{var:1} is required.','vars'=>lang('Affiliate Code') )) );
     $liveform->validate_required_field('affiliate_name', lang(array('string'=>'{var:1} is required.','vars'=>lang('Affiliate/Company Name') )));

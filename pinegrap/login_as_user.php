@@ -31,7 +31,13 @@ $user = db_item(
         user_username AS username,
         user_password AS password
     FROM user
-    WHERE user_id = '" . escape($_GET['id']) . "'");
+    WHERE user_id = '" . (int) ($_GET['id'] ?? 0) . "'");
+
+// Without this check an unknown id would pass the role checks below and the
+// editor would end up with a session bound to a user that does not exist.
+if (!is_array($user)) {
+    output_error(lang('User not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
 
 // If editor is less than an administrator role and the editor's role
 // is less than or equal to the user that the editor is trying log in as,
@@ -46,7 +52,7 @@ if ((USER_ROLE > 0) && (USER_ROLE >= $user['role'])) {
 // however we just decided to prevent this because there is really no reason to allow it and
 // it might cause confusing log messages eventually (e.g. "example_username -> example_username").
 // It might also cause confusion for the user about what happens if they do that.
-if ($_GET['id'] == USER_ID) {
+if ((int) ($_GET['id'] ?? 0) == USER_ID) {
     output_error(lang('Access denied. You may not login as yourself.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
