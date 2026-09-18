@@ -177,7 +177,7 @@ function pg_settings_categories()
                 'pgset-shipping'  => array('nakliye', 'kargo', 'shipping', 'teslimat', 'ups', 'fedex', 'usps', 'alici', 'adres dogrulama'),
                 'pgset-giftcards' => array('hediye karti', 'hediye kartı', 'gift card', 'puan', 'odul', 'ödül', 'reward', 'givex'),
                 'pgset-invoice'   => array('fatura', 'e-fatura', 'invoice', 'parasut', 'paraşüt', 'muhasebe'),
-                'pgset-erp'       => array('erp', 'cari', 'kasa', 'banka', 'ön muhasebe', 'irsaliye', 'tahsilat'),
+                'pgset-erp'       => array('erp', 'cari', 'kasa', 'banka', 'ön muhasebe', 'irsaliye', 'tahsilat', 'vade'),
                 'pgset-payments'  => array('odeme', 'ödeme', 'payment', 'kart', 'kredi karti', 'iyzico', 'iyzipay', 'paypal', 'stripe', 'taksit', 'havale', 'kapida', '3d secure'),
                 'pgset-affiliate' => array('ortaklik', 'ortaklık', 'affiliate', 'komisyon', 'commission', 'referans'),
             ),

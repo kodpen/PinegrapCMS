@@ -185,9 +185,11 @@ function erp_manual_header_build($data)
         $issue_date = $today;
     }
 
-    $due_date = (string) ($data['due_date'] ?? $issue_date);
+    // No due date given: the account's payment term, or the store's default,
+    // counted from the issue date.
+    $due_date = (string) ($data['due_date'] ?? '');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $due_date)) {
-        $due_date = $issue_date;
+        $due_date = erp_account_due_date($account_id, $issue_date);
     }
 
     $supplier_invoice_date = (string) ($data['supplier_invoice_date'] ?? '');

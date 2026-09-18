@@ -12200,5 +12200,12 @@
     "{var:1}: {var:2} record(s), {var:3} row(s). The download starts now.": "{var:1}: {var:2} kayıt, {var:3} satır. İndirme şimdi başlıyor.",
     "erp export ({var:1}) was made with {var:2} record(s)": "erp dışa aktarımı ({var:1}) {var:2} kayıtla oluşturuldu",
     "Create the file": "Dosyayı oluştur",
-    "Line No": "Satır No"
+    "Line No": "Satır No",
+    "A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.": "Yeni fatura, tarihinden bu kadar gün sonra vadesi gelir; carinin kendi vadesi varsa o geçerlidir. 0, fatura tarihinde vadeli demektir.",
+    "Days from the invoice date to its due date. 0 uses the store default, currently {var:1} days.": "Fatura tarihinden vade tarihine kadar geçen gün. 0 mağaza varsayılanını kullanır, şu an {var:1} gün.",
+    "Default payment term (days)": "Varsayılan vade (gün)",
+    "Leave empty for the account's payment term, or the store default.": "Boş bırakılırsa carinin vadesi, yoksa mağaza varsayılanı uygulanır.",
+    "Payment Term (days)": "Vade (Gün)",
+    "Payment term (days)": "Vade (gün)",
+    "Payment term must be a whole number of days, 0 to 3650.": "Vade 0 ile 3650 arasında tam gün olmalıdır."
 }
