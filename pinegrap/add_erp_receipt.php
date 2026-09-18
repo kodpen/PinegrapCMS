@@ -106,6 +106,7 @@ if (!$_POST) {
     $method_options[lang('Cash')] = 'cash';
     $method_options[lang('Bank transfer')] = 'transfer';
     $method_options[lang('Credit card')] = 'card';
+    $method_options[lang('Cheque')] = 'cheque';
     $method_options[lang('Other')] = 'other';
 
     // Without an invoice the money lands on the open account, which is what the
@@ -342,14 +343,10 @@ if (!$_POST) {
         }
     }
 
-    // erp_cash_transactions.payment_method is an ENUM; an unknown value would be
-    // stored as the empty member, so anything outside the list falls back to
-    // the column default.
+    // The value goes through as posted; erp_post_receipt() checks it against
+    // the enum and refuses anything else, so a forged value is an error here
+    // rather than a row with a guessed method.
     $payment_method = (string) $liveform->get_field_value('payment_method');
-
-    if (!in_array($payment_method, array('cash', 'transfer', 'card', 'other'), true)) {
-        $payment_method = 'cash';
-    }
 
     $result = erp_post_receipt(array(
         'direction' => $direction,
