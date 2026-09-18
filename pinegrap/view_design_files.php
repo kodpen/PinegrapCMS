@@ -205,7 +205,7 @@ if ($files) {
             $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
 
             // Output thumnail.
-            $output_thumbnail ='<img style="width: 50px;height:50px;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $file['name'] . '" />';
+            $output_thumbnail ='<img style="width: 50px;height:50px;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
 
         } else {
 

@@ -92,7 +92,7 @@ while ($row = mysqli_fetch_array($result)) {
     $username = $row['user'];
     $timestamp = $row['timestamp'];
     
-    $output_link_url = 'edit_arrival_date.php?id=' . $id;
+    $output_link_url = 'edit_arrival_date.php?id=' . (int) $id;
 
     // If this arrival date is active, then use class that shows green color.
     if (
@@ -125,7 +125,7 @@ while ($row = mysqli_fetch_array($result)) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="chart_label ' . $output_status_class . '" nowrap>' . $name . '</td>
+            <td class="chart_label ' . $output_status_class . '" nowrap>' . h($name) . '</td>
             <td class="align-center" nowrap>' . $arrival_date . '</td>
             <td class="align-center"><span class="badge text-light fw-light ' . $status_class . '">' . lang(ucwords($status)) . '</span></td>
             <td class="align-center" nowrap>' . $start_date . '</td>

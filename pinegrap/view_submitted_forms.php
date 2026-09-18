@@ -551,9 +551,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     }
 
     foreach ($forms as $form) {
-        $form_name = str_replace('"', '""', $form['form_name']);
+        $form_name = csv_cell($form['form_name']);
         $quiz_score = $form['quiz_score'];
-        $reference_code = str_replace('"', '""', $form['reference_code']);
+        $reference_code = csv_cell($form['reference_code']);
 
         if ($form['complete']) {
             $status = 'Complete';
@@ -561,14 +561,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             $status = 'Incomplete';
         }
 
-        $address_name = str_replace('"', '""', $form['address_name']);
-        $tracking_code = str_replace('"', '""', $form['tracking_code']);
-        $affiliate_code = str_replace('"', '""', $form['affiliate_code']);
-        $http_referer = str_replace('"', '""', $form['http_referer']);
+        $address_name = csv_cell($form['address_name']);
+        $tracking_code = csv_cell($form['tracking_code']);
+        $affiliate_code = csv_cell($form['affiliate_code']);
+        $http_referer = csv_cell($form['http_referer']);
         $submitted = date($month_and_day_format . '/Y g:i:s A T', $form['submitted_timestamp']);
         $last_modified = date($month_and_day_format . '/Y g:i:s A T', $form['last_modified_timestamp']);
-        $member_id = str_replace('"', '""', $form['member_id']);
-        $form_editor = str_replace('"', '""', $form['form_editor']);
+        $member_id = csv_cell($form['member_id']);
+        $form_editor = csv_cell($form['form_editor']);
 
         $ip_address = $form['ip_address'];
         
@@ -609,7 +609,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
         // loop through all fields so we can output data to csv file
         foreach ($fields as $data) {
-            $data = str_replace('"', '""', $data);
+            $data = csv_cell($data);
             print ',"' . $data . '"';
         }
 
