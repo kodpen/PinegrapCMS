@@ -355,6 +355,19 @@ mevcut ödeme yöntemi satırları onarılmadı (veri migration'ı gerekir, bu t
 şema/migration kapalı). `lang('Cheque')` anahtarı artık bu dosyada
 kullanılmıyor, `tr.json`'da bırakıldı.
 
+**Devamı (2026-09-18, ürün sahibi kararı):** çek `Diğer`'e katlanmaz;
+`erp_cash_transactions.payment_method` ENUM'una `cheque` eklendi (alt adım
+4.54, `upgrade_2026_4_4_erp_cash_payment_method()`, önce `install_column_info`
+ile bakar, yeniden koşturulabilir) ve `Çek` seçeneği makbuz formuna geri
+geldi. `''` kalan satırlar körlemesine onarılmaz: satır çek mi kart mı
+söylemez. Beyaz liste formdan yazma yoluna taşındı — `erp_post_receipt()`
+değeri `erp_cash_payment_methods()` listesine karşı denetler ve liste dışı
+değeri `cash`'e düşürmek yerine hata döner; `erp_cash_post()` denetlemez,
+çünkü makbuz iptali eski satırın yöntemini (boş üye dahil) ters kayda
+kopyalar ve o yol kapanmamalı. Sandbox'ta adım iki kez koşturuldu (ikincisi
+atlandı), `cheque`/`card` makbuzları o değerle yazıldı, `foo` ve boş değer
+satır üretmeden reddedildi, boş yöntemli eski bir makbuz iptal edilebildi.
+
 ## 2026.4.4 — PHP 8 altında tanımsız sabit ve null okuma düzeltmeleri (2026-09-18)
 
 **Belirti (issue #52).** Varsayılan `config.php` ile PHP 8 üzerinde üç akış
