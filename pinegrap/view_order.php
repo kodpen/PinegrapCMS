@@ -2926,7 +2926,7 @@ if (!$_POST) {
         // if the user is going to be sent to the view order screen, then prepare notice
         if (mb_substr($liveform->get_field_value('send_to'), -15) == 'view_orders.php') {
             $liveform_view_orders = new liveform('view_orders');
-            $liveform_view_orders->add_notice('The order has been deleted.');
+            $liveform_view_orders->add_notice(lang('The order has been deleted.'));
         }
 
         header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
@@ -2997,7 +2997,7 @@ if (!$_POST) {
         // if the user is going to be sent to the view order screen, then prepare notice
         if (mb_substr($liveform->get_field_value('send_to'), -15) == 'view_orders.php') {
             $liveform_view_orders = new liveform('view_orders');
-            $liveform_view_orders->add_notice('The order has been saved.');
+            $liveform_view_orders->add_notice(lang('The order has been saved.'));
         }
         
         header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));

@@ -114,13 +114,7 @@ $number_of_comments = count($comments);
 // If at least one comment was published, then log activity.
 if ($number_of_comments) {
 
-    $plural_suffix = '';
-
-    if ($number_of_comments > 1) {
-        $plural_suffix = 's';
-    }
-
-    log_activity('general job published ' . number_format($number_of_comments) . ' scheduled comment' . $plural_suffix, 'UNKNOWN');
+    log_activity(lang(array('string' => 'general job published {var:1} scheduled comment(s)', 'vars' => array(number_format($number_of_comments)))), 'UNKNOWN');
 
 }
 
@@ -294,7 +288,7 @@ if (
             continue;
         }
 
-        log_activity('general job cancelled unpaid bank transfer order #' . $unpaid_order['order_number'] . ' after ' . $cancel_days . ' days', 'UNKNOWN');
+        log_activity(lang(array('string' => 'general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)', 'vars' => array($unpaid_order['order_number'], $cancel_days))), 'UNKNOWN');
 
     }
 
@@ -358,7 +352,7 @@ function unpublish_events() {
                     last_modified_timestamp = UNIX_TIMESTAMP()
                 WHERE id = '" . $event['id'] . "'");
 
-            log_activity('calendar event (' . $event['name'] . ') was unpublished by general job because event was old');
+            log_activity(lang(array('string' => '{var:1} ({var:2}) was unpublished by general job because event was old', 'vars' => array(lang('calendar event'), $event['name']))));
 
         }
 

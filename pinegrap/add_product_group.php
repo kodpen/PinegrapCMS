@@ -383,7 +383,7 @@ $liveform->remove_form();
     // This can happen when there is a large number of products (e.g. 1,000+).
     // The default value for max_input_vars is 1,000.
     if (isset($_POST['max_input_vars_test']) == FALSE) {
-        output_error('Sorry, the server did not accept the form that you submitted. We recommend that you ask the server administrator to check the max_input_vars PHP setting in the php.ini file.  We recommend that it be set to a number that is at least double the number of Products that the site will contain. <a href="javascript:history.go(-1)">Go back</a>.');
+        output_error(lang('Sorry, the server did not accept the form that you submitted. We recommend that you ask the server administrator to check the max_input_vars PHP setting in the php.ini file.  We recommend that it be set to a number that is at least double the number of Products that the site will contain.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // if the name is blank, then mark error and forward user back to previous screen

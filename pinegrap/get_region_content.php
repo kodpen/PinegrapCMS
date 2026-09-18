@@ -42,7 +42,7 @@ switch ($_GET['region_type']) {
         
         // if the user does not have access to this page region, then output a notice to give the user
         if (check_edit_access($folder_id) == false) {
-            log_activity("access denied to edit region because user does not have access to modify folder that page is in", $_SESSION['sessionusername']);
+            log_activity(lang('access denied to edit region because user does not have access to modify folder that page is in'), $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
             
         // else the user has access so set output
@@ -63,13 +63,13 @@ switch ($_GET['region_type']) {
         // A designer region is design, not content: the screens that open one
         // require the designer role, so does reading it here for the inline editor.
         if (($row['cregion_designer_type'] == 'yes') && ($user['role'] > 1)) {
-            log_activity("access denied because user does not have access to edit designer region (" . $row['cregion_name'] . ")", $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'access denied because user does not have access to edit designer region ({var:1})', 'vars' => array($row['cregion_name']))), $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
         }
 
         // if user has a user role and if they do not have access to this common region, then user does not have access to edit region, so output error
         if (($user['role'] == 3) && (in_array($cregion_id, get_items_user_can_edit('common_regions', $user['id'])) == FALSE)) {
-            log_activity("access denied because user does not have access to edit common region (" . $row['cregion_name'] . ")", $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'access denied because user does not have access to edit common region ({var:1})', 'vars' => array($row['cregion_name']))), $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
         
         // else the user has access to output the content
@@ -95,7 +95,7 @@ switch ($_GET['region_type']) {
         
         // if the user does not have access to the page, then output a notice to the user
         if (check_edit_access($folder_id) == false) {
-            log_activity('access denied to edit system region header because user does not have access to modify folder that page is in', $_SESSION['sessionusername']);
+            log_activity(lang('access denied to edit system region header because user does not have access to modify folder that page is in'), $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
             
         // else the user has access so set output
@@ -122,7 +122,7 @@ switch ($_GET['region_type']) {
         
         // if the user does not have access to the page, then output a notice to the user
         if (check_edit_access($folder_id) == false) {
-            log_activity('access denied to edit system region footer because user does not have access to modify folder that page is in', $_SESSION['sessionusername']);
+            log_activity(lang('access denied to edit system region footer because user does not have access to modify folder that page is in'), $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
             
         // else the user has access so set output

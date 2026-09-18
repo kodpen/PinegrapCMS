@@ -33,7 +33,7 @@ switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
         $sort_column = 'description';
         break;
 
-    case ('Code'):
+    case lang('Code'):
         $sort_column = 'code';
         break;
 
@@ -69,7 +69,7 @@ switch (isset($_GET['sort']) ? $_GET['sort'] : '') {
         $sort_column = 'base_transit_days';
         break;
 
-    case ('Street'):
+    case lang('Street'):
         $sort_column = 'street_address';
         break;
 

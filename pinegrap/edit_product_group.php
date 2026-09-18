@@ -847,7 +847,7 @@ if (!$_POST) {
     // This can happen when there is a large number of products (e.g. 1,000+).
     // The default value for max_input_vars is 1,000.
     if (isset($_POST['max_input_vars_test']) == FALSE) {
-        output_error('Sorry, the server did not accept the form that you submitted. We recommend that you ask the server administrator to check the max_input_vars PHP setting in the php.ini file.  We recommend that it be set to a number that is at least double the number of Products that the site will contain. <a href="javascript:history.go(-1)">Go back</a>.');
+        output_error(lang('Sorry, the server did not accept the form that you submitted. We recommend that you ask the server administrator to check the max_input_vars PHP setting in the php.ini file.  We recommend that it be set to a number that is at least double the number of Products that the site will contain.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
     
     // get parent_id for product group
@@ -937,7 +937,7 @@ if (!$_POST) {
 
             db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
             
-            log_activity("product group ($_POST[name]) was deleted", $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => '{var:1} ({var:2}) was deleted', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
 
         // else, output an error stating that the product group cannot be deleted because it is the root product group
         } else {
@@ -1231,7 +1231,7 @@ if (!$_POST) {
 
         }
         
-        log_activity("product group ($_POST[name]) was modified", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
     }
     
     // if there is a send to set, then forward user to send to

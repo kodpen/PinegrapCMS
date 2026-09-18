@@ -83,7 +83,7 @@ switch ($liveform->get_field_value('region_type')) {
             
             // validate user's access to page region
             if (check_edit_access($folder_id) == false) {
-                log_activity("access denied to edit region because user does not have access to modify folder that page is in", $_SESSION['sessionusername']);
+                log_activity(lang('access denied to edit region because user does not have access to modify folder that page is in'), $_SESSION['sessionusername']);
                 output_error('Access denied.');
             }
 
@@ -110,7 +110,7 @@ switch ($liveform->get_field_value('region_type')) {
         } else {
             // validate that user has access to create page region for the page
             if (check_edit_access($folder_id) == false) {
-                log_activity("access denied to edit region because user does not have access to modify folder that page is in", $_SESSION['sessionusername']);
+                log_activity(lang('access denied to edit region because user does not have access to modify folder that page is in'), $_SESSION['sessionusername']);
                 output_error('Access denied.');
             }
 
@@ -200,13 +200,13 @@ switch ($liveform->get_field_value('region_type')) {
         // designer role, and this endpoint has to apply the same gate: the
         // request does not have to come from one of those screens.
         if (($cregion_row['cregion_designer_type'] == 'yes') && ($user['role'] > 1)) {
-            log_activity("access denied because user does not have access to edit designer region (" . $cregion_row['cregion_name'] . ")", $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'access denied because user does not have access to edit designer region ({var:1})', 'vars' => array($cregion_row['cregion_name']))), $_SESSION['sessionusername']);
             output_error(lang('Access denied.'));
         }
 
         // if user has a user role and if they do not have access to this common region, then user does not have access to edit region, so output error
         if (($user['role'] == 3) && (in_array($cregion_id, get_items_user_can_edit('common_regions', $user['id'])) == FALSE)) {
-            log_activity("access denied because user does not have access to edit common region (" . $cregion_row['cregion_name'] . ")", $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'access denied because user does not have access to edit common region ({var:1})', 'vars' => array($cregion_row['cregion_name']))), $_SESSION['sessionusername']);
             output_error('Access denied.');
         }
         
@@ -257,7 +257,7 @@ switch ($liveform->get_field_value('region_type')) {
         
         // validate user's access to system region header
         if (check_edit_access($folder_id) == false) {
-            log_activity('access denied to edit system region header (' . $page_name . ') because user does not have access to modify folder that page is in', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'access denied to edit system region header ({var:1}) because user does not have access to modify folder that page is in', 'vars' => array($page_name))), $_SESSION['sessionusername']);
             output_error('Access denied.');
         }
 
@@ -299,7 +299,7 @@ switch ($liveform->get_field_value('region_type')) {
         
         // validate user's access to system region footer
         if (check_edit_access($folder_id) == false) {
-            log_activity('access denied to edit system region footer (' . $page_name . ') because user does not have access to modify folder that page is in', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'access denied to edit system region footer ({var:1}) because user does not have access to modify folder that page is in', 'vars' => array($page_name))), $_SESSION['sessionusername']);
             output_error('Access denied.');
         }
 
@@ -363,7 +363,7 @@ if ($seo_page_markup_changed) {
 }
 
 // log activity
-log_activity("page ($page_name) was modified", $_SESSION['sessionusername']);
+log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('page'), $page_name))), $_SESSION['sessionusername']);
 
 if ($liveform->get_field_value('inline') != 'true') {
     // forward user to the last page they were on

@@ -505,7 +505,7 @@ if (!$_POST) {
         if ($liveform->check_field_error('action') == false) {
             switch ($liveform->get_field_value('action')) {
                 case 'calendar_event_reserved':
-                    $liveform->validate_required_field('calendar_event_id', 'Calendar Event is required.');
+                    $liveform->validate_required_field('calendar_event_id', lang(array('string'=>'{var:1} is required','vars'=>lang('Calendar Event'))));
 
                     // If there is not already an error for the calendar event field and the user does not have access to selected calendar event, then add error.
                     if (
@@ -548,7 +548,7 @@ if (!$_POST) {
                     break;
 
                 case 'product_ordered':
-                    $liveform->validate_required_field('product_id', 'Product is required.');
+                    $liveform->validate_required_field('product_id', lang(array('string'=>'{var:1} is required','vars'=>lang('Product'))));
 
                     // We don't have to check commerce access to product
                     // because we already did that above for the action.

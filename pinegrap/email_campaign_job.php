@@ -382,27 +382,15 @@ foreach ($email_recipients as $email_recipient) {
                     
                     $organization .= ORGANIZATION_COUNTRY;
                 }
-				if(lang(array('info'=>''))==='en'){
-					$email_recipient['body'] .=
-					    "\n" .
-					    "\n" .
-					    "\n" .
-					    $organization . "\n" .
-					    "\n" .
-					    'Update email preferences or unsubscribe:' . "\n" .
-					    "\n" .
-					    URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?id=' . urlencode(base64_encode(str_rot13($email_recipient['email_address'])));
-				}else if(lang(array('info'=>''))==='tr'){
-					$email_recipient['body'] .=
-					    "\n" .
-					    "\n" .
-					    "\n" .
-					    $organization . "\n" .
-					    "\n" .
-					    'E-posta tercihlerini guncellemek veya aboneligi iptal etmek icin:' . "\n" .
-					    "\n" .
-					    URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?id=' . urlencode(base64_encode(str_rot13($email_recipient['email_address'])));
-				}
+				$email_recipient['body'] .=
+				    "\n" .
+				    "\n" .
+				    "\n" .
+				    $organization . "\n" .
+				    "\n" .
+				    lang('Update email preferences or unsubscribe') . ':' . "\n" .
+				    "\n" .
+				    URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?id=' . urlencode(base64_encode(str_rot13($email_recipient['email_address'])));
 			}
 
         // else the format of the e-mail should be HTML, so prepare that

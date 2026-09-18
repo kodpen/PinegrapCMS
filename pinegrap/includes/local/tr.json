@@ -11521,5 +11521,21 @@
     "rate of the receipt date": "tahsilat tarihinin kuru",
     "{var:1} per unit of the document currency. Leave empty to use the recorded rate of the issue date.": "1 birim belge para birimi = {var:1}. Düzenleme tarihinin kayıtlı kurunu kullanmak için boş bırakın.",
     "{var:1} per unit; leave empty for the recorded rate of the receipt date. Ignored for the base currency.": "1 birim = {var:1}; tahsilat tarihinin kayıtlı kuru için boş bırakın. Ana para biriminde dikkate alınmaz.",
-    "This folder could not be loaded. The connection or the server may have timed out during a long operation.": "Bu klasör yüklenemedi. Uzun süren bir işlem sırasında bağlantı veya sunucu zaman aşımına uğramış olabilir."
+    "This folder could not be loaded. The connection or the server may have timed out during a long operation.": "Bu klasör yüklenemedi. Uzun süren bir işlem sırasında bağlantı veya sunucu zaman aşımına uğramış olabilir.",
+    "The order has been saved.": "Sipariş kaydedildi.",
+    "lb": "lb",
+    "We're sorry. New comments are no longer being accepted.": "Üzgünüz. Artık yeni yorum kabul edilmiyor.",
+    "Default: {var:1}": "Varsayılan: {var:1}",
+    "(Format: h:mm AM/PM)": "(Biçim: s:dd AM/PM)",
+    "had {var:1}page style changed to {var:2}": "{var:1}sayfa stili {var:2} olarak değiştirildi",
+    "access denied to edit region because user does not have access to modify folder that page is in": "kullanıcının sayfanın bulunduğu klasörü düzenleme yetkisi olmadığı için bölgeyi düzenleme erişimi reddedildi",
+    "access denied because user does not have access to edit designer region ({var:1})": "kullanıcının tasarımcı bölgesini ({var:1}) düzenleme yetkisi olmadığı için erişim reddedildi",
+    "access denied because user does not have access to edit common region ({var:1})": "kullanıcının ortak bölgeyi ({var:1}) düzenleme yetkisi olmadığı için erişim reddedildi",
+    "access denied to edit system region header ({var:1}) because user does not have access to modify folder that page is in": "kullanıcının sayfanın bulunduğu klasörü düzenleme yetkisi olmadığı için sistem bölgesi üst bilgisini ({var:1}) düzenleme erişimi reddedildi",
+    "access denied to edit system region footer ({var:1}) because user does not have access to modify folder that page is in": "kullanıcının sayfanın bulunduğu klasörü düzenleme yetkisi olmadığı için sistem bölgesi alt bilgisini ({var:1}) düzenleme erişimi reddedildi",
+    "access denied to edit system region header because user does not have access to modify folder that page is in": "kullanıcının sayfanın bulunduğu klasörü düzenleme yetkisi olmadığı için sistem bölgesi üst bilgisini düzenleme erişimi reddedildi",
+    "access denied to edit system region footer because user does not have access to modify folder that page is in": "kullanıcının sayfanın bulunduğu klasörü düzenleme yetkisi olmadığı için sistem bölgesi alt bilgisini düzenleme erişimi reddedildi",
+    "general job published {var:1} scheduled comment(s)": "genel görev {var:1} zamanlanmış yorumu yayımladı",
+    "general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)": "genel görev, ödenmemiş #{var:1} numaralı havale siparişini {var:2} gün sonra iptal etti",
+    "{var:1} ({var:2}) was unpublished by general job because event was old": "{var:1} ({var:2}) etkinlik eskidiği için genel görev tarafından yayından kaldırıldı"
 }

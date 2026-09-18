@@ -2034,7 +2034,7 @@ function pg_short_link_types()
 //
 // Square brackets are in the set, for the same reason pg_ascii_file_name()
 // keeps them: they are this software's own suffix for a name that is taken.
-// pg_short_link_free_name() hands out "yeni_kisa_link[4]", so a rule that
+// pg_short_link_free_name() hands out "new_short_link[4]", so a rule that
 // rejected them refused the very name the create had just given the row --
 // the operator was told the format was illegal by the screen that wrote it.
 function pg_short_link_clean_name($name)
@@ -8118,7 +8118,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
 
                 if ($copy_name == '') {
-                    respond(array('status' => 'error', 'message' => lang('The file could not be copied ({var:1}).')));
+                    respond(array('status' => 'error', 'message' => lang(array('string' => 'The file could not be copied ({var:1}).', 'vars' => basename($path)))));
                 }
 
                 if (pg_explorer_backup_copy_path($path, $parent . '/' . $copy_name) == false) {

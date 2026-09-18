@@ -242,7 +242,7 @@ function generate_form_layout_content($properties) {
                 }
 
                 if ($field['type'] == 'time') {
-                    $help = ' (Format: h:mm AM/PM)';
+                    $help = ' ' . lang('(Format: h:mm AM/PM)');
                 } else {
                     $help = '';
                 }
