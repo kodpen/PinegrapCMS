@@ -678,13 +678,6 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
             // Output Upcoming View
             // if there is at least one event, prepare to list events
             if ($events) {
-                // If the date format is month and then day, then use that format.
-                if (DATE_FORMAT == 'month_day') {
-                    $output_day_and_month = h(lang(date('F', strtotime($event['event_start_date']))) . ' ' . date('j', strtotime($event['event_start_date'])));
-                    // Otherwise the date format is day and then month, so use that format.
-                } else {
-                    $output_day_and_month = h(date('j', strtotime($event['event_start_date'])) . ' ' . lang(date('F', strtotime($event['event_start_date']))));
-                }
                 $output_calendar_data = '';
                 $event_counter = 0;
                 // loop through all events in order to build list
@@ -692,7 +685,14 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     // increment the event counter
                     $event_counter++;
                     // if event start date is not equal to previous event start date, then open new container for this day
-                    if ($event['event_start_date'] != $events[$key - 1]['event_start_date']) {
+                    if (!isset($events[$key - 1]) || ($event['event_start_date'] != $events[$key - 1]['event_start_date'])) {
+                        // If the date format is month and then day, then use that format.
+                        if (DATE_FORMAT == 'month_day') {
+                            $output_day_and_month = h(lang(date('F', strtotime($event['event_start_date']))) . ' ' . date('j', strtotime($event['event_start_date'])));
+                            // Otherwise the date format is day and then month, so use that format.
+                        } else {
+                            $output_day_and_month = h(date('j', strtotime($event['event_start_date'])) . ' ' . lang(date('F', strtotime($event['event_start_date']))));
+                        }
                         $output_calendar_data .= '<p class="row_' . ($event_counter % 2) . '"><span style="font-weight:bold;">' . h(lang(date('l', strtotime($event['event_start_date'])))) . ', ' . $output_day_and_month . '</span><br>';
                     }
                     $output_calendar_classes = '';
@@ -744,7 +744,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     // output event on it's own line
                     $output_calendar_data .= '<span class="' . $output_calendar_classes . '">' . $output_link . '</span><br />';
                     // if next event start date is not equal to current event start date, or if this is the last event to be outputted, then close container for this day
-                    if (($events[$key + 1]['event_start_date'] != $event['event_start_date']) || ($event_counter == $number_of_upcoming_events)) {
+                    if (!isset($events[$key + 1]) || ($events[$key + 1]['event_start_date'] != $event['event_start_date']) || ($event_counter == $number_of_upcoming_events)) {
                         $output_calendar_data .= '</p>';
                     }
                     // if the number of upcoming events is greater than zero, and if the event counter is equal to the number of upcoming events
@@ -973,7 +973,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 // loop through all events in order to build list
                 foreach ($events as $key => $event) {
                     // if event start date is not equal to previous event start date, then open new container for this day
-                    if ($event['event_start_date'] != $events[$key - 1]['event_start_date']) {
+                    if (!isset($events[$key - 1]) || ($event['event_start_date'] != $events[$key - 1]['event_start_date'])) {
                         $output_calendar_data .= '<fieldset style="margin-bottom: 15px"' . $output_fieldset_class . '>
 
                                     <legend' . $output_legend_class . '>' . get_absolute_time(array(
@@ -1090,7 +1090,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
 
                             </p>';
                     // if next event start date is not equal to current event start date, then close container for this day
-                    if ($events[$key + 1]['event_start_date'] != $event['event_start_date']) {
+                    if (!isset($events[$key + 1]) || ($events[$key + 1]['event_start_date'] != $event['event_start_date'])) {
                         $output_calendar_data .= '   </div>
 
                                 </fieldset>';

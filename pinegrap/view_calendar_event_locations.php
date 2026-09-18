@@ -47,21 +47,21 @@ if (isset($_SESSION['software']['calendars']['view_calendar_event_locations']['s
 }
 
 switch (($_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] ?? '')) {
-    case 'Name':
+    case lang('Name'):
         $sort_column = 'calendar_event_locations.name';
         break;
 
-    case 'Created':
+    case lang('Created'):
         $sort_column = 'calendar_event_locations.created_timestamp';
         break;
 
-    case 'Last Modified':
+    case lang('Last Modified'):
         $sort_column = 'calendar_event_locations.last_modified_timestamp';
         break;
 
     default:
         $sort_column = 'calendar_event_locations.last_modified_timestamp';
-        $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] = 'Last Modified';
+        $_SESSION['software']['calendars']['view_calendar_event_locations']['sort'] = lang('Last Modified');
         $_SESSION['software']['calendars']['view_calendar_event_locations']['order'] = 'desc';
         break;
 }
