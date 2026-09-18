@@ -12233,5 +12233,8 @@
     "{var:1} document(s)": "{var:1} belge",
     "{var:1} document(s) fall due": "{var:1} belgenin vadesi geliyor",
     "{var:1} document(s) past due": "{var:1} belgenin vadesi geçmiş",
-    "{var:1} open document(s)": "{var:1} açık belge"
+    "{var:1} open document(s)": "{var:1} açık belge",
+    "Choose a payment method.": "Bir ödeme yöntemi seçin.",
+    "erp_cash_transactions.payment_method does not exist, skipped": "erp_cash_transactions.payment_method yok, atlandı",
+    "erp_cash_transactions.payment_method already knows about cheque": "erp_cash_transactions.payment_method çek üyesini zaten içeriyor"
 }
