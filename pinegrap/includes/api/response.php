@@ -116,6 +116,58 @@ function api_send($status_code, $body, $error_code = '') {
 
 }
 
+// The one exit for an HTML answer. The console at /docs is the only route that
+// answers with a document rather than JSON; it goes through the same buffer
+// reset and writes the same log row as api_send(), so a stray warning cannot
+// land in front of the markup and the request is counted like any other.
+//
+// The page carries an inline script and stylesheet of its own and loads the
+// panel's bundled Bootstrap files from this site; the policy allows exactly
+// that and nothing from anywhere else. The frame and referrer headers are
+// there because a key is typed into this page: it must not be embeddable in
+// another site's frame, and its address must not travel with a link click.
+function api_send_html($status_code, $html) {
+
+	if (ob_get_level() > 0) {
+
+		ob_end_clean();
+
+	}
+
+	if (!headers_sent()) {
+
+		header('Content-Type: text/html; charset=utf-8');
+
+		header('X-Request-Id: ' . api_request_id());
+
+		header('Cache-Control: no-store');
+
+		header('X-Content-Type-Options: nosniff');
+
+		header('X-Frame-Options: DENY');
+
+		header('Referrer-Policy: no-referrer');
+
+		header("Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+
+		foreach (api_extra_headers() as $name => $value) {
+
+			header($name . ': ' . $value);
+
+		}
+
+		http_response_code($status_code);
+
+	}
+
+	api_log_request($status_code, '');
+
+	echo $html;
+
+	exit();
+
+}
+
 // Headers collected during the request (rate limit counters, Retry-After,
 // Location) and flushed by api_send(). Kept in one place so a handler can add
 // one without reaching for header() and losing it to the buffer reset.
@@ -219,7 +271,17 @@ function api_fail_unauthorized($message = '') {
 
 	}
 
-	api_extra_headers('WWW-Authenticate', 'Basic realm="Pinegrap API"');
+	// The challenge header makes a browser put its own login dialog in front
+	// of the answer, and a script that made the request through fetch() never
+	// sees the response until the dialog is dismissed - the console at /docs
+	// would hang on a mistyped secret. A request that identifies itself as
+	// script-made is therefore answered without it; a command-line client or a
+	// generated SDK never sends that header and keeps the challenge.
+	if (strtolower(trim(api_header('X-Requested-With'))) !== 'xmlhttprequest') {
+
+		api_extra_headers('WWW-Authenticate', 'Basic realm="Pinegrap API"');
+
+	}
 
 	api_fail(401, 'unauthorized', $message);
 

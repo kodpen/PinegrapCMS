@@ -567,6 +567,59 @@ switch ($action) {
         ));
         break;
 
+    case 'ca_bundle_update':
+        // Replace data/cacert.pem with the current Mozilla root list, from the
+        // System Status widget. The download, the checks and the atomic swap
+        // are pg_ca_bundle_update() in includes/fn/update.php; this is the
+        // door.
+        //
+        // Administrator only, and the token is checked as well as the
+        // session: this writes the file that decides which certificates every
+        // outbound connection will trust, which is the same authority as the
+        // web server rules file, not the same as clearing a cache. The row is
+        // drawn for every role that sees the widget, its button for role 0
+        // alone, so nobody is offered a control that would refuse them.
+        $user = validate_user();
+
+        if ((int) $user['role'] !== 0) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+            break;
+        }
+
+        validate_token();
+
+        // The download may take a while on a slow link; the operator's own
+        // next page load should not queue behind it.
+        session_write_close();
+
+        $ca_bundle_result = pg_ca_bundle_update();
+
+        log_activity(
+            lang(array('string' => 'CA bundle update from the dashboard ({var:1}).', 'vars' => array($ca_bundle_result['message']))),
+            $_SESSION['sessionusername']
+        );
+
+        if ($ca_bundle_result['status'] === 'error') {
+            respond(array(
+                'status'  => 'error',
+                'message' => $ca_bundle_result['message'],
+                'summary' => lang('Failed'),
+            ));
+            break;
+        }
+
+        respond(array(
+            'status'  => 'success',
+            'message' => $ca_bundle_result['message'],
+            // Two words for the row's own state line; the sentence above goes
+            // in the panel that opens under it.
+            'summary' => ($ca_bundle_result['status'] === 'unchanged') ? lang('Already current') : lang('Updated'),
+        ));
+        break;
+
     case 'get_widget_data':
         $user = validate_user();
         // Release the session file lock immediately after authentication so that
@@ -1749,6 +1802,97 @@ switch ($action) {
                             <div class="pg-job-panel pg-job-result d-none" id="purge_cache_result">
                                 <div class="pg-job-panel-row"><span id="purge_cache_message"></span></div>
                             </div>',
+                    );
+
+                    // The CA bundle. data/cacert.pem is the Mozilla root list an
+                    // operator points CURL_CA_BUNDLE at when the host's own store
+                    // is stale; Mozilla revises it several times a year, and a
+                    // list that falls behind is why "cURL error 60" appears on a
+                    // site that changed nothing. The row says what is installed
+                    // and whether the running configuration actually reads it;
+                    // the button fetches the current list from curl.se (or the
+                    // CA_BUNDLE_SOURCE_URL mirror) and swaps it in. The library
+                    // under includes/iyzipay-php/ keeps its own copy, which is
+                    // integrity-hashed and only changes with a release, so the
+                    // panel says so rather than leaving the operator to wonder
+                    // why two files carry two dates.
+                    $ca_bundle = pg_ca_bundle_status();
+
+                    if (!$ca_bundle['exists']) {
+                        $ca_bundle_note = lang('Missing');
+                    } elseif ($ca_bundle['stamp'] > 0) {
+                        $ca_bundle_note = pg_ca_bundle_date($ca_bundle['stamp']);
+                    } else {
+                        $ca_bundle_note = lang('No header');
+                    }
+
+                    if ($ca_bundle['mode'] === 'this') {
+                        $ca_bundle_use = lang('CURL_CA_BUNDLE points at this file.');
+                    } elseif ($ca_bundle['mode'] === 'other') {
+                        $ca_bundle_use = lang(array(
+                            'string' => 'CURL_CA_BUNDLE points at another file ({var:1}); the running configuration does not read this one.',
+                            'vars'   => array($ca_bundle['configured']),
+                        ));
+                    } else {
+                        $ca_bundle_use = lang('CURL_CA_BUNDLE is not set; connections are verified against the server\'s own certificate store.');
+                    }
+
+                    $ca_bundle_rows = '
+                        <div class="pg-job-panel-row">
+                            <span class="text-truncate">' . h(lang('File')) . '</span>
+                            <span class="text-muted flex-shrink-0">' . h(SOFTWARE_DIRECTORY . '/data/cacert.pem') . '</span>
+                        </div>
+                        <div class="pg-job-panel-row">
+                            <span class="text-truncate">' . h(lang('Mozilla data')) . '</span>
+                            <span class="text-muted flex-shrink-0">' . h(($ca_bundle['stamp'] > 0) ? pg_ca_bundle_date($ca_bundle['stamp']) : $ca_bundle_note) . '</span>
+                        </div>
+                        <div class="pg-job-panel-row">
+                            <span class="text-truncate">' . h(lang('Root certificates')) . '</span>
+                            <span class="text-muted flex-shrink-0">' . h(number_format((int) $ca_bundle['count'])) . '</span>
+                        </div>
+                        <div class="pg-job-panel-row">
+                            <span class="text-truncate">' . h(lang('Source')) . '</span>
+                            <span class="text-muted flex-shrink-0">' . h(($ca_bundle['source'] !== '') ? $ca_bundle['source'] : lang('CA_BUNDLE_SOURCE_URL is not an https address')) . '</span>
+                        </div>
+                        <div class="pg-job-panel-row">
+                            <span class="text-muted">' . h($ca_bundle_use) . '</span>
+                        </div>
+                        <div class="pg-job-panel-row">
+                            <span class="text-muted">' . h(lang('The payment library keeps its own copy of the bundle; that one is refreshed with software releases and is not touched here.')) . '</span>
+                        </div>';
+
+                    $ca_bundle_action = '';
+                    $ca_bundle_panel = '';
+
+                    if ((int) $user['role'] === 0) {
+                        $ca_bundle_action = '
+                            <button type="button" class="pg-job-btn" id="ca_bundle_update"
+                                    data-busy-label="' . h(lang('Updating')) . '"
+                                    data-idle-label="' . h(lang('Update')) . '"
+                                    data-confirm-content="' . h(lang(array(
+                                        'string' => 'The current Mozilla root certificate list will be downloaded from {var:1} and will replace data/cacert.pem. A file that is older than the installed one, or that is not a complete bundle, is refused.',
+                                        'vars'   => array(($ca_bundle['source'] !== '') ? $ca_bundle['source'] : 'CA_BUNDLE_SOURCE_URL'),
+                                    ))) . '"
+                                    data-failed-label="' . h(lang('The CA bundle could not be updated.')) . '">
+                                <i class="bi bi-arrow-repeat"></i><span id="ca_bundle_update_state">' . h(lang('Update')) . '</span>
+                            </button>';
+
+                        $ca_bundle_panel = '
+                            <div class="pg-job-panel pg-job-result d-none" id="ca_bundle_update_result">
+                                <div class="pg-job-panel-row"><span id="ca_bundle_update_message"></span></div>
+                            </div>';
+                    }
+
+                    $health_jobs[] = array(
+                        'rank'   => 2,
+                        'icon'   => 'bi-shield-lock',
+                        'color'  => 'text-primary',
+                        'name'   => lang('CA certificate bundle'),
+                        'note'   => $ca_bundle_note,
+                        'hint'   => lang('The Mozilla root certificate list in data/cacert.pem, which outbound connections are verified against when CURL_CA_BUNDLE points at it. Update downloads the current list and replaces the file.'),
+                        'detail' => $ca_bundle_rows,
+                        'action' => $ca_bundle_action,
+                        'panel'  => $ca_bundle_panel,
                     );
 
                     // ── Storage ─────────────────────────────────────────

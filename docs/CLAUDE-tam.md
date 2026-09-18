@@ -552,6 +552,14 @@ Referans iki türlü olur ve ikisi farklı işlenir (2026-09-12):
 - Yayın: üretilen dosya olduğu gibi kodpen.com'a
   `pinegrap_hash_referance[SÜRÜM].json` adıyla yüklenir; içine başka bir şey
   yazılmaz.
+- **cacert.pem tazelendi mi?** `pinegrap/data/cacert.pem` (operatörün
+  `CURL_CA_BUNDLE` ile gösterdiği kopya) ve `includes/iyzipay-php/cacert.pem`
+  (iyzipay istemcisinin `CURLOPT_CAINFO` ile kendiliğinden kullandığı kopya)
+  Mozilla kök sertifika paketidir; yayın öncesi ikisi de
+  `https://curl.se/ca/cacert.pem`'in güncel hâliyle değiştirilir ve bayt bayt
+  aynı olmalıdır. `data/` hash kapsamı dışındadır; iyzipay kopyası `includes/`
+  içinde olduğu için onu değiştirdikten sonra `_software_create_hash.php`
+  yeniden çalıştırılmalı.
 
 ---
 
@@ -2247,6 +2255,25 @@ aynı kutuyu açıyordu.
 çağırır; bir bağlantıda bu gezinmeyi durdurur, bir düğmede durduracak bir şey
 yoktur.
 
+### Sistem Durumu — CA sertifika paketi yaşı (2026-09-18)
+
+`get_system_status_checks()` içinde, SSL kontrolünün hemen ardından ve aynı
+`security` grubunda, "CA Certificate Bundle" kontrolü (`bi-patch-*` ailesi,
+kısa etiket "CA bundle", ağırlık `ca_bundle` = 8, Moderate sınıfının en altı,
+IndexNow ile aynı). Yalnız `CURL_CA_BUNDLE` tanımlı, boş değil ve dosya
+okunabilirken koşar; boşsa sistem deposu kullanılıyordur ve **hiç satır
+eklenmez** — gri "Uygulanmaz" da yok. Dosyanın ilk 10 satırında curl'ün
+`mk-ca-bundle` başlığı aranır (`## Certificate data from Mozilla as of:
+<tarih>`), tarih `strtotime()` ile okunur, yaş `date_diff()` ile tam ay
+cinsinden hesaplanır. Başlık yoksa, ayrıştırılamıyorsa ya da tarih
+gelecekteyse kontrol sessizce atlanır (satır yok, uyarı yok). Eşikler: 12
+aydan eski → sarı (ağırlığın yarısı), 24 aydan eski → kırmızı (tam ağırlık),
+aksi hâlde yeşil. Mesaj ayrıştırılan tarihi (site `DATE_FORMAT`'ına göre) ve
+ay cinsinden yaşı taşır; karo değeri "N ay". Kontrol 10 dakikalık durum
+önbelleğine tabidir; `config.php`'de sabiti değiştirdikten sonra
+`data/temp/system_status_cache.json` silinmeden yeni satır görünmez. Önbellek
+şekil sürümü (`v`) değişmedi: her kontrole yeni anahtar eklenmedi.
+
 ---
 
 ## Sayfa Bazında Arama Motoru Dizini (2026.4.3)
@@ -3044,6 +3071,25 @@ mi" sorusunun **tek** cevabı odur (`TRUST_PROXY_SSL_HEADERS`,
 aşamasından, CSP ile gider. `Permissions-Policy` `(self)` ile yazılır,
 `()` ile değil; `payment` bilerek yok.
 
+**Güvenli Mod HTTPS görülmeyen istekten açılamaz (2026-09-18).**
+`firewall.save.php` yalnız KAPALI → AÇIK geçişinde (`URL_SCHEME` `http://`
+iken `secure_mode` işaretli gelirse) `check_if_request_is_secure()` sorar;
+yanlışsa `$liveform->add_error()` ile hata bırakır, `$url_scheme`'i
+`URL_SCHEME`'e geri çeker ve `return` eder — kaydın tamamı yazılmaz
+(`contact.save.php` Mailchimp kalıbı). İki mesaj: `check_proxy_ssl_headers()`
+doğruysa "proxy HTTPS bildiriyor ama sunucu düz HTTP görüyor —
+`TRUST_PROXY_SSL_HEADERS` ya da Full mod", yanlışsa "HTTPS sunucuya hiç
+ulaşmıyor — sertifika kur"; ikisi de `test_secure_mode.php`'ye bağlanır ve
+"bu ayarı HTTPS üzerinden açılmış bir oturumdan kaydedin" ile biter (SSL'i
+çalışan ama panele `http://localhost`'tan giren yönetici böyle geçer).
+Yüklem bilerek `pg_request_is_https()` **değil**: o, opt-in olmadan da
+`X-Forwarded-Proto`'ya güvenir ve Cloudflare Flexible kurulumunu geçirir.
+Zaten açıkken kaydetmek ve kapatmak denetlenmez — kilitlenen sitenin çıkışı
+kapatmaktır. `screen.php` artık `check_form_errors()` doğruysa
+`log_activity` ve "kaydedildi" bildirimini atlar (pane yolu
+`settings_pane.php` bunu zaten yapıyordu); yönlendirme aynı kalır, hatayı
+`output_errors()` gösterir.
+
 **Yerleşik CSP öğrenmek için yazılmıştır.** Satır içi kod ve `'unsafe-eval'`
 serbest, yazılımın kendi CDN'leri (jsDelivr, jQuery, DataTables, CodeMirror,
 Google Fonts, Cloudflare beacon'ları) listeli, geri kalan her üçüncü taraf
@@ -3266,6 +3312,44 @@ taraf değil kendi CA paketi olduğu anlaşılmaz.
 (`shipping.php`) bilerek dışarıda bırakıldı.** Bazı eski ağ geçitlerinin
 sertifikaları gerçekten bozuktur; canlı ödemeyi kırma riski, oradan elde
 edilecek kazancın çok üstünde.
+
+### CA Paketini Panelden Güncelleme (2026-09-18)
+
+Sistem Durumu kartının **Bakım ve Araçlar** sütununda "CA sertifika paketi"
+satırı `data/cacert.pem`'in durumunu listeler (Mozilla başlık tarihi, kök
+sayısı, `CURL_CA_BUNDLE`'ın bu dosyayı mı / başka bir dosyayı mı gösterdiği
+ya da tanımsız olup sistem deposunun kullanıldığı, kaynak adres) ve yalnız
+yöneticiye (rol 0) **Güncelle** düğmesi sunar. Uç `api.php` →
+`ca_bundle_update` (rol 0 + `validate_token()`), iş `pg_ca_bundle_update()`
+(`includes/fn/update.php`; yanında `pg_ca_bundle_status()`,
+`pg_ca_bundle_inspect()`, `pg_ca_bundle_source_url()`).
+
+Kurallar:
+
+- **Kaynak yalnız https.** Varsayılan `https://curl.se/ca/cacert.pem`;
+  `config.php`'de `CA_BUNDLE_SOURCE_URL` ile ayna verilebilir, https dışı bir
+  değer indirmeden reddedilir. Yönlendirmeler de `CURLPROTO_HTTPS` ile
+  sınırlıdır. Kullanıcıdan URL ya da yol alınmaz.
+- **İndirme `pg_curl_tls()` ile doğrulanır** — güncelleme kanalıyla aynı
+  kural, aynı gerekçe: bu dosya bundan sonra neye güvenileceğini belirler.
+- **İnanmadan önce denetle:** boyut 50 KB–2 MB, `## Certificate data from
+  Mozilla as of:` başlığı ayrıştırılabilir, en az 100 kök, her PEM bloğu
+  `openssl_x509_read()`'den geçer, sonra tarih karşılaştırması: kurulu
+  dosyanın başlık tarihinden **eski dosya reddedilir** (ayna geride kalmış
+  olabilir), aynı tarih "zaten güncel" döner ve dosyaya dokunulmaz; kurulu
+  dosyanın başlığı yoksa tarih koşulu aranmaz. Yapı denetimleri tarihten
+  önce koşar ki bozuk bir dosya "zaten güncel" diye değil, neden bozuk
+  olduğuyla raporlansın.
+- **Atomik yazım:** `data/temp/` içine `tempnam()`, izinler kuruludan
+  kopyalanır, `rename()` ile hedefin üzerine; `data/temp` yazılamıyorsa
+  (tempnam sistem temp'ine kaçarsa) reddedilir. Ardından
+  `data/temp/system_status_cache.json` silinir, `log_activity()` yazılır.
+- **Hedef her zaman `data/cacert.pem`'dir.** `CURL_CA_BUNDLE` başka bir
+  dosyayı gösteriyorsa yine `data/cacert.pem` yazılır ve satır çalışan
+  yapılandırmanın bu dosyayı okumadığını söyler.
+- **`includes/iyzipay-php/cacert.pem`'e dokunulmaz.** `includes/` bütünlük
+  özetindedir; o kopya yalnız yazılım sürümüyle değişir. Ekran metni bunu
+  bir cümleyle söyler.
 
 ### Muafiyet Yalnızca Yola Bakar
 

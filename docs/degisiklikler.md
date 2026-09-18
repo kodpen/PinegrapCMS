@@ -72,6 +72,189 @@ farklı kalıp kullandığından dokunulmadı.
 örnek kurulmadı: favicon isteklerinin 200 döndüğü ve `<body class>` çıktısı
 tarayıcıda görülmedi.
 
+## 2026.4.4 — Mozilla kök sertifika paketi tazelendi (2026-09-18)
+
+`pinegrap/data/cacert.pem` 10 Ocak 2023 tarihli Mozilla paketiydi (137 kök);
+operatör `CURL_CA_BUNDLE` ile bu dosyayı gösterdiğinde güncelleme kanalı,
+webhook göndericisi ve push istemcisi karşı tarafı buna göre doğrular. Dosya,
+curl.se'nin resmî dağıtımı `https://curl.se/ca/cacert.pem` ile değiştirildi:
+Mozilla verisi 13 Ağustos 2026 tarihli, 121 kök. Sayının düşmesi eksiklik
+değil: Mozilla 2026'da eski kökleri (Baltimore CyberTrust, DigiCert Global
+Root CA, GlobalSign Root CA, Entrust, Go Daddy Class 2 …) TLS için güvenilir
+olmaktan çıkardı; curl.se'nin paketi Mozilla'nın `certdata.txt`'inden
+üretildiğinden o kökleri artık taşımıyor. Yerine 2022–2024 tarihli yeni kökler
+geldi (SSL.com, Sectigo R46/E46, Telekom Security, SECOM 2024, D-TRUST 2023 …).
+
+`includes/iyzipay-php/cacert.pem` (aynı içerikli eski kopya) **bilerek
+dokunulmadı**: `includes/` 2026.4.4'ten beri dosya bütünlüğü hash kapsamında
+ve referansı yalnız dev makinadaki `_software_create_hash.php` üretebiliyor.
+Yayın öncesi bu kopya da değiştirilip referans yeniden üretilmeli;
+`docs/CLAUDE-tam.md`'deki bütünlük bölümüne kontrol maddesi eklendi. Kod,
+migration ve `tr.json` değişmedi.
+
+## 2026.4.4 — Sistem Durumu: CA sertifika paketi yaşı kontrolü (2026-09-18)
+
+`CURL_CA_BUNDLE` ile kendi `cacert.pem` dosyasını gösteren kurulumlarda o dosya
+paket yöneticisinin değil operatörün sorumluluğundadır ve sessizce eskir:
+Mozilla kök listesi yılda birkaç kez yenilenir, iki yıl geride kalan bir paket
+güncel sertifikaların zincirlendiği kökleri tanımaz ve dışa giden TLS
+doğrulaması (güncelleme indirme, ödeme ve API çağrıları) görünür bir sebep
+olmadan başarısız olmaya başlar. Depodaki `data/cacert.pem` Ocak 2023 tarihli.
+
+### Kontrol
+
+`includes/fn/system_status.php` `get_system_status_checks()` içine, SSL
+kontrolünün ardından ve aynı `security` grubunda "CA Certificate Bundle"
+kontrolü eklendi. Yalnız `CURL_CA_BUNDLE` tanımlı, boş değil ve dosya
+okunabilirken koşar; sabit boşsa sistem deposu kullanılıyordur ve hiç satır
+eklenmez (gri "Uygulanmaz" da yok — ölçülecek bir şey yok). Dosyanın ilk 10
+satırında curl `mk-ca-bundle` başlığı (`## Certificate data from Mozilla as
+of: <tarih>`) aranır; tarih `strtotime()`, yaş `date_diff()` ile tam ay olarak
+hesaplanır. Başlık yoksa, ayrıştırılamıyorsa ya da tarih gelecekteyse kontrol
+sessizce atlanır: yaş hakkında tahmin, satır olmamasından kötüdür.
+
+Eşikler: 12 aydan eski → sarı, 24 aydan eski → kırmızı, aksi hâlde yeşil.
+Ağırlık `ca_bundle` = 8 (Moderate sınıfının altı, IndexNow ile aynı): bayat
+bir güven listesi siteyi açmaz ama dışa giden doğrulamayı sessizce kırar;
+kırmızı tam ağırlık, sarı yarısı. Glif `bi-patch-check-fill` /
+`bi-patch-exclamation-fill` — asma kilit SSL'in. Kısa etiket "CA bundle",
+karo değeri "N ay"; mesaj ayrıştırılan tarihi (`DATE_FORMAT`'a göre) ve ay
+cinsinden yaşı taşır. Yeni metinler `tr.json`'da SSL anahtarlarının yanında.
+Önbellek şekil sürümü değişmedi; sabit değiştirildikten sonra
+`data/temp/system_status_cache.json` silinmeden (10 dk) yeni satır görünmez.
+
+### Doğrulama
+
+Sandbox'ta `CURL_CA_BUNDLE` sırayla `data/cacert.pem` (Ocak 2023 → kırmızı,
+"44 ay"), 6 ay önce tarihli başlık (yeşil), 15 ay (sarı), başlıksız dosya
+(satır yok) ve boş sabit (satır yok) ile denendi; pano widget'ı `api.php`
+`get_widget_data` üzerinden okundu. `tools/lint.php` ve `tools/check_lang.php`
+temiz.
+
+**Açık kalan:** 12/24 ay eşikleri uygun mu, yoksa başka bir aralık mı
+isteniyor?
+
+## 2026.4.4 — Bakım ve Araçlar: CA sertifika paketini güncelle (2026-09-18)
+
+`data/cacert.pem` — operatörün `CURL_CA_BUNDLE` ile gösterdiği Mozilla kök
+listesi — Ocak 2023 tarihli kalmıştı (137 kök); güncel curl.se dosyası Ağustos
+2026 / 121 kök. Listeyi yenilemenin tek yolu FTP ile dosya değiştirmekti ve
+bunu kimse yapmıyordu; sonuç, hiçbir şeyi değişmeyen sitede "cURL error 60".
+
+### Satır ve düğme
+
+Sistem Durumu kartının Bakım ve Araçlar sütununa "CA sertifika paketi" satırı
+eklendi (`api.php`, widget 2). Satır açılınca dosya yolu, Mozilla başlık
+tarihi, kök sayısı, kaynak adres ve çalışan yapılandırmanın durumu listelenir:
+`CURL_CA_BUNDLE` bu dosyayı gösteriyor / başka bir dosyayı gösteriyor
+(yolu ile) / tanımsız, sistem deposu kullanılıyor. Ödeme kütüphanesinin kendi
+kopyasının sürümle yenilendiği ve burada dokunulmadığı bir cümleyle söylenir.
+**Güncelle** düğmesi yalnız yöneticiye (rol 0) çizilir; öteki roller satırı
+görür, düğmeyi görmez — reddedecek bir denetim kimseye teklif edilmez.
+
+### `pg_ca_bundle_update()` — `includes/fn/update.php`
+
+`pg_curl_tls()` yanına kondu, çünkü aynı sorunun öteki yarısıdır. Akış:
+kaynak adres (`https://curl.se/ca/cacert.pem`, ya da `config.php`'de
+`CA_BUNDLE_SOURCE_URL`; **yalnız https**, aksi indirmeden reddedilir;
+yönlendirmeler `CURLPROTO_HTTPS` ile sınırlı) → `pg_curl_tls()` ile
+doğrulanmış indirme (`pinegrap_user_agent()`, `PROXY_ADDRESS`) → denetim
+sırası: boyut 50 KB–2 MB, `## Certificate data from Mozilla as of:` başlığı
+`strtotime` ile okunuyor, en az 100 `BEGIN CERTIFICATE`, her blokun bitiş
+işareti var ve `openssl_x509_read()` ile ayrışıyor, **sonra** tarih: kurulu
+dosyadan eskiyse eskiye dönüş reddedilir, aynı tarihse "zaten güncel" döner
+(`unchanged`), kurulu dosyanın başlığı yoksa tarih koşulu yok. Yapı
+denetimleri tarihten önce koşar; ilk taslakta tarih önce koşuyordu ve 60
+sertifikalık bir dosya "zaten güncel" diye raporlanıyordu.
+
+Yazım atomik: `data/temp/` içinde `tempnam()`, kurulu dosyanın izinleri
+kopyalanır, `rename()` ile hedefin üzerine (Windows için `copy()` yedeği).
+`tempnam()` sistem temp'ine kaçmışsa reddedilir — dosya sistemleri arası
+`rename()` kopyadır, atomik değildir. Ardından
+`data/temp/system_status_cache.json` silinir (PR #29'un yaş kontrolü hemen
+yeni tarihi okusun), `log_activity()` mesajın tamamını yazar.
+
+Hedef her zaman `data/cacert.pem`. `includes/iyzipay-php/cacert.pem`
+bütünlük kapsamında olduğu için araç ona dokunmaz.
+
+### Uç ve güvenlik
+
+`api.php` → `ca_bundle_update`: `validate_user()`, rol 0 dışı `Access
+denied.`, `validate_token()`, `session_write_close()` (indirme uzun sürebilir),
+sonuç `pg_health_job()` ile satırın altındaki panele düşer. Genel kapının
+(rol ≤ 1) arkasında bırakıldı; öteki üç iş gibi muaf tutulmadı, çünkü bu iş
+zaten yöneticiye özeldir. Kullanıcıdan URL ya da yol alınmaz; tek girdi
+`config.php` sabitidir.
+
+`data/config(default).php`'ye `CA_BUNDLE_SOURCE_URL` (boş = curl.se) eklendi,
+`CURL_CA_BUNDLE`'ın yanına. Bu değişiklik kod değiştirir; `cacert.pem`'in
+kendisi PR #27 ile yenilenir.
+
+Doğrulama: sandbox'ta curl.se erişilemez; kendinden imzalı sertifikalı yerel
+https sunucusu ve `CA_BUNDLE_SOURCE_URL` ile başarı yolu (Ocak 2023 → Ağustos
+2026, 121 kök, birebir aynı dosya), aynı dosya (zaten güncel), eski dosya
+(eskiye dönüş reddi), 60 ve 36 sertifikalık dosyalar, başlıksız rastgele
+içerik, bozuk PEM bloğu (8/121 ayrışmadı), 404, http şeması, TLS hatası
+(cURL 60 + `pg_curl_tls_hint()`), Manager ve Designer rolü, GET, eksik/yanlış
+belirteç, oturumsuz istek; hedef her ret sonrasında birebir aynı kaldı.
+Gerçek curl.se indirmesi sandbox'tan doğrulanmadı.
+
+## 2026.4.4 — Güvenli Mod, HTTPS görülmeyen istekten açılamaz (2026-09-18)
+
+Güvenlik Duvarı ekranındaki **Güvenli Mod** anahtarı her kayıtta koşulsuz
+yazılıyordu. Sunucunun düz HTTP gördüğü bir istekten (sertifika yok, ya da SSL
+önde bir proxy/CDN'de bitiyor — Cloudflare "Flexible") açılınca `init.php` her
+isteği `https://`'e yönlendiriyor, o da aynı düz HTTP bacağından geri geliyor ve
+site — panel dahil — kilitleniyordu. Ekrandaki uyarı kutusu ve
+`test_secure_mode.php` bunu anlatıyordu ama kayıt engellemiyordu.
+
+### Yalnız KAPALI → AÇIK geçişinde kapı
+
+`includes/settings/firewall.save.php` `$url_scheme`'i belirledikten hemen
+sonra bakar: `URL_SCHEME` `http://` iken `secure_mode` işaretli gelmiş ve
+`check_if_request_is_secure()` yanlışsa `$liveform->add_error()` ile hata
+bırakır, `$url_scheme`'i `URL_SCHEME`'e geri çeker ve `return` eder — ekranın
+hiçbir alanı yazılmaz (`contact.save.php`'nin Mailchimp kalıbı). Yüklem
+`pg_request_is_https()` **değil**: o, `TRUST_PROXY_SSL_HEADERS` opt-in'i
+olmadan da `X-Forwarded-Proto`'ya güvenir ve tam da kilitlenen Flexible
+kurulumunu geçirirdi. `check_if_request_is_secure()` doğrudan TLS'i her zaman,
+proxy başlıklarını yalnız opt-in ile sayar — HSTS'in de kullandığı tek "https
+mi" tanımı. Zaten açıkken kaydetmek ve kapatmak denetlenmez; kilitlenen sitenin
+çıkışı kapatmaktır.
+
+İki mesaj, `check_proxy_ssl_headers()` seçer: başlık HTTPS diyorsa "proxy/CDN
+HTTPS bildiriyor ama sunucu düz HTTP görüyor — `TRUST_PROXY_SSL_HEADERS`'ı aç
+ya da proxy'yi Full (uçtan uca) moda al"; demiyorsa "HTTPS sunucuya hiç
+ulaşmıyor — önce sertifika kur". İkisi de `test_secure_mode.php`'ye bağlanır
+(`firewall.php`'deki uyarı kutusuyla aynı `https://HOSTNAME_SETTING…` biçimi)
+ve "bu ayarı HTTPS üzerinden açılmış bir oturumdan kaydedin" ile biter: SSL'i
+çalışan ama panele `http://localhost`'tan giren yönetici böyle geçer. Pane
+yolunda (`settings_pane.php`) etiketler sökülür, bağlantı metni düz kalır.
+Üç yeni `tr.json` anahtarı, mevcut Güvenli Mod anahtarlarının yanında.
+
+### `screen.php`: hatalı kayıt "kaydedildi" demez
+
+Tam sayfa yolu `includes/settings/screen.php` kayıt modülü erken `return`
+etse de `log_activity('settings were modified')` yazıyor ve "Site Ayarları
+kaydedildi" bildirimini ekliyordu; Mailchimp hatası da böyle hem hata hem
+"kaydedildi" gösteriyordu. Artık ikisi `!$liveform->check_form_errors()`
+kapısının içinde — `fragment.php`/`settings_pane.php`'nin zaten yaptığı gibi.
+Yönlendirme değişmedi; hata oturumda kalır ve `output_errors()` gösterir.
+Şema, migration yok; `REQUIRE_SECURE_MODE` ve `init.php` dokunulmadı; uyarı
+kutusu aynı.
+
+### Doğrulama
+
+Sandbox'ta (PHP 8.4 yerleşik sunucu, MariaDB) tam sayfa formuyla:
+düz HTTP + `secure_mode=1` → "HTTPS ulaşmıyor" hatası, `url_scheme` `http://`
+kaldı, "kaydedildi" yok; `X-Forwarded-Proto: https` ile → "proxy" hatası;
+`TRUST_PROXY_SSL_HEADERS=true` + aynı başlık → kayıt geçti, `https://`
+yazıldı, yönlendirme `https://…`; zaten `https://` iken düz HTTP'den
+`secure_mode=1` (`REQUIRE_SECURE_MODE=false`) → kaydedildi, engellenmedi;
+`http://` iken kapalı kayıt ve `https://` iken kapatma → kaydedildi.
+`tools/lint.php` ve `tools/check_lang.php` temiz. Pane yolu (modal) tarayıcıda
+denenmedi; oradaki hata dalı zaten vardı.
+
 ## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
 
 Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve

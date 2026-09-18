@@ -6415,6 +6415,23 @@ $(function () {
 
         pg_health_job($button, 'purge_cache');
     });
+
+    // Replacing data/cacert.pem with the current Mozilla root list. The
+    // report names the new date and count and, when the download is refused,
+    // why -- an older file, a truncated one, a certificate OpenSSL could not
+    // read -- which is more than a dialog should hold. Same confirm-then-run
+    // shape as the other jobs: the delegated data-confirm-content handler
+    // asks first and preventDefault()s a "no".
+    $(document).on('click', '#ca_bundle_update', function (event) {
+
+        var $button = $(this);
+
+        if (event.isDefaultPrevented() || $button.prop('disabled')) {
+            return;
+        }
+
+        pg_health_job($button, 'ca_bundle_update');
+    });
 });
 
 // Settings screen: land on the section a #pgset-… link asks for.

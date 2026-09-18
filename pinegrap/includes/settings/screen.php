@@ -268,9 +268,16 @@ if (!$_POST) {
     // barcode label size on every save.
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.save.php');
 
-    log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
+    // A module that marked an error wrote nothing and returned early; neither
+    // the log nor the confirmation may say otherwise. The errors stay in the
+    // form and are printed by output_errors() on the screen the redirect
+    // below lands on.
+    if (!$liveform->check_form_errors()) {
 
-    $liveform->add_notice(lang('The Site Settings have been saved.'));
+        log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
+
+        $liveform->add_notice(lang('The Site Settings have been saved.'));
+    }
 
     // The General screen can change the scheme in the same request, so the
     // redirect has to use the one just chosen rather than the one this request
