@@ -41,6 +41,62 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
+
+**Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters
+kaydını atan bir yol yoktu, tahsisini faturadan kaldıran `erp_unsettle()`
+yazılmış ama hiçbir ekran çağırmıyordu. Yanlış kapanan fatura kapalı
+kalıyor, `erp_invoice_cancel()` "önce tahsisi geri al" diyor ve bunun bir
+düğmesi bulunmuyordu. Tahsilatın kendi tahsislerini görecek bir ekran da
+yoktu; kasa defteri, cari ekstresi ve fatura kapatma tablosu satır başına
+işlem taşımıyordu. (Eksik envanteri, aday 5.)
+
+**Çözüm.** Yeni ekran `erp_receipt.php?id=<kasa hareketi>` (kapı
+`manage_erp_cash`): hareketin kendisi, tahsisleri, tahsis edilmemiş kalanı ve
+üç düzeltme. *İptal* siler değil **ters kayıt atar**: kasaya ve cariye ters
+yönde, aynı tutar / para birimi / kur ve **orijinalin `amount_base` değeri**
+ile bugün tarihli birer hareket (`doc_type = 'cancel'`, `doc_id =` orijinal
+kasa hareketi; defter tarafı `kind = 'adjustment'`, fatura iptaliyle aynı
+kalıp). Açıklama orijinal numara, tarih ve sebebi taşır. "İptal edildi"
+durumu saklanmaz, ters kayıt satırından **türetilir** — bir bayrağın
+satırla ayrışması mümkün değildir; listelerde tek alt sorguyla okunur. Önce
+tahsisler kaldırılır ve kapattıkları faturalar yeniden hesaplanır
+(`erp_invoice_refresh_paid()`), sonra hareket çevrilir; hepsi tek
+transaction. İptal edilmiş tahsilat ikinci kez iptal edilemez, tahsis
+alamaz. *Tahsis kaldırma* (`erp_settlement_remove()`, mevcut
+`erp_unsettle()` üzerine) parayı yerinde bırakır — cari hesapta tahsis
+edilmemiş alacak olarak görünür — ve faturayı yeniden açar; hediye kartı
+tahsisi yalnız faturasıyla kaldırılır. *Yeniden tahsis*
+(`erp_settlement_allocate()`) tahsilat anındaki denetimlerin aynısını yapar
+(aynı cari, yön, para birimi, açık fatura, tahsis edilmemiş tutarı ve açığı
+aşmama; `amount_base` tahsilatın kendi kurundan) ve `erp_settle()`
+kullanır. Form en eski faturadan başlayan bir **öneriyle** dolu gelir
+(`erp_settlement_suggest()`); kullanıcı düzenler ve kaydeder, kaydetmeden
+hiçbir şey yazılmaz — plan §550 "tahsis her zaman birinin kararı" korunur.
+
+**Kur farkı.** Dövizli faturayı kapatan tahsilat iptal edilince ya da tahsisi
+kaldırılınca fatura `paid` olmaktan çıkar; kapanışta atılan `fx_diff` artık
+yanlıştır ve idempotens sayacı yüzünden sonraki kapanışa da engel olurdu.
+`erp_fx_reverse_difference()` farkı ters hareketle çevirir (`kind = fx_diff`,
+`doc_type = cancel`, `doc_id =` fark satırı); `erp_fx_post_difference()`
+artık çevrilmiş orijinalleri saymaz, sonraki kapanış yeni fark atar.
+
+**`payment_date`.** Yeniden açılan faturanın ödeme tarihi tahsilattan
+gelmişti; tahsis kalmayınca `erp_invoice_refresh_paid()` içinde sıfırlanır
+(`is_internet_sale = 0` ise — ağ geçidinden gelen tarih korunur). Siparişin
+ödendi işareti tek yönlü kalır, dokunulmaz. **Şema değişikliği yok.**
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Sandbox'ta gerçek
+ERP fonksiyonlarıyla: iptal sonrası cari ve kasa bakiyeleri tahsilat
+öncesine döndü, fatura `issued` / `paid_total 0`, tahsis yok, çift iptal
+ve iptal edilmiş tahsilata tahsis reddedildi; tahsis kaldırma faturayı
+açtı ve `payment_date`'i sildi, bakiyeye dokunmadı; FIFO önerisi ve
+yeniden tahsis (başka cari, açığı aşan, tahsis edilmemişi aşan tutarlar
+reddedildi; aynı çift düzeltti, eklemedi); USD faturada kur farkı iptalle
+çevrildi, yeni tahsilat yeni kur farkı attı. Ekran akışı PR açıklamasında.
+
 ## 2026.4.4 — Veritabanına yazılan değerler: kampanya kilidi, menü kopyası, ERP ödeme yöntemi, kuruş yuvarlama (2026-09-18)
 
 **Belirti.** `email_campaign_job.php`, `calendar_event_reserved` alıcıları

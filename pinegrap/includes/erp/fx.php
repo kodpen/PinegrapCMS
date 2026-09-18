@@ -248,8 +248,13 @@ function erp_fx_post_difference($invoice, $created_by = 0)
         return true;
     }
 
-    $already = (int) db_value("SELECT COUNT(*) FROM erp_account_transactions
-        WHERE kind = 'fx_diff' AND doc_type = 'fx_diff' AND doc_id = '" . $invoice_id . "'");
+    // One difference per closing. A difference that was reversed when the
+    // receipt behind it was cancelled does not count: the invoice is open
+    // again and will need a fresh one when it closes next.
+    $already = (int) db_value("SELECT COUNT(*) FROM erp_account_transactions d
+        WHERE d.kind = 'fx_diff' AND d.doc_type = 'fx_diff' AND d.doc_id = '" . $invoice_id . "'
+          AND NOT EXISTS (SELECT 1 FROM erp_account_transactions r
+              WHERE r.kind = 'fx_diff' AND r.doc_type = 'cancel' AND r.doc_id = d.id)");
 
     if ($already > 0) {
         return true;
@@ -296,4 +301,57 @@ function erp_fx_post_difference($invoice, $created_by = 0)
     ));
 
     return ($posted !== false);
+}
+
+/**
+ * Take back the exchange difference posted when an invoice closed.
+ *
+ * The receipt that closed a foreign-currency invoice has been cancelled, or
+ * its allocation removed, so the invoice is open again and the difference
+ * booked against it says something that is no longer true. Like every other
+ * correction it is reversed by an opposite movement, never deleted, and the
+ * reversal points at the difference row it undoes so the closing that comes
+ * next can post a fresh one.
+ *
+ * Runs inside the caller's transaction.
+ *
+ * @param int $invoice_id
+ * @param int $created_by
+ * @return bool  false when a posting failed
+ */
+function erp_fx_reverse_difference($invoice_id, $created_by = 0)
+{
+    $invoice_id = (int) $invoice_id;
+
+    $differences = (array) db_items("SELECT d.* FROM erp_account_transactions d
+        WHERE d.kind = 'fx_diff' AND d.doc_type = 'fx_diff' AND d.doc_id = '" . $invoice_id . "'
+          AND NOT EXISTS (SELECT 1 FROM erp_account_transactions r
+              WHERE r.kind = 'fx_diff' AND r.doc_type = 'cancel' AND r.doc_id = d.id)");
+
+    foreach ($differences as $difference) {
+        $posted = erp_account_post(array(
+            'account_id' => (int) $difference['account_id'],
+            'doc_date' => date('Y-m-d'),
+            'kind' => 'fx_diff',
+            'direction' => ((string) $difference['direction'] === 'debit') ? 'credit' : 'debit',
+            'amount' => (int) $difference['amount'],
+            'currency' => (string) $difference['currency'],
+            'exchange_rate' => 1,
+            'exchange_rate_source' => 'base',
+            'amount_base' => (int) $difference['amount_base'],
+            'doc_type' => 'cancel',
+            'doc_id' => (int) $difference['id'],
+            'description' => lang(array(
+                'string' => '{var:1} cancelled',
+                'vars' => (string) $difference['description'],
+            )),
+            'created_by' => (int) $created_by,
+        ));
+
+        if ($posted === false) {
+            return false;
+        }
+    }
+
+    return true;
 }

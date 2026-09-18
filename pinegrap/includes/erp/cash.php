@@ -425,3 +425,178 @@ function erp_post_transfer($data)
 
     return array('success' => true, 'out_id' => $out_id, 'in_id' => $in_id, 'error' => '');
 }
+
+/**
+ * One receipt or payment: the till movement with its ledger twin, the till
+ * and the account it names, and the reversal that cancelled it, if any.
+ *
+ * @param int $cash_id
+ * @return array|null  null for an id that is not a receipt or a payment
+ */
+function erp_receipt($cash_id)
+{
+    $row = db_item("SELECT c.*, t.name AS cash_account_name, t.currency AS till_currency,
+            a.title AS account_title,
+            (SELECT l.id FROM erp_account_transactions l WHERE l.doc_type = c.doc_type AND l.doc_id = c.id LIMIT 1) AS ledger_id,
+            (SELECT r.id FROM erp_cash_transactions r WHERE r.doc_type = 'cancel' AND r.doc_id = c.id LIMIT 1) AS reversal_id
+        FROM erp_cash_transactions c
+        LEFT JOIN erp_cash_accounts t ON c.cash_account_id = t.id
+        LEFT JOIN erp_accounts a ON c.account_id = a.id
+        WHERE c.id = '" . (int) $cash_id . "' AND c.doc_type IN ('collection', 'payment')
+        LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Whether a receipt has been cancelled.
+ *
+ * The reversal row is the fact; there is no flag to fall out of step with it.
+ *
+ * @param int $cash_id
+ * @return bool
+ */
+function erp_receipt_is_cancelled($cash_id)
+{
+    return ((int) db_value("SELECT COUNT(*) FROM erp_cash_transactions
+        WHERE doc_type = 'cancel' AND doc_id = '" . (int) $cash_id . "'") > 0);
+}
+
+/**
+ * Cancel a receipt or a payment that should never have been recorded.
+ *
+ * Both halves are reversed, never deleted: the till gets the opposite
+ * movement and so does the account, each with the original's amount,
+ * currency, rate and base figure, so the pair nets to nothing whatever the
+ * rate is today. The allocations the receipt carried go first, and each
+ * invoice they closed is worked out again; a foreign invoice that stops being
+ * paid loses the exchange difference its closing posted. The reversal rows
+ * are dated today and point back at the receipt through doc_type 'cancel',
+ * which is also what marks the receipt as cancelled.
+ *
+ * @param int    $cash_id
+ * @param string $reason
+ * @param int    $created_by
+ * @return array ['success' => bool, 'reversal_id' => int, 'reopened' => int[], 'error' => string]
+ */
+function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
+{
+    $fail = function ($message) {
+        return array('success' => false, 'reversal_id' => 0, 'reopened' => array(), 'error' => $message);
+    };
+
+    $receipt = erp_receipt((int) $cash_id);
+
+    if ($receipt === null) {
+        return $fail(lang('The receipt could not be found.'));
+    }
+
+    if ((int) $receipt['reversal_id'] > 0) {
+        return $fail(lang('That receipt has already been cancelled.'));
+    }
+
+    $reason = trim((string) $reason);
+
+    if ($reason === '') {
+        return $fail(lang('The reason is required.'));
+    }
+
+    $ledger_id = (int) $receipt['ledger_id'];
+    $ledger = ($ledger_id > 0) ? db_item("SELECT * FROM erp_account_transactions WHERE id = '" . $ledger_id . "' LIMIT 1") : null;
+
+    if (!is_array($ledger)) {
+        return $fail(lang('The receipt could not be found.'));
+    }
+
+    $cash_id = (int) $receipt['id'];
+    $account_id = (int) $receipt['account_id'];
+    $created_by = (int) $created_by;
+
+    $description = mb_substr(lang(array(
+        'string' => 'Cancellation of receipt #{var:1} dated {var:2}: {var:3}',
+        'vars' => array($cash_id, prepare_form_data_for_output((string) $receipt['doc_date'], 'date'), $reason),
+    )), 0, 255);
+
+    if (!erp_tx_begin()) {
+        return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // The allocations first: the invoices they closed have to ask for their
+    // money again before the movement that paid them is turned around.
+    $reopened = array();
+
+    foreach (erp_txn_settlements($ledger_id) as $settlement) {
+        $invoice_id = (int) $settlement['invoice_id'];
+
+        if (erp_query("DELETE FROM erp_settlements WHERE id = '" . (int) $settlement['id'] . "'") === false) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+            return $fail($error);
+        }
+
+        if (!erp_invoice_refresh_paid($invoice_id)
+            || !erp_settlement_after_reopen($invoice_id, (string) $settlement['invoice_currency'], $created_by)) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+            return $fail(($error !== '') ? $error : lang('The receipt could not be cancelled.'));
+        }
+
+        $reopened[$invoice_id] = $invoice_id;
+    }
+
+    $shared = array(
+        'doc_date' => date('Y-m-d'),
+        'amount' => (int) $receipt['amount'],
+        'currency' => (string) $receipt['currency'],
+        'exchange_rate' => (float) $receipt['exchange_rate'],
+        'exchange_rate_date' => (string) $receipt['exchange_rate_date'],
+        'exchange_rate_source' => (string) $receipt['exchange_rate_source'],
+        'doc_type' => 'cancel',
+        'doc_id' => $cash_id,
+        'description' => $description,
+        'created_by' => $created_by,
+    );
+
+    $reversal_id = erp_cash_post($shared + array(
+        'cash_account_id' => (int) $receipt['cash_account_id'],
+        'direction' => ((string) $receipt['direction'] === 'in') ? 'out' : 'in',
+        'amount_base' => (int) $receipt['amount_base'],
+        'account_id' => $account_id,
+        'payment_method' => (string) $receipt['payment_method'],
+    ));
+
+    if ($reversal_id === false) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    // The account's side turns around too. It is an adjustment, not a
+    // collection: nothing was collected, something recorded was withdrawn.
+    $posted = erp_account_post($shared + array(
+        'account_id' => $account_id,
+        'kind' => 'adjustment',
+        'direction' => ((string) $ledger['direction'] === 'debit') ? 'credit' : 'debit',
+        'amount_base' => (int) $ledger['amount_base'],
+    ));
+
+    if ($posted === false) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    if (!erp_cash_refresh_balance((int) $receipt['cash_account_id']) || !erp_account_refresh_balance($account_id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    if (!erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    return array('success' => true, 'reversal_id' => (int) $reversal_id, 'reopened' => array_values($reopened), 'error' => '');
+}

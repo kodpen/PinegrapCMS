@@ -68,6 +68,27 @@ if ($_POST) {
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
     }
 
+    // Taking an allocation off moves money about on paper, so it takes the
+    // cash right, like recording the receipt did.
+    if (($_POST['erp_action'] ?? '') === 'unsettle') {
+
+        if (!defined('USER_MANAGE_ERP_CASH') || !USER_MANAGE_ERP_CASH) {
+            $liveform->mark_error('_error', lang('Access denied'));
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        }
+
+        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
+
+        if ($result['success'] && ((int) $result['invoice_id'] === $invoice_id)) {
+            log_activity(lang(array('string' => 'erp allocation was removed from invoice ({var:1})', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang('The allocation has been removed.'));
+        } else {
+            $liveform->mark_error('_error', ($result['error'] !== '') ? $result['error'] : lang('The allocation could not be found.'));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+    }
+
     if (($_POST['erp_action'] ?? '') === 'cancel') {
 
         $result = erp_invoice_cancel($invoice_id, (int) $user['id']);
@@ -158,11 +179,33 @@ if (!empty($settlements)) {
                                     <th>' . lang('Description') . '</th>
                                     <th>' . lang('Till or Bank Account') . '</th>
                                     <th class="text-end">' . lang('Amount') . '</th>
+                                    <th class="text-end">' . lang(array('string' => 'Action')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>';
 
+    // The receipt behind an allocation opens on its own screen; the allocation
+    // itself can be taken off by whoever may move cash. The gift card's is not
+    // anybody's decision and goes only with the invoice.
+    $can_unsettle = (!$is_cancelled && defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH);
+
     foreach ($settlements as $settlement) {
+        $is_receipt = in_array((string) $settlement['source_type'], array('collection', 'payment'), true);
+
+        $output_actions = '';
+        if ($is_receipt && ((int) $settlement['cash_id'] > 0)) {
+            $output_actions .= '<a class="btn btn-sm btn-outline-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . lang('Receipt') . '"><i class="bi bi-receipt"></i></a> ';
+        }
+        if ($can_unsettle && ((string) $settlement['source_type'] !== 'gift_card')) {
+            $output_actions .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
+                                        ' . get_token_field() . '
+                                        <input type="hidden" name="id" value="' . $invoice_id . '" />
+                                        <input type="hidden" name="erp_action" value="unsettle" />
+                                        <input type="hidden" name="settlement_id" value="' . (int) $settlement['id'] . '" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="' . lang('Remove allocation') . '" onclick="return confirm(\'' . h(lang('Remove this allocation? The money stays on the account; the invoice will ask for it again.')) . '\');"><i class="bi bi-x-circle"></i></button>
+                                    </form>';
+        }
+
         $output_settlements .= '
                                 <tr>
                                     <td class="text-nowrap">' . h(prepare_form_data_for_output($settlement['doc_date'], 'date')) . '</td>
@@ -170,6 +213,7 @@ if (!empty($settlements)) {
                                     <td>' . h($settlement['cash_account_name']) . '</td>
                                     <td class="text-end">' . $money((int) $settlement['amount'])
                                         . ($is_foreign ? ' <span class="text-body-secondary small">' . h(erp_money_out((int) $settlement['amount_base'])) . '</span>' : '') . '</td>
+                                    <td class="text-end text-nowrap">' . $output_actions . '</td>
                                 </tr>';
     }
 

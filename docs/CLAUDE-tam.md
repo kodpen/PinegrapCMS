@@ -987,6 +987,17 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
 - `erp_tx_begin/commit/rollback` derinliği tek sayaçta tutar
   (`$GLOBALS['_erp_tx_depth']`, `erp_tx_depth()`); aynı istekte ikinci bir
   posting gerçekten yeni transaction açar.
+- **Tahsilat düzeltmeleri** `erp_receipt.php` (kapı `manage_erp_cash`):
+  iptal = kasa + cari ters kayıt (`doc_type='cancel'`, `doc_id=`kasa
+  hareketi, orijinal `amount_base`, bugün tarihli; `erp_receipt_cancel()`),
+  iptal durumu ters kayıt satırından türetilir (`erp_receipt_is_cancelled()`,
+  listelerde alt sorgu). Tahsis kaldırma `erp_settlement_remove()` →
+  `erp_unsettle()`; sonradan tahsis `erp_settlement_allocate()` (tahsilat
+  anındaki denetimler, `amount_base` tahsilatın kurundan); FIFO yalnız
+  **öneri** (`erp_settlement_suggest()`), yazım kullanıcının kaydıyla.
+  Dövizli fatura `paid`'den düşünce `erp_fx_reverse_difference()`;
+  `erp_fx_post_difference()` çevrilmiş orijinali saymaz. Tahsis kalmayan
+  faturanın `payment_date`'i sıfırlanır (internet satışı hariç).
 
 ### İndirimli siparişin KDV'si
 
