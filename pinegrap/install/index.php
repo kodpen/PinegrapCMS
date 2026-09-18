@@ -1426,7 +1426,10 @@ if ($automated_upgrade == false) {
 
 		init_mysql_charset();
 
-		mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+		// Pin the session sql_mode instead of inheriting the server default, which differs
+		// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+		// so only NO_ENGINE_SUBSTITUTION is kept.
+		mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
 		$result = @mysqli_query(db::$con, "SHOW TABLES");
 
@@ -1623,10 +1626,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		init_mysql_charset();
 
-		// Disable MySQL strict mode, because later versions of MySQL enable strict mode by default,
-		// and PineGrap is not compatible with strict mode.  This will also remove all other sql modes,
-		// however that should be fine.
-		mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+		// Pin the session sql_mode instead of inheriting the server default, which differs
+		// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+		// so only NO_ENGINE_SUBSTITUTION is kept.
+		mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
 		// initialize variable
 		$software_installed = false;
@@ -3821,10 +3824,10 @@ else {
 
 		init_mysql_charset();
 
-		// Disable MySQL strict mode, because later versions of MySQL enable strict mode by default,
-		// and PineGrap is not compatible with strict mode.  This will also remove all other sql modes,
-		// however that should be fine.
-		mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+		// Pin the session sql_mode instead of inheriting the server default, which differs
+		// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+		// so only NO_ENGINE_SUBSTITUTION is kept.
+		mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
 		// The install screen locks itself when a site already exists in the database, so by the time
 		// this form can be submitted the session is either logged in as an administrator or it has
@@ -4046,10 +4049,10 @@ else {
 
 			init_mysql_charset();
 
-			// Disable MySQL strict mode, because later versions of MySQL enable strict mode by default,
-			// and PineGrap is not compatible with strict mode.  This will also remove all other sql modes,
-			// however that should be fine.
-			mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+			// Pin the session sql_mode instead of inheriting the server default, which differs
+			// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+			// so only NO_ENGINE_SUBSTITUTION is kept.
+			mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
 			// If the token does not exist in the session,
 			// or the passed token does not match the token from the session,
@@ -4152,10 +4155,10 @@ else {
 
 					init_mysql_charset();
 
-					// Disable MySQL strict mode, because later versions of MySQL enable strict mode by default,
-					// and PineGrap is not compatible with strict mode.  This will also remove all other sql modes,
-					// however that should be fine.
-					mysqli_query(db::$con, "SET SESSION sql_mode = ''");
+					// Pin the session sql_mode instead of inheriting the server default, which differs
+					// between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
+					// so only NO_ENGINE_SUBSTITUTION is kept.
+					mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 
 					// initialize variable
 					$software_installed = false;
