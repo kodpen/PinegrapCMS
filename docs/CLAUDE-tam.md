@@ -894,6 +894,15 @@ partiler, parti başına transaction). Eşleşme vergi no → e-posta → tam ad
 yazar, bakiyeye dokunmaz. Varsayılan ülke `erp_default_country_code()`
 (`countries.default_selected`), `'TR'` değil.
 
+**Dışa aktarım** (`erp_export.php`, profiller `includes/erp/export.php`):
+profil = sütunlar + satır eşleyici + biçimleme (`erp_export_amount/rate/
+date/currency()`, tek nokta). Genel CSV (BOM, `;`, ISO tarih) varsayılan;
+Paraşüt profilleri depodaki `includes/phpexcel/templates/parasut_*.xlsx`
+şablonlarını zip olarak açıp yalnız 4. satırdan itibaren yazar (kütüphane
+yok). Ne çıktı `erp_export_log` (4.52: entity, doc_id, profile, run_token)
+tutar; `erp_parasut_log` API çağrı izidir, karıştırılmaz. İptal hiç, iade
+sayılıp atlanır, taslak isteğe bağlı. Para eşlemesi yalnız TRY→TRL.
+
 **Yetki üç sütun:** `manage_erp` (kapı), `manage_erp_cash`,
 `manage_erp_settings` — hepsi öneksiz `TINYINT`. Üçlü Yok/Okuma/Yazma deseni
 bu kod tabanında yok. Yeni bir yetki eklerken rol-3 kullanıcının panele
@@ -903,7 +912,6 @@ girebilirliğine karar veren dört merdiven de güncellenir: `welcome.php:59`,
 
 **Menü slotu 22** (`includes/fn/output.php`). Slotlar kalıcıdır —
 `user.selected_appmenu_items_array` onları pinler, yeniden kullanılmaz.
-
 
 ### Ekran deseni: liste `table.chart`, düzenleme ayrı sayfa
 
@@ -1610,7 +1618,6 @@ Aktif cart query'si `saved_for_later = 0` filter'ı uygular — saved item'lar c
 - `edit_comment.php?id={id}`
 
 ---
-
 
 ## Dosya Yapısı (Önemli Dosyalar)
 
@@ -3159,6 +3166,7 @@ dosyadan uyguluyor — yani hatayı gösterecek hiçbir yer yok.
 korunur, yazmadığı desen uydurulmaz.
 
 <!-- pg-waf-docs:begin (bu blok _restore_waf_docs.php tarafından yönetilir) -->
+
 ### Özne: IPv4'te Adres, IPv6'da /64 — `waf_ip_subject()`
 
 Adres başına sayan her sayaç **özneyi** sayar, ham adresi değil: IPv4'te
@@ -3347,6 +3355,7 @@ kapsayan auto yasakları siler, kalkanı tazeler; izinli adres listeden düşer.
 Kaldır ve İzin Ver kalkanı **anında** tazeler (`waf_ip_lists(true)` +
 `waf_ban_shield_refresh(true)`), mtime throttle'ına bırakılmaz.
 <!-- pg-waf-docs:end -->
+
 ### Kapatma Anahtarı Mutlaktır (2026.3.1)
 
 `waf_enabled = 0` iken `waf_run()` **koşulsuz döner.** Bot filtresi dahil hiçbir
