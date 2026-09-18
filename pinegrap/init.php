@@ -263,7 +263,7 @@ if ($result === false) {
     // config.php is all there is to go on, and router.php reads the same two
     // constants in the same order before rendering its own version of this.
     if (!defined('SOFTWARE_LANGUAGE')) {
-        if (defined('ENFORCEMENT_SOFTWARE_LANGUAGE')) {
+        if (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && (ENFORCEMENT_SOFTWARE_LANGUAGE !== '')) {
             define('SOFTWARE_LANGUAGE', ENFORCEMENT_SOFTWARE_LANGUAGE);
         } elseif (defined('DEFAULT_SOFTWARE_LANGUAGE')) {
             define('SOFTWARE_LANGUAGE', DEFAULT_SOFTWARE_LANGUAGE);

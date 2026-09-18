@@ -124,8 +124,9 @@ define('SET_ERROR_REPORTING', true);
 define('DEFAULT_SOFTWARE_LANGUAGE','en');
 
 // Enforcement language (overrides all settings, strict)
-// Not recommended unless necessary
-define('ENFORCEMENT_SOFTWARE_LANGUAGE','');
+// Not recommended unless necessary. Leave it undefined unless you need it:
+// an empty value is treated as "not enforced".
+// define('ENFORCEMENT_SOFTWARE_LANGUAGE','tr');
 
 /* -----------------------------
    Maintenance / Updates

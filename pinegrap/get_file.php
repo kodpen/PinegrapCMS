@@ -1064,7 +1064,8 @@ function output_error($error_message, $response_code = 0) {
 
     // if there is a MySQL error, then add that to the error message
     if ($mysql_error !== '') {
-        $output_error_message .= ' ' . h($mysql_error);
+        // h() lives in functions.php, which the router path has not loaded yet.
+        $output_error_message .= ' ' . htmlspecialchars($mysql_error, ENT_QUOTES, 'UTF-8');
     }
 
     echo
