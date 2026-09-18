@@ -21,10 +21,21 @@
 
 function add_to_cart($request) {
 
-    $quantity = $request['quantity'];
+    // The quantity is optional: the storefront button sends none, which means one.
+    // When it is present it has to be a whole number of at least one, otherwise
+    // add_order_item() would store the cast value (0 for "-5" or "abc") as a cart line.
+    $quantity = 1;
 
-    if (!$quantity) {
-        $quantity = 1;
+    if (isset($request['quantity']) && ($request['quantity'] !== '')) {
+
+        if (
+            (preg_match('/^\d+$/', (string) $request['quantity']) == 0)
+            || ((int) $request['quantity'] < 1)
+        ) {
+            return error_response(lang('Please enter a valid quantity.'));
+        }
+
+        $quantity = (int) $request['quantity'];
     }
 
     initialize_order();

@@ -18,7 +18,7 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'user');
+validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 $liveform = new liveform('add_short_link');
@@ -400,25 +400,6 @@ if (!$_POST) {
             // If the selected page does not exist, then add error.
             if ($row[0] == 0) {
                 $liveform->mark_error($page_field_name, lang('The page does not exist.'));
-            }
-        }
-
-        // If there is not already an error and the user has a user role,
-        // then check if user has edit rights to page.
-        if (
-            ($liveform->check_form_errors() == FALSE)
-            && (USER_ROLE == 3)
-        ) {
-            // Get the page's folder in order to check if the user has edit rights to the page.
-            $query = "SELECT page_folder AS folder_id FROM page WHERE page_id = '" . escape($page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-            $folder_id = $row['folder_id'];
-
-            // If the user does not have edit rights to the page's folder, then log activity and add error.
-            if (check_edit_access($folder_id) == false) {
-                log_activity(lang('access denied to add short link for page because user does not have edit rights to page'), $_SESSION['sessionusername']);
-                $liveform->mark_error($page_field_name, lang('Sorry, you do not have access to that page.'));
             }
         }
     }

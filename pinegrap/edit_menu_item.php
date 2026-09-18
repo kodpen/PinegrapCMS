@@ -29,9 +29,16 @@ $query =
         menu_items.parent_id
     FROM menus
     LEFT JOIN menu_items ON menus.id = menu_items.menu_id
-    WHERE menu_items.id = '" . escape($_REQUEST['id']) . "'";
+    WHERE menu_items.id = '" . escape($_REQUEST['id'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// Without a row every value below is empty and the "menu item above" query
+// further down is built with an empty sort_order comparison, which fails and
+// echoes the SQL text to the screen. Stop here instead.
+if (!$row) {
+    output_error(lang('Sorry, the item could not be found.'), 404);
+}
 
 $menu_id = $row['id'];
 $menu_name = $row['name'];

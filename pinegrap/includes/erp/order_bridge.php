@@ -24,6 +24,11 @@
  * The sum is then tied back to the tax on the order's own header, because that
  * header is the document the customer actually paid against.
  *
+ * The rate printed on a line is the legal rate the line was charged at, not
+ * the ratio of two rounded kurus figures: 361 / 2008 reads as 17.978%, and an
+ * e-document with that on it is wrong even though the amounts are right.
+ * order_items does not keep the rate, so it is recovered (erp_line_tax_rate).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -74,10 +79,10 @@ function erp_order_lines($order, $items)
         $line_total = $unit_price * $quantity;
         $tax_total = (int) $item['tax_total'];
 
-        // The rate the line was charged at, recovered from the two figures the
-        // order stores. Only used to print a rate on the document; the amount
-        // itself is carried over, never recomputed.
-        $rate = ($line_total > 0) ? round(($tax_total * 100) / $line_total, 3) : 0;
+        // The rate the line was charged at. The amount itself is carried over,
+        // never recomputed; the rate is what a discounted line's tax is taken
+        // again at, and what the document prints.
+        $rate = erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
 
         $lines[] = array(
             'product_id' => (int) $item['product_id'],
@@ -190,6 +195,20 @@ function erp_order_lines($order, $items)
         $tax_total += $line['tax_total'];
     }
 
+    // The shape of the header figures, which erp_invoices stores as they are:
+    //
+    //   subtotal        the sum of every line's line_total, shipping and
+    //                   surcharge lines included - they are sold, so they are
+    //                   lines like any other
+    //   discount_total  the sum of the lines' discount_amount
+    //   tax_total       the sum of the lines' tax_total
+    //   grand_total     subtotal - discount_total + tax_total
+    //
+    // shipping_total and surcharge_total say how much of the subtotal those
+    // two lines account for; they are informational and are NOT added again.
+    // A reader that sums subtotal + shipping_total + tax_total counts the
+    // shipping twice. gift_card_total is not part of the sale at all - it is
+    // how part of the grand total was paid.
     $totals = array(
         'subtotal' => $subtotal,
         'discount_total' => $discount_total,
@@ -201,6 +220,56 @@ function erp_order_lines($order, $items)
     );
 
     return array('lines' => $lines, 'totals' => $totals);
+}
+
+/**
+ * The rate a line was taxed at, from the figures the order kept.
+ *
+ * order_items stores the line total and the tax on it, both whole kurus, and
+ * not the rate. Dividing one by the other gives back the rate plus the
+ * rounding that went into the tax: 361 / 2008 is 17.978%, not the 18% the
+ * customer was charged. That figure is wrong on a document, and taking a
+ * returned share of the line at it lands a kurus short.
+ *
+ * The rate is therefore the simplest one that reproduces the stored tax
+ * exactly, through the same rounding the order used (erp_apply_rate). The
+ * product's own rate is tried first, because when it still explains the tax it
+ * is the rate that was charged. Otherwise the ratio is tried at zero, one, two
+ * and then three decimals, so 18 wins over 18.001 and 8.25 over 8.253. A tax
+ * that no rate with three decimals explains is left as the plain ratio, which
+ * is as much as the two figures can say.
+ *
+ * @param int               $line_total    Kurus, undiscounted
+ * @param int               $tax_total     Kurus of tax on that total
+ * @param string|float|null $product_rate  products.tax_rate, NULL when the zone decided
+ * @return float  Percentage
+ */
+function erp_line_tax_rate($line_total, $tax_total, $product_rate = null)
+{
+    $line_total = (int) $line_total;
+    $tax_total = (int) $tax_total;
+
+    if (($line_total <= 0) || ($tax_total <= 0)) {
+        return 0;
+    }
+
+    if (($product_rate !== null) && ($product_rate !== '')) {
+        $candidate = (float) $product_rate;
+        if (erp_apply_rate($line_total, $candidate) === $tax_total) {
+            return $candidate;
+        }
+    }
+
+    $ratio = ($tax_total * 100) / $line_total;
+
+    for ($decimals = 0; $decimals <= 3; $decimals++) {
+        $candidate = round($ratio, $decimals);
+        if (erp_apply_rate($line_total, $candidate) === $tax_total) {
+            return $candidate;
+        }
+    }
+
+    return round($ratio, 3);
 }
 
 /**
@@ -357,7 +426,8 @@ function erp_invoice_from_order($order_id, $options = array())
         return $fail(lang('Order not found.'));
     }
 
-    $items = (array) db_items("SELECT order_items.*, products.short_description
+    $items = (array) db_items("SELECT order_items.*, products.short_description,
+            products.tax_rate AS product_tax_rate
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0

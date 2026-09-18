@@ -65,13 +65,28 @@ function erp_invoice_returned_total($invoice_id)
 /**
  * The parent's lines with what is still returnable on each.
  *
+ * Besides the quantity, each line carries the tax already credited back on it
+ * (returned_tax), so a further return can take no more than what is left. A
+ * return line has no link to its parent line, so, as when a return is
+ * cancelled, the lines are matched on product.
+ *
  * @param int $invoice_id
  * @return array
  */
 function erp_returnable_lines($invoice_id)
 {
-    $lines = (array) db_items("SELECT * FROM erp_invoice_items
-        WHERE invoice_id = '" . (int) $invoice_id . "' ORDER BY line_no ASC, id ASC");
+    $invoice_id = (int) $invoice_id;
+
+    $lines = (array) db_items("SELECT i.*,
+            (SELECT COALESCE(SUM(r.tax_total), 0)
+                FROM erp_invoice_items r
+                INNER JOIN erp_invoices d ON r.invoice_id = d.id
+                WHERE d.parent_invoice_id = '" . $invoice_id . "'
+                  AND d.doc_type = 'return'
+                  AND d.status <> 'cancelled'
+                  AND r.product_id = i.product_id) AS returned_tax
+        FROM erp_invoice_items i
+        WHERE i.invoice_id = '" . $invoice_id . "' ORDER BY i.line_no ASC, i.id ASC");
 
     foreach ($lines as $index => $line) {
         $lines[$index]['remaining_qty'] = (float) $line['quantity'] - (float) $line['returned_qty'];
@@ -119,6 +134,17 @@ function erp_return_build($parent_lines, $quantities)
         $line_total = (int) round((int) $parent['unit_price'] * $wanted);
         $discount = (int) round((int) $parent['discount_amount'] * $share);
         $tax = erp_apply_rate($line_total - $discount, (float) $parent['tax_rate']);
+
+        // The parent line's tax is one rounded figure, and the pieces given
+        // back cannot add up to more than it: two halves of 361 kurus both
+        // round to 181. Each piece is taken at the rate, capped by what is
+        // still on the line, and the piece that empties the line takes exactly
+        // what is left - the same tie-back erp_order_lines does against the
+        // order's header, so that the returns of a line sum to its tax.
+        if (isset($parent['returned_tax'])) {
+            $tax_left = max(0, (int) $parent['tax_total'] - (int) $parent['returned_tax']);
+            $tax = ($wanted >= ($remaining - 0.00001)) ? $tax_left : min($tax, $tax_left);
+        }
 
         $lines[] = array(
             'parent_line_id' => $line_id,
@@ -337,6 +363,14 @@ function erp_invoice_return($data)
         return $fail($error);
     }
 
+    // The parent now asks for less, so money already allocated to it may
+    // cover it: its status is measured against the total less returns.
+    if (!erp_invoice_refresh_paid($parent_id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     if (!erp_tx_commit()) {
         $error = erp_db_error();
         erp_tx_rollback();
@@ -439,6 +473,14 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
                 erp_tx_rollback();
                 return $fail($error);
             }
+        }
+
+        // The parent asks for its full amount again, so a status that the
+        // return had allowed to reach paid has to be worked out afresh.
+        if (!erp_invoice_refresh_paid((int) $invoice['parent_invoice_id'])) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+            return $fail($error);
         }
     }
 
