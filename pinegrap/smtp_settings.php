@@ -303,6 +303,8 @@ if (!$_POST) {
 
                 // Private key file
                 file_put_contents(FILE_DIRECTORY_PATH . '/dkim.key', $private_pem);
+                // Owner-only: the private key must not be readable by other accounts. Failure is ignored so Windows/IIS installs keep working.
+                @chmod(FILE_DIRECTORY_PATH . '/dkim.key', 0600);
                 $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.key');
                 db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
                     VALUES ('dkim.key','" . escape(getPublicRootFolderId()) . "','" . escape($txt_record) . "','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");

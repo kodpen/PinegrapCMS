@@ -41,6 +41,36 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
+
+**Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip
+özel anahtarı dosya dizinine `dkim.key` olarak yazıyor (posta gönderici onu
+diskten okur, `includes/fn/mail.php`) ve aynı adı `files` tablosuna **herkese
+açık kök klasör** altında kaydediyordu; TXT kaydı metni de bu satırın
+`description` alanında saklanıyor. `router.php` son yol parçası `files.name`
+ile eşleşen her adresi `get_file.php`'ye yollar, `get_file.php` ise herkese
+açık klasördeki dosyalarda hiçbir erişim denetimi yapmaz. Sonuç: `/dkim.key`
+adresi imza özel anahtarını anonim ziyaretçiye teslim ediyordu.
+
+**Düzeltme.** `get_file.php` kayıt yüklendikten hemen sonra, klasör ve rol ne
+olursa olsun `dkim.key` adını 404 ile reddediyor — herkese açık satırı zaten
+taşıyan kurulumları da kapatır. Anahtar dosyası artık `0600` yazılıyor
+(`@chmod`; Windows/IIS'te başarısızlık yutulur). `files` kaydı ve
+`description`'daki TXT metni şimdilik olduğu gibi bırakıldı; ayar ekranı ve
+DKIM testi bunu okuyor, kaydı herkese açık klasörden çıkarmak ayrı bir karar.
+Şema yok, lang anahtarı yok. Yayınlanmış 2026.4.3'ü de etkiler (çıkarım:
+üretim eylemi ve herkese açık klasör kaydı 2026.4.4 döngüsünden eskidir;
+2026-09-12 ayar bölünmesi bunları mevcut olarak anlatır).
+
+**Operatör notu.** Bu düzeltmeden önce anahtar üretmiş siteler DKIM
+anahtarını döndürmeli (yeniden üret, DNS TXT kaydını güncelle); eski özel
+anahtar çoktan indirilmiş olabilir.
+
+### Doğrulama
+
+`php -l` iki PHP dosyasında temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnekte denenmedi.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
