@@ -294,6 +294,41 @@ function pg_pb_price_to_cents($value)
     return (int) round(((float) $value) * 100);
 }
 
+/**
+ * Read a decimal quantity (weight, dimension) typed with either separator.
+ *
+ * Same problem as pg_pb_price_to_cents(): "0,5" cast straight to a number is
+ * zero, so a half-kilo product was stored weightless while its price on the
+ * same form parsed fine. The rule differs in one respect: the last separator
+ * is always the decimal point, whatever follows it, because dimensions are
+ * routinely given to three places ("0,125" kg) where a price never is.
+ *
+ *   12,5     -> 12.5       1,234.56 -> 1234.56
+ *   12.5     -> 12.5       1.234,56 -> 1234.56
+ *   0,125    -> 0.125      ""       -> 0.0
+ *
+ * @param string $value
+ * @return float
+ */
+function pg_pb_decimal_from_input($value)
+{
+    $value = preg_replace('/[^0-9.,]/', '', trim((string) $value));
+
+    if ($value === '') {
+        return 0.0;
+    }
+
+    $pos = max(strrpos($value, '.'), strrpos($value, ','));
+    if ($pos === false) {
+        return (float) $value;
+    }
+
+    $whole    = preg_replace('/[.,]/', '', substr($value, 0, $pos));
+    $fraction = substr($value, $pos + 1);
+
+    return (float) (($whole === '' ? '0' : $whole) . '.' . ($fraction === '' ? '0' : $fraction));
+}
+
 
 /**
  * Format integer cents back into the input format the price fields expect.
@@ -453,10 +488,10 @@ function pg_pb_common_from_post()
     // legacy screen uses.
     $metric = !empty($_POST['convert_to_metric_system']);
 
-    $weight = isset($_POST['weight']) ? $_POST['weight'] : 0;
-    $length = isset($_POST['length']) ? $_POST['length'] : 0;
-    $width  = isset($_POST['width'])  ? $_POST['width']  : 0;
-    $height = isset($_POST['height']) ? $_POST['height'] : 0;
+    $weight = pg_pb_decimal_from_input(isset($_POST['weight']) ? $_POST['weight'] : 0);
+    $length = pg_pb_decimal_from_input(isset($_POST['length']) ? $_POST['length'] : 0);
+    $width  = pg_pb_decimal_from_input(isset($_POST['width'])  ? $_POST['width']  : 0);
+    $height = pg_pb_decimal_from_input(isset($_POST['height']) ? $_POST['height'] : 0);
 
     if ($metric) {
         $weight = round($weight * 2.20462262185, 2);
