@@ -999,7 +999,7 @@ function _pg_sw_build_query($key, $value, $reset_key = null, $reset_value = null
  * Append/replace a single query-string parameter on a URL while keeping
  * everything else (path, fragment, other query keys) intact.
  *
- * Used by catalog_listing's "Sepete Ekle (sayfada kal)" mode to produce
+ * Used by catalog_listing's "Add to cart (stay on page)" mode to produce
  * URLs like "/urunler?cart_added=42" so the post-add redirect lands on the
  * exact same listing page (with the toast trigger appended) instead of
  * losing pagination/filter state through a full page swap.
@@ -1174,7 +1174,7 @@ function pg_designer_tree_decode($json)
 
 // Drop entries from a designer assets JSON (page_custom_css / page_custom_js)
 // whose backing file is no longer in the `files` table. Out-of-band deletes
-// (e.g. a "Sil (kalıcı)" via API followed by a page reload before the user
+// (e.g. a "Delete (permanent)" via API followed by a page reload before the user
 // hit Save) can leave the page row referencing a phantom file: the JSON
 // keeps the entry, the on-disk file is gone, and the asset re-appears in
 // the editor with a broken URL. Filtering on load drops the ghost so the
@@ -2832,8 +2832,8 @@ function _render_component_html($props, $pad)
                 . $extra_attrs . '>' . "\n";
             for ($i = 0; $i < $items; $i++) {
                 $html .= $pad . '    <div class="accordion-item">' . "\n";
-                $html .= $pad . '        <h2 class="accordion-header"><button class="accordion-button' . ($i > 0 ? ' collapsed' : '') . '" type="button" data-bs-toggle="collapse" data-bs-target="#collapse' . $i . '">Accordion Item #' . ($i+1) . '</button></h2>' . "\n";
-                $html .= $pad . '        <div id="collapse' . $i . '" class="accordion-collapse collapse' . ($i === 0 ? ' show' : '') . '" data-bs-parent="#accordionMain"><div class="accordion-body">Content for item ' . ($i+1) . '.</div></div>' . "\n";
+                $html .= $pad . '        <h2 class="accordion-header"><button class="accordion-button' . ($i > 0 ? ' collapsed' : '') . '" type="button" data-bs-toggle="collapse" data-bs-target="#collapse' . $i . '">' . h(lang(array('string' => 'Accordion Item #{var:1}', 'vars' => array($i+1)))) . '</button></h2>' . "\n";
+                $html .= $pad . '        <div id="collapse' . $i . '" class="accordion-collapse collapse' . ($i === 0 ? ' show' : '') . '" data-bs-parent="#accordionMain"><div class="accordion-body">' . h(lang(array('string' => 'Content for item {var:1}.', 'vars' => array($i+1)))) . '</div></div>' . "\n";
                 $html .= $pad . '    </div>' . "\n";
             }
             $html .= $pad . '</div>' . "\n";
@@ -2848,10 +2848,10 @@ function _render_component_html($props, $pad)
             $html .= $pad . '<ul class="nav nav-' . ($pill ? 'pills' : 'tabs') . '" role="tablist"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
-            for ($i = 0; $i < $tabCount; $i++) $html .= $pad . '    <li class="nav-item"><button class="nav-link' . ($i === 0 ? ' active' : '') . '" data-bs-toggle="tab" data-bs-target="#tab' . $i . '">Tab ' . ($i+1) . '</button></li>' . "\n";
+            for ($i = 0; $i < $tabCount; $i++) $html .= $pad . '    <li class="nav-item"><button class="nav-link' . ($i === 0 ? ' active' : '') . '" data-bs-toggle="tab" data-bs-target="#tab' . $i . '">' . h(lang(array('string' => 'Tab {var:1}', 'vars' => array($i+1)))) . '</button></li>' . "\n";
             $html .= $pad . '</ul>' . "\n";
             $html .= $pad . '<div class="tab-content p-3">' . "\n";
-            for ($i = 0; $i < $tabCount; $i++) $html .= $pad . '    <div class="tab-pane fade' . ($i === 0 ? ' show active' : '') . '" id="tab' . $i . '">Content for Tab ' . ($i+1) . '</div>' . "\n";
+            for ($i = 0; $i < $tabCount; $i++) $html .= $pad . '    <div class="tab-pane fade' . ($i === 0 ? ' show active' : '') . '" id="tab' . $i . '">' . h(lang(array('string' => 'Content for Tab {var:1}', 'vars' => array($i+1)))) . '</div>' . "\n";
             $html .= $pad . '</div>' . "\n";
             break;
 
@@ -3041,7 +3041,7 @@ function _render_content_html($props, $pad)
             // where you need bound text (price, badge, label) inline next
             // to other content. Designer can stack a strike-through
             // <span> with the original price beside the discounted price
-            // <span>, drop a small "Yeni!" badge after a heading, etc.
+            // <span>, drop a small "New!" badge after a heading, etc.
             $text = isset($props['text']) ? $props['text'] : '';
             $cls = !empty($props['cssClass']) ? h($props['cssClass']) : '';
             $style_attr  = _compose_inline_style($props);
@@ -3173,7 +3173,7 @@ function _render_content_html($props, $pad)
 
         case 'applied_offers':
             // Marker for the cart widget render to substitute with the
-            // live "Uygulanan Teklifler" alert HTML at request time.
+            // live "Applied Offers" alert HTML at request time.
             // Substitution happens in the static_values pass via the
             // `__applied_offers` token. Outside the cart widget the
             // marker simply disappears (token never gets replaced).
@@ -3182,7 +3182,7 @@ function _render_content_html($props, $pad)
 
         case 'breadcrumb':
             // Marker for catalog_item_view / catalog_listing render to
-            // substitute with the live breadcrumb HTML (Ana Katalog →
+            // substitute with the live breadcrumb HTML (Main Catalog →
             // Group → Subgroup → Product). Each widget detects the
             // marker via strpos AFTER its own breadcrumb computation.
             // Outside a catalog widget the marker simply disappears.
@@ -3238,7 +3238,7 @@ function _render_content_html($props, $pad)
                         if ($err_lines !== '') {
                             $msg_parts[] =
                                 '<div class="software_error alert alert-danger alert-dismissible show' . $msg_cls . '" role="alert">' .
-                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="Close"></button>' .
+                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>' .
                                     '<h5 class="alert-heading description">' . (function_exists('lang') ? lang('An error occurred') : 'An error occurred') . ':</h5>' .
                                     $err_lines .
                                 '</div>';
@@ -3253,7 +3253,7 @@ function _render_content_html($props, $pad)
                             if ($ntc_lines !== '') {
                                 $msg_parts[] =
                                     '<div class="software_notice alert alert-success alert-dismissible show' . $msg_cls . '" role="alert">' .
-                                        '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="Close"></button>' .
+                                        '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>' .
                                         $ntc_lines .
                                     '</div>';
                                 $rendered_anything = true;
@@ -3268,7 +3268,7 @@ function _render_content_html($props, $pad)
                             if ($wrn_lines !== '') {
                                 $msg_parts[] =
                                     '<div class="software_warning alert alert-warning alert-dismissible show' . $msg_cls . '" role="alert">' .
-                                        '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="Close"></button>' .
+                                        '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>' .
                                         $wrn_lines .
                                     '</div>';
                                 $rendered_anything = true;

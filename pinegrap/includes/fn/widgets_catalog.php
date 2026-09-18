@@ -28,7 +28,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //      gets a clone with ^^token^^ placeholders replaced.
 //   4. Accumulated loop output replaces the marker in the static HTML.
 //
-// Token paleti (per-product, expanded vs form_list_view to cover the products schema):
+// Token palette (per-product, expanded vs form_list_view to cover the products schema):
 //
 //   Basic:       ^^__id^^, ^^__name^^, ^^__short_description^^, ^^__description^^,
 //                ^^__address_name^^, ^^__detail_url^^, ^^__sort_order^^,
@@ -190,7 +190,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
     $bindings = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings']))
                     ? $node['props']['_bindings'] : array();
 
-    // ── "İncele / Genişlet" adaptive label ───────────────────────────────
+    // ── "View / Expand" adaptive label ──────────────────────────────────
     // A single button whose caption depends on where the row's link goes:
     //   • product, or product group with display_type='select'  → detail page
     //   • product group with display_type='browse'              → drills down
@@ -339,7 +339,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             $node['props']['_attrs'] = $kept;
             $node['props']['text'] = $_pg_default_text(
                 isset($node['props']['text']) ? $node['props']['text'] : '',
-                lang('Sepete Ekle')
+                lang('Add to Cart')
             );
         }
         elseif ($action === 'open_filters' && !empty($context['filters_offcanvas_id'])) {
@@ -349,7 +349,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             $node['props']['btnType']    = 'button';
             $node['props']['text']       = $_pg_default_text(
                 isset($node['props']['text']) ? $node['props']['text'] : '',
-                lang('Filtreler')
+                lang('Filters')
             );
             $existing = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs']))
                             ? $node['props']['_attrs'] : array();
@@ -371,7 +371,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             $node['props']['href']       = $context['clear_filters_url'];
             $node['props']['text']       = $_pg_default_text(
                 isset($node['props']['text']) ? $node['props']['text'] : '',
-                lang('Filtreleri Temizle')
+                lang('Clear Filters')
             );
         } elseif ($action === 'submit_search') {
             // Submit button — visitor pressing Enter inside the search input
@@ -499,10 +499,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                             ? $cfg['search_width'] : 'full';
     $search_width_cls = $search_width_map[$search_width_key];
     $search_label = (isset($cfg['search_label']) && is_string($cfg['search_label']) && $cfg['search_label'] !== '')
-                        ? substr($cfg['search_label'], 0, 100) : 'Ara...';
+                        ? substr($cfg['search_label'], 0, 100) : (string)lang('Search...');
 
     $empty_message = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
-                        ? $cfg['empty_message'] : 'Ürün bulunamadı.';
+                        ? $cfg['empty_message'] : (string)lang('No products found.');
 
     // Catalog order-by whitelist. Defaults to sort_order (per-group ranking) which
     // matches user expectation "as arranged in product_groups".
@@ -1185,7 +1185,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $backord = !empty($p['backorder']) ? 1 : 0;
         $oos_notice   = ($tracked && $qty <= 0) ? 1 : 0;
         $out_of_stock = ($oos_notice && !$backord) ? 1 : 0;
-        $oos_label = $out_of_stock ? 'Tükendi' : '';
+        $oos_label = $out_of_stock ? (string)lang('Out of stock') : '';
 
         // Image URL (primary). Empty image_name → empty token (designer can hide via CSS).
         $image_url = !empty($p['image_name'])
@@ -1424,10 +1424,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // ── Pagination HTML (Bootstrap 5, ±2 windowing — same as form_list_view) ──
     $pagination_html = '';
     if ($total_pages > 1) {
-        $pagination_html .= '<nav class="pg-sw-pagination" aria-label="Page navigation"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
+        $pagination_html .= '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
         if ($current_page > 1) {
             $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                h(_pg_sw_build_query($page_param, $current_page - 1)) . '" aria-label="Previous">&laquo;</a></li>';
+                h(_pg_sw_build_query($page_param, $current_page - 1)) . '" aria-label="' . h(lang('Previous')) . '">&laquo;</a></li>';
         } else {
             $pagination_html .= '<li class="page-item disabled"><span class="page-link">&laquo;</span></li>';
         }
@@ -1454,7 +1454,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         }
         if ($current_page < $total_pages) {
             $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                h(_pg_sw_build_query($page_param, $current_page + 1)) . '" aria-label="Next">&raquo;</a></li>';
+                h(_pg_sw_build_query($page_param, $current_page + 1)) . '" aria-label="' . h(lang('Next')) . '">&raquo;</a></li>';
         } else {
             $pagination_html .= '<li class="page-item disabled"><span class="page-link">&raquo;</span></li>';
         }
@@ -1480,12 +1480,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             }
         }
         $sort_labels = array(
-            'sort_order' => 'Varsayılan sıra',
-            'name_asc'   => 'Ad: A → Z',
-            'name_desc'  => 'Ad: Z → A',
-            'price_asc'  => 'Fiyat: Artan',
-            'price_desc' => 'Fiyat: Azalan',
-            'newest'     => 'Yeni eklenen',
+            'sort_order' => lang('Default order'),
+            'name_asc'   => lang('Name: A → Z'),
+            'name_desc'  => lang('Name: Z → A'),
+            'price_asc'  => lang('Price: Low to High'),
+            'price_desc' => lang('Price: High to Low'),
+            'newest'     => lang('Recently added'),
         );
         $opts = '';
         foreach ($sort_options as $key) {
@@ -1495,9 +1495,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $sort_html =
             '<form method="get" class="pg-sw-sort mb-3 d-flex align-items-center gap-2" style="max-width:320px">' .
                 $hidden_for_sort .
-                '<label class="form-label mb-0 small text-muted">Sırala:</label>' .
+                '<label class="form-label mb-0 small text-muted">' . h(lang('Sort')) . ':</label>' .
                 '<select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">' . $opts . '</select>' .
-                '<noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Uygula</button></noscript>' .
+                '<noscript><button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button></noscript>' .
             '</form>';
     }
 
@@ -1538,7 +1538,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                        ($stock_filter_active ? ' checked' : '') .
                        ' onclick="window.location.search=\'?' . h($stock_link_query) . '\'">' .
                 '<label class="form-check-label" for="pg-sw-stock-' . (int)$widget_id . '">' .
-                    'Sadece stoktakiler' .
+                    h(lang('In stock only')) .
                 '</label>' .
             '</div>';
     }
@@ -1632,11 +1632,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 $_afout .= '<div class="pg-sw-attr-group mb-2">';
                 $_afout .= '<div class="small fw-semibold mb-1">' . h($_afdef['attr_label']) . '</div>';
                 if ($attr_filter_style === 'buttons') {
-                    // Button group: "Tümü" clears the param, each option sets it.
+                    // Button group: "All" clears the param, each option sets it.
                     $_afout .= '<div class="d-flex flex-wrap gap-1">';
                     $_all_cls  = ($_afact === 0) ? 'btn-secondary' : 'btn-outline-secondary';
                     $_all_href = '?' . h(_pg_sw_build_query($_afpk, '', $page_param, ''));
-                    $_afout   .= '<a href="' . $_all_href . '" class="btn btn-sm ' . $_all_cls . '">Tümü</a>';
+                    $_afout   .= '<a href="' . $_all_href . '" class="btn btn-sm ' . $_all_cls . '">' . h(lang('All')) . '</a>';
                     foreach ($_afdef['options'] as $_opt) {
                         $_oid      = (int)$_opt['option_id'];
                         $_opt_cls  = ($_afact === $_oid) ? 'btn-secondary' : 'btn-outline-secondary';
@@ -2106,18 +2106,18 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $chips = array();
     if ($url_drill_active && $active_group_id > 0) {
         $chips[] = array(
-            'label' => 'Kategori: ' . ($active_group_name ?: '#' . $active_group_id),
+            'label' => lang(array('string' => 'Category: {var:1}', 'vars' => array($active_group_name ?: '#' . $active_group_id))),
             'href'  => $listing_root_url,
         );
     }
     if ($search_active) {
         $chips[] = array(
-            'label' => 'Arama: ' . $search_query,
+            'label' => lang(array('string' => 'Search: {var:1}', 'vars' => array($search_query))),
             'href'  => '?' . _pg_sw_build_query($query_param, '', $page_param, ''),
         );
     }
     if ($price_filter_enabled && ($pmin_param !== null || $pmax_param !== null)) {
-        $lbl = 'Fiyat: ' . ($pmin_param !== null ? $pmin_param : '∞') . '–' . ($pmax_param !== null ? $pmax_param : '∞');
+        $lbl = lang(array('string' => 'Price: {var:1}', 'vars' => array(($pmin_param !== null ? $pmin_param : '∞') . '–' . ($pmax_param !== null ? $pmax_param : '∞'))));
         $chips[] = array(
             'label' => $lbl,
             'href'  => '?' . _pg_sw_build_query('pmin', '', $page_param, '') . (
@@ -2129,17 +2129,17 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
     if ($stock_filter_active && $stock_filter_enabled && !$stock_filter_default) {
         $chips[] = array(
-            'label' => 'Sadece stoktakiler',
+            'label' => lang('In stock only'),
             'href'  => '?' . _pg_sw_build_query('stock', '0', $page_param, ''),
         );
     }
     if ($sort_url_key !== '') {
         $sort_lbls = array(
-            'sort_order' => 'Varsayılan sıra', 'name_asc' => 'Ad ↑', 'name_desc' => 'Ad ↓',
-            'price_asc' => 'Fiyat ↑', 'price_desc' => 'Fiyat ↓', 'newest' => 'Yeni eklenen',
+            'sort_order' => lang('Default order'), 'name_asc' => lang('Name ↑'), 'name_desc' => lang('Name ↓'),
+            'price_asc' => lang('Price ↑'), 'price_desc' => lang('Price ↓'), 'newest' => lang('Recently added'),
         );
         $chips[] = array(
-            'label' => 'Sırala: ' . (isset($sort_lbls[$sort_url_key]) ? $sort_lbls[$sort_url_key] : $sort_url_key),
+            'label' => lang(array('string' => 'Sort: {var:1}', 'vars' => array(isset($sort_lbls[$sort_url_key]) ? $sort_lbls[$sort_url_key] : $sort_url_key))),
             'href'  => '?' . _pg_sw_build_query('sort', '', $page_param, ''),
         );
     }
@@ -2150,7 +2150,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     if ($attr_filter_enabled && $active_attr_filters) {
         $_attr_cs = '';
         foreach ($active_attr_filters as $_c_aid => $_c_oid) {
-            $_c_albl = isset($available_attrs[$_c_aid]) ? $available_attrs[$_c_aid]['attr_label'] : 'Özellik';
+            $_c_albl = isset($available_attrs[$_c_aid]) ? $available_attrs[$_c_aid]['attr_label'] : lang('Attribute');
             $_c_olbl = '';
             if (isset($available_attrs[$_c_aid])) {
                 foreach ($available_attrs[$_c_aid]['options'] as $_c_opt) {
@@ -2190,7 +2190,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             $_clear_all_params[] = 'pg_attr_' . $_caid;
         }
         $cs .= '<a href="?' . h(_build_clear_filters_query($_clear_all_params)) .
-               '" class="small text-decoration-none ms-2">Tümünü Temizle</a>';
+               '" class="small text-decoration-none ms-2">' . h(lang('Clear all')) . '</a>';
         $chips_html = '<div class="pg-sw-active-filters mb-3">' . $cs . '</div>';
     }
 
@@ -2227,7 +2227,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                           || !empty($active_attr_filters));
     $clear_button_html = $has_active_filters
         ? '<a href="' . $clear_url . '" class="btn btn-sm btn-outline-danger">'
-          . '<i class="bi bi-x-circle me-1"></i>' . h(lang('Filtreleri Temizle')) . '</a>'
+          . '<i class="bi bi-x-circle me-1"></i>' . h(lang('Clear Filters')) . '</a>'
         : '';
 
     // Active chips block — used both as the col-12 row in the page layout
@@ -2257,7 +2257,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         ? '<button type="button" class="btn btn-outline-secondary"'
         . ' data-bs-toggle="offcanvas" data-bs-target="#' . h($_pg_off_id) . '"'
         . ' aria-controls="' . h($_pg_off_id) . '">'
-        . '<i class="bi bi-funnel me-1"></i>' . h(lang('Filtreler'))
+        . '<i class="bi bi-funnel me-1"></i>' . h(lang('Filters'))
         . ($has_active_filters ? ' <span class="badge bg-primary ms-1">!</span>' : '')
         . '</button>'
         : '';
@@ -2282,7 +2282,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $filters_offcanvas_inner_html =
             '<div class="offcanvas-header border-bottom">'
           .   '<h5 class="offcanvas-title mb-0" id="' . h($_pg_off_id) . 'Title">'
-          .     '<i class="bi bi-funnel me-2"></i>' . h(lang('Filtreler'))
+          .     '<i class="bi bi-funnel me-2"></i>' . h(lang('Filters'))
           .   '</h5>'
           .   '<button type="button" class="btn-close" data-bs-dismiss="offcanvas"'
           .          ' aria-label="' . h(lang('Close')) . '"></button>'
@@ -3053,7 +3053,7 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
                           . ' class="form-control"'
                           . $form_attr . $req_attr . '>';
                     if ($val !== '') {
-                        $out .= '<div class="form-text small">' . h(lang('Mevcut dosya:')) . ' ' . h($val_for_input) . '</div>';
+                        $out .= '<div class="form-text small">' . h(lang('Current file:')) . ' ' . h($val_for_input) . '</div>';
                     }
                     break;
 
@@ -3979,7 +3979,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
     // ── Config resolution ─────────────────────────────────────────────────
     $not_found_message = (isset($cfg['not_found_message']) && is_string($cfg['not_found_message']) && $cfg['not_found_message'] !== '')
-                            ? $cfg['not_found_message'] : 'Ürün bulunamadı.';
+                            ? $cfg['not_found_message'] : (string)lang('No products found.');
     // next_page_id: where to redirect after a successful add-to-cart submit.
     // 0 / empty → stay on the current product page (catalog_detail.php uses
     // the `current_url` hidden field as the redirect target). Legacy alias
@@ -4796,7 +4796,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $backord      = !empty($p['backorder']) ? 1 : 0;
         $oos_notice   = ($tracked && $qty <= 0) ? 1 : 0;
         $out_of_stock = ($oos_notice && !$backord) ? 1 : 0;
-        $oos_label    = $out_of_stock ? 'Tükendi' : '';
+        $oos_label    = $out_of_stock ? (string)lang('Out of stock') : '';
 
         // Image URL (primary product image).
         $image_url = !empty($p['image_name'])

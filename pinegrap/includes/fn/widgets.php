@@ -107,10 +107,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                             ? $cfg['search_width'] : 'full';
     $search_width_cls = $search_width_map[$search_width_key];
 
-    // Placeholder text for the search input. Empty config falls back to "Ara...".
+    // Placeholder text for the search input. Empty config falls back to the translated "Search...".
     $search_label = (isset($cfg['search_label']) && is_string($cfg['search_label']) && $cfg['search_label'] !== '')
                         ? substr($cfg['search_label'], 0, 100)
-                        : 'Ara...';
+                        : (string)lang('Search...');
 
     $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
                         ? $cfg['empty_message']
@@ -622,12 +622,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     //    current page plus first/last anchors so very long lists stay compact.
     $pagination_html = '';
     if ($total_pages > 1) {
-        $pagination_html .= '<nav class="pg-sw-pagination" aria-label="Page navigation"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
+        $pagination_html .= '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
         // Prev
         if ($current_page > 1) {
             $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
                 h(_pg_sw_build_query($page_param, $current_page - 1)) .
-                '" aria-label="Previous">&laquo;</a></li>';
+                '" aria-label="' . h(lang('Previous')) . '">&laquo;</a></li>';
         } else {
             $pagination_html .= '<li class="page-item disabled"><span class="page-link">&laquo;</span></li>';
         }
@@ -657,7 +657,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($current_page < $total_pages) {
             $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
                 h(_pg_sw_build_query($page_param, $current_page + 1)) .
-                '" aria-label="Next">&raquo;</a></li>';
+                '" aria-label="' . h(lang('Next')) . '">&raquo;</a></li>';
         } else {
             $pagination_html .= '<li class="page-item disabled"><span class="page-link">&raquo;</span></li>';
         }
@@ -1877,7 +1877,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
             );
             if (is_array($page_rows)) {
                 foreach ($page_rows as $pr) {
-                    $excerpt = $pr['page_type'] !== '' ? ucfirst((string)$pr['page_type']) : lang('Page');
+                    // get_page_type_name() returns null for a type it does not know.
+                    $type_name = $pr['page_type'] !== '' ? get_page_type_name((string)$pr['page_type']) : null;
+                    $excerpt = (is_string($type_name) && $type_name !== '') ? $type_name : lang('Page');
                     $results[] = array(
                         'title'   => (string)$pr['page_title'],
                         'url'     => $output_base . encode_url_path((string)$pr['page_name']),
