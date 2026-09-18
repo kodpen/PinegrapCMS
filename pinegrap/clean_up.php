@@ -94,6 +94,11 @@ $file_list = array(
     // here any more.
     'mailchimp_settings.php',
     'includes/templates/mailchimp_settings.php',
+    // A development leftover: a one-shot diagnostic page for the
+    // shared-component placeholder invariant, written while that invariant was
+    // being introduced. The designer's save path enforces the rule itself and
+    // nothing links to the page.
+    'check_shared_invariant.php',
 
 
     // The pre-lib/ asset tree, superseded in 2026.4.4 and dropped from the
