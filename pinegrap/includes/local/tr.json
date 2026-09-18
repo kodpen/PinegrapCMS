@@ -12202,5 +12202,8 @@
     "{var:1}: {var:2} record(s), {var:3} row(s). The download starts now.": "{var:1}: {var:2} kayıt, {var:3} satır. İndirme şimdi başlıyor.",
     "erp export ({var:1}) was made with {var:2} record(s)": "erp dışa aktarımı ({var:1}) {var:2} kayıtla oluşturuldu",
     "Create the file": "Dosyayı oluştur",
-    "Line No": "Satır No"
+    "Line No": "Satır No",
+    "Choose a payment method.": "Bir ödeme yöntemi seçin.",
+    "erp_cash_transactions.payment_method does not exist, skipped": "erp_cash_transactions.payment_method yok, atlandı",
+    "erp_cash_transactions.payment_method already knows about cheque": "erp_cash_transactions.payment_method çek üyesini zaten içeriyor"
 }

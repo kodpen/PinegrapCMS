@@ -3911,8 +3911,8 @@ switch ($action) {
 
                 // loop through the items in order to determine which the user has access to
                 foreach ($short_links as $short_link) {
-                    // if user has access to item then add it to arrays
-                    if ((USER_ROLE < 3) || ((($short_link['destination_type'] == 'page') || ($short_link['destination_type'] == 'product_group') || ($short_link['destination_type'] == 'product')) && (check_folder_access_in_array($short_link['folder_id'], $folders_that_user_has_access_to) == true)) || (($short_link['destination_type'] == 'url') && (USER_ID == $short_link['created_user_id']))) {
+                    // Short links are a manager-and-up area, so only roles 0-2 get them listed here.
+                    if (USER_ROLE < 3) {
                         $short_link['type'] = 'short_link';
                         $recent_update_items[] = $short_link;
                         $recent_update_item_timestamps[] = $short_link['timestamp'];
@@ -10319,7 +10319,9 @@ switch ($action) {
         $actions[] = array('label' => lang('Add Page'), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'page add', 'yeni sayfa', 'add page', 'sayfaekle'));
         $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
         $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
-        $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
+        if ($can_manage) {
+            $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
+        }
         $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
         $actions[] = array('label' => lang('Auto Dialogs'), 'icon' => 'bi-chat-square-text', 'url' => $base_url . '/view_auto_dialogs.php', 'keys' => array('dialog', 'auto', 'oto', 'diy'));
 
