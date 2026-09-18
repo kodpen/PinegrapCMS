@@ -18,6 +18,7 @@
 
 include('init.php');
 $user = validate_user();
+validate_ecommerce_access($user);
 
 if (!$_POST) {
     $output =
