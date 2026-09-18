@@ -3267,6 +3267,44 @@ taraf değil kendi CA paketi olduğu anlaşılmaz.
 sertifikaları gerçekten bozuktur; canlı ödemeyi kırma riski, oradan elde
 edilecek kazancın çok üstünde.
 
+### CA Paketini Panelden Güncelleme (2026-09-18)
+
+Sistem Durumu kartının **Bakım ve Araçlar** sütununda "CA sertifika paketi"
+satırı `data/cacert.pem`'in durumunu listeler (Mozilla başlık tarihi, kök
+sayısı, `CURL_CA_BUNDLE`'ın bu dosyayı mı / başka bir dosyayı mı gösterdiği
+ya da tanımsız olup sistem deposunun kullanıldığı, kaynak adres) ve yalnız
+yöneticiye (rol 0) **Güncelle** düğmesi sunar. Uç `api.php` →
+`ca_bundle_update` (rol 0 + `validate_token()`), iş `pg_ca_bundle_update()`
+(`includes/fn/update.php`; yanında `pg_ca_bundle_status()`,
+`pg_ca_bundle_inspect()`, `pg_ca_bundle_source_url()`).
+
+Kurallar:
+
+- **Kaynak yalnız https.** Varsayılan `https://curl.se/ca/cacert.pem`;
+  `config.php`'de `CA_BUNDLE_SOURCE_URL` ile ayna verilebilir, https dışı bir
+  değer indirmeden reddedilir. Yönlendirmeler de `CURLPROTO_HTTPS` ile
+  sınırlıdır. Kullanıcıdan URL ya da yol alınmaz.
+- **İndirme `pg_curl_tls()` ile doğrulanır** — güncelleme kanalıyla aynı
+  kural, aynı gerekçe: bu dosya bundan sonra neye güvenileceğini belirler.
+- **İnanmadan önce denetle:** boyut 50 KB–2 MB, `## Certificate data from
+  Mozilla as of:` başlığı ayrıştırılabilir, en az 100 kök, her PEM bloğu
+  `openssl_x509_read()`'den geçer, sonra tarih karşılaştırması: kurulu
+  dosyanın başlık tarihinden **eski dosya reddedilir** (ayna geride kalmış
+  olabilir), aynı tarih "zaten güncel" döner ve dosyaya dokunulmaz; kurulu
+  dosyanın başlığı yoksa tarih koşulu aranmaz. Yapı denetimleri tarihten
+  önce koşar ki bozuk bir dosya "zaten güncel" diye değil, neden bozuk
+  olduğuyla raporlansın.
+- **Atomik yazım:** `data/temp/` içine `tempnam()`, izinler kuruludan
+  kopyalanır, `rename()` ile hedefin üzerine; `data/temp` yazılamıyorsa
+  (tempnam sistem temp'ine kaçarsa) reddedilir. Ardından
+  `data/temp/system_status_cache.json` silinir, `log_activity()` yazılır.
+- **Hedef her zaman `data/cacert.pem`'dir.** `CURL_CA_BUNDLE` başka bir
+  dosyayı gösteriyorsa yine `data/cacert.pem` yazılır ve satır çalışan
+  yapılandırmanın bu dosyayı okumadığını söyler.
+- **`includes/iyzipay-php/cacert.pem`'e dokunulmaz.** `includes/` bütünlük
+  özetindedir; o kopya yalnız yazılım sürümüyle değişir. Ekran metni bunu
+  bir cümleyle söyler.
+
 ### Muafiyet Yalnızca Yola Bakar
 
 `waf_is_excluded()` sorgu dizesini **atar**, yalnızca yolu eşleştirir.
