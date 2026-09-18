@@ -650,6 +650,28 @@ function get_image_editor_includes()
         'statusLabelButtonClose'          => lang('Close'),
     );
 
+    // The modal wrapper's own labels. It reads window.pgImageEditorLabels and
+    // falls back to the English key, so the map only needs the translations.
+    $labels = array(
+        'Animated GIF — new file only.' => lang('Animated GIF — new file only.'),
+        'Exit full screen' => lang('Exit full screen'),
+        'Full screen' => lang('Full screen'),
+        'Keeps the original file and points this page at the copy.' => lang('Keeps the original file and points this page at the copy.'),
+        'Network error.' => lang('Network error.'),
+        'Pintura Image Editor' => lang('Pintura Image Editor'),
+        'Replace' => lang('Replace'),
+        'Same format' => lang('Same format'),
+        'Save as' => lang('Save as'),
+        'Save as new file' => lang('Save as new file'),
+        'Saving...' => lang('Saving...'),
+        'The edited image could not be produced.' => lang('The edited image could not be produced.'),
+        'The edited image could not be read.' => lang('The edited image could not be read.'),
+        'The image could not be opened.' => lang('The image could not be opened.'),
+        'The image could not be saved.' => lang('The image could not be saved.'),
+        'The image editor is not loaded on this screen.' => lang('The image editor is not loaded on this screen.'),
+        'Writes over the file. Every page using it changes.' => lang('Writes over the file. Every page using it changes.'),
+    );
+
     // The vendor bundle only changes when Pintura is upgraded, but the modal
     // wrapper changes with the software — and a CDN in front of the site will
     // hold a query-less .js file for as long as it likes. The file's own
@@ -660,7 +682,7 @@ function get_image_editor_includes()
 
     return '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/doka/doka.css">
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/jquery_doka/doka.js"></script>
-        <script>window.pgImageEditorLocale = ' . encode_json($locale) . ';</script>
+        <script>window.pgImageEditorLocale = ' . encode_json($locale) . '; window.pgImageEditorLabels = ' . encode_json($labels) . ';</script>
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/image_editor_modal.js?v=' . $modal_version . '"></script>';
 }
 

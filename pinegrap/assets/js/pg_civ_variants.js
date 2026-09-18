@@ -10,7 +10,7 @@
  *     bound to a product field — title, price, image, brand, …)
  *   • The wrapping <form data-pg-civ-form> (product_id hidden input)
  *   • The carousel inside the widget (refreshed when image gallery changes)
- *   • The Sepete Ekle button (disabled until a complete variant is picked)
+ *   • The Add to Cart button (disabled until a complete variant is picked)
  *
  * Data flow:
  *   1. PHP emits one or more `window.pgCivVariants.push({...})` blobs
@@ -22,7 +22,7 @@
  *        - Update every [data-pg-bind] element using the bound field map.
  *        - Refresh the carousel: rebuild slides + thumbs from new gallery.
  *        - Update product_id hidden input on the wrapping form.
- *        - Enable the Sepete Ekle button.
+ *        - Enable the Add to Cart button.
  *        - Fire a background API call to refresh stock + computed fields.
  *
  * SSR-safe: page works without JS — backend renders the FIRST product in
@@ -50,6 +50,12 @@
     function wireVariantChooser(data) {
         if (!data || !data.products || !data.attrs) return;
 
+        // Visitor-facing text comes with the payload (labels, built through
+        // lang() on the server); the English text is the fallback.
+        function label(key, fallback) {
+            return (data.labels && data.labels[key]) ? String(data.labels[key]) : fallback;
+        }
+
         // Find any variant-attribute select on the page belonging to this
         // group's attributes. Two layouts emit such elements:
         //   • Legacy `.pg-civ-variant-picker` (auto-injected single block)
@@ -67,7 +73,7 @@
         // inside the widget tree without needing a known parent.
         var form = anchor.closest('form[data-pg-civ-form]') || anchor.closest('form');
 
-        // Disable Sepete Ekle until a complete variant is picked. We mark
+        // Disable Add to Cart until a complete variant is picked. We mark
         // EVERY add_to_cart-bound submit button (the designer may have
         // multiple — e.g. one in the toolbar, one in a sticky footer).
         var addBtns = form ? form.querySelectorAll('button[type="submit"]') : [];
@@ -75,7 +81,7 @@
             // Only disable submits that look like add-to-cart (the form's
             // PRIMARY action). If the designer added unrelated submits we'd
             // be over-eager — but in practice the auto-wrapped form has
-            // exactly one submit (Sepete Ekle).
+            // exactly one submit (Add to Cart).
             b.setAttribute('data-pg-civ-orig-disabled', b.disabled ? '1' : '0');
             b.disabled = true;
             b.classList.add('pg-civ-awaiting-variant');
@@ -86,7 +92,7 @@
         // currently-displayed product (the URL-resolved one). When the URL
         // pointed at /urun/Mocha-Office-Chair, default_selection is
         // {color_attr_id: mocha_option_id} → JS pre-selects Mocha + enables
-        // Sepete Ekle. Visitor still sees ALL options and can switch.
+        // Add to Cart. Visitor still sees ALL options and can switch.
         var selection = {};
         var defaults = (data.default_selection && typeof data.default_selection === 'object') ? data.default_selection : {};
         Object.keys(data.attrs).forEach(function (aid) {
@@ -152,7 +158,7 @@
         });
 
         // Initial pass — when defaults gave us a complete combination, the
-        // Sepete Ekle button enables immediately and stock check fires once.
+        // Add to Cart button enables immediately and stock check fires once.
         // (Page already shows the matching product via SSR — no DOM update
         // needed for the initial frame.)
         var _hasInitialComplete = true;
@@ -161,7 +167,7 @@
         });
         if (_hasInitialComplete) {
             // Don't re-apply (the SSR already painted the right product).
-            // Just enable Sepete Ekle and trigger a background stock check.
+            // Just enable Add to Cart and trigger a background stock check.
             addBtns.forEach(function (b) {
                 b.disabled = false;
                 b.classList.remove('pg-civ-awaiting-variant');
@@ -176,7 +182,7 @@
                 if (!selection[aid]) complete = false;
             });
             if (!complete) {
-                // Partial — disable Sepete Ekle (revert any half-applied).
+                // Partial — disable Add to Cart (revert any half-applied).
                 addBtns.forEach(function (b) { b.disabled = true; b.classList.add('pg-civ-awaiting-variant'); });
                 return;
             }
@@ -186,7 +192,7 @@
                 // the situation near the controls rather than silently
                 // failing. Anchor (picker OR first variant_attr select)
                 // is the cheapest "near the user's interaction" target.
-                showPickerNotice(anchor, 'Bu seçim için ürün bulunamadı.');
+                showPickerNotice(anchor, label('no_match', 'No products match this selection.'));
                 addBtns.forEach(function (b) { b.disabled = true; });
                 return;
             }
@@ -293,17 +299,12 @@
             // `price_block_html` string with strike-through markup baked in
             // when a discount applies.
             //
-            // CRITICAL: api.php reads the request via
-            //   `json_decode(file_get_contents('php://input'), true)`
-            // — it does NOT inspect $_POST. Posting FormData here would make
-            // `$request` null on the server, $_x_pid fall to 0, and the
-            // endpoint silently return zero items. With my "don't wipe on
-            // empty" graceful-degradation fix above, that would manifest as
-            // stale cross-sell rows from the PREVIOUS variant lingering on
-            // screen after the visitor switches variants — which exactly
-            // matches the reported "Turuncu görünürken cross-sell'de yine
-            // Turuncu var" symptom (the stale row IS the previous variant
-            // showing up in its own cross-sell strip). Send JSON instead.
+            // The request must be a JSON body: api.php reads it through
+            // json_decode(file_get_contents('php://input')) and never looks
+            // at $_POST. A FormData post would leave the request null on the
+            // server, the product id at 0 and the endpoint returning zero
+            // items -- which the empty-result guard below keeps off screen,
+            // so the previous variant's rows would silently stay in place.
             var body = {
                 action: 'get_cross_sell_for_product',
                 product: { id: parseInt(productId, 10) },
@@ -337,7 +338,7 @@
                     // ever changes. price_block_html comes pre-rendered
                     // from the server so the strike-through styling stays
                     // identical to SSR.
-                    var html = '<h3 class="h5 mb-3">Birlikte sıkça satın alınanlar</h3><div class="row g-3">';
+                    var html = '<h3 class="h5 mb-3">' + escHtml(label('cross_sell_heading', 'Frequently bought together')) + '</h3><div class="row g-3">';
                     json.items.forEach(function (it) {
                         var img = it.image_url
                             ? '<img src="' + escAttr(it.image_url) + '" class="card-img-top" alt="" loading="lazy" style="aspect-ratio:' + escAttr(imageAspect) + ';object-fit:cover">'
@@ -509,7 +510,7 @@
                             setProp(el, prop, String(v));
                         });
                     });
-                    // Stock-aware Sepete Ekle: disable when the API reports
+                    // Stock-aware Add to Cart: disable when the API reports
                     // out_of_stock=1 (more authoritative than preloaded data).
                     if (parseInt(p.out_of_stock, 10) === 1) {
                         addBtns.forEach(function (b) { b.disabled = true; b.classList.add('pg-civ-out-of-stock'); });

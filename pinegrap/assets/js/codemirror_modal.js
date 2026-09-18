@@ -9,7 +9,7 @@
  *   window.openCodeEditor({
  *       code:        String,        // initial editor value
  *       mode:        String,        // 'html' | 'php' | 'css' | 'javascript' | 'json' | 'xml' | 'text'
- *       title:       String,        // modal title (optional, defaults to 'Kod Editörü')
+ *       title:       String,        // modal title (optional, defaults to 'Code Editor')
  *       placeholder: String,        // placeholder hint shown when empty (optional)
  *       onSave:      function(code),// called with new value when user clicks Save
  *       onCancel:    function(),    // optional — called on dismiss without save
@@ -23,6 +23,8 @@
  *
  * This file is framework-agnostic (no jQuery, no inner Pinegrap dependencies)
  * so it can be pulled into any admin page that already includes CodeMirror.
+ * Labels are read from window.PgCodeModalLabels when the including screen
+ * emits that map; otherwise the English text is shown.
  */
 (function () {
     'use strict';
@@ -49,6 +51,15 @@
     var _opts        = null;   // current call's options
     var _didSave     = false;  // guard: distinguish Save click from dismiss
 
+    function _t(key) {
+        var map = window.PgCodeModalLabels;
+        return (map && map[key]) ? String(map[key]) : key;
+    }
+
+    function _h(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     function _ensureModal() {
         if (_modalEl) return;
 
@@ -57,15 +68,15 @@
                 '<div class="modal-dialog modal-xl modal-dialog-scrollable">' +
                     '<div class="modal-content" style="height:85vh;">' +
                         '<div class="modal-header">' +
-                            '<h5 class="modal-title" id="pgCodeEditorTitle">Kod Editörü</h5>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>' +
+                            '<h5 class="modal-title" id="pgCodeEditorTitle">' + _h(_t('Code Editor')) + '</h5>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + _h(_t('Close')) + '"></button>' +
                         '</div>' +
                         '<div class="modal-body p-0 d-flex flex-column" style="overflow:hidden;">' +
                             '<textarea id="pgCodeEditorTextarea" style="width:100%;height:100%;border:0;display:block;"></textarea>' +
                         '</div>' +
                         '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>' +
-                            '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">Kaydet</button>' +
+                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -129,7 +140,7 @@
         if (typeof window.CodeMirror === 'undefined') {
             // Fallback so callers don't hang silently if the helper was forgotten.
             // A plain prompt preserves the save round-trip.
-            var v = window.prompt(opts.title || 'Kod', opts.code || '');
+            var v = window.prompt(opts.title || _t('Code'), opts.code || '');
             if (v !== null && typeof opts.onSave === 'function') opts.onSave(v);
             else if (v === null && typeof opts.onCancel === 'function') opts.onCancel();
             return;
@@ -139,10 +150,10 @@
         _opts    = opts;
         _didSave = false;
 
-        _titleEl.textContent = opts.title || 'Kod Editörü';
-        // The button says what it does. "Kaydet" is wrong when the dialog
+        _titleEl.textContent = opts.title || _t('Code Editor');
+        // The button says what it does. "Save" is wrong when the dialog
         // hands its content on to a next step rather than storing it.
-        _saveBtn.textContent = opts.saveLabel || 'Kaydet';
+        _saveBtn.textContent = opts.saveLabel || _t('Save');
         _textarea.value      = opts.code || '';
         if (opts.placeholder) _textarea.setAttribute('placeholder', opts.placeholder);
 

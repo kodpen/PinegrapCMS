@@ -315,7 +315,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
         };
 
         if ($action === 'catalog_add_to_cart') {
-            // Per-card "Sepete Ekle" — bindable replacement for the legacy
+            // Per-card "Add to Cart" — bindable replacement for the legacy
             // `^^__add_to_cart_button^^` raw-HTML token. Mutate to
             // <button type="submit"> + stamp `data-pg-catalog-atc="1"` so
             // the catalog per-row render (in the product loop) can wrap
@@ -4567,6 +4567,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'default_selection' => $default_selection,
             'currency_symbol'   => $currency_symbol,
             'api_url'           => $base_path . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software') . '/api.php',
+            // Visitor-facing text the script renders itself; the heading
+            // mirrors the one _civ_render_cross_sell() prints server-side.
+            'labels'            => array(
+                'no_match'           => lang('No products match this selection.'),
+                'cross_sell_heading' => lang('Frequently bought together'),
+            ),
         );
     }
 
@@ -5228,7 +5234,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js';
-        $_civ_v_v   = '1';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '2';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'
