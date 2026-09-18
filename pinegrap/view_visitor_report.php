@@ -386,7 +386,7 @@ if (!$_POST) {
     $first_visit_options[] = array('name' => lang('First Visit'), 'value' => '1');
     $first_visit_options[] = array('name' => lang('Return Visit'), 'value' => '0');
     
-    $field_options[] = array('name' => lang('First Visit'), 'value' => 'first_visit', 'value_options' => $pay_per_click_organic_options);
+    $field_options[] = array('name' => lang('First Visit'), 'value' => 'first_visit', 'value_options' => $first_visit_options);
     $field_options[] = array('name' => lang('Landing Page'), 'value' => 'landing_page_name');
     $field_options[] = array('name' => lang('Tracking Code'), 'value' => 'tracking_code');
     
@@ -1872,7 +1872,7 @@ if (!$_POST) {
         
         // if there is a date filter, then prepare message
         if ($date_filter_exists == true) {
-            $order_date_filter_message = lang(' Date browsing has been disabled because there is a date filter in this report.');
+            $date_filter_message = lang(' Date browsing has been disabled because there is a date filter in this report.');
         }
         
         // if the user is creating a new visitor report, then log activity, remove form, and add notice in a certain way

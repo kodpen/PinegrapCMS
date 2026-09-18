@@ -45,7 +45,7 @@ if (defined('VERSION') && VERSION === '2026') {
             if (is_dir($srcPath)) {
                 copy_and_verify($srcPath, $dstPath);
             } else {
-                // Eğer hedef yoksa veya içerik farklıysa üzerine yaz
+                // Overwrite when the target is missing or its content differs
                 if (!file_exists($dstPath) || md5_file($srcPath) !== md5_file($dstPath)) {
                     copy($srcPath, $dstPath);
                 }
@@ -117,15 +117,20 @@ if ($mode === 'autoupgrade') {
 }
 
 require(dirname(__FILE__) . '/software_update_check.php');
-$software_update_available = software_update_check();
+
+// One request to the update server. The check function already talks to it,
+// so the screen reads the decoded response from the same call instead of
+// repeating the request and the version comparison.
+$software_update_check = software_update_check(true);
+$software_update_available = $software_update_check['available'];
+$response = $software_update_check['response'];
+
 // if a software update check was just completed, then set constant to that value
-if (isset($software_update_available)) {
-    if (!defined('SOFTWARE_UPDATE_AVAILABLE')) {
-        if ($software_update_available) {
-            define('SOFTWARE_UPDATE_AVAILABLE', TRUE);
-        } else {
-            define('SOFTWARE_UPDATE_AVAILABLE', FALSE);
-        }
+if (!defined('SOFTWARE_UPDATE_AVAILABLE')) {
+    if ($software_update_available) {
+        define('SOFTWARE_UPDATE_AVAILABLE', TRUE);
+    } else {
+        define('SOFTWARE_UPDATE_AVAILABLE', FALSE);
     }
 }
 
@@ -133,138 +138,36 @@ if (isset($software_update_available)) {
 include_once('liveform.class.php');
 $liveform = new liveform('software_update');
 
-if(!function_exists('curl_init')){
-	$liveform->mark_error('Update',lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.'));
+if ($software_update_check['error'] === 'curl_missing') {
+    $liveform = new liveform('settings');
+    $liveform->mark_error('update', lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.'));
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+    exit();
 }
 
-$request = array();
-$request['hostname'] = HOSTNAME_SETTING;
-$request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
-$request['version'] = VERSION;
-$request['edition'] = EDITION;
-$request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
-$request['os'] = PHP_OS;
-$request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
-$request['php_version'] = phpversion();
-$request['mysql_version'] = db("SELECT VERSION()");
-$request['installer'] = INSTALLER;
-$request['private_label'] = PRIVATE_LABEL;
-$data = encode_json($request);
-$API = '59593DS72233483322T669223344';
-// Beta sites ask their own question; see pg_update_channel().
-$REQUEST = function_exists('pg_update_request_key') ? pg_update_request_key() : 'latest_version';
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API='.$API.'&REQUEST='.$REQUEST);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-// Identify this installation. Sent with no User-Agent, a licence or
-// update request looks like an anonymous client to the receiving
-// server's own firewall and gets rejected.
-curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-// Verify the certificate. See pg_curl_tls() for why this matters most
-// on the update and licence channel.
-pg_curl_tls($ch);
-curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
-curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-curl_setopt($ch, CURLOPT_POST, 1);
-curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-    'Content-Type: application/json',
-    'Content-Length: ' . strlen($data)));
-
-// if there is a proxy address, then send cURL request through proxy
-if (PROXY_ADDRESS != '') {
-    curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-    curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-}
-
-$response = curl_exec($ch);
-$curl_errno = curl_errno($ch);
-$curl_error = curl_error($ch);
-curl_close($ch);
-
-if ($response === false) {
+if ($software_update_check['error'] === 'curl_error') {
+    $curl_errno = $software_update_check['curl_errno'];
+    $curl_error = $software_update_check['curl_error'];
     log_activity(lang(array('string'=>'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.','vars'=>array($curl_errno,$curl_error) )) );
-    
-    $query = "DELETE FROM notifications WHERE action = 'software_update'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
-	include_once('liveform.class.php');
 	$liveform = new liveform('settings');
 	$liveform->mark_error('update', lang(array('string'=>'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.','vars'=>array($curl_errno,$curl_error) )));
 	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
 	exit();
 }
 
-$response = decode_json($response);
-
-if (!isset($response['version'])) {
+if ($software_update_check['error'] === 'invalid_response') {
     log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'), $_SESSION['sessionusername']);
-	
-    $query = "DELETE FROM notifications WHERE action = 'software_update'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
-    include_once('liveform.class.php');
 	$liveform = new liveform('settings');
 	$liveform->mark_error('update', lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available') );
 	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
 	exit();
 }
 
-// If the software update check is not disabled in the config.php file,
-// then continue to determine if there is a software update.
-if (
-    (defined('SOFTWARE_UPDATE_CHECK') == FALSE)
-    || (SOFTWARE_UPDATE_CHECK == TRUE)
-) {
-    // figure out if new version is greater than old version
-    
-    $new_version = trim($response['version']);
-    $new_version_parts = explode('.', $new_version);
-    
-    $old_version = VERSION;
-    $old_version_parts = explode('.', $old_version);
-    
-    // assume that new version is not greater than old version, until we find out otherwise
-    $new_version_is_greater_than_old_version = FALSE;
+$new_version = trim($response['version']);
+$old_version = VERSION;
 
-    // if the major number of the new version is greater than the major number of the old version,
-    // then the new version is greater than the old version
-    if ($new_version_parts[0] > $old_version_parts[0]) {
-        $new_version_is_greater_than_old_version = TRUE;
-        
-    // else if the major number of the new version is equal to the major number of the old version,
-    // then continue to check
-    } elseif ($new_version_parts[0] == $old_version_parts[0]) {
-        // if the minor number of the new version is greater than the minor number of the old version,
-        // then the new version is greater than the old version
-        if ($new_version_parts[1] > $old_version_parts[1]) {
-            $new_version_is_greater_than_old_version = TRUE;
-            
-        // else if the minor number of the new version is equal to the minor number of the old version,
-        // then continue to check
-        } elseif ($new_version_parts[1] == $old_version_parts[1]) {
-            // if the maintenance number of the new version is greater than the maintenance number of the old version,
-            // then the new version is greater than the old version
-            if ($new_version_parts[2] > $old_version_parts[2]) {
-                $new_version_is_greater_than_old_version = TRUE;
-            }
-        }
-    }
-
-    // assume that there is not an available software update until we find out otherwise
-    $software_update_available = 0;
-    
-    // if the new version is greater than the old version, then there is an available software update
-    if ($new_version_is_greater_than_old_version == TRUE) {
-        $software_update_available = 1;
-    }
-
-}
 if($software_update_available == 0){
 	$liveform->remove_form();
 	include_once('liveform.class.php');

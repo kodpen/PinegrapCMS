@@ -620,7 +620,8 @@ function waf_ip_in_cidr($ip, $cidr)
     // returned true for every address on earth. The ban list is a free-text
     // field an operator types into, where a trailing slash is one keystroke,
     // and a single bad line took the entire audience off the site.
-    if ($prefix === '' || !ctype_digit($prefix)) {
+    // preg_match rather than ctype_digit: see waf_valid_ip_pattern().
+    if ($prefix === '' || !preg_match('/^\d+$/', $prefix)) {
         return false;
     }
 
@@ -2866,8 +2867,8 @@ function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
     $ip = waf_client_ip();
     $user_id = 0;
 
-    if (isset($_SESSION['software']['user_id'])) {
-        $user_id = (int) $_SESSION['software']['user_id'];
+    if (isset($_SESSION['sessionuserid'])) {
+        $user_id = (int) $_SESSION['sessionuserid'];
     }
 
     // Aggregation identity. The query string is deliberately excluded: it
@@ -3143,7 +3144,7 @@ function waf_reference()
  */
 function waf_user_is_authenticated()
 {
-    return (!empty($_SESSION['sessionusername']) || !empty($_SESSION['software']['user_id']));
+    return (!empty($_SESSION['sessionusername']) || !empty($_SESSION['sessionuserid']));
 }
 
 /**

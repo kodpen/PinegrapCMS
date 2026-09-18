@@ -83,10 +83,11 @@ function software_auto_backup(){
         $backups_error_message = $e->getMessage();
     
         //if mysql error and backup folder is empty, delete it.
-        if (!file_exists($backup_location.$backup_folder_name.'/*')) {
+        if (is_dir($backup_location.$backup_folder_name) && count(glob($backup_location.$backup_folder_name.'/*')) === 0) {
             rmdir($backup_location.$backup_folder_name);
         }
-        log_activity(lang('Software Auto Backup error:') . $backups_error_message, $_SESSION['sessionusername']);
+        // Scheduled job: there is no signed-in user to attribute the entry to.
+        log_activity(lang('Software Auto Backup error:') . $backups_error_message, 'SYSTEM');
         return;
     }
     
@@ -147,7 +148,7 @@ function software_auto_backup(){
                 if (file_exists($backup_location.$backup_folder_name.'/layouts')) {
                     $query ="UPDATE config SET last_software_auto_backup = UNIX_TIMESTAMP()";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    log_activity(lang('Software Auto Backup Success'), $_SESSION['sessionusername']);
+                    log_activity(lang('Software Auto Backup Success'), 'SYSTEM');
                     return;
                 }
             }

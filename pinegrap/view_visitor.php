@@ -156,6 +156,7 @@ if ((defined('PAY_PER_CLICK_FLAG') == true) && (PAY_PER_CLICK_FLAG != '') && (mb
 
 $output_first_visit = ($first_visit) ? lang('Yes') : lang('No');
 
+$output_affiliate_code = '';
 if (AFFILIATE_PROGRAM == true) {
     $output_affiliate_code =
         '<div class="col-12 col-md-6 col-lg-4 my-2">
@@ -292,11 +293,11 @@ pg_page_shell(
                             <div class="row">
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('URL') . '</div>
-                                    ' . h($output_http_referer ? '<a class="link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($output_http_referer) . '</a>' : '-') . '
+                                    ' . ($output_http_referer ? '<a class="link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($output_http_referer) . '</a>' : '-') . '
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('Host Name') . '</div>
-                                    ' . h($output_referring_host_name ? '<a class="link-secondary" href="http://' . h($referring_host_name) . '" target="_blank">' . h($output_referring_host_name) . '</a>' : '-') . '
+                                    ' . ($output_referring_host_name ? '<a class="link-secondary" href="http://' . h($referring_host_name) . '" target="_blank">' . h($output_referring_host_name) . '</a>' : '-') . '
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('Search Engine') . '</div>
@@ -366,10 +367,6 @@ pg_page_shell(
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('Order Total') . '</div>
                                     <h4>' . prepare_amount($order_total / 100) . '</h4>
-                                </div>
-                                <div class="col-12 col-md-6 col-lg-4 my-2">
-                                    <div class="form-text">' . lang('Order Completed') . '</div>
-                                    <h5>' . $output_order_completed . '</h5>
                                 </div>
                             </div>
                         </div>

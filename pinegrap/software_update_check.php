@@ -16,15 +16,36 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-function software_update_check()
+/**
+ * Ask the update server whether a newer version exists.
+ *
+ * Returns a boolean by default, which is what the scheduled check expects.
+ * With $return_details the whole outcome comes back instead, so a screen
+ * that needs the decoded response (the version number, the download
+ * information) can reuse this request rather than repeating it:
+ *   array(
+ *     'available'  => bool,        // a newer version was announced
+ *     'response'   => array|null,  // decoded server response, null on failure
+ *     'error'      => string,      // '', 'curl_missing', 'curl_error' or 'invalid_response'
+ *     'curl_errno' => int,
+ *     'curl_error' => string)
+ */
+function software_update_check($return_details = false)
 {
+    $details = array(
+        'available' => false,
+        'response' => null,
+        'error' => '',
+        'curl_errno' => 0,
+        'curl_error' => '');
 
     // Update the config table to remember that the check has been completed today.
     db("UPDATE config SET last_software_update_check_timestamp = UNIX_TIMESTAMP()");
 
     if (!function_exists('curl_init')) {
         log_activity('daily software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available');
-        return false;
+        $details['error'] = 'curl_missing';
+        return $return_details ? $details : false;
     }
 
     $software_update_available = false;
@@ -91,7 +112,10 @@ function software_update_check()
         log_activity(
             'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.' . pg_curl_tls_hint($curl_errno)
         );
-        return false;
+        $details['error'] = 'curl_error';
+        $details['curl_errno'] = $curl_errno;
+        $details['curl_error'] = $curl_error;
+        return $return_details ? $details : false;
     }
 
     $response = decode_json($response);
@@ -103,8 +127,11 @@ function software_update_check()
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
         log_activity('daily software update check received an invalid response from the software update server, so it is not known if there is a software update available');
-        return false;
+        $details['error'] = 'invalid_response';
+        return $return_details ? $details : false;
     }
+
+    $details['response'] = $response;
 
 
 
@@ -222,6 +249,8 @@ function software_update_check()
         }
     }
 
-    return $software_update_available;
+    $details['available'] = (bool) $software_update_available;
+
+    return $return_details ? $details : $software_update_available;
 
 }
