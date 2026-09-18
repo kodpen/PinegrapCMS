@@ -41,6 +41,53 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Şifre sıfırlama: "set password" sayfası yokken bağlantı gönderilmiyor; giriş, üye ve kurulum ekranlarında koruma düzeltmeleri (2026-09-18)
+
+**Belirti (issue #44).** `forgot_password.php`, sitede `set password` türünde
+bir sayfa olmasa da sıfırlama token'ını yazıp e-postayı gönderiyordu;
+`get_page_type_url('set password')` `false` döndüğü için bağlantı yalnız alan
+adından oluşuyordu ve ziyaretçi ölü bir bağlantı alıyordu. Şifre belirleme
+formunu yalnız o sayfa türü basar (`get_page_content.php`, `set password`
+dalı); `set_password.php` ise formun POST'unu işler ve ilk satırında CSRF
+denetimi yaptığı için GET ile açılınca "oturum süresi doldu" hatası verir —
+yani sayfa yokken düşülebilecek bir yedek adres yoktur. Aynı turda giriş,
+üyelik, kullanıcı yönetimi, kurulum ve yönlendirici ekranlarında bir dizi
+küçük koruma açığı vardı: `login_as_user.php` rol denetimini tür dönüşümü ve
+`is_array` koruması olmadan yapıyor, `edit_user.php` rol değişince mevcut
+API/oturum token'larını iptal etmiyor, `view_users.php` üye filtresi `||`
+yüzünden her kullanıcıyı listeliyor, `router.php` `SHOW TABLES` sonucunu ve
+`$_GET['t']`'yi denetlemeden okuyor, `get_file.php` çıktıyı kaçırmıyor,
+`get_membership_entrance.php` / `get_registration_entrance.php` masaüstü
+görünümünde Google ile giriş düğmesini hiç basmıyordu.
+
+**Düzeltme.** `forgot_password.php`'de `$set_password_url` zorunlu alan
+denetiminin hemen ardından, hız sınırından, hesap aramasından ve token
+UPDATE'inden **önce** çözülür; `false` ise `log_activity()` yazılır, forma
+"Maalesef bu web sitesinde şifre sıfırlama şu anda kullanılamıyor." hatası
+işlenir ve `go($url)` ile geri dönülür — token yazılmaz, e-posta çıkmaz. Denetim
+bilerek hesap aramasının önündedir: aramadan sonra verilen bir hata, kayıtlı ve
+kayıtsız adreslere farklı yanıt üretip e-posta adresi sorgulama kapısı açardı.
+E-posta gövdesi aynı `$set_password_url` değişkenini kullanır. Hata hem eski
+ekranda (`get_forgot_password.php`, `$form->get_messages()`) hem
+`forgot_password` widget'ında (`_pg_inject_messages_node()`) görünür. Diğer
+ekranlarda `(int)` dönüşümü ve `is_array` koruması, `pg_auth_token_revoke_user()`
+rol değişiminde, filtre koşulu `&&`, `??` ile istek okuma korumaları,
+`htmlspecialchars()` ile çıktı, `SHOW TABLES` / `$_GET['t']` /
+`HTTP_ACCEPT_LANGUAGE` denetimleri ve `parse_url()` sonucunun varsayılanlar
+üzerine birleştirilmesi uygulandı; `DEFAULT_SOFTWARE_LANGUAGE` tanımı
+`config(default).php`'de belgelenip `init.php` / `router.php` /
+`install/index.php` denetimleriyle hizalandı. Şema değişikliği yok.
+
+### Doğrulama
+
+Değişen PHP dosyalarında `php -l`, `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan bir örnek kurulmadı: hata ile geri
+dönüş turu tarayıcıda denenmedi, `email()` gönderim yolu çalıştırılmadı;
+hatanın göründüğü sonucu `get_forgot_password.php` ve `widgets.php` okunarak
+çıkarıldı.
+
+**Açık kalan:** yok.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
