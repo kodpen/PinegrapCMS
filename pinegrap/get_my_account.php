@@ -20,6 +20,16 @@ function get_my_account($properties) {
 
     $page_id = $properties['page_id'];
 
+    // Everything below reads the USER_* constants that initialize_user() defines
+    // only for a signed-in session (USER_START_PAGE_ID, USER_TIMEZONE, and
+    // USER_MEMBER_ID / USER_EXPIRATION_DATE in the templates). get_page.php sends
+    // a visitor to the registration entrance before a "my account" page renders,
+    // but get_page_content() is also called without that gate (e-mail body and
+    // preview rendering, SEO analysis), so there is nothing to show without a user.
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        return '';
+    }
+
     $form = new liveform('my_account');
 
     // If the user has a start page then prepare info for that.
