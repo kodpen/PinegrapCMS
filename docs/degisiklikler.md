@@ -651,6 +651,54 @@ migration'ıyla var olduğu varsayıldı.
 
 **Açık kalan:** yok; 23 bulgunun tamamı düzeltildi.
 
+## 2026.4.4 — Ön yüz varlıkları: kaldırılan /jquery/ yolları, frontend.js noConflict ve entity tablosu (2026-09-18)
+
+**Belirti (issue #45).** (1) Üç ödeme ekranı (`get_shipping_address_and_arrival.php`,
+`get_billing_information.php`, `get_shopping_cart.php`) timepicker eklentisini
+uzun süre önce kaldırılan `/jquery/` klasöründen yüklüyordu; 404 veriyor, tarih-saat
+alanı düz metin kutusu olarak kalıyordu. `generate_system_theme_css.php` de
+diyalog kapatma ve datepicker ikonlarını aynı silinmiş `/jquery/theme/images/`
+yoluna bağlıyordu. (2) `frontend.src.js` başında `jQuery.noConflict(true)` global
+`$`'ı serbest bırakır, ama dosyanın 31 yerinde çıplak `$(` kullanılıyordu; kendi
+jQuery'sini yüklemeyen temalarda taksit bloğu `ReferenceError` ile duruyor,
+akordeon/sekme/araç çubuğu başlatılamıyordu. (3) `prepare_content_for_html()`
+karakter tablosu mojibake olmuştu (92 adet U+FFFD): aksanlı karakterler entity'ye
+çevrilmiyordu. (4) Ön yüz `lang()` haritada olmayan anahtar için `undefined`
+döndürüyordu; anonim ziyaretçide yorum formunun `beforeunload` uyarısı boş
+kalıyordu. (5) Özellik yardımcısında tekil/çoğul ters yazılmıştı.
+(6) `config(default).php` var olmayan `assets/css/backend.css`'e işaret ediyor,
+`system_status.php` önbellek temizleme adımı var olmayan `assets/backend.min.*`
+dosyalarına `touch` atıyordu — "Backend assets (n)" bildirimi hiç çıkmıyordu.
+
+**Düzeltme.** (1) Üç ekran da ağaçtaki diğer yükleyicilerle (`import_users.php`,
+`edit_arrival_date.php`, `get_page_content.php`) aynı yolu kullanır:
+`assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js`. Tema CSS'i ikonları
+yüklü jQuery UI temasının kendi sprite'ından (`ui-icons_444444_256x240.png`)
+alır; kapatma düğmesi standart `closethick` ofsetiyle, siyah arka plan kaldırıldı.
+Neden sprite: ayrı bir gif taşımak yerine zaten servis edilen tema varlığına
+bağlanmak, ileride tema güncellemesinde tekrar kırılmayı önler. Yalnız düzeltme
+sonrasında yeniden üretilen/kaydedilen temaları etkiler. (2) Tüm çıplak `$(`
+çağrıları `software_$(` oldu (src ve min). (3) Karakter tablosu paralel entity
+dizisinden `\uXXXX` kaçışlarıyla yeniden kuruldu; kaçış kullanılması dosyanın
+kodlama bozulmasına bir daha duyarlı olmamasını sağlar. (4) `lang()` anahtar
+haritada yoksa anahtarın kendisini döndürür; `get_page_content.php`'de uyarı
+metni her zaman basılan haritaya taşındı. (5) Dallar yer değiştirdi.
+(6) Örnek config'te tanım yorumlandı, doğru dosyayı gösteren örnek eklendi;
+`touch` listesi `?v=filemtime` ile bağlanan gerçek dosyaları (`backend.src.css`,
+`backend.src.js`) gösterir. Şema değişikliği yok.
+
+### Doğrulama
+
+`php -l` (dokunulan 7 PHP dosyası), `php tools/lint.php`, `php tools/check_lang.php`
+ve `node --check` (frontend.src.js / frontend.min.js) temiz. Çalışan örnek
+kurulmadı: timepicker, yeniden üretilen tema ikonları, anonim ziyaretçi
+`beforeunload` metni, kendi jQuery'si olmayan temada taksit bloğu ve "Backend
+assets (n)" bildirimi yalnız kod okuma ve statik denetimle doğrulandı.
+
+**Açık kalan:** `config(default).php` L109'daki `LOGO_URL` sabit `/pinegrap/`
+önekini koruyor (bu bulgunun dışında, dokunulmadı). Önbellek temizlemede
+servis edilmeyen kök `*.min.css` dosyalarının silinmesi ayrı karar bekliyor.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

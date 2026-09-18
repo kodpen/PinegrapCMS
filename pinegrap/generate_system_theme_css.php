@@ -2808,7 +2808,7 @@ div.software.ui-dialog {
 .software.ui-dialog .ui-dialog-titlebar-close {
     width: 16px;
     height: 16px;
-    background: #000 url({path}{software_directory}/jquery/theme/images/dialog-titlebar-close.gif) no-repeat;
+    background: url({path}{software_directory}/assets/lib/Jquery/ui/images/ui-icons_444444_256x240.png) no-repeat -96px -128px;
     position: absolute;
     right: 0px;
     top: 3px;
@@ -2951,7 +2951,7 @@ body .software.ui-resizable-autohide .ui-resizable-handle { display: none; } /* 
 .ui-datepicker .ui-state-active {border: 1px solid #aaaaaa; background: #ffffff; font-weight: normal; color: #212121;}
 .ui-datepicker .ui-state-highlight {border: 1px solid #fcefa1; background: #fbf9ee; color: #363636;}
 .ui-datepicker .ui-icon {display: block; text-indent: -99999px; overflow: hidden; background-repeat: no-repeat;}
-.ui-datepicker .ui-icon {width: 16px; height: 16px; background-image: url({path}{software_directory}/jquery/theme/images/ui-icons_222222_256x240.png);}
+.ui-datepicker .ui-icon {width: 16px; height: 16px; background-image: url({path}{software_directory}/assets/lib/Jquery/ui/images/ui-icons_444444_256x240.png);}
 .ui-datepicker .ui-icon-circle-triangle-w {background-position: -80px -192px;}
 .ui-datepicker .ui-icon-circle-triangle-e {background-position: -48px -192px;}
 .ui-datepicker-header { position:relative; padding:.2em 0; }
