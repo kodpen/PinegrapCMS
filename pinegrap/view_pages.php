@@ -1319,7 +1319,9 @@ if ($pages) {
         // If custom form filter is on.
         if ($filter == 'my_custom_form_pages') {
 
-            // if page is a home page, then prepare to output check mark image
+            $output_form_enabled_mark = '';
+
+            // if the form is enabled, then prepare to output check mark image
             if ($page['enabled'] == 1) {
                 $output_form_enabled_mark = '<span class="material-icons">task_alt</span>';
             }

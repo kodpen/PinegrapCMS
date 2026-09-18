@@ -148,9 +148,9 @@ if (!$_POST) {
                 $outputs .= '
                     <div class="col-12 col-lg-6">
                         <div class="card my-4">
-                            <div class="card-header no-popover " title="' . $row['page_name'] . '">
+                            <div class="card-header no-popover " title="' . h($row['page_name']) . '">
                                 <span class="bi bi-window-fullscreen me-2"></span>
-                                <span class="text-truncate">' . $row['page_name'] . '</span>
+                                <span class="text-truncate">' . h($row['page_name']) . '</span>
                             </div>
                             <div class="card-body"> 
                                 <div class="row g-4">';
@@ -497,8 +497,8 @@ if (!$_POST) {
 
         //if page_title posted and posted page_title not equal to current one, update it.
         if(
-            $_POST['page_title_' . $row['page_id']]
-            && $_POST['page_title_' . $row['page_id']] != $current_page_title)
+            isset($_POST['page_title_' . $row['page_id']])
+            && $_POST['page_title_' . $row['page_id']] !== (string) $current_page_title)
         {
             //count how many updated.
             $count_change++;
@@ -509,8 +509,8 @@ if (!$_POST) {
 
         //if page_meta_description posted and posted page_meta_description not equal to current one, update it.
         if( 
-            $_POST['meta_description_' . $row['page_id']]
-            && $_POST['meta_description_' . $row['page_id']] != $current_page_meta_description)
+            isset($_POST['meta_description_' . $row['page_id']])
+            && $_POST['meta_description_' . $row['page_id']] !== (string) $current_page_meta_description)
         {
             //count how many updated.
             $count_change++;
@@ -536,8 +536,8 @@ if (!$_POST) {
 
         //if page_search_keywords posted and posted page_search_keywords not equal to current one, update it.
         if(
-            $_POST['page_search_keywords_' . $row['page_id']]
-            && $_POST['page_search_keywords_' . $row['page_id']] != $current_page_search_keywords)
+            isset($_POST['page_search_keywords_' . $row['page_id']])
+            && $_POST['page_search_keywords_' . $row['page_id']] !== (string) $current_page_search_keywords)
         {
 
             //count how many updated.

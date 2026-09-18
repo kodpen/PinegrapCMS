@@ -161,6 +161,13 @@ if (!$_POST) {
     // find level of parent
     $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['folder'] ?? '') . "'") or output_error('Query failed');
     $row=mysqli_fetch_array($result);
+
+    // The parent must exist; otherwise the new folder would hang off a
+    // folder id that is not in the tree.
+    if ($row === null) {
+        output_error(lang('Invalid request.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $level = ++$row['folder_level'];
     $name = trim($_POST['name']);
     

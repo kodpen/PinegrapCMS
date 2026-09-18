@@ -43,6 +43,12 @@ $query =
     WHERE short_links.id = '" . escape($_REQUEST['id']) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_link = mysqli_fetch_assoc($result);
+
+// If the short link does not exist, then output error.
+if ($short_link === null) {
+    output_error(lang('Invalid request.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 $short_link_file_id = $short_link['file_id'];
 
 
