@@ -662,6 +662,7 @@ $explorer_lang = array(
     'filter_no_price' => lang('No price'),
     'filter_variant_sets' => lang('Variant sets'),
     'filter_nothing_matches' => lang('Nothing here matches the filters.'),
+    'search_nothing_matches' => lang('Nothing here matches the search.'),
     // The full-screen look at one item, and the way out of it.
     'quick_look' => lang('Quick look'),
     'quick_look_hint' => lang('Space closes, the arrow keys walk the folder'),
@@ -2216,8 +2217,42 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         renderStatusbar();
     }
 
+    // The toolbar search narrows the folder it was typed in, and nothing
+    // else: it is a way of finding a file in a long listing, not a filter
+    // the operator switched on. It is let go the moment the listing shows a
+    // different folder, the way a desktop file manager drops its search when
+    // another folder is opened. Left in place it hid every folder of the
+    // parent whose name did not contain the words typed two levels down, and
+    // the grid read as an empty folder -- across the breadcrumb, across the
+    // tree, until a full page reload started the screen over. A refresh of
+    // the same folder (after an optimise run, a rename, a paste) keeps it:
+    // the operator is still looking at the list they narrowed.
+    function clearSearch() {
+        state.filter = '';
+
+        var input = document.getElementById('filter_input');
+
+        if (input) { input.value = ''; }
+    }
+
+    // What makes one listing a different listing from the last: the mode
+    // (a folder, a flat view, the store, backups, short links), the flat
+    // view's own narrowing, the backup path and the folder or group asked
+    // for. The same key twice in a row is a refresh and keeps the search.
+    var lastListingKey = null;
+
+    function listingKey(id) {
+        return [state.mode, state.allFilter, state.fileScope, state.backupPath, id].join('|');
+    }
+
     function load(folderId, done) {
         var seq = ++loadSeq;
+
+        var key = listingKey(folderId);
+
+        if (key !== lastListingKey) { clearSearch(); }
+
+        lastListingKey = key;
 
         // The shared overview is a report, not a folder listing: its own
         // endpoint, its own rendering, and none of the folder chrome.
@@ -2277,6 +2312,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             state.folderId = response.current.id;
+            // The request named the folder as the operator did (0 for the
+            // top); the answer names it as the server does. Remember the
+            // latter, so a refresh of this folder is seen as the same listing.
+            lastListingKey = listingKey(state.folderId);
             state.viewType = response.view_type;
             state.current = response.current;
             state.breadcrumb = response.breadcrumb || [];
@@ -2820,6 +2859,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             state.groupId = response.group_id || 0;
+            lastListingKey = listingKey(state.groupId);
             state.folderId = 0;
             state.catalogCurrent = response.current || null;
             state.catalogCrumbs = response.breadcrumb || [];
@@ -4157,6 +4197,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if ((activeFilters().length > 0) && ((state.items.folders.length + state.items.pages.length + state.items.files.length) > 0)) {
                 emptyIcon = 'bi-sliders';
                 emptyText = L.filter_nothing_matches;
+            }
+
+            // The same for the search box: a folder with content and a word
+            // nothing in it matches is not an empty folder, and saying so is
+            // what sends the operator to the box that has to be cleared. The
+            // filters keep their own sentence when both are in play.
+            else if ((state.filter !== '') && ((state.items.folders.length + state.items.pages.length + state.items.files.length) > 0)) {
+                emptyIcon = 'bi-search';
+                emptyText = L.search_nothing_matches;
             }
 
             html = '<div class="text-center my-5 empty-note"><span class="bi ' + emptyIcon + ' display-4 d-block mb-2 ' +

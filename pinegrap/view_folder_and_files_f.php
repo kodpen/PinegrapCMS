@@ -29,6 +29,28 @@ function pg_explorer_root_folder_id()
     return $root_id;
 }
 
+// Let go of the session before the long or read-only part of a request.
+//
+// PHP holds a user's session file exclusively from session_start() to the
+// end of the script, so every request the same browser sends meanwhile --
+// the folder listing after a click, the tree, the notification poll -- waits
+// behind it. A move of a thousand files or a run of image recompressions is
+// exactly the kind of request that makes that wait visible, and on a server
+// with a gateway in front the queued listing can outlive the gateway's
+// patience. get_file.php releases its lock the same way for the same reason.
+//
+// $_SESSION stays readable after session_write_close(); only writes stop.
+// Every caller below has finished writing by then: the shared preamble in
+// api.php has recorded the folder and view it was sent, the listing has
+// stored the position it is about to show, and the handlers that follow only
+// read who is asking.
+function pg_explorer_release_session()
+{
+    if (function_exists('session_status') && (session_status() === PHP_SESSION_ACTIVE)) {
+        session_write_close();
+    }
+}
+
 // Load the whole folder table once per request. Every helper below walks
 // parent chains or child lists, and one in-memory map replaces what would
 // otherwise be a recursive query per row (same reasoning as the cache inside
@@ -3289,6 +3311,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     $view_type = 'grid';
                 }
 
+                // The view is the last thing this request writes to the session.
+                pg_explorer_release_session();
+
                 $map = pg_explorer_folder_map();
                 $bin_id = pg_recycle_folder_id(false);
 
@@ -3467,6 +3492,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             if (in_array($view_type, array('grid', 'list'), true) == false) {
                 $view_type = 'grid';
             }
+
+            // Position and view are recorded; the rest of this request only reads.
+            pg_explorer_release_session();
 
             $map = pg_explorer_folder_map();
             $counts = pg_explorer_folder_counts();
@@ -5635,6 +5663,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // ── Tree sidebar (lazy children) ────────────────────────────────
         case 'explorer_tree':
 
+            // Read-only: nothing below writes to the session.
+            pg_explorer_release_session();
+
             $node_id = (int) (isset($request['node_id']) ? $request['node_id'] : 0);
             $counts = pg_explorer_folder_counts();
             $children = array();
@@ -5926,6 +5957,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
         // ── Move (drag & drop, cut + paste) ─────────────────────────────
         case 'explorer_move':
+
+            // A thousand rows may be about to move; nothing below writes to
+            // the session, so the lock is not held for the duration.
+            pg_explorer_release_session();
 
             $target_id = (int) (isset($request['target_folder_id']) ? $request['target_folder_id'] : 0);
             $items = isset($request['items']) ? $request['items'] : array();
@@ -6570,6 +6605,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
         // ── Bulk optimize selected images ───────────────────────────────
         case 'explorer_optimize':
+
+            // Recompressing images is the slow part of this screen; nothing
+            // below writes to the session, so the lock is not held for it.
+            pg_explorer_release_session();
 
             $items = isset($request['items']) ? $request['items'] : array();
 
