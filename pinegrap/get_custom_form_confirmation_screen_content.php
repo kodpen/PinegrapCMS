@@ -40,7 +40,7 @@ function get_custom_form_confirmation_screen_content($properties)
     // Otherwise, a reference code should have been passed in the query string
     // so deal with that.
     } else {
-        $_GET['r'] = trim($_GET['r']);
+        $_GET['r'] = trim($_GET['r'] ?? '');
 
         // If there is no reference code, then output error.
         if ($_GET['r'] == '') {
@@ -50,7 +50,8 @@ function get_custom_form_confirmation_screen_content($properties)
         // If the visitor has not submitted the form they requested in the current session,
         // then output error.
         if (
-            (is_array($_SESSION['software']['submitted_form_reference_codes']) == false)
+            (!isset($_SESSION['software']['submitted_form_reference_codes']))
+            || (is_array($_SESSION['software']['submitted_form_reference_codes']) == false)
             || (in_array($_GET['r'], $_SESSION['software']['submitted_form_reference_codes']) == false)
         ) {
             output_error(lang('Sorry, we can\'t show you the confirmation for that form, because it does not appear that you submitted the form, or your session might have expired.'));
@@ -103,6 +104,8 @@ function get_custom_form_confirmation_screen_content($properties)
     while ($row = mysqli_fetch_assoc($result)) {
         $fields[] = $row;
     }
+
+    $output_data = '';
 
     foreach ($fields as $field) {
         // if field has file upload type

@@ -507,5 +507,12 @@ function get_field_type_name($field_type)
         case 'time':
             return lang('Time');
             break;
+
+        case 'signature':
+            return lang('Signature');
+            break;
+
+        default:
+            return h($field_type);
     }
 }

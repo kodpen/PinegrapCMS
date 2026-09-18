@@ -408,8 +408,8 @@ function get_form_view_directory_screen_content($properties) {
         // so that we don't lose any when the form is submitted
         foreach ($query_string_parameters as $name => $value) {
             // if this is not the specific query parameter (already going to be a field for that),
-            // then add hidden field for it.
-            if ($name != $current_page_id . '_query') {
+            // and the value is not an array, then add hidden field for it.
+            if (($name != $current_page_id . '_query') && (is_array($value) == FALSE)) {
                 $output_hidden_fields .= '<input type="hidden" name="' . h($name) . '" value="' . h($value) . '" />' . "\n";
             }
         }
