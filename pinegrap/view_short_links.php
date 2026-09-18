@@ -18,7 +18,7 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'user');
+validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_short_links');
@@ -110,38 +110,6 @@ $query =
     ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['view_short_links']['order'] ?? '');
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);
-
-// If this user has a user role then remove short links that the user does not have access to.
-// A user has access to a short link if he/she has edit rights to the short link's page
-// or for url type: created the short link.
-if (USER_ROLE == 3) {
-    $folders_that_user_has_access_to = get_folders_that_user_has_access_to(USER_ID);
-
-    // Loop through the short links in order to remove short links that user does not have access to.
-    foreach ($short_links as $key => $short_link) {
-        // Determine if the user has access to the short link differently based on the destination type.
-        switch ($short_link['destination_type']) {
-            default:
-                // If the user does not have edit access to the page's folder, then remove short link.
-                if (check_folder_access_in_array($short_link['folder_id'], $folders_that_user_has_access_to) == false) {
-                    unset($short_link);
-                }
-
-                break;
-
-            case 'url':
-                // If this user is not the user that created the short link, then remove short link.
-                if (USER_USERNAME != $short_link['created_username']) {
-                    unset($short_link);
-                }
-
-                break;
-        }
-    }
-
-    // Refresh the indexes of the array so the code further below works.
-    $short_links = array_values($short_links);
-}
 
 $output_rows = '';
 
@@ -247,7 +215,7 @@ pg_page_shell(
                 <div class="col-12 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        ' . ((USER_ROLE != 3) ? '<a class="btn btn-sm btn-primary m-1 " href="add_short_link.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>' : '') . '
+                        <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php" data-loading-content="' . lang(array('string'=>'Loading') ) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
                     </nav>
                 </div>
             </div>
