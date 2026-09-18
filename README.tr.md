@@ -53,7 +53,7 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 
 * Mail-merge değişkenleri ve izin (opt-in) yönetimiyle zamanlanmış e-posta kampanyaları
 * MailChimp senkronizasyonu, kişi yönetimi, satış ortaklığı ve komisyon takibi
-* Kısa linkler, canlı destek modülü ve özel entegrasyonlar için REST API (`apps.php`)
+* Kısa linkler, canlı destek modülü ve özel entegrasyonlar için dış API (`integration.php`, kapsamlı anahtar/secret)
 
 **Güvenlik**
 
@@ -88,7 +88,7 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 1. **Depoyu Klonlayın**
 
    ```bash
-   git clone https://github.com/kodpen/pinegrap.git
+   git clone https://github.com/kodpen/PinegrapCMS.git
    ```
 
 2. **Web Sunucunuza Yükleyin**
@@ -123,6 +123,12 @@ Güncellemeler yönetim panelinden uygulanır. Şema değişiklikleri sürümlü
 ## Tarihçe
 
 Pinegrap, hayatına 2001'den itibaren Camelback Web Architects tarafından geliştirilen **LiveSite** olarak başladı. 2017'den beri **Erdal Güral (Kodpen)** tarafından Pinegrap adıyla sürdürülüp geliştirilmektedir; son LiveSite güncellemesi (2019) tamamen entegre edilmiştir. LiveSite, ayrı bir legacy sürüm olarak erişilebilir durumdadır.
+
+---
+
+## Katkı ve güvenlik
+
+Katkılar memnuniyetle karşılanır — kurulum, iş bitirme ölçütleri ve issue kuralları için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın. Güvenlik bulguları [SECURITY.md](SECURITY.md) içinde anlatıldığı gibi gizli kanaldan bildirilir; lütfen bunlar için herkese açık issue açmayın.
 
 ---
 

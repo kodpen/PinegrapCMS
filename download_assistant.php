@@ -479,7 +479,7 @@ function output_download_assistant_html_content(
         unset($_SESSION['software']['download_assistant']['message']);
     }
 
-    // Daha havalı arkaplan (gradient + pattern overlay)
+    // Decorative background (gradient + pattern overlay)
     $pattern_css = '
         <style>
             body {

@@ -93,15 +93,34 @@ function erp_apply_rate($kurus, $rate)
 }
 
 /**
- * Convert an amount into lira at a given exchange rate.
+ * Convert an amount into the base currency at a given exchange rate.
  *
- * @param int   $kurus
- * @param float $exchange_rate  Lira per unit of the foreign currency
- * @return int  Kurus of lira
+ * The one place a document-currency figure becomes a base-currency one. The
+ * ledger, the settlements and the invoice header all call this, so the same
+ * amount at the same rate is the same number of kurus everywhere.
+ *
+ * @param int   $kurus          Amount in the document currency
+ * @param float $exchange_rate  Base units per unit of the document currency
+ * @return int  Kurus of the base currency
  */
-function erp_to_try($kurus, $exchange_rate)
+function erp_to_base($kurus, $exchange_rate)
 {
     return (int) round(((int) $kurus) * ((float) $exchange_rate));
+}
+
+/**
+ * A line's amount from its unit price and quantity.
+ *
+ * Quantities are decimals (1.5 metres), so this is the module's one
+ * multiplication of money by a quantity.
+ *
+ * @param int   $unit_price  Kurus
+ * @param float $quantity
+ * @return int  Kurus
+ */
+function erp_line_total($unit_price, $quantity)
+{
+    return (int) round(((int) $unit_price) * ((float) $quantity));
 }
 
 /**
@@ -176,7 +195,7 @@ function erp_allocate($total, $weights)
 }
 
 /**
- * Format kurus for the screen, with the site's currency symbol.
+ * Format kurus for the screen, in the base currency.
  *
  * @param int  $kurus
  * @param bool $show_sign  true keeps a leading minus on negative amounts
@@ -184,11 +203,57 @@ function erp_allocate($total, $weights)
  */
 function erp_money_out($kurus, $show_sign = true)
 {
-    $kurus = (int) $kurus;
-    $negative = ($kurus < 0);
-    // Four arguments and not one: the helper takes a discount pair and a format.
-    // plain_text with the entity symbol off, because callers put this through h().
-    $output = prepare_price_for_output(abs($kurus), false, '', 'plain_text', true, false);
+    return erp_money_out_currency($kurus, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $show_sign);
+}
 
-    return ($negative && $show_sign) ? ('-' . $output) : $output;
+/**
+ * Format kurus for the screen, in a named currency.
+ *
+ * The symbol comes from the currencies table (the base symbol for the base
+ * currency; the ISO code when the store does not list the currency). No
+ * conversion happens here: the amount is already in that currency. The
+ * store-side price helpers multiply by the visitor's exchange rate, which is
+ * right for a shop window and wrong for a ledger - an operator whose browser
+ * had picked another currency for the shop would otherwise read every ERP
+ * figure converted, under the wrong symbol.
+ *
+ * @param int    $kurus
+ * @param string $currency_code
+ * @param bool   $show_sign  true keeps a leading minus on negative amounts
+ * @return string  Plain text, for callers to put through h()
+ */
+function erp_money_out_currency($kurus, $currency_code, $show_sign = true)
+{
+    static $symbols = null;
+
+    $kurus = (int) $kurus;
+    $currency_code = strtoupper(trim((string) $currency_code));
+
+    if ($symbols === null) {
+        $symbols = array();
+        foreach ((array) db_items("SELECT code, symbol FROM currencies") as $row) {
+            $symbols[strtoupper(trim((string) $row['code']))] = (string) $row['symbol'];
+        }
+    }
+
+    $symbol = '';
+    $suffix = '';
+
+    if (defined('BASE_CURRENCY_CODE') && ($currency_code === strtoupper((string) BASE_CURRENCY_CODE))) {
+        $symbol = (string) BASE_CURRENCY_SYMBOL;
+    } elseif (isset($symbols[$currency_code]) && (trim($symbols[$currency_code]) !== '')) {
+        $symbol = $symbols[$currency_code];
+    } else {
+        $suffix = ($currency_code !== '') ? (' ' . $currency_code) : '';
+    }
+
+    // An entity such as &euro; is written as the character it stands for:
+    // the output is plain text that callers escape themselves.
+    if (($symbol !== '') && (mb_substr($symbol, 0, 1) === '&')) {
+        $symbol = html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    $output = $symbol . number_format(abs($kurus) / 100, 2, '.', ',') . $suffix;
+
+    return (($kurus < 0) && $show_sign) ? ('-' . $output) : $output;
 }

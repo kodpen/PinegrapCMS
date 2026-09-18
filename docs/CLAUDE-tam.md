@@ -295,7 +295,17 @@ Kurallar:
 ### Erişim Kontrolü
 - `validate_area_access($user, 'administrator')` → sadece `USER_ROLE = 0` (admin)
 - `validate_area_access($user, 'designer')` → designer + admin
+- `validate_area_access($user, 'manager')` → rol ≤ 2; kısa bağlantı oluşturma
+  (`add_short_link.php`, File Manager `explorer_short_link_create` /
+  `explorer_short_link_duplicate`) bu kapıdadır. Düzenleme/silme
+  (`edit_short_link.php`) rol 3'e açık kalır.
 - Her sayfanın başında `validate_user()` ile kullanıcı doğrulanır.
+- **İş betikleri de kapıdan geçer.** `update_exchange_rates.php` ve
+  `waf_ranges_job.php` `pg_cron_is_background_run()` ile CLI veya
+  `PG_CRON_DISPATCH` (job.php dağıtıcısı include'dan hemen önce tanımlar)
+  dışındaki her isteği, düğmeyi sunan panel ekranının kapısından geçirir;
+  `send_to` var mı diye bakarak kullanıcıyı atlamak yoktur. Yeni bir iş
+  betiği yazarken aynı kalıp kullanılır.
 
 ### Kullanıcı Rolleri ve Yetki Sınırları
 
@@ -840,6 +850,31 @@ idempotent adımlar "zaten var" diyerek o boşluğu sabitler.
 yok. Oranlar `DECIMAL(6,3)` / `DECIMAL(15,6)`, miktar `DECIMAL(15,4)`.
 Tek çarpım/yuvarlama noktası `includes/erp/money.php` olacak.
 
+**Ev para birimi mağazanın ana para birimidir, `'TRY'` değil.** Pinegrap
+dünyanın her yerinde kurulur; ERP `BASE_CURRENCY_CODE`'u
+(`erp_base_currency()`, `includes/erp/fx.php`) izler. Ülkeye özel kur kaynağı
+ya da vergi kuralı çekirdeğe girmez. Dönüştürülmüş sütunlar `*_base`'dir
+(`amount_base`, `grand_total_base`; 2026.4.4 yayınlanmadan `*_try`'dan
+yeniden adlandırıldı, migration 4.49); dönüşüm `erp_to_base($kurus, $kur)`,
+kur = **ana para birimi / 1 birim belge para birimi**. Ekran biçimleme
+`erp_money_out_currency($kurus, $kod)` — `currencies` tablosundaki simgeyle,
+**ziyaretçi kuru uygulanmaz** (`erp_money_out()` bunun ana para birimi
+sarmalayıcısıdır).
+
+**Döviz opt-in'dir:** `config.erp_fx_enabled` / `ERP_FX_ENABLED`. Kapalıyken
+form para birimi sormaz, ana para birimi sessizce kullanılır, kur farkı
+yazılmaz; her döviz dalı `erp_fx_enabled()` kontrol eder. Açıkken izinli
+kodlar `ERP_FX_CURRENCIES` ∩ `currencies` − ana (`erp_fx_currencies()`).
+Kur geçmişi `currency_rates (rate_date, base_code, currency_code) UNIQUE`,
+`update_exchange_rates.php` yazar (getirme `includes/fn/currency_rates.php`,
+Frankfurter → HexaRate, TLS doğrulaması açık), `pg_currency_rate($kod,
+$tarih)` o gün ya da öncesindeki son günü verir. Kur farkı:
+`erp_fx_post_difference()` fatura `paid` olduğunda `erp_post_receipt()`
+transaction'ı içinde tek `kind='fx_diff'` satırı (`doc_type='fx_diff'`,
+`doc_id=fatura` idempotens anahtarı), tutar `Σ tahsis.amount_base − (grand_total_base −
+Σ iade.grand_total_base)`. Siparişten fatura her zaman ana para birimi;
+dövizli fatura elle girilir (`add_erp_invoice.php` → `erp_invoice_create_manual()`).
+
 **`erp_invoice_items.tax_total` bilerek `tax` değil** — `order_items.tax`
 birim vergidir, fatura satırı satırın toplam vergisini tutar. Ad farkı okuma
 anında durduruyor.
@@ -893,16 +928,31 @@ Kesilmiş fatura düzenlenmez; geri dönüş iki yoldan olur (`includes/erp/retu
 - **Tam iade ana faturanın rakamlarını kopyalar**, yeniden hesaplamaz: ana
   faturanın KDV'si siparişin başlık KDV'sine bağlıydı ve satırlardan türetilenin
   bir kuruş uzağında olabilir. Kısmi iadede satır orantılı bölünür
-  (`round(indirim × miktar / satılan)`, KDV kalan matrahtan).
+  (`round(indirim × miktar / satılan)`, KDV kalan matrahtan). İade satırının
+  KDV'si ana satırda **kalan** KDV'yi aşamaz ve satırı boşaltan parça kalanı
+  aynen alır (`erp_returnable_lines()` → `returned_tax`, `parent_line_id` ile eşlenir):
+  361 kuruşluk satırın iki yarısı 181 + 180'dir, 181 + 181 değil.
+- **Satır KDV oranı** siparişten yasal oran olarak taşınır, yuvarlanmış iki
+  kuruş tutarının bölümü olarak değil (`erp_line_tax_rate()`): önce
+  `products.tax_rate` denenir, saklanan vergiyi `erp_apply_rate()` ile aynen
+  üretiyorsa o alınır; yoksa oran 0–3 ondalıkta en sade eşleşene oturtulur
+  (361/2008 → 18, 17.978 değil). Tutarlar değişmez, yalnız oran.
 - `erp_invoice_items.returned_qty` ana faturada birikir; iade iptal edilirse geri
-  düşülür. Aynı malın iki belgeyle iki kez iade edilmesini bu engeller.
+  düşülür. Aynı malın iki belgeyle iki kez iade edilmesini bu engeller. İade
+  satırı alındığı ana satırı `parent_line_id` ile taşır (4.50); iptal ve
+  `returned_tax` eşlemesi bu kimlik üzerinden yapılır, ürüne göre değil — aynı
+  ürünün iki satırı (farklı fiyat/indirim) ürünle ayırt edilemez. 4.50 öncesi
+  yazılmış satırlar (`parent_line_id = 0`) için ürün eşlemesi yedek olarak
+  kalır; migration tekil eşleşenleri geri doldurur.
 - **İptal** yalnız üzerine hiçbir şey asılmamışken yapılabilir (tahsis yok, iade
   yok). Defter kaydını silmez, **ters kayıtla çevirir**; numarayı serbest
   bırakmaz. Faturadan gelen sipariş `erp_invoice_id = 0` ile yeniden
   faturalanabilir hâle döner.
-- `erp_invoice_open_amount()` hem tahsisi hem iadeyi düşer; ama **durumu yalnız
-  tahsis belirler** — iade edilmiş bir fatura "ödenmiş" değildir, tahsil
-  edilecek bir şeyi kalmamıştır.
+- `erp_invoice_open_amount()` hem tahsisi hem iadeyi düşer; `erp_invoice_refresh_paid()`
+  de tahsisi **aynı rakama** (toplam − iade) karşı ölçer, ikisi ayrışmaz. Yine
+  de faturayı yalnız para "ödenmiş" yapar: hiç tahsilat görmemiş, tamamı iade
+  edilmiş fatura `issued` kalır. İade açılınca ve iade iptal edilince ana
+  faturanın durumu yeniden hesaplanır (`returns.php`, transaction içinde).
 
 ### Fatura kapatma: tahsis, para değil
 
@@ -923,6 +973,19 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
 - `erp_post_receipt()`'in `invoice_id`'si tahsisi çağıranın transaction'ı içinde
   yazar. Reddedilen bir tahsis tüm tahsilatı geri alır — yarım yazılmış tahsilat
   bırakmaz.
+- **Hediye kartı tek otomatik tahsistir.** Siparişin hediye kartıyla ödenen
+  kısmı sipariş anında, o siparişe karşı ödenmiştir; fatura kesilirken
+  `erp_settle_gift_card()` cariye `kind = collection`, `doc_type = gift_card`,
+  `doc_id = invoice_id` bir alacak kaydı atar ve bu hareketi faturaya tahsis
+  eder — aynı transaction içinde. Kasa hareketi yoktur (para zaten alınmış).
+  Tamamı hediye kartıyla ödenen sipariş `paid` doğar; kısmen ödenen
+  `partially_paid`. Bu tahsis iptali engellemez (`erp_invoice_receipt_count()`
+  onu saymaz); iptalde `erp_unsettle_gift_card()` alacağı ters kayıtla çevirir
+  ve tahsis satırını siler. `erp_invoice_settlements()` kasa join'ini
+  `doc_type` ile de eşler; hediye kartı satırı kasa adı boş görünür.
+- `erp_tx_begin/commit/rollback` derinliği tek sayaçta tutar
+  (`$GLOBALS['_erp_tx_depth']`, `erp_tx_depth()`); aynı istekte ikinci bir
+  posting gerçekten yeni transaction açar.
 
 ### İndirimli siparişin KDV'si
 
@@ -1018,8 +1081,9 @@ faturadan **kopyalar**, yeniden türetmez.
   `submit_mark_paid` (ortak `validate_token_field()` + `pg_order_awaiting_payment`
   kapısı; düğme `#button_bar` içinde kendi formuyla, yalnız beklerken).
   `erp_invoice_refresh_paid()` (`includes/erp/settlement.php`) fatura `paid`
-  olduğunda aynı UPDATE'i `erp_query` ile doğrudan, tahsilatın işlemi içinde
-  yapar — ERP tahsilatı havalenin onaylı ödeme anıdır.
+  olduğunda sipariş `Offline Payment` ise aynı fonksiyonu çağırır (tahsilatın
+  işlemi içinde) ve faturanın boş `payment_date`'ini kapatan tahsilatın
+  `doc_date`'i ile doldurur — ERP tahsilatı havalenin onaylı ödeme anıdır.
 - **Süpürme:** `job.php`, terk edilmiş sipariş bloğundan hemen sonra.
   `ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS > 0` iken
   (`config.ecommerce_offline_payment_cancel_days`, `init.php`'de `?? 0`;
@@ -1194,7 +1258,7 @@ reddediliyordu — aynı ekrandaki toplu iptal ise çalışıyordu
 farklı cevap.
 
 **`validate_user()` PK'yı `id` anahtarıyla döndürür, `user_id` değil.**
-(`user_id` ham kolon adı; `api.php` / `apps.php` auth yolunda o geçerli.)
+(`user_id` ham kolon adı; `api.php` ve `includes/api/auth.php` (dış API) o adı kullanır.)
 Yanlış anahtarı okumak `cancelled_by = 0` yazıyordu — raporlar bunu "müşteri
 kendi iptal etti" diye yorumlar.
 
@@ -1824,6 +1888,8 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.50) | `_erp_return_line_link`: `erp_invoice_items.parent_line_id INT UNSIGNED NOT NULL DEFAULT 0` + `idx_parent_line` (iade satırı → ana fatura satırı; iade iptali doğru satırı geri açar); tekil ürün eşleşmesi olan eski satırlar geri doldurulur, çoklu olanlar 0 kalır — yeniden koşturulabilir |
+| `2026.4.4` (4.49) | `_erp_foreign_currency`: `amount_try → amount_base` (`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`), `grand_total_try → grand_total_base` (`erp_invoices`) — yeni ad varsa atlanır, tip/null/default `install_column_info`'dan —, `currency_rates` tablosu (`UNIQUE (rate_date, base_code, currency_code)`, `rate DECIMAL(18,8)` = ana / 1 birim döviz), `config.erp_fx_enabled TINYINT(1) DEFAULT 0` / `erp_fx_currencies VARCHAR(64) DEFAULT 'USD,EUR,GBP'` / `erp_fx_auto_diff TINYINT(1) DEFAULT 1`, `erp_invoices.exchange_rate_source` ve `erp_cash_transactions.exchange_rate_source VARCHAR(32)` |
 | `2026.4.4` (4.48) | `_offline_payment_awaiting`: `orders.payment_method` ENUM'una `'Pay With Iyzico'` eklendi (mevcut liste `install_column_info` ile okunup korunur, ENUM değilse atlanır), `config.ecommerce_offline_payment_cancel_days TINYINT UNSIGNED NOT NULL DEFAULT 0` (0 = otomatik iptal yok) |
 | `2026.4.4` (4.47) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |
 | `2026.4.4` (4.46) | `_erp_return_series`: `erp_document_series.doc_kind` ENUM'una `'sales_return'` ve `'purchase_invoice'` eklendi (iade kendi serisinde koşar) |
@@ -3529,7 +3595,7 @@ Proxy başlıkları yalnızca peer bilinen bir proxy ise kabul edilir (Cloudflar
 aralıkları gömülü, gerisi `waf_trusted_proxies`). Aksi hâlde saldırgan başlığı
 uydurup IP yasağını atlar.
 
-`check_banned_ip_addresses()` ve `apps.php` artık bunu kullanır.
+`check_banned_ip_addresses()` ve dış API (`includes/api/auth.php`, `router.php`) bunu kullanır.
 
 ### Geriye dönük uyumluluk
 
@@ -6165,53 +6231,27 @@ Tablo tanımları `$all_table_defs` dizisinde, her tanım şu alanları içerir:
 - ECOMMERCE kontrolü: `products`, `product_groups` tabloları için
 - ADS kontrolü: `ads` tablosu için
 
-## REST API — apps.php / apps_settings.php
+## REST API — apps.php / apps_settings.php (kaldırıldı, 2026.4.4)
 
-### Şifreleme Mimarisi (`user` tablosu)
+> **Tarihsel not.** `apps.php`, `apps_settings.php` ve `custom_apps` tablosu
+> 2026.4.4'te kaldırıldı (`clean_up.php` silme listesi +
+> `install_drop_table('custom_apps')`, bkz. `includes/migrations/2026.4.4.php`).
+> Yerini **dış API** aldı: giriş dosyası `integration.php`, kod
+> `includes/api/` (auth, scopes, ratelimit, router, resources/, outbound/),
+> panel ekranları `api_settings.php` / `api_docs.php`. Yetki modeli için
+> yukarıdaki **"Dış API yetki kalıbı (`integration.php`, 2026.4.4)"** bölümüne bak.
 
-| Kolon | Amaç | Açıklama |
-|---|---|---|
-| `secret_key` | Güvenli saklama | AES-256-CBC, her şifrelemede rastgele IV |
-| `secret_key_iv` | IV değeri | `encrypt_string_with_iv()` ile üretilir |
-| `secret_key_hash` | Hızlı DB arama | `hash_hmac('sha256', $plain, ENCRYPTION_KEY)` — deterministik |
+Eski akış, karşılaştırma için: uygulamaya ait `custom_apps.api_key` + **kullanıcıya**
+ait `user.secret_key` (AES-256-CBC, `secret_key_hash` ile deterministik arama),
+izinler `has_permission($permissions, $action, 'read|edit')`. İki anahtar iki ayrı
+varlığa aitti — herhangi bir kişinin secret'ı herhangi bir uygulamanın key'ini
+açıyordu, rotasyon yoktu; yeni API bu yüzden key ve secret'ı uygulamaya taşıdı.
+`user.secret_key*` kolonları hesap tablosunda bilerek bırakıldı (kolon düşürme
+riski değmedi); artık hiçbir kod okumaz.
 
-```sql
--- Migration (bir kez çalıştır)
-ALTER TABLE user ADD COLUMN secret_key_hash VARCHAR(64) DEFAULT NULL;
-CREATE INDEX idx_user_secret_key_hash ON user (secret_key_hash);
-```
+### apps.php Doğrulama Akışı (kaldırıldı)
 
-**Neden iki yapı?**  
-`encrypt_string_with_iv()` her çağrıda farklı ciphertext üretir (random IV). Dolayısıyla `WHERE secret_key = ?` çalışmaz. Hash deterministik olduğu için `WHERE secret_key_hash = ?` ile tek sorguda kullanıcı bulunur. Decrypt döngüsü YOK.
-
-### apps.php Doğrulama Akışı
-
-```php
-// 1. api_key → custom_apps tablosunda ara
-$query = "SELECT ... FROM custom_apps WHERE api_key_hash = '...' LIMIT 1";
-
-// 2. secret_key → user tablosunda ara (decrypt yok!)
-$secret_hash = hash_hmac('sha256', $SECRET, ENCRYPTION_KEY);
-$query = "SELECT ... FROM user WHERE secret_key_hash = '$secret_hash' LIMIT 1";
-```
-
-### Güvenlik Kuralları
-
-- `$_REQUEST` yerine `array_merge($_GET, $_POST)` — Cookie injection önler
-- `hash_equals()` yerine artık DB sorgusu (timing-safe değil, ama DB latency bunu maskeler)
-- Hata mesajları birleşik: `"Invalid credentials."` — hangi alan yanlış olduğu belirtilmez
-- `h()` JSON response içinde KULLANILMAZ — JSON encoding kendi escaping'ini yapar
-- Endpoint izinleri: `has_permission($permissions, $action, 'read|edit')`
-
-### Yeni Endpoint'ler
-
-| Endpoint | İzin | GET | POST |
-|---|---|---|---|
-| `product` | ecommerce | read/edit | read/edit |
-| `pages` | — | read/edit | read/edit |
-| `users` | role < 2 | read/edit | read/edit |
-| `visitors` | manage_visitors | read | — |
-| `site_settings` | — | read/edit | read/edit |
+Yukarıdaki nota bak; güncel doğrulama `includes/api/auth.php` içindedir.
 
 ---
 

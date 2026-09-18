@@ -33,6 +33,14 @@ $liveform_view_files = new liveform('view_files');
 $result = mysqli_query(db::$con, "SELECT design, folder FROM files WHERE id = '" . escape($_REQUEST['id']) . "'") or output_error('Query failed');
 $row = mysqli_fetch_assoc($result);
 
+// The id comes from the request and can point at a file that was deleted
+// meanwhile. Stop before the access check: the GET branch would otherwise
+// render an empty editor and the delete branch would unlink the bare file
+// directory path.
+if (!$row) {
+    output_error(lang('Sorry, the item could not be found.'), 404);
+}
+
 // if the user does not have edit rights to this file's folder,
 // or this file is a design file and the user is not a designer or administrator,
 // then log activity and output error

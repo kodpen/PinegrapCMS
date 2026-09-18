@@ -1571,7 +1571,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             ' . $output_add_membership_column . '
             ' . $output_all_product_actions_columns . '
             <td class="align-middle text-center">' . pg_seo_render_impact($row) . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $row['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) ) . '</td>
+            <td class="align-middle">' . get_relative_time(array('timestamp' => $row['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($row['user'] ?? '') ) ) ) . '</td>
             ' . $output_out_of_stock_timestamp_column . '
         </tr>';
     }

@@ -26,9 +26,13 @@ if (!defined('PG_ERP_ENTRY')) {
  *                                once an account has movements behind it, the
  *                                opening figure is one of them and is corrected
  *                                there rather than retyped here.
+ * @param bool     $currency_locked  The account already has movements, so its
+ *                                currency is shown but cannot be changed: the
+ *                                own-currency balance is summed over movements
+ *                                in that currency.
  * @return string  HTML
  */
-function erp_account_form_cards($liveform, $with_opening = false)
+function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false)
 {
     $kind_options = array();
     $kind_options[lang('Customer')] = 'customer';
@@ -70,6 +74,7 @@ function erp_account_form_cards($liveform, $with_opening = false)
                         'class' => 'form-select', 'options' => $status_options)) . '
                 </div>
             </div>
+            ' . erp_currency_form_row($liveform, $currency_locked, lang('The currency the account is kept in. Its balance is reported in the base currency as well.')) . '
         </div>
     </div>
 
@@ -164,9 +169,9 @@ function erp_account_form_cards($liveform, $with_opening = false)
                             'type' => 'text', 'id' => 'opening_amount', 'name' => 'opening_amount',
                             'class' => 'form-control text-end', 'maxlength' => '15',
                             'inputmode' => 'decimal', 'autocomplete' => 'off')) . '
-                        <label class="input-group-text" for="opening_amount">' . BASE_CURRENCY_SYMBOL . '</label>
+                        <label class="input-group-text" for="opening_amount">' . (erp_fx_enabled() ? lang('in the account currency') : BASE_CURRENCY_SYMBOL) . '</label>
                     </div>
-                    <div class="form-text">' . lang('Positive when they owe you, negative when you owe them.') . '</div>
+                    <div class="form-text">' . lang('Positive when they owe you, negative when you owe them.') . (erp_fx_enabled() ? ' ' . lang('A foreign-currency opening figure is converted at the recorded rate of its date.') : '') . '</div>
                 </div>
                 <div class="col-12 col-sm-4 col-lg-3 my-2">
                     <label for="opening_date" class="form-label">' . lang('Date') . '</label>
@@ -202,4 +207,54 @@ function erp_account_form_cards($liveform, $with_opening = false)
     </div>';
 
     return $output;
+}
+
+/**
+ * The currency row shared by the account and the till forms.
+ *
+ * Nothing at all while foreign currency is off: the record is in the base
+ * currency and the screen does not ask. Locked, the code is shown read-only
+ * and posted through a hidden field, so a save keeps it.
+ *
+ * @param liveform $liveform
+ * @param bool     $locked
+ * @param string   $help
+ * @return string  HTML
+ */
+function erp_currency_form_row($liveform, $locked, $help)
+{
+    if (!erp_fx_enabled()) {
+        return '';
+    }
+
+    $current = strtoupper(trim((string) $liveform->get_field_value('currency')));
+
+    if ($current === '') {
+        $current = erp_base_currency();
+    }
+
+    if ($locked) {
+        $field = '<input type="hidden" name="currency" value="' . h($current) . '" />
+                    <input class="form-control" type="text" value="' . h($current) . '" readonly="readonly" />
+                    <div class="form-text">' . lang('Cannot be changed once there are movements.') . '</div>';
+    } else {
+        $options = erp_fx_currency_options();
+        // A code that is no longer allowed still has to be shown, or the save
+        // would silently move the record to the base currency.
+        if (!in_array($current, $options, true)) {
+            $options[h($current)] = $current;
+        }
+        $field = $liveform->output_field(array(
+            'type' => 'select', 'id' => 'currency', 'name' => 'currency',
+            'class' => 'form-select', 'options' => $options)) . '
+                    <div class="form-text">' . $help . '</div>';
+    }
+
+    return '
+            <div class="row">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                    <label for="currency" class="form-label">' . lang('Currency') . '</label>
+                    ' . $field . '
+                </div>
+            </div>';
 }

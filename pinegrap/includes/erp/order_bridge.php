@@ -24,6 +24,11 @@
  * The sum is then tied back to the tax on the order's own header, because that
  * header is the document the customer actually paid against.
  *
+ * The rate printed on a line is the legal rate the line was charged at, not
+ * the ratio of two rounded kurus figures: 361 / 2008 reads as 17.978%, and an
+ * e-document with that on it is wrong even though the amounts are right.
+ * order_items does not keep the rate, so it is recovered (erp_line_tax_rate).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -74,10 +79,10 @@ function erp_order_lines($order, $items)
         $line_total = $unit_price * $quantity;
         $tax_total = (int) $item['tax_total'];
 
-        // The rate the line was charged at, recovered from the two figures the
-        // order stores. Only used to print a rate on the document; the amount
-        // itself is carried over, never recomputed.
-        $rate = ($line_total > 0) ? round(($tax_total * 100) / $line_total, 3) : 0;
+        // The rate the line was charged at. The amount itself is carried over,
+        // never recomputed; the rate is what a discounted line's tax is taken
+        // again at, and what the document prints.
+        $rate = erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
 
         $lines[] = array(
             'product_id' => (int) $item['product_id'],
@@ -190,6 +195,20 @@ function erp_order_lines($order, $items)
         $tax_total += $line['tax_total'];
     }
 
+    // The shape of the header figures, which erp_invoices stores as they are:
+    //
+    //   subtotal        the sum of every line's line_total, shipping and
+    //                   surcharge lines included - they are sold, so they are
+    //                   lines like any other
+    //   discount_total  the sum of the lines' discount_amount
+    //   tax_total       the sum of the lines' tax_total
+    //   grand_total     subtotal - discount_total + tax_total
+    //
+    // shipping_total and surcharge_total say how much of the subtotal those
+    // two lines account for; they are informational and are NOT added again.
+    // A reader that sums subtotal + shipping_total + tax_total counts the
+    // shipping twice. gift_card_total is not part of the sale at all - it is
+    // how part of the grand total was paid.
     $totals = array(
         'subtotal' => $subtotal,
         'discount_total' => $discount_total,
@@ -201,6 +220,56 @@ function erp_order_lines($order, $items)
     );
 
     return array('lines' => $lines, 'totals' => $totals);
+}
+
+/**
+ * The rate a line was taxed at, from the figures the order kept.
+ *
+ * order_items stores the line total and the tax on it, both whole kurus, and
+ * not the rate. Dividing one by the other gives back the rate plus the
+ * rounding that went into the tax: 361 / 2008 is 17.978%, not the 18% the
+ * customer was charged. That figure is wrong on a document, and taking a
+ * returned share of the line at it lands a kurus short.
+ *
+ * The rate is therefore the simplest one that reproduces the stored tax
+ * exactly, through the same rounding the order used (erp_apply_rate). The
+ * product's own rate is tried first, because when it still explains the tax it
+ * is the rate that was charged. Otherwise the ratio is tried at zero, one, two
+ * and then three decimals, so 18 wins over 18.001 and 8.25 over 8.253. A tax
+ * that no rate with three decimals explains is left as the plain ratio, which
+ * is as much as the two figures can say.
+ *
+ * @param int               $line_total    Kurus, undiscounted
+ * @param int               $tax_total     Kurus of tax on that total
+ * @param string|float|null $product_rate  products.tax_rate, NULL when the zone decided
+ * @return float  Percentage
+ */
+function erp_line_tax_rate($line_total, $tax_total, $product_rate = null)
+{
+    $line_total = (int) $line_total;
+    $tax_total = (int) $tax_total;
+
+    if (($line_total <= 0) || ($tax_total <= 0)) {
+        return 0;
+    }
+
+    if (($product_rate !== null) && ($product_rate !== '')) {
+        $candidate = (float) $product_rate;
+        if (erp_apply_rate($line_total, $candidate) === $tax_total) {
+            return $candidate;
+        }
+    }
+
+    $ratio = ($tax_total * 100) / $line_total;
+
+    for ($decimals = 0; $decimals <= 3; $decimals++) {
+        $candidate = round($ratio, $decimals);
+        if (erp_apply_rate($line_total, $candidate) === $tax_total) {
+            return $candidate;
+        }
+    }
+
+    return round($ratio, 3);
 }
 
 /**
@@ -357,7 +426,8 @@ function erp_invoice_from_order($order_id, $options = array())
         return $fail(lang('Order not found.'));
     }
 
-    $items = (array) db_items("SELECT order_items.*, products.short_description
+    $items = (array) db_items("SELECT order_items.*, products.short_description,
+            products.tax_rate AS product_tax_rate
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
@@ -383,7 +453,8 @@ function erp_invoice_from_order($order_id, $options = array())
     $built = erp_order_lines($order, $items);
 
     // What the customer was actually charged. A gift card is a means of
-    // payment, so it is added back: the invoice states the whole sale.
+    // payment, so it is added back: the invoice states the whole sale, and the
+    // gift card settles its share of it once the document exists.
     $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
 
     if ($built['totals']['grand_total'] !== $expected) {
@@ -440,7 +511,10 @@ function erp_invoice_from_order($order_id, $options = array())
             order_id = '" . $order_id . "',
             issue_date = '" . escape($issue_date) . "',
             due_date = '" . escape($issue_date) . "',
-            currency = 'TRY',
+            currency = '" . escape(erp_base_currency()) . "',
+            exchange_rate = '1.000000',
+            exchange_rate_date = '" . escape($issue_date) . "',
+            exchange_rate_source = 'base',
             subtotal = '" . (int) $totals['subtotal'] . "',
             discount_total = '" . (int) $totals['discount_total'] . "',
             shipping_total = '" . (int) $totals['shipping_total'] . "',
@@ -448,7 +522,7 @@ function erp_invoice_from_order($order_id, $options = array())
             gift_card_total = '" . (int) $totals['gift_card_total'] . "',
             tax_total = '" . (int) $totals['tax_total'] . "',
             grand_total = '" . (int) $totals['grand_total'] . "',
-            grand_total_try = '" . (int) $totals['grand_total'] . "',
+            grand_total_base = '" . (int) $totals['grand_total'] . "',
             status = 'issued',
             is_internet_sale = '" . $is_internet_sale . "',
             payment_method = '" . escape(erp_payment_method_code($order['payment_method'] ?? '')) . "',
@@ -498,14 +572,40 @@ function erp_invoice_from_order($order_id, $options = array())
         'kind' => 'invoice',
         'direction' => 'debit',
         'amount' => (int) $totals['grand_total'],
-        'currency' => 'TRY',
+        'currency' => erp_base_currency(),
+        'exchange_rate_source' => 'base',
         'doc_type' => 'invoice',
         'doc_id' => $invoice_id,
         'description' => $numbered['full'],
         'created_by' => (int) ($options['created_by'] ?? 0),
     ));
 
-    if (($posted === false) || !erp_account_refresh_balance($account_id)) {
+    if ($posted === false) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    // The gift card part of the total was paid when the order was placed, so
+    // the invoice does not wait for it: the account is credited and the credit
+    // is allocated to the invoice, both inside this transaction. A sale paid
+    // entirely by gift card is therefore issued and paid in the same breath.
+    $gift_card = min((int) $totals['gift_card_total'], (int) $totals['grand_total']);
+
+    if (($gift_card > 0) && !erp_settle_gift_card(array(
+        'invoice_id' => $invoice_id,
+        'account_id' => $account_id,
+        'amount' => $gift_card,
+        'doc_date' => $issue_date,
+        'description' => $numbered['full'] . ' - ' . lang('Gift Card'),
+        'created_by' => (int) ($options['created_by'] ?? 0),
+    ))) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    if (!erp_account_refresh_balance($account_id)) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);

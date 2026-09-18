@@ -37,6 +37,13 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
         WHERE page_id = '" . escape($_REQUEST['page_id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // A deleted or mistyped page id must stop here: the page type below is
+    // used to build a table name, and a missing row would turn that into a
+    // query against a table that does not exist.
+    if (!$row) {
+        output_error(lang('Sorry, the page could not be found.'), 404);
+    }
     
     $page_type = $row['page_type'];
     $folder_id = $row['page_folder'];
@@ -295,15 +302,20 @@ if (!$_POST) {
     }
     
     // get field with largest sort order in this form, so we can prefill position field with an appropriate value
-    $query = "SELECT id
-             FROM form_fields
-             WHERE $form_type_filter
-             ORDER BY sort_order DESC
-             LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = false;
+    // Only when a form is identified (page, product group or product); without
+    // one the filter is empty and the query would fail with its SQL text shown.
+    if (!empty($form_type_filter)) {
+        $query = "SELECT id
+                 FROM form_fields
+                 WHERE $form_type_filter
+                 ORDER BY sort_order DESC
+                 LIMIT 1";
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    }
     
     // if no fields were found then this field is the first field
-    if (mysqli_num_rows($result) == 0) {
+    if (!$result || mysqli_num_rows($result) == 0) {
         $position = 'top';
     
     // else this field is not the first field, so store field id in position value
@@ -676,7 +688,7 @@ if (!$_POST) {
                 '" . escape($_POST['office_use_only'] ?? '') . "',
                 $sql_upload_folder_id_value
                 '" . escape($_POST['quiz_question'] ?? '') . "',
-                '" . escape(prepare_form_data_for_input($_POST['quiz_answer'], $_POST['type'])) . "',
+                '" . escape(prepare_form_data_for_input($_POST['quiz_answer'] ?? '', $_POST['type'])) . "',
                 '" . $user['id'] . "',
                 UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

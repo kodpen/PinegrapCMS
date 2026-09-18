@@ -2023,6 +2023,29 @@ function get_order_preview($properties) {
         $installment_table = '';
         $threedsecure = false;
         $threedsecure_required = '';
+        // The billing block and the purchase button are only assembled when the
+        // cart has items, but the template always receives these values.
+        $purchase_now_button_label = '';
+        $billing_update_url = '';
+        $custom_field_1_label = '';
+        $custom_field_1 = '';
+        $custom_field_2_label = '';
+        $custom_field_2 = '';
+        $billing_salutation = '';
+        $billing_first_name = '';
+        $billing_last_name = '';
+        $billing_company = '';
+        $billing_address_1 = '';
+        $billing_address_2 = '';
+        $billing_city = '';
+        $billing_state = '';
+        $billing_zip_code = '';
+        $billing_country = '';
+        $billing_phone_number = '';
+        $billing_fax_number = '';
+        $billing_email_address = '';
+        $po_number = '';
+        $tax_exempt = false;
         // If there are recipients, then there are products in the cart, so output cart.
         if ($recipients) {
 

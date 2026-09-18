@@ -41,6 +41,802 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
+
+**Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
+fatura tutarın tamamını istiyordu: `gift_card_total` yalnız bilgi olarak
+yazılıyor, tahsis edilmiyordu. Tamamı hediye kartıyla ödenen sipariş `issued`
+kalıyor, açık tutar 11.800 görünüyor, cari hesapta müşteri o kadar borçlu
+duruyordu. (2) `erp_tx_begin()` derinliği hem `static $depth` hem
+`$GLOBALS['_erp_tx_depth']` ile tutuyordu; commit yalnız global'i sıfırladığı
+için aynı istekte ikinci posting hiç transaction açmıyordu — rollback'i işe
+yaramıyordu. (3) İade iptali `returned_qty`'yi `product_id ... LIMIT 1` ile
+geri düşüyordu; aynı ürünün iki satırı olan faturada yanlış satır açılıyor,
+doğru satır kapalı kalıyordu. (4) Kasa açılış bakiyesi `erp_money_out(..,
+false)` ile işaretsiz ön doldurulup kaydediliyordu: −1.234,56 kaydedince
++1.234,56 oluyordu. (5) Breadcrumb etiketleri `h()` ile önceden kaçırılıyor,
+renderer bir kez daha kaçırıyordu (`&amp;amp;`). (6) `edit_erp_account.php`
+POST'u `id` boşsa `erp_account_save()` INSERT dalına düşüp yeni cari açıyordu.
+
+**Düzeltme.** (1) `erp_settle_gift_card()` (`settlement.php`): fatura
+transaction'ı içinde cariye `kind = collection`, `doc_type = gift_card` alacak
+kaydı ve o hareketin faturaya tahsisi. Neden tahsis + alacak, neden yalnız
+`open_amount`'tan düşmek değil: hediye kartı bir ödemedir; yalnız açığı
+küçültmek faturayı kapatır ama cari bakiyeyi hediye kartı tutarı kadar borçlu
+bırakır. Kasa hareketi yok, para kart satılırken alınmıştı. İptal bu tahsisi
+engellemez (`erp_invoice_receipt_count()` operatör tahsislerini sayar);
+`erp_unsettle_gift_card()` alacağı ters kayıtla çevirip tahsisi siler.
+`erp_invoice_settlements()` kasa join'i `doc_type` ile de eşleşir — hediye
+kartı hareketinin `doc_id`'si fatura kimliğidir, rastgele bir kasa satırıyla
+çakışmamalı. (2) Tek sayaç: `erp_tx_depth()`. (3) Migration **4.50**
+`erp_invoice_items.parent_line_id` + index; iade satırı yazılırken doldurulur,
+iptal ve `returned_tax` bu kimlikle eşleşir; `parent_line_id = 0` eski
+satırlarda ürün eşlemesi yedek kalır (`ORDER BY line_no`), migration tekil
+eşleşenleri geri doldurur, çoklu olanlara dokunmaz — yeniden koşturulabilir.
+(4) Ön doldurma işaretli; `erp_kurus()` eksiyi okur. (5) Dört ERP ekranında
+ham etiket. (6) `erp_account($id) === null` ise liste ekranına hata ile döner.
+Ölü şema bulgusu (issue madde 7) bu PR'da yapılmadı; envanter ayrı.
+Dövizli ERP (4.49) ile birleştirildiğinde hediye kartı alacağı ve ters kaydı
+ana para biriminde yazılır (`currency = erp_base_currency()`, kur 1,
+`amount_base = amount`; tahsis satırı `amount_base`): sipariş faturası her
+zaman ana para birimindedir. Çağrı sırası 4.49 → 4.50.
+
+### Doğrulama
+
+Sandbox'ta CLI betiği: tamamı hediye kartıyla ödenen sipariş → fatura `paid`,
+`paid_total = 11800`, açık 0, cari bakiye 0 (önce `issued` / 11800 / 11800);
+5.000 hediye kartı + 6.800 tahsilat → `partially_paid` → `paid`, bakiye 0;
+hediye kartlı faturanın iptali bakiyeyi 0'a döndürür, tahsis kalmaz. İkinci
+`erp_tx_begin()` sonrası rollback satırı geri alır (önce kalıyordu). Aynı
+ürünün iki satırı: iade 2. satırdan, iptal sonrası her iki satır 0 (önce 1.
+satır 0−1→0, 2. satır 1'de kalıyordu). Migration iki kez koşuldu, ikinci koş
+atlandı; eski iade satırı tekil eşleşmede geri dolduruldu. curl ile giriş:
+breadcrumb `Tom &amp; Jerry` (önce `&amp;amp;`), boş `id` ile POST hesap
+oluşturmuyor ve listede "Cari hesap bulunamadı." gösteriyor, açılış bakiyesi
+`-1,234.56` ön doluyor. `php tools/lint.php` ve `php tools/check_lang.php`
+temiz; UI ekranları tarayıcıda gezilmedi.
+
+## 2026.4.4 — Panel JS: genel `.ui-sortable` başlatması opt-in `pg-sortable` sınıfına alındı (2026-09-18)
+
+**Belirti.** `assets/js/backend.src.js` ready işleyicisi her panel ekranında
+`$(".ui-sortable").sortable({...})` çağırıyordu. `ui-sortable`, jQuery UI'nin
+sortable yaptığı her kapsayıcıya kendisinin eklediği işaret sınıfıdır; depoda
+bu sınıfı kendi işaretlemesinde taşıyan tek bir liste yok. Dolayısıyla seçici
+hiçbir zaman "sıralanabilir olsun" diye işaretlenmiş bir listeyi bulmuyor, o
+ana kadar kendi sortable'ını kurmuş kapsayıcıları buluyor ve `items: "a"`,
+`handle: this` (= document), `axis: "y"`, `delay: 300`, `containment: "parent"`
+ile ayarlarını eziyordu. `product_builder.js` (112–129) bunun için ready'ye
+erteleme ve her seçeneği yeniden yazma geçici çözümü taşıyor. Blokta ayrıca
+`tolerance` iki kez tanımlıydı (`touch`, sonra `pointer`; yalnız ikincisi
+geçerliydi) ve jQuery UI'nin tanımadığı `disable` anahtarı vardı. Yapılandırma
+neden böyle kurulmuştu hatırlanmıyor; #73'te değiştirilmesine ve üç sortable
+ekranının elle denenmesine karar verildi.
+
+**Düzeltme.** Seçici `.pg-sortable` (opt-in) oldu; `handle: this`, yinelenen
+`tolerance: 'touch'` ve `disable` kaldırıldı, diğer seçenekler aynı. Depoda bu
+varsayılan başlatmaya bağlı liste bulunmadığından hiçbir işaretlemeye sınıf
+eklenmedi. Panel `backend.src.js`'i `ENVIRONMENT_SUFFIX`'ten bağımsız yüklüyor
+(`includes/fn/output.php:140`), `.min` ikizi yok. `product_builder.js` geçici
+çözümü artık gereksiz, ama o dosyada başka açık çalışma olduğu için bu PR'da
+dokunulmadı.
+
+### Doğrulama
+
+Sandbox (turkish_default), Playwright gerçek fare sürüklemesi, hem değişmemiş
+main (:8000) hem bu dal (:8010): widget ekranı (`welcome.php`;
+`dashboard.order_widgets` 1,2,3,4,… → 2,3,4,1,…), ürün düzenleme
+(`edit_product.php?id=72`; sürüklenen görsel kapak oldu, `products.image_name`
+kaydedildi), menü sıralama (`view_menu_items.php?id=11`; parent 548 grubunda
+543↔479, `menu_items.sort_order` güncellendi). Üçünde de davranış iki sunucuda
+birebir aynı, ekranlarda konsol hatası yok. DOMContentLoaded'da eklenen
+`<div class="pg-sortable">` bu dalda sortable oluyor (`items: "a"`), düz
+`class="ui-sortable"` div artık başlatılmıyor; main'de tersi.
+
+**Açık kalan:** `products_images_xref` sıra sütunu taşımıyor ve `SELECT`
+`ORDER BY`'sız; kapak dışındaki görsel sırası kayıt sonrası rastgele geliyor
+(bu değişiklikten bağımsız, main'de de aynı). `product_builder.js:112-129`
+geçici çözümü ayrı bir PR'da sadeleştirilebilir.
+
+## 2026.4.4 — Geliştirme kalıntıları kaldırıldı: get_folder_tree.php, check_shared_invariant.php, responsive DataTables anahtarı (2026-09-18)
+
+**Belirti.** Üç kalıntı, üçü de #73'te incelendi ve kaldırılmalarına karar
+verildi. (1) `assets/js/backend.src.js` içindeki DataTables bloğu
+`datatable-no-responsive` sınıfını okuyup `options.responsive = false`
+yazıyordu: hiçbir tablo o sınıfı taşımıyor, ayarın tek değeri zaten kapalı.
+Responsive DataTables istenen bir özellik değil; bir ara eklenip geri alınmış,
+anahtarı kalmıştı. (2) `check_shared_invariant.php`, paylaşılan bileşen
+placeholder değişmezi geliştirilirken yazılmış tek seferlik bir tanı sayfasıydı;
+depoda ona giden tek satır yoktu (yalnız bu günlükte adı geçiyor), kuralı
+tasarımcının kayıt yolu zaten uyguluyor. (3) `get_folder_tree.php`, klasik
+klasör ağacı ekranının XML ucuydu; ekranı süren `assets/folder_tree.js`
+2026.4.4 içinde kaldırılıp `clean_up.php` listesine girmişti, uç ise kaldı.
+`backend.src.css` içinde yalnız o ekranın kullandığı `#folder_tree`
+seçicileri (11 satır) hiçbir elemanla eşleşmiyordu.
+
+**Düzeltme.** Blok yorumuyla birlikte silindi; `backend.src.js`
+`output_header()` tarafından doğrudan basılıyor, min ikizi yok. İki dosya
+silindi ve `clean_up.php` listesine eklendi: Temizle aracı (Ayarlar →
+Araçlar) yalnız listede olup diskte bulunan adları gösterir ve siler, o
+yüzden yeni kurulumda hiç görünmez, 2026.4.3'ten yükselen sitede ilk
+çalıştırmada ikisini listeleyip kaldırır. CSS'te `#folder_tree` seçicileri
+düşürüldü, `#product_group_tree` ikizleri olduğu gibi duruyor
+(`get_product_group_tree.php` hâlâ kullanıyor). `get_acl_folder_tree()`
+farklı bir fonksiyondur, dokunulmadı. Responsive uzantısı ayrı bir dosya
+değil, `assets/lib/DataTables/datatables.js` paketinin parçası; üçüncü taraf
+pakete dokunulmadı.
+
+### Doğrulama
+
+- `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+- Sandbox'ta (worktree sunucusu :8003, Playwright/Chromium) `view_folders.php`,
+  `view_users.php`, `view_gift_cards.php`, `view_key_codes.php`,
+  `view_products.php` yönetici oturumuyla açıldı: JS sayfa hatası yok
+  (tek hata giriş sayfasında, `code.jquery.com` sandbox'ta engelli olduğu
+  için; ortam kaynaklı). DataTables kuruldu, arama ("zzq-nomatch-xx" →
+  "No matching records found", temizlenince eski sayı), sayfa uzunluğu 10'a
+  çekilip Sonraki: "Showing 11 to 20 of 31 entries". Dosya Yöneticisi ağacı
+  (`#explorer_tree_root`) 7 öğe ile çizildi.
+- Sunucu erişim günlüğünde tarayıcı oturumlarından silinen iki uca hiç istek
+  yok; yalnız bilinçli curl denemeleri var (302 → `/staff-home`).
+- `clean_up.php` canlı çalıştırıldı: iki ad diske sahte dosya olarak konup GET
+  atıldı → "Temizlenebilecek 4 dosya bulundu" listesinde ikisi de var; POST →
+  302 `welcome.php#settings`, ikisi de diskten silindi.
+
+**Açık kalan:** Dosya bütünlüğü referansı (`hash_reference.json`) yayında
+yeniden üretilecek; üretilmezse iki dosya "missing" görünür. Yükselen sitede
+dosyalar Temizle aracı çalıştırılana kadar diskte durur (bu, listedeki diğer
+kalıntılarla aynı davranış).
+
+## 2026.4.4 — Kaynak metin yalnız İngilizce: hızlı sipariş koşulları, tasarımcı slug'ları, yer tutucu görsel (2026-09-18)
+
+**Belirti.** Ürün sahibinin kararı (#73): yazılım genelinde Türkçe metin ve
+yorum yalnız `changelog.txt` ve `includes/local/tr.json` içinde bulunabilir.
+Depo taramasında bunun dışında kalan yerler vardı: (1)
+`includes/fn/widgets_express_order.php` içindeki eski (monolitik düzen)
+koşul bloğu — cümle, modal başlığı, kabul düğmesi ve `_eo_default_terms_html()`
+gövdesi — düz Türkçe literal'di, yani İngilizce dilli bir site bile koşul
+penceresinde Türkçe metin görüyordu. (2) `style_designer.js` `SW_TYPES`
+listesindeki widget ad slug'ları (`form-listesi`, `urun-detay`, `hesabim` …)
+ve `_swAutoName()` fallback'i `'sayfa'` Türkçe'ydi. (3)
+`duplicate_products.php` beş etiketi, `print_packing_slip.php` `<title>`'ı
+dile göre dallanıp Türkçe yazıyordu, `assets/images/no-image.svg` Türkçe
+altyazı taşıyordu. (4) Bir avuç Türkçe kod yorumu (`find_and_replace.php`,
+`material-icons.css`, migration dosyalarında alıntı kelimeler vb.).
+
+**Düzeltme.** Metinler İngilizce yazıldı ve `lang()` / `_sdT()` ile geçirildi;
+Türkçe karşılıklar `tr.json`'a değer olarak girdi, böylece Türkçe siteler
+aynı sözcükleri görür. Koşul bloğu tasarımcı ağacının zaten sahip olduğu
+anahtarları (`1. General Terms`, `the sales agreement and the terms of use`
+…) yeniden kullanır; iki render yolu aynı metni basar. Slug'lar
+`_sdT('form-list')` gibi İngilizce anahtardan geçer, `_swAutoName()` çeviriyi
+ve sayfa fallback'ini `_swSlug()` ile temizler: Türkçe kurulumda widget adı
+öncekiyle aynı (`ana-sayfa-form-listesi-widget`, `sayfa-siparis-widget`),
+İngilizce kurulumda İngilizce (`home-form-list-widget`, `page-cart-widget`).
+`no-image.svg` statik dosya olduğu için çalışma anında çevrilemez; altyazı
+İngilizce ("No image available") yapıldı. Yorumlar İngilizceye çevrildi;
+iç plan belgelerine atıf yapanlar teknik gerekçeyi doğrudan yazar.
+
+**Yayınlanmış siteye etkisi.** İngilizce dilli kurulumlarda eski koşul
+penceresi ve tasarımcı otomatik widget adları artık İngilizce; Türkçe
+kurulumlarda değişiklik yok. Yer tutucu görselin altyazısı her kurulumda
+İngilizce.
+
+### Doğrulama
+
+Sandbox (Türkçe kurulum, worktree :8004): eski koşul bölümü ve modal
+`_eo_render_terms_section()` / `_eo_render_terms_modal_html()` sunucudan
+render edildi, on beş Türkçe metnin tümü `tr.json` değerleriyle çıktı,
+İngilizce anahtar sızıntısı yok. Tasarımcı ekranı (`edit_system_style.php`)
+`sdDesign.i18n` içinde slug anahtarlarını taşıyor; `SW_TYPES` +
+`_swAutoName()` hunk'ı Node'da sunulan sözlükle çalıştırıldı (yukarıdaki
+adlar). `duplicate_products.php`, `print_packing_slip.php` (Sevk İrsaliyesi),
+`find_and_replace.php`, `edit_product.php`, `edit_offer.php`,
+`view_offers.php`, `download_assistant.php` ve `no-image.svg` :8004'ten
+yüklendi. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Tasarımcıda paletten sistem widget'ı sürükleyip gerçek
+sayfa oluşturma sandbox'ta denenemedi (CDN'den jQuery yüklenmiyor, proxy
+engeli). Depo taramasının geri kalanı (2. tur oturumunun dosyaları,
+`includes/api|erp|settings`) bu PR'ın dışında; liste PR yorumundaki
+`turkish_scan.md` içinde.
+
+---
+
+## 2026.4.4 — Ürün kod bloğu, komisyon sayfalama, MySQL 5.7 uyumu, 2026.1 migration'ı (2026-09-18)
+
+Ürün sahibinin #73'teki kararları uygulanmıştır; dördü de yayınlanmış
+2026.4.3'te bulunan davranışları düzeltir.
+
+**Ürün kod bloğu (`product_builder.php`).** Kod alanı hem oluştururken hem
+düzenlerken `config.product_image_code_template`'ten doluyordu; bir ürünü
+düzenleyen operatör o ürünün `products.code` değerini değil site
+varsayılanını görüyordu. Varsayılan da yalnız gönderilen blok üç görsel
+döngü etiketini (`^^image_loop_start^^`, `^^image_url^^`,
+`^^image_loop_end^^`) birden içeriyorsa geri yazılıyordu; etiketsiz bir kod
+kaydedildiğinde bir sonraki ürün eski blokla açılıyordu. Karar: "son
+kaydetmedeki kod `common` olur ve bir sonraki ürün eklemede `code` alanı o
+kodla dolar; `common`, her ürün kaydetmede değişiklik varsa güncellenmeli."
+Düzenleme ekranı artık ürünün kendi kodunu gösterir (ürünün kodu boşsa site
+varsayılanına düşer); her kayıtta gönderilen blok varsayılandan farklıysa
+etiket şartı aranmadan yazılır. Üç etiket koruması kaldırıldı — kararın
+sözü koşulsuzdur ve koruma tam olarak güncellemeyi engelleyen şeydi. Yalnız
+`code` alanı hiç gönderilmemişse varsayılana dokunulmaz; boş gönderilen
+alan ise operatörün son bloğu sayılır ve varsayılanı boşaltır.
+
+**Komisyon listesi (`view_commissions.php`).** Sayfa bağlantıları
+hesaplanıyor ama basılmıyordu, sonuç sorgusunda `LIMIT` yoktu: her ekranda
+tüm komisyonlar geliyordu. Sorgu `LIMIT/OFFSET` aldı, bağlantılar tablonun
+altına basıldı, etkin sayfa öğesinin `class` değerindeki fazla tırnak
+kaldırıldı. Sayfa boyutu 100, tablonun istemci tarafı DataTables sayfa
+boyutuyla aynı.
+
+**Katalog widget'ları (`includes/fn/widgets_catalog.php`).** Özellik filtre
+paneli ve grup araması `WITH RECURSIVE` kullanıyordu; bu MySQL 8 ister,
+ürün MySQL 5.7'yi desteklemeye devam eder. İki sorgu da grup kümesini
+listeleme kapsamı ve fiyat aralıklarının zaten yaptığı gibi
+`_pg_catalog_group_subtree_ids()` ile PHP'de kuruyor ve `IN (...)` listesi
+geçiyor. Grup aramasında eski CTE eşleşen üründen yukarı tırmanıyordu;
+yeni kod aday alt grubun (etkin) alt ağacını aşağı yürüyüp eşleşen grubu
+arar. Fark yalnız, aday ile eşleşen ürün arasında **devre dışı** bir ara
+grup varsa ortaya çıkar: eski sorgu adayı yine gösterirdi, yenisi
+göstermez — listeleme kapsamı da o alt ağacı zaten dışlıyor. Ürün kodunda
+CTE kalmadı.
+
+**`get_generator_meta_tag()` (`includes/fn/content.php`).** İki dalı da `''`
+döndürüyordu; fonksiyon ve yedi çağrısı kaldırıldı, `<head>` çıktısında
+yalnız boş satırlar gitti.
+
+**`2026.1` migration'ı.** `custom_apps.permissions` için `JSON NOT NULL`
+MySQL 5.6 / MariaDB < 10.2'de başarısız olup yükseltme zincirini
+durduruyordu. `LONGTEXT NOT NULL` yapıldı: MariaDB JSON'u zaten LONGTEXT
+olarak saklar, sütunu JSON fonksiyonuyla okuyan yer yok, 2026.4.4 tabloyu
+düşürüyor. Yayınlanmış bir migration'a dokunma istisnası ürün sahibinin
+kararıdır (CLAUDE.md kural 12): adımı zaten geçmiş kurulumun bu satırla işi
+yoktur.
+
+### Doğrulama
+
+Sandbox'ta (MariaDB 10.11) çalıştırılarak: ürün A kod X ile oluşturuldu →
+`products.code` ve `config.product_image_code_template` X; yeni ürün formu X
+ile dolu; A'nın kodu etiketsiz Y yapıldı → ikisi de Y; kendi kodu olan ürün
+B düzenlemede kendi kodunu, kodu boş ürün site varsayılanını gösterdi; C
+oluşturulurken alan Y ile doluydu. 250 komisyon satırıyla `screen=1/2/3`
+100/100/50 satır ve 3 sayfa bağlantısı (ana kopyada 250 satır, bağlantı
+yok); satırlar silindi. Katalog widget'ı ana kopya ve düzeltilmiş ağaçta
+aynı DB'ye karşı altı senaryoda (grup 37/31/0, arama Mocha/Sandalye/Kart/
+Hediye) bayt bayt aynı çıktı; MariaDB genel günlüğü ana kopyada 10 CTE,
+düzeltilmiş ağaçta CTE'siz `IN (28)` sorgusunu gösterdi. Ziyaretçi ve panel
+sayfaları hatasız; `grep get_generator_meta_tag` boş. Düzeltilmiş ağaçtan
+ikinci bir DB'ye sıfır kurulum: 194 tablo, `config.version = 2026.4.4`,
+`custom_apps` 2026.4.4'te düşürülmüş; `ALTER TABLE … ADD permissions
+LONGTEXT NOT NULL` MariaDB'de `longtext NOT NULL` üretti.
+`php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** MySQL 5.6 / 5.7 gerçek sunucuda koşulmadı (sandbox
+MariaDB). Devre dışı ara grup içeren katalog senaryosu sandbox verisinde
+yok, o fark yalnız kod okumasıyla saptandı. Boş gönderilen kod bloğunun
+site varsayılanını boşaltması kararın sözünden çıkarılmıştır; ürün sahibi
+farklı isterse tek satırlık değişikliktir.
+
+## 2026.4.4 — ERP döviz desteği: ana para birimi, kur geçmişi, otomatik kur farkı (2026-09-18)
+
+**Neden.** ERP Faz 0'da TL sabit yazılmıştı: `'TRY'` literal'leri, `amount_try`
+/ `grand_total_try` sütunları, kur kaynağı olarak TCMB önerisi. Ürün sahibi
+bunu düzeltti: Pinegrap dünyanın her yerinden indirilip kurulan bir üründür,
+ERP'nin ev para birimi `edit_currency.php`'de ana işaretlenen para birimidir
+(`BASE_CURRENCY_CODE`), ülkeye özel veri kaynağı ya da vergi kuralı çekirdeğe
+girmez. Dövizli cari ve `fx_diff` Faz 1'den beri "henüz yapılmayanlar"
+listesindeydi; bu tur ikisini de o ilkeyle kapatıyor.
+
+**Ana para birimi.** `includes/erp/` altındaki her `'TRY'` gitti; varsayılan
+`erp_base_currency()` (= `BASE_CURRENCY_CODE`). Sürüm yayınlanmadığı için
+dönüştürülmüş sütunlar yeniden adlandırıldı: `amount_try → amount_base`
+(`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`),
+`grand_total_try → grand_total_base` (`erp_invoices`). `erp_to_try()` →
+`erp_to_base()`; `includes/erp/` dışında çağıran yoktu, takma ad bırakılmadı.
+`erp_money_out()` artık ziyaretçi kurunu **uygulamaz**: eskiden
+`prepare_price_for_output()` üzerinden `VISITOR_CURRENCY_EXCHANGE_RATE` ile
+çarpıyordu, mağaza vitrininde başka para birimi seçmiş bir yönetici ERP
+rakamlarını çevrilmiş görürdü. Yeni `erp_money_out_currency($kurus, $kod)`
+`currencies` tablosundaki simgeyle biçimler, dönüştürmez.
+
+**Opt-in.** `config.erp_fx_enabled` (varsayılan 0), `ERP_FX_ENABLED`. Kapalıyken
+fatura, tahsilat, cari ve kasa formlarında para birimi / kur alanı yok, ana para
+birimi sessizce kullanılır, kur farkı yazılmaz, `erp_fx_currencies()` boş döner.
+Kur geçmişi kapalıyken de yazılır (ucuz, zararsız) ama ERP okumaz. Her döviz
+dalı `erp_fx_enabled()` kontrol eder (`includes/erp/fx.php`).
+
+**Kur geçmişi.** `currency_rates (rate_date, base_code, currency_code) UNIQUE`,
+`rate DECIMAL(18,8)` = **ana para birimi / 1 birim döviz** — defterin çarptığı
+yön (`currencies.exchange_rate` ters yöndedir ve yerinde ezilir). Getirme
+mantığı `update_exchange_rates.php`'den `includes/fn/currency_rates.php`'ye
+taşındı: `pg_currency_rates_fetch()` (Frankfurter tek çağrıda toplu, kalanlar
+HexaRate; TLS doğrulaması **açık** — eski betik `CURLOPT_SSL_VERIFYPEER=false`
+ile çalışıyordu — `api_http_request` varsa o, yoksa cURL + `pg_curl_tls`),
+`pg_currency_rate_store()` (upsert), `pg_currency_rate($kod, $tarih)` (o gün ya
+da öncesindeki son gün: hafta sonu/tatil), `pg_currency_rate_latest()`. Betik
+mağaza kurunu eskisi gibi yazar, ayrıca günün satırlarını `currencies`
+tablosundaki + `ERP_FX_CURRENCIES`'teki her kod için geçmişe ekler. Cron
+kaydı aynı (`update_exchange_rates`, tek iş). Frankfurter listesine TRY dâhil
+ECB'nin yayımladığı kodlar eklendi; desteklenmeyen kod 404 verir ve HexaRate'e
+düşer.
+
+**Belge.** `add_erp_invoice.php` döviz açıkken "Elle girilen fatura" kartı
+kazandı (`includes/erp/invoice_manual.php` → `erp_invoice_create_manual()`):
+yön (satış/alış), cari, para birimi (ana + izinliler), kur (boşsa düzenleme
+tarihinin kaydı; yazılmışsa kayıtla eşleşiyorsa kaynak feed, değilse
+`manual`), 6 satır. Tutarlar belge para biriminde; `grand_total_base =
+erp_to_base(grand_total, kur)` tek noktada. Siparişten fatura her zaman ana
+para birimi (`order_bridge.php`: `currency = BASE`, `exchange_rate_source =
+'base'`). İade ana faturanın para birimi **ve kurunu** kopyalar; tam iade
+`grand_total_base`'i kuruşuna kopyalar. İptal ters kaydı belgenin kendi para
+birimi/kuru/ana karşılığıyla atar. `edit_erp_invoice.php` dövizli belgede kur,
+kur tarihi, kaynak ve ana karşılığı gösterir; tüm tutarlar belge para
+biriminde. Şablon yer tutucuları: `invoice.is_foreign`, `.base_currency`,
+`.exchange_rate`, `.exchange_rate_date`, `.grand_total_base`,
+`totals.grand_total_base` — ana para birimi belgede boş string döner,
+`invoice_default.html` bunları `{{#invoice.is_foreign}}` içinde basar.
+
+**Tahsilat ve kur farkı.** Tahsilat faturanın para biriminde girilir
+(`add_erp_receipt.php`: fatura seçiliyse para birimi kilitli, kur alanı boşsa
+tahsilat gününün kaydı). `erp_post_receipt()` kasanın para birimiyle
+tahsilatın para birimini, faturanın para birimiyle tahsilatı eşleştirir
+(yalnız döviz açıkken — eski kurulumlarda kasa `'TRY'` yazılıydı); tahsis
+`amount` belge para biriminde, `amount_base = erp_to_base(tahsis, tahsilat
+kuru)`. Fatura `paid` olduğunda ve `ERP_FX_AUTO_DIFF` açıkken
+`erp_fx_post_difference()` aynı transaction içinde tek `kind='fx_diff'`
+satırı atar: `Σ tahsis.amount_base − (grand_total_base − Σ iade
+.grand_total_base)`, yön satış/alışa göre, `doc_type='fx_diff'`,
+`doc_id=fatura` (idempotens anahtarı; ek sütun gerekmedi). Böylece carinin
+ana para birimi bakiyesi sıfıra kapanır. Virman iki kasanın aynı para
+biriminde olmasını ister.
+
+**Cari ve kasa.** Formlarda para birimi seçimi (döviz açıkken); hareketi olan
+kayıtta salt okunur (bakiye `balance_fc` o para birimindeki hareketlerin
+toplamı). Açılış bakiyesi cari para biriminde, tarihinin kayıtlı kuruyla
+dönüştürülür; kur yoksa hata. Listelerde dövizli kayıt kendi para biriminde
+de gösterilir; kasa toplamı yalnız ana para birimindeki kasaları toplar.
+
+**Ayarlar.** `pgset-erp` kartı: anahtar (`collapse-switcher`), `currencies`
+tablosundaki ana olmayan her kod için onay kutusu (`erp_fx_currencies[]`,
+kayıtta doğrulanıp virgülle birleşir), otomatik kur farkı anahtarı. Kayıt
+`waf_table_has_column('config','erp_fx_enabled')` ile korunur. Sabitler
+`ERP_FX_ENABLED` / `ERP_FX_CURRENCIES` / `ERP_FX_AUTO_DIFF` savunmacı okunur.
+
+**Migration 4.49** `upgrade_2026_4_4_erp_foreign_currency()`: dört
+`install_rename_column` (yeni ad varsa atlanır, tip/null/default
+`install_column_info`'dan), `currency_rates`, `config.erp_fx_enabled /
+erp_fx_currencies / erp_fx_auto_diff`, `erp_invoices.exchange_rate_source`,
+`erp_cash_transactions.exchange_rate_source`. İkinci koşuda tümü "zaten var".
+
+**Kapsam dışı.** İhracat fatura tipi (`IHRACAT` enum değeri olduğu gibi durur,
+üzerine bir şey kurulmadı); dönem sonu değerleme; TCMB ya da başka ülkeye özel
+kaynak.
+
+## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
+
+**Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip
+özel anahtarı dosya dizinine `dkim.key` olarak yazıyor (posta gönderici onu
+diskten okur, `includes/fn/mail.php`) ve aynı adı `files` tablosuna **herkese
+açık kök klasör** altında kaydediyordu; TXT kaydı metni de bu satırın
+`description` alanında saklanıyor. `router.php` son yol parçası `files.name`
+ile eşleşen her adresi `get_file.php`'ye yollar, `get_file.php` ise herkese
+açık klasördeki dosyalarda hiçbir erişim denetimi yapmaz. Sonuç: `/dkim.key`
+adresi imza özel anahtarını anonim ziyaretçiye teslim ediyordu.
+
+**Düzeltme.** `get_file.php` kayıt yüklendikten hemen sonra, klasör ve rol ne
+olursa olsun `dkim.key` adını 404 ile reddediyor — herkese açık satırı zaten
+taşıyan kurulumları da kapatır. Anahtar dosyası artık `0600` yazılıyor
+(`@chmod`; Windows/IIS'te başarısızlık yutulur). `files` kaydı ve
+`description`'daki TXT metni şimdilik olduğu gibi bırakıldı; ayar ekranı ve
+DKIM testi bunu okuyor, kaydı herkese açık klasörden çıkarmak ayrı bir karar.
+Şema yok, lang anahtarı yok. Yayınlanmış 2026.4.3'ü de etkiler (çıkarım:
+üretim eylemi ve herkese açık klasör kaydı 2026.4.4 döngüsünden eskidir;
+2026-09-12 ayar bölünmesi bunları mevcut olarak anlatır).
+
+**Operatör notu.** Bu düzeltmeden önce anahtar üretmiş siteler DKIM
+anahtarını döndürmeli (yeniden üret, DNS TXT kaydını güncelle); eski özel
+anahtar çoktan indirilmiş olabilir.
+
+### Doğrulama
+
+`php -l` iki PHP dosyasında temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnekte denenmedi.
+
+## 2026.4.4 — api.php: update_dashboard_widgets oturumsuz yazılabiliyordu (2026-09-18)
+
+`update_dashboard_widgets` eylemi genel kapının muafiyet listesindeydi: kapı
+rol ≤ 1 istediğinden, her panel rolünün kendi panosunu düzenleyebilmesi için
+eylem oradan bilerek çıkarılmıştı. Ancak muafiyet oturum ve token denetimini
+de atlıyor, case bloğu ise ikisini de kendi başına yapmıyordu. Sonuç: giriş
+yapmamış bir istemci `{"action":"update_dashboard_widgets","widgets":["default"]}`
+gövdesiyle site geneli pano düzenini (`dashboard.order_widgets`) sıfırlayabiliyor,
+herhangi bir id listesiyle de yeniden sıralayabiliyordu. Düzeltme: case bloğunun
+başına `USER_LOGGED_IN` kapısı ve `validate_token()` eklendi (chat_* bloğuyla
+aynı kalıp). Muafiyet yerinde bırakıldı, çünkü genel kapının rol kısıtı burada
+istenmiyor. Şema ve lang anahtarı değişmedi. Etki pano düzeniyle sınırlıydı,
+veri kaybı yok. Eylem ve muafiyet 2026.4.4'ten eski olduğundan yayımlanmış
+2026.4.3 de çıkarımla etkileniyor; 2026.4.4 iç tur 4.9 kaydı yalnız değeri
+filtrelemişti. İstemci `welcome.php` (`pg_save_widget_order`) zaten `token`
+gönderiyor, sürükleme ve sıfırlama davranışı değişmiyor.
+
+### Doğrulama
+
+`php -l pinegrap/api.php`, `php tools/lint.php` ve `php tools/check_lang.php`
+temiz. Çalışan örnekte denenmedi.
+
+## 2026.4.4 — Kimlik doğrulamasız iş betikleri ve kısa bağlantı rol kapısı (2026-09-18)
+
+**Belirti.** `update_exchange_rates.php` ve `waf_ranges_job.php`, `send_to`
+parametresi yokken `validate_user()` çağırmıyordu: kullanıcı kimliği yalnız
+yönlendirme için gerekiyormuş gibi ele alınmıştı. Sonuç, anonim bir GET'in
+döviz kurlarını (`currencies.exchange_rate`) ve WAF bot IP aralıklarını
+yeniden yazabilmesiydi. Yayınlanmış 2026.4.3'ü de etkiler (#83).
+
+**Düzeltme.** `pg_cron_is_background_run()` (`includes/fn/cron.php`): CLI
+koşusu ya da `job.php` dağıtıcısının include'dan hemen önce tanımladığı
+`PG_CRON_DISPATCH` sabiti arka plan koşusu sayılır ve kullanıcı gerekmez.
+Diğer her istek bir web isteğidir ve düğmeyi sunan panel ekranıyla aynı
+kapıdan geçer: kurlar için `validate_ecommerce_access()`
+(`view_currencies.php` ile aynı), WAF için `validate_area_access('manager')`
+(güvenlik duvarı ayar ekranıyla aynı). Neden anahtar ya da IP kontrolü
+değil: crontab satırları zaten CLI'dır, dağıtıcı zaten süreç içidir; ek bir
+sır dağıtmak yeni bir yapılandırma adımı, loopback kontrolü ise ters proxy
+arkasında yanlış pozitif demektir. `send_to` açık yönlendirmesi #64'te,
+`job.php`'nin kendi anonim HTTP kapısı #68'de ayrı ele alınır.
+
+**Kısa bağlantı.** Karar: kısa bağlantı oluşturma rol 0–2'ye aittir.
+`add_short_link.php` `'user'` yerine `'manager'` kapısına alındı ve rol 3'e
+özel sayfa düzenleme hakkı kontrolü ölü kod olarak kaldırıldı; Dosya
+Yöneticisi'nin `explorer_short_link_create` / `explorer_short_link_duplicate`
+eylemleri sunucu tarafında rol 3'ü reddeder; menüdeki ve liste ekranındaki
+"Oluştur" ile sayfa bilgi kartındaki eylem rol 3'e gösterilmez. Mevcut
+bağlantıları düzenleme ve silme (`edit_short_link.php`) değişmedi.
+`includes/` değiştiği için yayından önce bütünlük özeti yeniden üretilmeli.
+
+## 2026.4.4 — Panel ekranlarında eksik rol kapıları: anahtar kodu silme, araç çubuğu, migration, sayfa düzenleme (2026-09-18)
+
+**Belirti.** Panel ekranlarının her rolle tek tek gezilmesinde dört ekran
+rol modelinin dışına düştü. (1) `delete_key_codes.php` yalnız
+`validate_user()` çağırıyordu; e-ticaret bayrağı olmayan rol-3 kullanıcı
+gerçek "Anahtar Kodlarını Sil" ekranını (Sil düğmesi ve geçerli token
+dahil) görüyordu ve POST dalı yalnız token'a bakıp `TRUNCATE key_codes`
+çalıştırıyordu — `view_key_codes.php`, `add_key_code.php`,
+`edit_key_code.php`, `import_key_codes.php` hepsi `validate_ecommerce_access()`
+ile kapalıyken. (2) `toolbar.php` `page_id` ile istenen her sayfanın araç
+çubuğunu, sayfa adıyla birlikte, klasör erişimine bakmadan çiziyordu:
+sitede 403 alan özel klasördeki bir sayfanın adı ve eylemleri rol-3
+kullanıcıya `toolbar.php?page_id=…` üzerinden görünüyordu. (3) `edit_page.php`
+`$output_button_bar`, `$output_page_type_selector` ve
+`$output_page_type_properties` değişkenlerini yalnız sayfa türü bloğunun
+içinde başlatıyordu; rol-3 kullanıcı, kendisine açık olmayan türdeki bir
+sayfayı (ör. "form item view") düzenlerken o blok atlanır, şablon üçünü de
+basar — istek başına üç "Undefined variable" bildirimi. (4) `migration.php`
+özellik kapalıyken (`MIG` tanımsız) "Bu özellik şu anda kullanılamıyor"
+sayfasını `validate_user()`'dan önce basıyordu; oturumsuz istek giriş
+yönlendirmesi yerine bu sayfayı alıyordu.
+
+**Düzeltme.** `delete_key_codes.php` diğer anahtar kodu ekranlarıyla aynı
+kapıyı aldı: `validate_user()`'ın hemen ardından
+`validate_ecommerce_access($user)`; GET ve POST dalları birlikte kapanır.
+`toolbar.php` sayfa satırını okuduktan sonra klasöre `check_view_access()`
+uyguluyor — sitenin sayfayı sunmadan önce uyguladığı test — ve tutmazsa
+standart "Erişim reddedildi." hatasını basıyor. Düzenleme hakkı değil
+görüntüleme hakkı seçildi, çünkü araç çubuğu herkese açık bir sayfayı
+görüntüleyen her panel kullanıcısı için (yalnız takvim ya da form yöneten
+kullanıcı dahil) sayfanın içine gömülü çizilir; düzenleme hakkına bağlamak o
+kullanıcıların gördüğü çubuğu kırardı. `edit_page.php` üç değişkeni sayfa
+türü bloğundan önce boş dizgeyle başlatıyor; bloğun içindeki eski
+`$output_button_bar = ''` satırı kaldırıldı. `migration.php` önce
+`validate_user()` ve `validate_area_access($user, 'designer')`, sonra `MIG`
+denetimi; `MIG` açıkken sıra zaten böyleydi. Yeni lang anahtarı yok, şema
+değişikliği yok.
+
+### Doğrulama
+
+Sandbox (PHP 8.4, MariaDB 10.11), `ROLETEST_user` (rol 3, klasör 188 ve 290'da
+düzenleme hakkı, e-ticaret bayrağı yok), `ROLETEST_ecomuser` (rol 3 +
+e-ticaret), `ROLETEST_designer`, `ROLETEST_manager`, `admin`.
+`GET delete_key_codes.php` rol 3: önce 200 gerçek ekran (66 KB, token
+alanı), sonra "Erişim reddedildi."; aynı kullanıcının önceki ekranından
+alınan geçerli token ile POST: "Erişim reddedildi.", `key_codes` satır sayısı
+değişmedi. Ecomuser, yönetici, tasarımcı, müdür: önce/sonra aynı ekran.
+`GET toolbar.php?page_id=291` (özel klasör 104'teki `exam`; sitede `/exam`
+aynı kullanıcıya 403) rol 3: önce 200, sayfa adı iki kez; sonra "Erişim
+reddedildi.". `page_id=98` (herkese açık klasör) ve `page_id=85` (kullanıcının
+hakkı olan klasör): önce/sonra aynı çubuk — sitede `/checkout-preview-terms`
+zaten aynı kullanıcıya `toolbar.php?page_id=98` iframe'iyle sunuluyor.
+`GET edit_page.php?id=85` rol 3 ve ecomuser: önce üç bildirim
+(`:3392`, `:3400`, `:3448`), sonra sıfır; HTML birebir aynı. Rol 0–2: önce/
+sonra sıfır bildirim, HTML aynı (tek fark menü günlük sayacı ve eş zamanlı
+sandbox işlerinin değiştirdiği sayfa seçim listeleri). Oturumsuz
+`GET migration.php`: önce 200 "Bu özellik şu anda kullanılamıyor", sonra 302
+`index.php?send_to=%2Fpinegrap%2Fmigration.php`; oturumlu roller önce/sonra
+aynı "kullanılamıyor" sayfası. `php tools/lint.php` ve
+`php tools/check_lang.php` temiz.
+
+**Açık kalan:** `toolbar.php` var olmayan `page_id` için satır alanlarını
+denetimsiz okumaya devam ediyor (ayrı bulgu). `migration.php` kapısının
+`designer` mı `administrator` mı olacağı (menü koşulu `administrator`) ürün
+kararı, dokunulmadı. `MIG` açık kurulumda migration ekranı koşturulmadı.
+
+## 2026.4.4 — Ziyaretçi sayfalarında tanımsız USER_* sabitleri (2026-09-18)
+
+**Belirti.** `initialize_user()` (`includes/fn/auth.php`) `USER_START_PAGE_ID`,
+`USER_TIMEZONE`, `USER_MEMBER_ID` ve `USER_EXPIRATION_DATE` sabitlerini yalnız
+oturum açmış kullanıcı dalında tanımlıyor; ziyaretçi dalı sadece
+`USER_LOGGED_IN`, `USER_ID`, `USER_CONTACT_ID`, `USER_USERNAME`,
+`USER_EMAIL_ADDRESS` tanımlıyor. Buna karşılık `get_folder_view_screen_content.php`
+(satır 32–36) `USER_START_PAGE_ID`'yi, `get_my_account.php` (26–27, 122–123)
+`USER_START_PAGE_ID` ile `USER_TIMEZONE`'u, `includes/templates/my_account.php`
+ve `my_account_system.php` ise `USER_MEMBER_ID` / `USER_EXPIRATION_DATE`'i
+giriş kontrolü yapmadan okuyordu. PHP 8'de tanımsız sabit ölümcül `Error`
+olduğundan herkese açık bir klasördeki "Klasör Görünümü" sayfası her anonim
+isteğe HTTP 500 (beyaz sayfa) veriyordu; PHP 7'de aynı satır sabit adını
+dizge olarak kullanıp `get_page_name('USER_START_PAGE_ID')` çağırıyordu,
+yani sessizce yanlış çalışıyordu. Sunuculardaki 2026.4.3 bu hatayı taşıyor.
+
+**Düzeltme.** Sabitler ziyaretçi dalında `0`/`''` ile tanımlanmadı; tüketen
+kod bunları "oturum açmış kullanıcının değeri" olarak yorumluyor ve boş bir
+varsayılan, eksik girişi gizleyip özelliği atlamak yerine yanlış veriyle
+çalıştırırdı. Bunun yerine okuma yapılan yerler kapatıldı:
+
+- `get_folder_view_screen_content.php`: "Başlangıç Sayfam" bağlantısı yalnız
+  `defined('USER_START_PAGE_ID')` iken hesaplanıyor; bağlantı zaten oturum
+  açmış kullanıcıya ait bir özellik.
+- `get_my_account.php`: `get_my_account()` oturum açmış kullanıcı yokken hiçbir
+  sabiti okumadan `''` döndürüyor. `get_page.php` ziyaretçiyi "Hesabım" tipi
+  sayfadan kayıt girişine yönlendiriyor, ancak `get_page_content()` bu kapı
+  olmadan da çağrılıyor (e-posta gövdesi üretimi, SEO analizi); aynı ölümcül
+  hata o yollarda da geçerliydi.
+- `includes/templates/my_account.php`, `my_account_system.php`: üyelik bloğu
+  `defined('USER_MEMBER_ID') && USER_MEMBER_ID` ile açılıyor; `USER_EXPIRATION_DATE`
+  okumaları bu bloğun içinde kalıyor.
+
+`_render_system_widget_my_account()` (tasarımcı widget'ı) zaten
+`USER_LOGGED_IN` kontrolü yapıyordu, dokunulmadı.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19, MariaDB 10.11) üzerinde koşturuldu. Başlangıç sitesinin
+`folder view` ve `my account` sayfaları herkese açık klasöre kopyalandı
+(`test-folder-view-public`, `test-my-account-public`). Düzeltme öncesi anonim
+`GET /test-folder-view-public` → HTTP 500, 0 bayt; hata günlüğü
+`Uncaught Error: Undefined constant "USER_START_PAGE_ID" in
+get_folder_view_screen_content.php:32` (`get_page_content.php:2709` ←
+`get_page.php:2684`). Düzeltme sonrası aynı istek → HTTP 200, klasör ağacı ve
+"erişebildiğiniz sayfa bulunamadı" iletisiyle gerçek içerik; o URI için yeni
+günlük satırı yok. Yönetici olarak dört sayfa (`/test-folder-view-public`,
+`/test-my-account-public`, `/my-account`, `/my-account-content`) öncesi ve
+sonrası yakalanıp karşılaştırıldı: yalnız görüntülenme sayacı ve "son
+düzenleme" süresi değişti; "Başlangıç Sayfam" bağlantısı ve hesap bilgileri
+aynı. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** "Hesabım" tipi bir sayfa anonim ziyaretçiye `get_page.php:282`
+yönlendirmesi nedeniyle hiç ulaşmıyor; `get_my_account()` içindeki erken dönüş
+bu yüzden ön yüzden koşturarak doğrulanamadı, yalnız kodla ve yönetici
+oturumunda içeriğin değişmediğiyle doğrulandı. E-posta/SEO yollarında
+`get_page_content()` ile "Hesabım" sayfasının üretildiği senaryo koşturulmadı.
+
+## 2026.4.4 — İçerik ekranlarında silinmiş/olmayan kayıt kimliği (2026-09-18)
+
+**Belirti.** Sorgu dizesindeki `id` / `page_id` silinmiş ya da hiç var
+olmamış bir kayda işaret ettiğinde altı ekran satırı okumadan devam ediyordu.
+(1) `duplicate_style.php` kaynak satır yokken `INSERT INTO style` çalıştırıp
+adı ve türü boş bir stil satırı bırakıyordu ("Tüm Sayfa Stilleri" listesinde
+adsız bir satır belirir), ardından `edit__style.php?id=…` gibi bozuk bir
+adrese yönlendiriyordu; ayrıca klasik stillerde `NULL` olan
+`style_tree_json` kopyaya `''` olarak yazılıyordu. (2) `get_file.php`
+doğrudan istendiğinde (`/pinegrap/get_file.php?name=X`; dosya gerçek
+olduğundan yeniden yazma kuralları onu `router.php`'ye göndermez) `db`
+sınıfı tanımsız olduğu için ilk sorguda ölümcül hatayla HTTP 500 veriyordu.
+(3) `view_fields.php` ve `add_field.php` sayfa satırı yokken sayfa türünden
+tablo adı üretip (`_pages`) ham "Query failed. Table … doesn't exist"
+metnini — veritabanı adıyla birlikte — HTTP 200 ile basıyordu. (4)
+`edit_file.php` ve `edit_custom_style.php` silinmiş kimlik için boş bir
+düzenleyici çiziyordu (dosya ekranı istek başına 44 uyarı); aynı kimlikle
+tekrar "Sil" gönderildiğinde `edit_file.php` `unlink()`'i çıplak dosya dizini
+yoluyla çağırıyordu (bugün dizin olduğu için reddediliyor, ama bir
+yeniden düzenleme uzağında yanlış dosyayı silme riski).
+
+**Düzeltme.** Her ekranda ilk `SELECT`'in hemen ardından satır yoksa
+`output_error(lang('Sorry, the item/page could not be found.'), 404)` —
+`edit_submitted_form.php`'nin zaten uyguladığı desen. `duplicate_style.php`
+kapıyı `INSERT`'ten önce alıyor ve `style_tree_json` için kaynak `NULL` ise
+`NULL` yazıyor. `get_file.php` en başta `class_exists('db', false)` yoksa
+düz `HTTP/1.1 404` ile çıkıyor: bu dosya yalnız `router.php` üzerinden
+çalışır ve dosyalar kendi adresleriyle sunulur; `init.php` yüklemek bilerek
+seçilmedi (dosya `functions.php`'yi hiç yüklemez, başlığında anlatıldığı
+gibi). `edit_file.php`'de kapı erişim denetiminden önce durduğundan GET ve
+POST (sil) dallarını birlikte kapatır. Şema yok, yeni lang anahtarı yok.
+Yayınlanmış 2026.4.3'ü de etkiler: (1) veri kirliliği, (2) üretimde
+erişilebilir 500.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19, MariaDB 10.11), yönetici oturumu. Önce/sonra:
+`duplicate_style.php?id=1766` (yok) → 302 + 58 günlük satırı + boş stil
+satırı / **404, satır yok, 0 yeni uyarı**; `id=760` (var) → her ikisinde 302
+ve kopya satırı, tek fark `style_tree_json` artık `NULL` (kaynak gibi).
+`GET /pinegrap/get_file.php?name=Blue.css` → 500 + fatal / **404, günlük
+boş**; `GET /Blue.css` (router yolu) → 200, 5923 bayt, iki çıktı birebir.
+`view_fields.php?page_id=2085`, `?page_id=abc`, `add_field.php?page_id=2085`
+→ 200 "Query failed. Table 'pinegrap_sandbox._pages' doesn't exist" /
+**404 "Üzgünüz, sayfa bulunamadı."**; `page_id=296` (var) → 200, HTML aynı.
+`edit_file.php?id=99999`, `?id=abc` → 200 boş düzenleyici, 44 uyarı / **404,
+0**; POST `id=99999 delete=Delete` → 302 + `unlink(…/data/files/): Is a
+directory` / **404**; `id=6909` (var) → 200, 250208 bayt, HTML aynı.
+`edit_custom_style.php?id=1766`, `?id=abc` → 200, 10 uyarı / **404, 0**;
+`id=760` → 200, HTML aynı. `php tools/lint.php` ve `php tools/check_lang.php`
+temiz.
+
+**Açık kalan:** 404 sayfasında hâlâ görülen tek günlük satırı
+(`h(null)`, `liveform.class.php:1347` ← `get_custom_form_screen_content.php:799`,
+alt bilgi form widget'ı) bu ekranlardan bağımsız, önceden bilinen bir
+uyarıdır. `edit_custom_style.php:39`'daki denetlenmeyen `mysqli_query`
+sonucu (ayrı kayıt) ve `edit_custom_style.php` POST dalında var olmayan
+kimlikle "Sil" (0 satır etkileyen `DELETE`, veri riski yok) bu değişikliğin
+dışındadır. PHP 7.x üzerinde koşturulmadı.
+
+## 2026.4.4 — Sınır girdilerinde takvim/ziyaretçi raporu 500'ü ve ham SQL sızıntısı (2026-09-18)
+
+**Belirti.** Dört ekran sorgu dizgesinden gelen değeri, gezinme
+bağlantılarının ürettiği biçimde varsayarak doğrudan tarih aritmetiğine ya
+da SQL metnine koyuyordu. (1) `includes/fn/calendar.php` `get_calendar()`
+`?date=` değerini `-` ile bölüp parçaları `mktime()`'a veriyordu;
+`31/02/2026` ya da `abc` gibi bir değerde PHP 8 `TypeError` fırlatıyor ve
+takvim sayfası **oturum açmamış ziyaretçiye HTTP 500** veriyordu. Değer
+oturumda saklandığı için aynı ziyaretçi `?date=` olmadan da 500 almaya
+devam ediyordu. (2) `view_visitor_report.php` ve `view_order_report.php`
+`start_*`/`stop_*` parçalarını olduğu gibi oturuma yazıyordu; bir sonraki
+istekte `"abc" - 1` `TypeError` veriyor (`:525` / `:480`) ve rapor o
+oturum boyunca açılmıyordu; `0000` yılı `-1`/`1999` gibi anlamsız aralık
+üretiyordu.
+(3) `edit_menu_item.php` boş, bilinmeyen ya da sayısal olmayan `id` ile
+"üstteki menü öğesi" sorgusunu boş `sort_order <` karşılaştırmasıyla
+kuruyor, sorgu başarısız oluyor ve başlangıç yapılandırması `debug=1`
+olduğundan **sorgunun tam metni ve MySQL hatası ekrana basılıyordu**.
+(4) `add_field.php` sayfa/ürün grubu/ürün kimliği olmadan sıralama ön
+doldurma sorgusunu boş `WHERE` ile çalıştırıyor ve aynı şekilde SQL
+hatasını gösteriyordu.
+
+**Düzeltme.** Değer, bağlantıların ürettiği biçime uymuyorsa daha kaynağa
+inmeden düşürülüyor; kodun boş değer için zaten yaptığı geri dönüş
+kullanılıyor. `get_calendar()` tarihi görünüm `switch`'inden önce bir kez
+denetliyor (üç yalnız-rakam parça, `checkdate()` ile gerçek bir gün,
+`AA-GG-YYYY`); uymuyorsa `$date = ''` ve aylık/haftalık görünüm bugüne
+düşüyor. Ziyaretçi ve sipariş raporları yalnız `checkdate()` geçen tam sayı aralığını,
+tarih değiştirici bağlantılarıyla aynı sıfır dolgulu biçimde oturuma
+yazıyor; geçersiz aralıkta önceki aralık korunuyor, eski bir oturumda
+sayısal olmayan yıl varsa varsayılan aralığa sıfırlanıyor. Menü öğesi
+ekranı ilk sorgu satır döndürmediğinde `output_error(lang('Sorry, the
+item could not be found.'), 404)` ile duruyor (`edit_submitted_form.php`
+deseni). Alan ekleme ekranı form filtresi boşken ön doldurma sorgusunu
+atlıyor ve konumu `top` sayıyor. `config.debug` varsayılanına ve
+`output_error()`'a dokunulmadı; ham hata metninin gösterilmesi ayrı bir
+karar.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19 / MariaDB 10.11, `turkish_default`). Öncesi: anonim
+`GET /calendar?date=31/02/2026` ve `?date=abc` → HTTP 500, 0 bayt,
+günlükte `mktime(): Argument #4 ($month) must be of type ?int, string
+given … calendar.php:48`; aynı çerezle `GET /calendar` de 500. Yönetici:
+`view_visitor_report.php?id=1&start_year=abc…` ikinci istekte 500,
+`Unsupported operand types: string - int … view_visitor_report.php:525`,
+sonra düz `?id=1` de 500; `view_order_report.php?start_year=abc…` aynı
+şekilde ikinci istekte 500 (`view_order_report.php:480`), sonra düz istek
+de 500. `edit_menu_item.php`, `?id=`, `?id=abc` → 200
+ve ekranda "Query failed. SELECT id FROM menu_items WHERE (menu_id = '')
+AND (sort_order < ) …" + MySQL hatası. `add_field.php`, `?page_id=` →
+200 ve "Query failed. You have an error in your SQL syntax …".
+Sonrası: aynı isteklerin hepsi 200 (menü öğesi: 404 "Üzgünüz, öğe
+bulunamadı."), o istekler için yeni günlük satırı yok. Geçerli yol:
+`/calendar`, `/calendar?date=02-01-2026`, `?view=weekly&date=02-15-2026`,
+`edit_menu_item.php?id=329`, `add_field.php?page_id=183`, geçerli yıl
+aralığıyla ziyaretçi ve sipariş raporları — öncesi/sonrası HTML'leri
+captcha rastgelesi ve ziyaret sayacı dışında birebir aynı. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** `add_field.php` form bağlamı olmadan hâlâ boş bir form
+ekranı çiziyor (uyarılarla); erken 404, sayfa satırı kapısıyla birlikte
+ayrı ele alınmalı. `config.debug=1` başlangıç varsayılanı ham MySQL
+hatasını göstermeye devam ediyor. PHP 7.x üzerinde koşturulmadı.
+
+## 2026.4.4 — Sepette sıfır/geçersiz miktar ve önizlemede eksik fatura adresi (2026-09-18)
+
+**Belirti.** Üç ayrı hata, üçü de yayınlanmış 2026.4.3'te. (1) Ürün detay
+formu (`catalog_detail.php`) miktarı `^\d+$` ile denetliyordu; `0` bu
+denetimden geçiyor ve henüz sepette olmayan ürün için `order_items`
+tablosuna `quantity=0` satırı yazılıyordu; sepet ekranı bu satırı `₺0.00`
+tutarla gösteriyordu.
+(2) JSON `add_to_cart` ucu (`api.php` → `add_to_cart.php`) `quantity`
+anahtarını `isset` olmadan okuyordu — mağaza düğmesi bu anahtarı hiç
+göndermediği için her normal tıklamada bir `Undefined array key` uyarısı —
+ve `-5` ya da `abc` gibi değerleri olduğu gibi `add_order_item()`'a
+geçiriyordu; SQL'e giren değer `0`'a dönüşüyor ve yine `quantity=0` satırı
+oluşuyordu. Yanıt `status:success` idi. (3) Başlangıç sitelerinin sipariş
+önizleme düzenleri (`data/backups/turkish_default/layouts/101.php`,
+`1077.php` ve `english_default` eşleri) fatura adresini
+`if ($$billing_address_1)` ile yazıyordu — çift `$` bunu bir değişken-değişken
+yapıyor, `$Test Sok. No 1` adında bir değişken aranıyor, koşul hiç
+sağlanmıyor ve **fatura bloğunda sokak satırı hiç basılmıyordu**
+(`ECOMTEST Musteri / Istanbul, Istanbul 34000`); PHP ayrıca her önizlemede
+`Undefined variable` kaydediyordu.
+
+**Düzeltme.** `catalog_detail.php` miktar denetimine `(int) < 1` koşulu
+eklendi; sıfır artık negatif değerlerle aynı "Lütfen geçerli bir miktar
+girin." yoluna düşüyor. `add_to_cart.php` miktarı isteğe bağlı sayıyor
+(anahtar yok ya da boş → 1); anahtar varsa yalnız pozitif tam sayı kabul
+ediyor, aksi hâlde ucun zaten kullandığı `{"status":"error","message":…}`
+biçiminde aynı çevrili iletiyi döndürüyor. Dört düzen dosyasında fazla `$`
+silindi. `add_order_item()` bilerek değiştirilmedi: çağıranlar denetliyor,
+fonksiyon sözleşmesi aynı kaldı.
+
+**Mevcut kurulumlar için not.** Düzen dosyaları kurulumda
+`data/backups/<site>/layouts/` altından `data/layouts/` altına kopyalanır;
+bu düzeltme yalnız yeni kurulumlara kendiliğinden ulaşır. Çalışan bir sitede
+`data/layouts/101.php` (ve varsa `1077.php`) içindeki `$$billing_address_1`
+elle `$billing_address_1` yapılmalı ya da düzen yeniden içe aktarılmalı.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19, MariaDB 10.11, Türkçe başlangıç sitesi), taze
+ziyaretçi oturumu. Öncesi: `POST catalog_detail.php quantity=0` →
+`/cart`'a yönlendirme ve `order_items` satırı `quantity=0`; JSON
+`add_to_cart quantity:-5` ve `"abc"` → `status:success`, satır
+`quantity=0`; miktarsız normal istek → `add_to_cart.php:24` uyarısı;
+`/checkout-preview` fatura bloğunda sokak yok, günlükte
+`Undefined variable $Test Sok. No 1 @ data/layouts/101.php:1069`.
+Sonrası: `quantity=0` → ürün sayfasına geri, "Lütfen geçerli bir miktar
+girin.", satır yok; `-5` / `abc` / `0` → `{"status":"error","message":"Lütfen
+geçerli bir miktar girin."}`, satır yok; `2` → `quantity=2`; miktarsız istek
+→ `quantity=1`, uyarı yok; önizleme fatura bloğu `ECOMTEST Musteri / Test
+Sok. No 1 / Istanbul, Istanbul 34000`, o satırdan uyarı yok. Öncesi/sonrası
+önizleme HTML'i karşılaştırıldı: token ve captcha dışında tek fark eklenen
+sokak satırı. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Sepet sayfasındaki miktar güncelleme (`shopping_cart.php
+submit_update`) ve hızlı sipariş widget'ı (`cart_action.php`) bu değişiklikte
+ele alınmadı; `add_order_item()` hâlâ verilen miktarı denetimsiz yazıyor,
+yeni bir çağıran eklenirse aynı denetim orada da gerekir. Bağış tipi ürünün
+miktar dalı (`selection_type == 'donation'`) değiştirilmedi. Mevcut
+kurulumlardaki `data/layouts/` kopyaları yukarıdaki notla elle düzeltilmeli.
+
+## 2026.4.4 — ERP: satır KDV oranı, kısmi iade sonrası fatura durumu (2026-09-18)
+
+**Belirti (issue #80).** (1) `erp_order_lines()` satır KDV oranını
+`round(tax_total × 100 / line_total, 3)` ile yuvarlanmış kuruş tutarlarından
+geri türetiyordu: 7015/38970 → %18.001, 361/2008 → %17.978; ürün oranı %18.
+Belge ve PDF'te "%18.001" yazıyordu. (2) Kısmi iade bu türetilmiş oranla
+`erp_apply_rate(1004, 17.978)` = 180 kuruş KDV alıyordu (doğrusu 181), iade
+belgesi 1184 yerine 1185. (3) `erp_invoice_refresh_paid()` tahsisi tam
+`grand_total`'a karşı ölçüyor, `erp_invoice_open_amount()` ise iadeyi
+düşüyordu: kısmi iadeden sonra açık tutarın tamamı tahsil edilince ekran
+"Kalan 0.00" diyor, ek tahsilat "zaten kapalı" ile reddediliyor ama fatura
+`partially_paid`, `payment_date` boş, sipariş `paid_at = 0` kalıyordu.
+
+**Düzeltme.** `erp_line_tax_rate()` (`order_bridge.php`): önce
+`products.tax_rate` denenir (sorguya `product_tax_rate` eklendi), saklanan
+vergiyi `erp_apply_rate()` ile aynen üretiyorsa o alınır; yoksa oran 0→3
+ondalıkta en sade eşleşene oturtulur; hiçbiri tutmazsa eski oran. Tutarlar
+değişmez. `erp_returnable_lines()` satıra `returned_tax` ekler; iade satırının
+KDV'si kalanla sınırlanır, satırı boşaltan parça kalanı aynen alır (iki yarı
+181 + 180 = 361). `erp_invoice_refresh_paid()` `paid >= grand_total −
+erp_invoice_returned_total()` ile karşılaştırır; `paid`e geçince boş
+`payment_date`'i kapatan tahsilatın tarihiyle doldurur ve `Offline Payment`
+sipariş için `pg_order_mark_paid()` çağırır. İade açılınca ve iade iptal
+edilince ana fatura yeniden hesaplanır. Hediye kartı (#72) bu PR'ın dışında.
+
+### Doğrulama
+
+Sandbox'ta CLI betiği (issue'daki rakamlarla): fatura satırları %18.000
+(önce 18.001 / 17.978); 1 adet iade KDV 181 / toplam 1185 (önce 180 / 1184);
+açık tutarın tamamı tahsil edilince fatura `paid`, `payment_date` dolu,
+`orders.paid_at` set (önce `partially_paid`, boş, 0); ikinci iade 180 (toplam
+361); iade iptali durumu `partially_paid`e geri düşürür. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz. UI ekranı görsel olarak gezilmedi.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
@@ -1811,7 +2607,6 @@ Yeni metinler yazılımın kendi sözlüğüne uyduruldu: `Accounts` → "Cari H
 Bir tuzak: `lang($kosul ? 'A' : 'B')` yazımı her iki metni de tarayıcıdan
 gizliyor. `$kosul ? lang('A') : lang('B')` olarak düzeltildi.
 
-
 ## 2026.4.4 — ERP: iade ve iptal (2026-09-16)
 
 Kesilmiş fatura düzenlenmez. Belge karşı tarafın elinde ve onun elindekinden
@@ -1865,7 +2660,6 @@ hesaplanıyor.
   kalanı 172174'e, carinin bakiyesi 172174'e döndü.
 - Tüm cari ve kasa bakiyeleri her adımda kendi defterleriyle birebir.
 
-
 ## 2026.4.4 — ERP: fatura kapatma (2026-09-16)
 
 Tahsilat zaten cariyi alacaklandırıyor ve bakiyeyi düşürüyordu. Eksik olan
@@ -1912,7 +2706,6 @@ hazır.
 - Tüm cari ve kasa bakiyeleri kendi defterleriyle birebir (`[agrees]`).
 - 2026.4.4 zinciri baştan koşturuldu: 1 ifade uygulandı (sürüm satırı), şema
   adımlarının tamamı "zaten var" dedi — yeni adım dahil idempotent.
-
 
 ## 2026.4.4 — ERP modülünün iskeleti (2026-09-16)
 
@@ -3424,7 +4217,6 @@ renk seçicilerindeki "Bg primary", "Primary Subtle", "Body Emphasis",
 "Opacity 50" etiketleri literal değil — `titleCase()` bunları **sınıf adının
 kendisinden** üretiyor (`primary-subtle` → "Primary Subtle"). Karar verildi: **öyle kalıyor.**
 
-
 ---
 
 ## 2026.4.4 — Sepet widget'ı: düzenli ödeme planı müşteri tarafından düzenlenebilir; satır kurucuları liveform'u tüketilmeden önce okur (2026-09-16)
@@ -4128,6 +4920,7 @@ defterinde kalması, burada eklentinin zamanlayıcısının kendini yeniden
 kurmasıydı. CLAUDE.md'ye iki kuralı yan yana koydum.
 
 ---
+
 ## 2026.4.4 — Özel form alanı olarak imza (2026-09-13)
 
 **İstek (Erdal):** teklif onayı ve sözleşme için imza alanı. "Valid bir imza
@@ -4384,6 +5177,7 @@ doğrulayıcısı cevaplıyor. Zinciri burada doğrulamak kök sertifika deposu
 tutmayı gerektirir ve o ayrı bir iştir.
 
 ---
+
 ## 2026.4.4 — Şema sürümü Yapılandırma ekranından (2026-09-13)
 
 **İstek (Erdal):** beta kurulumlara aynı sürüm üst üste atılıyor ve yükseltmenin
@@ -4419,6 +5213,7 @@ Kayıt: değişiklik `log_activity` ile eski ve yeni numarayla birlikte yazılı
 Ekran zaten `validate_area_access($user, 'administrator')` arkasında.
 
 ---
+
 ## 2026.4.4 — Bütünlük referansında dosya olmayan girdi (2026-09-13)
 
 **Belirti (Erdal, beta site):** site günlüğünde "Değiştirilmiş veya eksik
@@ -4476,6 +5271,7 @@ Dokunulan: `includes/fn/system_status.php` (`pg_integrity_reference_files()`),
 `clean_up.php`, `_software_create_hash.php`.
 
 ---
+
 ## 2026.4.4 — Sayfa bilgileri ve sayfa eylemleri çubuktan SEO paneline (2026-09-13)
 
 Sitede gezinen yöneticinin sayfa hakkında bildiği her şey — erişim türü,
@@ -7396,7 +8192,6 @@ yoksa test ettiği şey dosya olmaz.
 | Son açılanlar | 6 açılıştan 4'ü kalıyor, tekrar yok, sıra en yeniden |
 | Tema | açık ve koyu; bütün renkler Bootstrap jetonlarından |
 
-
 ### Geçiş: `settings2.php`
 
 Bölme canlı sitede denenirken eski ekran yerinde bırakıldı: `settings.php`
@@ -7763,8 +8558,6 @@ aynı anda görünür.
 **Doğrulama.** Dokuz kutu biçimi (bölünmüş yarı, kart gövdesi, `.pg-list`,
 özet satırlı gövde) ölçüldü: hepsinde mesaj kutusunu dolduruyor, merkez sapması
 0 piksel, hiçbir kutu taşmıyor, bölünmüş kart satır yönünde kalıyor.
-
-
 
 4.22–4.35 arası on dört yeni alt adım (çok sayfalı tasarımcı, tasarımcı iş
 birliği, dış API, pazaryerleri, web push, bildirim okundu kaydı, ürün KDV
@@ -9841,7 +10634,6 @@ hiçbiri hangisi olduğunu söylemiyordu. Ayrı başlıklara ayrıldı
 yalnız kırmızı hâli çiziliyordu. İpucu kapalıyken, yani iyi durumda, panel o
 kontrol hakkında hiçbir şey söylemiyordu; ağırlığın tutunacağı bir kayıt da
 olmuyordu. `else` dalı eklendi.
-
 
 Kart tek kolonluydu ve içinde on dokuz kutu vardı. Kutuların on ikisi bir
 okumaydı ("SSL · Tamam"), yedisi bir işti ("Önbellek · Temizle") ve **ikisi
@@ -15892,8 +16684,6 @@ bayat değer döndürebiliyor — sınıf kaldırıldığı hâlde eski genişli
 Ayrık bir eleman üzerinde aynı sınıfla ölçmek doğru değeri veriyor, ekran
 görüntüsü de öyle. Bu yüzden "daralma bozuldu" diye bir tur boşa harcandı;
 bozulan bir şey yoktu.
-
-
 
 ### Olay
 

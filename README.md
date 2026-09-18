@@ -53,7 +53,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 
 * Scheduled e-mail campaigns with mail-merge variables and opt-in management
 * MailChimp synchronization, contact management, affiliate & commission tracking
-* Short links, live chat module, and a REST API (`apps.php`) for custom integrations
+* Short links, live chat module, and an external API (`integration.php`, key/secret with scopes) for custom integrations
 
 **Security**
 
@@ -88,7 +88,7 @@ Pinegrap is **deliberately monolithic** — and that is a feature, not an apolog
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/kodpen/pinegrap.git
+   git clone https://github.com/kodpen/PinegrapCMS.git
    ```
 
 2. **Upload to Your Web Server**
@@ -123,6 +123,12 @@ Updates are applied from the admin panel. Schema changes ship as versioned upgra
 ## History
 
 Pinegrap began life as **LiveSite**, developed by Camelback Web Architects since 2001. Since 2017 it has been maintained and evolved by **Erdal Güral (Kodpen)** under the name Pinegrap; the final LiveSite update (2019) has been fully integrated. LiveSite remains available separately as a legacy version.
+
+---
+
+## Contributing and security
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the definition of done and the issue conventions. Security issues are reported privately as described in [SECURITY.md](SECURITY.md); please do not open public issues for them.
 
 ---
 

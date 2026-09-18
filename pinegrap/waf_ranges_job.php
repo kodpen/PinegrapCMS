@@ -11,9 +11,13 @@
 // Daily refresh of the AI bots' published IP range lists (waf_bot_ranges).
 //
 // Runs three ways, all landing on the same throttled function:
-//   - its own crontab entry, calling this script directly
+//   - its own crontab entry, calling this script from the command line
 //   - the general job (job.php) via the job dispatch catalogue
 //   - the settings screen, with ?send_to= for the redirect back
+//
+// The first two are background runs and carry no user. Anything else is a
+// browser request and is refused without a signed-in manager, the same gate
+// the firewall settings screen sits behind.
 //
 // The fetch itself never runs on the visitor path; waf.php only reads the
 // stored rows. A run on an install that has not taken the 2026.4.4 upgrade
@@ -21,12 +25,21 @@
 
 include('init.php');
 
-$user_id = (($_GET['send_to'] ?? '')) ? validate_user()['id'] : 0;
+// A background run (crontab, or the general job's dispatcher) has no user.
+// Every other request is a web request and must come from a signed-in
+// manager; without that gate an anonymous GET rewrote the bot IP ranges.
+if (pg_cron_is_background_run()) {
+    $user_id = 0;
+} else {
+    $user = validate_user();
+    validate_area_access($user, 'manager');
+    $user_id = $user['id'];
+}
 
 if (function_exists('pg_waf_refresh_ai_ranges')) {
     // Not forced: the 6-hour attempt throttle and per-row freshness checks
-    // are the point on an unauthenticated entry path. The settings screen's
-    // own button is the forced path, and it lives behind validate_user().
+    // stay in place for the scheduled run. The settings screen's own button
+    // is the forced path.
     pg_waf_refresh_ai_ranges();
 }
 

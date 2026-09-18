@@ -1,11 +1,7 @@
 MIT License
 
-Originally developed as LiveSite by Camelback Consulting, Inc.
-Maintained and evolved as PineGrap by Erdal Güral (kodpen.com) since 2017.
-
-Copyright (c) 2019 Camelback Consulting, Inc  
-          (c) 2017–2026 Erdal Güral (kodpen.com)
-
+Copyright (c) 2019 Camelback Consulting, Inc.
+Copyright (c) 2017–2026 Erdal Güral (kodpen.com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

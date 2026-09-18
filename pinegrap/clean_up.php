@@ -94,6 +94,15 @@ $file_list = array(
     // here any more.
     'mailchimp_settings.php',
     'includes/templates/mailchimp_settings.php',
+    // A development leftover: a one-shot diagnostic page for the
+    // shared-component placeholder invariant, written while that invariant was
+    // being introduced. The designer's save path enforces the rule itself and
+    // nothing links to the page.
+    'check_shared_invariant.php',
+    // The XML endpoint of the classic folder tree screen. Its script
+    // (assets/folder_tree.js, listed below) is already retired and no other
+    // code requests the endpoint, so it goes the same way.
+    'get_folder_tree.php',
 
 
     // The pre-lib/ asset tree, superseded in 2026.4.4 and dropped from the

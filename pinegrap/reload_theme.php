@@ -55,7 +55,6 @@ echo
     <html lang="en">
         <head>
             <meta charset="utf-8">
-            ' . get_generator_meta_tag() . '
             <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($_GET['name']) . '" />
             ' . $output_javascript . '
         </head>

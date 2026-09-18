@@ -4225,7 +4225,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $folders_that_user_has_access_to = array();
                         
                         // If the user is a basic user then get the folders they have access to.
-                        if ($user['role'] == 3) {
+                        if (isset($user['role']) && ($user['role'] == 3)) {
                             $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
                         }
                         
@@ -5473,7 +5473,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
-        get_generator_meta_tag() . "\n" .
         '        <link rel="canonical" href="' . h($canonical_url) . '">';
 
     // The placeholder is written into every style the software creates, but a

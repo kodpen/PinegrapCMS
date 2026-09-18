@@ -16,12 +16,14 @@
            .country .postcode .email .phone
   invoice  .full_number .title .issue_date .due_date .doc_type .is_return
            .status_label .order_number .against_number .currency
+           .is_foreign .base_currency .exchange_rate .exchange_rate_date
+           .grand_total_base
            .is_internet_sale .payment_method_label .payment_date
            .shipment_date .carrier_title .carrier_vkn .web_address .notes
   lines    (liste) .no .description .quantity .unit_price .discount
            .has_discount .base .tax_rate .tax .total
   totals   .subtotal .discount_total .shipping_total .surcharge_total
-           .gift_card_total .tax_total .grand_total
+           .gift_card_total .tax_total .grand_total .grand_total_base
            .has_discount .has_shipping .has_surcharge .has_gift_card
   generated_at
 -->
@@ -94,6 +96,8 @@
                 {{#invoice.against_number}}<tr><td class="k">İade Edilen Fatura</td><td class="v">{{invoice.against_number}}</td></tr>{{/invoice.against_number}}
                 {{#invoice.order_number}}<tr><td class="k">Sipariş No</td><td class="v">{{invoice.order_number}}</td></tr>{{/invoice.order_number}}
                 <tr><td class="k">Para Birimi</td><td class="v">{{invoice.currency}}</td></tr>
+                {{#invoice.is_foreign}}<tr><td class="k">Kur ({{invoice.base_currency}})</td><td class="v">{{invoice.exchange_rate}}</td></tr>
+                <tr><td class="k">Kur Tarihi</td><td class="v">{{invoice.exchange_rate_date}}</td></tr>{{/invoice.is_foreign}}
             </table>
         </td>
     </tr>
@@ -160,6 +164,7 @@
     {{#totals.has_surcharge}}<tr><td>Ek Ücret</td><td class="v">{{totals.surcharge_total}}</td></tr>{{/totals.has_surcharge}}
     <tr><td>Hesaplanan KDV</td><td class="v">{{totals.tax_total}}</td></tr>
     <tr class="grand"><td>Genel Toplam</td><td class="v">{{totals.grand_total}}</td></tr>
+    {{#invoice.is_foreign}}<tr class="muted"><td>Genel Toplam ({{invoice.base_currency}} karşılığı)</td><td class="v">{{totals.grand_total_base}}</td></tr>{{/invoice.is_foreign}}
     {{#totals.has_gift_card}}<tr class="muted"><td>Hediye kartı ile ödenen</td><td class="v">{{totals.gift_card_total}}</td></tr>{{/totals.has_gift_card}}
 </table>
 

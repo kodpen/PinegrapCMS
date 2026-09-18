@@ -870,7 +870,6 @@ else
                         <html lang="en">
                             <head>
                                 <meta charset="utf-8">
-                                ' . get_generator_meta_tag() . '
                                 <script type="text/javascript">
                                     function init()
                                     {
@@ -905,7 +904,6 @@ else
                         <html lang="en">
                             <head>
                                 <meta charset="utf-8">
-                                ' . get_generator_meta_tag() . '
                                 <script type="text/javascript">
                                     function init()
                                     {

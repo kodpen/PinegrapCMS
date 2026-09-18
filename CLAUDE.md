@@ -225,6 +225,7 @@ uygulamadan **önce** sorun; sessizce değiştirmek bu kuralın ihlalidir.
 | `get_help_url.php` içindeki switch'in dikkate alınmaması | Kasten. Doküman sitesi kapalı olduğu için tek bir PDF'e gidiliyor; site hazır olunca değişecek. |
 | `barcode_decrease_inventory.php` — "evet" dönüşü | Özelliktir, hata değildir. |
 | `orders.notes`, `orders.tracking_company` | Kullanılmıyor görünür; ERP için duran alanlardır, devamı gelecek. |
+| `pi.php`, `si.php` | Herkese açık kalır. Oturum ya da rol kapısı eklenmez; bir denetimde "kimlik doğrulamasız açık" diye bulunmaları beklenen durumdur. |
 | `myself_upsell.php` | Şimdilik kalır. Dikkatli inceleme sonucu netleşirse `clean_up`'a eklenebilir, kendi başınıza silmeyin. |
 
 Aynı kural yazılı diğer kararlar için de geçerlidir: yayınlanmış bir sürümün

@@ -660,6 +660,10 @@ define('ERP_EINVOICE_SCENARIO', $row['erp_einvoice_scenario'] ?? 'basic');
 define('ERP_WEB_ADDRESS', $row['erp_web_address'] ?? '');
 define('ERP_SELLER_VKN', $row['erp_seller_vkn'] ?? '');
 define('ERP_SELLER_TAX_OFFICE', $row['erp_seller_tax_office'] ?? '');
+// Foreign currency in the ERP is opt-in; off, everything is in the base currency.
+define('ERP_FX_ENABLED', isset($row['erp_fx_enabled']) ? (int) $row['erp_fx_enabled'] : 0);
+define('ERP_FX_CURRENCIES', $row['erp_fx_currencies'] ?? 'USD,EUR,GBP');
+define('ERP_FX_AUTO_DIFF', isset($row['erp_fx_auto_diff']) ? (int) $row['erp_fx_auto_diff'] : 1);
 define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');

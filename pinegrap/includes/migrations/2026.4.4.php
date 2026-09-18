@@ -120,6 +120,10 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_invoice_document();   // 4.47
 
 	upgrade_2026_4_4_offline_payment_awaiting(); // 4.48
+
+	upgrade_2026_4_4_erp_foreign_currency();   // 4.49
+
+	upgrade_2026_4_4_erp_return_line_link();   // 4.50
 }
 
 
@@ -451,7 +455,7 @@ function upgrade_2026_4_4_designer_collab() {
 	// says so before the round trip, and custom_form.php checks it again on
 	// submit — a client-side rule alone is a suggestion, not a rule.
 	//
-	// The message travels with it: "geçersiz" tells the visitor nothing, and
+	// The message travels with it: a bare "invalid" tells the visitor nothing, and
 	// the person who wrote the pattern is the only one who knows what shape
 	// they wanted.
 	install_add_column('form_fields', 'validation_regex',   "VARCHAR(255) NOT NULL DEFAULT ''");
@@ -2482,10 +2486,11 @@ function upgrade_2026_4_4_erp_settlements() {
 // 4.46 - returns count on a series of their own.
 //
 // erp_document_series.doc_kind was an ENUM that only knew about the documents
-// Faz 0 had planned for, so asking it for a return number silently produced no
-// row at all: MySQL will not store a value the column has never heard of, and
-// the read-back then found nothing. Widening the column is the fix; the read-back
-// now also says so out loud rather than returning an empty error.
+// the original ERP schema had planned for, so asking it for a return number
+// silently produced no row at all: MySQL will not store a value the column has
+// never heard of, and the read-back then found nothing. Widening the column is
+// the fix; the read-back now also says so out loud rather than returning an
+// empty error.
 //
 // A return gets its own counter so a missing number in the invoice run never has
 // to be explained as "that one was a return".
@@ -2580,5 +2585,132 @@ function upgrade_2026_4_4_offline_payment_awaiting() {
 	install_add_column('config', 'ecommerce_offline_payment_cancel_days', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Bank transfer orders show as awaiting payment until the payment is recorded, and unpaid ones can be cancelled automatically after a set number of days.');
+
+}
+
+
+// 4.49 - the ERP counts in the store's base currency, and can hold documents
+// in another one.
+//
+// The first ERP schema named its converted columns amount_try / grand_total_try:
+// the module was drafted for one country. Pinegrap is installed anywhere, and
+// its home currency is whatever edit_currency.php marks as base, so the
+// columns are renamed to *_base while 2026.4.4 is still unreleased - nobody
+// has run the earlier shape. Each rename copies the column's type, nullability
+// and default from the column as it stands, and is skipped once the new name
+// exists.
+//
+// currency_rates is the dated history behind update_exchange_rates.php. The
+// store's own currencies.exchange_rate is one figure overwritten in place and
+// points the other way (units of the foreign currency per base unit); an
+// invoice raised in March and paid in May needs both days' rates months later,
+// in the direction the ledger multiplies (base units per unit of the document
+// currency). One row per (day, base, currency) so a second run of the job on
+// the same day corrects rather than duplicates.
+//
+// Foreign-currency support is an opt-in setting (erp_fx_enabled); with it off
+// every document, account and till is in the base currency and the screens do
+// not ask.
+function upgrade_2026_4_4_erp_foreign_currency() {
+
+	$renames = array(
+		array('erp_account_transactions', 'amount_try', 'amount_base'),
+		array('erp_cash_transactions', 'amount_try', 'amount_base'),
+		array('erp_invoices', 'grand_total_try', 'grand_total_base'),
+		array('erp_settlements', 'amount_try', 'amount_base'),
+	);
+
+	foreach ($renames as $rename) {
+
+		list($table, $old, $new) = $rename;
+
+		if (install_column_exists($table, $new)) {
+
+			install_skipped(lang(array('string' => '{var:1} was already renamed to {var:2}', 'vars' => array($table . '.' . $old, $new))));
+
+			continue;
+
+		}
+
+		$column = install_column_info($table, $old);
+
+		if (!is_array($column)) {
+
+			install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => $table . '.' . $old)));
+
+			continue;
+
+		}
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? ' DEFAULT NULL' : '') : " DEFAULT '" . e((string) $column['Default']) . "'";
+
+		install_rename_column($table, $old, $new, (string) $column['Type'] . ($nullable ? ' NULL' : ' NOT NULL') . $default);
+
+	}
+
+	// rate = base units per 1 unit of currency_code, the direction the ledger
+	// multiplies in. source names the feed the figure came from.
+	install_create_table('currency_rates', "CREATE TABLE currency_rates (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		rate_date     DATE NOT NULL DEFAULT '0000-00-00',
+		base_code     CHAR(3) NOT NULL DEFAULT '',
+		currency_code CHAR(3) NOT NULL DEFAULT '',
+		rate          DECIMAL(18,8) NOT NULL DEFAULT 0,
+		source        VARCHAR(32) NOT NULL DEFAULT '',
+		fetched_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_day (rate_date, base_code, currency_code)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Off by default: a shop that never sees a foreign invoice keeps today's
+	// single-currency screens.
+	install_add_column('config', 'erp_fx_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	// Comma-separated ISO codes offered on documents besides the base currency.
+	install_add_column('config', 'erp_fx_currencies', "VARCHAR(64) NOT NULL DEFAULT 'USD,EUR,GBP'");
+
+	// Post the base-currency gap between an invoice and the receipts that closed it.
+	install_add_column('config', 'erp_fx_auto_diff', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	// Where a document's rate came from; the ledger rows already record it.
+	install_add_column('erp_invoices', 'exchange_rate_source', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_cash_transactions', 'exchange_rate_source', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_note('The ERP counts in the store\'s base currency and, when switched on in the ERP settings, can raise invoices and keep accounts and tills in another currency; daily exchange rates are kept as a dated history.');
+
+}
+
+// 4.50 - a return line points at the invoice line it was taken from.
+//
+// erp_invoice_items had no link from a return line back to the parent line, so
+// cancelling a return handed the quantity back by product_id ... LIMIT 1. Two
+// lines of the same product on one invoice - a different price, a different
+// discount - cannot be told apart that way, and the wrong line could end up
+// returnable again while the right one stayed used up. parent_line_id records
+// the link and both the tax cap on a further return and the cancel read it.
+//
+// Rows written before this step are filled in where the parent invoice has
+// exactly one line for the product, which is the only case the old match was
+// exact in. Where it has several the link stays 0 and those rows keep the
+// product match, so the step can run again without touching them twice.
+function upgrade_2026_4_4_erp_return_line_link() {
+
+	install_add_column('erp_invoice_items', 'parent_line_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_index('erp_invoice_items', 'idx_parent_line', "KEY idx_parent_line (parent_line_id)");
+
+	db("UPDATE erp_invoice_items r
+		INNER JOIN erp_invoices d ON r.invoice_id = d.id AND d.doc_type = 'return'
+		INNER JOIN (
+			SELECT invoice_id, product_id, MIN(id) AS line_id, COUNT(*) AS line_count
+			FROM erp_invoice_items
+			GROUP BY invoice_id, product_id
+		) p ON p.invoice_id = d.parent_invoice_id AND p.product_id = r.product_id AND p.line_count = 1
+		SET r.parent_line_id = p.line_id
+		WHERE r.parent_line_id = 0");
+
+	install_note('Return lines now record the invoice line they were taken from, so cancelling a return restores the right line.');
 
 }

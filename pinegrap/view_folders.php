@@ -176,6 +176,12 @@ if ($initial_mode == 'short_links') {
 $explorer_lang = array(
     'loading' => lang('Loading'),
     'request_failed' => lang('The request failed. Please try again.'),
+    // Shown in the content area when a folder listing cannot be fetched --
+    // a gateway or server timeout during a long bulk operation answers with
+    // an HTML error page instead of JSON, so the grid says so and offers a
+    // retry rather than silently keeping the folder that was already open.
+    'load_failed' => lang('This folder could not be loaded. The connection or the server may have timed out during a long operation.'),
+    'load_retry' => lang('Try again'),
     'empty_folder' => lang('This folder is a bit quiet.'),
     'name' => lang('Name'),
     'type' => lang('Type'),
@@ -2179,6 +2185,37 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // ── Loading and rendering ───────────────────────────────────────────
 
+    // A folder listing that could not be fetched, drawn where the grid would
+    // be, with the one thing to do about it.
+    //
+    // A gateway or server timeout during a long bulk run -- Cloudflare's 524
+    // after about a hundred seconds, an IIS/FastCGI activity timeout -- answers
+    // with an HTML error page, not the JSON this screen expects. Without this
+    // the screen kept whatever folder was already open and said nothing, so
+    // every breadcrumb and tree click fired another request that failed the
+    // same way and the operator was left with a screen only a full page reload
+    // could clear. The retry re-runs the same load, so a folder comes back the
+    // moment the server does, without losing the place in the tree.
+    function renderLoadError(folderId, done, message) {
+        var container = document.getElementById('explorer_content');
+
+        if (container) {
+            container.innerHTML = '<div class="text-center my-5 empty-note">' +
+                '<span class="bi bi-wifi-off display-4 d-block mb-2"></span>' +
+                esc(message || L.load_failed) +
+                '<div class="mt-3"><button type="button" class="btn btn-outline-secondary btn-sm" data-role="load-retry">' +
+                '<span class="bi bi-arrow-clockwise me-1"></span>' + esc(L.load_retry) + '</button></div></div>';
+
+            var retry = container.querySelector('[data-role="load-retry"]');
+
+            if (retry) {
+                retry.addEventListener('click', function () { load(folderId, done); });
+            }
+        }
+
+        renderStatusbar();
+    }
+
     function load(folderId, done) {
         var seq = ++loadSeq;
 
@@ -2223,6 +2260,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // A newer navigation superseded this answer while it was in
             // flight; rendering it now would flip the screen back.
             if (seq !== loadSeq) { return; }
+
+            // Not the JSON listing this screen asked for: a gateway or server
+            // timeout answered with an HTML error page, which jQuery hands back
+            // as a string. A response with no status field is a failed load,
+            // not an empty folder -- show the error and a retry.
+            if ((typeof response !== 'object') || (response === null) || (typeof response.status === 'undefined')) {
+                renderLoadError(folderId, done, L.load_failed);
+                return;
+            }
 
             if (response.status !== 'success') {
                 toast(response.message || L.request_failed, false);
@@ -2271,6 +2317,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (done) { done(); }
+        }, function (xhr) {
+            // Transport failure or a non-2xx answer (the gateway/IIS
+            // timeout case). Same persistent error and retry as a
+            // non-JSON body, instead of a toast that leaves a dead screen.
+            if (seq !== loadSeq) { return; }
+            renderLoadError(folderId, done, L.load_failed);
         });
     }
 
@@ -3093,8 +3145,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // below and is offered wherever making one makes sense: among the
         // short links themselves, and among the pages -- which is where
         // somebody is standing when they think "this page needs a short
-        // address".
-        var shortLink = (insideShortLinks() || ((state.mode === 'all') && (state.allFilter === 'pages')));
+        // address". A plain user is not offered it, because the server
+        // refuses the create for that role.
+        var shortLink = (state.caps.role < 3) && (insideShortLinks() || ((state.mode === 'all') && (state.allFilter === 'pages')));
 
         // The backup folder creates none of the four, and two things nothing
         // else does: a backup, and a file put there by hand -- an archive

@@ -777,7 +777,6 @@ function output_header_secure($properties = false)
     <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
     <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-    ' . get_generator_meta_tag() . '
     ' . output_control_panel_header_includes(false) . '
 </head>
 <body' . $output_body_class . '>';
@@ -1411,7 +1410,6 @@ function output_header($properties = false)
         <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
         <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . get_generator_meta_tag() . '
         ' . output_control_panel_header_includes() . '
         ' . $output_tour_head . '
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
@@ -1856,7 +1854,9 @@ function output_menu($properties = false)
         // PAGES > Short Links
         $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-link-45deg bi-me-2\'>' . lang('Short Links') . '</a>';
-        $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_short_link.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))) . '</a>';
+        if (USER_ROLE != 3) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_short_link.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))) . '</a>';
+        }
         // PAGES > Auto Dialogs
         $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-circle-square bi-me-2\'>' . lang('Auto Dialogs') . '</a>';
@@ -3464,10 +3464,14 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
     // Both go to the File Manager's short link area rather than to the classic
     // add_short_link.php / edit_short_link.php pair, and both carry what they
     // are about so the window opens on it instead of on an empty destination.
-    $actions[] = array(
-        'icon'  => 'link-45deg',
-        'label' => lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))),
-        'url'   => $software . 'view_folders.php?view=short_links&create=short_link&page_id=' . $page_id);
+    // Creating a short link is a manager-and-up right, so a plain user is not
+    // offered it; the File Manager refuses the create for that role anyway.
+    if ($user['role'] < 3) {
+        $actions[] = array(
+            'icon'  => 'link-45deg',
+            'label' => lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))),
+            'url'   => $software . 'view_folders.php?view=short_links&create=short_link&page_id=' . $page_id);
+    }
 
     $groups[] = array('label' => '', 'actions' => $actions);
 

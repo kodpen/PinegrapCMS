@@ -56,6 +56,18 @@ if (!$_POST) {
         $liveform->assign_field_value('city', $account['city']);
         $liveform->assign_field_value('postcode', $account['postcode']);
         $liveform->assign_field_value('notes', $account['notes']);
+        $liveform->assign_field_value('currency', strtoupper(trim((string) $account['currency'])));
+    }
+
+    $account_currency = strtoupper(trim((string) $account['currency']));
+    $has_movements = ((int) db_value("SELECT COUNT(*) FROM erp_account_transactions WHERE account_id = '" . $account_id . "'") > 0);
+
+    // The own-currency position beside the base one, for an account kept in
+    // another currency.
+    $output_balance_fc = '';
+    if (erp_fx_enabled() && ($account_currency !== erp_base_currency())) {
+        $balance_fc = (int) $account['balance_fc'];
+        $output_balance_fc = '<span class="text-body-secondary">' . h(erp_money_out_currency(abs($balance_fc), $account_currency)) . ' ' . h($account_currency) . '</span>';
     }
 
     $balance = (int) $account['balance'];
@@ -76,12 +88,19 @@ if (!$_POST) {
     foreach ($statement['rows'] as $row) {
         $is_debit = ($row['direction'] === 'debit');
 
+        // The statement runs in the base currency; a movement made in another
+        // currency also says what it was in that currency.
+        $row_currency = strtoupper(trim((string) $row['currency']));
+        $output_fc = (erp_fx_enabled() && ($row_currency !== erp_base_currency()))
+            ? ' <span class="text-body-secondary small">' . h(erp_money_out_currency((int) $row['amount'], $row_currency, false)) . '</span>'
+            : '';
+
         $output_statement_rows .= '
             <tr>
                 <td class="align-middle text-nowrap">' . h(prepare_form_data_for_output($row['doc_date'], 'date')) . '</td>
                 <td class="align-middle">' . h($row['description']) . '</td>
-                <td class="align-middle text-end">' . ($is_debit ? h(erp_money_out((int) $row['amount_try'], false)) : '') . '</td>
-                <td class="align-middle text-end">' . ($is_debit ? '' : h(erp_money_out((int) $row['amount_try'], false))) . '</td>
+                <td class="align-middle text-end">' . ($is_debit ? h(erp_money_out((int) $row['amount_base'], false)) . $output_fc : '') . '</td>
+                <td class="align-middle text-end">' . ($is_debit ? '' : h(erp_money_out((int) $row['amount_base'], false)) . $output_fc) . '</td>
                 <td class="align-middle text-end">' . h(erp_money_out((int) $row['running_balance'])) . '</td>
             </tr>';
     }
@@ -101,7 +120,7 @@ if (!$_POST) {
         'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
         'breadcrumb' => array(
             array('label' => lang('Accounts'), 'url' => $list_url),
-            array('label' => h($account['title'])),
+            array('label' => $account['title']),
         ),
     ]) . '
 <main id="content" class="container-fluid">
@@ -116,13 +135,14 @@ if (!$_POST) {
                     <span class="text-uppercase text-body-secondary">' . lang('Balance') . '</span>
                     <span class="h4 mb-0 ' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</span>
                     <span class="text-body-secondary">' . h($balance_side) . '</span>
+                    ' . $output_balance_fc . '
                 </div>
             </div>
 
             <form name="form" action="edit_erp_account.php" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . erp_account_form_cards($liveform, false) . '
+                ' . erp_account_form_cards($liveform, false, $has_movements) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
@@ -173,7 +193,34 @@ if (!$_POST) {
 
     $account_id = (int) $liveform->get_field_value('id');
 
+    // This screen only edits. Without an existing account behind the id the
+    // save would fall through to an insert and create a record nobody asked for.
+    if (($account_id <= 0) || (erp_account($account_id) === null)) {
+        $liveform->remove_form();
+        $liveform_list = new liveform('erp_accounts');
+        $liveform_list->mark_error('_error', lang('The account could not be found.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php');
+    }
+
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
+
+    // The stored currency unless foreign currency is on and an allowed code
+    // was posted; an account with movements posts its own code back.
+    $stored = erp_account($account_id);
+    $currency = is_array($stored) ? strtoupper(trim((string) $stored['currency'])) : erp_base_currency();
+    if (erp_fx_enabled()) {
+        $chosen = strtoupper(trim((string) $liveform->get_field_value('currency')));
+        $locked = ((int) db_value("SELECT COUNT(*) FROM erp_account_transactions WHERE account_id = '" . $account_id . "'") > 0);
+        if (($chosen !== '') && ($chosen !== $currency)) {
+            if ($locked) {
+                $liveform->mark_error('currency', lang('Cannot be changed once there are movements.'));
+            } elseif (!erp_fx_currency_allowed($chosen)) {
+                $liveform->mark_error('currency', lang('That currency is not enabled for the ERP.'));
+            } else {
+                $currency = $chosen;
+            }
+        }
+    }
 
     if ($liveform->check_form_errors() == true) {
         go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id);
@@ -192,7 +239,7 @@ if (!$_POST) {
         'district' => $liveform->get_field_value('district'),
         'city' => $liveform->get_field_value('city'),
         'postcode' => $liveform->get_field_value('postcode'),
-        'currency' => 'TRY',
+        'currency' => $currency,
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'created_by' => (int) $user['id'],

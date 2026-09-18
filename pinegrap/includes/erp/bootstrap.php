@@ -29,11 +29,13 @@ if (!defined('PG_ERP_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/money.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/fx.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/ledger.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cash.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/accounts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/numbering.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/settlement.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/document.php');

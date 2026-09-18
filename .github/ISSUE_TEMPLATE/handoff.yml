@@ -1,0 +1,75 @@
+# Hand-off form: a finding outside the filer's ownership area is passed to
+# the owner of that area instead of being fixed in passing.
+name: Hand-off to another area
+description: Pass a finding in the API, ERP or security/settings area to its owner.
+title: "[handoff:<area>] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ownership areas:
+        - **api** — `includes/api/`, `api.php`, `integration.php`
+        - **erp** — `includes/erp/`, `erp_*.php`
+        - **security** — security findings of any kind, plus the settings screens: `includes/settings/`, `edit_config.php`, `smtp_settings.php`, `private_label.php`
+        - **bug-fixing** — everything else (file a regular bug report instead)
+
+        Replace `<area>` in the title with `api`, `erp` or `security`, and add the matching label `handoff:api`, `handoff:erp` or `handoff:security` (labels cannot be set from the dropdown; the maintainer adds it if you cannot). Exploitable security findings go through [SECURITY.md](https://github.com/kodpen/PinegrapCMS/blob/main/SECURITY.md), not here.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Receiving area
+      description: Also put this value in the title prefix and apply the matching `handoff:*` label.
+      options:
+        - api
+        - erp
+        - security
+        - settings (owned by security)
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source PR or issue
+      description: Where the finding came up.
+      placeholder: "#123"
+    validations:
+      required: true
+  - type: textarea
+    id: locations
+    attributes:
+      label: Files and lines
+      description: One `file:line-range` per line, with a short note.
+      placeholder: |
+        includes/api/orders.php:120-145 — unescaped `$_GET['id']` in query
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding
+      description: What is wrong and the evidence (request/response, log line, code excerpt).
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: What the receiving owner must do
+      description: Concrete steps, one per line. Include the proposed fix if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: overlap
+    attributes:
+      label: Open PRs touching the same files
+      description: List open PRs (or "none found") that change the same files, so the owner can sequence the work.
+      placeholder: "#118 (fix/order-screens-silent-notices) touches includes/api/orders.php"
+  - type: dropdown
+    id: verification
+    attributes:
+      label: How was this verified?
+      options:
+        - Verified by running
+        - Read-only (found by reading the code)
+    validations:
+      required: true

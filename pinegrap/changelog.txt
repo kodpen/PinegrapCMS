@@ -754,6 +754,13 @@
          faturayı kapanmış bulursa sizinle mutabakat yapamaz, o yüzden
          eşleştirmeyi her zaman siz seçersiniz.
 
+         Tek istisna hediye kartıdır. Siparişin hediye kartıyla ödenen kısmı
+         sipariş anında, o siparişe karşı ödenmiştir; fatura kesilirken bu
+         tutar cariye alacak yazılır ve faturaya bağlanır. Tamamı hediye
+         kartıyla ödenen sipariş kesildiği anda "ödendi" olur, kısmen ödenen
+         yalnız kalanı bekler. Bu bağ faturanın iptalini engellemez; iptalde
+         alacak da ters kayıtla geri alınır.
+
   [YENİ] İade faturası ve iptal. Kesilmiş bir fatura düzenlenmez — belge
          karşı tarafın elinde. Onun yerine iki yol var:
 
@@ -796,6 +803,33 @@
          Dairesi alanları eklendi; belgenin satıcı bloğunda basılır. Bu
          özellik PHP 7.1 ve üzeri ister; daha eski PHP'de PDF düğmesi çalışmaz,
          panelin geri kalanı etkilenmez.
+
+  [YENİ] [ŞEMA] Dövizli fatura, cari ve kasa. ERP artık mağazanın ana para
+         birimiyle çalışır — Para Birimleri ekranında "ana" işaretlediğiniz
+         hangisiyse o; TL'ye özel hiçbir varsayım kalmadı. Ayarlar → E-Ticaret
+         → ERP kartındaki "Dövizli fatura ve cari hesapları etkinleştir"
+         seçeneği kapalıyken her şey bugünkü gibi tek para birimindedir ve
+         ekranlar para birimi sormaz.
+
+         Açıldığında, seçtiğiniz para birimlerinde (varsayılan USD, EUR, GBP)
+         elle fatura kesebilir, cari ve kasa açabilirsiniz. Belgenin
+         tutarları kendi para biriminde kalır; düzenleme tarihinin kuru
+         belgeye yazılır (isterseniz elle değiştirebilirsiniz) ve ana para
+         birimi karşılığı bir kez hesaplanır. Fatura ekranı ve PDF dövizli
+         belgede kuru, kur tarihini ve ana para birimi toplamını gösterir.
+         Tahsilat faturanın para biriminde, tahsilat gününün kuruyla girilir.
+
+         Kur farkı kendiliğinden kapanır: fatura kendi gününün kuruyla cariye
+         yazılır, tahsilatlar kendi günlerinin kuruyla düşer; fatura tamamen
+         ödendiğinde aradaki ana para birimi farkı tek bir "kur farkı"
+         hareketiyle kapatılır, cari bakiye sıfıra iner. Bu davranış aynı
+         karttan kapatılabilir.
+
+         Günlük kurlar mevcut "Döviz Kurları" işinden gelir (Frankfurter,
+         yedek HexaRate); iş artık her günün kurunu tarihli olarak saklar,
+         böylece Mart'ta kesilen bir fatura Mayıs'ta da kendi gününün kuruyla
+         okunur. Ülkeye özel bir kur kaynağı yoktur. Mağazadan gelen sipariş
+         her zaman ana para biriminde faturalanır.
 
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------

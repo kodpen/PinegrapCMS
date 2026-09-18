@@ -87,7 +87,7 @@ if (!$_POST) {
                 <td class="align-middle">' . h($line['description']) . '</td>
                 <td class="align-middle text-end">' . h($tidy($line['quantity'])) . '</td>
                 <td class="align-middle text-end ' . (($returned > 0) ? 'text-warning' : 'text-body-secondary') . '">' . h($tidy($returned)) . '</td>
-                <td class="align-middle text-end">' . h(erp_money_out((int) $line['unit_price'])) . '</td>
+                <td class="align-middle text-end">' . h(erp_money_out_currency((int) $line['unit_price'], (string) $invoice['currency'])) . '</td>
                 <td class="align-middle" style="width:9rem">'
                     . (($line['remaining_qty'] > 0.00001)
                         ? $liveform->output_field(array(
@@ -109,7 +109,7 @@ if (!$_POST) {
         'cancel' => array('enable' => 'true', 'url' => 'edit_erp_invoice.php?id=' . $invoice_id),
         'breadcrumb' => array(
             array('label' => lang('Invoices'), 'url' => $list_url),
-            array('label' => h($invoice['full_number']), 'url' => $invoice_url),
+            array('label' => $invoice['full_number'], 'url' => $invoice_url),
             array('label' => lang('Return an Invoice')),
         ),
     ]) . '

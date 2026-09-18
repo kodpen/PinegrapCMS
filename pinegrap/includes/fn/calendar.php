@@ -35,6 +35,19 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         if ($calendar_id_verified == false) {
             $calendar_id = '';
         }
+        // The date is MM-DD-YYYY, as the month/week navigation links build it,
+        // but it also arrives from the query string and is kept in the session.
+        // Anything else is dropped so the views fall back to the current date:
+        // mktime() below rejects non-integer parts (a TypeError on PHP 8), and a
+        // bad value that stuck in the session would break every later request.
+        if ($date) {
+            $date_parts = explode('-', (string) $date);
+            if ((count($date_parts) != 3)
+                || !ctype_digit($date_parts[0]) || !ctype_digit($date_parts[1]) || !ctype_digit($date_parts[2])
+                || !checkdate((int) $date_parts[0], (int) $date_parts[1], (int) $date_parts[2])) {
+                $date = '';
+            }
+        }
         switch ($view) {
             case '':
             case 'monthly':

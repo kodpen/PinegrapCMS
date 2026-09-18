@@ -1,0 +1,51 @@
+# Decision request form: work that cannot start until the product owner picks
+# an option. Decisions recorded here are binding (CLAUDE.md rule 12).
+name: Decision request
+description: Ask the product owner to decide between options before work continues.
+title: "[karar] "
+labels: ["karar"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a finding or task depends on a product decision. Once the maintainer answers, the decision is **applied as written**; it is never silently changed later. If it looks wrong afterwards, open another decision request instead of altering the code.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: The decision needed, in one or two sentences, with the file(s) or screen(s) involved.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why the question exists now (source issue/PR, what was found, what currently happens).
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and what happens on each answer
+      description: One option per block. State exactly what will be done in the code if that option is chosen.
+      value: |
+        **A.** …
+        If chosen: …
+
+        **B.** …
+        If chosen: …
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation
+      description: Which option you suggest and why.
+    validations:
+      required: true
+  - type: textarea
+    id: blocked
+    attributes:
+      label: Blocked work
+      description: Issues or PRs that wait for this decision.
+      placeholder: "#88, PR #101"

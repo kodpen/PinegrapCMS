@@ -1557,24 +1557,22 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $available_attrs        = array();  // [attr_id => ['attr_label'=>'', 'options'=>[...]]]
     $active_attr_chips_html = '';
     if ($attr_filter_enabled) {
-        // Filter scope: include products from the active group AND every
-        // descendant group. Previously we only filtered to DIRECT xref of
-        // the active group — so a top-level catalog like "Mağaza" returned
-        // zero attributes (since the chairs / chocolates / etc. live in
-        // sub-groups, not directly in Mağaza). Symptom: an empty filter
-        // panel even when the listing showed products via descendant
-        // groups. Recursive CTE materializes the descendant set in one
-        // query; we then just check products_groups_xref against that set.
+        // Filter scope: products of the active group AND of every enabled
+        // descendant group. A top-level catalog usually holds no products of
+        // its own; they live in sub-groups, and filtering on the direct xref
+        // alone would leave the panel empty while the listing shows products.
+        // The descendant set is walked in PHP by _pg_catalog_group_subtree_ids()
+        // and passed as an IN (...) list, the same way the listing scope is
+        // built; a recursive CTE would need MySQL 8, and the product still
+        // runs on MySQL 5.7.
         if ($active_group_id > 0) {
+            $_af_scope     = _pg_catalog_group_subtree_ids(array($active_group_id));
+            $_af_scope_ids = isset($_af_scope[$active_group_id])
+                                ? $_af_scope[$active_group_id]
+                                : array($active_group_id);
+            $_af_scope_list = implode(',', array_map('intval', $_af_scope_ids));
             $_af_rows = db_items(
-                "WITH RECURSIVE _scope AS (
-                    SELECT '" . (int)$active_group_id . "' AS id
-                    UNION
-                    SELECT pg.id FROM product_groups pg
-                    INNER JOIN _scope s ON pg.parent_id = s.id
-                    WHERE pg.enabled = 1
-                )
-                SELECT DISTINCT
+                "SELECT DISTINCT
                         pa.id    AS attr_id,
                         pa.name  AS attr_name,
                         pa.label AS attr_label,
@@ -1584,7 +1582,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                  FROM products _p
                  INNER JOIN products_groups_xref _pgx
                          ON _pgx.product = _p.id
-                        AND _pgx.product_group IN (SELECT id FROM _scope)
+                        AND _pgx.product_group IN ($_af_scope_list)
                  INNER JOIN products_attributes_xref _pax ON _pax.product_id   = _p.id
                  INNER JOIN product_attributes       pa   ON pa.id              = _pax.attribute_id
                  INNER JOIN product_attribute_options pao ON pao.id             = _pax.option_id
@@ -1819,18 +1817,17 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // Sandalyesi" subgroup contains matching products — the "kısmen
         // çalışıyor" symptom.
         //
-        // We use a MySQL 8 recursive CTE at the TOP of the statement (CTEs
-        // can't live inside `IN (subquery)` in MySQL — they must precede
-        // the outer SELECT). The CTE materializes every group id whose
-        // subtree contains a matching product; we then add the standard
-        // name/short_description/address_name OR clause for direct group
-        // matches.
+        // Two steps, no recursive SQL (the product still runs on MySQL 5.7,
+        // which has no CTEs). First the groups that DIRECTLY xref a matching
+        // product are read. Then each candidate child group is expanded to
+        // its enabled subtree with _pg_catalog_group_subtree_ids(), and the
+        // child is kept when that subtree touches one of those groups; the
+        // matching ids are added to the standard name/short_description/
+        // address_name OR clause as an IN (...) list.
         if ($search_active) {
             $_q = e($search_query);
-            $children = db_items(
-                "WITH RECURSIVE _matched_subtree AS (
-                    -- Seed: every group that DIRECTLY xrefs a matching product.
-                    SELECT DISTINCT _pgx.product_group AS id
+            $_pg_seed_rows = db_items(
+                "SELECT DISTINCT _pgx.product_group AS id
                     FROM products_groups_xref _pgx
                     INNER JOIN products _p ON _p.id = _pgx.product
                     WHERE _p.enabled = 1
@@ -1851,15 +1848,42 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                               WHERE _pas.product_id = _p.id
                                 AND _pao.label LIKE '%$_q%'
                            )
-                      )
-                    UNION
-                    -- Recursive: climb parent_id chain so ancestors surface too.
-                    SELECT _pg2.parent_id
-                    FROM product_groups _pg2
-                    INNER JOIN _matched_subtree _ms ON _ms.id = _pg2.id
-                    WHERE _pg2.parent_id > 0
-                )
-                SELECT product_groups.id, product_groups.name, product_groups.address_name,
+                      )"
+            );
+            $_pg_seed_ids = array();
+            if (is_array($_pg_seed_rows)) {
+                foreach ($_pg_seed_rows as $_sr) {
+                    if ((int)$_sr['id'] > 0) $_pg_seed_ids[(int)$_sr['id']] = true;
+                }
+            }
+
+            $_pg_candidate_rows = db_items(
+                "SELECT id FROM product_groups
+                 WHERE parent_id = '" . $_pg_parent_filter . "' AND enabled = 1"
+            );
+            $_pg_candidate_ids = array();
+            if (is_array($_pg_candidate_rows)) {
+                foreach ($_pg_candidate_rows as $_cr) {
+                    if ((int)$_cr['id'] > 0) $_pg_candidate_ids[] = (int)$_cr['id'];
+                }
+            }
+
+            $_pg_matched_ids = array();
+            if ($_pg_seed_ids && $_pg_candidate_ids) {
+                $_pg_subtrees = _pg_catalog_group_subtree_ids($_pg_candidate_ids);
+                foreach ($_pg_candidate_ids as $_cid) {
+                    $_tree = isset($_pg_subtrees[$_cid]) ? $_pg_subtrees[$_cid] : array($_cid);
+                    foreach ($_tree as $_tid) {
+                        if (isset($_pg_seed_ids[$_tid])) { $_pg_matched_ids[] = $_cid; break; }
+                    }
+                }
+            }
+            $_pg_matched_sql = $_pg_matched_ids
+                ? " OR product_groups.id IN (" . implode(',', $_pg_matched_ids) . ")"
+                : '';
+
+            $children = db_items(
+                "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
                        product_groups.display_type, product_groups.sort_order
                 FROM product_groups
@@ -1869,7 +1893,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                        product_groups.name              LIKE '%$_q%'
                     OR product_groups.short_description LIKE '%$_q%'
                     OR product_groups.address_name      LIKE '%$_q%'
-                    OR product_groups.id IN (SELECT id FROM _matched_subtree)
+                    " . $_pg_matched_sql . "
                   )
                 ORDER BY product_groups.sort_order ASC, product_groups.name ASC"
             );
@@ -5348,9 +5372,11 @@ function _pg_catalog_listing_resolve_active_group($product_group_id, $page_slug_
 // typically holds NO products directly; they all live in sub-categories, so a
 // direct-membership query returns nothing at all.
 //
-// Walks product_groups in PHP rather than issuing a recursive SQL CTE: this
-// runs on ordinary catalog renders and feeds (not just on search), the table
-// is small, and it keeps the feature working on databases without CTE support.
+// Walks product_groups in PHP rather than issuing a recursive SQL CTE. The
+// product runs on MySQL 5.7, which has no CTEs, so every place in this module
+// that needs a group subtree (listing scope, attribute filter panel, group
+// search, price ranges, feeds) goes through this helper and an IN (...) list.
+// The table is small and the walk is cheap on ordinary catalog renders.
 //
 // Returns array(root_id => array(ids…)). Cycles and pathological depth are
 // guarded; a group is never visited twice.

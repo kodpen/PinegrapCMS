@@ -65,13 +65,30 @@ function erp_invoice_returned_total($invoice_id)
 /**
  * The parent's lines with what is still returnable on each.
  *
+ * Besides the quantity, each line carries the tax already credited back on it
+ * (returned_tax), so a further return can take no more than what is left. A
+ * return line names the parent line it was taken from (parent_line_id); lines
+ * written before that link existed carry 0 and are matched on product instead,
+ * which is exact as long as the parent has one line per product.
+ *
  * @param int $invoice_id
  * @return array
  */
 function erp_returnable_lines($invoice_id)
 {
-    $lines = (array) db_items("SELECT * FROM erp_invoice_items
-        WHERE invoice_id = '" . (int) $invoice_id . "' ORDER BY line_no ASC, id ASC");
+    $invoice_id = (int) $invoice_id;
+
+    $lines = (array) db_items("SELECT i.*,
+            (SELECT COALESCE(SUM(r.tax_total), 0)
+                FROM erp_invoice_items r
+                INNER JOIN erp_invoices d ON r.invoice_id = d.id
+                WHERE d.parent_invoice_id = '" . $invoice_id . "'
+                  AND d.doc_type = 'return'
+                  AND d.status <> 'cancelled'
+                  AND (r.parent_line_id = i.id
+                       OR (r.parent_line_id = 0 AND r.product_id = i.product_id))) AS returned_tax
+        FROM erp_invoice_items i
+        WHERE i.invoice_id = '" . $invoice_id . "' ORDER BY i.line_no ASC, i.id ASC");
 
     foreach ($lines as $index => $line) {
         $lines[$index]['remaining_qty'] = (float) $line['quantity'] - (float) $line['returned_qty'];
@@ -119,6 +136,17 @@ function erp_return_build($parent_lines, $quantities)
         $line_total = (int) round((int) $parent['unit_price'] * $wanted);
         $discount = (int) round((int) $parent['discount_amount'] * $share);
         $tax = erp_apply_rate($line_total - $discount, (float) $parent['tax_rate']);
+
+        // The parent line's tax is one rounded figure, and the pieces given
+        // back cannot add up to more than it: two halves of 361 kurus both
+        // round to 181. Each piece is taken at the rate, capped by what is
+        // still on the line, and the piece that empties the line takes exactly
+        // what is left - the same tie-back erp_order_lines does against the
+        // order's header, so that the returns of a line sum to its tax.
+        if (isset($parent['returned_tax'])) {
+            $tax_left = max(0, (int) $parent['tax_total'] - (int) $parent['returned_tax']);
+            $tax = ($wanted >= ($remaining - 0.00001)) ? $tax_left : min($tax, $tax_left);
+        }
 
         $lines[] = array(
             'parent_line_id' => $line_id,
@@ -241,6 +269,15 @@ function erp_invoice_return($data)
 
     $totals = $built['totals'];
 
+    // The return is drawn in the parent's currency at the parent's rate: it
+    // gives back what the invoice asked for, and a full return has to cancel
+    // the invoice's base value to the kurus as well.
+    $currency = strtoupper(trim((string) $parent['currency']));
+    $exchange_rate = ($currency === erp_base_currency()) ? 1.0 : (float) $parent['exchange_rate'];
+    $grand_total_base = ($currency === erp_base_currency())
+        ? (int) $totals['grand_total']
+        : ($built['is_full'] ? (int) $parent['grand_total_base'] : erp_to_base((int) $totals['grand_total'], $exchange_rate));
+
     $ok = erp_query("INSERT INTO erp_invoices SET
             direction = '" . escape($parent['direction']) . "',
             doc_type = 'return',
@@ -254,12 +291,15 @@ function erp_invoice_return($data)
             parent_invoice_id = '" . $parent_id . "',
             issue_date = '" . escape($issue_date) . "',
             due_date = '" . escape($issue_date) . "',
-            currency = '" . escape($parent['currency']) . "',
+            currency = '" . escape($currency) . "',
+            exchange_rate = '" . escape(number_format($exchange_rate, 6, '.', '')) . "',
+            exchange_rate_date = '" . escape((string) ($parent['exchange_rate_date'] ?? $issue_date)) . "',
+            exchange_rate_source = '" . escape((string) ($parent['exchange_rate_source'] ?? '')) . "',
             subtotal = '" . (int) $totals['subtotal'] . "',
             discount_total = '" . (int) $totals['discount_total'] . "',
             tax_total = '" . (int) $totals['tax_total'] . "',
             grand_total = '" . (int) $totals['grand_total'] . "',
-            grand_total_try = '" . (int) $totals['grand_total'] . "',
+            grand_total_base = '" . $grand_total_base . "',
             status = 'issued',
             is_internet_sale = '" . (int) $parent['is_internet_sale'] . "',
             payment_method = '" . escape($parent['payment_method'] ?? '') . "',
@@ -284,9 +324,13 @@ function erp_invoice_return($data)
     foreach ($built['lines'] as $line) {
         $line_no++;
 
+        // parent_line_id is what lets the quantity go back to the right line
+        // when this return is cancelled: two lines of the same product on one
+        // invoice cannot be told apart by product alone.
         $ok = erp_query("INSERT INTO erp_invoice_items SET
                 invoice_id = '" . $return_id . "',
                 line_no = '" . $line_no . "',
+                parent_line_id = '" . (int) $line['parent_line_id'] . "',
                 product_id = '" . (int) $line['product_id'] . "',
                 description = '" . escape($line['description']) . "',
                 quantity = '" . number_format($line['quantity'], 4, '.', '') . "',
@@ -324,7 +368,11 @@ function erp_invoice_return($data)
         'kind' => 'return',
         'direction' => ((string) $parent['direction'] === 'sales') ? 'credit' : 'debit',
         'amount' => (int) $totals['grand_total'],
-        'currency' => 'TRY',
+        'currency' => $currency,
+        'exchange_rate' => $exchange_rate,
+        'exchange_rate_date' => (string) ($parent['exchange_rate_date'] ?? $issue_date),
+        'exchange_rate_source' => (string) ($parent['exchange_rate_source'] ?? ''),
+        'amount_base' => $grand_total_base,
         'doc_type' => 'return',
         'doc_id' => $return_id,
         'description' => $numbered['full'],
@@ -332,6 +380,14 @@ function erp_invoice_return($data)
     ));
 
     if (($posted === false) || !erp_account_refresh_balance($account_id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    // The parent now asks for less, so money already allocated to it may
+    // cover it: its status is measured against the total less returns.
+    if (!erp_invoice_refresh_paid($parent_id)) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);
@@ -378,7 +434,10 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         return $fail(lang('That invoice has been cancelled.'));
     }
 
-    if ((int) db_value("SELECT COUNT(*) FROM erp_settlements WHERE invoice_id = '" . $invoice_id . "'") > 0) {
+    // The gift card allocation the invoice itself posted does not count: it
+    // was never an operator's decision, and it is reversed below along with
+    // the document that made it.
+    if (erp_invoice_receipt_count($invoice_id) > 0) {
         return $fail(lang('Money has been allocated to this invoice, so it cannot be cancelled. Undo the settlement first.'));
     }
 
@@ -401,7 +460,13 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         'kind' => 'adjustment',
         'direction' => (((string) $invoice['direction'] === 'sales') xor $is_return) ? 'credit' : 'debit',
         'amount' => (int) $invoice['grand_total'],
-        'currency' => 'TRY',
+        // The reversal is the document's own movement with the arrow turned,
+        // so it carries the document's currency, rate and base value.
+        'currency' => (string) $invoice['currency'],
+        'exchange_rate' => (float) $invoice['exchange_rate'],
+        'exchange_rate_date' => (string) $invoice['exchange_rate_date'],
+        'exchange_rate_source' => (string) ($invoice['exchange_rate_source'] ?? ''),
+        'amount_base' => (int) $invoice['grand_total_base'],
         'doc_type' => 'cancel',
         'doc_id' => $invoice_id,
         'description' => lang(array(
@@ -417,6 +482,15 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         return $fail($error);
     }
 
+    // The gift card credit goes the same way: reversed by an opposite
+    // movement, and its allocation removed, so the account reads as if the
+    // invoice had never been raised.
+    if (!$is_return && !erp_unsettle_gift_card($invoice_id, $created_by)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     if (erp_query("UPDATE erp_invoices SET status = 'cancelled', updated_at = '" . time() . "'
         WHERE id = '" . $invoice_id . "'") === false) {
         $error = erp_db_error();
@@ -425,20 +499,42 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
     }
 
     // A cancelled return gives the goods back to the parent, so the parent can
-    // be returned again.
+    // be returned again. Each return line names the parent line it was taken
+    // from; a line written before that link existed falls back to the first
+    // parent line with the same product, which is all it ever knew.
     if ($is_return) {
-        foreach ((array) db_items("SELECT product_id, quantity FROM erp_invoice_items
+        foreach ((array) db_items("SELECT parent_line_id, product_id, quantity FROM erp_invoice_items
             WHERE invoice_id = '" . $invoice_id . "'") as $line) {
 
-            if (erp_query("UPDATE erp_invoice_items
-                SET returned_qty = GREATEST(0, returned_qty - " . number_format((float) $line['quantity'], 4, '.', '') . ")
-                WHERE invoice_id = '" . (int) $invoice['parent_invoice_id'] . "'
-                  AND product_id = '" . (int) $line['product_id'] . "'
-                LIMIT 1") === false) {
+            $quantity = number_format((float) $line['quantity'], 4, '.', '');
+
+            if ((int) $line['parent_line_id'] > 0) {
+                $ok = erp_query("UPDATE erp_invoice_items
+                    SET returned_qty = GREATEST(0, returned_qty - " . $quantity . ")
+                    WHERE id = '" . (int) $line['parent_line_id'] . "'
+                      AND invoice_id = '" . (int) $invoice['parent_invoice_id'] . "'");
+            } else {
+                $ok = erp_query("UPDATE erp_invoice_items
+                    SET returned_qty = GREATEST(0, returned_qty - " . $quantity . ")
+                    WHERE invoice_id = '" . (int) $invoice['parent_invoice_id'] . "'
+                      AND product_id = '" . (int) $line['product_id'] . "'
+                    ORDER BY line_no ASC, id ASC
+                    LIMIT 1");
+            }
+
+            if ($ok === false) {
                 $error = erp_db_error();
                 erp_tx_rollback();
                 return $fail($error);
             }
+        }
+
+        // The parent asks for its full amount again, so a status that the
+        // return had allowed to reach paid has to be worked out afresh.
+        if (!erp_invoice_refresh_paid((int) $invoice['parent_invoice_id'])) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+            return $fail($error);
         }
     }
 
