@@ -71,6 +71,37 @@ anahtar çoktan indirilmiş olabilir.
 `php -l` iki PHP dosyasında temiz; `php tools/lint.php` ve
 `php tools/check_lang.php` temiz. Çalışan örnekte denenmedi.
 
+## 2026.4.4 — pi.php ve si.php oturumsuz açıktı: phpinfo ve sunucu bilgisi (2026-09-18)
+
+**Belirti.** `pi.php` yalnız `phpinfo();` çağıran çıplak bir dosyaydı: ne
+`init.php` yüklüyor, ne oturum açıyor, ne rol denetliyordu. Yani
+`https://site/<yazılım_dizini>/pi.php` adresini bilen herkes — oturumsuz,
+anonim ziyaretçi dâhil — ortam değişkenlerini, dosya yollarını, yüklü
+modülleri ve tüm ini ayarlarını okuyabiliyordu. `si.php` (Sistem Bilgisi)
+`init.php`'yi yüklüyordu ama hiç `validate_user()` çağırmıyordu; bu yüzden
+hostname, sunucu IP'si, sürüm/edisyon, PHP ve MySQL sürümleri,
+`php_uname`, `SERVER_SOFTWARE`, `disable_functions` ve iframe içindeki
+phpinfo da herkese açıktı. Yayındaki 2026.4.3 (`7fc9e9b`, `v2026.4.3`) iki
+dosyada da aynı kodu taşıyor; yani sunuculardaki kurulum bu açığı bugün
+barındırıyor.
+
+**Düzeltme.** İki dosya da artık her diğer yönetim ekranı gibi
+`$user = validate_user(); validate_area_access($user, 'administrator');`
+ile açılıyor: oturum yoksa giriş ekranına yönlendirme, oturum var ama rol
+yönetici değilse erişim-reddedildi ekranı; `output_error()` `exit()` ile
+bittiği için `phpinfo()`'ya düşme yok. Ayarlar merkezindeki "System
+Informations" bağlantısına (registry.php) dokunulmadı; merkez `manager`
+kapısında olduğundan tasarımcı ve yöneticiler bağlantıyı görmeye devam eder
+ama tıkladıklarında erişim-reddedildi ekranı alırlar — phpinfo ve
+`disable_functions` sunucu düzeyi bilgi olduğu için eşik bilinçli olarak
+`administrator` seçildi; ürün sahibi isterse `si.php` `manager`'a
+indirilebilir. Şema değişikliği yok, yeni lang anahtarı yok.
+
+### Doğrulama
+
+`php -l pinegrap/pi.php`, `php -l pinegrap/si.php`, `php tools/lint.php`,
+`php tools/check_lang.php` temiz. Çalışan bir kurulumda denenmedi.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
