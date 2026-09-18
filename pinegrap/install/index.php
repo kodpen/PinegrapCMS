@@ -399,24 +399,6 @@ if (defined('HTACCESS_FILE_PATH') == false) {
 
 }
 
-//Backup Files Directory
-function get_backup_options() {
-	$directory_path = dirname(__FILE__) . '/../data/backups/';
-	foreach (array_diff(scandir($directory_path) , array(
-		'..',
-		'.'
-	)) as $backup_folder) if (is_dir($directory_path . '/' . $backup_folder)) $directory[] = $backup_folder;
-
-	if ($directory) {
-		$backup_options = array();
-		$backup_options['-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('backup')) )) . '-']	= '';
-		foreach ($directory as $backup_folder) {
-			$backup_options[$backup_folder] = $backup_folder;
-		}
-		return $backup_options;
-	}
-}
-
 // The starter site folders that ship with the software.  These are offered as starter
 // sites on the install screen, so they are not mixed in with the site backups that an
 // administrator has created on the server.
