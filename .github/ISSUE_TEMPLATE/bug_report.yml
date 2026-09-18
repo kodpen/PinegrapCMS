@@ -1,0 +1,104 @@
+# Bug report form. Written for human reporters and for agents that file
+# audit findings; the findings checklist and the "verified by" statement
+# exist so that a fix can start without a second round of questions.
+name: Bug report
+description: A defect in Pinegrap CMS with reproduction steps or a code-level finding.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Turkish or English are both fine. Security findings (WAF bypass, authentication, CSRF, payment data, secrets) are **not** filed here; see [SECURITY.md](https://github.com/kodpen/PinegrapCMS/blob/main/SECURITY.md).
+        If the defect was reproduced on a running instance (fatal, exception, wrong output), use the title prefix `[bug][runtime]`.
+  - type: input
+    id: version
+    attributes:
+      label: Pinegrap version
+      description: The topmost version in `pinegrap/changelog.txt` on the affected site.
+      placeholder: "2026.4.4"
+    validations:
+      required: true
+  - type: input
+    id: php
+    attributes:
+      label: PHP version
+      placeholder: "8.3.12"
+    validations:
+      required: true
+  - type: dropdown
+    id: webserver
+    attributes:
+      label: Web server
+      options:
+        - Apache
+        - Nginx
+        - IIS
+        - PHP built-in server (sandbox)
+        - Other / not applicable
+    validations:
+      required: true
+  - type: input
+    id: database
+    attributes:
+      label: Database
+      description: Engine and version.
+      placeholder: "MariaDB 10.11"
+  - type: input
+    id: screen
+    attributes:
+      label: Screen or URL
+      description: The panel screen, visitor page or endpoint where the problem shows.
+      placeholder: "view_folders.php, /pinegrap/api.php?action=..."
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: For endpoints, include the exact request (method, path, parameters) and the response you got.
+      placeholder: |
+        1. Log in as Manager (role 2)
+        2. Open ...
+        3. Click ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: PHP error log excerpt
+      description: The relevant line(s) from the PHP or web server error log, if any.
+      render: text
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings
+      description: For code-level reports, one item per finding. Keep the four parts so the fix can be located and checked without re-reading.
+      value: |
+        - [ ] `path/file.php:123` — what is wrong — evidence (log line, request/response, code excerpt) — proposed fix
+  - type: dropdown
+    id: verification
+    attributes:
+      label: How was this verified?
+      description: Say whether the defect was seen on a running instance or found by reading the code.
+      options:
+        - Verified by running (reproduced on a running instance)
+        - Read-only (found by reading the code, not executed)
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Related issues or PRs, files already touched by open PRs, screenshots.

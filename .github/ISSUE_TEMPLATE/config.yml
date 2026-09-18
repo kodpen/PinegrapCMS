@@ -1,0 +1,10 @@
+# Issue chooser settings. Free-form issues are disabled so that every report
+# arrives with the fields the maintainer (and the agents) need.
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/kodpen/PinegrapCMS/discussions
+    about: Ask a question or discuss an idea before it becomes an issue. Turkish and English are both welcome.
+  - name: Security vulnerability
+    url: https://github.com/kodpen/PinegrapCMS/security/policy
+    about: Do not open a public issue for security findings. Read SECURITY.md and report privately.

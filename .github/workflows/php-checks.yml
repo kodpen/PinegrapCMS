@@ -1,0 +1,33 @@
+# Static checks that gate every pull request: PHP syntax across the product
+# tree and translation-key consistency. Neither needs a database.
+name: PHP checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: lint and check_lang (PHP 8.3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, mysqli, gd, intl, xml, zip
+          coverage: none
+          tools: none
+
+      - name: Syntax check (php -l over the product tree)
+        run: php tools/lint.php
+
+      - name: Translation keys (lang / _sdT against tr.json)
+        run: php tools/check_lang.php

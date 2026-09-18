@@ -1,0 +1,46 @@
+# Feature request form.
+name: Feature request
+description: Propose a new capability or an improvement to an existing one.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Turkish or English are both fine. For a quick idea or a question, [Discussions](https://github.com/kodpen/PinegrapCMS/discussions) may be the better place.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What cannot be done today, or what is harder than it should be? Who is affected (site owner, visitor, developer)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should it work? Name the screen(s) or module(s) it would live in if you know them.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Content and page designer
+        - E-commerce
+        - Marketing and communication
+        - Security and WAF
+        - Performance and operations
+        - API / integrations
+        - ERP
+        - Panel UI
+        - Other
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Links, screenshots, related issues.
