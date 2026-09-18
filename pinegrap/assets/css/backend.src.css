@@ -927,8 +927,7 @@ html[data-bs-theme="dark"] body .ads-color {
    the theme blocks, so there is one rule per level instead of one per level
    per theme. */
 .public,
-.public *,
-#folder_tree li.public {
+.public * {
   color: var(--pg-access-public);
 }
 
@@ -960,12 +959,10 @@ html[data-bs-theme="dark"] body .ads-color {
   color: var(--bs-tertiary-color);
 }
 
-#folder_tree .row .material-icons,
 #product_group_tree .row .material-icons {
   color: var(--bs-tertiary-color);
 }
 
-#folder_tree .row .icon .material-icons,
 #product_group_tree .row .icon .material-icons {
   color: var(--bs-secondary-color);
 }
@@ -2340,7 +2337,6 @@ table.chart thead th {
   margin-bottom: 0px;
   padding-bottom: 0px;
 }
-#folder_tree,
 #product_group_tree {
   min-height: 200px;
   overflow-x: auto;
@@ -2348,19 +2344,16 @@ table.chart thead th {
   padding-bottom: 2rem;
 }
 
-#folder_tree ul,
 #product_group_tree ul {
   list-style: none;
   padding: 0 0 0 1.5em;
 }
 
-#folder_tree li,
 #product_group_tree li {
   white-space: nowrap;
   padding: 0 0 0 1.5em;
 }
 
-#folder_tree .row,
 #product_group_tree .row {
   display: block;
   background: transparent;
@@ -2373,12 +2366,10 @@ table.chart thead th {
   margin-left:-1.2rem;
 }
 
-#folder_tree .row span,
 #product_group_tree .row span {
   cursor: pointer;
 }
 
-#folder_tree .row:hover,
 #product_group_tree .row:hover {
   background: #95959521;
   transition: background-color 0.1s ease;
@@ -3133,12 +3124,10 @@ html[data-bs-theme="dark"] table.monthly_calendar .calendar-event a {
   color: #c3c3c3;
 }
 
-html[data-bs-theme="dark"] #folder_tree ul,
 html[data-bs-theme="dark"] #product_group_tree ul {
   border-left: 1px solid #0000006c;
 }
 
-html[data-bs-theme="dark"] #folder_tree span.row:before,
 html[data-bs-theme="dark"] #product_group_tree span.row:before {
   border-bottom: 1px solid #0000006c;
 }
