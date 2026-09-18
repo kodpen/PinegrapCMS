@@ -19,14 +19,16 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
-db('UPDATE config SET last_software_auto_backup = 0');
-
 include_once('liveform.class.php');
 $liveform = new liveform('backups');
 
 //Backup Files Directory
 function backup_list($directory){ 
 	$directory_path = 'data/backups/';
+	$l = array();
+	if (!is_dir($directory_path)) {
+		return $l;
+	}
     foreach(array_diff(scandir($directory_path),array('..','.' )) as $backup_folder)if(is_dir($directory_path.'/'.$backup_folder))$l[]=$backup_folder; 
     return $l; 
 }
@@ -45,11 +47,11 @@ if($directory){
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">
-        	    <button type="submit" name="download_selected" value="Download '.$backup_folder.'" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
-        	    <button type="submit" name="delete_selected"   value="Delete '.$backup_folder.'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
+        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-primary border-2 " data-loading-content=" " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
         	</td>
 			<td>
-				'.$backup_folder.'
+				'.h($backup_folder).'
 			</td>
 			<td>
 				<time>'.date('d F Y', filectime('data/backups/'.$backup_folder)).'</time>
@@ -250,7 +252,7 @@ if (!$_POST) {
 		
 		    exit();
 		}
-		if ($_POST['delete_selected'] == 'Delete '.$backup_folder) {
+		if (isset($_POST['delete_selected']) && $_POST['delete_selected'] === 'Delete '.$backup_folder) {
 
 		    $delete_backup = $backup_folder;
 		    $dir = $backup_location.$delete_backup;
@@ -293,6 +295,10 @@ if (!$_POST) {
 		                lang(array('string'=>'Backup ({var:1}) is deleted','vars'=>array($backup_folder))),
 		                $_SESSION['sessionusername']
 		            );
+		            // A backup was removed, so let the scheduled auto backup
+		            // take a fresh one on its next run instead of waiting out
+		            // the 24 hour interval.
+		            db('UPDATE config SET last_software_auto_backup = 0');
 		        }
 		
 		    } catch (UnexpectedValueException $e) {
@@ -308,5 +314,5 @@ if (!$_POST) {
 		}
 	}
 	// forward user back to backups screen
-	header('Location: http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/backups.php');
+	go(PATH . SOFTWARE_DIRECTORY . '/backups.php');
 }

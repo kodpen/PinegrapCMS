@@ -4750,7 +4750,7 @@ switch ($action) {
                             orders.order_date as timestamp
                         FROM orders
                         LEFT JOIN user ON orders.user_id = user.user_id
-                        LEFT JOIN contacts ON orders.id = contacts.id
+                        LEFT JOIN contacts ON orders.contact_id = contacts.id
                         WHERE status = 'incomplete'
                         ORDER BY orders.order_date DESC
                         LIMIT 50";
@@ -4765,17 +4765,13 @@ switch ($action) {
                         // loop through the carts, in order to output rows
                         foreach ($carts as $cart) {
 
-                            // get paid total
-                            $query =
-                                "SELECT SUM(order_items.price) as price,
-                                quantity
+                            // Cart total: every line's price times its own
+                            // quantity, summed. Prices are stored in kurus.
+                            $cart_total = db_value(
+                                "SELECT SUM(order_items.price * order_items.quantity)
                                 FROM order_items
-                                WHERE order_id = '" . $cart['id'] . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                            $row = mysqli_fetch_assoc($result);
-                            $price = $row['price'];
-                            $quantity = $row['quantity'];
-                            $total = BASE_CURRENCY_SYMBOL . number_format($price * $quantity / 100, 2, '.', ',');
+                                WHERE order_id = '" . (int) $cart['id'] . "'");
+                            $total = BASE_CURRENCY_SYMBOL . number_format(round((float) $cart_total) / 100, 2, '.', ',');
 
                             $output_link_url = 'view_order.php?id=' . $cart['id'];
 
@@ -5468,6 +5464,7 @@ switch ($action) {
 
                     } else {
                         $custom_forms = array();
+                        $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
 
                         // get all custom forms in order to determine which the user has access to
                         $query = "SELECT
@@ -5993,7 +5990,7 @@ switch ($action) {
 
                             $output_link_url = 'edit_currency.php?id=' . $currency['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
                             if ($currency['base'] != 1) {
-                                $rate_display = number_format((1 / $currency['exchange_rate']), 5);
+                                $rate_display = ((float) $currency['exchange_rate'] > 0) ? number_format((1 / $currency['exchange_rate']), 5) : '-';
                                 $output_rows .= pg_widget_row(array(
                                     'href'  => $output_link_url,
                                     'badge' => $currency['symbol'],
@@ -8702,7 +8699,7 @@ switch ($action) {
                     $backups_error_message = $e->getMessage();
 
                     //if mysql error and backup folder is empty, delete it.
-                    if (!file_exists($backup_location . $backup_folder_name . '/*')) {
+                    if (is_dir($backup_location . $backup_folder_name) && count(glob($backup_location . $backup_folder_name . '/*')) === 0) {
                         rmdir($backup_location . $backup_folder_name);
                     }
 
@@ -12199,6 +12196,7 @@ switch ($action) {
                                     $design = 'true';
                                 }
                                 $file_time_before_upload = time() - $file['timestamp'];
+                                $new_file_icon = '';
                                 if ($file_time_before_upload < 900) {
                                     $new_file_icon = '<i class="bi bi-clock-history" title="' . lang('New file') . '"></i>';
                                 }
