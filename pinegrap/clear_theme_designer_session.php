@@ -19,7 +19,7 @@
 include('init.php');
 
 // clear the session
-unset($_SESSION['software']['theme_designer'][$_GET['file_id']]);
+unset($_SESSION['software']['theme_designer'][$_GET['file_id'] ?? '']);
 
 // if there is a send to being passed then send the user to the next screen
 if (($_GET['send_to'] ?? '') != '') {

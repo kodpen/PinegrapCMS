@@ -57,7 +57,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_REQUEST['id']) . '">
                     <input type="hidden" name="name" value="' . h($file_name) . '">
-                    <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to']) . '">
+                    <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to'] ?? '') . '">
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">

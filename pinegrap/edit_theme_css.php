@@ -38,13 +38,13 @@ if (!$_POST) {
     $output_breadcrumb_content = '';
     // Conditional breadcrumb parents based on the referring screen.
     $pg_breadcrumb_items = array();
-    if($_REQUEST['from'] == 'edit_design_file'){
+    if(($_REQUEST['from'] ?? '') == 'edit_design_file'){
         $output_breadcrumb_content =
         '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php">' . lang('All Design Files') . '</a></li>
         <li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . h($_REQUEST['id']) . '">' . lang('Edit Design File') . '</a></li>';
         $pg_breadcrumb_items[] = array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php');
         $pg_breadcrumb_items[] = array('label' => lang('Edit Design File'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . h($_REQUEST['id']));
-    }else if($_REQUEST['from'] == 'edit_theme_file'){
+    }else if(($_REQUEST['from'] ?? '') == 'edit_theme_file'){
         $output_breadcrumb_content =
         '<li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php">' . lang('All Themes') . '</a></li>
         <li class="breadcrumb-item"><a class="link-secondary " data-loading-content="' . lang('Loading') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . h($_REQUEST['id']) . '">' . lang('Edit Theme') . '</a></li>';
@@ -75,8 +75,8 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_REQUEST['id']) . '">
                         <input type="hidden" name="name" value="' . h($file_name) . '">
-                        <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to']) . '">
-                        <input type="hidden" name="from" value="' . h($_REQUEST['from']) . '">
+                        <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to'] ?? '') . '">
+                        <input type="hidden" name="from" value="' . h($_REQUEST['from'] ?? '') . '">
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-4">

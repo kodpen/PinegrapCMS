@@ -24,7 +24,7 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('theme_designer');
 
-if ($_GET['clear_theme_designer_session'] == TRUE) {
+if (!empty($_GET['clear_theme_designer_session'])) {
     unset($_SESSION['software']['theme_designer'][$_REQUEST['id']]);
 }
 
@@ -47,12 +47,12 @@ if (!$_POST) {
     }
     
     // if there is a page id in the URL, then set the page to preview id for this theme in the session to the URL's value
-    if ($_GET['page_to_preview_id'] != '') {
+    if (($_GET['page_to_preview_id'] ?? '') != '') {
         $_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'] = $_GET['page_to_preview_id'];
     }
     
     // if there is a page to preview id in the session, then get the pages data
-    if ($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'] != '') {
+    if (!empty($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'])) {
         $where = "WHERE page_id = '" . escape($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id']) . "'";
         $limit = '';
     
@@ -978,12 +978,12 @@ if (!$_POST) {
     $_SESSION['software']['theme_designer'][$_GET['id']]['code'] = generate_system_theme_css($_SESSION['software']['theme_designer'][$_GET['id']]['preview_properties']);
     
     // if there is a last open module, then output the javascript needed to open it
-    if ($_SESSION['software']['theme_designer'][$_GET['id']]['last_opened_module'] != '') {
+    if (!empty($_SESSION['software']['theme_designer'][$_GET['id']]['last_opened_module'])) {
         $output_javascript = 'open_theme_designer_accordion_module(\'' . escape_javascript($_SESSION['software']['theme_designer'][$_GET['id']]['last_opened_module']) . '\');';
     }
     
     // if there is a send to, then set it as the send to value
-    if ($_REQUEST['send_to'] != '') {
+    if (($_REQUEST['send_to'] ?? '') != '') {
         $send_to = $_REQUEST['send_to'];
     
     // else set the send to to the edit theme file script
@@ -2375,7 +2375,7 @@ if (!$_POST) {
         $query_string_send_to = '';
         
         // if there is a send to, then prepare it for the url string
-        if ($_REQUEST['send_to'] != '') {
+        if (($_REQUEST['send_to'] ?? '') != '') {
             $query_string_send_to = '&send_to=' . urlencode($_REQUEST['send_to']);
         }
         
