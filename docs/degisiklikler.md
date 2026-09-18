@@ -41,6 +41,41 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Kimlik doğrulamasız iş betikleri ve kısa bağlantı rol kapısı (2026-09-18)
+
+**Belirti.** `update_exchange_rates.php` ve `waf_ranges_job.php`, `send_to`
+parametresi yokken `validate_user()` çağırmıyordu: kullanıcı kimliği yalnız
+yönlendirme için gerekiyormuş gibi ele alınmıştı. Sonuç, anonim bir GET'in
+döviz kurlarını (`currencies.exchange_rate`) ve WAF bot IP aralıklarını
+yeniden yazabilmesiydi. Yayınlanmış 2026.4.3'ü de etkiler (#83).
+
+**Düzeltme.** `pg_cron_is_background_run()` (`includes/fn/cron.php`): CLI
+koşusu ya da `job.php` dağıtıcısının include'dan hemen önce tanımladığı
+`PG_CRON_DISPATCH` sabiti arka plan koşusu sayılır ve kullanıcı gerekmez.
+Diğer her istek bir web isteğidir ve düğmeyi sunan panel ekranıyla aynı
+kapıdan geçer: kurlar için `validate_ecommerce_access()`
+(`view_currencies.php` ile aynı), WAF için `validate_area_access('manager')`
+(güvenlik duvarı ayar ekranıyla aynı). Neden anahtar ya da IP kontrolü
+değil: crontab satırları zaten CLI'dır, dağıtıcı zaten süreç içidir; ek bir
+sır dağıtmak yeni bir yapılandırma adımı, loopback kontrolü ise ters proxy
+arkasında yanlış pozitif demektir. `send_to` açık yönlendirmesi #64'te,
+`job.php`'nin kendi anonim HTTP kapısı #68'de ayrı ele alınır.
+
+**Kısa bağlantı.** Karar: kısa bağlantı oluşturma rol 0–2'ye aittir.
+`add_short_link.php` `'user'` yerine `'manager'` kapısına alındı ve rol 3'e
+özel sayfa düzenleme hakkı kontrolü ölü kod olarak kaldırıldı; Dosya
+Yöneticisi'nin `explorer_short_link_create` / `explorer_short_link_duplicate`
+eylemleri sunucu tarafında rol 3'ü reddeder; menüdeki ve liste ekranındaki
+"Oluştur" ile sayfa bilgi kartındaki eylem rol 3'e gösterilmez. Mevcut
+bağlantıları düzenleme ve silme (`edit_short_link.php`) değişmedi.
+
+### Doğrulama
+
+`php -l` dokunulan dokuz PHP dosyasında temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: CLI koşusu,
+`job.php` dağıtım yolu ve anonim GET'in reddi tarayıcıda denenmedi.
+`includes/` değiştiği için yayından önce bütünlük özeti yeniden üretilmeli.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak

@@ -790,6 +790,21 @@ function pg_cron_dispatch_finished()
 }
 
 /**
+ * Whether the running job script was started in the background.
+ *
+ * True for a command-line run (the crontab entries the settings screen hands
+ * out) and for a script the general job pulled in through the dispatcher,
+ * which defines PG_CRON_DISPATCH right before the include. Anything else is an
+ * ordinary web request and has to authenticate like a panel screen: the job
+ * scripts once skipped that whenever the redirect parameter was absent, so an
+ * anonymous GET could run them.
+ */
+function pg_cron_is_background_run()
+{
+    return (PHP_SAPI === 'cli') || defined('PG_CRON_DISPATCH');
+}
+
+/**
  * Whether a catalogued job's own config gate would let it do any work.
  *
  * The dispatcher skips inactive jobs instead of starting a script whose first

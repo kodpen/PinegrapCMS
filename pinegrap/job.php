@@ -448,5 +448,10 @@ if ($dispatch_script !== '') {
     // the site log instead.
     ob_start('pg_cron_dispatch_output');
 
+    // The dispatched script checks this constant through
+    // pg_cron_is_background_run(), so it does not demand a signed-in user
+    // when the general job is the one running it.
+    define('PG_CRON_DISPATCH', true);
+
     include($dispatch_script);
 }
