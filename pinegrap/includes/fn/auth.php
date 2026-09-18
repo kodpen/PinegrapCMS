@@ -4571,6 +4571,7 @@ function initialize_developer_security()
         if (
             defined('LOCKED_PAGES') &&
             in_array($file_name, LOCKED_PAGES) &&
+            defined('DEVELOPER_PIN') &&
             DEVELOPER_PIN !== '' &&
             $devpasspin !== md5(DEVELOPER_PIN)
         ) {
