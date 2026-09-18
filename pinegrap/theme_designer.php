@@ -1021,7 +1021,6 @@ if (!$_POST) {
         <head>
             <meta charset="utf-8">
             <title>Theme Designer</title>
-            ' . get_generator_meta_tag() . '
             ' . output_control_panel_header_includes() . '
             <link rel="stylesheet" media="screen" type="text/css" href="assets/lib/colorpicker/css/colorpicker.css" />
             <script type="text/javascript" src="assets/lib/colorpicker/js/colorpicker.js"></script>

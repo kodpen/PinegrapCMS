@@ -21,6 +21,7 @@ if (!validate_erp_access($user, 'cash')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/account_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/till_form.php');
 include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_till');
@@ -46,8 +47,15 @@ if (!$_POST) {
         $liveform->assign_field_value('iban', $till['iban']);
         // The sign stays on: erp_kurus() reads a leading minus back, and an
         // opening balance shown without it would be saved as a positive figure.
-        $liveform->assign_field_value('opening_balance', erp_money_out((int) $till['opening_balance']));
+        $liveform->assign_field_value('opening_balance', erp_money_out_currency((int) $till['opening_balance'], (string) $till['currency']));
+        $liveform->assign_field_value('currency', strtoupper(trim((string) $till['currency'])));
     }
+
+    // Every figure on this screen is in the till's own currency.
+    $till_currency = strtoupper(trim((string) $till['currency']));
+    $money = function ($kurus, $show_sign = true) use ($till_currency) {
+        return h(erp_fx_enabled() ? erp_money_out_currency((int) $kurus, $till_currency, $show_sign) : erp_money_out((int) $kurus, $show_sign));
+    };
 
     $movements = (array) db_items("SELECT c.*, a.title AS account_title
         FROM erp_cash_transactions c
@@ -62,7 +70,7 @@ if (!$_POST) {
     $output_movements = '
         <tr class="text-body-secondary">
             <td colspan="4">' . lang('Opening Balance') . '</td>
-            <td class="text-end">' . h(erp_money_out($running)) . '</td>
+            <td class="text-end">' . $money($running) . '</td>
         </tr>';
 
     foreach ($movements as $movement) {
@@ -76,8 +84,8 @@ if (!$_POST) {
             <td class="align-middle">' . h($movement['description']) . '</td>
             <td class="align-middle">' . h($movement['account_title']) . '</td>
             <td class="align-middle text-end ' . ($in ? 'text-success' : 'text-danger') . '">'
-                . ($in ? '+' : '&minus;') . h(erp_money_out($amount, false)) . '</td>
-            <td class="align-middle text-end">' . h(erp_money_out($running)) . '</td>
+                . ($in ? '+' : '&minus;') . $money($amount, false) . '</td>
+            <td class="align-middle text-end">' . $money($running) . '</td>
         </tr>';
     }
 
@@ -111,14 +119,14 @@ if (!$_POST) {
             <div class="card my-4">
                 <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
                     <span class="text-uppercase text-body-secondary">' . lang('Balance') . '</span>
-                    <span class="h4 mb-0 ' . (($balance < 0) ? 'text-danger' : 'text-success') . '">' . h(erp_money_out($balance)) . '</span>
+                    <span class="h4 mb-0 ' . (($balance < 0) ? 'text-danger' : 'text-success') . '">' . $money($balance) . '</span>
                 </div>
             </div>
 
             <form name="form" action="edit_erp_till.php" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . erp_till_form_cards($liveform) . '
+                ' . erp_till_form_cards($liveform, !empty($movements)) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
@@ -194,9 +202,33 @@ if (!$_POST) {
     $kinds = array('cash', 'bank', 'pos', 'credit_card');
     $kind = in_array($liveform->get_field_value('kind'), $kinds, true) ? $liveform->get_field_value('kind') : 'cash';
 
+    // The currency may only change while nothing has moved through the till:
+    // its balance is a plain sum of movements in one currency.
+    $sql_currency = '';
+    if (erp_fx_enabled()) {
+        $stored_currency = strtoupper(trim((string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1")));
+        $chosen = strtoupper(trim((string) $liveform->get_field_value('currency')));
+        $has_movements = ((int) db_value("SELECT COUNT(*) FROM erp_cash_transactions WHERE cash_account_id = '" . $till_id . "'") > 0);
+
+        if (($chosen !== '') && ($chosen !== $stored_currency)) {
+            if ($has_movements) {
+                $liveform->mark_error('currency', lang('Cannot be changed once there are movements.'));
+            } elseif (!erp_fx_currency_allowed($chosen)) {
+                $liveform->mark_error('currency', lang('That currency is not enabled for the ERP.'));
+            } else {
+                $sql_currency = "currency = '" . escape($chosen) . "',";
+            }
+
+            if ($liveform->check_form_errors() == true) {
+                go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_till.php?id=' . $till_id);
+            }
+        }
+    }
+
     erp_query("UPDATE erp_cash_accounts SET
         name = '" . escape(trim((string) $liveform->get_field_value('name'))) . "',
         kind = '" . escape($kind) . "',
+        " . $sql_currency . "
         iban = '" . escape(trim((string) $liveform->get_field_value('iban'))) . "',
         bank_name = '" . escape(trim((string) $liveform->get_field_value('bank_name'))) . "',
         opening_balance = '" . erp_kurus($liveform->get_field_value('opening_balance')) . "',

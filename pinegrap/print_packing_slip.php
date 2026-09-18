@@ -268,12 +268,7 @@ foreach ($order_items as $order_item) {
             </tr>';
     }
 }
-if(lang(array('info'=>'')) == 'en'){
-    $title = '<title>Packing Slip</title>';
-}
-elseif(lang(array('info'=>'')) == 'tr'){
-    $title = '<title>Sevk İrsaliyesi</title>';
-}
+$title = '<title>' . h(lang('Packing Slip')) . '</title>';
 
     echo 
     output_header_secure() . '

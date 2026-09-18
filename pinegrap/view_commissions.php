@@ -182,7 +182,7 @@ if ($number_of_screens > 1) {
     for ($i = 1; $i <= $number_of_screens; $i++) { 
         // if this number is the current screen, then select option
         if ($i == $screen) {
-            $active = 'active"';
+            $active = 'active';
         // else this number is not the current screen, so do not select option
         } else {
             $active = '';
@@ -283,7 +283,8 @@ $query =
         (commissions.created_timestamp >= '" . $start_timestamp . "')
         AND (commissions.created_timestamp <= '" . $stop_timestamp . "')
         " . $sql_status . "
-    ORDER BY " . $sort_column . " " . escape(($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . "";
+    ORDER BY " . $sort_column . " " . escape(($_SESSION['software']['ecommerce']['view_commissions']['order'] ?? '')) . "
+    LIMIT " . (($screen - 1) * $max) . ", " . $max;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $commissions = array();
@@ -501,6 +502,7 @@ $output_header_with_options . '
                     </table>
                 </div>
             </div>
+            ' . $output_screen_links . '
             <div class="clearfix">
                 <div class="col-12 col-sm-6 col-md-4 col-lg-3  float-sm-end">
                     <div class="card my-4 border-primary">

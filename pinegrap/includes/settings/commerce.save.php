@@ -162,6 +162,32 @@ function pg_parasut_credentials_for_save()
     if (waf_table_has_column('config', 'product_upload_folder_id')) {
         $sql_product_upload_folder = "product_upload_folder_id = '" . escape((int) post_value('product_upload_folder_id')) . "',";
     }
+    // Foreign currency in the ERP (2026.4.4). The currency list is whatever
+    // was ticked, kept to three-letter codes the store lists; the base is
+    // never stored because it is always allowed.
+    $sql_erp_fx = "";
+
+    if (waf_table_has_column('config', 'erp_fx_enabled')) {
+        $erp_fx_codes = array();
+        $erp_fx_known = array();
+
+        foreach ((array) db_items("SELECT code FROM currencies WHERE base != 1") as $erp_fx_row) {
+            $erp_fx_known[] = strtoupper(trim((string) $erp_fx_row['code']));
+        }
+
+        foreach ((array) post_value('erp_fx_currencies') as $erp_fx_code) {
+            $erp_fx_code = strtoupper(trim((string) $erp_fx_code));
+
+            if (preg_match('/^[A-Z]{3}$/', $erp_fx_code) && in_array($erp_fx_code, $erp_fx_known, true) && !in_array($erp_fx_code, $erp_fx_codes, true)) {
+                $erp_fx_codes[] = $erp_fx_code;
+            }
+        }
+
+        $sql_erp_fx = "erp_fx_enabled = '" . ((post_value('erp_fx_enabled') == 1) ? 1 : 0) . "',
+            erp_fx_currencies = '" . escape(substr(implode(',', $erp_fx_codes), 0, 64)) . "',
+            erp_fx_auto_diff = '" . ((post_value('erp_fx_auto_diff') == 1) ? 1 : 0) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -222,6 +248,7 @@ function pg_parasut_credentials_for_save()
             erp_web_address = '" . escape(trim(post_value('erp_web_address'))) . "',
             erp_seller_vkn = '" . escape(substr(preg_replace('/\D/', '', (string) post_value('erp_seller_vkn')), 0, 11)) . "',
             erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
+            " . $sql_erp_fx . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',

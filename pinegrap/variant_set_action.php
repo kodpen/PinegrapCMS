@@ -22,9 +22,8 @@
  * One entry point for enable / disable / delete, whether the operator clicked a
  * single row or ticked twenty. A per-row path and a bulk path written
  * separately is how the two end up answering differently for the same
- * user — see CLAUDE.md, "Sipariş İptal — Tek Akış + Onarım (2026.1.29)", where
- * exactly that produced a row button that silently did nothing while the bulk
- * button worked.
+ * user — the order cancellation screen once had exactly that: a row button
+ * that silently did nothing while the bulk button worked.
  *
  * Development screen. view_product_groups.php and edit_product_group.php are
  * untouched.

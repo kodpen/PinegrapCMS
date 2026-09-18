@@ -72,6 +72,15 @@ $open_amount = erp_invoice_open_amount($invoice);
 $is_return = ((string) $invoice['doc_type'] === 'return');
 $is_cancelled = ((string) $invoice['status'] === 'cancelled');
 
+// Every figure on the document is in its own currency. A document in another
+// currency also states its rate and its base-currency total, once.
+$currency = strtoupper(trim((string) $invoice['currency']));
+$is_foreign = ($currency !== erp_base_currency());
+
+$money = function ($kurus, $show_sign = true) use ($currency) {
+    return h(erp_money_out_currency((int) $kurus, $currency, $show_sign));
+};
+
 // Cancelling is for a document nothing has been hung on yet. Once money has
 // been allocated to it or goods have come back against it, the way out is a
 // return, not a quiet withdrawal. The gift card allocation the invoice posted
@@ -101,11 +110,11 @@ foreach ($lines as $line) {
             <td class="align-middle text-body-secondary">' . (int) $line['line_no'] . '</td>
             <td class="align-middle">' . h($line['description']) . '</td>
             <td class="align-middle text-end">' . h(rtrim(rtrim(number_format((float) $line['quantity'], 4, '.', ''), '0'), '.')) . '</td>
-            <td class="align-middle text-end">' . h(erp_money_out((int) $line['unit_price'])) . '</td>
-            <td class="align-middle text-end">' . (($discount > 0) ? '&minus;' . h(erp_money_out($discount)) : '') . '</td>
-            <td class="align-middle text-end">' . h(erp_money_out((int) $line['line_total'] - $discount)) . '</td>
+            <td class="align-middle text-end">' . $money((int) $line['unit_price']) . '</td>
+            <td class="align-middle text-end">' . (($discount > 0) ? '&minus;' . $money($discount) : '') . '</td>
+            <td class="align-middle text-end">' . $money((int) $line['line_total'] - $discount) . '</td>
             <td class="align-middle text-end text-nowrap">%' . h($rate) . '</td>
-            <td class="align-middle text-end">' . h(erp_money_out((int) $line['tax_total'])) . '</td>
+            <td class="align-middle text-end">' . $money((int) $line['tax_total']) . '</td>
         </tr>';
 }
 
@@ -137,7 +146,8 @@ if (!empty($settlements)) {
                                     <td class="text-nowrap">' . h(prepare_form_data_for_output($settlement['doc_date'], 'date')) . '</td>
                                     <td>' . h($settlement['description']) . '</td>
                                     <td>' . h($settlement['cash_account_name']) . '</td>
-                                    <td class="text-end">' . h(erp_money_out((int) $settlement['amount'])) . '</td>
+                                    <td class="text-end">' . $money((int) $settlement['amount'])
+                                        . ($is_foreign ? ' <span class="text-body-secondary small">' . h(erp_money_out((int) $settlement['amount_base'])) . '</span>' : '') . '</td>
                                 </tr>';
     }
 
@@ -169,7 +179,7 @@ if (!empty($returns)) {
                                 <tr>
                                     <td class="text-nowrap">' . h(prepare_form_data_for_output($return['issue_date'], 'date')) . '</td>
                                     <td><a href="edit_erp_invoice.php?id=' . (int) $return['id'] . '">' . h($return['full_number']) . '</a></td>
-                                    <td class="text-end">' . h(erp_money_out((int) $return['grand_total'])) . '</td>
+                                    <td class="text-end">' . $money((int) $return['grand_total']) . '</td>
                                 </tr>';
     }
 
@@ -299,6 +309,26 @@ pg_page_shell([
                         </div>'
                             : '') . '
                     </div>
+                    ' . ($is_foreign
+                        ? '<div class="row border-top mt-2 pt-2">
+                        <div class="col-12 col-sm-4 col-lg-2 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Currency') . '</div>
+                            <div>' . h($currency) . '</div>
+                        </div>
+                        <div class="col-12 col-sm-4 col-lg-3 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Exchange Rate') . '</div>
+                            <div>' . h(erp_fx_rate_out((float) $invoice['exchange_rate'])) . ' <span class="text-body-secondary">' . h(erp_base_currency()) . ((trim((string) $invoice['exchange_rate_source']) !== '') ? ' · ' . h($invoice['exchange_rate_source']) : '') . '</span></div>
+                        </div>
+                        <div class="col-12 col-sm-4 col-lg-2 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Exchange Rate Date') . '</div>
+                            <div>' . h(prepare_form_data_for_output($invoice['exchange_rate_date'], 'date')) . '</div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3 my-2">
+                            <div class="form-label text-body-secondary">' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</div>
+                            <div>' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>
+                        </div>
+                    </div>'
+                        : '') . '
                     ' . $output_internet_sale . '
                 </div>
             </div>
@@ -337,19 +367,20 @@ pg_page_shell([
                     <div class="row">
                         <div class="col-12 col-sm-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('Invoice Total') . '</div>
-                            <div class="h5 mb-0">' . h(erp_money_out((int) $invoice['grand_total'])) . '</div>
+                            <div class="h5 mb-0">' . $money((int) $invoice['grand_total']) . '</div>
+                            ' . ($is_foreign ? '<div class="text-body-secondary small">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '
                         </div>
                         <div class="col-12 col-sm-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('Paid') . '</div>
-                            <div class="h5 mb-0 text-success">' . h(erp_money_out((int) $invoice['paid_total'])) . '</div>
+                            <div class="h5 mb-0 text-success">' . $money((int) $invoice['paid_total']) . '</div>
                         </div>
                         <div class="col-12 col-sm-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('Returned') . '</div>
-                            <div class="h5 mb-0 ' . (($returned_total > 0) ? 'text-warning' : 'text-body-secondary') . '">' . h(erp_money_out($returned_total)) . '</div>
+                            <div class="h5 mb-0 ' . (($returned_total > 0) ? 'text-warning' : 'text-body-secondary') . '">' . $money($returned_total) . '</div>
                         </div>
                         <div class="col-12 col-sm-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('Outstanding') . '</div>
-                            <div class="h5 mb-0 ' . (($open_amount > 0) ? 'text-danger' : 'text-body-secondary') . '">' . h(erp_money_out($open_amount)) . '</div>
+                            <div class="h5 mb-0 ' . (($open_amount > 0) ? 'text-danger' : 'text-body-secondary') . '">' . $money($open_amount) . '</div>
                         </div>
                     </div>
                     ' . $output_settlements . '
@@ -382,20 +413,25 @@ pg_page_shell([
                     <div class="card my-4">
                         <div class="card-body">
                             <div class="d-flex justify-content-between py-1">
-                                <span>' . lang('Subtotal') . '</span><b>' . h(erp_money_out((int) $invoice['subtotal'])) . '</b>
+                                <span>' . lang('Subtotal') . '</span><b>' . $money((int) $invoice['subtotal']) . '</b>
                             </div>
                             <div class="d-flex justify-content-between py-1">
-                                <span>' . lang('Discount') . '</span><b>&minus;' . h(erp_money_out((int) $invoice['discount_total'])) . '</b>
+                                <span>' . lang('Discount') . '</span><b>&minus;' . $money((int) $invoice['discount_total']) . '</b>
                             </div>
                             <div class="d-flex justify-content-between py-1">
-                                <span>' . lang('VAT') . '</span><b>' . h(erp_money_out((int) $invoice['tax_total'])) . '</b>
+                                <span>' . lang('VAT') . '</span><b>' . $money((int) $invoice['tax_total']) . '</b>
                             </div>
                             <div class="d-flex justify-content-between py-2 border-top h5 mb-0">
-                                <span>' . lang('Total') . '</span><b>' . h(erp_money_out((int) $invoice['grand_total'])) . '</b>
+                                <span>' . lang('Total') . '</span><b>' . $money((int) $invoice['grand_total']) . '</b>
                             </div>
+                            ' . ($is_foreign
+                                ? '<div class="d-flex justify-content-between py-1 text-body-secondary">
+                                <span>' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</span><b>' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</b>
+                            </div>'
+                                : '') . '
                             ' . (((int) $invoice['gift_card_total'] > 0)
                                 ? '<div class="d-flex justify-content-between py-1 text-body-secondary">
-                                <span>' . lang('Settled by gift card') . '</span><b>' . h(erp_money_out((int) $invoice['gift_card_total'])) . '</b>
+                                <span>' . lang('Settled by gift card') . '</span><b>' . $money((int) $invoice['gift_card_total']) . '</b>
                             </div>'
                                 : '') . '
                         </div>

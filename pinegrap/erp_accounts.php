@@ -45,6 +45,14 @@ foreach ($accounts as $account) {
     $balance_class = ($balance > 0) ? 'text-success' : (($balance < 0) ? 'text-danger' : 'text-body-secondary');
     $balance_side = ($balance > 0) ? lang('owes you') : (($balance < 0) ? lang('you owe') : '');
 
+    // A foreign-currency account shows its own-currency position too; the
+    // base figure stays the one the list sorts and totals on.
+    $account_currency = strtoupper(trim((string) $account['currency']));
+    $output_balance_fc = '';
+    if (erp_fx_enabled() && ($account_currency !== erp_base_currency())) {
+        $output_balance_fc = '<div class="small fw-normal">' . h(erp_money_out_currency(abs((int) $account['balance_fc']), $account_currency)) . '</div>';
+    }
+
     $status_class = ((string) $account['status'] === 'passive') ? ' text-body-secondary text-decoration-line-through' : '';
 
     $output_link_url = 'edit_erp_account.php?id=' . $id;
@@ -58,7 +66,7 @@ foreach ($accounts as $account) {
             <td class="align-middle">' . h($kind_labels[$account['kind']] ?? $account['kind']) . '</td>
             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
             <td class="align-middle">' . h($account['city']) . '</td>
-            <td class="align-middle text-end ' . $balance_class . '" data-order="' . $balance . '">' . h(erp_money_out(abs($balance))) . '</td>
+            <td class="align-middle text-end ' . $balance_class . '" data-order="' . $balance . '">' . h(erp_money_out(abs($balance))) . $output_balance_fc . '</td>
             <td class="align-middle">' . h($balance_side) . '</td>
         </tr>';
 }

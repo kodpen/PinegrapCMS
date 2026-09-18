@@ -38,6 +38,7 @@ if (!$_POST) {
         $liveform->assign_field_value('is_person', '1');
         $liveform->assign_field_value('opening_amount', '0');
         $liveform->assign_field_value('opening_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
+        $liveform->assign_field_value('currency', erp_base_currency());
     }
 
     echo
@@ -98,6 +99,35 @@ if (!$_POST) {
         $liveform->mark_error('opening_date', lang('Please enter a valid date.'));
     }
 
+    // The account's currency: the base unless foreign currency is on and an
+    // allowed code was chosen.
+    $currency = erp_base_currency();
+    if (erp_fx_enabled()) {
+        $chosen = strtoupper(trim((string) $liveform->get_field_value('currency')));
+        if ($chosen !== '') {
+            if (!erp_fx_currency_allowed($chosen)) {
+                $liveform->mark_error('currency', lang('That currency is not enabled for the ERP.'));
+            }
+            $currency = $chosen;
+        }
+    }
+
+    // A foreign-currency opening figure is booked at the recorded rate of
+    // its date; without one the account cannot be opened in that currency.
+    $opening = erp_kurus($opening_amount);
+    $opening_date_sql = ($opening_date !== '') ? prepare_form_data_for_input($opening_date, 'date') : date('Y-m-d');
+    $opening_rate = array('rate' => 1.0, 'rate_date' => $opening_date_sql, 'source' => 'base');
+
+    if (($opening !== 0) && ($currency !== erp_base_currency()) && ($liveform->check_form_errors() == false)) {
+        $opening_rate = erp_fx_rate_for($currency, $opening_date_sql);
+        if (!is_array($opening_rate)) {
+            $liveform->mark_error('opening_amount', lang(array(
+                'string' => 'No exchange rate is recorded for {var:1} on {var:2}. Run Update Exchange Rates or enter the rate.',
+                'vars' => array($currency, prepare_form_data_for_output($opening_date_sql, 'date')),
+            )));
+        }
+    }
+
     if ($liveform->check_form_errors() == true) {
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_account.php');
     }
@@ -115,7 +145,7 @@ if (!$_POST) {
         'district' => $liveform->get_field_value('district'),
         'city' => $liveform->get_field_value('city'),
         'postcode' => $liveform->get_field_value('postcode'),
-        'currency' => 'TRY',
+        'currency' => $currency,
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'created_by' => (int) $user['id'],
@@ -126,14 +156,15 @@ if (!$_POST) {
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_account.php');
     }
 
-    $opening = erp_kurus($opening_amount);
-
     if ($opening !== 0) {
         $opened = erp_account_open(array(
             'account_id' => $result['id'],
             'amount' => $opening,
-            'doc_date' => ($opening_date !== '') ? prepare_form_data_for_input($opening_date, 'date') : date('Y-m-d'),
-            'currency' => 'TRY',
+            'doc_date' => $opening_date_sql,
+            'currency' => $currency,
+            'exchange_rate' => $opening_rate['rate'],
+            'exchange_rate_date' => $opening_rate['rate_date'],
+            'exchange_rate_source' => $opening_rate['source'],
             'created_by' => (int) $user['id'],
         ));
 

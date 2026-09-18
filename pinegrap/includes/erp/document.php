@@ -320,6 +320,15 @@ function erp_invoice_document_data($invoice_id)
         }
     }
 
+    // A document in another currency states its rate, the day it was fixed
+    // and the base-currency total; a base-currency document shows none of it.
+    $currency = strtoupper(trim((string) $invoice['currency']));
+    $is_foreign = ($currency !== erp_base_currency());
+
+    $money = function ($kurus) use ($currency) {
+        return erp_money_out_currency((int) $kurus, $currency);
+    };
+
     $document = array(
         'id' => (int) $invoice['id'],
         'full_number' => (string) $invoice['full_number'],
@@ -332,7 +341,12 @@ function erp_invoice_document_data($invoice_id)
         'status_label' => $status_labels[$invoice['status']] ?? (string) $invoice['status'],
         'order_number' => $order_number,
         'against_number' => $against_number,
-        'currency' => (string) $invoice['currency'],
+        'currency' => $currency,
+        'is_foreign' => $is_foreign,
+        'base_currency' => erp_base_currency(),
+        'exchange_rate' => $is_foreign ? erp_fx_rate_out((float) $invoice['exchange_rate']) : '',
+        'exchange_rate_date' => $is_foreign ? erp_document_date($invoice['exchange_rate_date']) : '',
+        'grand_total_base' => $is_foreign ? erp_money_out((int) $invoice['grand_total_base']) : '',
         'is_internet_sale' => ((int) $invoice['is_internet_sale'] === 1),
         'payment_method' => $payment_method,
         'payment_method_label' => $payment_method_label,
@@ -358,24 +372,25 @@ function erp_invoice_document_data($invoice_id)
             'no' => (int) $row['line_no'],
             'description' => (string) $row['description'],
             'quantity' => rtrim(rtrim(number_format((float) $row['quantity'], 4, '.', ''), '0'), '.'),
-            'unit_price' => erp_money_out((int) $row['unit_price']),
-            'discount' => ($discount > 0) ? erp_money_out($discount) : '',
+            'unit_price' => $money((int) $row['unit_price']),
+            'discount' => ($discount > 0) ? $money($discount) : '',
             'has_discount' => ($discount > 0),
-            'base' => erp_money_out($base),
+            'base' => $money($base),
             'tax_rate' => '%' . rtrim(rtrim((string) $row['tax_rate'], '0'), '.'),
-            'tax' => erp_money_out($tax),
-            'total' => erp_money_out($base + $tax),
+            'tax' => $money($tax),
+            'total' => $money($base + $tax),
         );
     }
 
     $totals = array(
-        'subtotal' => erp_money_out((int) $invoice['subtotal']),
-        'discount_total' => erp_money_out((int) $invoice['discount_total']),
-        'shipping_total' => erp_money_out((int) $invoice['shipping_total']),
-        'surcharge_total' => erp_money_out((int) $invoice['surcharge_total']),
-        'gift_card_total' => erp_money_out((int) $invoice['gift_card_total']),
-        'tax_total' => erp_money_out((int) $invoice['tax_total']),
-        'grand_total' => erp_money_out((int) $invoice['grand_total']),
+        'subtotal' => $money((int) $invoice['subtotal']),
+        'discount_total' => $money((int) $invoice['discount_total']),
+        'shipping_total' => $money((int) $invoice['shipping_total']),
+        'surcharge_total' => $money((int) $invoice['surcharge_total']),
+        'gift_card_total' => $money((int) $invoice['gift_card_total']),
+        'tax_total' => $money((int) $invoice['tax_total']),
+        'grand_total' => $money((int) $invoice['grand_total']),
+        'grand_total_base' => $is_foreign ? erp_money_out((int) $invoice['grand_total_base']) : '',
         'has_discount' => ((int) $invoice['discount_total'] !== 0),
         'has_shipping' => ((int) $invoice['shipping_total'] !== 0),
         'has_surcharge' => ((int) $invoice['surcharge_total'] !== 0),

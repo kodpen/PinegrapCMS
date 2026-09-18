@@ -76,6 +76,10 @@ eşleşenleri geri doldurur, çoklu olanlara dokunmaz — yeniden koşturulabili
 (4) Ön doldurma işaretli; `erp_kurus()` eksiyi okur. (5) Dört ERP ekranında
 ham etiket. (6) `erp_account($id) === null` ise liste ekranına hata ile döner.
 Ölü şema bulgusu (issue madde 7) bu PR'da yapılmadı; envanter ayrı.
+Dövizli ERP (4.49) ile birleştirildiğinde hediye kartı alacağı ve ters kaydı
+ana para biriminde yazılır (`currency = erp_base_currency()`, kur 1,
+`amount_base = amount`; tahsis satırı `amount_base`): sipariş faturası her
+zaman ana para birimindedir. Çağrı sırası 4.49 → 4.50.
 
 ### Doğrulama
 
@@ -91,6 +95,323 @@ breadcrumb `Tom &amp; Jerry` (önce `&amp;amp;`), boş `id` ile POST hesap
 oluşturmuyor ve listede "Cari hesap bulunamadı." gösteriyor, açılış bakiyesi
 `-1,234.56` ön doluyor. `php tools/lint.php` ve `php tools/check_lang.php`
 temiz; UI ekranları tarayıcıda gezilmedi.
+
+## 2026.4.4 — Panel JS: genel `.ui-sortable` başlatması opt-in `pg-sortable` sınıfına alındı (2026-09-18)
+
+**Belirti.** `assets/js/backend.src.js` ready işleyicisi her panel ekranında
+`$(".ui-sortable").sortable({...})` çağırıyordu. `ui-sortable`, jQuery UI'nin
+sortable yaptığı her kapsayıcıya kendisinin eklediği işaret sınıfıdır; depoda
+bu sınıfı kendi işaretlemesinde taşıyan tek bir liste yok. Dolayısıyla seçici
+hiçbir zaman "sıralanabilir olsun" diye işaretlenmiş bir listeyi bulmuyor, o
+ana kadar kendi sortable'ını kurmuş kapsayıcıları buluyor ve `items: "a"`,
+`handle: this` (= document), `axis: "y"`, `delay: 300`, `containment: "parent"`
+ile ayarlarını eziyordu. `product_builder.js` (112–129) bunun için ready'ye
+erteleme ve her seçeneği yeniden yazma geçici çözümü taşıyor. Blokta ayrıca
+`tolerance` iki kez tanımlıydı (`touch`, sonra `pointer`; yalnız ikincisi
+geçerliydi) ve jQuery UI'nin tanımadığı `disable` anahtarı vardı. Yapılandırma
+neden böyle kurulmuştu hatırlanmıyor; #73'te değiştirilmesine ve üç sortable
+ekranının elle denenmesine karar verildi.
+
+**Düzeltme.** Seçici `.pg-sortable` (opt-in) oldu; `handle: this`, yinelenen
+`tolerance: 'touch'` ve `disable` kaldırıldı, diğer seçenekler aynı. Depoda bu
+varsayılan başlatmaya bağlı liste bulunmadığından hiçbir işaretlemeye sınıf
+eklenmedi. Panel `backend.src.js`'i `ENVIRONMENT_SUFFIX`'ten bağımsız yüklüyor
+(`includes/fn/output.php:140`), `.min` ikizi yok. `product_builder.js` geçici
+çözümü artık gereksiz, ama o dosyada başka açık çalışma olduğu için bu PR'da
+dokunulmadı.
+
+### Doğrulama
+
+Sandbox (turkish_default), Playwright gerçek fare sürüklemesi, hem değişmemiş
+main (:8000) hem bu dal (:8010): widget ekranı (`welcome.php`;
+`dashboard.order_widgets` 1,2,3,4,… → 2,3,4,1,…), ürün düzenleme
+(`edit_product.php?id=72`; sürüklenen görsel kapak oldu, `products.image_name`
+kaydedildi), menü sıralama (`view_menu_items.php?id=11`; parent 548 grubunda
+543↔479, `menu_items.sort_order` güncellendi). Üçünde de davranış iki sunucuda
+birebir aynı, ekranlarda konsol hatası yok. DOMContentLoaded'da eklenen
+`<div class="pg-sortable">` bu dalda sortable oluyor (`items: "a"`), düz
+`class="ui-sortable"` div artık başlatılmıyor; main'de tersi.
+
+**Açık kalan:** `products_images_xref` sıra sütunu taşımıyor ve `SELECT`
+`ORDER BY`'sız; kapak dışındaki görsel sırası kayıt sonrası rastgele geliyor
+(bu değişiklikten bağımsız, main'de de aynı). `product_builder.js:112-129`
+geçici çözümü ayrı bir PR'da sadeleştirilebilir.
+
+## 2026.4.4 — Geliştirme kalıntıları kaldırıldı: get_folder_tree.php, check_shared_invariant.php, responsive DataTables anahtarı (2026-09-18)
+
+**Belirti.** Üç kalıntı, üçü de #73'te incelendi ve kaldırılmalarına karar
+verildi. (1) `assets/js/backend.src.js` içindeki DataTables bloğu
+`datatable-no-responsive` sınıfını okuyup `options.responsive = false`
+yazıyordu: hiçbir tablo o sınıfı taşımıyor, ayarın tek değeri zaten kapalı.
+Responsive DataTables istenen bir özellik değil; bir ara eklenip geri alınmış,
+anahtarı kalmıştı. (2) `check_shared_invariant.php`, paylaşılan bileşen
+placeholder değişmezi geliştirilirken yazılmış tek seferlik bir tanı sayfasıydı;
+depoda ona giden tek satır yoktu (yalnız bu günlükte adı geçiyor), kuralı
+tasarımcının kayıt yolu zaten uyguluyor. (3) `get_folder_tree.php`, klasik
+klasör ağacı ekranının XML ucuydu; ekranı süren `assets/folder_tree.js`
+2026.4.4 içinde kaldırılıp `clean_up.php` listesine girmişti, uç ise kaldı.
+`backend.src.css` içinde yalnız o ekranın kullandığı `#folder_tree`
+seçicileri (11 satır) hiçbir elemanla eşleşmiyordu.
+
+**Düzeltme.** Blok yorumuyla birlikte silindi; `backend.src.js`
+`output_header()` tarafından doğrudan basılıyor, min ikizi yok. İki dosya
+silindi ve `clean_up.php` listesine eklendi: Temizle aracı (Ayarlar →
+Araçlar) yalnız listede olup diskte bulunan adları gösterir ve siler, o
+yüzden yeni kurulumda hiç görünmez, 2026.4.3'ten yükselen sitede ilk
+çalıştırmada ikisini listeleyip kaldırır. CSS'te `#folder_tree` seçicileri
+düşürüldü, `#product_group_tree` ikizleri olduğu gibi duruyor
+(`get_product_group_tree.php` hâlâ kullanıyor). `get_acl_folder_tree()`
+farklı bir fonksiyondur, dokunulmadı. Responsive uzantısı ayrı bir dosya
+değil, `assets/lib/DataTables/datatables.js` paketinin parçası; üçüncü taraf
+pakete dokunulmadı.
+
+### Doğrulama
+
+- `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+- Sandbox'ta (worktree sunucusu :8003, Playwright/Chromium) `view_folders.php`,
+  `view_users.php`, `view_gift_cards.php`, `view_key_codes.php`,
+  `view_products.php` yönetici oturumuyla açıldı: JS sayfa hatası yok
+  (tek hata giriş sayfasında, `code.jquery.com` sandbox'ta engelli olduğu
+  için; ortam kaynaklı). DataTables kuruldu, arama ("zzq-nomatch-xx" →
+  "No matching records found", temizlenince eski sayı), sayfa uzunluğu 10'a
+  çekilip Sonraki: "Showing 11 to 20 of 31 entries". Dosya Yöneticisi ağacı
+  (`#explorer_tree_root`) 7 öğe ile çizildi.
+- Sunucu erişim günlüğünde tarayıcı oturumlarından silinen iki uca hiç istek
+  yok; yalnız bilinçli curl denemeleri var (302 → `/staff-home`).
+- `clean_up.php` canlı çalıştırıldı: iki ad diske sahte dosya olarak konup GET
+  atıldı → "Temizlenebilecek 4 dosya bulundu" listesinde ikisi de var; POST →
+  302 `welcome.php#settings`, ikisi de diskten silindi.
+
+**Açık kalan:** Dosya bütünlüğü referansı (`hash_reference.json`) yayında
+yeniden üretilecek; üretilmezse iki dosya "missing" görünür. Yükselen sitede
+dosyalar Temizle aracı çalıştırılana kadar diskte durur (bu, listedeki diğer
+kalıntılarla aynı davranış).
+
+## 2026.4.4 — Kaynak metin yalnız İngilizce: hızlı sipariş koşulları, tasarımcı slug'ları, yer tutucu görsel (2026-09-18)
+
+**Belirti.** Ürün sahibinin kararı (#73): yazılım genelinde Türkçe metin ve
+yorum yalnız `changelog.txt` ve `includes/local/tr.json` içinde bulunabilir.
+Depo taramasında bunun dışında kalan yerler vardı: (1)
+`includes/fn/widgets_express_order.php` içindeki eski (monolitik düzen)
+koşul bloğu — cümle, modal başlığı, kabul düğmesi ve `_eo_default_terms_html()`
+gövdesi — düz Türkçe literal'di, yani İngilizce dilli bir site bile koşul
+penceresinde Türkçe metin görüyordu. (2) `style_designer.js` `SW_TYPES`
+listesindeki widget ad slug'ları (`form-listesi`, `urun-detay`, `hesabim` …)
+ve `_swAutoName()` fallback'i `'sayfa'` Türkçe'ydi. (3)
+`duplicate_products.php` beş etiketi, `print_packing_slip.php` `<title>`'ı
+dile göre dallanıp Türkçe yazıyordu, `assets/images/no-image.svg` Türkçe
+altyazı taşıyordu. (4) Bir avuç Türkçe kod yorumu (`find_and_replace.php`,
+`material-icons.css`, migration dosyalarında alıntı kelimeler vb.).
+
+**Düzeltme.** Metinler İngilizce yazıldı ve `lang()` / `_sdT()` ile geçirildi;
+Türkçe karşılıklar `tr.json`'a değer olarak girdi, böylece Türkçe siteler
+aynı sözcükleri görür. Koşul bloğu tasarımcı ağacının zaten sahip olduğu
+anahtarları (`1. General Terms`, `the sales agreement and the terms of use`
+…) yeniden kullanır; iki render yolu aynı metni basar. Slug'lar
+`_sdT('form-list')` gibi İngilizce anahtardan geçer, `_swAutoName()` çeviriyi
+ve sayfa fallback'ini `_swSlug()` ile temizler: Türkçe kurulumda widget adı
+öncekiyle aynı (`ana-sayfa-form-listesi-widget`, `sayfa-siparis-widget`),
+İngilizce kurulumda İngilizce (`home-form-list-widget`, `page-cart-widget`).
+`no-image.svg` statik dosya olduğu için çalışma anında çevrilemez; altyazı
+İngilizce ("No image available") yapıldı. Yorumlar İngilizceye çevrildi;
+iç plan belgelerine atıf yapanlar teknik gerekçeyi doğrudan yazar.
+
+**Yayınlanmış siteye etkisi.** İngilizce dilli kurulumlarda eski koşul
+penceresi ve tasarımcı otomatik widget adları artık İngilizce; Türkçe
+kurulumlarda değişiklik yok. Yer tutucu görselin altyazısı her kurulumda
+İngilizce.
+
+### Doğrulama
+
+Sandbox (Türkçe kurulum, worktree :8004): eski koşul bölümü ve modal
+`_eo_render_terms_section()` / `_eo_render_terms_modal_html()` sunucudan
+render edildi, on beş Türkçe metnin tümü `tr.json` değerleriyle çıktı,
+İngilizce anahtar sızıntısı yok. Tasarımcı ekranı (`edit_system_style.php`)
+`sdDesign.i18n` içinde slug anahtarlarını taşıyor; `SW_TYPES` +
+`_swAutoName()` hunk'ı Node'da sunulan sözlükle çalıştırıldı (yukarıdaki
+adlar). `duplicate_products.php`, `print_packing_slip.php` (Sevk İrsaliyesi),
+`find_and_replace.php`, `edit_product.php`, `edit_offer.php`,
+`view_offers.php`, `download_assistant.php` ve `no-image.svg` :8004'ten
+yüklendi. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Tasarımcıda paletten sistem widget'ı sürükleyip gerçek
+sayfa oluşturma sandbox'ta denenemedi (CDN'den jQuery yüklenmiyor, proxy
+engeli). Depo taramasının geri kalanı (2. tur oturumunun dosyaları,
+`includes/api|erp|settings`) bu PR'ın dışında; liste PR yorumundaki
+`turkish_scan.md` içinde.
+
+---
+
+## 2026.4.4 — Ürün kod bloğu, komisyon sayfalama, MySQL 5.7 uyumu, 2026.1 migration'ı (2026-09-18)
+
+Ürün sahibinin #73'teki kararları uygulanmıştır; dördü de yayınlanmış
+2026.4.3'te bulunan davranışları düzeltir.
+
+**Ürün kod bloğu (`product_builder.php`).** Kod alanı hem oluştururken hem
+düzenlerken `config.product_image_code_template`'ten doluyordu; bir ürünü
+düzenleyen operatör o ürünün `products.code` değerini değil site
+varsayılanını görüyordu. Varsayılan da yalnız gönderilen blok üç görsel
+döngü etiketini (`^^image_loop_start^^`, `^^image_url^^`,
+`^^image_loop_end^^`) birden içeriyorsa geri yazılıyordu; etiketsiz bir kod
+kaydedildiğinde bir sonraki ürün eski blokla açılıyordu. Karar: "son
+kaydetmedeki kod `common` olur ve bir sonraki ürün eklemede `code` alanı o
+kodla dolar; `common`, her ürün kaydetmede değişiklik varsa güncellenmeli."
+Düzenleme ekranı artık ürünün kendi kodunu gösterir (ürünün kodu boşsa site
+varsayılanına düşer); her kayıtta gönderilen blok varsayılandan farklıysa
+etiket şartı aranmadan yazılır. Üç etiket koruması kaldırıldı — kararın
+sözü koşulsuzdur ve koruma tam olarak güncellemeyi engelleyen şeydi. Yalnız
+`code` alanı hiç gönderilmemişse varsayılana dokunulmaz; boş gönderilen
+alan ise operatörün son bloğu sayılır ve varsayılanı boşaltır.
+
+**Komisyon listesi (`view_commissions.php`).** Sayfa bağlantıları
+hesaplanıyor ama basılmıyordu, sonuç sorgusunda `LIMIT` yoktu: her ekranda
+tüm komisyonlar geliyordu. Sorgu `LIMIT/OFFSET` aldı, bağlantılar tablonun
+altına basıldı, etkin sayfa öğesinin `class` değerindeki fazla tırnak
+kaldırıldı. Sayfa boyutu 100, tablonun istemci tarafı DataTables sayfa
+boyutuyla aynı.
+
+**Katalog widget'ları (`includes/fn/widgets_catalog.php`).** Özellik filtre
+paneli ve grup araması `WITH RECURSIVE` kullanıyordu; bu MySQL 8 ister,
+ürün MySQL 5.7'yi desteklemeye devam eder. İki sorgu da grup kümesini
+listeleme kapsamı ve fiyat aralıklarının zaten yaptığı gibi
+`_pg_catalog_group_subtree_ids()` ile PHP'de kuruyor ve `IN (...)` listesi
+geçiyor. Grup aramasında eski CTE eşleşen üründen yukarı tırmanıyordu;
+yeni kod aday alt grubun (etkin) alt ağacını aşağı yürüyüp eşleşen grubu
+arar. Fark yalnız, aday ile eşleşen ürün arasında **devre dışı** bir ara
+grup varsa ortaya çıkar: eski sorgu adayı yine gösterirdi, yenisi
+göstermez — listeleme kapsamı da o alt ağacı zaten dışlıyor. Ürün kodunda
+CTE kalmadı.
+
+**`get_generator_meta_tag()` (`includes/fn/content.php`).** İki dalı da `''`
+döndürüyordu; fonksiyon ve yedi çağrısı kaldırıldı, `<head>` çıktısında
+yalnız boş satırlar gitti.
+
+**`2026.1` migration'ı.** `custom_apps.permissions` için `JSON NOT NULL`
+MySQL 5.6 / MariaDB < 10.2'de başarısız olup yükseltme zincirini
+durduruyordu. `LONGTEXT NOT NULL` yapıldı: MariaDB JSON'u zaten LONGTEXT
+olarak saklar, sütunu JSON fonksiyonuyla okuyan yer yok, 2026.4.4 tabloyu
+düşürüyor. Yayınlanmış bir migration'a dokunma istisnası ürün sahibinin
+kararıdır (CLAUDE.md kural 12): adımı zaten geçmiş kurulumun bu satırla işi
+yoktur.
+
+### Doğrulama
+
+Sandbox'ta (MariaDB 10.11) çalıştırılarak: ürün A kod X ile oluşturuldu →
+`products.code` ve `config.product_image_code_template` X; yeni ürün formu X
+ile dolu; A'nın kodu etiketsiz Y yapıldı → ikisi de Y; kendi kodu olan ürün
+B düzenlemede kendi kodunu, kodu boş ürün site varsayılanını gösterdi; C
+oluşturulurken alan Y ile doluydu. 250 komisyon satırıyla `screen=1/2/3`
+100/100/50 satır ve 3 sayfa bağlantısı (ana kopyada 250 satır, bağlantı
+yok); satırlar silindi. Katalog widget'ı ana kopya ve düzeltilmiş ağaçta
+aynı DB'ye karşı altı senaryoda (grup 37/31/0, arama Mocha/Sandalye/Kart/
+Hediye) bayt bayt aynı çıktı; MariaDB genel günlüğü ana kopyada 10 CTE,
+düzeltilmiş ağaçta CTE'siz `IN (28)` sorgusunu gösterdi. Ziyaretçi ve panel
+sayfaları hatasız; `grep get_generator_meta_tag` boş. Düzeltilmiş ağaçtan
+ikinci bir DB'ye sıfır kurulum: 194 tablo, `config.version = 2026.4.4`,
+`custom_apps` 2026.4.4'te düşürülmüş; `ALTER TABLE … ADD permissions
+LONGTEXT NOT NULL` MariaDB'de `longtext NOT NULL` üretti.
+`php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** MySQL 5.6 / 5.7 gerçek sunucuda koşulmadı (sandbox
+MariaDB). Devre dışı ara grup içeren katalog senaryosu sandbox verisinde
+yok, o fark yalnız kod okumasıyla saptandı. Boş gönderilen kod bloğunun
+site varsayılanını boşaltması kararın sözünden çıkarılmıştır; ürün sahibi
+farklı isterse tek satırlık değişikliktir.
+
+## 2026.4.4 — ERP döviz desteği: ana para birimi, kur geçmişi, otomatik kur farkı (2026-09-18)
+
+**Neden.** ERP Faz 0'da TL sabit yazılmıştı: `'TRY'` literal'leri, `amount_try`
+/ `grand_total_try` sütunları, kur kaynağı olarak TCMB önerisi. Ürün sahibi
+bunu düzeltti: Pinegrap dünyanın her yerinden indirilip kurulan bir üründür,
+ERP'nin ev para birimi `edit_currency.php`'de ana işaretlenen para birimidir
+(`BASE_CURRENCY_CODE`), ülkeye özel veri kaynağı ya da vergi kuralı çekirdeğe
+girmez. Dövizli cari ve `fx_diff` Faz 1'den beri "henüz yapılmayanlar"
+listesindeydi; bu tur ikisini de o ilkeyle kapatıyor.
+
+**Ana para birimi.** `includes/erp/` altındaki her `'TRY'` gitti; varsayılan
+`erp_base_currency()` (= `BASE_CURRENCY_CODE`). Sürüm yayınlanmadığı için
+dönüştürülmüş sütunlar yeniden adlandırıldı: `amount_try → amount_base`
+(`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`),
+`grand_total_try → grand_total_base` (`erp_invoices`). `erp_to_try()` →
+`erp_to_base()`; `includes/erp/` dışında çağıran yoktu, takma ad bırakılmadı.
+`erp_money_out()` artık ziyaretçi kurunu **uygulamaz**: eskiden
+`prepare_price_for_output()` üzerinden `VISITOR_CURRENCY_EXCHANGE_RATE` ile
+çarpıyordu, mağaza vitrininde başka para birimi seçmiş bir yönetici ERP
+rakamlarını çevrilmiş görürdü. Yeni `erp_money_out_currency($kurus, $kod)`
+`currencies` tablosundaki simgeyle biçimler, dönüştürmez.
+
+**Opt-in.** `config.erp_fx_enabled` (varsayılan 0), `ERP_FX_ENABLED`. Kapalıyken
+fatura, tahsilat, cari ve kasa formlarında para birimi / kur alanı yok, ana para
+birimi sessizce kullanılır, kur farkı yazılmaz, `erp_fx_currencies()` boş döner.
+Kur geçmişi kapalıyken de yazılır (ucuz, zararsız) ama ERP okumaz. Her döviz
+dalı `erp_fx_enabled()` kontrol eder (`includes/erp/fx.php`).
+
+**Kur geçmişi.** `currency_rates (rate_date, base_code, currency_code) UNIQUE`,
+`rate DECIMAL(18,8)` = **ana para birimi / 1 birim döviz** — defterin çarptığı
+yön (`currencies.exchange_rate` ters yöndedir ve yerinde ezilir). Getirme
+mantığı `update_exchange_rates.php`'den `includes/fn/currency_rates.php`'ye
+taşındı: `pg_currency_rates_fetch()` (Frankfurter tek çağrıda toplu, kalanlar
+HexaRate; TLS doğrulaması **açık** — eski betik `CURLOPT_SSL_VERIFYPEER=false`
+ile çalışıyordu — `api_http_request` varsa o, yoksa cURL + `pg_curl_tls`),
+`pg_currency_rate_store()` (upsert), `pg_currency_rate($kod, $tarih)` (o gün ya
+da öncesindeki son gün: hafta sonu/tatil), `pg_currency_rate_latest()`. Betik
+mağaza kurunu eskisi gibi yazar, ayrıca günün satırlarını `currencies`
+tablosundaki + `ERP_FX_CURRENCIES`'teki her kod için geçmişe ekler. Cron
+kaydı aynı (`update_exchange_rates`, tek iş). Frankfurter listesine TRY dâhil
+ECB'nin yayımladığı kodlar eklendi; desteklenmeyen kod 404 verir ve HexaRate'e
+düşer.
+
+**Belge.** `add_erp_invoice.php` döviz açıkken "Elle girilen fatura" kartı
+kazandı (`includes/erp/invoice_manual.php` → `erp_invoice_create_manual()`):
+yön (satış/alış), cari, para birimi (ana + izinliler), kur (boşsa düzenleme
+tarihinin kaydı; yazılmışsa kayıtla eşleşiyorsa kaynak feed, değilse
+`manual`), 6 satır. Tutarlar belge para biriminde; `grand_total_base =
+erp_to_base(grand_total, kur)` tek noktada. Siparişten fatura her zaman ana
+para birimi (`order_bridge.php`: `currency = BASE`, `exchange_rate_source =
+'base'`). İade ana faturanın para birimi **ve kurunu** kopyalar; tam iade
+`grand_total_base`'i kuruşuna kopyalar. İptal ters kaydı belgenin kendi para
+birimi/kuru/ana karşılığıyla atar. `edit_erp_invoice.php` dövizli belgede kur,
+kur tarihi, kaynak ve ana karşılığı gösterir; tüm tutarlar belge para
+biriminde. Şablon yer tutucuları: `invoice.is_foreign`, `.base_currency`,
+`.exchange_rate`, `.exchange_rate_date`, `.grand_total_base`,
+`totals.grand_total_base` — ana para birimi belgede boş string döner,
+`invoice_default.html` bunları `{{#invoice.is_foreign}}` içinde basar.
+
+**Tahsilat ve kur farkı.** Tahsilat faturanın para biriminde girilir
+(`add_erp_receipt.php`: fatura seçiliyse para birimi kilitli, kur alanı boşsa
+tahsilat gününün kaydı). `erp_post_receipt()` kasanın para birimiyle
+tahsilatın para birimini, faturanın para birimiyle tahsilatı eşleştirir
+(yalnız döviz açıkken — eski kurulumlarda kasa `'TRY'` yazılıydı); tahsis
+`amount` belge para biriminde, `amount_base = erp_to_base(tahsis, tahsilat
+kuru)`. Fatura `paid` olduğunda ve `ERP_FX_AUTO_DIFF` açıkken
+`erp_fx_post_difference()` aynı transaction içinde tek `kind='fx_diff'`
+satırı atar: `Σ tahsis.amount_base − (grand_total_base − Σ iade
+.grand_total_base)`, yön satış/alışa göre, `doc_type='fx_diff'`,
+`doc_id=fatura` (idempotens anahtarı; ek sütun gerekmedi). Böylece carinin
+ana para birimi bakiyesi sıfıra kapanır. Virman iki kasanın aynı para
+biriminde olmasını ister.
+
+**Cari ve kasa.** Formlarda para birimi seçimi (döviz açıkken); hareketi olan
+kayıtta salt okunur (bakiye `balance_fc` o para birimindeki hareketlerin
+toplamı). Açılış bakiyesi cari para biriminde, tarihinin kayıtlı kuruyla
+dönüştürülür; kur yoksa hata. Listelerde dövizli kayıt kendi para biriminde
+de gösterilir; kasa toplamı yalnız ana para birimindeki kasaları toplar.
+
+**Ayarlar.** `pgset-erp` kartı: anahtar (`collapse-switcher`), `currencies`
+tablosundaki ana olmayan her kod için onay kutusu (`erp_fx_currencies[]`,
+kayıtta doğrulanıp virgülle birleşir), otomatik kur farkı anahtarı. Kayıt
+`waf_table_has_column('config','erp_fx_enabled')` ile korunur. Sabitler
+`ERP_FX_ENABLED` / `ERP_FX_CURRENCIES` / `ERP_FX_AUTO_DIFF` savunmacı okunur.
+
+**Migration 4.49** `upgrade_2026_4_4_erp_foreign_currency()`: dört
+`install_rename_column` (yeni ad varsa atlanır, tip/null/default
+`install_column_info`'dan), `currency_rates`, `config.erp_fx_enabled /
+erp_fx_currencies / erp_fx_auto_diff`, `erp_invoices.exchange_rate_source`,
+`erp_cash_transactions.exchange_rate_source`. İkinci koşuda tümü "zaten var".
+
+**Kapsam dışı.** İhracat fatura tipi (`IHRACAT` enum değeri olduğu gibi durur,
+üzerine bir şey kurulmadı); dönem sonu değerleme; TCMB ya da başka ülkeye özel
+kaynak.
 
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
@@ -2317,7 +2638,6 @@ Yeni metinler yazılımın kendi sözlüğüne uyduruldu: `Accounts` → "Cari H
 Bir tuzak: `lang($kosul ? 'A' : 'B')` yazımı her iki metni de tarayıcıdan
 gizliyor. `$kosul ? lang('A') : lang('B')` olarak düzeltildi.
 
-
 ## 2026.4.4 — ERP: iade ve iptal (2026-09-16)
 
 Kesilmiş fatura düzenlenmez. Belge karşı tarafın elinde ve onun elindekinden
@@ -2371,7 +2691,6 @@ hesaplanıyor.
   kalanı 172174'e, carinin bakiyesi 172174'e döndü.
 - Tüm cari ve kasa bakiyeleri her adımda kendi defterleriyle birebir.
 
-
 ## 2026.4.4 — ERP: fatura kapatma (2026-09-16)
 
 Tahsilat zaten cariyi alacaklandırıyor ve bakiyeyi düşürüyordu. Eksik olan
@@ -2418,7 +2737,6 @@ hazır.
 - Tüm cari ve kasa bakiyeleri kendi defterleriyle birebir (`[agrees]`).
 - 2026.4.4 zinciri baştan koşturuldu: 1 ifade uygulandı (sürüm satırı), şema
   adımlarının tamamı "zaten var" dedi — yeni adım dahil idempotent.
-
 
 ## 2026.4.4 — ERP modülünün iskeleti (2026-09-16)
 
@@ -3930,7 +4248,6 @@ renk seçicilerindeki "Bg primary", "Primary Subtle", "Body Emphasis",
 "Opacity 50" etiketleri literal değil — `titleCase()` bunları **sınıf adının
 kendisinden** üretiyor (`primary-subtle` → "Primary Subtle"). Karar verildi: **öyle kalıyor.**
 
-
 ---
 
 ## 2026.4.4 — Sepet widget'ı: düzenli ödeme planı müşteri tarafından düzenlenebilir; satır kurucuları liveform'u tüketilmeden önce okur (2026-09-16)
@@ -4634,6 +4951,7 @@ defterinde kalması, burada eklentinin zamanlayıcısının kendini yeniden
 kurmasıydı. CLAUDE.md'ye iki kuralı yan yana koydum.
 
 ---
+
 ## 2026.4.4 — Özel form alanı olarak imza (2026-09-13)
 
 **İstek (Erdal):** teklif onayı ve sözleşme için imza alanı. "Valid bir imza
@@ -4890,6 +5208,7 @@ doğrulayıcısı cevaplıyor. Zinciri burada doğrulamak kök sertifika deposu
 tutmayı gerektirir ve o ayrı bir iştir.
 
 ---
+
 ## 2026.4.4 — Şema sürümü Yapılandırma ekranından (2026-09-13)
 
 **İstek (Erdal):** beta kurulumlara aynı sürüm üst üste atılıyor ve yükseltmenin
@@ -4925,6 +5244,7 @@ Kayıt: değişiklik `log_activity` ile eski ve yeni numarayla birlikte yazılı
 Ekran zaten `validate_area_access($user, 'administrator')` arkasında.
 
 ---
+
 ## 2026.4.4 — Bütünlük referansında dosya olmayan girdi (2026-09-13)
 
 **Belirti (Erdal, beta site):** site günlüğünde "Değiştirilmiş veya eksik
@@ -4982,6 +5302,7 @@ Dokunulan: `includes/fn/system_status.php` (`pg_integrity_reference_files()`),
 `clean_up.php`, `_software_create_hash.php`.
 
 ---
+
 ## 2026.4.4 — Sayfa bilgileri ve sayfa eylemleri çubuktan SEO paneline (2026-09-13)
 
 Sitede gezinen yöneticinin sayfa hakkında bildiği her şey — erişim türü,
@@ -7902,7 +8223,6 @@ yoksa test ettiği şey dosya olmaz.
 | Son açılanlar | 6 açılıştan 4'ü kalıyor, tekrar yok, sıra en yeniden |
 | Tema | açık ve koyu; bütün renkler Bootstrap jetonlarından |
 
-
 ### Geçiş: `settings2.php`
 
 Bölme canlı sitede denenirken eski ekran yerinde bırakıldı: `settings.php`
@@ -8269,8 +8589,6 @@ aynı anda görünür.
 **Doğrulama.** Dokuz kutu biçimi (bölünmüş yarı, kart gövdesi, `.pg-list`,
 özet satırlı gövde) ölçüldü: hepsinde mesaj kutusunu dolduruyor, merkez sapması
 0 piksel, hiçbir kutu taşmıyor, bölünmüş kart satır yönünde kalıyor.
-
-
 
 4.22–4.35 arası on dört yeni alt adım (çok sayfalı tasarımcı, tasarımcı iş
 birliği, dış API, pazaryerleri, web push, bildirim okundu kaydı, ürün KDV
@@ -10347,7 +10665,6 @@ hiçbiri hangisi olduğunu söylemiyordu. Ayrı başlıklara ayrıldı
 yalnız kırmızı hâli çiziliyordu. İpucu kapalıyken, yani iyi durumda, panel o
 kontrol hakkında hiçbir şey söylemiyordu; ağırlığın tutunacağı bir kayıt da
 olmuyordu. `else` dalı eklendi.
-
 
 Kart tek kolonluydu ve içinde on dokuz kutu vardı. Kutuların on ikisi bir
 okumaydı ("SSL · Tamam"), yedisi bir işti ("Önbellek · Temizle") ve **ikisi
@@ -16398,8 +16715,6 @@ bayat değer döndürebiliyor — sınıf kaldırıldığı hâlde eski genişli
 Ayrık bir eleman üzerinde aynı sınıfla ölçmek doğru değeri veriyor, ekran
 görüntüsü de öyle. Bu yüzden "daralma bozuldu" diye bir tur boşa harcandı;
 bozulan bir şey yoktu.
-
-
 
 ### Olay
 

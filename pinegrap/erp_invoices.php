@@ -65,6 +65,11 @@ foreach ($invoices as $invoice) {
         ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
         : '';
 
+    // Figures in the document's own currency; a foreign document also shows
+    // what its total came to in the base currency.
+    $currency = strtoupper(trim((string) $invoice['currency']));
+    $is_foreign = ($currency !== erp_base_currency());
+
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
@@ -76,9 +81,10 @@ foreach ($invoices as $invoice) {
             <td class="align-middle">' . h($direction_labels[$invoice['direction']] ?? $invoice['direction']) . '</td>
             <td class="align-middle ' . ($status_classes[$status] ?? '') . '">' . h($status_labels[$status] ?? $status) . '</td>
             <td class="align-middle">' . $order_cell . '</td>
-            <td class="align-middle text-end" data-order="' . (int) $invoice['tax_total'] . '">' . h(erp_money_out((int) $invoice['tax_total'])) . '</td>
-            <td class="align-middle text-end fw-bold" data-order="' . (int) $invoice['grand_total'] . '">' . h(erp_money_out((int) $invoice['grand_total'])) . '</td>
-            <td class="align-middle text-end ' . (($open > 0) ? 'text-danger' : 'text-body-secondary') . '" data-order="' . $open . '">' . h(erp_money_out($open)) . '</td>
+            <td class="align-middle text-end" data-order="' . (int) $invoice['tax_total'] . '">' . h(erp_money_out_currency((int) $invoice['tax_total'], $currency)) . '</td>
+            <td class="align-middle text-end fw-bold" data-order="' . (int) $invoice['grand_total_base'] . '">' . h(erp_money_out_currency((int) $invoice['grand_total'], $currency))
+                . ($is_foreign ? '<div class="text-body-secondary small fw-normal">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '</td>
+            <td class="align-middle text-end ' . (($open > 0) ? 'text-danger' : 'text-body-secondary') . '" data-order="' . $open . '">' . h(erp_money_out_currency($open, $currency)) . '</td>
         </tr>';
 }
 

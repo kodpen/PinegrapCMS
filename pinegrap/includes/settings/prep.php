@@ -364,6 +364,30 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_web_address = $row['erp_web_address'] ?? '';
     $erp_seller_vkn = $row['erp_seller_vkn'] ?? '';
     $erp_seller_tax_office = $row['erp_seller_tax_office'] ?? '';
+    // Foreign currency in the ERP (2026.4.4). Read with fallbacks like the
+    // rest of the ERP row, so the screen renders before the upgrade has run.
+    $erp_fx_enabled = (int) ($row['erp_fx_enabled'] ?? 0);
+    $erp_fx_enabled_checked = ($erp_fx_enabled === 1) ? ' checked="checked"' : '';
+    $erp_fx_auto_diff_checked = ((int) ($row['erp_fx_auto_diff'] ?? 1) === 1) ? ' checked="checked"' : '';
+    $erp_fx_selected = array_filter(array_map('trim', explode(',', strtoupper((string) ($row['erp_fx_currencies'] ?? 'USD,EUR,GBP')))));
+    // One checkbox per currency the store lists, the base left out: a document
+    // is always allowed in the base, and a code the store does not list has no
+    // symbol and no rate to fetch.
+    $output_erp_fx_currencies = '';
+    foreach ((array) db_items("SELECT code, name FROM currencies WHERE base != 1 ORDER BY name ASC") as $erp_fx_currency) {
+        $erp_fx_code = strtoupper(trim((string) $erp_fx_currency['code']));
+        if ($erp_fx_code === '') {
+            continue;
+        }
+        $output_erp_fx_currencies .= '
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="erp_fx_currencies[]" id="erp_fx_currency_' . h($erp_fx_code) . '" value="' . h($erp_fx_code) . '"' . (in_array($erp_fx_code, $erp_fx_selected, true) ? ' checked="checked"' : '') . ' />
+                                    <label class="form-check-label" for="erp_fx_currency_' . h($erp_fx_code) . '">' . h($erp_fx_code . ' - ' . $erp_fx_currency['name']) . '</label>
+                                </div>';
+    }
+    if ($output_erp_fx_currencies === '') {
+        $output_erp_fx_currencies = '<div class="form-text">' . lang('Add the currencies you invoice in under E-Commerce > Currencies first.') . '</div>';
+    }
     $parasut_default_product_id  = $row['parasut_default_product_id']  ?? '';
     $parasut_default_warehouse_id = $row['parasut_default_warehouse_id'] ?? '';
     $enable_iyzipay_protected_currency = $row['enable_iyzipay_protected_currency'];

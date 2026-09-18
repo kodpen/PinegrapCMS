@@ -1002,26 +1002,30 @@ function pg_pb_create_product($product, $relations = array())
 /**
  * Remember the image code block as the site default.
  *
- * The field on the screen starts out filled from config.product_image_code_template,
- * so an operator who edits it there is editing what they believe is the site's
- * template. The screen this replaced wrote it back; without that the next
- * product opens with the old block, or with nothing at all if the site never had
- * one — and a catalog whose images are drawn by that code then renders the first
- * product correctly and every later one blank.
+ * The block saved last is what the next new product starts from: the code
+ * field on the create screen is filled from config.product_image_code_template,
+ * and every save whose block differs from it writes the block back there.
+ * The product itself keeps its own copy in products.code, so opening a product
+ * later shows that product's block, not whatever the default has become since.
  *
- * The three token guard is legacy's and is the point of the check: only a block
- * that actually loops over images is a template. A one-off snippet written for a
- * single product must not become what every future product starts with.
+ * Every submitted value counts, whether or not it loops over images: the
+ * operator's latest block is the template by definition. Only a request that
+ * carries no code field at all leaves the default alone, so a client that never
+ * rendered the field cannot blank it.
+ *
+ * @param string|null $code submitted block, NULL when the field was not posted
  */
 function pg_pb_store_image_code_template($code)
 {
-    if ((mb_strpos($code, '^^image_url^^') === FALSE)
-        or (mb_strpos($code, '^^image_loop_start^^') === FALSE)
-        or (mb_strpos($code, '^^image_loop_end^^') === FALSE)) {
+    if ($code === NULL) {
         return;
     }
 
-    if (db_value("SELECT product_image_code_template FROM config") === $code) {
+    $code = (string) $code;
+
+    // db_value() returns NULL on a site that never stored a block; cast so an
+    // empty submission compares equal to it and no needless UPDATE is issued.
+    if ((string) db_value("SELECT product_image_code_template FROM config") === $code) {
         return;
     }
 
@@ -1064,7 +1068,7 @@ function pg_pb_save_new_product()
 
     // Once, before either branch — the block is the same for a single product
     // and for a whole variant set.
-    pg_pb_store_image_code_template(isset($_POST['code']) ? $_POST['code'] : '');
+    pg_pb_store_image_code_template(isset($_POST['code']) ? $_POST['code'] : NULL);
 
     $catalog_group_ids = array();
 
@@ -3690,7 +3694,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $tax_checked       = (defined('ECOMMERCE_TAX') && ECOMMERCE_TAX == TRUE) ? ' checked="checked"' : '';
     $shippable_checked = (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING == TRUE) ? ' checked="checked"' : '';
 
-    $image_code_template = db_value("SELECT product_image_code_template FROM config");
+    // The code field shows the product's own block when it has one; the site
+    // default from config only fills a new product, or a stored product that
+    // was saved without a block. Saving writes the block to both places (see
+    // pg_pb_store_image_code_template()), so the default follows the last save.
+    $image_code = (string) $v('code');
+
+    if ($image_code === '') {
+        $image_code = (string) db_value("SELECT product_image_code_template FROM config");
+    }
 
     // Barcodes. Nothing is rendered when the feature is off in settings, which is
     // also what the save path checks — an operator who cannot see the switch must
@@ -4328,7 +4340,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 <div class="alert alert-primary">' . lang('Tags') . ': <span>^^image_loop_start^^</span>, <span>^^image_alt^^</span>, <span>^^image_url^^</span>, <span>^^image_loop_end^^</span></div>
                                             </div>
                                             <div class="col-12 my-2">
-                                                <textarea id="code" name="code">' . h($image_code_template) . '</textarea>
+                                                <textarea id="code" name="code">' . h($image_code) . '</textarea>
                                                 ' . get_codemirror_includes() . '
                                                 ' . get_codemirror_javascript(array('id' => 'code', 'code_type' => 'mixed')) . '
                                             </div>
@@ -5359,7 +5371,7 @@ function pg_pb_update_product($product_id)
     $product = pg_pb_common_from_post();
     $images  = pg_pb_selected_images();
 
-    pg_pb_store_image_code_template(isset($_POST['code']) ? $_POST['code'] : '');
+    pg_pb_store_image_code_template(isset($_POST['code']) ? $_POST['code'] : NULL);
 
     $product['name']               = isset($_POST['name']) ? trim($_POST['name']) : '';
     $product['short_description']  = isset($_POST['short_description']) ? trim($_POST['short_description']) : '';

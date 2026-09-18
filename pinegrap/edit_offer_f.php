@@ -254,7 +254,7 @@ function _pg_offer_product_groups()
     return $cache;
 }
 
-// $full picks the path ("Mağaza › Sandalyeler"), which is what the picker
+// $full picks the path ("Shop › Chairs"), which is what the picker
 // shows; the chips and the summary sentence use the short name instead, or a
 // condition naming five groups fills the row.
 function _pg_offer_group_label($group_id, $full = false)

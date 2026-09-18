@@ -2161,7 +2161,7 @@ function _eo_render_address_book_select()
 // ── Terms-of-service section: real <input type=checkbox required> +
 // label with a link that opens a Bootstrap modal. Modal body comes from
 // cfg['terms_html'] (designer-editable in property panel); falls back to
-// a sane Turkish boilerplate so visitors never see an empty modal.
+// a translated boilerplate so visitors never see an empty modal.
 function _eo_render_terms_section($lf, $cfg)
 {
     // Returns ONLY the inline checkbox + label + link. The modal HTML is
@@ -2171,24 +2171,26 @@ function _eo_render_terms_section($lf, $cfg)
     // page with a black overlay that never lifted).
     $link_text  = (isset($cfg['terms_link_text']) && (string)$cfg['terms_link_text'] !== '')
                     ? (string)$cfg['terms_link_text']
-                    : 'satış sözleşmesi ve kullanım şartlarını';
+                    : lang('the sales agreement and the terms of use');
     $intro      = (isset($cfg['terms_intro_text']) && (string)$cfg['terms_intro_text'] !== '')
                     ? (string)$cfg['terms_intro_text']
-                    : 'Siparişimi tamamlayarak';
+                    : lang('By completing my order I accept');
     $checked    = ($lf && (string)$lf->get_field_value('agree_terms') === '1') ? ' checked' : '';
     $modal_id   = 'pg-eo-terms-modal';
 
+    // Same three pieces, in the same order, as the terms row of the
+    // designer's default tree, so both render paths read identically.
     return '<div class="form-check pg-eo-terms mb-3">'
          .   '<input class="form-check-input" type="checkbox" name="agree_terms" id="agree_terms" value="1" required' . $checked . '>'
          .   '<label class="form-check-label small" for="agree_terms">'
          .     h($intro) . ' '
          .     '<a href="#" data-bs-toggle="modal" data-bs-target="#' . h($modal_id) . '">' . h($link_text) . '</a>'
-         .     ' okudum ve kabul ediyorum.'
+         .     ' ' . h(lang('and confirm I have read them.'))
          .   '</label>'
          . '</div>';
 }
 
-// LEGACY-ONLY fallback. The Koşullar Modalı is now a real Bootstrap modal
+// LEGACY-ONLY fallback. The terms modal is now a real Bootstrap modal
 // in the designer tree — operator edits title/body/footer/dialog-size on
 // canvas. This function is ONLY called when:
 // ── Cancellation form HTML (order_view __cancel_form token) ─────────────
@@ -2370,7 +2372,7 @@ function _eo_render_terms_modal_html($cfg = array(), $extracted_body = '')
 {
     // Parameters kept for signature stability with any legacy call sites,
     // but the values are ignored — modal is fully designer-controlled now.
-    $modal_title = 'Sipariş Koşulları';
+    $modal_title = lang('Order Terms');
     $modal_body  = _eo_default_terms_html();
     $modal_id    = 'pg-eo-terms-modal';
     return
@@ -2386,14 +2388,14 @@ function _eo_render_terms_modal_html($cfg = array(), $extracted_body = '')
       .       '</div>'
       .       '<div class="modal-footer">'
       .         '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . h(lang('Close')) . '</button>'
-      .         '<button type="button" class="btn btn-primary pg-eo-terms-accept" data-bs-dismiss="modal" data-pg-eo-terms-accept="1">Okudum, Kabul Ediyorum</button>'
+      .         '<button type="button" class="btn btn-primary pg-eo-terms-accept" data-bs-dismiss="modal" data-pg-eo-terms-accept="1">' . h(lang('I Have Read and Accept')) . '</button>'
       .       '</div>'
       .     '</div>'
       .   '</div>'
       . '</div>';
 }
 
-// Inline JS for the "Okudum, Kabul Ediyorum" button. Ticks the agree_terms
+// Inline JS for the "I Have Read and Accept" button. Ticks the agree_terms
 // checkbox and lets Bootstrap dismiss the modal via data-bs-dismiss. Matches
 // both .pg-eo-terms-accept (legacy fallback) AND [data-pg-eo-terms-accept]
 // (designer-tree default) so either hook works. Emitted once per page.
@@ -2425,17 +2427,17 @@ HTML;
 // and never call this function.
 function _eo_default_terms_html()
 {
-    return '<h6 class="mb-3">1. Genel Şartlar</h6>'
-         . '<p class="small">Siparişinizi onayladığınızda, ödeme yöntemi olarak seçtiğiniz yöntemle bedelin tahsil edilmesini, ürünlerin/hizmetlerin tarafımızca size sunulmasını kabul etmiş sayılırsınız.</p>'
-         . '<h6 class="mb-3 mt-4">2. İptal ve İade</h6>'
-         . '<p class="small">Dijital ürünler indirildikten sonra iade edilemez. Fiziksel ürünler için teslimat tarihinden itibaren 14 gün içinde cayma hakkınız bulunmaktadır.</p>'
-         . '<h6 class="mb-3 mt-4">3. Teslimat</h6>'
-         . '<p class="small">Kargo süresi seçilen kargo firmasına ve adresinize göre değişir. Sipariş onayı sonrasında e-posta ile takip numaranız iletilir.</p>'
-         . '<h6 class="mb-3 mt-4">4. Kişisel Verilerin Korunması</h6>'
-         . '<p class="small">Sipariş sırasında verdiğiniz bilgiler yalnızca siparişinizin tamamlanması, faturalandırma ve teslimat amacıyla işlenir. KVKK kapsamında haklarınız saklıdır.</p>'
-         . '<h6 class="mb-3 mt-4">5. İletişim</h6>'
-         . '<p class="small">Sorularınız için iletişim sayfamızdan bize ulaşabilirsiniz.</p>'
-         . '<div class="alert alert-info small mt-4 mb-0">Bu metin operatör tarafından özelleştirilebilir: <strong>Tasarımcı → Hızlı Sipariş Ayarları → Koşullar Metni (HTML)</strong>.</div>';
+    return '<h6 class="mb-3">' . h(lang('1. General Terms')) . '</h6>'
+         . '<p class="small">' . h(lang('By confirming your order you agree that the amount is charged with the payment method you chose and that the products/services are supplied to you by us.')) . '</p>'
+         . '<h6 class="mb-3 mt-4">' . h(lang('2. Cancellation and Refund')) . '</h6>'
+         . '<p class="small">' . h(lang('Digital products cannot be returned once downloaded. For physical products you have the right to withdraw within 14 days of delivery.')) . '</p>'
+         . '<h6 class="mb-3 mt-4">' . h(lang('3. Delivery')) . '</h6>'
+         . '<p class="small">' . h(lang('Delivery time depends on the carrier you choose and on your address. Your tracking number is emailed to you once the order is confirmed.')) . '</p>'
+         . '<h6 class="mb-3 mt-4">' . h(lang('4. Protection of Personal Data')) . '</h6>'
+         . '<p class="small">' . h(lang('The information you give while ordering is processed only to complete your order, to invoice it and to deliver it. Your rights under data protection law are reserved.')) . '</p>'
+         . '<h6 class="mb-3 mt-4">' . h(lang('5. Contact')) . '</h6>'
+         . '<p class="small">' . h(lang('You can reach us from our contact page with any question.')) . '</p>'
+         . '<div class="alert alert-info small mt-4 mb-0">' . h(lang('This text can be customized by the operator:')) . ' <strong>' . h(lang('Designer → Express Order Settings → Terms Text (HTML)')) . '</strong>.</div>';
 }
 
 function _eo_render_installment_box($lf)

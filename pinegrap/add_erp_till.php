@@ -17,6 +17,7 @@ if (!validate_erp_access($user, 'cash')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/account_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/till_form.php');
 include_once('liveform.class.php');
 $liveform = new liveform('add_erp_till');
@@ -29,6 +30,7 @@ if (!$_POST) {
         $liveform->assign_field_value('kind', 'cash');
         $liveform->assign_field_value('is_active', '1');
         $liveform->assign_field_value('opening_balance', '0');
+        $liveform->assign_field_value('currency', erp_base_currency());
     }
 
     echo
@@ -84,10 +86,23 @@ if (!$_POST) {
     $kinds = array('cash', 'bank', 'pos', 'credit_card');
     $kind = in_array($liveform->get_field_value('kind'), $kinds, true) ? $liveform->get_field_value('kind') : 'cash';
 
+    // The base currency unless foreign currency is on and an allowed code was chosen.
+    $currency = erp_base_currency();
+    if (erp_fx_enabled()) {
+        $chosen = strtoupper(trim((string) $liveform->get_field_value('currency')));
+        if ($chosen !== '') {
+            if (!erp_fx_currency_allowed($chosen)) {
+                $liveform->mark_error('currency', lang('That currency is not enabled for the ERP.'));
+                go(PATH . SOFTWARE_DIRECTORY . '/add_erp_till.php');
+            }
+            $currency = $chosen;
+        }
+    }
+
     erp_query("INSERT INTO erp_cash_accounts SET
         name = '" . escape(trim((string) $liveform->get_field_value('name'))) . "',
         kind = '" . escape($kind) . "',
-        currency = 'TRY',
+        currency = '" . escape($currency) . "',
         iban = '" . escape(trim((string) $liveform->get_field_value('iban'))) . "',
         bank_name = '" . escape(trim((string) $liveform->get_field_value('bank_name'))) . "',
         opening_balance = '" . erp_kurus($liveform->get_field_value('opening_balance')) . "',

@@ -85,7 +85,7 @@
         }
         return '';
     }
-    // full: the path ("Mağaza › Sandalyeler"), for the picker. Short name
+    // full: the path ("Shop › Chairs"), for the picker. Short name
     // everywhere else, or a condition naming five groups fills the row.
     function groupLabel(id, full) {
         for (var i = 0; i < GROUPS.length; i++) {

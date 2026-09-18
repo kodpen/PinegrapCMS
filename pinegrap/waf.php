@@ -11,7 +11,7 @@
  *   router.php  -> covers get_file.php / robots.txt / sitemap.xml, which never
  *                  reach init.php.
  *   init.php    -> covers every directly requested software script
- *                  (apps.php, api.php, custom_form.php, cart_action.php ...).
+ *                  (integration.php, api.php, custom_form.php, cart_action.php ...).
  *
  * Both call waf_run(). The WAF_RAN guard makes the second call a no-op.
  *

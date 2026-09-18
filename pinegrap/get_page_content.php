@@ -5473,7 +5473,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         '<meta ' . $open_graph_description . 'name="description" content="' . h($page_meta_description) . '">' . "\n" .
         $open_graph .
         $twitter_card .
-        get_generator_meta_tag() . "\n" .
         '        <link rel="canonical" href="' . h($canonical_url) . '">';
 
     // The placeholder is written into every style the software creates, but a

@@ -494,6 +494,32 @@ $pg_settings_cards[] = '
                         <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
                         <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
                     </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_fx_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" />
+                            <label class="form-check-label" for="erp_fx_enabled">' . lang('Enable foreign-currency invoices and accounts') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('Off, everything in the ERP is in the store\'s base currency. On, an invoice, an account or a till may be kept in one of the currencies below; amounts stay in that currency and the day\'s exchange rate converts them for the ledger.') . '</div>
+                        <div class="collapse popover fade bs-popover-bottom p-0 " id="erp_fx_row">
+                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
+                            <div class="popover-body">
+                                <div class="row gy-3">
+                                    <div class="col-12">
+                                        <div class="form-label">' . lang('Currencies allowed on documents') . '</div>
+                                        ' . $output_erp_fx_currencies . '
+                                        <div class="form-text">' . lang('The base currency is always allowed. Daily rates for these come from the Exchange rates job; run Update Exchange Rates on the currencies screen to fetch today\'s.') . '</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-check form-switch">
+                                            <input value="1"' . $erp_fx_auto_diff_checked . ' class="form-check-input" type="checkbox" id="erp_fx_auto_diff" name="erp_fx_auto_diff" />
+                                            <label class="form-check-label" for="erp_fx_auto_diff">' . lang('Post the exchange difference automatically when a foreign-currency invoice is paid off') . '</label>
+                                        </div>
+                                        <div class="form-text">' . lang('The invoice went on the account at the rate of its issue date and the receipts came off at the rate of their own day. When the invoice is paid, one movement in the base currency settles the gap so the account closes to zero.') . '</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
