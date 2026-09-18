@@ -15,7 +15,7 @@
  *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
-if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request'] != 'action'){
+if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'] ?? '') != 'action'){
     include('init.php');
     $user = validate_user();
     validate_ecommerce_access($user);
@@ -211,6 +211,17 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
         case 'update_inventory_quantity':
             $barcode = $request['barcode'];
             $quantity = $request['quantity'];
+
+            // Generated barcodes live in product_barcodes; a scan is resolved there
+            // first and falls back to the product name, which older labels carry.
+            $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($barcode) . "' LIMIT 1");
+
+            if ($product_id) {
+                $sql_where = "id = '" . $product_id . "'";
+            } else {
+                $sql_where = "name = '" . escape($barcode) . "'";
+            }
+
             $query = "SELECT 
             
                 id,
@@ -219,7 +230,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
                 inventory,
                 inventory_quantity
                 FROM products
-                WHERE name = '" . escape($barcode) . "'";
+                WHERE " . $sql_where;
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             if (mysqli_num_rows($result) == 0){
@@ -259,7 +270,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && $_GET['request']
                     $sql_out_of_stock_timestamp
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
-                WHERE name = '" . escape($barcode) . "'";
+                WHERE id = '" . (int) $id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
             if (function_exists('pg_marketplace_product_changed')) {
