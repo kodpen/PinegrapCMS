@@ -16,6 +16,16 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// This script is dispatched by router.php, which defines the db class and
+// opens the connection before requiring it. get_file.php is a real file, so
+// the rewrite rules let a direct request reach it without the router; that
+// request has no database at all and would die on the first query below.
+// Answer it with a plain 404 instead: files are served by their own URL.
+if (!class_exists('db', false)) {
+    header('HTTP/1.1 404 Not Found');
+    exit;
+}
+
 // Shared sign-in primitives (pg_auth_token_verify, pg_load_user_row and the
 // token revoke). This file still never loads functions.php; the token check
 // moved to includes/authentication.php so both sides run the same one, and
