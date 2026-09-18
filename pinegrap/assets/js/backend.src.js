@@ -1,6 +1,11 @@
-// Lang shim, defined up front so every top level helper in this file can call it
-// regardless of where in the file it sits. Re-declared defensively further down.
-window.pgLang = window.pgLang || function (key) { return key; };
+// Translation shim, defined up front so every top level helper in this file
+// can call it regardless of where in the file it sits. It reads the map the
+// panel header emits (output.php) and falls back to the English key when the
+// map is absent or lacks the entry, so a missing key never renders "undefined".
+window.pgLang = function (key) {
+    var v = (typeof translate !== 'undefined' && translate) ? translate[key] : undefined;
+    return (v !== undefined && v !== null) ? String(v) : key;
+};
 
 (() => {
     "use strict";
@@ -92,10 +97,7 @@ function open_search_index_window() {
     window.open('update_search_index.php', 'popup', 'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500');
 }
 function lang($string) {
-    if (translate) {
-        $string = translate[$string];
-    }
-    return $string;
+    return window.pgLang($string);
 }
 
 function getPreferredTheme() {
@@ -1740,21 +1742,21 @@ function edit_chart_content(action, name) {
 
         case 'optin':
             document.form.action.value = 'optin';
-            result = confirm('WARNING: The selected ' + name + '(s) will be opted-in.')
+            result = confirm(lang('WARNING: The selected {var}(s) will be opted-in.').replace('{var}', name))
             break;
 
         case 'optout':
             document.form.action.value = 'optout';
-            result = confirm('WARNING: The selected ' + name + '(s) will be opted-out.')
+            result = confirm(lang('WARNING: The selected {var}(s) will be opted-out.').replace('{var}', name))
             break;
 
         case 'merge':
             document.form.action.value = 'merge';
-            result = confirm('WARNING: The selected duplicate ' + name + '(s) will be merged together.')
+            result = confirm(lang('WARNING: The selected duplicate {var}(s) will be merged together.').replace('{var}', name))
             break;
         case 'delete':
             document.form.action.value = 'delete';
-            result = confirm('WARNING: The selected ' + name + '(s) will be permanently deleted.')
+            result = confirm(lang('WARNING: The selected {var}(s) will be permanently deleted.').replace('{var}', name))
             break;
     }
     // if user select ok to confirmation, submit form
@@ -2307,7 +2309,7 @@ function get_notifications($read_mark) {
 
     notifications_empty.addClass('d-none');
 
-    var spinner_content = '<div class="spinner text-center p-3"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    var spinner_content = '<div class="spinner text-center p-3"><div class="spinner-border text-success" role="status"><span class="visually-hidden">' + lang('Loading...') + '</span></div></div>';
     notifications_content.remove();
 
     //first of all we put a loading spinner while processing.
@@ -3351,10 +3353,10 @@ function init_product_submit_form_update_where(field) {
 
     var options =
         '<option value=""></option>\
-        <optgroup label="System Fields">\
-            <option value="reference_code"' + reference_code_selected + '>Reference Code</option>\
+        <optgroup label="' + lang('System Fields') + '">\
+            <option value="reference_code"' + reference_code_selected + '>' + lang('Reference Code') + '</option>\
         </optgroup>\
-        <optgroup label="Form Fields">';
+        <optgroup label="' + lang('Form Fields') + '">';
 
     var length = submit_form_custom_form_fields.length;
 
@@ -5405,7 +5407,7 @@ function initialize_style_designer() {
                 break;
 
             case 'ad':
-                cell_label = 'Ad Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .ad_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Ad Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .ad_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'cart':
@@ -5413,27 +5415,27 @@ function initialize_style_designer() {
                 break;
 
             case 'common':
-                cell_label = 'Common Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cregion_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Common Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cregion_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'designer':
-                cell_label = 'Designer Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cregion_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Designer Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cregion_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'dynamic':
-                cell_label = 'Dynamic Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .dregion_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Dynamic Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .dregion_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'login':
-                cell_label = 'Login Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .login_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Login Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .login_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'menu':
-                cell_label = 'Menu Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .menu_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Menu Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .menu_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'menu_sequence':
-                cell_label = 'Menu Sequence Region: ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .menu_sequence_' + region_name + ' .c' + col + '</span>';
+                cell_label = lang('Menu Sequence Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .menu_sequence_' + region_name + ' .c' + col + '</span>';
                 break;
 
             case 'mobile_switch':
@@ -5463,7 +5465,7 @@ function initialize_style_designer() {
                     region_name_for_label_css = ' .system'
                 }
 
-                cell_label = 'System Region: ' + region_name_for_label + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + region_name_for_label_css + ' .c' + col + '</span>';
+                cell_label = lang('System Region') + ': ' + region_name_for_label + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + region_name_for_label_css + ' .c' + col + '</span>';
                 break;
 
             case 'tag_cloud':
@@ -5743,7 +5745,7 @@ function initialize_style_designer() {
                     region_names = system_region_pages;
 
                     // set the picklists first option for the picklist
-                    picklist_first_option = '-Use Page-';
+                    picklist_first_option = '-' + lang('Use Page') + '-';
                     break;
             }
 
@@ -5773,7 +5775,7 @@ function initialize_style_designer() {
         modal: true,
         width: 500,
         height: 200,
-        title: 'Edit Cell Properties',
+        title: lang('Edit Cell Properties'),
         dialogClass: 'standard',
         open: function () {
             // if there is no region for the selected cell, then default the region type to page
@@ -5834,7 +5836,7 @@ function initialize_style_designer() {
             )
             && (region_name == '')
         ) {
-            alert('Please select a region name.');
+            alert(lang('Please select a region name.'));
             return false;
         }
 
@@ -5903,7 +5905,7 @@ function initialize_style_designer() {
 
         // if a system region does not exist, then alert the user
         if (use_page_system_region_exists == false) {
-            alert('Please add one "Use Page" system region before continuing.');
+            alert(lang('Please add one "Use Page" system region before continuing.'));
             return false;
         }
 
@@ -5929,11 +5931,11 @@ function generateIndexNowKey() {
             }
         } else {
             console.error("crypto.randomUUID is not supported in this browser.");
-            alert("Your browser does not support secure key generation. Please use a modern browser.");
+            alert(lang("Your browser does not support secure key generation. Please use a modern browser."));
         }
     } catch (error) {
         console.error("Error generating IndexNow key:", error);
-        alert("An error occurred while generating the key. Please try again.");
+        alert(lang("An error occurred while generating the key. Please try again."));
     }
 }
 
@@ -6016,7 +6018,7 @@ function software_backup_start() {
         .addClass("disabled")
         .removeClass("ready");
 
-    software_backup_updateProgress(0, "Backup Builder Starting...");
+    software_backup_updateProgress(0, lang("Backup Builder Starting..."));
     software_backup_runSteps(backup_folder_name);
 }
 
@@ -6035,7 +6037,7 @@ function editBarcodeTemplate(opts) {
     var _L = (typeof pgLang !== 'undefined') ? pgLang : function (k) { return k; };
 
     if (typeof window.PgBarcode === 'undefined') {
-        alert(_L('Label Designer') + ': library not loaded.');
+        alert(_L('Label Designer') + ': ' + _L('Library not loaded.'));
         return;
     }
 
@@ -7157,7 +7159,7 @@ function bindPageIndexingSwitches(ids) {
                     lineColor: '#000000',
                 });
             } catch (e) {
-                div.innerHTML = '<div style="font-size:10px;color:#888;padding:2px;text-align:center;">Barcode preview</div>';
+                div.innerHTML = `<div style="font-size:10px;color:#888;padding:2px;text-align:center;">${pgLang('Barcode preview')}</div>`;
             }
         },
 
@@ -7209,7 +7211,7 @@ function bindPageIndexingSwitches(ids) {
                 div.appendChild(img);
             } else {
                 div.style.cssText += 'border:1px dashed #aaa;display:flex;align-items:center;justify-content:center;';
-                div.innerHTML = `<span style="font-size:9px;color:#aaa;">${el.field === 'product_image' ? pgLang('Product Image') : 'Image'}</span>`;
+                div.innerHTML = `<span style="font-size:9px;color:#aaa;">${el.field === 'product_image' ? pgLang('Product Image') : pgLang('Image')}</span>`;
             }
         },
 
@@ -7477,7 +7479,7 @@ function bindPageIndexingSwitches(ids) {
                 const inp = document.createElement('input');
                 inp.type = 'text'; inp.className = 'form-control form-control-sm';
                 inp.value = el.src || '';
-                inp.placeholder = 'e.g. uploads/logo.png';
+                inp.placeholder = pgLang('e.g. uploads/logo.png');
                 inp.addEventListener('change', () => { el.src = inp.value; self.render(); self._fireChange(); });
                 imgRow.appendChild(inp);
 
@@ -7862,7 +7864,7 @@ window.onload = function() {
                     fontSize: 11, margin: 4, width: 1.5, height: 40, lineColor: '#000000',
                 });
             } catch (e) {
-                svgPreview.innerHTML = '<text x="5" y="20" fill="red" font-size="11">Invalid barcode</text>';
+                svgPreview.innerHTML = '<text x="5" y="20" fill="red" font-size="11">' + pgLang('Invalid barcode') + '</text>';
             }
         }
 
@@ -8086,11 +8088,6 @@ window.onload = function() {
     }
 
     /* ═══════════════════════════════════════════════════════════════════
-       SIMPLE LANG SHIM (falls back to key if window.pgLang not defined)
-    ═══════════════════════════════════════════════════════════════════ */
-    window.pgLang = window.pgLang || function (key) { return key; };
-
-    /* ═══════════════════════════════════════════════════════════════════
        EXPORTS
     ═══════════════════════════════════════════════════════════════════ */
     window.PgBarcode = {
@@ -8290,10 +8287,10 @@ function pg_background_calls_allowed() {
      */
     window.pgConfirm = function (opts) {
         opts = opts || {};
-        var title = opts.title != null ? String(opts.title) : 'Confirm';
+        var title = opts.title != null ? String(opts.title) : lang('Confirm');
         var message = opts.message != null ? String(opts.message) : '';
-        var confirmText = opts.confirmText != null ? String(opts.confirmText) : 'OK';
-        var cancelText = opts.cancelText != null ? String(opts.cancelText) : 'Cancel';
+        var confirmText = opts.confirmText != null ? String(opts.confirmText) : lang('OK');
+        var cancelText = opts.cancelText != null ? String(opts.cancelText) : lang('Cancel');
         var variantWhitelist = { danger: 1, primary: 1, warning: 1, success: 1 };
         var variant = variantWhitelist[opts.variant] ? opts.variant : 'danger';
 

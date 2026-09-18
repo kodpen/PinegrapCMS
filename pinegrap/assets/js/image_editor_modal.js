@@ -50,10 +50,14 @@
     var _readyTimer = 0;
 
     function t(key, fallback) {
-        // Screens that carry the software's JS translations use lang(); the
-        // tool must still work on one that does not.
+        // Labels come from the map editor.php emits next to this script
+        // (window.pgImageEditorLabels); a screen that also carries the panel's
+        // JS translations answers through lang(). Either may be absent, so the
+        // English key is the last resort.
+        var map = window.pgImageEditorLabels;
+        if (map && Object.prototype.hasOwnProperty.call(map, key) && map[key]) return String(map[key]);
         if (typeof window.lang === 'function') {
-            try { var v = window.lang(key); if (v) return v; } catch (e) {}
+            try { var v = window.lang(key); if (v && v !== key) return v; } catch (e) {}
         }
         return fallback || key;
     }
@@ -133,7 +137,7 @@
                         '<div class="modal-header py-2">' +
                             '<h6 class="modal-title mb-0 d-flex align-items-center" id="pgImageEditorTitle">' +
                                 _markSvg() +
-                                '<span id="pgImageEditorTitleText">' + t('Pintura Image Editor', 'Pintura Görsel Düzenleyici') + '</span>' +
+                                '<span id="pgImageEditorTitleText">' + t('Pintura Image Editor') + '</span>' +
                             '</h6>' +
                             '<button type="button" class="btn btn-sm btn-link text-body-secondary p-0 ms-auto me-2 lh-1" ' +
                                 'id="pgImageEditorFull" aria-pressed="false">' +
@@ -236,7 +240,7 @@
 
         if (button) {
             button.setAttribute('aria-pressed', on ? 'true' : 'false');
-            var label = on ? t('Exit full screen', 'Tam ekrandan çık') : t('Full screen', 'Tam ekran');
+            var label = on ? t('Exit full screen') : t('Full screen');
             button.setAttribute('title', label);
             button.setAttribute('aria-label', label);
         }
@@ -280,12 +284,12 @@
             '<span class="bi bi-image me-1"></span><strong>' + _esc(name) + '</strong>' +
             '<span id="pgImageEditorMeta" class="ms-2 opacity-75"></span>' +
             (isGif ? '<span class="ms-2 text-warning">' +
-                     t('Animated GIF — new file only.', 'Hareketli GIF — yalnız yeni dosya.') + '</span>' : '');
+                     t('Animated GIF — new file only.') + '</span>' : '');
 
         actions.innerHTML =
-            '<span class="small text-muted me-1">' + t('Save as', 'Kayıt biçimi') + '</span>' +
+            '<span class="small text-muted me-1">' + t('Save as') + '</span>' +
             '<select class="form-select form-select-sm" id="pgImageEditorType" style="width:auto">' +
-                (isNew ? '' : '<option value="">' + t('Same format', 'Aynı biçim') + '</option>') +
+                (isNew ? '' : '<option value="">' + t('Same format') + '</option>') +
                 '<option value="jpg">jpg</option>' +
                 // png for a new picture: it is the only one of the three that
                 // keeps every pixel and every transparent corner, which is
@@ -295,17 +299,15 @@
             '</select>' +
             (allowCopy
                 ? '<button type="button" class="btn btn-sm btn-primary" id="pgImageEditorSaveCopy" ' +
-                  'title="' + t('Keeps the original file and points this page at the copy.',
-                                'Orijinal dosya kalır, bu sayfa kopyayı gösterir.') + '">' +
+                  'title="' + t('Keeps the original file and points this page at the copy.') + '">' +
                   '<span class="bi bi-files me-1"></span>' +
-                  ((_opts && _opts.saveLabel) ? _esc(_opts.saveLabel) : t('Save as new file', 'Yeni dosya olarak kaydet')) +
+                  ((_opts && _opts.saveLabel) ? _esc(_opts.saveLabel) : t('Save as new file')) +
                   '</button>'
                 : '') +
             (allowReplace
                 ? '<button type="button" class="btn btn-sm btn-outline-warning" id="pgImageEditorSaveReplace" ' +
-                  'title="' + t('Writes over the file. Every page using it changes.',
-                                'Dosyanın üstüne yazar. Onu kullanan her sayfa değişir.') + '">' +
-                  '<span class="bi bi-arrow-repeat me-1"></span>' + t('Replace', 'Değiştir') + '</button>'
+                  'title="' + t('Writes over the file. Every page using it changes.') + '">' +
+                  '<span class="bi bi-arrow-repeat me-1"></span>' + t('Replace') + '</button>'
                 : '');
 
         var copy = document.getElementById('pgImageEditorSaveCopy');
@@ -371,7 +373,7 @@
         var hint = document.getElementById('pgImageEditorHint');
         if (on && hint) {
             hint.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' +
-                             t('Saving…', 'Kaydediliyor…');
+                             t('Saving...');
         }
     }
 
@@ -398,7 +400,7 @@
         catch (e) { out = null; }
         if (!out || typeof out.then !== 'function') {
             _busyState(false);
-            _footError(t('The edited image could not be produced.', 'Düzenlenen görsel üretilemedi.'));
+            _footError(t('The edited image could not be produced.'));
             return;
         }
         out.then(function (res) {
@@ -408,12 +410,12 @@
             reader.onload = function () { _post(mode, type, String(reader.result || '')); };
             reader.onerror = function () {
                 _busyState(false);
-                _footError(t('The edited image could not be read.', 'Düzenlenen görsel okunamadı.'));
+                _footError(t('The edited image could not be read.'));
             };
             reader.readAsDataURL(blob);
         }).catch(function () {
             _busyState(false);
-            _footError(t('The edited image could not be produced.', 'Düzenlenen görsel üretilemedi.'));
+            _footError(t('The edited image could not be produced.'));
         });
     }
 
@@ -451,7 +453,7 @@
             if (!res.data || res.data.status !== 'success') {
                 var msg = (res.data && res.data.message)
                     ? res.data.message
-                    : (t('The image could not be saved.', 'Görsel kaydedilemedi.') + ' (' + res.status + ')');
+                    : (t('The image could not be saved.') + ' (' + res.status + ')');
                 var hint = document.getElementById('pgImageEditorHint');
                 if (hint) hint.innerHTML = '<span class="text-danger">' + msg + '</span>';
                 return;
@@ -465,7 +467,7 @@
         .catch(function () {
             _busyState(false);
             var hint = document.getElementById('pgImageEditorHint');
-            if (hint) hint.innerHTML = '<span class="text-danger">' + t('Network error.', 'Ağ hatası.') + '</span>';
+            if (hint) hint.innerHTML = '<span class="text-danger">' + t('Network error.') + '</span>';
         });
     }
 
@@ -475,8 +477,7 @@
             // The tool is optional on any given screen; say so rather than
             // failing silently on a click that looked like it would work.
             if (typeof window.alert === 'function') {
-                window.alert(t('The image editor is not loaded on this screen.',
-                               'Görsel düzenleyici bu ekranda yüklü değil.'));
+                window.alert(t('The image editor is not loaded on this screen.'));
             }
             return;
         }
@@ -580,7 +581,7 @@
             // the reason has to be said out loud rather than left as a row of
             // grey buttons.
             $host.on('doka:loaderror', function () {
-                _footError(t('The image could not be opened.', 'Görsel açılamadı.'));
+                _footError(t('The image could not be opened.'));
             });
         };
         _modalEl.addEventListener('shown.bs.modal', onShown);

@@ -50,6 +50,15 @@
     var stageRect  = { w: 0, h: 0 };
     var fitScale   = 1;       // computed contain-fit scale (image natural → stage)
 
+    // ── Labels ──────────────────────────────────────────────────────────────
+    // The carousel renderer emits window.pgLightboxLabels through lang() next
+    // to this script; the English key is the fallback when the map is absent.
+    function L(key) {
+        var map = window.pgLightboxLabels;
+        var v = (map && Object.prototype.hasOwnProperty.call(map, key)) ? map[key] : null;
+        return String(v || key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     // ── DOM build (lazy — first open) ───────────────────────────────────────
     function build() {
         if (overlay) return;
@@ -61,18 +70,18 @@
             '<div class="pgl-toolbar">',
                 '<span class="pgl-counter" data-pgl="counter">0 / 0</span>',
                 '<span class="pgl-spacer"></span>',
-                '<button type="button" class="pgl-btn" data-pgl="zoom-out" title="Uzaklaştır (−)" aria-label="Uzaklaştır"><i class="bi bi-zoom-out"></i></button>',
-                '<button type="button" class="pgl-btn" data-pgl="zoom-in"  title="Yakınlaştır (+)" aria-label="Yakınlaştır"><i class="bi bi-zoom-in"></i></button>',
-                '<button type="button" class="pgl-btn" data-pgl="reset"    title="Sıfırla (0)"     aria-label="Sıfırla"><i class="bi bi-arrows-angle-contract"></i></button>',
-                '<button type="button" class="pgl-btn" data-pgl="fullscreen" title="Tam ekran (F)" aria-label="Tam ekran"><i class="bi bi-arrows-fullscreen"></i></button>',
-                '<button type="button" class="pgl-btn" data-pgl="close"    title="Kapat (Esc)"     aria-label="Kapat"><i class="bi bi-x-lg"></i></button>',
+                '<button type="button" class="pgl-btn" data-pgl="zoom-out" title="' + L('Zoom out') + ' (−)" aria-label="' + L('Zoom out') + '"><i class="bi bi-zoom-out"></i></button>',
+                '<button type="button" class="pgl-btn" data-pgl="zoom-in"  title="' + L('Zoom in') + ' (+)" aria-label="' + L('Zoom in') + '"><i class="bi bi-zoom-in"></i></button>',
+                '<button type="button" class="pgl-btn" data-pgl="reset"    title="' + L('Reset') + ' (0)" aria-label="' + L('Reset') + '"><i class="bi bi-arrows-angle-contract"></i></button>',
+                '<button type="button" class="pgl-btn" data-pgl="fullscreen" title="' + L('Full screen') + ' (F)" aria-label="' + L('Full screen') + '"><i class="bi bi-arrows-fullscreen"></i></button>',
+                '<button type="button" class="pgl-btn" data-pgl="close"    title="' + L('Close') + ' (Esc)" aria-label="' + L('Close') + '"><i class="bi bi-x-lg"></i></button>',
             '</div>',
-            '<button type="button" class="pgl-nav pgl-prev" data-pgl="prev" aria-label="Önceki"><i class="bi bi-chevron-left"></i></button>',
-            '<button type="button" class="pgl-nav pgl-next" data-pgl="next" aria-label="Sonraki"><i class="bi bi-chevron-right"></i></button>',
+            '<button type="button" class="pgl-nav pgl-prev" data-pgl="prev" aria-label="' + L('Previous') + '"><i class="bi bi-chevron-left"></i></button>',
+            '<button type="button" class="pgl-nav pgl-next" data-pgl="next" aria-label="' + L('Next') + '"><i class="bi bi-chevron-right"></i></button>',
             '<div class="pgl-stage" data-pgl="stage">',
                 '<img class="pgl-img" data-pgl="img" alt="" draggable="false">',
                 '<div class="pgl-spinner" data-pgl="spinner" aria-hidden="true"></div>',
-                '<div class="pgl-error">Görsel yüklenemedi.</div>',
+                '<div class="pgl-error">' + L('The image could not be loaded.') + '</div>',
                 '<div class="pgl-caption" data-pgl="caption"></div>',
             '</div>',
             '<div class="pgl-thumbs" data-pgl="thumbs"></div>'

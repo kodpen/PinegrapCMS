@@ -363,6 +363,13 @@ function pg_designer_screen_render($ctx)
             window.OUTPUT_PATH = "' . h(escape_javascript(OUTPUT_PATH)) . '";
             var sdRegionData = ' . get_style_designer_regions_as_json() . ';
             var sdDesign = ' . $design_js . ';
+            window.PgCodeModalLabels = ' . encode_json(array(
+                'Code Editor' => lang('Code Editor'),
+                'Close'       => lang('Close'),
+                'Cancel'      => lang('Cancel'),
+                'Save'        => lang('Save'),
+                'Code'        => lang('Code'),
+            )) . ';
         </script>
         <script src="assets/js/codemirror_modal.js?v=' . time() . '"></script>
         <script src="assets/js/class_suggestions.js?v=' . time() . '"></script>

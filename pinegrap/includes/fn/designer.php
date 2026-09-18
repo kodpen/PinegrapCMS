@@ -2135,7 +2135,19 @@ function _pg_lightbox_assets_once()
     static $emitted = false;
     if ($emitted) return '';
     $emitted = true;
+    // Toolbar labels for pg_lightbox.js, which falls back to the English key.
+    $labels = array(
+        'Zoom out'                       => lang('Zoom out'),
+        'Zoom in'                        => lang('Zoom in'),
+        'Reset'                          => lang('Reset'),
+        'Full screen'                    => lang('Full screen'),
+        'Close'                          => lang('Close'),
+        'Previous'                       => lang('Previous'),
+        'Next'                           => lang('Next'),
+        'The image could not be loaded.' => lang('The image could not be loaded.'),
+    );
     return '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/pg_lightbox.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_lightbox.css') . '">
+    <script>window.pgLightboxLabels = ' . encode_json($labels) . ';</script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_lightbox.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_lightbox.js') . '" defer></script>';
 }
 
