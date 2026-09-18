@@ -226,6 +226,7 @@ uygulamadan **önce** sorun; sessizce değiştirmek bu kuralın ihlalidir.
 | `barcode_decrease_inventory.php` — "evet" dönüşü | Özelliktir, hata değildir. |
 | `orders.notes`, `orders.tracking_company` | Kullanılmıyor görünür; ERP için duran alanlardır, devamı gelecek. |
 | `pi.php`, `si.php` | Herkese açık kalır. Oturum ya da rol kapısı eklenmez; bir denetimde "kimlik doğrulamasız açık" diye bulunmaları beklenen durumdur. |
+| `software_update.php` — `VERSION === '2026'` bloğu | Kaldırılmaz. Noktasız `2026` gerçek bir ara duraktır: eski sürümden (örn. 2025.2) gelen kurulum yükseltmeye başlamadan önce burada durur, `config.php` ve diğer veri yollarını `data/` altına taşır, sonra güncelleme kanalı değişir. "Hiçbir noktalı sürüm bunu sağlamıyor" diye ölü kod sanılmıştır. |
 | `myself_upsell.php` | Şimdilik kalır. Dikkatli inceleme sonucu netleşirse `clean_up`'a eklenebilir, kendi başınıza silmeyin. |
 
 Aynı kural yazılı diğer kararlar için de geçerlidir: yayınlanmış bir sürümün

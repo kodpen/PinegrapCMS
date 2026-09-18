@@ -26,6 +26,78 @@ $user = validate_user();
 // Validate the users access
 validate_area_access($user, 'manager');
 
+
+// --- PRE-UPGRADE PREPARATION ---
+// Only run if current VERSION is 2026
+if (defined('VERSION') && VERSION === '2026') {
+    set_time_limit(300);
+
+    function copy_and_verify($src, $dst) {
+        if (!is_dir($src)) return false;
+        if (!is_dir($dst)) {
+            mkdir($dst, 0755, true);
+        }
+        $dir = opendir($src);
+        while (($file = readdir($dir)) !== false) {
+            if ($file == '.' || $file == '..') continue;
+            $srcPath = $src . '/' . $file;
+            $dstPath = $dst . '/' . $file;
+            if (is_dir($srcPath)) {
+                copy_and_verify($srcPath, $dstPath);
+            } else {
+                // Overwrite when the target is missing or its content differs
+                if (!file_exists($dstPath) || md5_file($srcPath) !== md5_file($dstPath)) {
+                    copy($srcPath, $dstPath);
+                }
+            }
+        }
+        closedir($dir);
+        return true;
+    }
+
+    function copy_file_and_verify($srcFile, $dstFile) {
+        if (!file_exists($srcFile)) return false;
+        if (!file_exists($dstFile) || md5_file($srcFile) !== md5_file($dstFile)) {
+            copy($srcFile, $dstFile);
+        }
+        return true;
+    }
+
+    try {
+        $baseDir = dirname(__FILE__);
+        $dataDir = $baseDir . '/data';
+
+        if (!is_dir($dataDir)) {
+            mkdir($dataDir, 0755, true);
+        }
+
+        // 1. Backups
+        copy_and_verify($baseDir . '/install/backups', $dataDir . '/backups');
+
+        // 2. Config
+        copy_file_and_verify($baseDir . '/config/config.php', $dataDir . '/config.php');
+
+        // 3. Files
+        copy_and_verify($baseDir . '/files', $dataDir . '/files');
+
+        // 4. Layouts
+        copy_and_verify($baseDir . '/layouts', $dataDir . '/layouts');
+
+        log_activity("Pre-upgrade preparation completed and verified", $_SESSION['sessionusername']);
+    } catch (Exception $e) {
+        log_activity("Pre-upgrade preparation failed: " . $e->getMessage(), $_SESSION['sessionusername']);
+        $liveform->remove_form();
+	    include_once('liveform.class.php');
+	    $liveform = new liveform('settings');
+	    $liveform->add_notice("Pre-upgrade preparation failed: " . $e->getMessage());
+	    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+	exit();
+
+    }
+}
+// --- END PRE-UPGRADE PREPARATION ---
+
+
 $mode = isset($_GET['mode']) ? ($_GET['mode'] ?? '') : null;
 // User redirect automatically after software update success
 if ($mode === 'autoupgrade') {
