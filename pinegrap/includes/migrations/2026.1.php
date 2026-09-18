@@ -34,5 +34,9 @@ function upgrade_to_2026_1() {
 	)" . ENGINE);
 	install_add_column('config', 'ecommerce_troy', "TINYINT(4) NOT NULL DEFAULT 1");
 	install_modify_column('user', 'user_devpasspin', "VARCHAR(255) NOT NULL DEFAULT ''");
-	install_add_column('custom_apps', 'permissions', "JSON NOT NULL");
+	// LONGTEXT rather than JSON: the JSON type needs MySQL 5.7.8 / MariaDB 10.2,
+	// and a failed ADD here stopped the whole upgrade chain on older servers.
+	// MariaDB itself stores JSON as LONGTEXT, nothing reads the column by JSON
+	// functions, and 2026.4.4 drops the table.
+	install_add_column('custom_apps', 'permissions', "LONGTEXT NOT NULL");
 }
