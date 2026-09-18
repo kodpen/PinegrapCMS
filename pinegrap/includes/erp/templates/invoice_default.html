@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <!--
-  Pinegrap ERP - varsayılan fatura şablonu.
+  Pinegrap ERP - the built-in invoice template.
 
-  Bu belge yönetim panelinden (ERP Ayarları > Fatura Şablonu) düzenlenebilir.
-  Bir yer tutucu, çift küme parantezi içine yazılan addır (örneğin seller.title)
-  ve değeri HTML'den kaçırarak basar; üçlü parantez olduğu gibi basar. Adın
-  önüne # konularak açılan ve / ile kapatılan blok değer doluysa gösterilir
-  (değer listeyse her satır için yinelenir); ^ ile açılan blok değer boşsa
-  gösterilir. Bu yorum da şablonun parçasıdır, o yüzden örnekler kelimeyle
-  anlatılmıştır; yer tutucuların tam listesi aşağıdadır.
+  This document can be edited in the admin panel (ERP Settings > Invoice
+  Template). A placeholder is a name written between double braces (for
+  example seller.title) and prints its value HTML-escaped; triple braces print
+  it raw. A block opened with # before the name and closed with / is shown when
+  the value is set (and repeated for every row when the value is a list); a
+  block opened with ^ is shown when the value is empty. This comment is part of
+  the template, which is why the examples are spelled out in words; the full
+  list of placeholders follows.
+
+  The template carries no words of its own: every caption is a label.* value
+  resolved in the site language, so a translation change reaches the document
+  without an edit here. A custom template may still write literal text.
 
   seller   .title .address_1 .address_2 .city .state .zip_code .country
            .vkn .tax_office .web_address .email .logo_url .logo_data_uri
@@ -20,14 +25,23 @@
            .grand_total_base
            .is_internet_sale .payment_method_label .payment_date
            .shipment_date .carrier_title .carrier_vkn .web_address .notes
-  lines    (liste) .no .description .quantity .unit_price .discount
+           .is_purchase .supplier_invoice_no .supplier_invoice_date
+  lines    (list) .no .description .quantity .unit .unit_price .discount
            .has_discount .base .tax_rate .tax .total
   totals   .subtotal .discount_total .shipping_total .surcharge_total
            .gift_card_total .tax_total .grand_total .grand_total_base
            .has_discount .has_shipping .has_surcharge .has_gift_card
-  generated_at
+  label    .invoice_no .invoice_date .due_date .returned_invoice .order_no
+           .order .currency .exchange_rate .exchange_rate_date .tax_id
+           .tax_office .bill_to .description .quantity .unit_price .discount
+           .taxable_amount .vat .vat_amount .total .no_lines .subtotal
+           .shipping .surcharge .vat_total .grand_total .grand_total_base
+           .gift_card .internet_sale .sale_address .payment_method
+           .payment_date .carrier .carrier_tax_id .shipment_date .note
+           .generated_at
+  language, generated_at
 -->
-<html lang="tr">
+<html lang="{{language}}">
 <head>
 <meta charset="utf-8">
 <title>{{invoice.title}} {{invoice.full_number}}</title>
@@ -81,8 +95,8 @@
                 {{#seller.address_1}}{{seller.address_1}}<br>{{/seller.address_1}}
                 {{#seller.address_2}}{{seller.address_2}}<br>{{/seller.address_2}}
                 {{seller.zip_code}} {{seller.city}} {{seller.state}} {{seller.country}}<br>
-                {{#seller.vkn}}VKN / TCKN: <b>{{seller.vkn}}</b>{{/seller.vkn}}
-                {{#seller.tax_office}} &nbsp;Vergi Dairesi: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
+                {{#seller.vkn}}{{label.tax_id}}: <b>{{seller.vkn}}</b>{{/seller.vkn}}
+                {{#seller.tax_office}} &nbsp;{{label.tax_office}}: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
                 {{#seller.web_address}}{{seller.web_address}}{{/seller.web_address}}
                 {{#seller.email}} &nbsp;{{seller.email}}{{/seller.email}}
             </div>
@@ -90,14 +104,14 @@
         <td class="doc">
             <div class="title">{{invoice.title}}</div>
             <table>
-                <tr><td class="k">Fatura No</td><td class="v">{{invoice.full_number}}</td></tr>
-                <tr><td class="k">Fatura Tarihi</td><td class="v">{{invoice.issue_date}}</td></tr>
-                {{#invoice.due_date}}<tr><td class="k">Vade Tarihi</td><td class="v">{{invoice.due_date}}</td></tr>{{/invoice.due_date}}
-                {{#invoice.against_number}}<tr><td class="k">İade Edilen Fatura</td><td class="v">{{invoice.against_number}}</td></tr>{{/invoice.against_number}}
-                {{#invoice.order_number}}<tr><td class="k">Sipariş No</td><td class="v">{{invoice.order_number}}</td></tr>{{/invoice.order_number}}
-                <tr><td class="k">Para Birimi</td><td class="v">{{invoice.currency}}</td></tr>
-                {{#invoice.is_foreign}}<tr><td class="k">Kur ({{invoice.base_currency}})</td><td class="v">{{invoice.exchange_rate}}</td></tr>
-                <tr><td class="k">Kur Tarihi</td><td class="v">{{invoice.exchange_rate_date}}</td></tr>{{/invoice.is_foreign}}
+                <tr><td class="k">{{label.invoice_no}}</td><td class="v">{{invoice.full_number}}</td></tr>
+                <tr><td class="k">{{label.invoice_date}}</td><td class="v">{{invoice.issue_date}}</td></tr>
+                {{#invoice.due_date}}<tr><td class="k">{{label.due_date}}</td><td class="v">{{invoice.due_date}}</td></tr>{{/invoice.due_date}}
+                {{#invoice.against_number}}<tr><td class="k">{{label.returned_invoice}}</td><td class="v">{{invoice.against_number}}</td></tr>{{/invoice.against_number}}
+                {{#invoice.order_number}}<tr><td class="k">{{label.order_no}}</td><td class="v">{{invoice.order_number}}</td></tr>{{/invoice.order_number}}
+                <tr><td class="k">{{label.currency}}</td><td class="v">{{invoice.currency}}</td></tr>
+                {{#invoice.is_foreign}}<tr><td class="k">{{label.exchange_rate}}</td><td class="v">{{invoice.exchange_rate}}</td></tr>
+                <tr><td class="k">{{label.exchange_rate_date}}</td><td class="v">{{invoice.exchange_rate_date}}</td></tr>{{/invoice.is_foreign}}
             </table>
         </td>
     </tr>
@@ -109,12 +123,12 @@
     <tr>
         <td style="width:58%">
             <div class="party">
-                <div class="label">SAYIN</div>
+                <div class="label">{{label.bill_to}}</div>
                 <div class="name">{{account.title}}</div>
                 {{#account.address}}{{account.address}}<br>{{/account.address}}
                 {{account.postcode}} {{account.district}} {{account.city}} {{account.country}}<br>
-                {{#account.tax_number}}VKN / TCKN: <b>{{account.tax_number}}</b>{{/account.tax_number}}
-                {{#account.tax_office}} &nbsp;Vergi Dairesi: <b>{{account.tax_office}}</b>{{/account.tax_office}}<br>
+                {{#account.tax_number}}{{label.tax_id}}: <b>{{account.tax_number}}</b>{{/account.tax_number}}
+                {{#account.tax_office}} &nbsp;{{label.tax_office}}: <b>{{account.tax_office}}</b>{{/account.tax_office}}<br>
                 {{#account.email}}{{account.email}}{{/account.email}}
                 {{#account.phone}} &nbsp;{{account.phone}}{{/account.phone}}
             </div>
@@ -127,14 +141,14 @@
     <thead>
         <tr>
             <th class="c" style="width:4%">#</th>
-            <th>Açıklama</th>
-            <th class="n" style="width:9%">Miktar</th>
-            <th class="n" style="width:13%">Birim Fiyat</th>
-            <th class="n" style="width:11%">İskonto</th>
-            <th class="n" style="width:13%">Matrah</th>
-            <th class="n" style="width:7%">KDV</th>
-            <th class="n" style="width:12%">KDV Tutarı</th>
-            <th class="n" style="width:13%">Toplam</th>
+            <th>{{label.description}}</th>
+            <th class="n" style="width:9%">{{label.quantity}}</th>
+            <th class="n" style="width:13%">{{label.unit_price}}</th>
+            <th class="n" style="width:11%">{{label.discount}}</th>
+            <th class="n" style="width:13%">{{label.taxable_amount}}</th>
+            <th class="n" style="width:7%">{{label.vat}}</th>
+            <th class="n" style="width:12%">{{label.vat_amount}}</th>
+            <th class="n" style="width:13%">{{label.total}}</th>
         </tr>
     </thead>
     <tbody>
@@ -152,44 +166,44 @@
         </tr>
         {{/lines}}
         {{^lines}}
-        <tr><td colspan="9" class="c">Bu belgede satır yok.</td></tr>
+        <tr><td colspan="9" class="c">{{label.no_lines}}</td></tr>
         {{/lines}}
     </tbody>
 </table>
 
 <table class="totals">
-    <tr><td>Ara Toplam</td><td class="v">{{totals.subtotal}}</td></tr>
-    {{#totals.has_discount}}<tr><td>İskonto</td><td class="v">&minus;{{totals.discount_total}}</td></tr>{{/totals.has_discount}}
-    {{#totals.has_shipping}}<tr><td>Kargo</td><td class="v">{{totals.shipping_total}}</td></tr>{{/totals.has_shipping}}
-    {{#totals.has_surcharge}}<tr><td>Ek Ücret</td><td class="v">{{totals.surcharge_total}}</td></tr>{{/totals.has_surcharge}}
-    <tr><td>Hesaplanan KDV</td><td class="v">{{totals.tax_total}}</td></tr>
-    <tr class="grand"><td>Genel Toplam</td><td class="v">{{totals.grand_total}}</td></tr>
-    {{#invoice.is_foreign}}<tr class="muted"><td>Genel Toplam ({{invoice.base_currency}} karşılığı)</td><td class="v">{{totals.grand_total_base}}</td></tr>{{/invoice.is_foreign}}
-    {{#totals.has_gift_card}}<tr class="muted"><td>Hediye kartı ile ödenen</td><td class="v">{{totals.gift_card_total}}</td></tr>{{/totals.has_gift_card}}
+    <tr><td>{{label.subtotal}}</td><td class="v">{{totals.subtotal}}</td></tr>
+    {{#totals.has_discount}}<tr><td>{{label.discount}}</td><td class="v">&minus;{{totals.discount_total}}</td></tr>{{/totals.has_discount}}
+    {{#totals.has_shipping}}<tr><td>{{label.shipping}}</td><td class="v">{{totals.shipping_total}}</td></tr>{{/totals.has_shipping}}
+    {{#totals.has_surcharge}}<tr><td>{{label.surcharge}}</td><td class="v">{{totals.surcharge_total}}</td></tr>{{/totals.has_surcharge}}
+    <tr><td>{{label.vat_total}}</td><td class="v">{{totals.tax_total}}</td></tr>
+    <tr class="grand"><td>{{label.grand_total}}</td><td class="v">{{totals.grand_total}}</td></tr>
+    {{#invoice.is_foreign}}<tr class="muted"><td>{{label.grand_total_base}}</td><td class="v">{{totals.grand_total_base}}</td></tr>{{/invoice.is_foreign}}
+    {{#totals.has_gift_card}}<tr class="muted"><td>{{label.gift_card}}</td><td class="v">{{totals.gift_card_total}}</td></tr>{{/totals.has_gift_card}}
 </table>
 
 {{#invoice.is_internet_sale}}
 <div class="box">
-    <div class="label">İNTERNET SATIŞI BİLGİLERİ</div>
+    <div class="label">{{label.internet_sale}}</div>
     <table>
-        <tr><td class="k">Satışın yapıldığı adres</td><td>{{invoice.web_address}}</td></tr>
-        <tr><td class="k">Ödeme şekli</td><td>{{invoice.payment_method_label}}</td></tr>
-        <tr><td class="k">Ödeme tarihi</td><td>{{invoice.payment_date}}</td></tr>
-        <tr><td class="k">Taşıyıcı</td><td>{{invoice.carrier_title}}{{#invoice.carrier_vkn}} &nbsp;VKN: {{invoice.carrier_vkn}}{{/invoice.carrier_vkn}}</td></tr>
-        <tr><td class="k">Gönderim tarihi</td><td>{{invoice.shipment_date}}</td></tr>
+        <tr><td class="k">{{label.sale_address}}</td><td>{{invoice.web_address}}</td></tr>
+        <tr><td class="k">{{label.payment_method}}</td><td>{{invoice.payment_method_label}}</td></tr>
+        <tr><td class="k">{{label.payment_date}}</td><td>{{invoice.payment_date}}</td></tr>
+        <tr><td class="k">{{label.carrier}}</td><td>{{invoice.carrier_title}}{{#invoice.carrier_vkn}} &nbsp;{{label.carrier_tax_id}}: {{invoice.carrier_vkn}}{{/invoice.carrier_vkn}}</td></tr>
+        <tr><td class="k">{{label.shipment_date}}</td><td>{{invoice.shipment_date}}</td></tr>
     </table>
 </div>
 {{/invoice.is_internet_sale}}
 
 {{#invoice.notes}}
-<div class="notes"><b>Not:</b> {{invoice.notes}}</div>
+<div class="notes"><b>{{label.note}}:</b> {{invoice.notes}}</div>
 {{/invoice.notes}}
 
 <div class="foot">
     <table>
         <tr>
-            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{invoice.title}} {{invoice.full_number}}{{#invoice.order_number}} &nbsp;&middot;&nbsp; Sipariş {{invoice.order_number}}{{/invoice.order_number}}</td>
-            <td class="r">Oluşturulma: {{generated_at}}</td>
+            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{invoice.title}} {{invoice.full_number}}{{#invoice.order_number}} &nbsp;&middot;&nbsp; {{label.order}} {{invoice.order_number}}{{/invoice.order_number}}</td>
+            <td class="r">{{label.generated_at}}: {{generated_at}}</td>
         </tr>
     </table>
 </div>

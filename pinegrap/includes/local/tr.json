@@ -12200,5 +12200,19 @@
     "{var:1}: {var:2} record(s), {var:3} row(s). The download starts now.": "{var:1}: {var:2} kayıt, {var:3} satır. İndirme şimdi başlıyor.",
     "erp export ({var:1}) was made with {var:2} record(s)": "erp dışa aktarımı ({var:1}) {var:2} kayıtla oluşturuldu",
     "Create the file": "Dosyayı oluştur",
-    "Line No": "Satır No"
+    "Line No": "Satır No",
+    "Invoice Date": "Fatura Tarihi",
+    "Returned Invoice": "İade Edilen Fatura",
+    "Order No": "Sipariş No",
+    "Exchange Rate ({var:1})": "Kur ({var:1})",
+    "BILL TO": "SAYIN",
+    "VAT Amount": "KDV Tutarı",
+    "This document has no lines.": "Bu belgede satır yok.",
+    "Calculated VAT": "Hesaplanan KDV",
+    "Grand Total ({var:1} equivalent)": "Genel Toplam ({var:1} karşılığı)",
+    "INTERNET SALE DETAILS": "İNTERNET SATIŞI BİLGİLERİ",
+    "Tax ID": "VKN",
+    "Generated at": "Oluşturulma",
+    "Labels": "Etiketler",
+    "The language code of the site, for the html lang attribute": "Sitenin dil kodu, html lang özniteliği için"
 }

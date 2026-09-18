@@ -213,12 +213,71 @@ function erp_document_logo()
 }
 
 /**
+ * The captions the printed invoice carries, in the site language.
+ *
+ * The template holds no words of its own: every heading, column title and
+ * footer caption is read from here as {{label.name}}, so the built-in
+ * document follows the software language and a translation change reaches
+ * it without an edit. The two captions that name the base currency are
+ * resolved here because a template placeholder cannot take an argument. The
+ * same array feeds the placeholder reference on the settings screen.
+ *
+ * @return array  name => translated caption
+ */
+function erp_invoice_document_labels()
+{
+    $base_currency = erp_base_currency();
+
+    return array(
+        'invoice_no' => lang('Invoice No'),
+        'invoice_date' => lang('Invoice Date'),
+        'due_date' => lang('Due Date'),
+        'returned_invoice' => lang('Returned Invoice'),
+        'order_no' => lang('Order No'),
+        'order' => lang('Order'),
+        'currency' => lang('Currency'),
+        'exchange_rate' => lang(array('string' => 'Exchange Rate ({var:1})', 'vars' => array($base_currency))),
+        'exchange_rate_date' => lang('Exchange Rate Date'),
+        'tax_id' => lang('VKN / TCKN'),
+        'tax_office' => lang('Tax Office'),
+        'bill_to' => lang('BILL TO'),
+        'description' => lang('Description'),
+        'quantity' => lang('Quantity'),
+        'unit_price' => lang('Unit Price'),
+        'discount' => lang('Discount'),
+        'taxable_amount' => lang('Taxable Amount'),
+        'vat' => lang('VAT'),
+        'vat_amount' => lang('VAT Amount'),
+        'total' => lang('Total'),
+        'no_lines' => lang('This document has no lines.'),
+        'subtotal' => lang('Subtotal'),
+        'shipping' => lang('Shipping'),
+        'surcharge' => lang('Surcharge'),
+        'vat_total' => lang('Calculated VAT'),
+        'grand_total' => lang('Grand Total'),
+        'grand_total_base' => lang(array('string' => 'Grand Total ({var:1} equivalent)', 'vars' => array($base_currency))),
+        'gift_card' => lang('Settled by gift card'),
+        'internet_sale' => lang('INTERNET SALE DETAILS'),
+        'sale_address' => lang('Address the sale was made at'),
+        'payment_method' => lang('Payment Method'),
+        'payment_date' => lang('Payment Date'),
+        'carrier' => lang('Carrier'),
+        'carrier_tax_id' => lang('Tax ID'),
+        'shipment_date' => lang('Shipment Date'),
+        'note' => lang('Note'),
+        'generated_at' => lang('Generated at'),
+    );
+}
+
+/**
  * Everything the printed invoice says, as one nested array for the template.
  *
  * The figures are formatted here with the same helpers the invoice screen
  * uses, so the document and the screen cannot disagree on a rounding. Every
  * seller constant is guarded: the document must still render on an
- * installation that has not filled in its organization settings.
+ * installation that has not filled in its organization settings. The
+ * captions travel with the data under `label`, and `language` is the site
+ * language code for the html lang attribute.
  *
  * @param int $invoice_id
  * @return array|false  false when the invoice does not exist
@@ -426,6 +485,8 @@ function erp_invoice_document_data($invoice_id)
         'invoice' => $document,
         'lines' => $lines,
         'totals' => $totals,
+        'label' => erp_invoice_document_labels(),
+        'language' => defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : 'en',
         'generated_at' => (string) prepare_form_data_for_output(date('Y-m-d H:i:s'), 'date and time', false),
     );
 }
