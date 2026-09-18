@@ -41,6 +41,57 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Dosya ve tasarım ekranları: temizlik aracı, resim editörü, tasarım dosyası bildirimleri (2026-09-18)
+
+**Belirti (issue #42).** (1) `clean_up.php` sahipsiz dosya tespiti `files/`
+klasörünü tarıyordu; yüklemeler 2017'den beri `FILE_DIRECTORY_PATH`
+(`data/files`) altında durduğu için liste hep boş çıkıyor, araç "silinecek
+dosya bulunamadı" diyordu. Tarama düzeltilince ikinci katman ortaya çıktı:
+POST silme döngüsü hâlâ `unlink('files/' . $file)` çağırıyordu — her sahipsiz
+dosya bir uyarı üretiyor, hiçbir şey silinmiyor, bildirim ve günlük yine de
+"silindi" diyordu. (2) `image_editor_edit.php` gif seçeneği `value="webp"`
+taşıyordu, gif seçen WebP kaydediyordu; `column_to_update` `$_GET`'ten
+okunuyordu ama kaydet formu onu göndermiyordu, ürün görseli sütun güncellemesi
+hiç çalışmıyordu. (3) `edit_file.php` döndürme ve WebP dönüşümü dosyayı
+POST'tan gelen adla arıyordu; yeniden adlandırılan dosyada kaynak bulunmuyordu.
+Çoğaltma tasarım bayrağını rolden türetiyordu, kaynak satırın bayrağını değil.
+(4) `add_design_file.php` sürükle-bırak yüklemesi bildirimin render edilmediği
+bir ekrana dönüyordu; `create_file.php` ve `editor_edit_file.php` bildirimi
+yanlış form adına bağlıyordu, kullanıcı kaydın olduğunu görmüyordu.
+`edit_design_file.php` ve `edit_theme_file.php` silmede POST'tan gelen adı
+unlink ediyordu, saklanan adı değil. (5) `add_theme_file.php` `pre_styling`
+içine çift kaçırılmış normalize seçicileri yazıyordu. (6)
+`get_theme_designer_module.php` reklam/menü bölgesi ekini karakter sınıfıyla
+eşliyordu (alternation yerine); alt çizgi içeren bölge adları kırpılıyordu.
+
+**Düzeltme.** Temizlik aracında tespit ve silme aynı köke bağlandı:
+`FILE_DIRECTORY_PATH . '/' . $file`. Sayaç ve `$deleted_names` yalnız
+`unlink()` `true` döndüğünde artar; unlink'ten hemen önce `is_file()` yeniden
+bakılır ki eş zamanlı bir yükleme veya başka yerden kaldırılan dosya uyarı
+üretmesin. Günlük satırı artık `data/files/<ad>` yazar — operatör neyin
+silindiğini gerçek yoldan görür. Resim editöründe gif seçeneği gif kaydeder,
+`column_to_update` gizli alanla POST edilir ve POST dalı oradan okur.
+`edit_file.php` dosyayı saklanan adla açar; POST'taki ad yalnız yeniden
+adlandırma hedefidir. Tasarım/tema dosyası ekranlarında bildirim gösteren
+forma bağlanır ve yönlendirme o formun render edildiği ekrana gider; silme
+saklanan adı unlink eder. Tema tasarımcısı bölge eki sona demirlenmiş bir
+grupla eşlenir, bölge adı `preg_quote()` ile geçer. Tasarımcı ekranlarında
+`from`/`send_to`/`id`/`name` okumaları PHP 8 için `??` ile korundu; davranış
+değişmedi. `add_design_file.php` `send_to` sertleştirmesi bu PR'ın dışında
+bırakıldı (güvenlik sınıfı).
+
+### Doğrulama
+
+Değişen her dosyada `php -l`, tüm ağaçta `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan bir örnek kurulmadı: `data/files`
+altındaki bir sahipsiz dosyanın gerçekten silinmesi, gif kaydı ve tasarım
+dosyası bildirimleri çalışma zamanında denenmedi; `FILE_DIRECTORY_PATH`'in
+`<kök>/data/files` olduğu `init.php` ve `get_file.php` üzerinden kod
+okumasıyla doğrulandı.
+
+**Açık kalan:** `add_design_file.php` `send_to` parametresinin açık
+yönlendirme sertleştirmesi güvenlik turuna devredildi.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
