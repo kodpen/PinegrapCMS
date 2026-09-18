@@ -5700,10 +5700,6 @@ switch ($action) {
                         $P_start_d = $data['P_start_d'];
                         $P_end_d = $data['P_end_d'];
 
-                        if (lang(array('info' => '')) === 'tr') {
-                            setlocale(LC_ALL, 'tr_TR.UTF-8');
-                        }
-
                         $today = date_create(date("d-m-Y"));
                         $D_start_d_formatted = date_create(date("d-m-Y", strtotime($D_start_d)));
                         $D_end_d_formatted = date_create(date("d-m-Y", strtotime($D_end_d)));
@@ -5713,16 +5709,6 @@ switch ($action) {
                         $SSL_end_d_formatted = date_create(date("d-m-Y", strtotime($SSL_end_d)));
                         $P_start_d_formatted = date_create(date("d-m-Y", strtotime($P_start_d)));
                         $P_end_d_formatted = date_create(date("d-m-Y", strtotime($P_end_d)));
-
-                        $D_start_d_localized = strftime("%e %B %Y", strtotime($D_start_d));
-                        $D_end_d_localized = strftime("%e %B %Y", strtotime($D_end_d));
-                        $H_start_d_localized = strftime("%e %B %Y", strtotime($H_start_d));
-                        $H_end_d_localized = strftime("%e %B %Y", strtotime($H_end_d));
-                        $SSL_start_d_localized = strftime("%e %B %Y", strtotime($SSL_start_d));
-                        $SSL_end_d_localized = strftime("%e %B %Y", strtotime($SSL_end_d));
-                        $P_start_d_localized = strftime("%e %B %Y", strtotime($P_start_d));
-                        $P_end_d_localized = strftime("%e %B %Y", strtotime($P_end_d));
-
 
                         $D_interval = date_diff($D_end_d_formatted, $today);
                         $D_interval_dif = date_diff($D_end_d_formatted, $D_start_d_formatted);

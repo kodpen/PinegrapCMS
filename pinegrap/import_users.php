@@ -279,15 +279,17 @@ if (!$_POST) {
     }
     
     // if no file was uploaded
-    if (!$_FILES['file']['name']) {
+    if (empty($_FILES['file']['name'])) {
         $liveform->mark_error('file', lang('Please select a file.'));
         
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . h($_REQUEST['send_to']));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
         exit();
     }
 
-    // Fix Mac line-ending issue.
-    ini_set('auto_detect_line_endings', true);
+    // Fix classic Mac (CR-only) line endings: fgetcsv() splits only on LF unless this
+    // setting is on. It is deprecated since PHP 8.1 but still functional through 8.5,
+    // so the E_DEPRECATED notice is suppressed instead of dropping CR support.
+    @ini_set('auto_detect_line_endings', true);
     
     // get file handle for uploaded CSV file
     $handle = fopen($_FILES['file']['tmp_name'], "r");
@@ -300,14 +302,20 @@ if (!$_POST) {
         fclose($handle);
         
         // Redirect user back to the import_users page
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . h($_REQUEST['send_to']));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
         exit();
     }
     
     // create array with column field names
+    $column_names = array();
     foreach ($columns as $key => $value) {
         $column_names[] = convert_column_name($value);
     }
+
+    // The email_address and username columns are optional; their key stays null
+    // when the CSV does not contain them.
+    $email_address_key = null;
+    $username_key = null;
     
     // foreach column field name
     foreach ($column_names as $key => $value) {
@@ -327,6 +335,11 @@ if (!$_POST) {
         }
     }
     
+    // Return a CSV cell as a string, or '' when the column is missing from the file or the row.
+    $import_cell = function ($row, $key) {
+        return (($key !== null) && isset($row[$key])) ? (string) $row[$key] : '';
+    };
+
     // Setup variables
     $users_to_be_imported = array();
     $invalid_emails_count = 0;
@@ -342,44 +355,44 @@ if (!$_POST) {
         $current_import_user_error = false;
 
         // If there is an email address in this row, then continue.
-        if (trim($row[$email_address_key]) != '') {
+        if (trim($import_cell($row, $email_address_key)) != '') {
             // Validate email
-            if (validate_email_address($row[$email_address_key]) == FALSE) {
+            if (validate_email_address($import_cell($row, $email_address_key)) == FALSE) {
                 $invalid_emails_count ++;
                 if ($invalid_email_list) {
                     $invalid_email_list .= ', ';
                 }
-                $invalid_email_list .= $row[$email_address_key];
+                $invalid_email_list .= $import_cell($row, $email_address_key);
                 $current_import_user_error = true;
                 $import_user_error = true;
             }
 
             // If there is a username in this row, then check if the username
             // is already in use.
-            if (trim($row[$username_key]) != '') {
+            if (trim($import_cell($row, $username_key)) != '') {
                 // Check if the username is already in use
-                $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_username = '" . escape($row[$username_key]) . "') OR (user_email = '" . escape($row[$username_key]) . "')") or output_error('Query failed');
+                $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_username = '" . escape($import_cell($row, $username_key)) . "') OR (user_email = '" . escape($import_cell($row, $username_key)) . "')") or output_error('Query failed');
                 if (mysqli_num_rows($result) > 0)
                 {
                     $pre_existing_users_count ++;
                     if ($pre_existing_user_list) {
                         $pre_existing_user_list .= ', ';
                     }
-                    $pre_existing_user_list .= $row[$username_key];
+                    $pre_existing_user_list .= $import_cell($row, $username_key);
                     $current_import_user_error = true;
                     $import_user_error = true;
                 }
             }
 
             // Check if the email_address is already in use
-            $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_email = '" . escape($row[$email_address_key]) . "') OR (user_username = '" . escape($row[$email_address_key]) . "')") or output_error('Query failed');
+            $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_email = '" . escape($import_cell($row, $email_address_key)) . "') OR (user_username = '" . escape($import_cell($row, $email_address_key)) . "')") or output_error('Query failed');
             if (mysqli_num_rows($result) > 0)
             {
                 $pre_existing_emails_count ++;
                 if ($pre_existing_email_list) {
                     $pre_existing_email_list .= ', ';
                 }
-                $pre_existing_email_list .= $row[$email_address_key];
+                $pre_existing_email_list .= $import_cell($row, $email_address_key);
                 $current_import_user_error = true;
                 $import_user_error = true;
             }
@@ -395,7 +408,7 @@ if (!$_POST) {
             $liveform->mark_error('file', lang('There are errors in your .csv file. Please check each users format and then try again.'));
             
             // Forward them back to the import users screen.
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . h($_REQUEST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
             exit();
         }
         
@@ -428,7 +441,7 @@ if (!$_POST) {
         $liveform->mark_error('general_error', '<h4 class="alert-heading">' . lang('The file you selected could not be imported because of the following error(s)') . ':</h4>' . $combined_errors);
         
         // Forward them back to the import users screen.
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . h($_REQUEST['send_to']));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
         exit();
     }
     
@@ -460,8 +473,8 @@ if (!$_POST) {
     // Loop through the valid users and import them
     foreach ($users_to_be_imported as $user_to_be_imported) {
 
-        $username = trim($user_to_be_imported[$username_key]);
-        $email_address = trim($user_to_be_imported[$email_address_key]);
+        $username = trim($import_cell($user_to_be_imported, $username_key));
+        $email_address = trim($import_cell($user_to_be_imported, $email_address_key));
 
         // If the username in the CSV file was blank,
         // then create a username by using everything before "@" in the email address,

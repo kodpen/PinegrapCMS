@@ -4214,9 +4214,12 @@ function color_tint($color, $degree)
     $b = $rgb & 0xFF;
     $mixcolor1 = ($degree / 100);
     $mixcolor2 = (1 - $mixcolor1);
-    $r_tint = ($r * $mixcolor1) + (0xFF * $mixcolor2);
-    $g_tint = ($g * $mixcolor1) + (0xFF * $mixcolor2);
-    $b_tint = ($b * $mixcolor1) + (0xFF * $mixcolor2);
+    // Shifting a float is deprecated since PHP 8.1, so truncate each channel to an
+    // integer explicitly (the same conversion the shift used to apply implicitly,
+    // which keeps generated colours identical) and clamp it to 0-255.
+    $r_tint = min(255, max(0, (int) (($r * $mixcolor1) + (0xFF * $mixcolor2))));
+    $g_tint = min(255, max(0, (int) (($g * $mixcolor1) + (0xFF * $mixcolor2))));
+    $b_tint = min(255, max(0, (int) (($b * $mixcolor1) + (0xFF * $mixcolor2))));
     $tint_color = mb_strtoupper(dechex(($r_tint << 16) + ($g_tint << 8) + ($b_tint)));
     return $tint_color;
 }
