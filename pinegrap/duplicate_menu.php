@@ -29,7 +29,8 @@ $menu = db_item(
         effect,
         first_level_popup_position,
         second_level_popup_position,
-        class
+        class,
+        active_item_class
     FROM menus
     WHERE id = '" . e($_GET['id']) . "'");
 
@@ -50,6 +51,7 @@ db(
         first_level_popup_position,
         second_level_popup_position,
         class,
+        active_item_class,
         created_user_id,
         created_timestamp,
         last_modified_user_id,
@@ -59,7 +61,8 @@ db(
         '" . e($menu['effect']) . "',
         '" . e($menu['first_level_popup_position']) . "',
         '" . e($menu['second_level_popup_position']) . "',
-        '" . e($menu['class']) . "',
+        '" . e((string) $menu['class']) . "',
+        '" . e((string) $menu['active_item_class']) . "',
         '" . USER_ID . "',
         UNIX_TIMESTAMP(),
         '" . USER_ID . "',
@@ -96,7 +99,8 @@ function duplicate_menu_items($properties) {
             link_page_id,
             link_url,
             link_target,
-            security
+            security,
+            class
         FROM menu_items
         WHERE
             menu_id = '" . e($old_menu_id) . "'
@@ -117,6 +121,7 @@ function duplicate_menu_items($properties) {
                 link_url,
                 link_target,
                 security,
+                class,
                 created_user_id,
                 created_timestamp,
                 last_modified_user_id,
@@ -130,6 +135,7 @@ function duplicate_menu_items($properties) {
                 '" . e($menu_item['link_url']) . "',
                 '" . e($menu_item['link_target']) . "',
                 '" . e($menu_item['security']) . "',
+                '" . e((string) $menu_item['class']) . "',
                 '" . USER_ID . "',
                 UNIX_TIMESTAMP(),
                 '" . USER_ID . "',

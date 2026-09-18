@@ -123,11 +123,19 @@ foreach ($email_recipients as $email_recipient) {
     // If this email campaign was created due to a calendar event being reserved, then lock extra tables.
     // We have to do this because there are various tables that functions select from in order to deal with these types of campaigns.
     if ($email_recipient['action'] == 'calendar_event_reserved') {
-        $sql_calendar_event_locks = ", calendar_events WRITE, products WRITE, number_of_remaining_spots WRITE, calendar_events_calendar_event_locations_xref WRITE, calendar_event_locations WRITE";
+        $sql_calendar_event_locks = ", calendar_events WRITE, products WRITE, remaining_reservation_spots WRITE, calendar_events_calendar_event_locations_xref WRITE, calendar_event_locations WRITE";
     }
 
     $query = "LOCK TABLES email_recipients WRITE, email_campaigns WRITE, contacts WRITE, log WRITE" . $sql_calendar_event_locks;
     $result = mysqli_query(db::$con, $query);
+
+    // Never send without the lock: without it a concurrent job could deliver to
+    // the same recipient twice. The recipient stays incomplete and is retried
+    // by the next run.
+    if ($result === false) {
+        error_log('email_campaign_job: LOCK TABLES failed for recipient ' . $email_recipient['id'] . ': ' . mysqli_error(db::$con));
+        continue;
+    }
 
     // get body for e-mail campaign (we can't get body in join query above for some reason because MySQL takes too long)
     // this will also allow us to make sure this recipient is still not complete (i.e. to make sure another job hasn't recently sent to this recipient already).
