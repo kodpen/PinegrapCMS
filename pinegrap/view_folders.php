@@ -2235,8 +2235,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (input) { input.value = ''; }
     }
 
+    // What makes one listing a different listing from the last: the mode
+    // (a folder, a flat view, the store, backups, short links), the flat
+    // view's own narrowing, the backup path and the folder or group asked
+    // for. The same key twice in a row is a refresh and keeps the search.
+    var lastListingKey = null;
+
+    function listingKey(id) {
+        return [state.mode, state.allFilter, state.fileScope, state.backupPath, id].join('|');
+    }
+
     function load(folderId, done) {
         var seq = ++loadSeq;
+
+        var key = listingKey(folderId);
+
+        if (key !== lastListingKey) { clearSearch(); }
+
+        lastListingKey = key;
 
         // The shared overview is a report, not a folder listing: its own
         // endpoint, its own rendering, and none of the folder chrome.
@@ -2295,9 +2311,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return;
             }
 
-            if (response.current.id !== state.folderId) { clearSearch(); }
-
             state.folderId = response.current.id;
+            // The request named the folder as the operator did (0 for the
+            // top); the answer names it as the server does. Remember the
+            // latter, so a refresh of this folder is seen as the same listing.
+            lastListingKey = listingKey(state.folderId);
             state.viewType = response.view_type;
             state.current = response.current;
             state.breadcrumb = response.breadcrumb || [];
@@ -2840,9 +2858,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return;
             }
 
-            if ((response.group_id || 0) !== state.groupId) { clearSearch(); }
-
             state.groupId = response.group_id || 0;
+            lastListingKey = listingKey(state.groupId);
             state.folderId = 0;
             state.catalogCurrent = response.current || null;
             state.catalogCrumbs = response.breadcrumb || [];
@@ -4184,8 +4201,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // The same for the search box: a folder with content and a word
             // nothing in it matches is not an empty folder, and saying so is
-            // what sends the operator to the box that has to be cleared.
-            if ((state.filter !== '') && ((state.items.folders.length + state.items.pages.length + state.items.files.length) > 0)) {
+            // what sends the operator to the box that has to be cleared. The
+            // filters keep their own sentence when both are in play.
+            else if ((state.filter !== '') && ((state.items.folders.length + state.items.pages.length + state.items.files.length) > 0)) {
                 emptyIcon = 'bi-search';
                 emptyText = L.search_nothing_matches;
             }
