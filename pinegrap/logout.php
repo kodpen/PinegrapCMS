@@ -23,6 +23,41 @@ if (($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
     go(PATH . SOFTWARE_DIRECTORY . '/kiosk.php?action=logout');
 }
 
+// A signed-in user is logged out at once only when the request carries the
+// session token; the panel menu, the member widget and the logout page type
+// all append one. A bare GET, such as a link planted on a page elsewhere,
+// first asks for confirmation through a POST form that carries the token, so
+// a third party cannot end the session from outside. A visitor who is not
+// signed in falls through to logout(), which reports that as before.
+$session_token = (string) ($_SESSION['software']['token'] ?? '');
+$request_token = (isset($_REQUEST['token']) && is_string($_REQUEST['token'])) ? $_REQUEST['token'] : '';
+if ((($session_token === '') || (!hash_equals($session_token, $request_token))) && (pg_session_signed_in() == true)) {
+    $send_to = '';
+    if (($_REQUEST['send_to'] ?? '') != '') {
+        $send_to = pg_safe_redirect_path(($_REQUEST['send_to'] ?? ''));
+    }
+
+    print output_header_secure(array('title' => lang('Logout'), 'icon' => 'account')) . '
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <p>' . lang('Do you want to log out?') . '</p>
+                            <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php">
+                                ' . get_token_field() . '
+                                <input type="hidden" name="send_to" value="' . h($send_to) . '">
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-box-arrow-right me-1"></i>' . lang('Logout') . '</button>
+                                <a href="javascript:history.go(-1)" class="btn btn-outline-secondary">' . lang('Cancel') . '</a>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>' . output_footer_secure();
+    exit();
+}
+
 logout();
 
 // if there is a send to value, then send the user to that page

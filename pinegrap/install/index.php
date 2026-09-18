@@ -3838,6 +3838,26 @@ else {
 
 		}
 
+		// The install form carries the session token.  The automated upgrade has no form and is
+		// authenticated by its key or by the administrator's session above, so only the form
+		// submission is checked: without this an administrator's browser could be made to start
+		// the upgrade from a page on another site.
+		if ($automated_upgrade == false) {
+
+			$upgrade_session_token = (string) ($_SESSION['software']['token'] ?? '');
+
+			$upgrade_posted_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+			if (($upgrade_session_token === '') || (!hash_equals($upgrade_session_token, $upgrade_posted_token))) {
+
+				log_activity(lang('access denied to submit installation form because visitor\'s session expired or because request might have come from an unauthorized location'), $_SESSION['sessionusername']);
+
+				exit(lang('Sorry, we could not accept your request because it appears that your session expired.'));
+
+			}
+
+		}
+
 		// if an error exists, then return to form
 		if ($liveform->check_form_errors() == true) {
 

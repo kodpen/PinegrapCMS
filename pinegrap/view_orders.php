@@ -543,6 +543,10 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
 
 // if user requested to export orders, export orders
 if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
+    // The export marks every complete order as exported, so the button's form
+    // carries the token even though it submits with GET.
+    validate_token_field();
+
     $orders = array();
     
     // Prepare array in order to store which orders will appear in this report
@@ -1203,6 +1207,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     print $zipfile->file();
 
 } else if (($_GET['submit_data'] ?? '') == 'Export Orders (single file)') {
+    // Same status change as the multiple-file export, same token requirement.
+    validate_token_field();
+
     // get orders
     $query =
         "SELECT
@@ -3047,6 +3054,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
+                                ' . get_token_field() . '
                                 ' . $output_gateway_buttons . '  
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-link link-secondary py-0 m-1"><span class="material-icons me-1">inventory_2</span>' . lang(array('string'=>'Export') ) . '</button>

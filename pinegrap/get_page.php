@@ -257,7 +257,8 @@ case 'logout':
 	// if user did not come from the control panel, and if they are currently logged in, then send the user to the logout script
 	if (((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) && (($_GET['logged_out'] ?? '') != true))
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/logout.php?send_to=' . urlencode(REQUEST_URL));
+		// The token lets logout.php sign the user out at once instead of asking for confirmation first.
+		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/logout.php?send_to=' . urlencode(REQUEST_URL) . '&token=' . urlencode($_SESSION['software']['token'] ?? ''));
 		exit();
 	}
 break;

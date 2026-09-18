@@ -395,6 +395,10 @@ if (!$_POST)
 else
 {
 
+    // The save form carries the token; a POST from anywhere else must not be
+    // able to overwrite a file or write a new one.
+    validate_token_field();
+
     // get parameters from image editor
     $object_type = $_POST['object_type'];
     $object_id = $_POST['object_id'];

@@ -41,6 +41,42 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — CSRF: token'sız POST'lar ve durum değiştiren GET'ler (2026-09-18)
+
+**Belirti.** Güvenlik incelemesi (issue #61) durum değiştiren on bir uç
+noktanın oturum token'ını hiç sormadığını ya da yalnız GET ile
+çalıştığını buldu: yerel sipariş ekranı (`add_order.php`), ortaklık onayı
+(`approve_affiliate.php`, e-postadaki bağlantı tek tıkla onaylıyordu),
+barkodla stok artırma/azaltma (`validate_token()` tanımlı ama hiç
+çağrılmıyordu), sepet widget'ının POST işleyicisi (`cart_action.php`),
+ürün çoğaltma, görsel düzenleyici kaydı, indirme yardımcısı (yarım kalmış
+kurulumda girişsiz onarım/güncelleme), eski yükseltme formu, çıkış ve
+sipariş dışa aktarımı (tamamlanan siparişi `exported` yapan GET). Ayrıca
+`validate_token_field()` token'ı gevşek `!=` ile karşılaştırıyordu. Bunların
+her biri, yöneticinin tarayıcısını başka bir sitedeki sayfadan
+tetiklenebilir kılıyordu.
+
+**Çözüm.** Form basan her ekran `get_token_field()` ekler, işleyen dal
+`validate_token_field()` çağırır; karşılaştırma `hash_equals()` ile sabit
+zamanlı yapılır ve dizi olarak gelen token hiçbir zaman eşleşmez. Token
+taşıyamayan iki akış POST onayına çevrildi: ortaklık onayı önce kişiyi
+gösterip onay düğmesi sunar (e-posta bağlantısı olduğu gibi kalır);
+`logout.php` token'sız gelen isteği önce "çıkış yapmak istiyor musunuz?"
+diye sorar, panel menüsü, üye widget'ı ve çıkış sayfa türü ise bağlantıya
+token ekleyerek tek tıkla çıkmaya devam eder. Barkod uç noktalarında yerel
+`respond()`/`validate_token()` tanımları ilk çağrıdan önceye alındı (koşullu
+tanımlanan fonksiyon ancak satırı çalışınca var olur) ve `switch`'ten önce
+çağrılıyor; tarayıcı sayfası token'ı zaten JSON gövdede gönderiyordu.
+`cart_action.php`'nin GET öz sınama sayfası daha önce kaldırılmıştı, bu
+turda token denetimi eklendi. İndirme yardımcısı onarım/güncelleme/denetim
+işlemlerini yalnız kurulu ve giriş yapılmış durumda, token'la kabul eder;
+yazılım dizini varken yeniden kurulum reddedilir. `install/index.php`
+yükseltme dalı, otomatik yükseltme değilse formun token'ını ister. Sipariş
+dışa aktarma düğmelerinin GET formuna token alanı eklendi; iki dışa aktarma
+dalı doğruluyor. Şema değişikliği yok.
+
+---
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters

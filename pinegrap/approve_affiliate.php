@@ -20,8 +20,10 @@ include('init.php');
 $user = validate_user();
 validate_contacts_access($user);
 
+$contact_id = (int) ($_REQUEST['id'] ?? 0);
+
 // try to find contact for supplied id
-$query = "SELECT id, email_address, affiliate_code FROM contacts WHERE id = '" . escape($_GET['id']) . "'";
+$query = "SELECT id, email_address, affiliate_code FROM contacts WHERE id = '" . $contact_id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if contact could not be found output error
@@ -33,6 +35,51 @@ $row = mysqli_fetch_assoc($result);
 
 $email_address = $row['email_address'];
 $existing_affiliate_code = $row['affiliate_code'];
+
+// The approval link arrives in an e-mail, so it cannot carry the session
+// token. The first visit only shows the contact and asks for confirmation;
+// the approval itself is a POST that carries the token, so a link on a
+// foreign page cannot approve an affiliate on the administrator's behalf.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $contact_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id;
+
+    echo
+        pg_page_shell(
+            array(
+                'title' => lang('Approve Affiliate'),
+                'extra classes' => 'contact',
+                'icon' => 'contact',
+                'heading' => lang('Approve Affiliate'),
+                'heading_description' => lang('Confirm the approval of the affiliate request that reached you by e-mail.'),
+                'cancel' => array('enable' => 'true', 'url' => $contact_url),
+                'breadcrumb' => array(
+                    array('label' => lang('Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'),
+                    array('label' => lang('Approve Affiliate')),
+                ),
+            )
+        ) . '
+        <main class="container mb-5" style="min-height:calc(100vh - 175px)" id="content">
+            <div class="row">
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <p>' . lang(array('string' => 'Approve {var:1} as an affiliate? The affiliate code is created if there is none yet, and a welcome e-mail is sent to the contact.', 'vars' => '<strong>' . h($email_address) . '</strong>')) . '</p>
+                            <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/approve_affiliate.php" class="disable_shortcut">
+                                ' . get_token_field() . '
+                                <input type="hidden" name="id" value="' . $contact_id . '">
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>' . lang('Approve Affiliate') . '</button>
+                                <a href="' . $contact_url . '" class="btn btn-outline-secondary">' . lang('Cancel') . '</a>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    ' . output_footer();
+    exit();
+}
+
+validate_token_field();
 
 // if there is an existing affiliate code
 if ($existing_affiliate_code) {
@@ -50,7 +97,7 @@ $query = "UPDATE contacts
             affiliate_code = '" . escape($affiliate_code) . "',
             user = '" . $user['id'] . "',
             timestamp = UNIX_TIMESTAMP()
-         WHERE id = '" . escape($_GET['id']) . "'";
+         WHERE id = '" . $contact_id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if there is a group offer, then determine if we need to add a key code for group offer for this affiliate
@@ -109,5 +156,5 @@ include_once('liveform.class.php');
 $liveform = new liveform('view_contact');
 $liveform->add_notice(lang('The affiliate has been approved.'));
 
-header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $_GET['id']);
+header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id);
 ?>
