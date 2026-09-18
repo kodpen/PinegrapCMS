@@ -5442,7 +5442,7 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   Navbar brand: inline SVG logo lockup (icon + PineGrap wordmark)
+   Navbar brand: inline SVG logo lockup (icon + Pinegrap wordmark)
    ────────────────────────────────────────────────────────────────────
    Layout-shift notes — every rule here earns its place:
    - The lockup is inline-flex with line-height:1 so the SVG never sits on a
@@ -5575,9 +5575,8 @@ button.no-popover:focus-visible {
        <div class="dropdown ms-auto">…overflow: btn-ghost with bi-three-dots-vertical…</div>
      </div>
 
-   Rules that go with it live in CLAUDE.md ("Yönetim Ekranı Tasarım
-   Prensibi"): one recipe per intent, more than four buttons go in a menu,
-   icons always inside <i class="bi …">. */
+   Rules that go with it: one recipe per intent, more than four buttons go
+   in a menu, icons always inside <i class="bi …">. */
 
 .pg-toolbar,
 #button_bar {

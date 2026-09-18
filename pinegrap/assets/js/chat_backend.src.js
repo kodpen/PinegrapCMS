@@ -1,5 +1,5 @@
 /**
- * PineGrap - Enterprise Website Platform — Live Chat backend panel.
+ * Pinegrap - Enterprise Website Platform — Live Chat backend panel.
  *
  * pg_chat_render_backend_launcher() (called from output_footer()) injects
  * this file into every panel page. All texts and settings come from the
@@ -127,7 +127,7 @@
         }
     }
 
-    // ── Bildirim sesi ───────────────────────────────────────────────────
+    // ── Notification sound ──────────────────────────────────────────────
     // No sound file: a short "ding" via Web Audio. Set up on the first user
     // interaction per the browser autoplay policy; without any interaction
     // the browser would not allow audio anyway. The preference persists in

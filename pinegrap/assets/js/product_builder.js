@@ -1,5 +1,5 @@
 /**
- * PineGrap — product builder (add_product.php)
+ * Pinegrap — product builder (add_product.php)
  *
  * Owns the client half of one rule:
  *
@@ -1304,9 +1304,8 @@
            shared: two sizes of the same shirt are two products to a scanner and
            to Google Shopping, and a feed that repeats a GTIN across variants is
            rejected outright. They live here rather than as two more columns —
-           the row already squeezes below ~900px with six (CLAUDE.md, "Tablo
-           Widget'larında Dar Ekran"), and these two are filled once and then
-           left alone. */
+           the row already squeezes below ~900px with six columns, and these
+           two are filled once and then left alone. */
         /* The format note goes in the label, not under the box. A help line
            under one field and not the others makes that column taller, and in
            a row of bottom-aligned columns everything beside it slides up —
@@ -1354,8 +1353,7 @@
            Collapse animates height on the element it is applied to, and a <tr>
            with height:0 and overflow:hidden renders differently in every
            browser. The cell keeps its colspan and is deliberately NOT given
-           d-block: a cell taken out of table layout loses colspan entirely
-           (CLAUDE.md, "Tablo Widget'larında Dar Ekran"). */
+           d-block: a cell taken out of table layout loses colspan entirely. */
         return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
             '<td colspan="6" class="bg-body-tertiary">' +
             '<div class="row g-2 align-items-start">' +

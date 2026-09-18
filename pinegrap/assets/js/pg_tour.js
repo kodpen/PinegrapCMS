@@ -1,9 +1,9 @@
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
- * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
- * The final LiveSite update (2019) has been integrated into PineGrap.
+ * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name Pinegrap.
+ * The final LiveSite update (2019) has been integrated into Pinegrap.
  * LiveSite remains available as a separate downloadable legacy version.
  *
  * @author      Erdal Güral (Kodpen)

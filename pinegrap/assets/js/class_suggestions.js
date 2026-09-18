@@ -1,5 +1,5 @@
 /*
- * PineGrap Style Designer — class suggestions
+ * Pinegrap Style Designer — class suggestions
  *
  * Exposes window.PG_CLASS_SUGGESTIONS — a curated list of commonly used
  * Bootstrap 5 utility + component classes. Used by the Attrs panel class
