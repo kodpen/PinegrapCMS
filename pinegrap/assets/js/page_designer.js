@@ -34,7 +34,7 @@ function init_page_designer(properties) {
 
         // Attach fresh listener
         button.addEventListener('click', handlePregionInsert);
-    } 4
+    }
 
     function open_item(properties) {
         var type = properties.type;
@@ -103,8 +103,8 @@ function init_page_designer(properties) {
             <div class="card-header d-flex align-items-center border-0 bg-transparent">
                     <span class="type rounded-top">${h(output_heading)}</span>
                     <span class="name me-2"></span>
-                    <button data-bs-target="#editor_region_modal" data-bs-toggle="modal" class="me-auto  hide-on-fullscreen btn btn-sm btn-link link-secondary border-0 no-popover lh-1 p-0 bi bi-question" title="Help about the system tags"></button>
-                    <button class="btn btn-sm btn-link link-secondary border-0 no-popover lh-1 p-0 ms-auto me-2 bi fullscreen-toggle" data-bs-target="#editorpanel" title="Toggle Fullscreen"></button>
+                    <button data-bs-target="#editor_region_modal" data-bs-toggle="modal" class="me-auto  hide-on-fullscreen btn btn-sm btn-link link-secondary border-0 no-popover lh-1 p-0 bi bi-question" title="${h(labels['Help about the system tags'])}"></button>
+                    <button class="btn btn-sm btn-link link-secondary border-0 no-popover lh-1 p-0 ms-auto me-2 bi fullscreen-toggle" data-bs-target="#editorpanel" title="${h(labels['Toggle Fullscreen'])}"></button>
             </div>
             <div class="card-body p-0 overflow-auto position-relative">
                 <div class="editor_container">
@@ -282,7 +282,7 @@ function init_page_designer(properties) {
                 });
 
                 $('#content').val(content);
-                var editor = CodeMirror.fromTextArea(document.getElementById('content'), {
+                editor = CodeMirror.fromTextArea(document.getElementById('content'), {
                     mode: mode,
                     lineNumbers: true,
                     indentUnit: 4,
@@ -341,121 +341,9 @@ function init_page_designer(properties) {
                     || type == 'dynamic_region'
                 ) {
 
-
-
-                    $('#editor_modal_add_designer_region').on('hide.bs.modal', function () {
-                        $('#designer_region_name').val('');
-                        $('#designer_region_code').val('');
-                        designer_region_CodeMirror.setValue('');
-                        submit_button.removeClass('disabled');
-                        $('[name=designer_region_name]').removeClass('is-invalid');
-                    });
-                    if (dynamic_regions && dynamic_regions === 1) {
-                        $('#editor_modal_add_dynamic_region').on('hide.bs.modal', function () {
-                            $('#dynamic_region_name').val('');
-                            $('#dynamic_region_code').val('');
-                            dynamic_region_CodeMirror.setValue('');
-                            submit_button.removeClass('disabled');
-                            $('[name=dynamic_region_name]').removeClass('is-invalid');
-                        });
-                    }
-
-                    submit_button.click(function () {
-                        var submit_button_val = $(this).val();
-                        if (submit_button_val == 'Create Designer Region') {
-                            $(this).addClass('disabled');
-                            var name = $('[name=designer_region_name]').val();
-                            //if name is empty focus name input
-                            if (name == '') {
-                                $('[name=designer_region_name]').addClass('is-invalid').focus();
-                                $(this).removeClass('disabled');
-                                return false;
-                            }
-
-
-                            //get content and create region with informations.
-                            var content = designer_region_CodeMirror.getValue();
-                            var data = {
-                                action: 'create_design_region',
-                                token: software_token,
-                                designer_region: {
-                                    name: name,
-                                    content: content
-                                }
-                            }
-                            $.ajax({
-                                contentType: 'application/json',
-                                url: 'api.php',
-                                data: JSON.stringify(data),
-                                type: 'POST',
-                                success: function (response) {
-                                    if (name) {
-                                        var doc = editor.getDoc();
-                                        var cursor = doc.getCursor();
-                                        doc.replaceRange('<cregion>' + name + '</cregion>', cursor);
-                                        RegionModalInstance.hide();
-                                        CregionModalInstance.hide();
-                                        if (dynamic_regions && dynamic_regions === 1) {
-                                            DregionModalInstance.hide();
-                                        }
-
-                                        editor.focus();
-                                    }
-
-
-                                }
-                            });
-
-                        }
-
-                        if (submit_button_val == 'Create Dynamic Region') {
-                            $(this).addClass('disabled');
-                            var name = $('[name=dynamic_region_name]').val();
-                            //if name is empty focus name input
-                            if (name == '') {
-                                $('[name=dynamic_region_name]').addClass('is-invalid').focus();
-                                $(this).removeClass('disabled');
-                                return false;
-                            }
-
-
-                            //get content and create region with informations.
-                            var code = dynamic_region_CodeMirror.getValue();
-                            var data = {
-                                action: 'create_dynamic_region',
-                                token: software_token,
-                                dynamic_region: {
-                                    name: name,
-                                    code: code
-                                }
-                            }
-                            $.ajax({
-                                contentType: 'application/json',
-                                url: 'api.php',
-                                data: JSON.stringify(data),
-                                type: 'POST',
-                                success: function (response) {
-                                    if (name) {
-                                        var doc = editor.getDoc();
-                                        var cursor = doc.getCursor();
-                                        doc.replaceRange('<dregion>' + name + '</dregion>', cursor);
-                                        RegionModalInstance.hide();
-                                        CregionModalInstance.hide();
-                                        DregionModalInstance.hide();
-                                        editor.focus();
-                                    }
-
-
-                                }
-                            });
-
-                        }
-
-                    });
-
                     var currentButtons = null;
 
-                    // İmleç hareketi olduğunda veya yeni bir satıra tıklandığında düğmeleri ekle
+                    // Add the region buttons to the gutter of the line the cursor is on.
                     editor.on('cursorActivity', function (cm) {
                         var cursor = cm.getCursor();
                         var line = cursor.line;
@@ -480,22 +368,8 @@ function init_page_designer(properties) {
                         }
                     });
 
-                    // PregionButton tıklandığında
+                    // Page region button: insert a <pregion> tag at the cursor.
                     rebindPregionButton();
-
-
-                    // CregionButton tıklandığında ikinci modalı aç
-                    document.getElementById('cregionButton').addEventListener('click', function () {
-                        CregionModalInstance.show();
-                    });
-
-                    if (dynamic_regions && dynamic_regions === 1) {
-                        // DregionButton tıklandığında ikinci modalı aç
-                        document.getElementById('dregionButton').addEventListener('click', function () {
-
-                            DregionModalInstance.show();
-                        });
-                    }
 
 
                 }
@@ -695,11 +569,11 @@ function init_page_designer(properties) {
                                         <button devicetype-set="wide" class="fs-smaller px-1 py-0 btn btn-sm     bi bi-badge-hd"></button>
                                         <button devicetype-set="desktop" class="fs-smaller px-1 py-0 btn btn-sm  bi bi-display"></button>
                                         <button devicetype-set="wider" class="fs-smaller px-1 py-0 btn btn-sm    bi bi-badge-4k"></button>
-                                        <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm  bi fullscreen-toggle ms-2 no-popover " title="Toggle Fullscreen"></button>
+                                        <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm  bi fullscreen-toggle ms-2 no-popover " title="${h(labels['Toggle Fullscreen'])}"></button>
                                     </div>
                                     <span id="previewpanelsize" class="badge text-body mb-0 "></span>
                                 </div>
-                                <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm bi fullscreen-toggle show-on-fullscreen position-absolute end-0 top-0 me-3 mt-3 no-popover  z-3" title="Toggle Fullscreen"></button>
+                                <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm bi fullscreen-toggle show-on-fullscreen position-absolute end-0 top-0 me-3 mt-3 no-popover  z-3" title="${h(labels['Toggle Fullscreen'])}"></button>
 
                               <div class="card-body p-2">
                                   <iframe id="preview" src="${h(url)}" frameBorder="0" class="border-2 border rounded-3 overflow-hidden"></iframe>
@@ -724,9 +598,9 @@ function init_page_designer(properties) {
                         <div id="console_errors" class="flex-shrink-0 border-top" style="display:none">
                             <div class="pd-console-header d-flex align-items-center px-2 py-1 gap-1" onclick="pdConsoleToggle()" style="cursor:pointer;user-select:none">
                                 <span class="bi bi-terminal" style="font-size:.75rem"></span>
-                                <span style="font-size:.7rem;font-family:monospace;font-weight:600">Console</span>
+                                <span style="font-size:.7rem;font-family:monospace;font-weight:600">${h(labels['Console'])}</span>
                                 <span id="pd_console_badge" class="badge rounded-pill bg-danger ms-1" style="font-size:.6rem;display:none"></span>
-                                <button class="btn btn-sm p-0 px-1 ms-auto border-0" style="font-size:.65rem" title="Clear" onclick="event.stopPropagation();pdConsoleClear()"><span class="bi bi-x-lg"></span></button>
+                                <button class="btn btn-sm p-0 px-1 ms-auto border-0" style="font-size:.65rem" title="${h(labels['Clear'])}" onclick="event.stopPropagation();pdConsoleClear()"><span class="bi bi-x-lg"></span></button>
                             </div>
                             <div id="pd_console_body" class="overflow-auto" style="display:none;max-height:200px"></div>
                         </div>
@@ -814,7 +688,7 @@ function init_page_designer(properties) {
                   <div class="modal-dialog modal-dialog-centered">
                       <div class="modal-content">
                           <div class="modal-header">
-                              <h1 class="modal-title fs-5" id="exampleModalLabel">The System Tags</h1>
+                              <h1 class="modal-title fs-5" id="exampleModalLabel">${h(labels['The System Tags'])}</h1>
                               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
                           <div class="modal-body overflow-auto " style="white-space: nowrap;">
@@ -901,32 +775,157 @@ function init_page_designer(properties) {
         autoCloseBrackets: true
     });
 
+    // Region-create wiring is bound once here rather than inside open_item(): the
+    // modals, the submit button and the region buttons live outside the editor
+    // panel, so re-binding on every open would fire one create request per open.
+    $('#editor_modal_add_designer_region').on('hide.bs.modal', function () {
+        $('#designer_region_name').val('');
+        $('#designer_region_code').val('');
+        designer_region_CodeMirror.setValue('');
+        submit_button.removeClass('disabled');
+        $('[name=designer_region_name]').removeClass('is-invalid');
+    });
+    if (dynamic_regions && dynamic_regions === 1) {
+        $('#editor_modal_add_dynamic_region').on('hide.bs.modal', function () {
+            $('#dynamic_region_name').val('');
+            $('#dynamic_region_code').val('');
+            dynamic_region_CodeMirror.setValue('');
+            submit_button.removeClass('disabled');
+            $('[name=dynamic_region_name]').removeClass('is-invalid');
+        });
+    }
+
+    submit_button.click(function () {
+        // Bound once at init; the editor variable holds the instance of the item
+        // that is currently open, so it may still be empty.
+        if (!editor) {
+            return false;
+        }
+        var submit_button_val = $(this).val();
+        if (submit_button_val == 'Create Designer Region') {
+            $(this).addClass('disabled');
+            var name = $('[name=designer_region_name]').val();
+            //if name is empty focus name input
+            if (name == '') {
+                $('[name=designer_region_name]').addClass('is-invalid').focus();
+                $(this).removeClass('disabled');
+                return false;
+            }
 
 
+            //get content and create region with informations.
+            var content = designer_region_CodeMirror.getValue();
+            var data = {
+                action: 'create_design_region',
+                token: software_token,
+                designer_region: {
+                    name: name,
+                    content: content
+                }
+            }
+            $.ajax({
+                contentType: 'application/json',
+                url: 'api.php',
+                data: JSON.stringify(data),
+                type: 'POST',
+                success: function (response) {
+                    if (name) {
+                        var doc = editor.getDoc();
+                        var cursor = doc.getCursor();
+                        doc.replaceRange('<cregion>' + name + '</cregion>', cursor);
+                        RegionModalInstance.hide();
+                        CregionModalInstance.hide();
+                        if (dynamic_regions && dynamic_regions === 1) {
+                            DregionModalInstance.hide();
+                        }
 
-    // LocalStorage'a genişlik ve yükseklik kaydet
+                        editor.focus();
+                    }
+
+
+                }
+            });
+
+        }
+
+        if (submit_button_val == 'Create Dynamic Region') {
+            $(this).addClass('disabled');
+            var name = $('[name=dynamic_region_name]').val();
+            //if name is empty focus name input
+            if (name == '') {
+                $('[name=dynamic_region_name]').addClass('is-invalid').focus();
+                $(this).removeClass('disabled');
+                return false;
+            }
+
+
+            //get content and create region with informations.
+            var code = dynamic_region_CodeMirror.getValue();
+            var data = {
+                action: 'create_dynamic_region',
+                token: software_token,
+                dynamic_region: {
+                    name: name,
+                    code: code
+                }
+            }
+            $.ajax({
+                contentType: 'application/json',
+                url: 'api.php',
+                data: JSON.stringify(data),
+                type: 'POST',
+                success: function (response) {
+                    if (name) {
+                        var doc = editor.getDoc();
+                        var cursor = doc.getCursor();
+                        doc.replaceRange('<dregion>' + name + '</dregion>', cursor);
+                        RegionModalInstance.hide();
+                        CregionModalInstance.hide();
+                        DregionModalInstance.hide();
+                        editor.focus();
+                    }
+
+
+                }
+            });
+
+        }
+
+    });
+
+    document.getElementById('cregionButton').addEventListener('click', function () {
+        CregionModalInstance.show();
+    });
+
+    if (dynamic_regions && dynamic_regions === 1) {
+        document.getElementById('dregionButton').addEventListener('click', function () {
+            DregionModalInstance.show();
+        });
+    }
+
+    // Persist the preview panel width and height.
     const saveToLocalStorage = (width, height) => {
         localStorage.setItem('previewWidth', width);
         localStorage.setItem('previewHeight', height);
     };
 
-    // LocalStorage'dan cihaz türünü al
+    // Read the device type from localStorage.
     const getDeviceTypeFromLocalStorage = () => {
         return localStorage.getItem('deviceType') || 'mobile';
     };
 
-    // LocalStorage'a cihaz türünü kaydet
+    // Persist the device type.
     const saveDeviceTypeToLocalStorage = (deviceType) => {
         localStorage.setItem('deviceType', deviceType);
     };
 
-    // LocalStorage'dan cihaz türünü yükle ve sınıfı ayarla
+    // Load the device type from localStorage and apply its class.
     const loadDeviceType = () => {
         const deviceType = getDeviceTypeFromLocalStorage();
         $('#previewpanel').addClass(`${deviceType}-device`);
     };
 
-    // LocalStorage'dan boyutları yükle ve ayarla
+    // Load the saved preview size from localStorage and apply it.
     const loadPreviewSizeFromLocalStorage = () => {
         const savedWidth = localStorage.getItem('previewWidth');
         const savedHeight = localStorage.getItem('previewHeight');
@@ -941,14 +940,14 @@ function init_page_designer(properties) {
         }
     };
 
-    // Sayfa yüklendiğinde cihaz türünü ve boyutları yükle
+    // Restore the device type and the preview size on page load.
     document.addEventListener('DOMContentLoaded', () => {
         loadDeviceType();
         loadPreviewSizeFromLocalStorage();
         resizeObserver.observe(previewPanel);
     });
 
-    // Ölçeklendirilmiş ekran boyutlarını hesaplayıp #previewpanelsize içine yazan fonksiyon
+    // Compute the scaled screen size and write it into #previewpanelsize.
     const updatePreviewPanelSize = (width, height) => {
         let scaleSize = 1;
         if ($('#previewpanel').hasClass('mobile-device')) scaleSize = 1;
@@ -969,15 +968,15 @@ function init_page_designer(properties) {
         }
     };
 
-    // Boyutları kaydetmek ve güncellemek için ResizeObserver
+    // ResizeObserver that persists the size and refreshes the size badge.
     const resizeObserver = new ResizeObserver(() => {
         const newWidth = previewPanel.offsetWidth;
         const newHeight = previewPanel.offsetHeight;
 
-        // Piksel cinsinden localStorage'a kaydet
+        // Save the size in pixels.
         saveToLocalStorage(newWidth, newHeight);
 
-        // Ölçeklendirilmiş ekran boyutlarını güncelle
+        // Refresh the scaled screen size.
         updatePreviewPanelSize(newWidth, newHeight);
     });
 
@@ -987,8 +986,8 @@ function init_page_designer(properties) {
 
         switch (deviceType) {
             case 'mobile':
-                width = 500; // Örnek bir genişlik
-                height = (500 * 16 / 9); // 9:16 oranı
+                width = 500;
+                height = (500 * 16 / 9); // 9:16 aspect ratio
                 $('#previewpanel')
                     .addClass('mobile-device')
                     .removeClass('tablet-device laptop-device wide-device desktop-device wider-device');
@@ -1034,10 +1033,10 @@ function init_page_designer(properties) {
         previewPanel.style.width = width + 'px';
         previewPanel.style.height = height + 'px';
 
-        // Cihaz türünü localStorage'a kaydet
+        // Persist the device type.
         saveDeviceTypeToLocalStorage(deviceType);
 
-        // Ölçeklendirilmiş ekran boyutlarını güncelle
+        // Refresh the scaled screen size.
         updatePreviewPanelSize(width, height);
     });
 
@@ -1159,7 +1158,7 @@ function init_page_designer(properties) {
                         };
                     }
                 })(this.contentWindow);
-                // Yeni bir stil elemanı oluştur ve ekle
+                // Create a style element that hides the Pinegrap button inside the preview.
                 $('<style>', iframeDocument).prop({
                     type: 'text/css',
                     innerHTML: '#software_pinegrap_button_container { display: none !important; }'
@@ -1383,15 +1382,15 @@ function init_page_designer(properties) {
                                     }),
                                     type: 'POST',
                                     success: function (response) {
-                                        design_files = response.design_files;
-                                        designer_regions = response.designer_regions;
-                                        dynamic_regions = response.dynamic_regions;
-                                        system_regions = response.system_regions;
+                                        var style_design_files = response.design_files;
+                                        var style_designer_regions = response.designer_regions;
+                                        var style_dynamic_regions = response.dynamic_regions;
+                                        var style_system_regions = response.system_regions;
                                         // If there is at least one result for designer regions, then output it/them.
-                                        if (designer_regions.length > 0) {
-                                            $.each(designer_regions, function (index, designer_region) {
+                                        if (style_designer_regions.length > 0) {
+                                            $.each(style_designer_regions, function (index, designer_region) {
                                                 var item_id_for_active_classes = 'page_designer_designer_region_id_' + designer_region.id;
-                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span>' + designer_region.name + '</span></a></li>');
+                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span>' + h(designer_region.name) + '</span></a></li>');
                                                 related_item.click(function () {
                                                     open_item({
                                                         type: 'designer_region',
@@ -1403,10 +1402,10 @@ function init_page_designer(properties) {
                                             });
                                         }
                                         // If there is at least one result for dynamic regions, then output it/them.
-                                        if (dynamic_regions.length > 0) {
-                                            $.each(dynamic_regions, function (index, dynamic_region) {
+                                        if (style_dynamic_regions.length > 0) {
+                                            $.each(style_dynamic_regions, function (index, dynamic_region) {
                                                 var item_id_for_active_classes = 'page_designer_dynamic_region_id_' + dynamic_region.id;
-                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<dregion>' + dynamic_region.name + '</dregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-warning-emphasis bi-filetype-php me-2"></span>' + dynamic_region.name + '</span></a></li>');
+                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<dregion>' + dynamic_region.name + '</dregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-warning-emphasis bi-filetype-php me-2"></span>' + h(dynamic_region.name) + '</span></a></li>');
                                                 related_item.click(function () {
                                                     open_item({
                                                         type: 'dynamic_region',
@@ -1418,9 +1417,9 @@ function init_page_designer(properties) {
                                             });
                                         }
                                         // If there is at least one result for system regions, then output it/them.
-                                        if (system_regions.length > 0) {
-                                            $.each(system_regions, function (index, system_region) {
-                                                var related_item = $('<li><a href="#!" title="' + h('<cregion>' + system_region.name + '</cregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-primary-emphasis bi-filetype-html me-2"></span>' + system_region.name + '</span></a></li>');
+                                        if (style_system_regions.length > 0) {
+                                            $.each(style_system_regions, function (index, system_region) {
+                                                var related_item = $('<li><a href="#!" title="' + h('<cregion>' + system_region.name + '</cregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-primary-emphasis bi-filetype-html me-2"></span>' + h(system_region.name) + '</span></a></li>');
                                                 related_item.click(function () {
                                                     preview_iframe.attr('src', path + encodeURI(system_region.name));
                                                 });
@@ -1428,9 +1427,9 @@ function init_page_designer(properties) {
                                             });
                                         }
                                         // If there is at least one result for design files, then output it/them.
-                                        if (design_files.length > 0) {
+                                        if (style_design_files.length > 0) {
                                             var number_of_items = 0;
-                                            $.each(design_files, function (index, design_file) {
+                                            $.each(style_design_files, function (index, design_file) {
 
 
                                                 // If this is not a theme, or it is a theme and it is a custom theme,
@@ -1677,7 +1676,7 @@ function init_page_designer(properties) {
             // If there is at least one result for designer regions, then output it/them.
             if (designer_regions.length > 0) {
                 $.each(designer_regions, function (index, designer_region) {
-                    var search_result = $('<button title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link d-flex text-nowrap w-100  link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span>' + designer_region.name + '</button>');
+                    var search_result = $('<button title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link d-flex text-nowrap w-100  link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span>' + h(designer_region.name) + '</button>');
                     search_result.click(function () {
                         open_item({
                             type: 'designer_region',
@@ -1783,9 +1782,6 @@ function init_page_designer(properties) {
                     } else {
                         event.preventDefault();
                         $('#menu,#menu-toggle').toggleClass('active');
-                        if (!$('#menu.active').length) {
-                            nav_menu_reset();
-                        }
                     }
 
                     break;
