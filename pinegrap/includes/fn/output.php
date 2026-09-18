@@ -676,7 +676,6 @@ function output_header_secure($properties = false)
     <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
     <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-    ' . get_generator_meta_tag() . '
     ' . output_control_panel_header_includes(false) . '
 </head>
 <body' . $output_body_class . '>';
@@ -1310,7 +1309,6 @@ function output_header($properties = false)
         <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
         <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . get_generator_meta_tag() . '
         ' . output_control_panel_header_includes() . '
         ' . $output_tour_head . '
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
