@@ -446,12 +446,9 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
         $_off_role = defined('USER_ROLE') ? (int)USER_ROLE : 99;
         $_off_can  = ($_off_role < 3);
         if (!$_off_can && defined('USER_ID') && (int)USER_ID > 0) {
-            $_off_probe = db_value("SHOW COLUMNS FROM user LIKE 'set_offline_payment'");
-            if ($_off_probe !== '' && $_off_probe !== null) {
-                $_off_can = (int)db_value(
-                    "SELECT set_offline_payment FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1"
-                ) === 1;
-            }
+            $_off_can = (int)db_value(
+                "SELECT user_set_offline_payment FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1"
+            ) === 1;
         }
         if ($_off_can) {
             $_off_val = !empty($_POST['offline_payment_allowed']) ? 1 : 0;

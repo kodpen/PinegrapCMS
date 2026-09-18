@@ -190,7 +190,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                 $field = db_item("SELECT
                         id,
                         name,
-                        type
+                        type,
+                        wysiwyg
                     FROM form_fields
                     WHERE
                         (product_id = '" . $product['id'] . "')
@@ -2388,7 +2389,7 @@ function apply_offers_to_cart()
                                         $discounted_order_items[$order_item['id']]['offer_id'] = $offer['id'];
                                         $discounted_order_items[$order_item['id']]['offer_action_id'] = $offer_action['id'];
                                         // add previous discount for this order item (if one exists) back to subtotal
-                                        $subtotal = $subtotal + $discounted_order_items[$order_item['id']]['discount'];
+                                        $subtotal = $subtotal + ($discounted_order_items[$order_item['id']]['discount'] ?? 0);
                                         // set new discount for this order item
                                         $discounted_order_items[$order_item['id']]['discount'] = ($order_item['product_price'] - $discounted_price) * $order_item['quantity'];
                                         // reduce subtotal by new discount for this order item
@@ -3137,7 +3138,7 @@ function get_best_offer_id($offer_code, $scope = '')
                                         }
                                         $discounted_order_items[$order_item['id']]['price'] = $discounted_price;
                                         // add previous discount for this order item (if one exists) back to subtotal
-                                        $subtotal = $subtotal + $discounted_order_items[$order_item['id']]['discount'];
+                                        $subtotal = $subtotal + ($discounted_order_items[$order_item['id']]['discount'] ?? 0);
                                         // set new discount for this order item
                                         $discounted_order_items[$order_item['id']]['discount'] = ($order_item['product_price'] - $discounted_price) * $order_item['quantity'];
                                         // reduce subtotal by new discount for this order item
@@ -3538,7 +3539,7 @@ function add_pending_offers($liveform)
                 $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
-                $special_offer_code = $row['special_offer_code'];
+                $special_offer_code = $row['special_offer_code'] ?? '';
                 $offer_code = '';
                 // if there is a special offer code for this order, then get offer code because the special offer code might just be a key code
                 if ($special_offer_code != '') {
@@ -3604,11 +3605,16 @@ function add_pending_offers($liveform)
                 // if there are no errors so far, continue
                 if ($liveform->check_form_errors() == false) {
                     $offer_action = mysqli_fetch_assoc($result);
+                    // Only the multi-recipient branch below resolves a recipient; every other
+                    // path inserts the item without one.
+                    $ship_to_id = 0;
+                    $ship_to = '';
+                    $add_name = '';
                     // if shipping is on, recipient mode is multi-recipient, and the offer is adding a product that is shippable
                     // make sure that a recipient was selected or entered
                     if ((ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') && ($offer_action['add_product_shippable'] == 1)) {
-                        $ship_to = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_ship_to'];
-                        $add_name = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_add_name'];
+                        $ship_to = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_ship_to'] ?? '';
+                        $add_name = $_POST['pending_offer_' . $offer_action['offer_id'] . '_' . $offer_action['id'] . '_add_name'] ?? '';
                         if ($add_name == lang('or add name')) {
                             $add_name = '';
                         }
@@ -3704,7 +3710,7 @@ function add_pending_offers($liveform)
 
                                             '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
 
-                                            '$ship_to_id',
+                                            '" . (int) $ship_to_id . "',
 
                                             '" . $offer_action['add_product_product_id'] . "',
 
@@ -4356,7 +4362,7 @@ function get_discounted_product_prices()
         $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
-        $special_offer_code = $row['special_offer_code'];
+        $special_offer_code = $row['special_offer_code'] ?? '';
         // else the visitor does not have an order, so if there is a special offer code in the visitor's session (e.g. passed via the query string), then set special offer code
     } else if (isset($_SESSION['ecommerce']['special_offer_code']) == true) {
         $special_offer_code = $_SESSION['ecommerce']['special_offer_code'];

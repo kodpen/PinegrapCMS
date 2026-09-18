@@ -141,6 +141,10 @@ if ($row[0] > 0) {
     $liveform->validate_required_field('arrival_date', 'Requested Arrival Date is required.');
 }
 
+// Written to the ship_tos row below even when no arrival date was submitted.
+$arrival_date = '';
+$arrival_date_code = '';
+
 // if arrival date was submitted
 if (isset($_POST['arrival_date'])) {
     // get arrival date info
@@ -207,7 +211,7 @@ if (isset($_POST['arrival_date'])) {
         // declare shipping_methods array that we will use to store all valid shipping methods for recipient's address
         $shipping_methods = array();
         
-        $street_address_or_po_box = get_address_type($address_1);
+        $street_address_or_po_box = get_address_type($liveform->get_field_value('address_1'));
         $street_address_or_po_box = str_replace(' ', '_', $street_address_or_po_box);
         
         // get the current day of the week
@@ -353,7 +357,10 @@ if (isset($_POST['arrival_date'])) {
             }
             
             // valid shipping methods are all valid shipping methods for order item with smallest largest transit
-            $shipping_methods = $order_items[$order_item_with_smallest_transit]['shipping_methods'];
+            // (there is none when every order item was skipped for lacking a valid zone)
+            if (isset($order_item_with_smallest_transit)) {
+                $shipping_methods = $order_items[$order_item_with_smallest_transit]['shipping_methods'];
+            }
         }
 
         /* end: if necessary, work out issue with no intersecting shipping methods being found for all products */

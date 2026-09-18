@@ -3058,6 +3058,9 @@ function get_express_order($properties) {
             $show_paypal_express_checkout_payment_method = FALSE;
 
             $output_surcharge_rows = '';
+            // Also read by the shipping script below, which is emitted whether
+            // or not the credit/debit card method (which sets it) is shown.
+            $surcharge = 0;
             
             // if a non-recurring or recurring transaction is required and at least one payment method will be outputted,
             // then the payment information should be outputted, so prepare to output it
@@ -5780,7 +5783,9 @@ function get_express_order($properties) {
 
 						    require_once('includes/iyzipay-php/IyzipayBootstrap.php');
                             IyzipayBootstrap::init();
-                            //to get all cart type installment prices foreach them.
+                            $installment_table_content = '';
+                            $installment_table_header = '';
+                            //to get all card type installment prices foreach them.
                             foreach($card_numbers as $key => $card_number){
 						        $card_binNumber = substr($card_number, 0, 6);
 						        // Conversation ID Digits amount
@@ -5799,46 +5804,55 @@ function get_express_order($properties) {
 						        $request->setPrice($iyzipay_total);
 						        $installmentInfo = \Iyzipay\Model\InstallmentInfo::retrieve($request, $options);
 						        $result = $installmentInfo->getRawResult();
-						        $oneinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[0]->installmentPrice;
-                                $oneinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[0]->totalPrice;
-						        $twoinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[1]->installmentPrice;
-						        $twoinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[1]->totalPrice;
-						        $threeinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[2]->installmentPrice;
-						        $threeinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[2]->totalPrice;
-						        $sixinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[3]->installmentPrice;
-						        $sixinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[3]->totalPrice;	
-						        $nineinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[4]->installmentPrice;
-						        $nineinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[4]->totalPrice;
-						        $twelveinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[5]->installmentPrice;
-                                $twelveinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[5]->totalPrice;
+                                // A failed or empty response has no installmentDetails; treat it as
+                                // "no installments for this card" instead of dereferencing null.
+                                $installment_data = json_decode($result, true);
+                                $installment_prices = array();
+                                if (isset($installment_data['installmentDetails'][0]['installmentPrices'])
+                                    && is_array($installment_data['installmentDetails'][0]['installmentPrices'])) {
+                                    $installment_prices = $installment_data['installmentDetails'][0]['installmentPrices'];
+                                }
+                                $oneinstallment_price = $installment_prices[0]['installmentPrice'] ?? '';
+                                $twoinstallment_price = $installment_prices[1]['installmentPrice'] ?? '';
+                                $twoinstallment_totalprice = $installment_prices[1]['totalPrice'] ?? '';
+                                $threeinstallment_price = $installment_prices[2]['installmentPrice'] ?? '';
+                                $threeinstallment_totalprice = $installment_prices[2]['totalPrice'] ?? '';
+                                $sixinstallment_price = $installment_prices[3]['installmentPrice'] ?? '';
+                                $sixinstallment_totalprice = $installment_prices[3]['totalPrice'] ?? '';
+                                $nineinstallment_price = $installment_prices[4]['installmentPrice'] ?? '';
+                                $nineinstallment_totalprice = $installment_prices[4]['totalPrice'] ?? '';
+                                $twelveinstallment_price = $installment_prices[5]['installmentPrice'] ?? '';
+                                $twelveinstallment_totalprice = $installment_prices[5]['totalPrice'] ?? '';
+                                $per_month_label = ' / ' . lang('month');
+                                $total_label = lang('Total') . ': ';
 
                                 if($twoinstallment_price){
-                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twoinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $twoinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twoinstallment_price . h($per_month_label) . '</span><br/><span class="installment_month_total">' . h($total_label) . BASE_CURRENCY_SYMBOL . $twoinstallment_totalprice . '</span></td>';
                                 }else{
                                     $outout_installment_table_two_installment = '<td></td>';
                                 }
                                 if($threeinstallment_price){
-                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $threeinstallment_price  . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $threeinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $threeinstallment_price . h($per_month_label) . '</span><br/><span class="installment_month_total">' . h($total_label) . BASE_CURRENCY_SYMBOL . $threeinstallment_totalprice . '</span></td>';
                                 }else{
                                     $outout_installment_table_three_installment = '<td></td>';
                                 }
                                 if($sixinstallment_price){
-                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $sixinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $sixinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $sixinstallment_price . h($per_month_label) . '</span><br/><span class="installment_month_total">' . h($total_label) . BASE_CURRENCY_SYMBOL . $sixinstallment_totalprice . '</span></td>';
                                 }else{
                                     $outout_installment_table_six_installment = '<td></td>';
                                 }
                                 if($nineinstallment_price){
-                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $nineinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $nineinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $nineinstallment_price . h($per_month_label) . '</span><br/><span class="installment_month_total">' . h($total_label) . BASE_CURRENCY_SYMBOL . $nineinstallment_totalprice . '</span></td>';
                                 }else{
                                     $outout_installment_table_nine_installment = '<td></td>';
                                 }
                                 if($twelveinstallment_price){
-                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twelveinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $twelveinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twelveinstallment_price . h($per_month_label) . '</span><br/><span class="installment_month_total">' . h($total_label) . BASE_CURRENCY_SYMBOL . $twelveinstallment_totalprice . '</span></td>';
                                 }else{
                                     $outout_installment_table_twelve_installment = '<td></td>';
                                 }
 
-                                $cardFamilyName = json_decode($result)->installmentDetails[0]->cardFamilyName;
+                                $cardFamilyName = $installment_data['installmentDetails'][0]['cardFamilyName'] ?? $key;
 
                                 //Check if there is at least 2x installment option activated from site settings.
                                 if( ($oneinstallment_price)&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
@@ -5846,7 +5860,7 @@ function get_express_order($properties) {
                                     $installment = true;
                                     
                                     $installment_table_content .='<tr>';
-                                    $installment_table_content .= '<td  scope="row">' . $cardFamilyName . '</td>';
+                                    $installment_table_content .= '<td  scope="row">' . h($cardFamilyName) . '</td>';
                                     $installment_table_content .= $outout_installment_table_two_installment;
                                     //Check if there is at least 3x installment option activated from site settings.
                                     if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 3){
@@ -5867,38 +5881,31 @@ function get_express_order($properties) {
                                     $installment_table_content .='</tr>';
                                 }
                             }
-                            //for table headers.
-                            if( ($oneinstallment_price)&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
-                                //print_r($result);
+                            //for table headers: only when at least one card produced a row.
+                            if( ($installment_table_content !== '')&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
                                 $installment_table_header .= '<tr>';
-                                $installment_table_header .= '<th>Cart Type</th>';
-                                $installment_table_header .= '<th>2 Installment</th>';
+                                $installment_table_header .= '<th>' . h(lang('Card Type')) . '</th>';
+                                $installment_table_header .= '<th>2 ' . h(lang('Installment')) . '</th>';
                                 //Check if there is at least 3x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 3){
-                                    $installment_table_header .= '<th>3 Installment</th>';
+                                    $installment_table_header .= '<th>3 ' . h(lang('Installment')) . '</th>';
                                 }
                                 //Check if there is at least 6x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 6){
-                                    $installment_table_header .= '<th>6 Installment</th>';
+                                    $installment_table_header .= '<th>6 ' . h(lang('Installment')) . '</th>';
                                 }
                                 //Check if there is at least 9x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 9){
-                                    $installment_table_header .= '<th>9 Installment</th>';
+                                    $installment_table_header .= '<th>9 ' . h(lang('Installment')) . '</th>';
                                 }
                                 //Check if there is at least 12x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 12){
-                                    $installment_table_header .= '<th>12 Installment</th>';
+                                    $installment_table_header .= '<th>12 ' . h(lang('Installment')) . '</th>';
                                 }
                                 $installment_table_header .= '</tr>';
-                            }	       
+                            }
 
                             if( ECOMMERCE_IYZIPAY_INSTALLMENT >= 2 ){
-                                if(lang(array('info'=>'')) === 'tr'){
-                                    $installment_table_content = str_replace('Total:', 'Top.:', $installment_table_content);
-                                    $installment_table_header = str_replace('Installment', "Taksit", $installment_table_header);
-                                    $installment_table_header = str_replace('Cart Type', "Kart Türü", $installment_table_header);
-                                    $installment_table_content = str_replace('/ month', " / ay", $installment_table_content);
-                                }
                                 //we output installment table 
                                 $installment_table .= '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >';
                                 $installment_table .= '<thead class="thead-dark">' . $installment_table_header . '</thead>';

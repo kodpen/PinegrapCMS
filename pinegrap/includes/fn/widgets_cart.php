@@ -52,7 +52,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
             $node['props']['href']       = isset($context['checkout_url']) ? $context['checkout_url'] : '#';
             if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me'
                 || $node['props']['text'] === 'Button') {
-                $node['props']['text'] = isset($context['checkout_button_label']) ? $context['checkout_button_label'] : 'Checkout';
+                $node['props']['text'] = (($context['checkout_button_label'] ?? '') !== '') ? $context['checkout_button_label'] : lang('Checkout');
             }
         } elseif ($action === 'cart_update') {
             // Submit button against the cart form.
@@ -79,7 +79,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
             $node['props']['_attrs'] = $kept;
             if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me'
                 || $node['props']['text'] === 'Button') {
-                $node['props']['text'] = isset($context['update_button_label']) ? $context['update_button_label'] : 'Update';
+                $node['props']['text'] = (($context['update_button_label'] ?? '') !== '') ? $context['update_button_label'] : lang('Update');
             }
         }
     }
@@ -346,7 +346,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
         $kept[] = array('name' => 'value', 'value' => '1');
         $node['props']['_attrs'] = $kept;
         if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me' || $node['props']['text'] === 'Button') {
-            $node['props']['text'] = isset($context['special_offer_code_label']) ? $context['special_offer_code_label'] : 'Apply';
+            $node['props']['text'] = (($context['special_offer_code_label'] ?? '') !== '') ? $context['special_offer_code_label'] : lang('Apply');
         }
     }
 
@@ -1948,9 +1948,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                                 ? (string)$cfg['cart_section_label'] : (string)lang('cart');
             $_eo_offer_lbl = isset($cfg['special_offer_code_label']) && (string)$cfg['special_offer_code_label'] !== ''
                                 ? (string)$cfg['special_offer_code_label'] : (string)lang('Special Offer Code');
-            // Suppress mysqli warnings — table may not exist on legacy
-            // installs; we degrade silently in that case.
-            @db("INSERT INTO express_order_pages (page_id, shopping_cart_label, special_offer_code_label, shipping_form, form, offline_payment_always_allowed)
+            db("INSERT INTO express_order_pages (page_id, shopping_cart_label, special_offer_code_label, shipping_form, form, offline_payment_always_allowed)
                  VALUES ('" . (int)$_eo_page_id . "', '" . e($_eo_cart_lbl) . "', '" . e($_eo_offer_lbl) . "', 0, 0, '" . (int)$_eo_offline_default . "')");
         } else {
             // Defensive sync for EXISTING rows: when the global toggle is on
@@ -1958,7 +1956,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // by enabling it. We never DISABLE — if the operator explicitly
             // turned it off on a specific page, that wins.
             if ($_eo_offline_default === 1) {
-                @db("UPDATE express_order_pages SET offline_payment_always_allowed = 1
+                db("UPDATE express_order_pages SET offline_payment_always_allowed = 1
                      WHERE page_id = '" . (int)$_eo_page_id . "' AND offline_payment_always_allowed = 0");
             }
         }
@@ -1975,7 +1973,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // visitors to a broken URL.
             $_eo_next_exists = (int)db_value("SELECT page_id FROM page WHERE page_id = '" . (int)$_eo_next_page . "' LIMIT 1");
             if ($_eo_next_exists > 0) {
-                @db("UPDATE express_order_pages SET next_page_id = '" . (int)$_eo_next_page . "' WHERE page_id = '" . (int)$_eo_page_id . "'");
+                db("UPDATE express_order_pages SET next_page_id = '" . (int)$_eo_next_page . "' WHERE page_id = '" . (int)$_eo_page_id . "'");
             }
         }
     }
@@ -3022,17 +3020,9 @@ function _pg_cart_offline_payment_checkbox($order_id, $cart_form_id, $cart_label
     $role = defined('USER_ROLE') ? (int)USER_ROLE : 99;
     $can  = ($role < 3);
     if (!$can && defined('USER_ID') && (int)USER_ID > 0) {
-        // Column is optional on older installs — probe rather than fail.
-        static $_has_col = null;
-        if ($_has_col === null) {
-            $_p = db_value("SHOW COLUMNS FROM user LIKE 'set_offline_payment'");
-            $_has_col = ($_p !== '' && $_p !== null);
-        }
-        if ($_has_col) {
-            $can = (int)db_value(
-                "SELECT set_offline_payment FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1"
-            ) === 1;
-        }
+        $can = (int)db_value(
+            "SELECT user_set_offline_payment FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1"
+        ) === 1;
     }
     if (!$can) return '';
 

@@ -741,8 +741,8 @@ function get_billing_information($properties) {
 
             $referral_source_options[''] = '';
 
-            foreach ($referral_sources as $referral_source) {
-                $referral_source_options[$referral_source['name']] = $referral_source['code'];
+            foreach ($referral_sources as $referral_source_row) {
+                $referral_source_options[$referral_source_row['name']] = $referral_source_row['code'];
             }
 
             $form->set('referral_source', 'options', $referral_source_options);

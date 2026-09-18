@@ -40,6 +40,9 @@ function get_shopping_cart($properties) {
     // so they have to start out empty.
     $output_ship_tos = '';
     $output_recurring_ship_tos = '';
+    $output_special_offers = '';
+    $output_products_for_mobile = '';
+    $subtotal = 0;
 
     global $user;
 
@@ -1864,6 +1867,7 @@ function get_shopping_cart($properties) {
         }
 
         $quick_add = array();
+        $quick_add['system'] = '';
 
         // If there is a quick add product group and it is enabled,
         // then prepare quick add.
@@ -2807,7 +2811,7 @@ function get_shopping_cart($properties) {
 
                     $item['amount_info'] = prepare_price_for_output($item['amount'] * 100, false, $discounted_price = '', 'html');
 
-                    $item['remove_url'] = PATH . SOFTWARE_DIRECTORY . '/remove_item_from_cart.php?order_item_id=' . $item['id'] . '&screen=shopping_cart&send_to=' . urlencode(REQUEST_URL) . '&token=' . $_SESSION['software']['token'];
+                    $item['remove_url'] = PATH . SOFTWARE_DIRECTORY . '/remove_item_from_cart.php?order_item_id=' . $item['id'] . '&screen=shopping_cart&send_to=' . urlencode(REQUEST_URL) . '&token=' . ($_SESSION['software']['token'] ?? '');
 
                     // Remember if product is taxable and shippable,
                     // so that we can customize total disclaimer.
@@ -3054,10 +3058,10 @@ function get_shopping_cart($properties) {
 
                 $currency_options = array();
 
-                foreach ($currencies as $currency) {
-                    $label = h($currency['name'] . ' (' . $currency['code'] . ')');
+                foreach ($currencies as $currency_row) {
+                    $label = h($currency_row['name'] . ' (' . $currency_row['code'] . ')');
 
-                    $currency_options[$label] = $currency['id'];
+                    $currency_options[$label] = $currency_row['id'];
                 }
 
                 $form->set('currency_id', 'options', $currency_options);

@@ -32,9 +32,16 @@ include('init.php');
 // HTTPS — browsers reject SameSite=None without Secure. On HTTP localhost
 // the cookie falls back to default (Lax/Strict) and cross-site return
 // will lose the session.
-if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return'
-    and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return'
-    and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
+//
+// The three gateway callbacks (PayPal Express Checkout, iyzipay 3-D Secure and
+// Pay With Iyzico) arrive as cross-site POSTs, so the cookie re-stamp, the CSRF
+// check and the session field capture below treat them alike.
+$is_gateway_return = in_array(
+    ($_GET['mode'] ?? ''),
+    array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'),
+    true);
+
+if (!$is_gateway_return) {
     if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
         if (URL_SCHEME == 'https://') {
             setcookie(session_name(), session_id(), ['samesite' => 'None', 'secure' => true]);
@@ -54,9 +61,7 @@ if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return'
 // because the cross-site POST from iyzipay/paypal can\'t echo our
 // session-bound CSRF token. The cookie re-stamp above already ensures
 // the session itself is intact for those returns.
-if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return'
-    and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return'
-    and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
+if (!$is_gateway_return) {
     validate_token_field();
 }
 
@@ -67,8 +72,9 @@ $liveform = new liveform('express_order');
 
 $ghost = $_SESSION['software']['ghost'] ?? false;
 
-// if the mode is not paypal_express_checkout_return, then add fields to session
-if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
+// Only a visitor's own submit is captured into the session; a gateway
+// callback POST carries the gateway's fields, not the form's.
+if (!$is_gateway_return) {
     $liveform->add_fields_to_session();
 }
 
@@ -1380,6 +1386,10 @@ if (ECOMMERCE_SHIPPING) {
         // multiple recipients.
         $prefix = 'shipping_' . $recipient['id'] . '_';
 
+        // Each recipient carries its own arrival date; one without a selection
+        // must not inherit the previous recipient's row.
+        $arrival_date = array('id' => '', 'code' => '', 'arrival_date' => '');
+
         // If there is more than one recipient, then prepare to add ship to name to the end of all
         // messages/errors, so visitor will understand the context of the error.
 
@@ -1550,11 +1560,10 @@ if (ECOMMERCE_SHIPPING) {
         // If the visitor selected an arrival date, then validate it
         if ($arrival_date_id) {
 
-            // Try to find an active/valid arrival date for the arrival date the visitor selected
-            $arrival_date = $arrival_dates[$arrival_date_id];
-
+            // Try to find an active/valid arrival date for the arrival date the visitor selected.
             // If the selected arrival date is active/valid, then continue to validate
-            if ($arrival_date) {
+            if (isset($arrival_dates[$arrival_date_id])) {
+                $arrival_date = $arrival_dates[$arrival_date_id];
 
                 // If the arrival date has a custom field, set arrival date to custom arrival date and require custom field
                 if ($arrival_date['custom']) {
