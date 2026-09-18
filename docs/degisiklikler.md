@@ -41,6 +41,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Panel araçları ve raporlar: terk edilmiş sepet widget'ı, yedek ekranı, WAF günlüğü, IndexNow ping'i (2026-09-18)
+
+**Belirti (issue #41).** (1) Gösterge panelindeki terk edilmiş sepet
+widget'ı (`api.php`) sepet toplamını `SUM(price) * quantity` ile, yani
+satır toplamlarını rastgele bir satırın adediyle çarparak hesaplıyor;
+kişi tablosunu `orders.id` üzerinden bağladığı için de sepetin yanına
+başka bir müşterinin adı yazıyordu. Widget 13 ise rol-3 kullanıcıda
+tanımsız `$folders_that_user_has_access_to` ile boş liste dönüyordu;
+kur listesi `exchange_rate = 0` olan para biriminde sıfıra bölüyordu.
+(2) `update_search_index.php` site haritası/IndexNow ping'ini hiç
+tanımlanmamış `$current_timestamp` ile koşullandırıyordu, bu yüzden ping
+dizinleyiciden hiçbir zaman tetiklenmiyordu. (3) `waf.php` günlüğe
+kullanıcı kimliğini asla set edilmeyen `software.user_id` oturum
+anahtarından okuyordu; `waf_log.user_id` hep boştu. (4) `backups.php`
+yedek yokken `null` döndürüp `foreach` uyarısı basıyor, klasör adlarını
+kaçırmadan yazıyor, her ekran görüntülemesinde `last_software_auto_backup`
+sayacını sıfırlıyor ve işlem sonrası `http://` şemasına yönlendiriyordu.
+(5) `view_visitor.php` yönlendiren bağlantılarını çift kaçırılmış düz
+metin olarak gösteriyor, "Order Completed" hücresini iki kez basıyordu;
+`view_visitor_report.php` "First Visit" filtresine PPC seçeneklerini
+sunuyor ve tarih filtresi bildirimini yanlış değişkene yazıyordu.
+(6) `software_update.php` güncelleme sunucusunu aynı görünümde iki kez
+sorguluyor, cURL yoksa `curl_init()` üzerinde ölümcül hata veriyordu;
+`kiosk.php` ve `toolbar.php` `$_GET` anahtarlarını `isset` olmadan okuyordu.
+
+**Düzeltme.** (1) Sepet toplamı `SUM(price * quantity)` ile satır bazında
+alınır ve `round()/100` ile gösterilir; kişi bağı `orders.contact_id`
+üzerinden; rol-3 dalı widget 7 gibi klasör listesini kendisi çeker; kur
+yalnız `(float) exchange_rate > 0` iken gösterilir, aksi hâlde `-`.
+(2) Koşul dosyanın başında zaten tanımlı `$timestamp` ile karşılaştırılır;
+12 saatlik aralık değişmedi. (3) `waf_log_event()` ve kardeşi
+`waf_user_is_authenticated()` panelin gerçekten kullandığı
+`sessionuserid` anahtarını okur; `sessionusername` kontrolü korunduğu
+için kimlik tespiti daralmaz, kural davranışı değişmez. (4) `backup_list()`
+her durumda dizi döner, klasör adları `h()`'den geçer, silme POST'u
+`isset` ve katı karşılaştırmayla okunur, `go()` ile yönlendirilir. Sayaç
+sıfırlaması yalnız başarılı silme dalında kaldı: ekranı açmak artık bir
+sonraki otomatik yedeği zorlamaz, yedek silmek zorlar — sayacın amacı
+eksilen yedeğin yerine yenisini aldırmaktır, ekranı görüntülemenin buna
+etkisi olmamalı. (5) Dış `h()` kaldırıldı, iç `href`/metin kaçırması
+duruyor; yinelenen hücre silindi, `$output_affiliate_code` başta
+tanımlandı; filtre `$first_visit_options` kullanır; bildirim
+`$date_filter_message`'a yazılır. (6) `software_update_check()` isteğe
+bağlı `$return_details` parametresiyle yanıtı da döndürür, ekran ikinci
+cURL isteğini ve kopya sürüm karşılaştırmasını atar; mevcut `api.php`
+çağrısının boolean dönüşü değişmedi. cURL eksikliği artık mevcut `lang()`
+iletisiyle ayarlar ekranına yönlendirir. Kiosk ve araç çubuğu `??` ile
+okur; sayfa bulunamazsa 404 ile çıkar. `auto_backup.php` cron'da oturum
+adı yerine `SYSTEM` işaretiyle günlükler ve boş klasör kontrolünü
+`is_dir` + `glob` ile yapar (`file_exists('.../*')` hiç eşleşmiyordu);
+`api.php`'deki aynı kalıp ve `$new_file_icon` sızıntısı da düzeltildi.
+
+### Doğrulama
+
+`php -l` dokunulan 11 dosyada temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan bir örnek kurulmadı
+(`tools/setup_sandbox.sh` koşulmadı): sepet toplamı ve kişi adı, rol-3
+widget listesi, yedek ekranı akışı, güncelleme sunucusu isteği, IndexNow
+ping'i, `waf_log.user_id` yazımı ve kiosk/araç çubuğu uyarıları çalışma
+zamanında doğrulanmadı; düzeltmeler kod okuma ve statik denetimle yapıldı.
+
+**Açık kalan:** `includes/migrations/legacy.php` içinde runner'ın hata
+ağını `mysqli_query ... or output_error` ile aşan dört eski adım bu turda
+elde alınmadı; yayınlanmış sürümler kapalı olduğu için migration dosyaları
+kapsam dışı.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
