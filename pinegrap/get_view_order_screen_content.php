@@ -94,19 +94,24 @@ function get_view_order_screen_content($properties)
             (orders.id = '" . escape($order_id) . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
-    // if the user came from the control panel, then return placeholder content
+    // If the user came from the control panel, then there is no order to show, so return the
+    // placeholder notice right away instead of running the order and ownership checks below.
     if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
         $form->add_notice(lang('Order information will be displayed here when this page is linked to from a My Account Page Type.'));
-        
-    }else{    
-        // if the order was not found, output error
-        if (mysqli_num_rows($result) == 0) {
-            output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
+        $output = $form->output_notices();
+        $form->remove();
+
+        return
+            '<div class="software_order_view">
+                ' . $output . '
+            </div>';
     }
 
-   
+    // if the order was not found, output error
+    if (mysqli_num_rows($result) == 0) {
+        output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $row = mysqli_fetch_assoc($result);
 
     $order_number = $row['order_number'];
@@ -244,6 +249,7 @@ function get_view_order_screen_content($properties)
                         ship_tos.arrival_date,
                         ship_tos.arrival_date_id,
                         ship_tos.shipping_method_id,
+                        ship_tos.shipping_method_code,
                         shipping_methods.name as shipping_method_name,
                         shipping_methods.description as shipping_method_description,
                         ship_tos.shipping_cost,
@@ -270,6 +276,7 @@ function get_view_order_screen_content($properties)
                 $arrival_date = $row['arrival_date'] ?? '';
                 $arrival_date_id = $row['arrival_date_id'] ?? '';
                 $shipping_method_id = $row['shipping_method_id'] ?? '';
+                $shipping_method_code = $row['shipping_method_code'] ?? '';
                 $shipping_method_name = $row['shipping_method_name'] ?? '';
                 $shipping_method_description = $row['shipping_method_description'] ?? '';
                 $shipping_cost = ($row['shipping_cost'] ?? 0) / 100;
@@ -820,7 +827,7 @@ function get_view_order_screen_content($properties)
                                         $output_shipping_tracking_numbers .= ', ';
                                     }
                                     
-                                    $shipping_tracking_url = get_shipping_tracking_url($shipping_tracking_number['number'],$ship_to['shipping_method_code']);
+                                    $shipping_tracking_url = get_shipping_tracking_url($shipping_tracking_number['number'], $shipping_method_code);
                                     
                                     // if a shipping tracking url was found, then output link
                                     if ($shipping_tracking_url != '') {
@@ -905,7 +912,7 @@ function get_view_order_screen_content($properties)
                             $address .= h($zip_code);
                         }
 
-                        if ($zip_code) {
+                        if ($country) {
                             if ($address) {
                                 $address .= ', ';
                             }
@@ -1093,7 +1100,7 @@ function get_view_order_screen_content($properties)
                             $address .= h($zip_code);
                         }
 
-                        if ($zip_code) {
+                        if ($country) {
                             if ($address) {
                                 $address .= ', ';
                             }
@@ -1191,7 +1198,7 @@ function get_view_order_screen_content($properties)
         // if tax is on, update grand total and prepare tax row
         if (ECOMMERCE_TAX == true) {
             // if there is an order discount, adjust tax
-            if ($order_discount > 0) {
+            if (($subtotal > 0) && ($order_discount > 0)) {
                 $grand_tax = $grand_tax - ($grand_tax * ($order_discount / $subtotal));
             }
 
@@ -1683,6 +1690,7 @@ function get_view_order_screen_content($properties)
                 arrival_dates.name AS arrival_date_name,
                 arrival_dates.custom AS arrival_date_custom,
                 ship_tos.shipping_method_id,
+                ship_tos.shipping_method_code,
                 shipping_methods.name AS shipping_method_name,
                 shipping_methods.description AS shipping_method_description,
                 (ship_tos.shipping_cost / 100) AS shipping_cost,

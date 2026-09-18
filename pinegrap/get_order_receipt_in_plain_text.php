@@ -23,7 +23,9 @@ function get_order_receipt_in_plain_text($order_id)
         "SELECT
             order_date,
             gift_card_discount,
-            surcharge
+            surcharge,
+            payment_installment,
+            installment_charges
         FROM orders
         WHERE id = '$order_id'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -31,6 +33,13 @@ function get_order_receipt_in_plain_text($order_id)
     $order_date = $row['order_date'];
     $gift_card_discount = $row['gift_card_discount'] / 100;
     $surcharge = $row['surcharge'] / 100;
+    $payment_installment = (int) $row['payment_installment'];
+    $installment_charges = $row['installment_charges'] / 100;
+
+    // Both are only accumulated by non-recurring items, but they are always read
+    // when the totals are assembled below.
+    $subtotal = 0;
+    $grand_tax = 0;
 
     // Only ever appended to, inside loops that do not run for every order,
     // so they have to start out empty.
@@ -512,7 +521,7 @@ function get_order_receipt_in_plain_text($order_id)
                         $address .= $zip_code;
                     }
 
-                    if ($zip_code) {
+                    if ($country) {
                         if ($address) {
                             $address .= ', ';
                         }
@@ -678,7 +687,7 @@ function get_order_receipt_in_plain_text($order_id)
                         $address .= $zip_code;
                     }
 
-                    if ($zip_code) {
+                    if ($country) {
                         if ($address) {
                             $address .= ', ';
                         }
@@ -756,7 +765,7 @@ function get_order_receipt_in_plain_text($order_id)
     // if tax is on, update grand total and prepare tax row
     if (ECOMMERCE_TAX == true) {
         // if there is an order discount, adjust tax
-        if ($order_discount > 0) {
+        if (($subtotal > 0) && ($order_discount > 0)) {
             $grand_tax = $grand_tax - ($grand_tax * ($order_discount / $subtotal));
         }
 
@@ -834,6 +843,19 @@ function get_order_receipt_in_plain_text($order_id)
 
         $output_surcharge =
             'Surcharge: ' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
+            "\n";
+    }
+
+    $output_installment = '';
+
+    // If the order was paid in installments with an installment charge, then add the charge to the
+    // total and output it, so the e-mailed total matches the HTML receipt (1 means no installment).
+    if (($installment_charges != 0) && ($payment_installment >= 2)) {
+        $grand_total = $grand_total + $installment_charges;
+
+        $output_installment =
+            lang('Number of Installments') . ': ' . $payment_installment . "\n" .
+            lang('Installment Charge') . ': ' . prepare_price_for_output($installment_charges * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
             "\n";
     }
 
@@ -1159,6 +1181,7 @@ function get_order_receipt_in_plain_text($order_id)
         $output_grand_shipping .
         $output_gift_card_discount .
         $output_surcharge .
+        $output_installment .
         'Total: ' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . $output_unconverted_total . "\n" .
         "\n" .
         $output_multicurrency_disclaimer .

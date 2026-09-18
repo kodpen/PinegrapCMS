@@ -220,7 +220,7 @@ if (!$_POST) {
             $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
             $output_contact_image = '
             <div class="col-auto overflow-hidden d-print-none rounded-circle bg-body-tertiary border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-                <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
+                <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
             </div>';
         }else{
             $output_contact_image = '
@@ -574,13 +574,13 @@ if (!$_POST) {
     $output_user_row = '';
 
     // If this order has a user, then show user info.
-    if ($username != '') {}
+    if ($username != '') {
         $output_user_row =
             '<div class="row" >
                 <span class="translateable col text-muted">' . lang('User') . ':</span>
                 <span class="col text-end"><a class="link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a></span>
             </div>';
-    //}
+    }
 
     $output_contact_row = '';
 
@@ -1308,7 +1308,7 @@ if (!$_POST) {
                     </div>';
                 }
 
-                $output_custom_field_2 = '';
+                $output_custom_field_3 = '';
 
                 // If the third custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
@@ -1757,7 +1757,7 @@ if (!$_POST) {
                 </div>';
             }
 
-            $output_custom_field_3_cell = '';
+            $output_custom_field_3 = '';
 
             // If the third custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
