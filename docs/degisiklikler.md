@@ -41,6 +41,71 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Sipariş akışı: hızlı sipariş, sepet ve widget yardımcılarındaki tanımsız değişkenler (2026-09-18)
+
+**Belirti (issue #36, D grubu).** (1) `express_order.php` çok alıcılı siparişte
+`$arrival_date`'i alıcı başına sıfırlamıyordu: teslim tarihi seçmeyen alıcı
+önceki alıcının tarihini devralıyordu. (2) `get_express_order.php` kargo toplamı
+`<script>` bloğunda `$surcharge`'ı basıyor, ama değişken yalnız kredi kartı
+yöntemi gösterilince tanımlanıyordu; PayPal/havale mağazalarda geçersiz
+JavaScript üretiliyor ve dinamik kargo toplamı çalışmıyordu. (3)
+`shipping_address_and_arrival.php` `get_address_type()`'ı tanımsız
+`$address_1` ile çağırıyordu, PO Box tespiti hiç yapılmıyordu. (4)
+`express_order.php`'de `pay_with_iyzico_return` CSRF ve çerez kapılarından muaf
+ama `add_fields_to_session()`'dan muaf değildi. (5) `cart_action.php` ve
+`widgets_cart.php` offline ödeme yetkisini `user.set_offline_payment` sütununu
+sorgulayarak arıyordu; gerçek sütun `user_set_offline_payment` olduğundan rol
+3 kullanıcıya verilen yetki hiç uygulanmıyordu. (6) `get_billing_information.php`,
+`get_order_form.php`, `get_order_preview.php`, `get_shipping_method.php` ve
+`get_shopping_cart.php`'de foreach değişkeni aynı adlı boolean bayrağı
+eziyor, bayrak `render_layout()`'a yanlış ulaşıyordu. (7) `add_pending_offers()`
+çok alıcılı dal atlanınca tanımsız `$ship_to_id` INSERT ediyordu. (8)
+`widgets_catalog.php` çapraz satış fiyatında 1000 üstü her değeri kuruş sayıyor,
+1000 TL üstü ürünü 100 kat ucuz gösteriyordu. (9) `widgets.php` takvim ileri/geri
+bağlantıları zaten sorgu dizesi taşıyan URL'ye ikinci `?` ekliyordu; arama
+LIKE deseni `escape_like()` olmadan kuruluyordu. (10) Bir dizi okuma tanımsız
+indeks/özellik uyarısı üretiyordu (`$discounted_order_items[..]['discount']`,
+`$row['special_offer_code']`, `$_POST` bekleyen teklif alanları,
+`$field['wysiwyg']` SELECT'te yokken okunuyor, `get_shopping_cart()` çıktı
+biriktiricileri ve `$quick_add['system']` başlatılmamış, `add_to_cart.php` /
+`check_for_products_in_cart.php` kapı sabiti taşımıyordu).
+
+**Düzeltme.** Tanımsız değişkenler kullanıldıkları dalın *dışında*, akışın
+başında başlatıldı; böylece hangi ödeme yöntemi veya alıcı dalı seçilse çıktı
+aynı şekli korur. `$arrival_date` her alıcı için boş `id/code/arrival_date`
+kalıbına çekilir ve bilinmeyen id mevcut "not currently available" hatasını
+korur. Üç iade modu tek `$is_gateway_return` boolean'ında toplandı
+(`submit_order.php` deseni) ve üç kapı da onu okur. Offline ödeme yetkisi
+`SHOW COLUMNS` denemesi yerine doğrudan `user_set_offline_payment` sütunundan
+okunur — `auth.php`'nin `$user['set_offline_payment']`e eşlediği sütun budur.
+Foreach değişkenleri `$currency_row` / `$referral_source_row` oldu.
+`get_order_form.php`'de seçim başlığı döngüde hesaplanan bayraklara bağlı
+olduğundan mobil hücre `<!--pg_selection_heading-->` yer tutucusu basar, başlık
+hesaplanınca `str_replace()` ile yerine konur. Çapraz satışta
+`get_cross_sell_items()` → `get_catalog_item()` fiyatı zaten 100'e böldüğü
+doğrulandı; sezgisel eşik yerine `(int) round($price * 100)`. Takvim bağlantısı
+`strtok($uri, '?')` ile taban yolu alır, mevcut `$_GET` parametreleri
+(`page=` dahil) `$base_params` ile korunur. Sepet düğme etiketleri boş config
+değerinde `lang('Checkout'|'Update'|'Apply')`'a düşer. `widgets_cart.php`'deki
+`@db()` sessizleştirmeleri kaldırıldı: `db()` hata durumunda zaten
+`output_error()` ile çıkar, `@` hiçbir şeyi bastırmıyordu. Kuruş dönüşümü
+`round()` ile; şema değişikliği yok.
+
+### Doğrulama
+
+`php -l` dokunulan 16 dosyada, `php tools/lint.php` (638 dosya) ve
+`php tools/check_lang.php` temiz; yeni dil anahtarı gerekmedi. Çalışan örnek
+kurulmadı (`tools/setup_sandbox.sh` koşturulmadı): PayPal/havale mağazada hızlı
+sipariş render'ı, çok alıcılı teslim tarihi gönderimi, rol 3 kullanıcıda
+offline ödeme kutusu, çapraz satış fiyatı ve takvim bağlantıları yalnız kod
+okuma ve statik denetimle kontrol edildi.
+
+**Açık kalan:** `get_express_order.php` Iyzipay taksit tablosu (~5800) ürün
+sahibi kararıyla dondurulmuş (CLAUDE.md 12. kural); orada uygulanan korumalar
+geri çekildi, her render'daki yedi `InstallmentInfo::retrieve()` çağrısı ve
+denetimsiz yanıt okuması olduğu gibi duruyor. Taksit bilgisinin önbelleklenmesi
+ayrı karar bekliyor.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
