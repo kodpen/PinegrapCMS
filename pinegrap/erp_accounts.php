@@ -92,6 +92,7 @@ pg_page_shell([
 
                     <nav id="button_bar" class="navigation" aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1" href="add_erp_account.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string' => 'Create')) . '</a>
+                        <a class="btn btn-sm btn-outline-secondary m-1" href="erp_accounts_import.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-2"></i>' . lang('Import CSV') . '</a>
                     </nav>
                 </div>
             </div>

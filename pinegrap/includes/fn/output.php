@@ -2401,6 +2401,7 @@ function output_menu($properties = false)
         case 'erp_accounts.php':
         case 'add_erp_account.php':
         case 'edit_erp_account.php':
+        case 'erp_accounts_import.php':
         case 'erp_invoices.php':
         case 'add_erp_invoice.php':
         case 'add_erp_manual_invoice.php':
