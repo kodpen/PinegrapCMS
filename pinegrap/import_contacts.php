@@ -173,6 +173,7 @@ if (!$_POST) {
     }
 
     // build list of column names for database query
+    $column_list = '';
     foreach ($column_names as $key => $value) {
         $column_list .= "$value, ";
     }
@@ -262,6 +263,9 @@ if (!$_POST) {
                     break;
                     
                 case 'only_import_unique_contacts':
+                    // Without an e-mail address column there is nothing to compare, so every contact counts as unique.
+                    $unique = true;
+                    
                     // if e-mail address data was supplied in CSV file
                     if (isset($email_address_key)) {
                         // if e-mail address is not valid, set e-mail address to empty

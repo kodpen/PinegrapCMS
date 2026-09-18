@@ -126,7 +126,7 @@ if (!$_POST) {
         // If this is a directory, then skip to next item.
 
 
-        if (($archive_item['filename'][mb_strlen($archive_item['filename']) - 1]) == '/') {
+        if (substr($archive_item['filename'], -1) == '/') {
             continue;
         }
 
@@ -303,7 +303,7 @@ if (!$_POST) {
             $title = '';
 
             // If a title tag was found, then remember title and remove title tags.
-            if ($matches[0] != '') {
+            if (!empty($matches[0])) {
                 $title = unhtmlspecialchars(trim($matches[1]));
 
                 // Remove all title tags from the HTML.
@@ -316,7 +316,7 @@ if (!$_POST) {
             $meta_description = '';
 
             // If a meta description was found, then remember it and remove meta description tags.
-            if ($matches[0] != '') {
+            if (!empty($matches[0])) {
                 preg_match('/content\s*=\s*["\'](.*?)["\']/i', $matches[0], $matches);
 
                 $meta_description = unhtmlspecialchars(trim($matches[1]));
@@ -331,7 +331,7 @@ if (!$_POST) {
             $meta_keywords = '';
 
             // If a meta keywords was found, then remember it and remove meta keywords tags.
-            if ($matches[0] != '') {
+            if (!empty($matches[0])) {
                 preg_match('/content\s*=\s*["\'](.*?)["\']/i', $matches[0], $matches);
 
                 $meta_keywords = unhtmlspecialchars(trim($matches[1]));
