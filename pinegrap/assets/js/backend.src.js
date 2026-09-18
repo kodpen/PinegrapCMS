@@ -440,12 +440,15 @@ $(document).ready(function () {
     });
 
 
-    $(".ui-sortable").sortable({
-        disable: '.no-sortable',
-        tolerance: 'touch',
+    // Default sortable for lists that opt in with the "pg-sortable" class and
+    // bring no sortable set-up of their own. The selector is deliberately not
+    // ".ui-sortable": jQuery UI puts that class on every container it has made
+    // sortable, so selecting it here would find the lists other screens
+    // configure themselves (dashboard widgets, product images, menu items) and
+    // overwrite their options after the fact.
+    $(".pg-sortable").sortable({
         containment: "parent",
         helper: 'clone',
-        handle: this,
         dropOnEmpty: false,
         delay: 300,
         revert: '300',
