@@ -22,7 +22,7 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="container-fluid">
         <span class="navbar-text me-auto" ><?=lang(array('string'=>'Site Info' ))?></span>
         <ul class="navbar-nav ms-auto">
-            <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
+            <li class="nav-item dropdown no-popover"  title="<?=lang('Software Theme')?>">
                 <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
                 <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
                     <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i><?=lang('Light')?></button></li>

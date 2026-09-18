@@ -1790,6 +1790,10 @@ function pg_pb_delete_product($product_id)
     db("DELETE FROM product_submit_form_fields WHERE product_id = '$product_id'");
     db("DELETE FROM offer_rules_products_xref WHERE product_id = '$product_id'");
 
+    // Barcodes are unique across the table, so a row left behind would keep a
+    // deleted product's barcode from ever being assigned again.
+    db("DELETE FROM product_barcodes WHERE product_id = '$product_id'");
+
     // The "!= 0" guard is inherited from edit_products.php: product_id 0 means
     // "belongs to a page", and dropping that guard deletes every page form.
     db("DELETE FROM form_fields WHERE (product_id = '$product_id') AND (product_id != '0')");
@@ -3513,10 +3517,6 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $output_submit_form_update_javascript = $v('pg_pb_submit_form_update_js');
 
     $output_submit_form_block = '' . '
-                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="submit_form_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="submit_form_custom_form_page_id">' . lang('Custom Form') . '</label>
                                                             <select class="form-select collapse-if-selected" id="submit_form_custom_form_page_id" name="submit_form_custom_form_page_id" onchange="product_submit_form_update_custom_form_fields()" data-bs-target="#submit_form_custom_form_page_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form')) )) . '-</option>' .  select_page($v('submit_form_custom_form_page_id'), 'custom form') . '</select>
@@ -3590,15 +3590,6 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-1">
-                                            <div class="form-check form-switch">
-                                                <input value="1" ' . '' . ' id="add_comment" name="add_comment" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#add_comment_row" />
-                                                <label class="form-check-label" for="add_comment">' . lang('Add Comment') . '</label>
-                                            </div>
 ';
 
     // The editable barcode card from edit_product.php, moved rather than
@@ -4976,11 +4967,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     <div class="col-12 col-lg-4">
                                                         <label class="form-label">' . lang('Quantity Type') . '</label>
                                                         <div class="form-check">
-                                                            <input value="One Form per Quantity" class="form-check-input" type="radio" id="form_quantity_type_one_form_per_quantity" name="form_quantity_type" checked="checked" />
+                                                            <input value="One Form per Quantity" class="form-check-input" type="radio" id="form_quantity_type_one_form_per_quantity" name="form_quantity_type"' . (($v('form_quantity_type', 'One Form per Quantity') !== 'One Form per Product') ? ' checked="checked"' : '') . ' />
                                                             <label class="form-check-label" for="form_quantity_type_one_form_per_quantity">' . lang('One form per quantity') . '</label>
                                                         </div>
                                                         <div class="form-check">
-                                                            <input value="One Form per Product" class="form-check-input" type="radio" id="form_quantity_type_one_form_per_product" name="form_quantity_type" />
+                                                            <input value="One Form per Product" class="form-check-input" type="radio" id="form_quantity_type_one_form_per_product" name="form_quantity_type"' . (($v('form_quantity_type', 'One Form per Quantity') === 'One Form per Product') ? ' checked="checked"' : '') . ' />
                                                             <label class="form-check-label" for="form_quantity_type_one_form_per_product">' . lang('One form per product') . '</label>
                                                         </div>
                                                     </div>',

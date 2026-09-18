@@ -96,7 +96,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?=lang(array('string'=>'Modify Products' ))?>
 		</span>
         <ul class="navbar-nav ms-auto">
-            <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
+            <li class="nav-item dropdown no-popover"  title="<?=lang('Software Theme')?>">
                 <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
                 <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
                     <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i><?=lang('Light')?></button></li>
@@ -138,7 +138,7 @@ if (!defined('PG_INIT_LOADED')) {
 						'data-bs-target'=>'#increase_price_row',
 						'options' => $price_change_method_options,
 						'onchange'=>'change_price_methodfunc()'))?>
-					<label for="enabled" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
+					<label for="change_price_method" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
 				</div>
 				<div class="popover fade bs-popover-bottom p-0 mb-2 w-100 collapse" id="increase_price_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -194,7 +194,7 @@ if (!defined('PG_INIT_LOADED')) {
 						'name' => 'inventory',
 						'class'=>'form-select',
 						'options' => $inventory_options))?>
-					<label for="enabled" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
+					<label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
 				</div>
 			</div>
 			<div class="col-12 col-sm-6 col-md-auto">
@@ -206,7 +206,7 @@ if (!defined('PG_INIT_LOADED')) {
 						'class'=>'form-select collapse-if-selected',
 						'data-bs-target'=>'#increase_quantity_row',
 						'options' => $inventory_quantity_process_options))?>
-					<label for="enabled" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
+					<label for="inventory_quantity_process" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
 				</div>
 				<div class="popover fade bs-popover-bottom p-0 mb-2 w-100 collapse" id="increase_quantity_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>

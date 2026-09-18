@@ -72,7 +72,7 @@ if (!$_POST) {
 		// remove commas from price
 		$price_value = str_replace(',', '', $raw_price_value);
 		// convert price from dollars to cents
-		$price_value = $price_value * 100;
+		$price_value = (int) round($price_value * 100);
 	}
 	else if(($edit_change_price_method == '3') || ($edit_change_price_method == '4')){
 		$price_value = $_POST['edit_price_value'];
@@ -187,7 +187,7 @@ if (!$_POST) {
 							} 
 							else if($edit_change_price_method == '3') {
 								$price = $row['price'];
-								$price = ((100 - $price_value) / 100) * $price;
+								$price = (int) round(((100 - $price_value) / 100) * $price);
 								if($price <= '0'){
 									$price =  $row['price'];
 									$number_of_undecerease_products++;
@@ -197,7 +197,7 @@ if (!$_POST) {
 							}
 							else if($edit_change_price_method == '4') {
 								$price = $row['price'];
-								$price = ((100 + $price_value) / 100) * $price;
+								$price = (int) round(((100 + $price_value) / 100) * $price);
 								$sql_new_prices = "price = '" . e($price) . "',";
 							}
 						}
@@ -548,6 +548,10 @@ if (!$_POST) {
                     db("DELETE FROM products_attributes_xref WHERE product_id = '" . e($product_id) . "'");
 
                     db("DELETE FROM product_submit_form_fields WHERE (product_id = '" . e($product_id) . "')");
+
+                    // Barcodes are unique across the table, so a row left behind would
+                    // keep a deleted product's barcode from ever being assigned again.
+                    db("DELETE FROM product_barcodes WHERE product_id = '" . e($product_id) . "'");
                     
                     // delete all of the keywords for this product
                     $query = "DELETE FROM tag_cloud_keywords WHERE (item_id = '" . escape($product_id) . "') AND (item_type = 'product')";
