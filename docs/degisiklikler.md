@@ -807,6 +807,54 @@ kullanımlar gibi).
 ağaçlarda çalışmıyor; `style_designer.js` başlığındaki `PineGrap` yazımı ayrı
 i18n dalına bırakıldı.
 
+## 2026.4.4 — Sepet tanı günlüğü kaldırıldı, ölü panel bağlantıları ve ölü kod temizlendi (2026-09-18)
+
+**Belirti (issue #49).** (1) `cart_action.php` her çağrıda `data/cart_action.log`
+dosyasına POST anahtarlarını, sipariş numarasını ve dal kararlarını yazıyor;
+sepet widget'ı da (`includes/fn/widgets_cart.php`) her render'da aynı dosyaya
+form adresini ve `request_uri`'yi ekliyordu. Üstüne, dosyaya doğrudan GET ile
+girilince düz metin bir "self-test" sayfası basılıyordu: `session_id()`,
+oturumdaki sipariş numarası, `OUTPUT_PATH`/`HOSTNAME` sabitleri ve günlüğün son
+30 satırı anonim ziyaretçiye gösteriliyordu. (2) Varyant Setleri ekranındaki
+"Filtreleri Temizle" (`product_builder.php`) ve `view_fields.php`
+breadcrumb'ındaki "Varyant Setleri" bağlantısı, kaldırılmış `view_products2.php`
+dosyasına gidiyor ve 404 veriyordu. (3) `view_comments.php` liste tablosunu var
+olmayan `delete_comment.php`'ye giden bir `<form>` içine alıyordu;
+`edit_comment.php` dış `else` dalında zaten boş olduğu bilinen `send_to`'yu bir
+kez daha test ediyordu. (4) `output.php` `datatables.min.css`'i iki kez
+bağlıyor, aktif menü seçiminde var olmayan `view_forms.php`'yi eşliyor ve menü
+oluşturucuda sonucu hiç okunmayan `selected_appmenu_items_array` sorgusunu
+çalıştırıyordu.
+
+**Yapılan.** Günlük yazan tüm satırlar (`$_pg_log` kapanışı, 13 çağrı ve
+widget'taki `file_put_contents`) silindi; kalıcı bir tanı mekanizması
+eklenmedi, çünkü bu günlük belirli bir hatayı bulmak için geçici konmuştu ve
+her ziyaretçi POST'unu diske yazmak canlı sistemde hem gereksiz I/O hem de
+bilgi sızıntısıdır. GET self-test'in yerine tek bir kapı kondu: istek POST
+değilse `go(HTTP_REFERER)` ile geldiği sayfaya, referrer yok veya yabancı
+hostsa ana sayfaya döner — `go()` yalnız aynı host'u kabul ettiğinden ek
+doğrulama gerekmedi. Kullanıcıya hiçbir şey basılmaz; bu URL'in var olma
+sebebi yalnız formu almaktır. Bağlantılar `view_products.php?mode=variant_sets`
+adresine çevrildi (o dosya `mode` parametresini zaten işliyor; oturumdaki
+filtre anahtarlarına dokunulmadı). `view_comments.php`'deki sahte form
+`<div class="disable_shortcut">` ile değiştirildi ve `get_token_field()`
+çağrısı düştü; `backend.src.js`'in bu sınıfı yalnız form dışlama seçicisi
+olarak kullandığı doğrulandı. `edit_comment.php`'de dış `else` yalnız
+`view_comments.php`'ye yönlendirir. `output.php`'de ikinci `<link>`,
+`case 'view_forms.php':` etiketi ve ölü sorgu kaldırıldı; `clean_up.php`
+başka bir dala bırakıldı.
+
+### Doğrulama
+
+`php -l` (dokunulan 7 dosya), `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan bir örnek kurulmadı: düzeltilen
+bağlantılar tıklanmadı, sepet POST akışı ve yeni GET yönlendirmesi tarayıcıda
+denenmedi; doğruluk `view_products.php`'nin `mode` işleyişi, `go()`
+semantiği ve `backend.src.js` seçicilerinin statik okunmasına dayanır.
+
+**Açık kalan:** yok. `clean_up.php` içindeki eski günlük referansı ayrı dalda
+(`r2-h-orphan-legacy-files`) ele alınıyor.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

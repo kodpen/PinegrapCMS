@@ -222,7 +222,6 @@ function output_control_panel_header_includes($include_assistant = true)
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css" />
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.css" />
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2-bootstrap-5-theme.min.css" />
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/material-icons/material-icons.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/material-icons/material-icons.css') . '"/>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.js"></script>
@@ -2361,7 +2360,6 @@ function output_menu($properties = false)
         case 'edit_calendar_event_location.php':
             $active_menu = 4;
             break;
-        case 'view_forms.php':
         case 'view_submitted_forms.php':
         case 'add_submitted_form.php':
         case 'edit_submitted_form.php':
@@ -2563,21 +2561,6 @@ function output_menu($properties = false)
             // reached from the sidebar of the settings modal.
 
     }
-
-
-
-
-
-    $output_pinned_menu_items = '';
-    // get list of pinned links for this user.
-    $query = "SELECT selected_appmenu_items_array " . "FROM user " . "WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
-    $order_string = mysqli_fetch_array($result)['selected_appmenu_items_array'];
-
-
-
-
-
 
     $output_all_menu_items = '';
     foreach ($menu_items as $key => $options) {

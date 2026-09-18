@@ -1372,18 +1372,6 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                       . '<input type="hidden" name="send_to" value="' . h($request_uri) . '">'
                       . '<input type="hidden" name="page_id" value="' . (isset($_pg_cart_pid) ? (int)$_pg_cart_pid : 0) . '">'
                       . '</form>';
-    // Diagnostic log — same file as cart_action.php uses, so the operator
-    // can inspect both the render-side action URL and the POST-side receipt
-    // in one stream. Strips after we confirm everything works end-to-end.
-    @file_put_contents(
-        PG_FUNCTIONS_DIR . '/data/cart_action.log',
-        '[' . date('c') . '] RENDER cart widget · form_id=' . $cart_form_id
-            . ' · action=' . $cart_action_url
-            . ' · request_uri=' . $request_uri
-            . ' · widget_id=' . (int)$widget_id . "\n",
-        FILE_APPEND | LOCK_EX
-    );
-
     // Update button HTML — submits through the cart form via form="..." attr.
     // w-100 so it fills the d-grid container in the default layout (designer
     // can override the class via wrapper if a smaller button is preferred).

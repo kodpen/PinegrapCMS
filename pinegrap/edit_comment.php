@@ -586,30 +586,9 @@ if (!$_POST) {
     if ($liveform->get_field_value('send_to') != '') {
         header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . $bookmark);
         
-    // else there is not a send to, so build the return URL
+    // else there is not a send to, so forward user to the view comments screen
     } else {
-        $query_string = get_query_string_for_page_url($page_type, $item_id, $item_type);
-
-        // If this is the first item that is being added to the query string, then add question mark.
-        if (mb_strpos($query_string, '?') === false) {
-            $query_string .= '?';
-            
-        // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-        } else {
-            $query_string .= '&';
-        }
-
-        // Add comments parameter now.
-        $query_string .= 'comments=all';
-        // if there is a send to set, then forward user to send to
-        if ($_POST['send_to'] != '') {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id) . $query_string . $bookmark);
-            
-        // else there is not a send to set, so forward user to view products screen.
-        } else {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_comments.php');
-        }
-       
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_comments.php');
     }
     
     $liveform->remove_form();
