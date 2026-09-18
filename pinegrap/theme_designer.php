@@ -374,98 +374,98 @@ if (!$_POST) {
                         <div class="content" style="display: none">
                             <div id="ad_region_' . $object['region_name'] . '_ad_region_layout" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_ad_region_layout"></a>
-                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_ad_region_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_background_borders_and_spacing"></a>
-                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_text" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_text"></a>
-                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_headings" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_headings"></a>
-                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none">
                                     <div id="ad_region_' . $object['region_name'] . '_headings_general" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_headings_general"></a>
-                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="ad_region_' . $object['region_name'] . '_heading_1" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_heading_1"></a>
-                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="ad_region_' . $object['region_name'] . '_heading_2" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_heading_2"></a>
-                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="ad_region_' . $object['region_name'] . '_heading_3" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_heading_3"></a>
-                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="ad_region_' . $object['region_name'] . '_heading_4" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_heading_4"></a>
-                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="ad_region_' . $object['region_name'] . '_heading_5" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_heading_5"></a>
-                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="ad_region_' . $object['region_name'] . '_heading_6" class="module">
                                         <a class="anchor" name="ad_region_' . $object['region_name'] . '_heading_6"></a>
-                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                 </div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_links" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_links"></a>
-                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_links_hover" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_links_hover"></a>
-                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_image_primary" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_image_primary"></a>
-                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_image_secondary" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_image_secondary"></a>
-                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_ad_region_menu" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_ad_region_menu"></a>
-                                <div class="header">Menu <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Menu') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_ad_region_menu_item" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_ad_region_menu_item"></a>
-                                <div class="header">Menu Item <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Menu Item') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_ad_region_menu_item_hover" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_ad_region_menu_item_hover"></a>
-                                <div class="header">Menu Item Hover <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Menu Item Hover') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="ad_region_' . $object['region_name'] . '_ad_region_previous_and_next_buttons" class="module">
                                 <a class="anchor" name="ad_region_' . $object['region_name'] . '_ad_region_previous_and_next_buttons"></a>
-                                <div class="header">Previous &amp; Next Buttons <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . h(lang('Previous & Next Buttons')) . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                         </div>
@@ -480,37 +480,37 @@ if (!$_POST) {
                         <div class="content" style="display: none">
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_layout" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_layout"></a>
-                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_background_borders_and_spacing"></a>
-                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_menu_item" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_menu_item"></a>
-                                <div class="header">Menu Item <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Menu Item') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_menu_item_hover" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_menu_item_hover"></a>
-                                <div class="header">Menu Item Hover <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Menu Item Hover') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_submenu_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_submenu_background_borders_and_spacing"></a>
-                                <div class="header">Sub-Menu <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Sub-Menu') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_submenu_menu_item" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_submenu_menu_item"></a>
-                                <div class="header">Sub-Menu Item <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Sub-Menu Item') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="menu_region_' . $object['region_name'] . '_menu_region_submenu_menu_item_hover" class="module">
                                 <a class="anchor" name="menu_region_' . $object['region_name'] . '_menu_region_submenu_menu_item_hover"></a>
-                                <div class="header">Sub-Menu Item Hover <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Sub-Menu Item Hover') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                         </div>
@@ -525,78 +525,78 @@ if (!$_POST) {
                         <div class="content" style="display: none">
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_layout" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_layout"></a>
-                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_background_borders_and_spacing"></a>
-                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_text" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_text"></a>
-                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_headings" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_headings"></a>
-                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none">
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_headings_general" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_headings_general"></a>
-                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_1" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_1"></a>
-                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_2" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_2"></a>
-                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_3" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_3"></a>
-                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_4" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_4"></a>
-                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_5" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_5"></a>
-                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_6" class="module">
                                         <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_heading_6"></a>
-                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                 </div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_links" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_links"></a>
-                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_links_hover" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_links_hover"></a>
-                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_image_primary" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_image_primary"></a>
-                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_image_secondary" class="module">
                                 <a class="anchor" name="' . $object['area'] . '_r' . $object['row'] . 'c' . $object['col'] . '_image_secondary"></a>
-                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                         </div>
@@ -653,78 +653,78 @@ if (!$_POST) {
                         <div class="content" style="display: none">
                             <div id="page_content_left_layout" class="module">
                                 <a class="anchor" name="page_content_left_layout"></a>
-                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_left_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="page_content_left_background_borders_and_spacing"></a>
-                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_left_text" class="module">
                                 <a class="anchor" name="page_content_left_text"></a>
-                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_left_headings" class="module">
                                 <a class="anchor" name=""></a>
-                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none">
                                     <div id="page_content_left_headings_general" class="module">
                                         <a class="anchor" name="page_content_left_headings_general"></a>
-                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_left_heading_1" class="module">
                                         <a class="anchor" name="page_content_left_heading_1"></a>
-                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_left_heading_2" class="module">
                                         <a class="anchor" name="page_content_left_heading_2"></a>
-                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_left_heading_3" class="module">
                                         <a class="anchor" name="page_content_left_heading_3"></a>
-                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_left_heading_4" class="module">
                                         <a class="anchor" name="page_content_left_heading_4"></a>
-                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_left_heading_5" class="module">
                                         <a class="anchor" name="page_content_left_heading_5"></a>
-                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_left_heading_6" class="module">
                                         <a class="anchor" name="page_content_left_heading_6"></a>
-                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                 </div>
                             </div>
                             <div id="page_content_left_links" class="module">
                                 <a class="anchor" name="page_content_left_links"></a>
-                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_left_links_hover" class="module">
                                 <a class="anchor" name="page_content_left_links_hover"></a>
-                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_left_image_primary" class="module">
                                 <a class="anchor" name="page_content_left_image_primary"></a>
-                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_left_image_secondary" class="module">
                                 <a class="anchor" name="page_content_left_image_secondary"></a>
-                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                         </div>
@@ -744,78 +744,78 @@ if (!$_POST) {
                         <div class="content" style="display: none">
                             <div id="page_content_right_layout" class="module">
                                 <a class="anchor" name="page_content_right_layout"></a>
-                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_right_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="page_content_right_background_borders_and_spacing"></a>
-                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_right_text" class="module">
                                 <a class="anchor" name="page_content_right_text"></a>
-                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_right_headings" class="module">
                                 <a class="anchor" name="page_content_right_headings"></a>
-                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none">
                                     <div id="page_content_right_headings_general" class="module">
                                         <a class="anchor" name="page_content_right_headings_general"></a>
-                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_right_heading_1" class="module">
                                         <a class="anchor" name="page_content_right_heading_1"></a>
-                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_right_heading_2" class="module">
                                         <a class="anchor" name="page_content_right_heading_2"></a>
-                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_right_heading_3" class="module">
                                         <a class="anchor" name="page_content_right_heading_3"></a>
-                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_right_heading_4" class="module">
                                         <a class="anchor" name="page_content_right_heading_4"></a>
-                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_right_heading_5" class="module">
                                         <a class="anchor" name="page_content_right_heading_5"></a>
-                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="page_content_right_heading_6" class="module">
                                         <a class="anchor" name="page_content_right_heading_6"></a>
-                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                 </div>
                             </div>
                             <div id="page_content_right_links" class="module">
                                 <a class="anchor" name="page_content_right_links"></a>
-                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_right_links_hover" class="module">
                                 <a class="anchor" name="page_content_right_links_hover"></a>
-                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_right_image_primary" class="module">
                                 <a class="anchor" name="page_content_right_image_primary"></a>
-                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="page_content_right_image_secondary" class="module">
                                 <a class="anchor" name="page_content_right_image_secondary"></a>
-                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                         </div>
@@ -844,78 +844,78 @@ if (!$_POST) {
                         <div class="content" style="display: none">
                             <div id="sidebar_layout" class="module">
                                 <a class="anchor" name="sidebar_layout"></a>
-                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="sidebar_background_borders_and_spacing" class="module">
                                 <a class="anchor" name="sidebar_background_borders_and_spacing"></a>
-                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="sidebar_text" class="module">
                                 <a class="anchor" name="sidebar_text"></a>
-                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="sidebar_headings" class="module">
                                 <a class="anchor" name="sidebar_headings"></a>
-                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none">
                                     <div id="sidebar_headings_general" class="module">
                                         <a class="anchor" name="sidebar_headings_general"></a>
-                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="sidebar_heading_1" class="module">
                                         <a class="anchor" name="sidebar_heading_1"></a>
-                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="sidebar_heading_2" class="module">
                                         <a class="anchor" name="sidebar_heading_2"></a>
-                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="sidebar_heading_3" class="module">
                                         <a class="anchor" name="sidebar_heading_3"></a>
-                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="sidebar_heading_4" class="module">
                                         <a class="anchor" name="sidebar_heading_4"></a>
-                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="sidebar_heading_5" class="module">
                                         <a class="anchor" name="sidebar_heading_5"></a>
-                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="sidebar_heading_6" class="module">
                                         <a class="anchor" name="sidebar_heading_6"></a>
-                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                 </div>
                             </div>
                             <div id="sidebar_links" class="module">
                                 <a class="anchor" name="sidebar_links"></a>
-                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="sidebar_links_hover" class="module">
                                 <a class="anchor" name="sidebar_links_hover"></a>
-                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="sidebar_image_primary" class="module">
                                 <a class="anchor" name="sidebar_image_primary"></a>
-                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                             <div id="sidebar_image_secondary" class="module">
                                 <a class="anchor" name="sidebar_image_secondary"></a>
-                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                 <div class="content" style="display: none"></div>
                             </div>
                         </div>
@@ -1020,7 +1020,7 @@ if (!$_POST) {
     <html lang="en">
         <head>
             <meta charset="utf-8">
-            <title>Theme Designer</title>
+            <title>' . lang('Theme Designer') . '</title>
             ' . output_control_panel_header_includes() . '
             <link rel="stylesheet" media="screen" type="text/css" href="assets/lib/colorpicker/css/colorpicker.css" />
             <script type="text/javascript" src="assets/lib/colorpicker/js/colorpicker.js"></script>
@@ -1063,25 +1063,25 @@ if (!$_POST) {
                 </div>
                 <div id="button_bar">
                     <a href="javascript:void(0)" onclick="open_advanced_styling_from_button_bar()">CSS</a>
-                    <a href="javascript:void(0)" onclick="document.form.submit();">Update Preview Pane</a>
-                    <a href="javascript:void(0)" onclick="open_view_source()">View Source</a>
+                    <a href="javascript:void(0)" onclick="document.form.submit();">' . lang('Update Preview Pane') . '</a>
+                    <a href="javascript:void(0)" onclick="open_view_source()">' . lang('View Source') . '</a>
                     <div id="view_source" style="display: none">
                         <div style="margin-bottom: 1.5em"><textarea id="view_source_textarea">' . h($_SESSION['software']['theme_designer'][$_GET['id']]['code']) . '</textarea></div>
-                        <div><input type="button" value="Close" class="submit-primary" onclick="$(\'#view_source\').dialog(\'close\')" /></div>
+                        <div><input type="button" value="' . lang('Close') . '" class="submit-primary" onclick="$(\'#view_source\').dialog(\'close\')" /></div>
                     </div>
                 </div>
                 <div id="content">
                     <div id="content_header">
                         ' . $liveform->output_errors() . '
                         ' . $liveform->output_notices() . '
-                        <h1 style="margin-bottom: .5em">Theme Designer</h1>
+                        <h1 style="margin-bottom: .5em">' . lang('Theme Designer') . '</h1>
                         <table class="field">
                             <tr>
-                                <td>Preview Page:</td>
+                                <td>' . lang('Preview Page') . ':</td>
                                 <td>' . h($page_to_preview_name) . '</td>
                             </tr>
                             <tr>
-                                <td>Page Style:</td>
+                                <td>' . lang('Page Style') . ':</td>
                                 <td>' . $display_page_style_name . '</td>
                             </tr>
                             <tr>
@@ -1102,98 +1102,98 @@ if (!$_POST) {
                                     </div>
                                     <div id="site_wide_text" class="module">
                                         <a class="anchor" name="site_wide_text"></a>
-                                        <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_headings" class="module">
                                         <a class="anchor" name="site_wide_headings"></a>
-                                        <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none">
                                             <div id="site_wide_headings_general" class="module">
                                                 <a class="anchor" name="site_wide_headings_general"></a>
-                                                <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_wide_heading_1" class="module">
                                                 <a class="anchor" name="site_wide_heading_1"></a>
-                                                <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_wide_heading_2" class="module">
                                                 <a class="anchor" name="site_wide_heading_2"></a>
-                                                <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_wide_heading_3" class="module">
                                                 <a class="anchor" name="site_wide_heading_3"></a>
-                                                <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_wide_heading_4" class="module">
                                                 <a class="anchor" name="site_wide_heading_4"></a>
-                                                <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_wide_heading_5" class="module">
                                                 <a class="anchor" name="site_wide_heading_5"></a>
-                                                <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_wide_heading_6" class="module">
                                                 <a class="anchor" name="site_wide_heading_6"></a>
-                                                <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <div id="site_wide_links" class="module">
                                         <a class="anchor" name="site_wide_links"></a>
-                                        <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_links_hover" class="module">
                                         <a class="anchor" name="site_wide_links_hover"></a>
-                                        <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_paragraph" class="module">
                                         <a class="anchor" name="site_wide_paragraph"></a>
-                                        <div class="header">Paragraph <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Paragraph') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_input" class="module">
                                         <a class="anchor" name="site_wide_input"></a>
-                                        <div class="header">Form Fields <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Form Fields') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_primary_buttons" class="module">
                                         <a class="anchor" name="site_wide_primary_buttons"></a>
-                                        <div class="header">Primary Buttons <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Primary Buttons') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_primary_buttons_hover" class="module">
                                         <a class="anchor" name="site_wide_primary_buttons_hover"></a>
-                                        <div class="header">Primary Buttons Hover <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Primary Buttons Hover') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_secondary_buttons" class="module">
                                         <a class="anchor" name="site_wide_secondary_buttons"></a>
-                                        <div class="header">Secondary Buttons <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Secondary Buttons') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_secondary_buttons_hover" class="module">
                                         <a class="anchor" name="site_wide_secondary_buttons_hover"></a>
-                                        <div class="header">Secondary Buttons Hover <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Secondary Buttons Hover') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_image_primary" class="module">
                                         <a class="anchor" name="site_wide_image_primary"></a>
-                                        <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                     <div id="site_wide_image_secondary" class="module">
                                         <a class="anchor" name="site_wide_image_secondary"></a>
-                                        <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                        <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                         <div class="content" style="display: none"></div>
                                     </div>
                                 </div>
@@ -1216,27 +1216,27 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="site_top_layout" class="module">
                                                 <a class="anchor" name="site_top_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_top_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="site_top_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_top_text" class="module">
                                                 <a class="anchor" name="site_top_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_top_links" class="module">
                                                 <a class="anchor" name="site_top_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_top_links_hover" class="module">
                                                 <a class="anchor" name="site_top_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1254,78 +1254,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="site_header_layout" class="module">
                                                 <a class="anchor" name="site_header_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_header_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="site_header_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_header_text" class="module">
                                                 <a class="anchor" name="site_header_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_header_headings" class="module">
                                                 <a class="anchor" name="site_header_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="site_header_headings_general" class="module">
                                                         <a class="anchor" name="site_header_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_header_heading_1" class="module">
                                                         <a class="anchor" name="site_header_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_header_heading_2" class="module">
                                                         <a class="anchor" name="site_header_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_header_heading_3" class="module">
                                                         <a class="anchor" name="site_header_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_header_heading_4" class="module">
                                                         <a class="anchor" name="site_header_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_header_heading_5" class="module">
                                                         <a class="anchor" name="site_header_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_header_heading_6" class="module">
                                                         <a class="anchor" name="site_header_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="site_header_links" class="module">
                                                 <a class="anchor" name="site_header_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_header_links_hover" class="module">
                                                 <a class="anchor" name="site_header_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_header_image_primary" class="module">
                                                 <a class="anchor" name="site_header_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_header_image_secondary" class="module">
                                                 <a class="anchor" name="site_header_image_secondary"></a>
-                                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1348,78 +1348,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="area_header_layout" class="module">
                                                 <a class="anchor" name="area_header_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_header_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="area_header_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_header_text" class="module">
                                                 <a class="anchor" name="area_header_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_header_headings" class="module">
                                                 <a class="anchor" name="area_header_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="area_header_headings_general" class="module">
                                                         <a class="anchor" name="area_header_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_header_heading_1" class="module">
                                                         <a class="anchor" name="area_header_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_header_heading_2" class="module">
                                                         <a class="anchor" name="area_header_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_header_heading_3" class="module">
                                                         <a class="anchor" name="area_header_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_header_heading_4" class="module">
                                                         <a class="anchor" name="area_header_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_header_heading_5" class="module">
                                                         <a class="anchor" name="area_header_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_header_heading_6" class="module">
                                                         <a class="anchor" name="area_header_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="area_header_links" class="module">
                                                 <a class="anchor" name="area_header_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_header_links_hover" class="module">
                                                 <a class="anchor" name="area_header_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_header_image_primary" class="module">
                                                 <a class="anchor" name="area_header_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_header_image_secondary" class="module">
                                                 <a class="anchor" name="area_header_image_secondary"></a>
-                                                <div class="header">Secondary Images <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1447,78 +1447,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="page_header_layout" class="module">
                                                 <a class="anchor" name="page_header_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_header_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="page_header_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_header_text" class="module">
                                                 <a class="anchor" name="page_header_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_header_headings" class="module">
                                                 <a class="anchor" name="page_header_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="page_header_headings_general" class="module">
                                                         <a class="anchor" name="page_header_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_header_heading_1" class="module">
                                                         <a class="anchor" name="page_header_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_header_heading_2" class="module">
                                                         <a class="anchor" name="page_header_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_header_heading_3" class="module">
                                                         <a class="anchor" name="page_header_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_header_heading_4" class="module">
                                                         <a class="anchor" name="page_header_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_header_heading_5" class="module">
                                                         <a class="anchor" name="page_header_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_header_heading_6" class="module">
                                                         <a class="anchor" name="page_header_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="page_header_links" class="module">
                                                 <a class="anchor" name="page_header_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_header_links_hover" class="module">
                                                 <a class="anchor" name="page_header_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_header_image_primary" class="module">
                                                 <a class="anchor" name="page_header_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_header_image_secondary" class="module">
                                                 <a class="anchor" name="page_header_image_secondary"></a>
-                                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1536,78 +1536,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="page_content_layout" class="module">
                                                 <a class="anchor" name="page_content_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_content_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="page_content_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_content_text" class="module">
                                                 <a class="anchor" name="page_content_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_content_headings" class="module">
                                                 <a class="anchor" name="page_content_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="page_content_headings_general" class="module">
                                                         <a class="anchor" name="page_content_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_content_heading_1" class="module">
                                                         <a class="anchor" name="page_content_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_content_heading_2" class="module">
                                                         <a class="anchor" name="page_content_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_content_heading_3" class="module">
                                                         <a class="anchor" name="page_content_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_content_heading_4" class="module">
                                                         <a class="anchor" name="page_content_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_content_heading_5" class="module">
                                                         <a class="anchor" name="page_content_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_content_heading_6" class="module">
                                                         <a class="anchor" name="page_content_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="page_content_links" class="module">
                                                 <a class="anchor" name="page_content_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_content_links_hover" class="module">
                                                 <a class="anchor" name="page_content_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_content_image_primary" class="module">
                                                 <a class="anchor" name="page_content_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_content_image_secondary" class="module">
                                                 <a class="anchor" name="page_content_image_secondary"></a>
-                                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1628,78 +1628,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="page_footer_layout" class="module">
                                                 <a class="anchor" name="page_footer_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_footer_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="page_footer_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_footer_text" class="module">
                                                 <a class="anchor" name="page_footer_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_footer_headings" class="module">
                                                 <a class="anchor" name="page_footer_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="page_footer_headings_general" class="module">
                                                         <a class="anchor" name="page_footer_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_footer_heading_1" class="module">
                                                         <a class="anchor" name="page_footer_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_footer_heading_2" class="module">
                                                         <a class="anchor" name="page_footer_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_footer_heading_3" class="module">
                                                         <a class="anchor" name="page_footer_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_footer_heading_4" class="module">
                                                         <a class="anchor" name="page_footer_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_footer_heading_5" class="module">
                                                         <a class="anchor" name="page_footer_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="page_footer_heading_6" class="module">
                                                         <a class="anchor" name="page_footer_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="page_footer_links" class="module">
                                                 <a class="anchor" name="page_footer_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_footer_links_hover" class="module">
                                                 <a class="anchor" name="page_footer_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_footer_image_primary" class="module">
                                                 <a class="anchor" name="page_footer_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="page_footer_image_secondary" class="module">
                                                 <a class="anchor" name="page_footer_image_secondary"></a>
-                                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1717,78 +1717,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="area_footer_layout" class="module">
                                                 <a class="anchor" name="area_footer_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_footer_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="area_footer_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_footer_text" class="module">
                                                 <a class="anchor" name="area_footer_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_footer_headings" class="module">
                                                 <a class="anchor" name="area_footer_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="area_footer_headings_general" class="module">
                                                         <a class="anchor" name="area_footer_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_footer_heading_1" class="module">
                                                         <a class="anchor" name="area_footer_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_footer_heading_2" class="module">
                                                         <a class="anchor" name="area_footer_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_footer_heading_3" class="module">
                                                         <a class="anchor" name="area_footer_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_footer_heading_4" class="module">
                                                         <a class="anchor" name="area_footer_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_footer_heading_5" class="module">
                                                         <a class="anchor" name="area_footer_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="area_footer_heading_6" class="module">
                                                         <a class="anchor" name="area_footer_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="area_footer_links" class="module">
                                                 <a class="anchor" name="area_footer_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_footer_links_hover" class="module">
                                                 <a class="anchor" name="area_footer_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_footer_image_primary" class="module">
                                                 <a class="anchor" name="area_footer_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="area_footer_image_secondary" class="module">
                                                 <a class="anchor" name="area_footer_image_secondary"></a>
-                                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1811,78 +1811,78 @@ if (!$_POST) {
                                         <div class="content" style="display: none">
                                             <div id="site_footer_layout" class="module">
                                                 <a class="anchor" name="site_footer_layout"></a>
-                                                <div class="header">Layout <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Layout') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_footer_background_borders_and_spacing" class="module">
                                                 <a class="anchor" name="site_footer_background_borders_and_spacing"></a>
-                                                <div class="header">Background, Borders and Spacing <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Background, Borders and Spacing') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_footer_text" class="module">
                                                 <a class="anchor" name="site_footer_text"></a>
-                                                <div class="header">Text <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Text') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_footer_headings" class="module">
                                                 <a class="anchor" name="site_footer_headings"></a>
-                                                <div class="header">Headings <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Headings') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none">
                                                     <div id="site_footer_headings_general" class="module">
                                                         <a class="anchor" name="site_footer_headings_general"></a>
-                                                        <div class="header">General <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('General') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_footer_heading_1" class="module">
                                                         <a class="anchor" name="site_footer_heading_1"></a>
-                                                        <div class="header">Heading 1 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 1') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_footer_heading_2" class="module">
                                                         <a class="anchor" name="site_footer_heading_2"></a>
-                                                        <div class="header">Heading 2 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 2') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_footer_heading_3" class="module">
                                                         <a class="anchor" name="site_footer_heading_3"></a>
-                                                        <div class="header">Heading 3 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 3') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_footer_heading_4" class="module">
                                                         <a class="anchor" name="site_footer_heading_4"></a>
-                                                        <div class="header">Heading 4 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 4') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_footer_heading_5" class="module">
                                                         <a class="anchor" name="site_footer_heading_5"></a>
-                                                        <div class="header">Heading 5 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 5') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                     <div id="site_footer_heading_6" class="module">
                                                         <a class="anchor" name="site_footer_heading_6"></a>
-                                                        <div class="header">Heading 6 <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                        <div class="header">' . lang('Heading 6') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                         <div class="content" style="display: none"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div id="site_footer_links" class="module">
                                                 <a class="anchor" name="site_footer_links"></a>
-                                                <div class="header">Links <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_footer_links_hover" class="module">
                                                 <a class="anchor" name="site_footer_links_hover"></a>
-                                                <div class="header">Links Hover Effect <span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Links Hover Effect') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_footer_image_primary" class="module">
                                                 <a class="anchor" name="site_footer_image_primary"></a>
-                                                <div class="header">Primary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Primary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                             <div id="site_footer_image_secondary" class="module">
                                                 <a class="anchor" name="site_footer_image_secondary"></a>
-                                                <div class="header">Secondary Images<span class="heading_arrow_image closed">&nbsp;</span></div>
+                                                <div class="header">' . lang('Secondary Images') . ' <span class="heading_arrow_image closed">&nbsp;</span></div>
                                                 <div class="content" style="display: none"></div>
                                             </div>
                                         </div>
@@ -1895,7 +1895,7 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="send_to" value="' . h($send_to) . '" />
                         <div id="content_footer" class="buttons" style="padding-bottom: 1em\9;">
-                            <input type="submit" name="submit_button" value="Save" class="submit-primary">&nbsp;&nbsp;&nbsp;<input type="submit" name="submit_button" value="Duplicate" class="submit-secondary">&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="Cancel" onclick="theme_designer_cancel_confirm(\'' . h(escape_javascript($send_to)) . '\')" class="submit-secondary">
+                            <button type="submit" name="submit_button" value="Save" class="submit-primary">' . lang('Save') . '</button>&nbsp;&nbsp;&nbsp;<button type="submit" name="submit_button" value="Duplicate" class="submit-secondary">' . lang('Duplicate') . '</button>&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="' . lang('Cancel') . '" onclick="theme_designer_cancel_confirm(\'' . h(escape_javascript($send_to)) . '\')" class="submit-secondary">
                         </div>
                     </form>
                 </div>
@@ -2093,11 +2093,11 @@ if (!$_POST) {
         if (preg_match('/edit_theme_file.php/i', $_POST['send_to']) > 0) {
             // create a new liveform for the edit theme file script
             $liveform_edit_theme_file = new liveform('edit_theme_file');
-            $liveform_edit_theme_file->add_notice('The theme was edited successfully.');
+            $liveform_edit_theme_file->add_notice(lang('The theme was edited successfully.'));
         }
         
         // log that the theme was edited
-        log_activity("theme (" . $file_name . ") was edited", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'theme ({var:1}) was edited', 'vars' => $file_name)), $_SESSION['sessionusername']);
 
         // clear theme data from session
         unset($_SESSION['software']['theme_designer'][$_POST['id']]);
@@ -2338,7 +2338,7 @@ if (!$_POST) {
         }
         
         // log that the theme was edited
-        log_activity("a new copy of the theme (" . $file_name . ") was created", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'a new copy of the theme ({var:1}) was created', 'vars' => $file_name)), $_SESSION['sessionusername']);
 
         // clear theme data from session
         unset($_SESSION['software']['theme_designer'][$_POST['id']]);

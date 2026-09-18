@@ -1425,7 +1425,7 @@ function pg_chat_handle_backend_action($action, $request)
             return pg_chat_attach($conversation_id, $name, $data);
     }
 
-    return array('status' => 'error', 'message' => 'Unknown action.');
+    return array('status' => 'error', 'message' => lang('Unknown action.'));
 }
 
 // Panel-side attachment upload: EXISTING conversations only (no attaching
@@ -1513,7 +1513,7 @@ function pg_chat_render_backend_launcher()
 
     if ((int) USER_ROLE <= 2) {
         $ai = array(
-            'label' => 'AI Chat',
+            'label' => lang('AI Chat'),
             'script' => defined('CHAT_AI_SCRIPT_URL') ? CHAT_AI_SCRIPT_URL : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js',
             'api' => defined('CHAT_AI_API_URL') ? CHAT_AI_API_URL : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/'
         );
@@ -2224,7 +2224,7 @@ function pg_chat_handle_site_action($action, $request)
     }
 
     if ($action != 'site_chat_bootstrap' && !pg_chat_site_token_ok($request)) {
-        return array('status' => 'error', 'message' => 'Invalid token.');
+        return array('status' => 'error', 'message' => lang('Invalid token.'));
     }
 
     $conversation_id = isset($request['conversation_id']) ? (int) $request['conversation_id'] : 0;
@@ -2317,7 +2317,7 @@ function pg_chat_handle_site_action($action, $request)
             return array('status' => 'success', 'data' => array('saved' => true));
     }
 
-    return array('status' => 'error', 'message' => 'Unknown action.');
+    return array('status' => 'error', 'message' => lang('Unknown action.'));
 }
 
 // ── Site bubble rendering ────────────────────────────────────────────────

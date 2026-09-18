@@ -33,7 +33,7 @@ if (defined('CLOUDFLARE_API_TOKEN') && defined('CLOUDFLARE_ZONE_ID')) {
         $liveform->remove_form();
         $liveformsettings = new liveform('settings');
 
-        $liveformsettings->mark_error('', 'Cloudflare API Token or Zone ID is empty.');
+        $liveformsettings->mark_error('', lang('Cloudflare API Token or Zone ID is empty.'));
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
         exit();
     }
@@ -41,7 +41,7 @@ if (defined('CLOUDFLARE_API_TOKEN') && defined('CLOUDFLARE_ZONE_ID')) {
     $liveform->remove_form();
     $liveformsettings = new liveform('settings');
 
-    $liveformsettings->mark_error('', 'Cloudflare API Token or Zone ID is not defined.');
+    $liveformsettings->mark_error('', lang('Cloudflare API Token or Zone ID is not defined.'));
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
     exit();
 }
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : '';
     $type   = isset($_POST['type']) ? $_POST['type'] : '';
 
-    // payload hazırlama
+    // Build the record payload from the posted fields.
     $payload = [
         'type' => $type,
         'name' => isset($_POST['name']) ? $_POST['name'] : '',
@@ -164,39 +164,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
 
-    // işlem
+    // Run the requested action.
     if ($action === 'add_record') {
         $resp = cf_request('POST', "zones/{$CF_ZONE_ID}/dns_records", $payload, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $msg = 'Add record failed';
+            $msg = lang('Add record failed');
             if (!empty($resp['json']['errors'][0]['message'])) {
                 $msg .= ': ' . $resp['json']['errors'][0]['message'];
             }
             $liveform->mark_error('error', $msg);
         } else {
-            $liveform->add_notice('Record added successfully.');
+            $liveform->add_notice(lang('Record added successfully.'));
         }
     }
 
     if ($action === 'edit_record') {
         $resp = cf_request('PUT', "zones/{$CF_ZONE_ID}/dns_records/" . $_POST['id'], $payload, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $msg = 'Edit record failed';
+            $msg = lang('Edit record failed');
             if (!empty($resp['json']['errors'][0]['message'])) {
                 $msg .= ': ' . $resp['json']['errors'][0]['message'];
             }
             $liveform->mark_error('error', $msg);
         } else {
-            $liveform->add_notice('Record updated successfully.');
+            $liveform->add_notice(lang('Record updated successfully.'));
         }
     }
 
     if ($action === 'delete_record') {
         $resp = cf_request('DELETE', "zones/{$CF_ZONE_ID}/dns_records/" . $_POST['id'], null, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', 'Delete record failed');
+            $liveform->mark_error('error', lang('Delete record failed'));
         } else {
-            $liveform->add_notice('Record deleted successfully.');
+            $liveform->add_notice(lang('Record deleted successfully.'));
         }
     }
 
@@ -206,9 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/development_mode", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', 'Development Mode toggle failed');
+            $liveform->mark_error('error', lang('Development Mode toggle failed'));
         } else {
-            $liveform->add_notice('Development Mode updated to '.$value.'.');
+            $liveform->add_notice(lang(array('string' => 'Development Mode updated to {var:1}.', 'vars' => $value)));
         }
     }
     
@@ -217,9 +217,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'medium';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/security_level", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', 'Under Attack Mode toggle failed');
+            $liveform->mark_error('error', lang('Under Attack Mode toggle failed'));
         } else {
-            $liveform->add_notice('Under Attack Mode updated to '.$value.'.');
+            $liveform->add_notice(lang(array('string' => 'Under Attack Mode updated to {var:1}.', 'vars' => $value)));
         }
     }
     
@@ -228,9 +228,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/always_use_https", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', 'Always Use HTTPS toggle failed');
+            $liveform->mark_error('error', lang('Always Use HTTPS toggle failed'));
         } else {
-            $liveform->add_notice('Always Use HTTPS updated to '.$value.'.');
+            $liveform->add_notice(lang(array('string' => 'Always Use HTTPS updated to {var:1}.', 'vars' => $value)));
         }
     }
     
@@ -239,9 +239,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/brotli", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', 'Brotli toggle failed');
+            $liveform->mark_error('error', lang('Brotli toggle failed'));
         } else {
-            $liveform->add_notice('Brotli updated to '.$value.'.');
+            $liveform->add_notice(lang(array('string' => 'Brotli updated to {var:1}.', 'vars' => $value)));
         }
     }
     
@@ -250,13 +250,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/rocket_loader", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $msg = 'Rocket Loader toggle failed (feature may be deprecated)';
+            $msg = lang('Rocket Loader toggle failed (feature may be deprecated)');
             if (!empty($resp['json']['errors'][0]['message'])) {
                 $msg .= ': ' . $resp['json']['errors'][0]['message'];
             }
             $liveform->mark_error('error', $msg);
         } else {
-            $liveform->add_notice('Rocket Loader updated to '.$value.'.');
+            $liveform->add_notice(lang(array('string' => 'Rocket Loader updated to {var:1}.', 'vars' => $value)));
         }
     }
     
@@ -264,30 +264,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'clear_cache') {
         $resp = cf_request('POST', "zones/{$CF_ZONE_ID}/purge_cache", ['purge_everything' => true], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', 'Cache purge failed');
+            $liveform->mark_error('error', lang('Cache purge failed'));
         } else {
-            $liveform->add_notice('Cache successfully purged.');
+            $liveform->add_notice(lang('Cache successfully purged.'));
         }
     }
 
-    // ✅ PRG pattern: POST sonrası redirect
+    // PRG pattern: redirect after POST so a refresh does not repeat the action.
     header("Location: ".$_SERVER['PHP_SELF']);
     exit;
 }
 
 // -------------------- FETCH DATA --------------------
 
-// DNS Records (per_page=100 ile sayfalama)
+// DNS records (paginated, per_page=100)
 $resp_dns = cf_request('GET', "zones/{$CF_ZONE_ID}/dns_records?per_page=100", null, $CF_API_BASE, $CF_API_TOKEN);
 
 $permission_errors = array();
 
 if (!($resp_dns['status'] === 200 && !empty($resp_dns['json']['success']))) {
-    $err = isset($resp_dns['json']['errors'][0]['message']) ? $resp_dns['json']['errors'][0]['message'] : 'Unknown error';
+    $err = isset($resp_dns['json']['errors'][0]['message']) ? $resp_dns['json']['errors'][0]['message'] : lang('Unknown error');
     if ($resp_dns['status'] === 403 && (stripos($err, 'Authentication') !== false || stripos($err, 'permission') !== false)) {
-        $permission_errors[] = 'This token does not have the required permission for DNS Management (Zone.DNS.Edit).';
+        $permission_errors[] = lang('This token does not have the required permission for DNS Management (Zone.DNS.Edit).');
     } else {
-        $permission_errors[] = 'DNS records request failed: ' . $err;
+        $permission_errors[] = lang(array('string' => 'DNS records request failed: {var:1}', 'vars' => $err));
     }
 }
 
@@ -325,11 +325,11 @@ $rocket = ($resp_rocket['status'] === 200 && !empty($resp_rocket['json']['succes
 $audit_logs = array();
 $audit_error = '';
 
-// Account ID'yi config'den veya API'den al
+// Read the account ID from config, or fall back to the zone lookup below.
 if (defined('CLOUDFLARE_ACCOUNT_ID') && !empty(CLOUDFLARE_ACCOUNT_ID)) {
     $CF_ACCOUNT_ID = CLOUDFLARE_ACCOUNT_ID;
 } else {
-    // Config'de yoksa API'den zone'dan account ID'yi çek
+    // Not in config: fetch the account ID from the zone via the API.
     $resp_zone = cf_request('GET', "zones/{$CF_ZONE_ID}", null, $CF_API_BASE, $CF_API_TOKEN);
     if ($resp_zone['status'] === 200 && !empty($resp_zone['json']['success'])) {
         $CF_ACCOUNT_ID = isset($resp_zone['json']['result']['account']['id']) 
@@ -337,7 +337,7 @@ if (defined('CLOUDFLARE_ACCOUNT_ID') && !empty(CLOUDFLARE_ACCOUNT_ID)) {
             : '';
     }
     if (empty($CF_ACCOUNT_ID)) {
-        $audit_error = 'CLOUDFLARE_ACCOUNT_ID could not be determined. Define it in your config or ensure token has Zone:Read permission.';
+        $audit_error = lang('CLOUDFLARE_ACCOUNT_ID could not be determined. Define it in your config or ensure token has Zone:Read permission.');
     }
 }
 
@@ -360,7 +360,7 @@ if (!empty($CF_ACCOUNT_ID)) {
     if ($resp_audit['status'] === 200 && !empty($resp_audit['json']['success'])) {
         $audit_logs = isset($resp_audit['json']['result']) ? $resp_audit['json']['result'] : array();
     } else {
-        $audit_error = 'Audit Logs API error (HTTP '.$resp_audit['status'].')';
+        $audit_error = lang(array('string' => 'Audit Logs API error (HTTP {var:1})', 'vars' => $resp_audit['status']));
         if (!empty($resp_audit['json']['errors'][0]['message'])) {
             $audit_error .= ': ' . $resp_audit['json']['errors'][0]['message'];
         }
@@ -468,7 +468,7 @@ if (!empty($audit_logs)) {
 } else {
     $audit_error_msg = !empty($audit_error) 
         ? $audit_error 
-        : 'No audit logs found for this period.';
+        : lang('No audit logs found for this period.');
     $audit_rows = '<tr><td colspan="5" class="text-center text-danger">'.$audit_error_msg.'</td></tr>';
 }
 
@@ -501,7 +501,7 @@ if (!empty($firewall_events)) {
         </tr>';
     }
 } else {
-    $fw_rows = '<tr><td colspan="5" class="text-center text-muted">No firewall events found for this period.</td></tr>';
+    $fw_rows = '<tr><td colspan="5" class="text-center text-muted">' . lang('No firewall events found for this period.') . '</td></tr>';
 }
 
 
@@ -693,7 +693,7 @@ foreach ($records as $r) {
             <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal" '.$attrs.'>
                 <i class="bi bi-pencil-square"></i>
             </button>
-            <form method="post" style="display:inline" onsubmit="event.preventDefault(); var f=this; pgConfirm({title:\'Sil\', message:\'Silmek istediğine emin misin?\', confirmText:\'Sil\', cancelText:\'İptal\', variant:\'danger\'}).then(function(ok){if(ok) f.submit();}); return false;">
+            <form method="post" style="display:inline" onsubmit="event.preventDefault(); var f=this; pgConfirm({title:\'' . h(escape_javascript(lang('Delete'))) . '\', message:\'' . h(escape_javascript(lang('Are you sure you want to delete this record?'))) . '\', confirmText:\'' . h(escape_javascript(lang('Delete'))) . '\', cancelText:\'' . h(escape_javascript(lang('Cancel'))) . '\', variant:\'danger\'}).then(function(ok){if(ok) f.submit();}); return false;">
                 '.get_token_field().'
                 <input type="hidden" name="action" value="delete_record">
                 <input type="hidden" name="id" value="' . htmlspecialchars((string)$r['id']) . '">
@@ -703,8 +703,8 @@ foreach ($records as $r) {
         <td><span class="badge bg-info">' . htmlspecialchars((string)$r['type']) . '</span></td>
         <td>'.truncate($r['name'],50).'</td>
         <td>'.truncate($data_content,50).'</td>
-        <td>'.(($r['ttl'] == 1) ? 'Auto' : (int)$r['ttl']).'</td>
-        <td>'.(!empty($r['proxied']) ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>').'</td>
+        <td>'.(($r['ttl'] == 1) ? lang('Auto') : (int)$r['ttl']).'</td>
+        <td>'.(!empty($r['proxied']) ? '<span class="badge bg-success">' . lang('Yes') . '</span>' : '<span class="badge bg-secondary">' . lang('No') . '</span>').'</td>
     </tr>';
 }
 
@@ -718,11 +718,11 @@ $active_cus = ($period === 'custom') ? 'active' : '';
 
 // -------------------- PRINT --------------------
 print pg_page_shell([
-    'title'   => 'Cloudflare Tools',
+    'title'   => lang('Cloudflare Tools'),
     'extra classes' => 'setting',
     'icon'    => 'setting',
-    'heading' => 'Cloudflare Tools',
-    'cancel'  => ['enable'=>true,'title'=>'Cancel']
+    'heading' => lang('Cloudflare Tools'),
+    'cancel'  => ['enable'=>true,'title'=>lang('Cancel')]
 ]) . '
 <main id="content" class="container-fluid">
 
@@ -733,19 +733,19 @@ print pg_page_shell([
     <!-- Period Tabs -->
     <ul class="nav nav-tabs mb-3">
       <li class="nav-item">
-        <a class="nav-link '.$active_24h.'" href="?period=24h">24 Hours</a>
+        <a class="nav-link '.$active_24h.'" href="?period=24h">' . lang('24 Hours') . '</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link '.$active_7d.'" href="?period=7d">7 Days</a>
+        <a class="nav-link '.$active_7d.'" href="?period=7d">' . lang('7 Days') . '</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link '.$active_30d.'" href="?period=30d">30 Days</a>
+        <a class="nav-link '.$active_30d.'" href="?period=30d">' . lang('30 Days') . '</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link '.$active_all.'" href="?period=all">All Time</a>
+        <a class="nav-link '.$active_all.'" href="?period=all">' . lang('All Time') . '</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link '.$active_cus.'" href="?period=custom">Custom</a>
+        <a class="nav-link '.$active_cus.'" href="?period=custom">' . lang('Custom') . '</a>
       </li>
     </ul>
 
@@ -761,7 +761,7 @@ print pg_page_shell([
           <input type="date" name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
         </div>
         <div class="col-md-4">
-          <button type="submit" class="btn btn-primary">Apply</button>
+          <button type="submit" class="btn btn-primary">' . lang('Apply') . '</button>
         </div>
       </div>
     </form>
@@ -770,23 +770,23 @@ print pg_page_shell([
     <!-- Analytics -->
     <div class="row mb-4">
       <div class="col-md-2"><div class="card text-center"><div class="card-body">
-        <h6>Requests</h6>
+        <h6>' . lang('Requests') . '</h6>
         <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'requests',$start_date,$end_date).'</p>
       </div></div></div>
       <div class="col-md-2"><div class="card text-center"><div class="card-body">
-        <h6>Unique Visitors</h6>
+        <h6>' . lang('Unique Visitors') . '</h6>
         <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'uniques',$start_date,$end_date).'</p>
       </div></div></div>
       <div class="col-md-2"><div class="card text-center"><div class="card-body">
-        <h6>Bandwidth</h6>
+        <h6>' . lang('Bandwidth') . '</h6>
         <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'bandwidth',$start_date,$end_date).'</p>
       </div></div></div>
       <div class="col-md-2"><div class="card text-center"><div class="card-body">
-        <h6>Percent Cached</h6>
+        <h6>' . lang('Percent Cached') . '</h6>
         <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'percent_cached',$start_date,$end_date).'</p>
       </div></div></div>
       <div class="col-md-2"><div class="card text-center"><div class="card-body">
-        <h6>Cached Data</h6>
+        <h6>' . lang('Cached Data') . '</h6>
         <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'cached_bytes',$start_date,$end_date).'</p>
       </div></div></div>
     </div>
@@ -794,7 +794,7 @@ print pg_page_shell([
     <!-- Settings -->
     <div class="card my-4">
       <div class="card-header bg-transparent border-0 fw-bold">
-        <i class="bi bi-sliders"></i> Settings
+        <i class="bi bi-sliders"></i> ' . lang('Settings') . '
       </div>
       <div class="card-body">
         <!-- Development Mode -->
@@ -803,7 +803,7 @@ print pg_page_shell([
           <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" onchange="this.form.submit()" '.($dev_mode==="on"?"checked":"").'>
-            <label class="form-check-label">Development Mode</label>
+            <label class="form-check-label">' . lang('Development Mode') . '</label>
           </div>
         </form>
         <!-- Under Attack Mode -->
@@ -812,7 +812,7 @@ print pg_page_shell([
           <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" onchange="this.form.submit()" '.($uam_mode==="under_attack"?"checked":"").'>
-            <label class="form-check-label">Under Attack Mode</label>
+            <label class="form-check-label">' . lang('Under Attack Mode') . '</label>
           </div>
         </form>
         <!-- Always Use HTTPS -->
@@ -821,7 +821,7 @@ print pg_page_shell([
           <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" onchange="this.form.submit()" '.($always_https==="on"?"checked":"").'>
-            <label class="form-check-label">Always Use HTTPS</label>
+            <label class="form-check-label">' . lang('Always Use HTTPS') . '</label>
           </div>
         </form>
         <!-- Brotli -->
@@ -830,7 +830,7 @@ print pg_page_shell([
           <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" onchange="this.form.submit()" '.($brotli==="on"?"checked":"").'>
-            <label class="form-check-label">Brotli</label>
+            <label class="form-check-label">' . lang('Brotli') . '</label>
           </div>
         </form>
         <!-- Rocket Loader -->
@@ -839,13 +839,13 @@ print pg_page_shell([
           <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" onchange="this.form.submit()" '.($rocket==="on"?"checked":"").'>
-            <label class="form-check-label">Rocket Loader</label>
+            <label class="form-check-label">' . lang('Rocket Loader') . '</label>
           </div>
         </form>
         <!-- Clear Cache -->
         <form method="post" class=" mx-3 my-5">'.get_token_field().'
           <input type="hidden" name="action" value="clear_cache">
-          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Clear Cache</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> ' . lang('Clear Cache') . '</button>
         </form>
       </div>
     </div>
@@ -853,12 +853,12 @@ print pg_page_shell([
     <!-- DNS Records -->
     <div class="card my-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <label class="form-label mb-0 fw-bold"><i class="bi bi-hdd-network"></i> DNS Records</label>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-circle"></i> Add Record</button>
+        <label class="form-label mb-0 fw-bold"><i class="bi bi-hdd-network"></i> ' . lang('DNS Records') . '</label>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-circle"></i> ' . lang('Add Record') . '</button>
       </div>
       <div class="card-body">
         <table class="table chart table-striped w-100">
-          <thead ><tr><th>Actions</th><th>Type</th><th>Name</th><th>Content</th><th>TTL</th><th>Proxied</th></tr></thead>
+          <thead ><tr><th>' . lang('Actions') . '</th><th>' . lang('Type') . '</th><th>' . lang('Name') . '</th><th>' . lang('Content') . '</th><th>' . lang('TTL') . '</th><th>' . lang('Proxied') . '</th></tr></thead>
           <tbody>'.$table_rows.'</tbody>
         </table>
       </div>
@@ -867,7 +867,7 @@ print pg_page_shell([
     <!-- Zone Logs -->
     <div class="card my-4">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <label class="form-label mb-0 fw-bold"><i class="bi bi-list-columns-reverse"></i> Zone Logs</label>
+        <label class="form-label mb-0 fw-bold"><i class="bi bi-list-columns-reverse"></i> ' . lang('Zone Logs') . '</label>
       </div>
       <div class="card-body">
 
@@ -875,24 +875,24 @@ print pg_page_shell([
         <form method="get" class="mb-4">
           <div class="row g-2 align-items-end">
             <div class="col-md-3">
-              <label class="form-label small">Start Date</label>
+              <label class="form-label small">' . lang('Start Date') . '</label>
               <input type="date" name="log_start" value="'.$log_start_val.'" class="form-control" required>
             </div>
             <div class="col-md-3">
-              <label class="form-label small">End Date</label>
+              <label class="form-label small">' . lang('End Date') . '</label>
               <input type="date" name="log_end" value="'.$log_end_val.'" class="form-control" required>
             </div>
             <div class="col-md-2">
-              <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> Refresh Logs</button>
+              <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> ' . lang('Refresh Logs') . '</button>
             </div>
           </div>
         </form>
 
         <!-- Audit Logs -->
-        <h6 class="mb-3"><i class="bi bi-shield-check"></i> Audit Logs <small class="text-muted">(Account Activity)</small></h6>
+        <h6 class="mb-3"><i class="bi bi-shield-check"></i> ' . lang('Audit Logs') . ' <small class="text-muted">(' . lang('Account Activity') . ')</small></h6>
         <div class="table-responsive mb-4">
           <table class="table table-sm table-striped w-100">
-            <thead><tr><th>Timestamp</th><th>Action</th><th>Actor</th><th>Resource</th><th>Zone</th></tr></thead>
+            <thead><tr><th>' . lang('Timestamp') . '</th><th>' . lang('Action') . '</th><th>' . lang('Actor') . '</th><th>' . lang('Resource') . '</th><th>' . lang('Zone') . '</th></tr></thead>
 
 
 
@@ -901,10 +901,10 @@ print pg_page_shell([
         </div>
 
         <!-- Firewall Events -->
-        <h6 class="mb-3"><i class="bi bi-shield-exclamation"></i> Firewall Events <small class="text-muted">(Security Events)</small></h6>
+        <h6 class="mb-3"><i class="bi bi-shield-exclamation"></i> ' . lang('Firewall Events') . ' <small class="text-muted">(' . lang('Security Events') . ')</small></h6>
         <div class="table-responsive">
           <table class="table table-sm table-striped w-100">
-            <thead><tr><th>Time</th><th>Action</th><th>Client IP</th><th>Requests</th><th>Ray ID</th></tr></thead>
+            <thead><tr><th>' . lang('Time') . '</th><th>' . lang('Action') . '</th><th>' . lang('Client IP') . '</th><th>' . lang('Requests') . '</th><th>' . lang('Ray ID') . '</th></tr></thead>
             <tbody>'.$fw_rows.'</tbody>
           </table>
         </div>
@@ -920,46 +920,46 @@ print pg_page_shell([
     <form method="post" class="modal-content">
       '.get_token_field().'
       <input type="hidden" name="action" value="add_record">
-      <div class="modal-header"><h5 class="modal-title">Add DNS Record</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h5 class="modal-title">' . lang('Add DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="mb-3"><label class="form-label">Type</label>
+        <div class="mb-3"><label class="form-label">' . lang('Type') . '</label>
           <select name="type" id="add_type" class="form-select" required>
             <option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option>
             <option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option>
             <option value="SRV">SRV</option><option value="CAA">CAA</option>
           </select>
         </div>
-        <div class="mb-3"><label class="form-label">Name</label><input type="text" name="name" class="form-control" required></div>
-        <div class="mb-3 common-content"><label class="form-label">Content</label><input type="text" name="content" class="form-control"></div>
-        <div class="mb-3"><label class="form-label">TTL</label>
-          <select name="ttl" class="form-select"><option value="1">Auto</option><option value="60">1 min</option><option value="300">5 min</option><option value="3600" selected>1 hour</option><option value="86400">1 day</option></select>
+        <div class="mb-3"><label class="form-label">' . lang('Name') . '</label><input type="text" name="name" class="form-control" required></div>
+        <div class="mb-3 common-content"><label class="form-label">' . lang('Content') . '</label><input type="text" name="content" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">' . lang('TTL') . '</label>
+          <select name="ttl" class="form-select"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600" selected>' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
         </div>
-        <div class="form-check proxied-only"><input class="form-check-input" type="checkbox" name="proxied" id="add_proxied"><label class="form-check-label" for="add_proxied">Proxied</label></div>
+        <div class="form-check proxied-only"><input class="form-check-input" type="checkbox" name="proxied" id="add_proxied"><label class="form-check-label" for="add_proxied">' . lang('Proxied') . '</label></div>
         <!-- MX extra -->
-        <div class="mb-3 type-extra type-mx d-none"><label class="form-label">Priority</label><input type="number" name="priority" class="form-control"></div>
+        <div class="mb-3 type-extra type-mx d-none"><label class="form-label">' . lang('Priority') . '</label><input type="number" name="priority" class="form-control"></div>
         <!-- SRV extra -->
         <div class="type-extra type-srv d-none">
-          <div class="mb-3"><label>Service</label><input type="text" name="service" class="form-control"></div>
-          <div class="mb-3"><label>Protocol</label><input type="text" name="proto" class="form-control"></div>
-          <div class="mb-3"><label>Priority</label><input type="number" name="priority" class="form-control"></div>
-          <div class="mb-3"><label>Weight</label><input type="number" name="weight" class="form-control"></div>
-          <div class="mb-3"><label>Port</label><input type="number" name="port" class="form-control"></div>
-          <div class="mb-3"><label>Target</label><input type="text" name="target" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Service') . '</label><input type="text" name="service" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Protocol') . '</label><input type="text" name="proto" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Priority') . '</label><input type="number" name="priority" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Weight') . '</label><input type="number" name="weight" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Port') . '</label><input type="number" name="port" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Target') . '</label><input type="text" name="target" class="form-control"></div>
         </div>
         <!-- CAA extra -->
         <div class="type-extra type-caa d-none">
-          <div class="mb-3"><label>Flags</label><input type="number" name="flags" class="form-control"></div>
-          <div class="mb-3"><label>Tag</label>
+          <div class="mb-3"><label>' . lang('Flags') . '</label><input type="number" name="flags" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Tag') . '</label>
             <select name="tag" class="form-select">
               <option value="issue">issue</option>
               <option value="issuewild">issuewild</option>
               <option value="iodef">iodef</option>
             </select>
           </div>
-          <div class="mb-3"><label>Value</label><input type="text" name="value" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Value') . '</label><input type="text" name="value" class="form-control"></div>
         </div>
       </div>
-      <div class="modal-footer"><button type="submit" class="btn btn-primary">Add</button></div>
+      <div class="modal-footer"><button type="submit" class="btn btn-primary">' . lang('Add') . '</button></div>
     </form>
   </div>
 </div>
@@ -971,49 +971,49 @@ print pg_page_shell([
       '.get_token_field().'
       <input type="hidden" name="action" value="edit_record">
       <input type="hidden" name="id" id="edit_id">
-      <div class="modal-header"><h5 class="modal-title">Edit DNS Record</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h5 class="modal-title">' . lang('Edit DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="mb-3"><label>Type</label>
+        <div class="mb-3"><label>' . lang('Type') . '</label>
           <select name="type" id="edit_type" class="form-select" required>
             <option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option>
             <option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option>
             <option value="SRV">SRV</option><option value="CAA">CAA</option>
           </select>
         </div>
-        <div class="mb-3"><label>Name</label><input type="text" name="name" id="edit_name" class="form-control" required></div>
-        <div class="mb-3 common-content"><label>Content</label><input type="text" name="content" id="edit_content" class="form-control"></div>
-        <div class="mb-3"><label>TTL</label>
+        <div class="mb-3"><label>' . lang('Name') . '</label><input type="text" name="name" id="edit_name" class="form-control" required></div>
+        <div class="mb-3 common-content"><label>' . lang('Content') . '</label><input type="text" name="content" id="edit_content" class="form-control"></div>
+        <div class="mb-3"><label>' . lang('TTL') . '</label>
           <select name="ttl" id="edit_ttl" class="form-select">
-            <option value="1">Auto</option><option value="60">1 min</option><option value="300">5 min</option>
-            <option value="3600">1 hour</option><option value="86400">1 day</option>
+            <option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option>
+            <option value="3600">' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option>
           </select>
         </div>
-        <div class="form-check proxied-only"><input class="form-check-input" type="checkbox" name="proxied" id="edit_proxied"><label class="form-check-label" for="edit_proxied">Proxied</label></div>
+        <div class="form-check proxied-only"><input class="form-check-input" type="checkbox" name="proxied" id="edit_proxied"><label class="form-check-label" for="edit_proxied">' . lang('Proxied') . '</label></div>
         <!-- MX extra -->
-        <div class="mb-3 type-extra type-mx d-none"><label>Priority</label><input type="number" name="priority" id="edit_priority" class="form-control"></div>
+        <div class="mb-3 type-extra type-mx d-none"><label>' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority" class="form-control"></div>
         <!-- SRV extra -->
         <div class="type-extra type-srv d-none">
-          <div class="mb-3"><label>Service</label><input type="text" name="service" id="edit_service" class="form-control"></div>
-          <div class="mb-3"><label>Protocol</label><input type="text" name="proto" id="edit_proto" class="form-control"></div>
-          <div class="mb-3"><label>Priority</label><input type="number" name="priority" id="edit_priority2" class="form-control"></div>
-          <div class="mb-3"><label>Weight</label><input type="number" name="weight" id="edit_weight" class="form-control"></div>
-          <div class="mb-3"><label>Port</label><input type="number" name="port" id="edit_port" class="form-control"></div>
-          <div class="mb-3"><label>Target</label><input type="text" name="target" id="edit_target" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Service') . '</label><input type="text" name="service" id="edit_service" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Protocol') . '</label><input type="text" name="proto" id="edit_proto" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority2" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Weight') . '</label><input type="number" name="weight" id="edit_weight" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Port') . '</label><input type="number" name="port" id="edit_port" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Target') . '</label><input type="text" name="target" id="edit_target" class="form-control"></div>
         </div>
         <!-- CAA extra -->
         <div class="type-extra type-caa d-none">
-          <div class="mb-3"><label>Flags</label><input type="number" name="flags" id="edit_flags" class="form-control"></div>
-          <div class="mb-3"><label>Tag</label>
+          <div class="mb-3"><label>' . lang('Flags') . '</label><input type="number" name="flags" id="edit_flags" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Tag') . '</label>
             <select name="tag" id="edit_tag" class="form-select">
               <option value="issue">issue</option>
               <option value="issuewild">issuewild</option>
               <option value="iodef">iodef</option>
             </select>
           </div>
-          <div class="mb-3"><label>Value</label><input type="text" name="value" id="edit_value" class="form-control"></div>
+          <div class="mb-3"><label>' . lang('Value') . '</label><input type="text" name="value" id="edit_value" class="form-control"></div>
         </div>
       </div>
-      <div class="modal-footer"><button type="submit" class="btn btn-warning">Save</button></div>
+      <div class="modal-footer"><button type="submit" class="btn btn-warning">' . lang('Save') . '</button></div>
     </form>
   </div>
 </div>
@@ -1074,7 +1074,7 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById("edit_value").value = button.getAttribute("data-value") || "";
     }
 
-    // type seçimine göre alanları aç
+    // show the fields that match the selected type
     toggleExtraFields(document.getElementById("edit_type"), "edit");
   });
 });

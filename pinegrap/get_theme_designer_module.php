@@ -337,7 +337,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Advanced Styling:</td>
+                        <td>' . lang('Advanced Styling') . ':</td>
                         <td>
                             <span onclick="open_advanced_styling()" id="advanced_styling_button">CSS</span>
                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$area . '[' . $object . '][' . $module . '][advanced_styling]', 'id'=>'advanced_styling_textarea', 'value'=>'', 'style'=>'display: none')) . '
@@ -354,7 +354,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Pre Styling:</td>
+                        <td>' . lang('Pre Styling') . ':</td>
                         <td>
                             <span onclick="open_pre_styling()" id="advanced_styling_button">CSS</span>
                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$area . '[' . $object . '][' . $module . '][pre_styling]', 'id'=>'pre_styling_textarea', 'value'=>'', 'style'=>'display: none')) . '
@@ -372,8 +372,8 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Position:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array('Top Left' => 'top_left', 'Top Right' => 'top_right', 'Bottom Left' => 'bottom_left', 'Bottom Right' => 'bottom_right'))) . '</td>
+                        <td>' . lang('Position') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array(lang('Top Left') => 'top_left', lang('Top Right') => 'top_right', lang('Bottom Left') => 'bottom_left', lang('Bottom Right') => 'bottom_right'))) . '</td>
                     </tr>';
                 break;
 
@@ -392,15 +392,15 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td><label for="' . $area . '_' . $object . '_' . $module . '_previous_and_next_buttons_toggle">Show Buttons:<label></td>
+                        <td><label for="' . $area . '_' . $object . '_' . $module . '_previous_and_next_buttons_toggle">' . lang('Show Buttons') . ':<label></td>
                         <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_previous_and_next_buttons_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][previous_and_next_buttons_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_previous_and_next_buttons_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_previous_and_next_buttons_horizontal_offset_row"' . $previous_and_next_buttons_option_row_style . '>
-                        <td style="padding-left: 2em">Horizontal Offset:</td>
+                        <td style="padding-left: 2em">' . lang('Horizontal Offset') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][previous_and_next_buttons_horizontal_offset]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_previous_and_next_buttons_vertical_offset_row"' . $previous_and_next_buttons_option_row_style . '>
-                        <td style="padding-left: 2em">Vertical Offset:</td>
+                        <td style="padding-left: 2em">' . lang('Vertical Offset') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][previous_and_next_buttons_vertical_offset]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>';
                 break;
@@ -432,24 +432,24 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td><label for="' . $area . '_' . $object . '_' . $module . '_borders_toggle">Borders:<label></td>
+                        <td><label for="' . $area . '_' . $object . '_' . $module . '_borders_toggle">' . lang('Borders') . ':<label></td>
                         <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_borders_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][borders_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_border_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_size_row"' . $border_options_row_style . '>
-                        <td style="padding-left: 2em">Size:</td>
+                        <td style="padding-left: 2em">' . lang('Size') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][border_size]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_color_row"' . $border_options_row_style . '>
-                        <td style="padding-left: 2em">Color:</td>
+                        <td style="padding-left: 2em">' . lang('Color') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'hidden', 'name'=>$area . '[' . $object . '][' . $module . '][border_color]', 'maxlength'=>'7', 'size'=>'7', 'value'=>'')) . '<span class="color_picker_toggle" style="background-color: ' . h($border_color_value) . '"></span>&nbsp;<span class="text_beside_input">' . h($border_color_label) . '</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_style_row"' . $border_options_row_style . '>
-                        <td style="padding-left: 2em">Style:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_style]', 'options'=>array('Solid' => 'solid', 'Dashed' => 'dashed', 'Dotted' => 'dotted', 'Double' => 'double', 'Groove' => 'groove', 'Hidden' => 'hidden', 'Inset' => 'inset', 'Inherit' => 'inherit', 'Outset' => 'outset', 'Ridge' => 'ridge'))) . '</td>
+                        <td style="padding-left: 2em">' . lang('Style') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_style]', 'options'=>array(lang('Solid') => 'solid', lang('Dashed') => 'dashed', lang('Dotted') => 'dotted', lang('Double') => 'double', lang('Groove') => 'groove', lang('Hidden') => 'hidden', lang('Inset') => 'inset', lang('Inherit') => 'inherit', lang('Outset') => 'outset', lang('Ridge') => 'ridge'))) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_position_row"' . $border_options_row_style . '>
-                        <td style="padding-left: 2em">Position:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_position]', 'options'=>array('All' => 'all', 'Top' => 'top', 'Right' => 'right', 'Bottom' => 'bottom', 'Left' => 'left'))) . '</td>
+                        <td style="padding-left: 2em">' . lang('Position') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_position]', 'options'=>array(lang('All') => 'all', lang('Top') => 'top', lang('Right') => 'right', lang('Bottom') => 'bottom', lang('Left') => 'left'))) . '</td>
                     </tr>';
                 break;
                 
@@ -493,28 +493,28 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Background:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_type]', 'options'=>array('' => '', 'Solid Color' => 'solid_color', 'Image' => 'image'), 'onchange'=>'show_or_hide_background_options(this.options[this.selectedIndex].value, \'' . $area . '_' . $object . '_' . $module . '\')')) . '</td>
+                        <td>' . lang('Background') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_type]', 'options'=>array('' => '', lang('Solid Color') => 'solid_color', lang('Image') => 'image'), 'onchange'=>'show_or_hide_background_options(this.options[this.selectedIndex].value, \'' . $area . '_' . $object . '_' . $module . '\')')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_color_row"' . $background_color_row_style . '>
-                        <td style="padding-left: 2em">Color:</td>
+                        <td style="padding-left: 2em">' . lang('Color') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'hidden', 'name'=>$area . '[' . $object . '][' . $module . '][background_color]', 'maxlength'=>'7', 'size'=>'7', 'value'=>'')) . '<span class="color_picker_toggle" style="background-color: ' . h($background_color_value) . '"></span>&nbsp;<span class="text_beside_input">' . h($background_color_label) . '</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_image_row"' . $background_image_row_style . '>
-                        <td style="padding-left: 2em">File:</td>
+                        <td style="padding-left: 2em">' . lang('File') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_image]', 'options'=>select_files_for_theme_designer())) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_horizontal_position_row"' . $background_horizontal_position_row_style . '>
-                        <td style="padding-left: 2em">Horizontal Position:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_horizontal_position]', 'options'=>array('Left' => 'left', 'Center' => 'center', 'Right' => 'right'))) . '</td>
+                        <td style="padding-left: 2em">' . lang('Horizontal Position') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_horizontal_position]', 'options'=>array(lang('Left') => 'left', lang('Center') => 'center', lang('Right') => 'right'))) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_vertical_position_row"' . $background_vertical_position_row_style . '>
-                        <td style="padding-left: 2em">Vertical Position:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_vertical_position]', 'options'=>array('Top' => 'top', 'Center' => 'center', 'Bottom' => 'bottom'))) . '</td>
+                        <td style="padding-left: 2em">' . lang('Vertical Position') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_vertical_position]', 'options'=>array(lang('Top') => 'top', lang('Center') => 'center', lang('Bottom') => 'bottom'))) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_repeat_row"' . $background_repeat_row_style . '>
-                        <td style="padding-left: 2em">Repeat:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_repeat]', 'options'=>array('Yes' => '', 'Horizontal' => 'repeat_x', 'Vertical' => 'repeat_y', 'No' => 'no_repeat'))) . '</td>
+                        <td style="padding-left: 2em">' . lang('Repeat') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_repeat]', 'options'=>array(lang('Yes') => '', lang('Horizontal') => 'repeat_x', lang('Vertical') => 'repeat_y', lang('No') => 'no_repeat'))) . '</td>
                     </tr>
                     ';
                 break;
@@ -539,7 +539,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     
                     $output_font_size_row = 
                         '<tr>
-                            <td>Font Size:</td>
+                            <td>' . lang('Font Size') . ':</td>
                             <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][font_size][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_size][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em'))) . '</td>
                         </tr>';
                 
@@ -558,7 +558,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Font Family:</td>
+                        <td>' . lang('Font Family') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_family]', 'options'=>array('' => '',
 'Arial' => 'Arial,sans-serif',
 'Arial Black' => '\'Arial Black\',Gadget,sans-serif',
@@ -733,17 +733,17 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
 '-Yellowtail-' => '\'-Yellowtail-\',\'Yellowtail\',cursive'))) . '</td>
                     </tr>
                     <tr>
-                        <td>Color:</td>
+                        <td>' . lang('Color') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'hidden', 'name'=>$area . '[' . $object . '][' . $module . '][font_color]', 'maxlength'=>'7', 'size'=>'7', 'value'=>'')) . '<span class="color_picker_toggle" style="background-color: ' . h($font_color_value) . '"></span>&nbsp;<span class="text_beside_input">' . h($font_color_label) . '</span></td>
                     </tr>
                     ' . $output_font_size_row . '
                     <tr>
-                        <td>Font Style:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_style]', 'options'=>array('' => '', 'Italic' => 'italic', 'Normal' => 'normal', 'Oblique' => 'oblique'))) . '</td>
+                        <td>' . lang('Font Style') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_style]', 'options'=>array('' => '', lang('Italic') => 'italic', lang('Normal') => 'normal', lang('Oblique') => 'oblique'))) . '</td>
                     </tr>
                     <tr>
-                        <td>Font Weight:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_weight]', 'options'=>array('' => '', 'Bold' => 'bold', 'Bolder' => 'bolder', 'Lighter' => 'lighter', 'Normal' => 'normal'))) . '</td>
+                        <td>' . lang('Font Weight') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_weight]', 'options'=>array('' => '', lang('Bold') => 'bold', lang('Bolder') => 'bolder', lang('Lighter') => 'lighter', lang('Normal') => 'normal'))) . '</td>
                     </tr>';
                 break;
             
@@ -782,7 +782,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Height:</td>
+                        <td>' . lang('Height') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][height][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $unit_of_measure . '</td>
                     </tr>';
                 break;
@@ -793,8 +793,8 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Menu Orientation:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][menu_orientation]', 'options'=>array('Horizontal' => 'horizontal', 'Vertical' => 'vertical'))) . '</td>
+                        <td>' . lang('Menu Orientation') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][menu_orientation]', 'options'=>array(lang('Horizontal') => 'horizontal', lang('Vertical') => 'vertical'))) . '</td>
                     </tr>';
                 break;
             
@@ -814,7 +814,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Line Height:</td>
+                        <td>' . lang('Line Height') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][line_height][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][line_height][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>';
                 break;
@@ -874,23 +874,23 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Margin:</td>
+                        <td>' . lang('Margin') . ':</td>
                         <td>&nbsp;</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Top:</td>
+                        <td style="padding-left: 2em">' . lang('Top') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_top][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_top][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Right:</td>
+                        <td style="padding-left: 2em">' . lang('Right') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_right][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_right][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Bottom:</td>
+                        <td style="padding-left: 2em">' . lang('Bottom') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_bottom][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_bottom][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Left:</td>
+                        <td style="padding-left: 2em">' . lang('Left') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_left][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_left][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>';
                 break;
@@ -950,23 +950,23 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Padding:</td>
+                        <td>' . lang('Padding') . ':</td>
                         <td>&nbsp;</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Top:</td>
+                        <td style="padding-left: 2em">' . lang('Top') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_top][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_top][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Right:</td>
+                        <td style="padding-left: 2em">' . lang('Right') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_right][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_right][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Bottom:</td>
+                        <td style="padding-left: 2em">' . lang('Bottom') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_bottom][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_bottom][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
-                        <td style="padding-left: 2em">Left:</td>
+                        <td style="padding-left: 2em">' . lang('Left') . ':</td>
                         <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_left][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_left][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>';
                 break;
@@ -976,8 +976,8 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Position:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array('' => '', 'Left' => 'left', 'Center' => 'center', 'Right' => 'right'))) . '</td>
+                        <td>' . lang('Position') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array('' => '', lang('Left') => 'left', lang('Center') => 'center', lang('Right') => 'right'))) . '</td>
                     </tr>';
                 break;
             
@@ -998,23 +998,23 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td><label for="' . $area . '_' . $object . '_' . $module . '_rounded_corners_toggle">Rounded Corners:<label></td>
+                        <td><label for="' . $area . '_' . $object . '_' . $module . '_rounded_corners_toggle">' . lang('Rounded Corners') . ':<label></td>
                         <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_rounded_corners_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corners_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_rounded_corner_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_rounded_corner_top_left_row"' . $rounded_corners_option_row_style . '>
-                        <td style="padding-left: 2em">Top Left:</td>
+                        <td style="padding-left: 2em">' . lang('Top Left') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corner_top_left]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr><tr id="' . $area . '_' . $object . '_' . $module . '_rounded_corner_top_right_row"' . $rounded_corners_option_row_style . '>
-                        <td style="padding-left: 2em">Top Right:</td>
+                        <td style="padding-left: 2em">' . lang('Top Right') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corner_top_right]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_rounded_corner_bottom_left_row"' . $rounded_corners_option_row_style . '>
-                        <td style="padding-left: 2em">Bottom Left:</td>
+                        <td style="padding-left: 2em">' . lang('Bottom Left') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corner_bottom_left]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_rounded_corner_bottom_right_row"' . $rounded_corners_option_row_style . '>
-                        <td style="padding-left: 2em">Bottom Right:</td>
+                        <td style="padding-left: 2em">' . lang('Bottom Right') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corner_bottom_right]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>';
                 break;
@@ -1046,23 +1046,23 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td><label for="' . $area . '_' . $object . '_' . $module . '_shadows_toggle">Shadows:<label></td>
+                        <td><label for="' . $area . '_' . $object . '_' . $module . '_shadows_toggle">' . lang('Shadows') . ':<label></td>
                         <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_shadows_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][shadows_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_shadow_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_shadow_horizontal_offset_row"' . $shadow_option_row_style . '>
-                        <td style="padding-left: 2em">Horizontal Offset:</td>
+                        <td style="padding-left: 2em">' . lang('Horizontal Offset') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][shadow_horizontal_offset]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_shadow_vertical_offset_row"' . $shadow_option_row_style . '>
-                        <td style="padding-left: 2em">Vertical Offset:</td>
+                        <td style="padding-left: 2em">' . lang('Vertical Offset') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][shadow_vertical_offset]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_shadow_blur_radius_row"' . $shadow_option_row_style . '>
-                        <td style="padding-left: 2em">Blur Radius:</td>
+                        <td style="padding-left: 2em">' . lang('Blur Radius') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>$area . '[' . $object . '][' . $module . '][shadow_blur_radius]', 'value'=>'', 'size'=>'3')) . '&nbsp;<span class="text_beside_input">px</span></td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_shadow_color_row"' . $shadow_option_row_style . '>
-                        <td style="padding-left: 2em">Color:</td>
+                        <td style="padding-left: 2em">' . lang('Color') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'hidden', 'name'=>$area . '[' . $object . '][' . $module . '][shadow_color]', 'maxlength'=>'7', 'size'=>'7', 'value'=>'')) . '<span class="color_picker_toggle" style="background-color: ' . h($shadow_color_value) . '"></span>&nbsp;<span class="text_beside_input">' . h($shadow_color_label) . '</span></td>
                     </tr>';
                 break;
@@ -1093,11 +1093,11 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Primary Color:</td>
+                        <td>' . lang('Primary Color') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'hidden', 'name'=>$area . '[' . $object . '][' . $module . '][primary_color]', 'maxlength'=>'7', 'size'=>'7', 'value'=>'')) . '<span class="color_picker_toggle" style="background-color: ' . h($primary_color_value) . '"></span>&nbsp;<span class="text_beside_input">' . h($primary_color_label) . '</span></td>
                     </tr>
                     <tr>
-                        <td>Secondary Color:</td>
+                        <td>' . lang('Secondary Color') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'hidden', 'name'=>$area . '[' . $object . '][' . $module . '][secondary_color]', 'maxlength'=>'7', 'size'=>'7', 'value'=>'')) . '<span class="color_picker_toggle" style="background-color: ' . h($secondary_color_value) . '"></span>&nbsp;<span class="text_beside_input">' . h($secondary_color_label) . '</span></td>
                     </tr>';
                 break;
@@ -1107,8 +1107,8 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Text Decoration:</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][text_decoration]', 'options'=>array('' => '', 'None' => 'none', 'Underline' => 'underline', 'Overline' => 'overline', 'Line Through' => 'line-through', 'Inherit' => 'inherit'))) . '</td>
+                        <td>' . lang('Text Decoration') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][text_decoration]', 'options'=>array('' => '', lang('None') => 'none', lang('Underline') => 'underline', lang('Overline') => 'overline', lang('Line Through') => 'line-through', lang('Inherit') => 'inherit'))) . '</td>
                     </tr>';
                 break;
             
@@ -1147,7 +1147,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 
                 $output .= 
                     '<tr>
-                        <td>Width:</td>
+                        <td>' . lang('Width') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][width][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $unit_of_measure . '</td>
                     </tr>';
                 break;
