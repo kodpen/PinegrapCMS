@@ -781,7 +781,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 col-md">
                                                     <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
-                                                    <input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" 12:00 AM" type="text" name="start_time" id="start_time" class="form-control" maxlength="10" autocomplete="off"/>
+                                                    <input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" name="start_time" id="start_time" class="form-control" maxlength="10" autocomplete="off"/>
                                                 </div>
                                                 <div class="col-12 col-md">
                                                     <label for="end_time" class="form-label">' . lang('End Time') . '</label>
@@ -1040,22 +1040,24 @@ if (!$_POST) {
             // Loop through the different variable base rate fields
             // in order to add them to array if data was entered for them.
             for ($number = 2; $number <= 4; $number++) { 
+                // Remove commas and spaces before validating, so a rate typed with a
+                // thousands separator is accepted like the subtotal is.
+                $rate_value = str_replace(array(',', ' '), '', (string) ($_POST['base_rate_' . $number] ?? ''));
+                $subtotal_value = str_replace(array(',', ' '), '', (string) ($_POST['base_rate_' . $number . '_subtotal'] ?? ''));
+
                 // If a valid base rate and subtotal was entered, then add this variable base rate.
                 if (
-                    (is_numeric($_POST['base_rate_' . $number]))
-                    && ($_POST['base_rate_' . $number] >= 0)
-                    && (is_numeric($_POST['base_rate_' . $number . '_subtotal']))
-                    && ($_POST['base_rate_' . $number . '_subtotal'] > 0)
+                    (is_numeric($rate_value))
+                    && ($rate_value >= 0)
+                    && (is_numeric($subtotal_value))
+                    && ($subtotal_value > 0)
                 ) {
-                    // remove commas and spaces from price
-                    $variable_base_rate = str_replace(',', '', $_POST['base_rate_' . $number . '_subtotal']);
-                    $variable_base_rate = str_replace(' ', '',$variable_base_rate); 
                     // convert price from dollars to cents
-                    $variable_base_rate = $variable_base_rate * 100;
+                    $variable_base_rate = (int) round($subtotal_value * 100);
 
                     $variable_base_rates[] = array(
                         'subtotal' =>$variable_base_rate,
-                        'rate' => $_POST['base_rate_' . $number] * 100);
+                        'rate' => (int) round($rate_value * 100));
                 }
             }
 
