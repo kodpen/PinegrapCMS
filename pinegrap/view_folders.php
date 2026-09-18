@@ -662,6 +662,7 @@ $explorer_lang = array(
     'filter_no_price' => lang('No price'),
     'filter_variant_sets' => lang('Variant sets'),
     'filter_nothing_matches' => lang('Nothing here matches the filters.'),
+    'search_nothing_matches' => lang('Nothing here matches the search.'),
     // The full-screen look at one item, and the way out of it.
     'quick_look' => lang('Quick look'),
     'quick_look_hint' => lang('Space closes, the arrow keys walk the folder'),
@@ -2216,6 +2217,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         renderStatusbar();
     }
 
+    // The toolbar search narrows the folder it was typed in, and nothing
+    // else: it is a way of finding a file in a long listing, not a filter
+    // the operator switched on. It is let go the moment the listing shows a
+    // different folder, the way a desktop file manager drops its search when
+    // another folder is opened. Left in place it hid every folder of the
+    // parent whose name did not contain the words typed two levels down, and
+    // the grid read as an empty folder -- across the breadcrumb, across the
+    // tree, until a full page reload started the screen over. A refresh of
+    // the same folder (after an optimise run, a rename, a paste) keeps it:
+    // the operator is still looking at the list they narrowed.
+    function clearSearch() {
+        state.filter = '';
+
+        var input = document.getElementById('filter_input');
+
+        if (input) { input.value = ''; }
+    }
+
     function load(folderId, done) {
         var seq = ++loadSeq;
 
@@ -2275,6 +2294,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (folderId > 0) { load(0, done); }
                 return;
             }
+
+            if (response.current.id !== state.folderId) { clearSearch(); }
 
             state.folderId = response.current.id;
             state.viewType = response.view_type;
@@ -2818,6 +2839,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (done) { done(); }
                 return;
             }
+
+            if ((response.group_id || 0) !== state.groupId) { clearSearch(); }
 
             state.groupId = response.group_id || 0;
             state.folderId = 0;
@@ -4157,6 +4180,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if ((activeFilters().length > 0) && ((state.items.folders.length + state.items.pages.length + state.items.files.length) > 0)) {
                 emptyIcon = 'bi-sliders';
                 emptyText = L.filter_nothing_matches;
+            }
+
+            // The same for the search box: a folder with content and a word
+            // nothing in it matches is not an empty folder, and saying so is
+            // what sends the operator to the box that has to be cleared.
+            if ((state.filter !== '') && ((state.items.folders.length + state.items.pages.length + state.items.files.length) > 0)) {
+                emptyIcon = 'bi-search';
+                emptyText = L.search_nothing_matches;
             }
 
             html = '<div class="text-center my-5 empty-note"><span class="bi ' + emptyIcon + ' display-4 d-block mb-2 ' +
