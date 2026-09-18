@@ -21,41 +21,41 @@ if (!defined('PG_INIT_LOADED')) {
 <div class="row">
 	<div class="col-sm-6">
 		<h2>
-			Account
+			<?=h(lang('Account'))?>
 			<?php if ($logout_url): ?>
 			<a href="<?=h($logout_url)?>" class="btn btn-default btn-secondary btn-xs">
-			Logout
+			<?=h(lang('Logout'))?>
 			</a>
 			<?php endif ?>
 			<?php if ($change_password_url): ?>
 			<a href="<?=h($change_password_url)?>" class="btn btn-default btn-secondary btn-xs">
-			Change Password
+			<?=h(lang('Change Password'))?>
 			</a>
 			<?php endif ?>
 		</h2>
 		<dl class="dl-horizontal">
-			<dt>Username</dt>
+			<dt><?=h(lang('Username'))?></dt>
 			<dd><?=h(USER_USERNAME)?></dd>
 			<?php if (!empty($google_account_notice)): ?>
-			<dt>Sign-in</dt>
+			<dt><?=h(lang('Sign-in'))?></dt>
 			<dd><?=$google_account_notice?></dd>
 			<?php endif ?>
 			<?php if ($start_page_url): ?>
-			<dt>My Start Page</dt>
+			<dt><?=h(lang('My Start Page'))?></dt>
 			<dd><a href="<?=h($start_page_url)?>"><?=h($start_page_name)?></a></dd>
 			<?php endif ?>
 			<?php if ($reward_points): ?>
-			<dt>Reward Points</dt>
+			<dt><?=h(lang('Reward Points'))?></dt>
 			<dd><?=h(number_format($reward_points))?></dd>
 			<?php endif ?>
 		</dl>
 	</div>
 	<div class="col-sm-6">
 		<h2>
-			Email Preferences
+			<?=h(lang('Email Preferences'))?>
 			<?php if ($email_preferences_url): ?>
 			<a href="<?=h($email_preferences_url)?>" class="btn btn-default btn-secondary btn-xs">
-			Update
+			<?=h(lang('Update'))?>
 			</a>
 			<?php endif ?>
 		</h2>
@@ -65,10 +65,10 @@ if (!defined('PG_INIT_LOADED')) {
 <div class="row">
 	<div class="col-sm-6">
 		<h2>
-			Profile
+			<?=h(lang('Profile'))?>
 			<?php if ($my_account_profile_url): ?>
 			<a href="<?=h($my_account_profile_url)?>" class="btn btn-default btn-secondary btn-xs">
-			Update
+			<?=h(lang('Update'))?>
 			</a>
 			<?php endif ?>
 		</h2>
@@ -81,7 +81,7 @@ if (!defined('PG_INIT_LOADED')) {
 				or $business_country
 				
 				):?>
-			<dt>Contact</dt>
+			<dt><?=h(lang('Contact'))?></dt>
 			<dd>
 				<?php if ($first_name or $last_name): ?>
 				<?=h($first_name)?> <?=h($last_name)?><br>
@@ -123,37 +123,37 @@ if (!defined('PG_INIT_LOADED')) {
 			</dd>
 			<?php endif ?>
 			<?php if ($business_phone): ?>
-			<dt>Main</dt>
+			<dt><?=h(lang('Main'))?></dt>
 			<dd><?=h($business_phone)?></dd>
 			<?php endif ?>
 			<?php if ($mobile_phone): ?>
-			<dt>Mobile</dt>
+			<dt><?=h(lang('Mobile'))?></dt>
 			<dd><?=h($mobile_phone)?></dd>
 			<?php endif ?>
 			<?php if ($home_phone): ?>
-			<dt>Home</dt>
+			<dt><?=h(lang('Home'))?></dt>
 			<dd><?=h($home_phone)?></dd>
 			<?php endif ?>
 			<?php if ($business_fax): ?>
-			<dt>Fax</dt>
+			<dt><?=h(lang('Fax'))?></dt>
 			<dd><?=h($business_fax)?></dd>
 			<?php endif ?>
 			<?php if ($timezone): ?>
-			<dt>Timezone</dt>
+			<dt><?=h(lang('Timezone'))?></dt>
 			<dd><?=h($timezone)?></dd>
 			<?php endif ?>
 		</dl>
 	</div>
 	<?php if (defined('USER_MEMBER_ID') && USER_MEMBER_ID): ?>
 	<div class="col-sm-6">
-		<h2>Membership</h2>
+		<h2><?=h(lang('Membership'))?></h2>
 		<dl class="dl-horizontal">
 			<dt><?=h(MEMBER_ID_LABEL)?></dt>
 			<dd><?=h(USER_MEMBER_ID)?></dd>
-			<dt>Expiration Date</dt>
+			<dt><?=h(lang('Expiration Date'))?></dt>
 			<dd>
 				<?php if (USER_EXPIRATION_DATE == '0000-00-00'): ?>
-				[None]
+				[<?=h(lang('None'))?>]
 				<?php else: ?>
 				<?=get_absolute_time(array(
 					'timestamp' => strtotime(USER_EXPIRATION_DATE),
@@ -166,32 +166,32 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php endif ?>
 </div>
 <?php if ($affiliate): ?>
-<h2>Affiliate</h2>
+<h2><?=h(lang('Affiliate'))?></h2>
 <dl class="dl-horizontal">
-	<dt>Affiliate Name</dt>
+	<dt><?=h(lang('Affiliate Name'))?></dt>
 	<dd><?=h($affiliate_name)?></dd>
-	<dt>Affiliate Code</dt>
+	<dt><?=h(lang('Affiliate Code'))?></dt>
 	<dd><?=h($affiliate_code)?></dd>
-	<dt>Affiliate Link</dt>
+	<dt><?=h(lang('Affiliate Link'))?></dt>
 	<dd><a href="<?=h($affiliate_url)?>" target="_blank"><?=h($affiliate_url)?></a></dd>
-	<dt>Commission Rate</dt>
+	<dt><?=h(lang('Commission Rate'))?></dt>
 	<dd><?=h($affiliate_commission_rate)?>%</dd>
-	<dt>Pending Total</dt>
+	<dt><?=h(lang('Pending Total'))?></dt>
 	<dd><?=BASE_CURRENCY_SYMBOL . number_format($affiliate_pending_total, 2)?></dd>
-	<dt>Payable Total</dt>
+	<dt><?=h(lang('Payable Total'))?></dt>
 	<dd><?=BASE_CURRENCY_SYMBOL . number_format($affiliate_payable_total, 2)?></dd>
-	<dt>Paid Total</dt>
+	<dt><?=h(lang('Paid Total'))?></dt>
 	<dd><?=BASE_CURRENCY_SYMBOL . number_format($affiliate_paid_total, 2)?></dd>
 </dl>
 <?php if ($commissions): ?>
-<h3>Commissions</h3>
+<h3><?=h(lang('Commissions'))?></h3>
 <div class="table-responsive">
 	<table class="table table-striped">
 		<tr>
-			<th>Reference Code</th>
-			<th>Date &amp; Time</th>
-			<th>Status</th>
-			<th class="text-right">Amount</th>
+			<th><?=h(lang('Reference Code'))?></th>
+			<th><?=h(lang('Date & Time'))?></th>
+			<th><?=h(lang('Status'))?></th>
+			<th class="text-right"><?=h(lang('Amount'))?></th>
 		</tr>
 		<?php foreach($commissions as $commission): ?>
 		<tr>
@@ -211,15 +211,15 @@ if (!defined('PG_INIT_LOADED')) {
 <?php endif ?>
 <?php endif ?>
 <?php if ($complete_orders or $incomplete_orders): ?>
-<h2>Order History</h2>
+<h2><?=h(lang('Order History'))?></h2>
 <?php if ($complete_orders): ?>
-<h3>Complete Orders</h3>
+<h3><?=h(lang('Complete Orders'))?></h3>
 <div class="table-responsive">
 	<table class="table table-striped">
 		<tr>
-			<th>Order Number</th>
-			<th>Date &amp; Time</th>
-			<th class="text-right">Total</th>
+			<th><?=h(lang('Order Number'))?></th>
+			<th><?=h(lang('Date & Time'))?></th>
+			<th class="text-right"><?=h(lang('Total'))?></th>
 			<th></th>
 		</tr>
 		<?php foreach($complete_orders as $order): ?>
@@ -235,11 +235,11 @@ if (!defined('PG_INIT_LOADED')) {
 			<td class="text-center">
 				<?php if ($order['view_url']): ?>
 				<a href="<?=h($order['view_url'])?>" class="btn btn-default btn-secondary btn-sm">
-				View
+				<?=h(lang('View'))?>
 				</a>
 				<?php endif ?>
 				<a href="<?=h($order['reorder_url'])?>" class="btn btn-default btn-secondary btn-sm">
-				Reorder
+				<?=h(lang('Reorder'))?>
 				</a>
 			</td>
 		</tr>
@@ -248,12 +248,12 @@ if (!defined('PG_INIT_LOADED')) {
 </div>
 <?php endif ?>
 <?php if ($incomplete_orders): ?>
-<h3>Incomplete Orders</h3>
+<h3><?=h(lang('Incomplete Orders'))?></h3>
 <div class="table-responsive">
 	<table class="table table-striped">
 		<tr>
-			<th>Reference Code</th>
-			<th>Date &amp; Time</th>
+			<th><?=h(lang('Reference Code'))?></th>
+			<th><?=h(lang('Date & Time'))?></th>
 			<th></th>
 		</tr>
 		<?php foreach($incomplete_orders as $order): ?>
@@ -266,26 +266,26 @@ if (!defined('PG_INIT_LOADED')) {
 			<td class="text-center">
 				<?php if ($order['view_url']): ?>
 				<a href="<?=h($order['view_url'])?>" class="btn btn-default btn-secondary btn-sm">
-				View
+				<?=h(lang('View'))?>
 				</a>
 				<?php endif ?>
 				<?php if ($order['active']): ?>
 				<?php if ($order['order_url']): ?>
 				<a href="<?=h($order['order_url'])?>" class="btn btn-primary btn-sm">
-				Order
+				<?=h(lang('Order'))?>
 				</a>
 				<?php else: ?>
 				<a href="#" class="btn btn-primary btn-sm disabled">
-				Active
+				<?=h(lang('Active'))?>
 				</a>
 				<?php endif ?>
 				<?php else: ?>
 				<a href="<?=h($order['retrieve_url'])?>" class="btn btn-default btn-secondary btn-sm">
-				Retrieve
+				<?=h(lang('Retrieve'))?>
 				</a>
 				<?php endif ?>
-				<a href="<?=h($order['delete_url'])?>" class="btn btn-default btn-secondary btn-sm" onclick="return confirm('The order will be deleted.')">
-				Delete
+				<a href="<?=h($order['delete_url'])?>" class="btn btn-default btn-secondary btn-sm" onclick="return confirm('<?=h(escape_javascript(lang('The order will be deleted.')))?>')">
+				<?=h(lang('Delete'))?>
 				</a>
 			</td>
 		</tr>
@@ -296,10 +296,10 @@ if (!defined('PG_INIT_LOADED')) {
 <?php endif ?>
 <?php if ($address_book): ?>
 <h2>
-	Address Book
+	<?=h(lang('Address Book'))?>
 	<?php if ($update_address_book_url): ?>
 	<a href="<?=h($update_address_book_url)?>" class="btn btn-default btn-secondary btn-xs">
-	Add Recipient
+	<?=h(lang('Add Recipient'))?>
 	</a>
 	<?php endif ?>
 </h2>
@@ -307,9 +307,9 @@ if (!defined('PG_INIT_LOADED')) {
 <div class="table-responsive">
 	<table class="table table-striped">
 		<tr>
-			<th>Ship to Name</th>
-			<th>Full Name</th>
-			<th>Delivery Address</th>
+			<th><?=h(lang('Ship to Name'))?></th>
+			<th><?=h(lang('Full Name'))?></th>
+			<th><?=h(lang('Delivery Address'))?></th>
 			<th></th>
 		</tr>
 		<?php foreach($recipients as $recipient): ?>
@@ -336,11 +336,11 @@ if (!defined('PG_INIT_LOADED')) {
 			<td class="text-center">
 				<?php if ($recipient['update_url']): ?>
 				<a href="<?=h($recipient['update_url'])?>" class="btn btn-default btn-secondary btn-sm">
-				Update
+				<?=h(lang('Update'))?>
 				</a>
 				<?php endif ?>
 				<a href="<?=h($recipient['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" onclick="return confirm('<?=h(escape_javascript($recipient['ship_to_name']))?> will be removed.')">
-				Remove
+				<?=h(lang('Remove'))?>
 				</a>
 			</td>
 		</tr>

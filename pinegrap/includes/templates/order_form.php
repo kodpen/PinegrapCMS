@@ -32,22 +32,22 @@ if (!defined('PG_INIT_LOADED')) {
 	<table class="table mobile_stacked">
 		<thead>
 			<tr>
-				<th>Item</th>
-				<th>Description</th>
+				<th><?=h(lang('Item'))?></th>
+				<th><?=h(lang('Description'))?></th>
 				<th class="text-right">
 					<?php if ($available_donations and !$available_non_donations): ?>
-					Amount
+					<?=h(lang('Amount'))?>
 					<?php else: ?>
-					Price
+					<?=h(lang('Price'))?>
 					<?php endif ?>
 				</th>
 				<th class="text-center">
 					<?php if ($checkbox_selections and $quantity_selections): ?>
-					Select/Qty
+					<?=h(lang('Select/Qty'))?>
 					<?php elseif ($checkbox_selections): ?>
-					Select
+					<?=h(lang('Select'))?>
 					<?php elseif ($quantity_selections): ?>
-					Qty
+					<?=h(lang('Qty'))?>
 					<?php endif ?>
 				</th>
 			</tr>
@@ -55,7 +55,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php foreach($products as $product): ?>
 		<tr>
 			<td>
-				<span class="visible-xs-inline">Item:</span>
+				<span class="visible-xs-inline"><?=h(lang('Item'))?>:</span>
 				<?=h($product['name'])?>
 				<?=$product['edit'] // Add edit button in edit mode ?>
 			</td>
@@ -105,16 +105,16 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php endif ?>
 				<?php if ($product['recurring_schedule']): ?>
 				<fieldset>
-					<legend>Payment Schedule</legend>
+					<legend><?=h(lang('Payment Schedule'))?></legend>
 					<div class="form-group">
 						<label for="recurring_payment_period_<?=$product['id']?>">
-						Frequency*
+						<?=h(lang('Frequency'))?>*
 						</label>
 						<select name="recurring_payment_period_<?=$product['id']?>" id="recurring_payment_period_<?=$product['id']?>" class="form-control"></select>
 					</div>
 					<div class="form-group">
 						<label for="recurring_number_of_payments_<?=$product['id']?>">
-						Number of Payments<?php if ($number_of_payments_required): ?>*<?php endif ?>
+						<?=h(lang('Number of Payments'))?><?php if ($number_of_payments_required): ?>*<?php endif ?>
 						</label>
 						<input type="number" name="recurring_number_of_payments_<?=$product['id']?>" id="recurring_number_of_payments_<?=$product['id']?>" class="form-control">
 						<p class="help-block">
@@ -131,7 +131,7 @@ if (!defined('PG_INIT_LOADED')) {
 						?>
 					<div class="form-group">
 						<label for="recurring_start_date_<?=$product['id']?>">
-						Start Date*
+						<?=h(lang('Start Date'))?>*
 						</label>
 						<input type="text" name="recurring_start_date_<?=$product['id']?>" id="recurring_start_date_<?=$product['id']?>" class="form-control">
 					</div>
@@ -144,7 +144,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php if ($product['available']): ?>
 				<div class="form-group">
 					<label for="donation_<?=$product['id']?>" class="visible-xs-inline-block">
-					Amount
+					<?=h(lang('Amount'))?>
 					</label>
 					<div class="input-group">
 						<span class="input-group-addon"><?=$currency_symbol?></span>
@@ -166,14 +166,14 @@ if (!defined('PG_INIT_LOADED')) {
 					<label>
 					<input type="checkbox" name="product_<?=$product['id']?>" value="1">
 					<span class="visible-xs-inline">
-					Select
+					<?=h(lang('Select'))?>
 					</span>
 					</label>
 				</div>
 				<?php elseif ($product['selection_type'] == 'quantity'): ?>
 				<div class="form-group">
 					<label for="product_<?=$product['id']?>" class="visible-xs-inline-block">
-					Qty
+					<?=h(lang('Qty'))?>
 					</label>
 					<input type="number" name="product_<?=$product['id']?>" id="product_<?=$product['id']?>" class="form-control" style="min-width: 5em">
 				</div>
@@ -192,23 +192,23 @@ if (!defined('PG_INIT_LOADED')) {
 		
 		?>
 	<div class="form-group">
-		<label for="product_id">Item</label>
+		<label for="product_id"><?=h(lang('Item'))?></label>
 		<select name="product_id" id="product_id" class="form-control"></select>
 	</div>
 	<?php endif ?>
 	<?php if ($recipient): ?>
 	<div class="form-group">
-		<label for="ship_to">Ship to</label>
+		<label for="ship_to"><?=h(lang('Ship to'))?></label>
 		<select name="ship_to" id="ship_to" class="form-control"></select>
 	</div>
 	<div class="form-group">
-		<label for="add_name">or add name</label>
-		<input type="text" name="add_name" id="add_name" class="form-control" placeholder="Example: Tom">
+		<label for="add_name"><?=h(lang('or add name'))?></label>
+		<input type="text" name="add_name" id="add_name" class="form-control" placeholder="<?=h(lang('Example: Tom'))?>">
 	</div>
 	<?php endif ?>
 	<?php if ($quantity): ?>
 	<div class="form-group">
-		<label for="quantity">Qty</label>
+		<label for="quantity"><?=h(lang('Qty'))?></label>
 		<input type="number" name="quantity" id="quantity" value="1" min="1" class="form-control">
 	</div>
 	<?php endif ?>
@@ -249,7 +249,7 @@ if (!defined('PG_INIT_LOADED')) {
 <?php if ($currency): ?>
 <form <?=$currency_attributes?>>
 	<div class="form-group">
-		<label for="currency_id" class="sr-only">Currency</label>
+		<label for="currency_id" class="sr-only"><?=h(lang('Currency'))?></label>
 		<select name="currency_id" id="currency_id" class="form-control"></select>
 	</div>
 	<?=$currency_system // Required hidden fields and JS (do not remove) ?>

@@ -31,12 +31,12 @@ if (!defined('PG_INIT_LOADED')) {
 		<div class="col-sm-6">
 			<?php endif ?>
 			<h2>
-				Shipping Address
+				<?=h(lang('Shipping Address'))?>
 				<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-				for <strong><?=h($ship_to_name)?></strong>
+				<?=lang(array('string' => 'for <strong>{var:1}</strong>', 'vars' => array(h($ship_to_name))))?>
 				<?php endif ?>
 				<a href="<?=h($update_url)?>" class="btn btn-default btn-secondary btn-sm">
-				Update
+				<?=h(lang('Update'))?>
 				</a>
 			</h2>
 			<p>
@@ -55,9 +55,9 @@ if (!defined('PG_INIT_LOADED')) {
 		</div>
 		<div class="col-sm-6">
 			<h2>
-				Requested Arrival Date
+				<?=h(lang('Requested Arrival Date'))?>
 				<a href="<?=h($update_url)?>" class="btn btn-default btn-secondary btn-sm">
-				Update
+				<?=h(lang('Update'))?>
 				</a>
 			</h2>
 			<p>
@@ -71,15 +71,15 @@ if (!defined('PG_INIT_LOADED')) {
 	</div>
 	<?php endif ?>
 	<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-	<h2>Ship to <strong><?=h($ship_to_name)?></strong></h2>
+	<h2><?=h(lang('Ship to'))?> <strong><?=h($ship_to_name)?></strong></h2>
 	<?php endif ?>
 	<table class="table mobile_stacked">
 		<tr>
-			<th>Item</th>
-			<th>Description</th>
-			<th class="text-center">Qty</th>
-			<th class="text-right">Price</th>
-			<th class="text-right">Amount</th>
+			<th><?=h(lang('Item'))?></th>
+			<th><?=h(lang('Description'))?></th>
+			<th class="text-center"><?=h(lang('Qty'))?></th>
+			<th class="text-right"><?=h(lang('Price'))?></th>
+			<th class="text-right"><?=h(lang('Amount'))?></th>
 			<th></th>
 		</tr>
 		<?php foreach($items as $item): ?>
@@ -89,7 +89,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?php endif ?>
 			>
 			<td>
-				<span class="visible-xs-inline">Item:</span>
+				<span class="visible-xs-inline"><?=h(lang('Item'))?>:</span>
 				<?=h($item['name'])?>
 			</td>
 			<td>
@@ -167,15 +167,15 @@ if (!defined('PG_INIT_LOADED')) {
 				<?=number_format($item['quantity'])?>
 			</td>
 			<td class="text-right">
-				<span class="visible-xs-inline">Price:</span>
+				<span class="visible-xs-inline"><?=h(lang('Price'))?>:</span>
 				<?=$item['price_info']?>
 			</td>
 			<td class="text-right">
-				<span class="visible-xs-inline">Amount:</span>
+				<span class="visible-xs-inline"><?=h(lang('Amount'))?>:</span>
 				<?=$item['amount_info']?>
 			</td>
 			<td class="text-center">
-				<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+				<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="<?=h(lang('Remove'))?>">
 				<span class="glyphicon glyphicon-remove"></span>
 				</a>
 			</td>
@@ -183,9 +183,9 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php endforeach ?>
 	</table>
 	<h2>
-		Shipping Method<?php if ($number_of_shipping_methods > 1): ?>s<?php endif ?>
+		<?=h($number_of_shipping_methods > 1 ? lang('Shipping Methods') : lang('Shipping Method'))?>
 		<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-		for <strong><?=h($ship_to_name)?></strong>
+		<?=lang(array('string' => 'for <strong>{var:1}</strong>', 'vars' => array(h($ship_to_name))))?>
 		<?php endif ?>
 	</h2>
 	<?php
@@ -208,9 +208,9 @@ if (!defined('PG_INIT_LOADED')) {
 		?>
 	<table class="table mobile_stacked">
 		<tr>
-			<th>Select One</th>
-			<th class="text-right">Cost</th>
-			<th>Details</th>
+			<th><?=h(lang('Select One'))?></th>
+			<th class="text-right"><?=h(lang('Cost'))?></th>
+			<th><?=h(lang('Details'))?></th>
 		</tr>
 		<?php foreach($shipping_methods as $shipping_method): ?>
 		<tr>
@@ -241,7 +241,7 @@ if (!defined('PG_INIT_LOADED')) {
 <?php if ($currency): ?>
 <form <?=$currency_attributes?>>
 	<div class="form-group">
-		<label for="currency_id" class="sr-only">Currency</label>
+		<label for="currency_id" class="sr-only"><?=h(lang('Currency'))?></label>
 		<select name="currency_id" id="currency_id" class="form-control"></select>
 	</div>
 	<?=$currency_system // Required hidden fields and JS (do not remove) ?>

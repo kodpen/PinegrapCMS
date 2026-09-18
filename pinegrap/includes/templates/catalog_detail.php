@@ -36,7 +36,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<div class="full_description"><?=$full_description?></div>
 				<?php if ($keywords): ?>
 				<div class="keywords">
-					Keywords:
+					<?=h(lang('Keywords'))?>:
 					<?php foreach($keywords as $keyword): ?>
 					<a href="<?=h($keyword['url'])?>" class="btn btn-default btn-secondary btn-xs">
 					<?=h($keyword['keyword'])?>
@@ -75,7 +75,7 @@ if (!defined('PG_INIT_LOADED')) {
 							?>
 						<div class="input-group" style="width: 100%">
 							<select name="attribute_<?=$attribute['id']?>" id="attribute_<?=$attribute['id']?>" class="form-control"></select>
-							<span class="clear input-group-btn" title="Clear">
+							<span class="clear input-group-btn" title="<?=h(lang('Clear'))?>">
 							<button type="button" class="btn btn-default btn-secondary">
 							<span class="glyphicon glyphicon-remove"></span>
 							</button>
@@ -121,7 +121,7 @@ if (!defined('PG_INIT_LOADED')) {
 						
 						?>
 					<div class="form-group">
-						<label for="product_id">Item</label>
+						<label for="product_id"><?=h(lang('Item'))?></label>
 						<select name="product_id" id="product_id" class="form-control"></select>
 					</div>
 					<?php
@@ -138,14 +138,14 @@ if (!defined('PG_INIT_LOADED')) {
 						if (count($products) == 1):
 						
 						?>
-					<p><strong>Item:</strong> <?=$products[0]['description']?></p>
+					<p><strong><?=h(lang('Item'))?>:</strong> <?=$products[0]['description']?></p>
 					<?php
 						// Otherwise there are multiple products, so output a list of them.
 						
 						else:
 						
 						?>
-					<p><strong>Items:</strong></p>
+					<p><strong><?=h(lang('Items'))?>:</strong></p>
 					<ul>
 						<?php foreach($products as $product): ?>
 						<li><?=$product['description']?></li>
@@ -164,17 +164,17 @@ if (!defined('PG_INIT_LOADED')) {
 						?>
 					<?php if ($recipient): ?>
 					<div class="form-group">
-						<label for="ship_to">Ship to</label>
+						<label for="ship_to"><?=h(lang('Ship to'))?></label>
 						<select name="ship_to" id="ship_to" class="form-control"></select>
 					</div>
 					<div class="form-group">
-						<label for="add_name">or add name</label>
-						<input type="text" name="add_name" id="add_name" class="form-control" placeholder="Example: Tom">
+						<label for="add_name"><?=h(lang('or add name'))?></label>
+						<input type="text" name="add_name" id="add_name" class="form-control" placeholder="<?=h(lang('Example: Tom'))?>">
 					</div>
 					<?php endif ?>
 					<?php if ($quantity): ?>
 					<div class="form-group">
-						<label for="quantity">Qty</label>
+						<label for="quantity"><?=h(lang('Qty'))?></label>
 						<input type="number" name="quantity" id="quantity" value="1" min="1" class="form-control">
 					</div>
 					<?php endif ?>
@@ -220,16 +220,16 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="col-sm-3 col-sm-pull-9">
 		<form <?=$search_attributes?>>
 			<div class="form-group input-group">
-				<span class="input-group-btn" title="Search">
+				<span class="input-group-btn" title="<?=h(lang('Search'))?>">
 				<button type="submit" name="<?=$catalog_page['id']?>_submit" class="btn btn-default btn-secondary">
 				<span class="glyphicon glyphicon-search"></span>
 				</button>
 				</span>
 				<input type="search" name="<?=$catalog_page['id']?>_query"
-					class="form-control" placeholder="Search">
+					class="form-control" placeholder="<?=h(lang('Search'))?>">
 			</div>
 		</form>
-		<h3>Categories</h3>
+		<h3><?=h(lang('Categories'))?></h3>
 		<nav>
 			<ul class="nav nav-pills nav-stacked">
 				<?php foreach($product_groups as $product_group): ?>
@@ -253,7 +253,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php if ($currency): ?>
 		<form <?=$currency_attributes?>>
 			<div class="form-group">
-				<label for="currency_id" class="sr-only">Currency</label>
+				<label for="currency_id" class="sr-only"><?=h(lang('Currency'))?></label>
 				<select name="currency_id" id="currency_id" class="form-control"></select>
 			</div>
 			<?=$currency_system // Required hidden fields and JS (do not remove) ?>

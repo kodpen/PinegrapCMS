@@ -19,10 +19,10 @@ if (!defined('PG_INIT_LOADED')) {
 ?>
 <h2><?=h($album_name)?></h2>
 <?php if (!$albums and !$photos): ?>
-<p><strong>There are no albums or photos in this photo gallery.</strong></p>
+<p><strong><?=h(lang('There are no albums or photos in this photo gallery.'))?></strong></p>
 <?php else: ?>
 <?php if ($albums): ?>
-<h3>Albums</h3>
+<h3><?=h(lang('Albums'))?></h3>
 <div class="albums">
 	<?php foreach($albums as $album): ?>
 	<div class="album text-center">
@@ -32,8 +32,7 @@ if (!defined('PG_INIT_LOADED')) {
 			</div>
 			<div class="name"><strong><?=h($album['name'])?></strong></div>
 			<div class="number_of_photos">
-				(<?=number_format($album['number_of_photos'])?>
-				Photo<?php if ($album['number_of_photos'] > 1): ?>s<?php endif ?>)
+				(<?=h(($album['number_of_photos'] > 1) ? lang(array('string' => '{var:1} Photos', 'vars' => array(number_format($album['number_of_photos'])))) : lang(array('string' => '{var:1} Photo', 'vars' => array(number_format($album['number_of_photos'])))))?>)
 			</div>
 		</a>
 	</div>
@@ -41,7 +40,7 @@ if (!defined('PG_INIT_LOADED')) {
 </div>
 <?php endif ?>
 <?php if ($photos): ?>
-<h3>Photos</h3>
+<h3><?=h(lang('Photos'))?></h3>
 <div class="photos">
 	<?php foreach($photos as $photo): ?>
 	<div class="photo text-center">
@@ -59,6 +58,6 @@ if (!defined('PG_INIT_LOADED')) {
 <?php endif ?>
 <?php if ($back_button_url): ?>
 <a href="<?=h($back_button_url)?>" class="btn btn-default btn-secondary">
-Back
+<?=h(lang('Back'))?>
 </a>
 <?php endif ?>

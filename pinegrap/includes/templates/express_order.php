@@ -23,7 +23,7 @@ if (!defined('PG_INIT_LOADED')) {
 	if ($number_of_special_offers):
 	?>
 <h2>
-	Special Offer<?php if ($number_of_special_offers > 1): ?>s<?php endif ?>
+	<?=h($number_of_special_offers > 1 ? lang('Special Offers') : lang('Special Offer'))?>
 </h2>
 <?php
 	// If there are pending offers, then start form
@@ -69,7 +69,7 @@ if (!defined('PG_INIT_LOADED')) {
 					if ($action['recipient']):
 					?>
 				<div class="form-group">
-					<label for="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to">Ship to</label>
+					<label for="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to"><?=h(lang('Ship to'))?></label>
 					<select name="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to" id="pending_offer_<?=$offer['id']?>_<?=$action['id']?>_ship_to" class="form-control"></select>
 				</div>
 				<?php
@@ -85,7 +85,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php endif ?>
 				<div class="form-group">
 					<button type="submit" name="add_pending_offer_<?=$offer['id']?>_<?=$action['id']?>" class="btn btn-primary btn-sm">
-					Add
+					<?=h(lang('Add'))?>
 					</button>
 				</div>
 				<?php if ($number_of_special_offers > 1): ?>
@@ -146,7 +146,7 @@ if (!defined('PG_INIT_LOADED')) {
 <?php endif ?>
 <form <?=$attributes?>>
 	<div class="form-group">
-		<label for="quick_add_product_id">Item</label>
+		<label for="quick_add_product_id"><?=h(lang('Item'))?></label>
 		<select name="quick_add_product_id" id="quick_add_product_id" class="form-control"></select>
 	</div>
 	<?php
@@ -155,23 +155,23 @@ if (!defined('PG_INIT_LOADED')) {
 		?>
 	<?php if ($quick_add['recipient']): ?>
 	<div id="quick_add_ship_to_row" class="form-group">
-		<label for="quick_add_ship_to">Ship to</label>
+		<label for="quick_add_ship_to"><?=h(lang('Ship to'))?></label>
 		<select name="quick_add_ship_to" id="quick_add_ship_to" class="form-control"></select>
 	</div>
 	<div id="quick_add_add_name_row" class="form-group">
-		<label for="quick_add_add_name">or add name</label>
-		<input type="text" name="quick_add_add_name" id="quick_add_add_name" class="form-control" placeholder="Example: Tom">
+		<label for="quick_add_add_name"><?=h(lang('or add name'))?></label>
+		<input type="text" name="quick_add_add_name" id="quick_add_add_name" class="form-control" placeholder="<?=h(lang('Example: Tom'))?>">
 	</div>
 	<?php endif ?>
 	<?php if ($quick_add['quantity']): ?>
 	<div id="quick_add_quantity_row" class="form-group">
-		<label for="quick_add_quantity">Qty</label>
+		<label for="quick_add_quantity"><?=h(lang('Qty'))?></label>
 		<input type="number" name="quick_add_quantity" id="quick_add_quantity" class="form-control">
 	</div>
 	<?php endif ?>
 	<?php if ($quick_add['amount']): ?>
 	<div id="quick_add_amount_row" class="form-group">
-		<label for="quick_add_amount">Amount</label>
+		<label for="quick_add_amount"><?=h(lang('Amount'))?></label>
 		<div class="input-group">
 			<span class="input-group-addon"><?=$currency_symbol?></span>
 			<input type="number" step="any" name="quick_add_amount" id="quick_add_amount" class="form-control">
@@ -184,7 +184,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php if ($quick_add['available_products']): ?>
 	<div class="form-group">
 		<button type="submit" class="btn btn-default btn-secondary btn-sm">
-		Add
+		<?=h(lang('Add'))?>
 		</button>
 	</div>
 	<?php endif ?>
@@ -195,7 +195,7 @@ if (!defined('PG_INIT_LOADED')) {
 	// If there are no recipients in the order, then show message.
 	if (!$recipients):
 	?>
-<p><strong>No items have been added.</strong></p>
+<p><strong><?=h(lang('No items have been added.'))?></strong></p>
 <?php
 	// Otherwise there is at least one recipient, so show items.
 	else:
@@ -206,7 +206,7 @@ if (!defined('PG_INIT_LOADED')) {
 		// differentiate "Today's Charges" from the "Recurring Charges".
 		if ($recurring_items):
 		?>
-	<h2>Today's Charges</h2>
+	<h2><?=h(lang('Today\'s Charges'))?></h2>
 	<?php endif ?>
 	<?php
 		// If there are nonrecurring items, then place items in a column.
@@ -229,7 +229,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<tr>
 					<td colspan="6">
 						<h3>
-							Ship to
+							<?=h(lang('Ship to'))?>
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
 							<strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
@@ -238,19 +238,19 @@ if (!defined('PG_INIT_LOADED')) {
 				</tr>
 				<?php endif ?>
 				<tr>
-					<th>Item</th>
-					<th>Description</th>
+					<th><?=h(lang('Item'))?></th>
+					<th><?=h(lang('Description'))?></th>
 					<th class="text-center">
 						<?php if ($recipient['non_donations_in_nonrecurring']): ?>
-						Qty
+						<?=h(lang('Qty'))?>
 						<?php endif ?>
 					</th>
 					<th class="text-right">
 						<?php if ($recipient['non_donations_in_nonrecurring']): ?>
-						Price
+						<?=h(lang('Price'))?>
 						<?php endif ?>
 					</th>
-					<th class="text-right">Amount</th>
+					<th class="text-right"><?=h(lang('Amount'))?></th>
 					<th></th>
 				</tr>
 				<?php foreach($recipient['items'] as $item): ?>
@@ -260,7 +260,7 @@ if (!defined('PG_INIT_LOADED')) {
 					?>
 				<tr>
 					<td>
-						<span class="visible-xs-inline">Item:</span>
+						<span class="visible-xs-inline"><?=h(lang('Item'))?>:</span>
 						<?=h($item['name'])?>
 					</td>
 					<td>
@@ -319,16 +319,16 @@ if (!defined('PG_INIT_LOADED')) {
 							if ($item['recurring_schedule']):
 							?>
 						<fieldset>
-							<legend>Payment Schedule</legend>
+							<legend><?=h(lang('Payment Schedule'))?></legend>
 							<div class="form-group">
 								<label for="recurring_payment_period_<?=$item['id']?>">
-								Frequency*
+								<?=h(lang('Frequency'))?>*
 								</label>
 								<select name="recurring_payment_period_<?=$item['id']?>" id="recurring_payment_period_<?=$item['id']?>" class="form-control"></select>
 							</div>
 							<div class="form-group">
 								<label for="recurring_number_of_payments_<?=$item['id']?>">
-								Number of Payments<?php if ($number_of_payments_required): ?>*<?php endif ?>
+								<?=h(lang('Number of Payments'))?><?php if ($number_of_payments_required): ?>*<?php endif ?>
 								</label>
 								<input type="number" name="recurring_number_of_payments_<?=$item['id']?>" id="recurring_number_of_payments_<?=$item['id']?>" class="form-control">
 								<p class="help-block">
@@ -342,7 +342,7 @@ if (!defined('PG_INIT_LOADED')) {
 								?>
 							<div class="form-group">
 								<label for="recurring_start_date_<?=$item['id']?>">
-								Start Date*
+								<?=h(lang('Start Date'))?>*
 								</label>
 								<input type="text" name="recurring_start_date_<?=$item['id']?>" id="recurring_start_date_<?=$item['id']?>" class="form-control">
 							</div>
@@ -359,16 +359,14 @@ if (!defined('PG_INIT_LOADED')) {
 							?>
 						<fieldset>
 							<legend>
-								Gift Card
+								<?=h(lang('Gift Card'))?>
 								<?php if ($item['number_of_gift_cards'] > 1): ?>
-								(<?=$quantity_number?>
-								of
-								<?=$item['number_of_gift_cards']?>)
+								(<?=h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $item['number_of_gift_cards']))))?>)
 								<?php endif ?>
 							</legend>
 							<div class="form-group">
 								<label>
-								Amount
+								<?=h(lang('Amount'))?>
 								</label>
 								<p class="form-control-static">
 									<strong><?=$item['price_info']?></strong>
@@ -376,30 +374,30 @@ if (!defined('PG_INIT_LOADED')) {
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address">
-								Recipient Email*
+								<?=h(lang('Recipient Email'))?>*
 								</label>
 								<input type="email" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_recipient_email_address" class="form-control" placeholder="recipient@example.com">
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name">
-								Your Name
+								<?=h(lang('Your Name'))?>
 								</label>
-								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" class="form-control" placeholder="Your name that will appear in the email.">
+								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_from_name" class="form-control" placeholder="<?=h(lang('Your name that will appear in the email.'))?>">
 								<p class="help-block">
-									(leave blank if you want to be anonymous)
+									(<?=h(lang('leave blank if you want to be anonymous'))?>)
 								</p>
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message">
-								Message
+								<?=h(lang('Message'))?>
 								</label>
-								<textarea name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" rows="3" class="form-control" placeholder="The message that will appear in the email."></textarea>
+								<textarea name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_message" rows="3" class="form-control" placeholder="<?=h(lang('The message that will appear in the email.'))?>"></textarea>
 							</div>
 							<div class="form-group">
 								<label for="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date">
-								Delivery Date
+								<?=h(lang('Delivery Date'))?>
 								</label>
-								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" class="form-control" placeholder="Your name that will appear in the email.">
+								<input type="text" name="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" id="order_item_<?=$item['id']?>_quantity_number_<?=$quantity_number?>_gift_card_delivery_date" class="form-control" placeholder="<?=h(lang('Date the gift card e-mail should be sent.'))?>">
 							</div>
 						</fieldset>
 						<?php endfor ?>
@@ -433,7 +431,7 @@ if (!defined('PG_INIT_LOADED')) {
 							?>
 						<div class="form-group">
 							<label for="quantity[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Qty
+							<?=h(lang('Qty'))?>
 							</label>
 							<input type="number" name="quantity[<?=$item['id']?>]" id="quantity[<?=$item['id']?>]" class="form-control" style="min-width: 5em">
 						</div>
@@ -442,7 +440,7 @@ if (!defined('PG_INIT_LOADED')) {
 					</td>
 					<td class="text-right">
 						<?php if ($item['selection_type'] != 'donation'): ?>
-						<span class="visible-xs-inline">Price:</span>
+						<span class="visible-xs-inline"><?=h(lang('Price'))?>:</span>
 						<?=$item['price_info']?>
 						<?php endif ?>
 					</td>
@@ -450,7 +448,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<?php if ($item['selection_type'] == 'donation'): ?>
 						<div class="form-group">
 							<label for="donations[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Amount
+							<?=h(lang('Amount'))?>
 							</label>
 							<div class="input-group">
 								<span class="input-group-addon">
@@ -465,12 +463,12 @@ if (!defined('PG_INIT_LOADED')) {
 							</div>
 						</div>
 						<?php else: ?>
-						<span class="visible-xs-inline">Amount:</span>
+						<span class="visible-xs-inline"><?=h(lang('Amount'))?>:</span>
 						<?=$item['amount_info']?>
 						<?php endif ?>
 					</td>
 					<td class="text-center">
-						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="<?=h(lang('Remove'))?>">
 						<span class="glyphicon glyphicon-remove"></span>
 						</a>
 					</td>
@@ -484,14 +482,14 @@ if (!defined('PG_INIT_LOADED')) {
 				<tr>
 					<td colspan="6">
 						<h3>
-							Shipping Address
+							<?=h(lang('Shipping Address'))?>
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-							for <strong><?=h($recipient['ship_to_name'])?></strong>
+							<?=lang(array('string' => 'for <strong>{var:1}</strong>', 'vars' => array(h($recipient['ship_to_name']))))?>
 							<?php endif ?>
 						</h3>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_salutation">
-							Salutation
+							<?=h(lang('Salutation'))?>
 							</label>
 							<select
 								id="shipping_<?=$recipient['id']?>_salutation"
@@ -502,7 +500,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_first_name">
-							First Name*
+							<?=h(lang('First Name'))?>*
 							</label>
 							<input
 								type="text"
@@ -514,7 +512,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_last_name">
-							Last Name*
+							<?=h(lang('Last Name'))?>*
 							</label>
 							<input
 								type="text"
@@ -526,7 +524,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_company">
-							Company
+							<?=h(lang('Company'))?>
 							</label>
 							<input
 								type="text"
@@ -538,7 +536,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_address_1">
-							Address 1*
+							<?=h(lang('Address 1'))?>*
 							</label>
 							<input
 								type="text"
@@ -550,7 +548,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_address_2">
-							Address 2
+							<?=h(lang('Address 2'))?>
 							</label>
 							<input
 								type="text"
@@ -562,7 +560,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_city">
-							City*
+							<?=h(lang('City'))?>*
 							</label>
 							<input
 								type="text"
@@ -574,7 +572,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_country">
-							Country*
+							<?=h(lang('Country'))?>*
 							</label>
 							<select
 								id="shipping_<?=$recipient['id']?>_country"
@@ -585,7 +583,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_state_text_box">
-							State / Province
+							<?=h(lang('State / Province'))?>
 							</label>
 							<input
 								type="text"
@@ -595,7 +593,7 @@ if (!defined('PG_INIT_LOADED')) {
 								spellcheck="false"
 								class="form-control">
 							<label for="shipping_<?=$recipient['id']?>_state_pick_list" style="display: none">
-							State / Province*
+							<?=h(lang('State / Province'))?>*
 							</label>
 							<select
 								id="shipping_<?=$recipient['id']?>_state_pick_list"
@@ -606,7 +604,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_zip_code">
-							Zip / Postal Code<span id="shipping_<?=$recipient['id']?>_zip_code_required" style="display: none">*</span>
+							<?=h(lang('Zip / Postal Code'))?><span id="shipping_<?=$recipient['id']?>_zip_code_required" style="display: none">*</span>
 							</label>
 							<input
 								type="text"
@@ -616,14 +614,14 @@ if (!defined('PG_INIT_LOADED')) {
 								spellcheck="false"
 								class="form-control">
 						</div>
-						<div>Address Type</div>
+						<div><?=h(lang('Address Type'))?></div>
 						<div class="radio">
 							<label>
 							<input
 								type="radio"
 								name="shipping_<?=$recipient['id']?>_address_type"
 								value="residential">
-							Residential
+							<?=h(lang('Residential'))?>
 							</label>
 						</div>
 						<div class="radio">
@@ -632,12 +630,12 @@ if (!defined('PG_INIT_LOADED')) {
 								type="radio"
 								name="shipping_<?=$recipient['id']?>_address_type"
 								value="business">
-							Business
+							<?=h(lang('Business'))?>
 							</label>
 						</div>
 						<div class="form-group">
 							<label for="shipping_<?=$recipient['id']?>_phone_number">
-							Phone
+							<?=h(lang('Phone'))?>
 							</label>
 							<input
 								type="tel"
@@ -656,9 +654,9 @@ if (!defined('PG_INIT_LOADED')) {
 						<?php endif ?>
 						<?php if ($arrival_dates): ?>
 						<h3>
-							Requested Arrival Date
+							<?=h(lang('Requested Arrival Date'))?>
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-							for <strong><?=h($recipient['ship_to_name'])?></strong>
+							<?=lang(array('string' => 'for <strong>{var:1}</strong>', 'vars' => array(h($recipient['ship_to_name']))))?>
 							<?php endif ?>
 						</h3>
 						<?php foreach($arrival_dates as $arrival_date): ?>
@@ -692,9 +690,9 @@ if (!defined('PG_INIT_LOADED')) {
 							id="shipping_<?=$recipient['id']?>_method_heading"
 							style="display: none"
 							>
-							Shipping Method
+							<?=h(lang('Shipping Method'))?>
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
-							for <strong><?=h($recipient['ship_to_name'])?></strong>
+							<?=lang(array('string' => 'for <strong>{var:1}</strong>', 'vars' => array(h($recipient['ship_to_name']))))?>
 							<?php endif ?>
 						</h3>
 						<table
@@ -703,9 +701,9 @@ if (!defined('PG_INIT_LOADED')) {
 							>
 							<thead>
 								<tr>
-									<th>Select One</th>
-									<th class="text-right">Cost</th>
-									<th>Details</th>
+									<th><?=h(lang('Select One'))?></th>
+									<th class="text-right"><?=h(lang('Cost'))?></th>
+									<th><?=h(lang('Details'))?></th>
 								</tr>
 							</thead>
 							<tr class="method_row">
@@ -722,7 +720,7 @@ if (!defined('PG_INIT_LOADED')) {
 								</td>
 								<td>
 									<div class="delivery_date" style="display: none">
-										Estimated Delivery:
+										<?=h(lang('Estimated Delivery'))?>:
 										<strong class="date"></strong>
 									</div>
 									<div class="description"></div>
@@ -738,7 +736,7 @@ if (!defined('PG_INIT_LOADED')) {
 		</div>
 		<div class="col-lg-3">
 			<?php endif ?>
-			<h3>Totals</h3>
+			<h3><?=h(lang('Totals'))?></h3>
 			<table class="table">
 				<?php
 					// We only show the subtotal if there is an offer discount, tax,
@@ -747,25 +745,25 @@ if (!defined('PG_INIT_LOADED')) {
 					if ($show_subtotal):
 					?>
 				<tr>
-					<th scope="row" class="text-right">Subtotal:</th>
+					<th scope="row" class="text-right"><?=h(lang('Subtotal'))?>:</th>
 					<td class="text-right"><?=$subtotal_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($discount_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Discount:</th>
+					<th scope="row" class="text-right"><?=h(lang('Discount'))?>:</th>
 					<td class="text-right">-<?=$discount_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($tax_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Tax:</th>
+					<th scope="row" class="text-right"><?=h(lang('Tax'))?>:</th>
 					<td class="text-right"><?=$tax_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($shipping_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Shipping:</th>
+					<th scope="row" class="text-right"><?=h(lang('Shipping'))?>:</th>
 					<td class="text-right">
 						<?php
 							// The shipping class allows the shipping to be dynamically updated
@@ -777,17 +775,17 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php endif ?>
 				<?php if ($gift_card_discount_info): ?>
 				<tr>
-					<th scope="row" class="text-right">Gift Card<?php if ($number_of_applied_gift_cards > 1): ?>s<?php endif ?>:</th>
+					<th scope="row" class="text-right"><?=h($number_of_applied_gift_cards > 1 ? lang('Gift Cards') : lang('Gift Card'))?>:</th>
 					<td class="text-right">-<?=$gift_card_discount_info?></td>
 				</tr>
 				<?php endif ?>
 				<?php if ($show_surcharge): ?>
 				<tr class="surcharge_row">
-					<th scope="row" class="text-right">Surcharge:</th>
+					<th scope="row" class="text-right"><?=h(lang('Surcharge'))?>:</th>
 					<td class="text-right"><?=$surcharge_info?></td>
 				</tr>
 				<tr class="surcharge_total_row">
-					<th scope="row" class="text-right" style="width: 100%">Total Due:</th>
+					<th scope="row" class="text-right" style="width: 100%"><?=h(lang('Total Due'))?>:</th>
 					<td class="text-right">
 						<strong>
 						<?=$total_with_surcharge_info?><?php if ($base_currency_total_with_surcharge_info): ?>*
@@ -797,7 +795,7 @@ if (!defined('PG_INIT_LOADED')) {
 				</tr>
 				<?php endif ?>
 				<tr class="total_row">
-					<th scope="row" class="text-right" style="width: 100%">Total Due:</th>
+					<th scope="row" class="text-right" style="width: 100%"><?=h(lang('Total Due'))?>:</th>
 					<td class="text-right">
 						<?php
 							// The total and base_currency_total classes allow the total to be
@@ -817,7 +815,7 @@ if (!defined('PG_INIT_LOADED')) {
 				?>
 			<p class="text-muted">
 				<small>
-				*This amount is based on our current currency exchange rate to <?=h($base_currency_name)?> and may differ from the exact charges (displayed above in <?=h($base_currency_name)?>).
+				<?=lang(array('string' => '*This amount is based on our current currency exchange rate to {var:1} and may differ from the exact charges (displayed above in {var:1}).', 'vars' => array(h($base_currency_name))))?>
 				</small>
 			</p>
 			<?php endif ?>
@@ -836,7 +834,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?php endif ?>
 			<?php if ($applied_offers): ?>
 			<h3>
-				Applied Offer<?php if ($number_of_applied_offers > 1): ?>s<?php endif ?>
+				<?=h($number_of_applied_offers > 1 ? lang('Applied Offers') : lang('Applied Offer'))?>
 			</h3>
 			<?php if ($number_of_applied_offers > 1): ?>
 			<ul>
@@ -880,7 +878,7 @@ if (!defined('PG_INIT_LOADED')) {
 					name="submit_purchase_now"
 					class="purchase_button btn btn-primary"
 					<?php if ($paypal_express_checkout): ?>
-					data-paypal-label="Continue to PayPal"
+					data-paypal-label="<?=h(lang('Continue to PayPal'))?>"
 					<?php endif ?>
 					>
 				<?=h($purchase_now_button_label)?>
@@ -895,7 +893,7 @@ if (!defined('PG_INIT_LOADED')) {
 	</div>
 	<?php endif ?>
 	<?php if ($recurring_items): ?>
-	<h2>Recurring Charges</h2>
+	<h2><?=h(lang('Recurring Charges'))?></h2>
 	<div class="row">
 		<div class="col-lg-9">
 			<table class="table mobile_stacked">
@@ -913,7 +911,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<tr>
 					<td colspan="7">
 						<h3>
-							Ship to
+							<?=h(lang('Ship to'))?>
 							<?php if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient'): ?>
 							<strong><?=h($recipient['ship_to_name'])?></strong>
 							<?php endif ?>
@@ -922,20 +920,20 @@ if (!defined('PG_INIT_LOADED')) {
 				</tr>
 				<?php endif ?>
 				<tr>
-					<th>Item</th>
-					<th>Description</th>
-					<th>Frequency</th>
+					<th><?=h(lang('Item'))?></th>
+					<th><?=h(lang('Description'))?></th>
+					<th><?=h(lang('Frequency'))?></th>
 					<th class="text-center">
 						<?php if ($recipient['non_donations_in_recurring']): ?>
-						Qty
+						<?=h(lang('Qty'))?>
 						<?php endif ?>
 					</th>
 					<th class="text-right">
 						<?php if ($recipient['non_donations_in_recurring']): ?>
-						Price
+						<?=h(lang('Price'))?>
 						<?php endif ?>
 					</th>
-					<th class="text-right">Amount</th>
+					<th class="text-right"><?=h(lang('Amount'))?></th>
 					<th></th>
 				</tr>
 				<?php foreach($recipient['items'] as $item): ?>
@@ -945,7 +943,7 @@ if (!defined('PG_INIT_LOADED')) {
 					?>
 				<tr>
 					<td>
-						<span class="visible-xs-inline">Item:</span>
+						<span class="visible-xs-inline"><?=h(lang('Item'))?>:</span>
 						<?=h($item['name'])?>
 					</td>
 					<td>
@@ -1009,16 +1007,16 @@ if (!defined('PG_INIT_LOADED')) {
 							):
 							?>
 						<fieldset>
-							<legend>Payment Schedule</legend>
+							<legend><?=h(lang('Payment Schedule'))?></legend>
 							<div class="form-group">
 								<label for="recurring_payment_period_<?=$item['id']?>">
-								Frequency*
+								<?=h(lang('Frequency'))?>*
 								</label>
 								<select name="recurring_payment_period_<?=$item['id']?>" id="recurring_payment_period_<?=$item['id']?>" class="form-control"></select>
 							</div>
 							<div class="form-group">
 								<label for="recurring_number_of_payments_<?=$item['id']?>">
-								Number of Payments<?php if ($number_of_payments_required): ?>*<?php endif ?>
+								<?=h(lang('Number of Payments'))?><?php if ($number_of_payments_required): ?>*<?php endif ?>
 								</label>
 								<input type="number" name="recurring_number_of_payments_<?=$item['id']?>" id="recurring_number_of_payments_<?=$item['id']?>" class="form-control">
 								<p class="help-block">
@@ -1032,7 +1030,7 @@ if (!defined('PG_INIT_LOADED')) {
 								?>
 							<div class="form-group">
 								<label for="recurring_start_date_<?=$item['id']?>">
-								Start Date*
+								<?=h(lang('Start Date'))?>*
 								</label>
 								<input type="text" name="recurring_start_date_<?=$item['id']?>" id="recurring_start_date_<?=$item['id']?>" class="form-control">
 							</div>
@@ -1055,7 +1053,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<?php endif ?>
 					</td>
 					<td>
-						<span class="visible-xs-inline">Frequency:</span>
+						<span class="visible-xs-inline"><?=h(lang('Frequency'))?>:</span>
 						<?=h($item['payment_period'])?>
 					</td>
 					<td class="text-center">
@@ -1077,7 +1075,7 @@ if (!defined('PG_INIT_LOADED')) {
 							?>
 						<div class="form-group">
 							<label for="quantity[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Qty
+							<?=h(lang('Qty'))?>
 							</label>
 							<input type="number" name="quantity[<?=$item['id']?>]" id="quantity[<?=$item['id']?>]" class="form-control" style="min-width: 5em">
 						</div>
@@ -1086,7 +1084,7 @@ if (!defined('PG_INIT_LOADED')) {
 					</td>
 					<td class="text-right">
 						<?php if ($item['selection_type'] != 'donation'): ?>
-						<span class="visible-xs-inline">Price:</span>
+						<span class="visible-xs-inline"><?=h(lang('Price'))?>:</span>
 						<?=$item['price_info']?>
 						<?php endif ?>
 					</td>
@@ -1102,7 +1100,7 @@ if (!defined('PG_INIT_LOADED')) {
 							?>
 						<div class="form-group">
 							<label for="donations[<?=$item['id']?>]" class="visible-xs-inline-block">
-							Amount
+							<?=h(lang('Amount'))?>
 							</label>
 							<div class="input-group">
 								<span class="input-group-addon">
@@ -1117,7 +1115,7 @@ if (!defined('PG_INIT_LOADED')) {
 							</div>
 						</div>
 						<?php else: ?>
-						<span class="visible-xs-inline">Amount:</span>
+						<span class="visible-xs-inline"><?=h(lang('Amount'))?>:</span>
 						<?=$item['amount_info']?>
 						<?php endif ?>
 					</td>
@@ -1129,7 +1127,7 @@ if (!defined('PG_INIT_LOADED')) {
 							// for the same item that could confuse customer.
 							if (!$item['in_nonrecurring']):
 							?>
-						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+						<a href="<?=h($item['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="<?=h(lang('Remove'))?>">
 						<span class="glyphicon glyphicon-remove"></span>
 						</a>
 						<?php endif ?>
@@ -1142,7 +1140,7 @@ if (!defined('PG_INIT_LOADED')) {
 			</table>
 		</div>
 		<div class="col-lg-3">
-			<h3>Totals</h3>
+			<h3><?=h(lang('Totals'))?></h3>
 			<table class="table">
 				<?php
 					// Loop through the payment periods in order to show totals.
@@ -1150,7 +1148,7 @@ if (!defined('PG_INIT_LOADED')) {
 					?>
 				<tr>
 					<th scope="row" class="text-right" style="width: 100%">
-						<?=h($payment_period['name'])?> Subtotal:
+						<?=h($payment_period['name'])?> <?=h(lang('Subtotal'))?>:
 					</th>
 					<td class="text-right">
 						<?=$payment_period['subtotal_info']?>
@@ -1159,7 +1157,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php if ($payment_period['tax_info']): ?>
 				<tr>
 					<th scope="row" class="text-right" style="width: 100%">
-						<?=h($payment_period['name'])?> Tax:
+						<?=h($payment_period['name'])?> <?=h(lang('Tax'))?>:
 					</th>
 					<td class="text-right">
 						<?=$payment_period['tax_info']?>
@@ -1168,7 +1166,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php endif ?>
 				<tr>
 					<th scope="row" class="text-right" style="width: 100%">
-						<?=h($payment_period['name'])?> Total:
+						<?=h($payment_period['name'])?> <?=h(lang('Total'))?>:
 					</th>
 					<td class="text-right">
 						<strong><?=$payment_period['total_info']?></strong>
@@ -1179,14 +1177,14 @@ if (!defined('PG_INIT_LOADED')) {
 		</div>
 	</div>
 	<?php endif ?>
-	<h2>Billing</h2>
+	<h2><?=h(lang('Billing'))?></h2>
 	<?php if ($billing_same_as_shipping): ?>
 	<div class="checkbox">
 		<label>
 		<input
 			type="checkbox"
 			id="billing_same_as_shipping">
-		Billing Address Same as Shipping
+		<?=h(lang('Billing Address Same as Shipping'))?>
 		</label>
 	</div>
 	<?php endif ?>    
@@ -1203,7 +1201,7 @@ if (!defined('PG_INIT_LOADED')) {
 	</div>
 	<?php endif ?>
 	<div class="form-group">
-		<label for="billing_salutation">Salutation</label>
+		<label for="billing_salutation"><?=h(lang('Salutation'))?></label>
 		<select
 			name="billing_salutation"
 			id="billing_salutation"
@@ -1212,7 +1210,7 @@ if (!defined('PG_INIT_LOADED')) {
 		</select>
 	</div>
 	<div class="form-group">
-		<label for="billing_first_name">First Name*</label>
+		<label for="billing_first_name"><?=h(lang('First Name'))?>*</label>
 		<input
 			type="text"
 			name="billing_first_name"
@@ -1222,7 +1220,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_last_name">Last Name*</label>
+		<label for="billing_last_name"><?=h(lang('Last Name'))?>*</label>
 		<input
 			type="text"
 			name="billing_last_name"
@@ -1232,7 +1230,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_company">Company</label>
+		<label for="billing_company"><?=h(lang('Company'))?></label>
 		<input
 			type="text"
 			name="billing_company"
@@ -1242,7 +1240,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_address_1">Address 1*</label>
+		<label for="billing_address_1"><?=h(lang('Address 1'))?>*</label>
 		<input
 			type="text"
 			name="billing_address_1"
@@ -1252,7 +1250,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_address_2">Address 2</label>
+		<label for="billing_address_2"><?=h(lang('Address 2'))?></label>
 		<input
 			type="text"
 			name="billing_address_2"
@@ -1262,7 +1260,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_city">City*</label>
+		<label for="billing_city"><?=h(lang('City'))?>*</label>
 		<input
 			type="text"
 			name="billing_city"
@@ -1272,7 +1270,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_country">Country*</label>
+		<label for="billing_country"><?=h(lang('Country'))?>*</label>
 		<select
 			name="billing_country"
 			id="billing_country"
@@ -1281,7 +1279,7 @@ if (!defined('PG_INIT_LOADED')) {
 		</select>
 	</div>
 	<div class="form-group">
-		<label for="billing_state_text_box">State / Province</label>
+		<label for="billing_state_text_box"><?=h(lang('State / Province'))?></label>
 		<input
 			type="text"
 			name="billing_state"
@@ -1289,7 +1287,7 @@ if (!defined('PG_INIT_LOADED')) {
 			autocomplete="section-billing billing address-level1"
 			spellcheck="false"
 			class="form-control">
-		<label for="billing_state_pick_list" style="display: none">State / Province*</label>
+		<label for="billing_state_pick_list" style="display: none"><?=h(lang('State / Province'))?>*</label>
 		<select
 			name="billing_state"
 			id="billing_state_pick_list"
@@ -1299,7 +1297,7 @@ if (!defined('PG_INIT_LOADED')) {
 		</select>
 	</div>
 	<div class="form-group">
-		<label for="billing_zip_code">Zip / Postal Code*</label>
+		<label for="billing_zip_code"><?=h(lang('Zip / Postal Code'))?>*</label>
 		<input
 			type="text"
 			name="billing_zip_code"
@@ -1309,7 +1307,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_phone_number">Phone*</label>
+		<label for="billing_phone_number"><?=h(lang('Phone'))?>*</label>
 		<input
 			type="tel"
 			name="billing_phone_number"
@@ -1319,7 +1317,7 @@ if (!defined('PG_INIT_LOADED')) {
 			class="form-control">
 	</div>
 	<div class="form-group">
-		<label for="billing_email_address">Email*</label>
+		<label for="billing_email_address"><?=h(lang('Email'))?>*</label>
 		<input
 			type="email"
 			name="billing_email_address"
@@ -1338,7 +1336,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php endif ?>
 	<?php if ($po_number): ?>
 	<div class="form-group">
-		<label for="po_number">PO Number</label>
+		<label for="po_number"><?=h(lang('PO Number'))?></label>
 		<input
 			type="text"
 			name="po_number"
@@ -1349,7 +1347,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php endif ?>
 	<?php if ($referral_source): ?>
 	<div class="form-group">
-		<label for="referral_source">How did you hear about us?</label>
+		<label for="referral_source"><?=h(lang('How did you hear about us?'))?></label>
 		<select name="referral_source" id="referral_source" class="form-control"></select>
 	</div>
 	<?php endif ?>
@@ -1357,7 +1355,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="update_contact" value="1">
-		Update my contact info with this billing info.
+		<?=h(lang('Update my contact info with this billing info.'))?>
 		</label>
 	</div>
 	<?php endif ?>
@@ -1385,7 +1383,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php endif ?>
 	<?php if ($applied_gift_cards): ?>
 	<h2>
-		Applied Gift Card<?php if ($number_of_applied_gift_cards > 1): ?>s<?php endif ?>
+		<?=h($number_of_applied_gift_cards > 1 ? lang('Applied Gift Cards') : lang('Applied Gift Card'))?>
 	</h2>
 	<?php if ($number_of_applied_gift_cards > 1): ?>
 	<ul>
@@ -1397,8 +1395,8 @@ if (!defined('PG_INIT_LOADED')) {
 		<li>
 			<?php endif ?>
 			<?=h($gift_card['protected_code'])?>
-			(Remaining Balance: <?=$gift_card['remaining_balance_info']?>)
-			<a href="<?=h($gift_card['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="Remove">
+			(<?=h(lang('Remaining Balance'))?>: <?=$gift_card['remaining_balance_info']?>)
+			<a href="<?=h($gift_card['remove_url'])?>" class="btn btn-default btn-secondary btn-sm" title="<?=h(lang('Remove'))?>">
 			<span class="glyphicon glyphicon-remove"></span>
 			</a>
 			<?php if ($number_of_applied_gift_cards > 1): ?>
@@ -1412,15 +1410,15 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php endif ?>
 	<?php endif ?>
 	<?php if ($payment): ?>
-	<h2>Payment</h2>
+	<h2><?=h(lang('Payment'))?></h2>
 	<?php if ($gift_card_code): ?>
 	<div class="form-group form-inline">
 		<div class="form-group">
-			<label for="gift_card_code">Gift Card Code</label>
+			<label for="gift_card_code"><?=h(lang('Gift Card Code'))?></label>
 			<input type="text" name="gift_card_code" id="gift_card_code" class="form-control">
 		</div>
 		<button type="submit" name="submit_apply_gift_card" class="btn btn-default btn-secondary btn-sm" formnovalidate>
-		Apply
+		<?=h(lang('Apply'))?>
 		</button>
 	</div>
 	<?php endif ?>
@@ -1429,7 +1427,7 @@ if (!defined('PG_INIT_LOADED')) {
 		// If this is the only payment method, then show a heading.
 		if ($number_of_payment_methods == 1):
 		?>
-	<h3>Credit/Debit Card</h3>
+	<h3><?=h(lang('Credit/Debit Card'))?></h3>
 	<?php
 		// Otherwise there are multiple payment methods, so show radio button.
 		else:
@@ -1437,7 +1435,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="radio">
 		<label>
 		<input type="radio" name="payment_method" value="Credit/Debit Card">
-		Credit/Debit Card
+		<?=h(lang('Credit/Debit Card'))?>
 		</label>
 	</div>
 	<?php endif ?>
@@ -1449,7 +1447,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<div class="row">
 			<div class="col-sm-4">
 				<div class="form-group">
-					<label for="card_number">Card Number*</label>
+					<label for="card_number"><?=h(lang('Card Number'))?>*</label>
 					<input
 						type="tel"
 						id="card_number"
@@ -1463,7 +1461,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<div class="col-sm-3 col-xs-6">
 				<?php // Use the following to have one text box for expiration. ?>
 				<div class="form-group">
-					<label for="expiration">Expiration*</label>
+					<label for="expiration"><?=h(lang('Expiration'))?>*</label>
 					<input
 						type="tel"
 						id="expiration"
@@ -1471,7 +1469,7 @@ if (!defined('PG_INIT_LOADED')) {
 						autocomplete="cc-exp"
 						spellcheck="false"
 						inputmode="numeric"
-						placeholder="MM / YY"
+						placeholder="<?=h(lang('MM / YY'))?>"
 						class="form-control">
 				</div>
 				<?php
@@ -1503,7 +1501,7 @@ if (!defined('PG_INIT_LOADED')) {
 				?>
 			<div class="col-sm-3 col-xs-6">
 				<div class="form-group">
-					<label for="card_verification_number">Security Code*</label>
+					<label for="card_verification_number"><?=h(lang('Security Code'))?>*</label>
 					<input
 						type="tel"
 						id="card_verification_number"
@@ -1511,12 +1509,12 @@ if (!defined('PG_INIT_LOADED')) {
 						autocomplete="cc-csc"
 						spellcheck="false"
 						inputmode="numeric"
-						placeholder="CSC"
+						placeholder="<?=h(lang('CSC'))?>"
 						maxlength="4"
 						class="form-control">
 					<?php if ($card_verification_number_url): ?>
 					<p class="help-block">
-						<a href="<?=h($card_verification_number_url)?>" target="_blank">What is this?</a>
+						<a href="<?=h($card_verification_number_url)?>" target="_blank"><?=h(lang('What is this?'))?></a>
 					</p>
 					<?php endif ?>  
 				</div>
@@ -1549,7 +1547,7 @@ if (!defined('PG_INIT_LOADED')) {
 			?>
 		<p class="text-muted">
 			<small>
-			<?=h($surcharge_percentage)?>% surcharge has been added.
+			<?=h(lang(array('string' => '{var:1}% surcharge has been added.', 'vars' => array($surcharge_percentage))))?>
 			</small>
 		</p>
 		<?php endif ?>
@@ -1596,7 +1594,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="offline_payment_allowed" value="1">
-		Allow offline payment option for this <?=h($shopping_cart_label)?> (and click update to apply).
+		<?=lang(array('string' => 'Allow offline payment option for this {var:1} (and click update to apply).', 'vars' => array(h($shopping_cart_label))))?>
 		</label>
 	</div>
 	<?php endif ?>
@@ -1604,7 +1602,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="terms" value="1">
-		I agree to the <a href="<?=h($terms_url)?>" target="_blank">terms and conditions</a>.
+		<?=lang(array('string' => 'I agree to the <a href="{var:1}" target="_blank">terms and conditions</a>.', 'vars' => array(h($terms_url))))?>
 		</label>
 	</div>
 	<?php endif ?>
@@ -1628,7 +1626,7 @@ if (!defined('PG_INIT_LOADED')) {
 			name="submit_purchase_now"
 			class="purchase_button btn btn-primary"
 			<?php if ($paypal_express_checkout): ?>
-			data-paypal-label="Continue to PayPal"
+			data-paypal-label="<?=h(lang('Continue to PayPal'))?>"
 			<?php endif ?>
 			>
 		<?=h($purchase_now_button_label)?>
@@ -1639,7 +1637,7 @@ if (!defined('PG_INIT_LOADED')) {
 </form>
 <p class="text-muted">
 	<small>
-	This <?=h($shopping_cart_label)?> has been saved.  To retrieve this <?=h($shopping_cart_label)?> at a later time, please use this link:<br>
+	<?=lang(array('string' => 'This {var:1} has been saved. To retrieve this {var:1} at a later time, please use this link:', 'vars' => array(h($shopping_cart_label))))?><br>
 	<a href="<?=h($retrieve_order_url)?>"><?=h($retrieve_order_url)?></a>
 	</small>
 </p>
@@ -1647,7 +1645,7 @@ if (!defined('PG_INIT_LOADED')) {
 <?php if ($currency): ?>
 <form <?=$currency_attributes?>>
 	<div class="form-group">
-		<label for="currency_id" class="sr-only">Currency</label>
+		<label for="currency_id" class="sr-only"><?=h(lang('Currency'))?></label>
 		<select name="currency_id" id="currency_id" class="form-control"></select>
 	</div>
 	<?=$currency_system // Required hidden fields and JS (do not remove) ?>
