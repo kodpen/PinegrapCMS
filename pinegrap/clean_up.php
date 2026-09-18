@@ -103,6 +103,14 @@ $file_list = array(
     // (assets/folder_tree.js, listed below) is already retired and no other
     // code requests the endpoint, so it goes the same way.
     'get_folder_tree.php',
+    // Legacy LiveSite container templates. The root add_container.php,
+    // edit_container.php and view_containers.php render their markup inline,
+    // and no page type maps to these templates, so nothing includes them.
+    'includes/templates/edit_container.php',
+    'includes/templates/view_containers.php',
+    // The XML endpoint of the old product-group tree widget. No screen or
+    // script requests it any more.
+    'get_product_group_tree.php',
 
 
     // The pre-lib/ asset tree, superseded in 2026.4.4 and dropped from the
