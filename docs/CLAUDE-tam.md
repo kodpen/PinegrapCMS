@@ -295,7 +295,17 @@ Kurallar:
 ### Erişim Kontrolü
 - `validate_area_access($user, 'administrator')` → sadece `USER_ROLE = 0` (admin)
 - `validate_area_access($user, 'designer')` → designer + admin
+- `validate_area_access($user, 'manager')` → rol ≤ 2; kısa bağlantı oluşturma
+  (`add_short_link.php`, File Manager `explorer_short_link_create` /
+  `explorer_short_link_duplicate`) bu kapıdadır. Düzenleme/silme
+  (`edit_short_link.php`) rol 3'e açık kalır.
 - Her sayfanın başında `validate_user()` ile kullanıcı doğrulanır.
+- **İş betikleri de kapıdan geçer.** `update_exchange_rates.php` ve
+  `waf_ranges_job.php` `pg_cron_is_background_run()` ile CLI veya
+  `PG_CRON_DISPATCH` (job.php dağıtıcısı include'dan hemen önce tanımlar)
+  dışındaki her isteği, düğmeyi sunan panel ekranının kapısından geçirir;
+  `send_to` var mı diye bakarak kullanıcıyı atlamak yoktur. Yeni bir iş
+  betiği yazarken aynı kalıp kullanılır.
 
 ### Kullanıcı Rolleri ve Yetki Sınırları
 
