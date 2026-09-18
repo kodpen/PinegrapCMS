@@ -200,6 +200,8 @@ function get_my_account_profile($properties = array()) {
                 </tr>';
         }
 
+        $output = '';
+
         $output .=
             $form->output_errors() . '
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/my_account_profile.php" method="post" class="software">

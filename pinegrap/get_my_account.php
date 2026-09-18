@@ -308,11 +308,11 @@ function get_my_account($properties) {
                     $cart_page_id = 0;
                 
                     // if the visitor has visited a shopping cart page last, then use that page
-                    if ($_SESSION['ecommerce']['shopping_cart_page_id']) {
+                    if ($_SESSION['ecommerce']['shopping_cart_page_id'] ?? 0) {
                         $cart_page_id = $_SESSION['ecommerce']['shopping_cart_page_id'];
                     
                     // else if the visitor has visited an express order page last, then use that page
-                    } else if ($_SESSION['ecommerce']['express_order_page_id']) {
+                    } else if ($_SESSION['ecommerce']['express_order_page_id'] ?? 0) {
                         $cart_page_id = $_SESSION['ecommerce']['express_order_page_id'];
                     }
 

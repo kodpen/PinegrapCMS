@@ -130,6 +130,8 @@ function get_membership_entrance($properties = array()) {
                 </tr>';
         }
 
+        $output = '';
+
         if ($device_type == 'mobile') {
             // output tableless version for wrapping
             $output .=
@@ -309,6 +311,7 @@ function get_membership_entrance($properties = array()) {
 
                             </table>
                             <button type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button">' . lang('Register') . '</button><br />
+                            ' . pg_google_signin_button(($_GET['send_to'] ?? ''), 'membership') . '
                         </form>
                     </td>
                 </tr>

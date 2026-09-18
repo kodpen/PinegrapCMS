@@ -29,7 +29,7 @@ function get_set_password($properties) {
 
     } else {
 
-        $token = $_GET['k'];
+        $token = $_GET['k'] ?? '';
 
         // If there is a token in the query string, then validate it.
         if ($token) {
@@ -48,7 +48,7 @@ function get_set_password($properties) {
                 WHERE token = '" . e($token_hash) . "'");
 
             // If query to database return no results for token
-            if (!$user['id']) {
+            if (!is_array($user) || !$user['id']) {
 
                 log_activity('Set Password: invalid token');
 
@@ -111,7 +111,7 @@ function get_set_password($properties) {
             'form' => $form,
             'attributes' => $attributes,
             'strong_password_help' => $strong_password_help,
-            'email' => $user['email'],
+            'email' => (is_array($user) ? $user['email'] : ''),
             'system' => $system));
 
         $output = $form->prepare($output);
