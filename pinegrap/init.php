@@ -664,6 +664,7 @@ define('ERP_SELLER_TAX_OFFICE', $row['erp_seller_tax_office'] ?? '');
 define('ERP_FX_ENABLED', isset($row['erp_fx_enabled']) ? (int) $row['erp_fx_enabled'] : 0);
 define('ERP_FX_CURRENCIES', $row['erp_fx_currencies'] ?? 'USD,EUR,GBP');
 define('ERP_FX_AUTO_DIFF', isset($row['erp_fx_auto_diff']) ? (int) $row['erp_fx_auto_diff'] : 1);
+define('ERP_DEFAULT_DUE_DAYS', isset($row['erp_default_due_days']) ? (int) $row['erp_default_due_days'] : 0);
 define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');

@@ -75,6 +75,16 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
             </div>
             ' . erp_currency_form_row($liveform, $currency_locked, lang('The currency the account is kept in. Its balance is reported in the base currency as well.')) . '
+            <div class="row">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                    <label for="payment_days" class="form-label">' . lang('Payment term (days)') . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'text', 'id' => 'payment_days', 'name' => 'payment_days',
+                        'class' => 'form-control', 'maxlength' => '4', 'inputmode' => 'numeric',
+                        'autocomplete' => 'off')) . '
+                    <div class="form-text">' . h(lang(array('string' => 'Days from the invoice date to its due date. 0 uses the store default, currently {var:1} days.', 'vars' => (defined('ERP_DEFAULT_DUE_DAYS') ? (int) ERP_DEFAULT_DUE_DAYS : 0)))) . '</div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -1017,6 +1017,15 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
   `erp_fx_post_difference()` çevrilmiş orijinali saymaz. Tahsis kalmayan
   faturanın `payment_date`'i sıfırlanır (internet satışı hariç).
 
+- **Vade günü (4.53):** `erp_accounts.payment_days` ve
+  `config.erp_default_due_days` / `ERP_DEFAULT_DUE_DAYS`. Tek yardımcı
+  `erp_account_due_date($account_id, $issue_date)` (`accounts.php`): cari >
+  mağaza > fatura tarihi. Belge yazılırken bir kez okunur (`order_bridge`,
+  `erp_manual_header_build()`, fatura başlık formunda boş bırakılan vade);
+  yazılan tarih ezilmez, iade fatura tarihini korur, `aging.php` yalnız
+  `due_date` okur. CSV cari içe/dışa aktarımı alanı "Vade (Gün)" etiketiyle
+  taşır (Notlar'dan sonra).
+
 ### İndirimli siparişin KDV'si
 
 `submit_order.php:851` indirimi **toplamı hesaplamadan önce** KDV'den düşer
