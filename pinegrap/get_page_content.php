@@ -854,8 +854,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 "Sorry, your updates could not be saved. Please try again later.":"' . lang('Sorry, your updates could not be saved. Please try again later.') . '",
                 "Save current page edits":"' . lang('Save current page edits') . '",
                 "Cancel current page edits.":"' . lang('Cancel current page edits.') . '",
-                "Edit Image with Software Image Editor":"' . lang('Edit Image with Software Image Editor') . '",
-                "WARNING: If you leave this page, then your content will NOT be added.":"' . lang('WARNING: If you leave this page, then your content will NOT be added.') . '",';
+                "Edit Image with Software Image Editor":"' . lang('Edit Image with Software Image Editor') . '",';
         }
 
 
@@ -889,7 +888,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 "products matched":"' . lang('products matched') . '",
                 "product matched":"' . lang('product matched') . '",
                 "Please make a choice before the time runs out":"' . lang('Please make a choice before the time runs out') . '",
-                "seconds":"' . lang('seconds') . '",' . $output_restricted_area_translates . '
+                "seconds":"' . lang('seconds') . '",
+                "WARNING: If you leave this page, then your content will NOT be added.":"' . lang('WARNING: If you leave this page, then your content will NOT be added.') . '",' . $output_restricted_area_translates . '
             };
             ' . $software_environment . '
             ' . $output_kiosk_javascript . '

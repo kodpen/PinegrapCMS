@@ -10,8 +10,9 @@
  */
 
 function lang($string) {
-	if (translate) {
-		$string = translate[$string];
+	// Fall back to the key itself when the translate map is absent or lacks it.
+	if ((typeof translate !== 'undefined') && (translate[$string] !== undefined)) {
+		return translate[$string];
 	}
 	return $string;
 }
@@ -34,12 +35,12 @@ software_$(document).ready(function() {
         //state default radio ':checked' property for installment there:
         //here we save the state because if software sen back for notices we wanna get back to selected value
         //here we set it all
-        $('.installment_box').click(function(){
+        software_$('.installment_box').click(function(){
             //if installment_box clicked than set checked to input radio in it.
-            $(this).find('input').prop( "checked", true );
+            software_$(this).find('input').prop( "checked", true );
             //installment radio checked value remember with localstorage.
             //may software return user with error or notice, back to preview screen, than we auto set checkbox old status.
-            $(this).find('input:radio[name=installment]').each(function() {
+            software_$(this).find('input:radio[name=installment]').each(function() {
                 var state = JSON.parse( localStorage.getItem('radio_installment_'  + this.id) );
                 if (state) this.checked = state.checked;
                 localStorage.setItem(
@@ -48,12 +49,12 @@ software_$(document).ready(function() {
             }); 
         });
         //if card number input change,paste,keyup than control installment check again.
-        $("#card_number").on("change paste keyup",function(){
+        software_$("#card_number").on("change paste keyup",function(){
             if(card_number.length){
                 check_installment();
                 //if card number change than it will recheck installment options,
                 //we make radio installment to default.
-                $('input:radio[name=installment][value=1]').prop( "checked", true );
+                software_$('input:radio[name=installment][value=1]').prop( "checked", true );
 
             }
         });
@@ -62,19 +63,19 @@ software_$(document).ready(function() {
         //get only card number seven number because may card number has spaces
         //than api.php will remove spaces and use first six number dont worry about it.
         function check_installment(){
-            var card_value = $("#card_number").val().substring(0, 7);
+            var card_value = software_$("#card_number").val().substring(0, 7);
             //get total from checkout preview or express order page.
             //if total with surchare use it else use total
-            if($("input[name=total_with_surcharge]").length ){
-                var total = $("input[name=total_with_surcharge]").val();
+            if(software_$("input[name=total_with_surcharge]").length ){
+                var total = software_$("input[name=total_with_surcharge]").val();
             }else{
-                var total = $("input[name=total]").val();
+                var total = software_$("input[name=total]").val();
             }
             //if card number at least than seven number dont need to check this
             //if at least seven number than start function.
             if (card_value.length >= 7){
                 //remove installment row styles to show it.
-                $('.installment-row').attr('style','');
+                software_$('.installment-row').attr('style','');
 
 
                 // Use AJAX to get various card info.
@@ -91,34 +92,34 @@ software_$(document).ready(function() {
                         // Check the values in console
                         console.log(response);
                         if(response.two_supported == '1'){
-                            $('#twoinstallment').attr('style','');
-                            $('#twoinstallment .installment_prices_here').html(response.monthlytwo + ' x 2 <br/>' + response.totaltwo);
+                            software_$('#twoinstallment').attr('style','');
+                            software_$('#twoinstallment .installment_prices_here').html(response.monthlytwo + ' x 2 <br/>' + response.totaltwo);
                         }else{
-                            $('#twoinstallment').attr('style','display:none;');
+                            software_$('#twoinstallment').attr('style','display:none;');
                         } 
                         if(response.three_supported == '1'){
-                            $('#threeinstallment').attr('style','');
-                            $('#threeinstallment .installment_prices_here').html(response.monthlythree + ' x 3 <br/>' + response.totalthree);
+                            software_$('#threeinstallment').attr('style','');
+                            software_$('#threeinstallment .installment_prices_here').html(response.monthlythree + ' x 3 <br/>' + response.totalthree);
                         }else{
-                            $('#threeinstallment').attr('style','display:none;');
+                            software_$('#threeinstallment').attr('style','display:none;');
                         }
                         if(response.six_supported == '1'){
-                            $('#sixinstallment').attr('style','');
-                            $('#sixinstallment .installment_prices_here').html(response.monthlysix + ' x 6 <br/> ' + response.totalsix);
+                            software_$('#sixinstallment').attr('style','');
+                            software_$('#sixinstallment .installment_prices_here').html(response.monthlysix + ' x 6 <br/> ' + response.totalsix);
                         }else{
-                            $('#sixinstallment').attr('style','display:none;');
+                            software_$('#sixinstallment').attr('style','display:none;');
                         }
                         if(response.nine_supported == '1'){
-                            $('#nineinstallment').attr('style','');
-                            $('#nineinstallment .installment_prices_here').html(response.monthlynine + ' x 9 <br/>' + response.totalnine);
+                            software_$('#nineinstallment').attr('style','');
+                            software_$('#nineinstallment .installment_prices_here').html(response.monthlynine + ' x 9 <br/>' + response.totalnine);
                         }else{
-                            $('#nineinstallment').attr('style','display:none;');
+                            software_$('#nineinstallment').attr('style','display:none;');
                         }
                         if(response.twelve_supported == '1'){
-                            $('#twelveinstallment').attr('style','');
-                            $('#twelveinstallment .installment_prices_here').html(response.monthlytwelve + ' x 12 <br/>' + response.totaltwelve);
+                            software_$('#twelveinstallment').attr('style','');
+                            software_$('#twelveinstallment .installment_prices_here').html(response.monthlytwelve + ' x 12 <br/>' + response.totaltwelve);
                         }else{
-                            $('#twelveinstallment').attr('style','display:none;');
+                            software_$('#twelveinstallment').attr('style','display:none;');
                         }
 
                     }
@@ -126,7 +127,7 @@ software_$(document).ready(function() {
 
             }else{
                 //else card number not min 7 digit than hide installment row
-                $('.installment-row').attr('style','display:none');
+                software_$('.installment-row').attr('style','display:none');
             }
         }
     }
@@ -233,7 +234,7 @@ software_$(document).ready(function() {
                 toolbar_button.removeClass('up_button');
                 toolbar_button.addClass('down_button');
                 toolbar_button.prop('title', lang('Deactivate Fullscreen Mode') + ' (Ctrl+D | \u2318+D)');
-                $('#software_pinegrap_button_container').show();
+                software_$('#software_pinegrap_button_container').show();
             // Otherwise the toolbar is collapsed, so expand it.
             } else {
                 // If the toolbar is fully loaded, then expand it now.
@@ -255,7 +256,7 @@ software_$(document).ready(function() {
                     toolbar_button.removeClass('down_button');
                     toolbar_button.addClass('up_button');
                     toolbar_button.prop('title', lang('Activate Fullscreen Mode') + ' (Ctrl+D | \u2318+D)');
-                    $('#software_pinegrap_button_container').hide();
+                    software_$('#software_pinegrap_button_container').hide();
                 // Otherwise use polling to determine when the toolbar is fully ready.
                 } else {
                     var count = 0;
@@ -290,7 +291,7 @@ software_$(document).ready(function() {
                             toolbar_button.removeClass('down_button');
                             toolbar_button.addClass('up_button');
                             toolbar_button.prop('title', lang('Activate Fullscreen Mode') + ' (Ctrl+D | \u2318+D)');
-                            $('#software_pinegrap_button_container').hide();
+                            software_$('#software_pinegrap_button_container').hide();
                             clearInterval(toolbar_polling);
 
                         // Otherwise if we have polled a large number of times,
@@ -895,15 +896,15 @@ function prepare_content_for_html(content)
     // if content is an integer or other type.
     content = String(content);
 
-    var chars = new Array ('&','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�','\"','�','<',
-                         '>','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�','�','�','�',
-                         '�','�','�','�','�','�','�','�');
+    var chars = new Array ('&','\u00e0','\u00e1','\u00e2','\u00e3','\u00e4','\u00e5','\u00e6','\u00e7','\u00e8','\u00e9',
+                         '\u00ea','\u00eb','\u00ec','\u00ed','\u00ee','\u00ef','\u00f0','\u00f1','\u00f2','\u00f3','\u00f4',
+                         '\u00f5','\u00f6','\u00f8','\u00f9','\u00fa','\u00fb','\u00fc','\u00fd','\u00fe','\u00ff','\u00c0',
+                         '\u00c1','\u00c2','\u00c3','\u00c4','\u00c5','\u00c6','\u00c7','\u00c8','\u00c9','\u00ca','\u00cb',
+                         '\u00cc','\u00cd','\u00ce','\u00cf','\u00d0','\u00d1','\u00d2','\u00d3','\u00d4','\u00d5','\u00d6',
+                         '\u00d8','\u00d9','\u00da','\u00db','\u00dc','\u00dd','\u00de','\u20ac','\"','\u00df','<',
+                         '>','\u00a2','\u00a3','\u00a4','\u00a5','\u00a6','\u00a7','\u00a8','\u00a9','\u00aa','\u00ab',
+                         '\u00ac','\u00ad','\u00ae','\u00af','\u00b0','\u00b1','\u00b2','\u00b3','\u00b4','\u00b5','\u00b6',
+                         '\u00b7','\u00b8','\u00b9','\u00ba','\u00bb','\u00bc','\u00bd','\u00be');
 
     var entities = new Array ('amp','agrave','aacute','acirc','atilde','auml','aring',
                             'aelig','ccedil','egrave','eacute','ecirc','euml','igrave',
@@ -2847,7 +2848,7 @@ var software = {
                                     // Have to show it when done fading in for
                                     // some reason (maybe related to advanced
                                     // being expanded or collapsed).
-                                    $(this).show();
+                                    software_$(this).show();
 
                                 });
 
@@ -2858,7 +2859,7 @@ var software = {
                                 // some reason (maybe related to advanced
                                 // being expanded or collapsed).
                                 software_$('.software_form_list_view .page_' + page_id + ' .' + field.html_field_name + '_row').fadeOut(400, function() {
-                                    $(this).hide();
+                                    software_$(this).hide();
                                 });
 
                             }
@@ -4059,9 +4060,9 @@ var software = {
                 var output_matched_product_attribute_helper_content = '';
 
                 if (matched_products.length != 1) {
-                    output_matched_product_attribute_helper_content =  matched_products.length + ' ' + lang('product matched');
-                }else{
                     output_matched_product_attribute_helper_content =  matched_products.length + ' ' + lang('products matched');
+                }else{
+                    output_matched_product_attribute_helper_content =  matched_products.length + ' ' + lang('product matched');
                 }
 
                 // Update the helper title so it contains the number of matched products.
