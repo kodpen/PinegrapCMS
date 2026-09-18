@@ -1067,12 +1067,6 @@ $(document).ready(function () {
             options["info"] = true;
         }
 
-        // Faz 3a: enable responsive column collapse on narrow viewports.
-        // Opt-out per table by adding class "datatable-no-responsive".
-        if (!$('table.chart').hasClass('datatable-no-responsive')) {
-            options["responsive"] = false;
-        }
-
         var datatable = $("table.chart").DataTable(options);
         datatable.buttons().container().appendTo($(".chart-buttons"));
         $(window).on("resize", function () {

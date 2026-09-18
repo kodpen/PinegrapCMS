@@ -82,6 +82,56 @@ birebir aynı, ekranlarda konsol hatası yok. DOMContentLoaded'da eklenen
 (bu değişiklikten bağımsız, main'de de aynı). `product_builder.js:112-129`
 geçici çözümü ayrı bir PR'da sadeleştirilebilir.
 
+## 2026.4.4 — Geliştirme kalıntıları kaldırıldı: get_folder_tree.php, check_shared_invariant.php, responsive DataTables anahtarı (2026-09-18)
+
+**Belirti.** Üç kalıntı, üçü de #73'te incelendi ve kaldırılmalarına karar
+verildi. (1) `assets/js/backend.src.js` içindeki DataTables bloğu
+`datatable-no-responsive` sınıfını okuyup `options.responsive = false`
+yazıyordu: hiçbir tablo o sınıfı taşımıyor, ayarın tek değeri zaten kapalı.
+Responsive DataTables istenen bir özellik değil; bir ara eklenip geri alınmış,
+anahtarı kalmıştı. (2) `check_shared_invariant.php`, paylaşılan bileşen
+placeholder değişmezi geliştirilirken yazılmış tek seferlik bir tanı sayfasıydı;
+depoda ona giden tek satır yoktu (yalnız bu günlükte adı geçiyor), kuralı
+tasarımcının kayıt yolu zaten uyguluyor. (3) `get_folder_tree.php`, klasik
+klasör ağacı ekranının XML ucuydu; ekranı süren `assets/folder_tree.js`
+2026.4.4 içinde kaldırılıp `clean_up.php` listesine girmişti, uç ise kaldı.
+`backend.src.css` içinde yalnız o ekranın kullandığı `#folder_tree`
+seçicileri (11 satır) hiçbir elemanla eşleşmiyordu.
+
+**Düzeltme.** Blok yorumuyla birlikte silindi; `backend.src.js`
+`output_header()` tarafından doğrudan basılıyor, min ikizi yok. İki dosya
+silindi ve `clean_up.php` listesine eklendi: Temizle aracı (Ayarlar →
+Araçlar) yalnız listede olup diskte bulunan adları gösterir ve siler, o
+yüzden yeni kurulumda hiç görünmez, 2026.4.3'ten yükselen sitede ilk
+çalıştırmada ikisini listeleyip kaldırır. CSS'te `#folder_tree` seçicileri
+düşürüldü, `#product_group_tree` ikizleri olduğu gibi duruyor
+(`get_product_group_tree.php` hâlâ kullanıyor). `get_acl_folder_tree()`
+farklı bir fonksiyondur, dokunulmadı. Responsive uzantısı ayrı bir dosya
+değil, `assets/lib/DataTables/datatables.js` paketinin parçası; üçüncü taraf
+pakete dokunulmadı.
+
+### Doğrulama
+
+- `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+- Sandbox'ta (worktree sunucusu :8003, Playwright/Chromium) `view_folders.php`,
+  `view_users.php`, `view_gift_cards.php`, `view_key_codes.php`,
+  `view_products.php` yönetici oturumuyla açıldı: JS sayfa hatası yok
+  (tek hata giriş sayfasında, `code.jquery.com` sandbox'ta engelli olduğu
+  için; ortam kaynaklı). DataTables kuruldu, arama ("zzq-nomatch-xx" →
+  "No matching records found", temizlenince eski sayı), sayfa uzunluğu 10'a
+  çekilip Sonraki: "Showing 11 to 20 of 31 entries". Dosya Yöneticisi ağacı
+  (`#explorer_tree_root`) 7 öğe ile çizildi.
+- Sunucu erişim günlüğünde tarayıcı oturumlarından silinen iki uca hiç istek
+  yok; yalnız bilinçli curl denemeleri var (302 → `/staff-home`).
+- `clean_up.php` canlı çalıştırıldı: iki ad diske sahte dosya olarak konup GET
+  atıldı → "Temizlenebilecek 4 dosya bulundu" listesinde ikisi de var; POST →
+  302 `welcome.php#settings`, ikisi de diskten silindi.
+
+**Açık kalan:** Dosya bütünlüğü referansı (`hash_reference.json`) yayında
+yeniden üretilecek; üretilmezse iki dosya "missing" görünür. Yükselen sitede
+dosyalar Temizle aracı çalıştırılana kadar diskte durur (bu, listedeki diğer
+kalıntılarla aynı davranış).
+
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
 **Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip
@@ -2307,7 +2357,6 @@ Yeni metinler yazılımın kendi sözlüğüne uyduruldu: `Accounts` → "Cari H
 Bir tuzak: `lang($kosul ? 'A' : 'B')` yazımı her iki metni de tarayıcıdan
 gizliyor. `$kosul ? lang('A') : lang('B')` olarak düzeltildi.
 
-
 ## 2026.4.4 — ERP: iade ve iptal (2026-09-16)
 
 Kesilmiş fatura düzenlenmez. Belge karşı tarafın elinde ve onun elindekinden
@@ -2361,7 +2410,6 @@ hesaplanıyor.
   kalanı 172174'e, carinin bakiyesi 172174'e döndü.
 - Tüm cari ve kasa bakiyeleri her adımda kendi defterleriyle birebir.
 
-
 ## 2026.4.4 — ERP: fatura kapatma (2026-09-16)
 
 Tahsilat zaten cariyi alacaklandırıyor ve bakiyeyi düşürüyordu. Eksik olan
@@ -2408,7 +2456,6 @@ hazır.
 - Tüm cari ve kasa bakiyeleri kendi defterleriyle birebir (`[agrees]`).
 - 2026.4.4 zinciri baştan koşturuldu: 1 ifade uygulandı (sürüm satırı), şema
   adımlarının tamamı "zaten var" dedi — yeni adım dahil idempotent.
-
 
 ## 2026.4.4 — ERP modülünün iskeleti (2026-09-16)
 
@@ -3920,7 +3967,6 @@ renk seçicilerindeki "Bg primary", "Primary Subtle", "Body Emphasis",
 "Opacity 50" etiketleri literal değil — `titleCase()` bunları **sınıf adının
 kendisinden** üretiyor (`primary-subtle` → "Primary Subtle"). Karar verildi: **öyle kalıyor.**
 
-
 ---
 
 ## 2026.4.4 — Sepet widget'ı: düzenli ödeme planı müşteri tarafından düzenlenebilir; satır kurucuları liveform'u tüketilmeden önce okur (2026-09-16)
@@ -4624,6 +4670,7 @@ defterinde kalması, burada eklentinin zamanlayıcısının kendini yeniden
 kurmasıydı. CLAUDE.md'ye iki kuralı yan yana koydum.
 
 ---
+
 ## 2026.4.4 — Özel form alanı olarak imza (2026-09-13)
 
 **İstek (Erdal):** teklif onayı ve sözleşme için imza alanı. "Valid bir imza
@@ -4880,6 +4927,7 @@ doğrulayıcısı cevaplıyor. Zinciri burada doğrulamak kök sertifika deposu
 tutmayı gerektirir ve o ayrı bir iştir.
 
 ---
+
 ## 2026.4.4 — Şema sürümü Yapılandırma ekranından (2026-09-13)
 
 **İstek (Erdal):** beta kurulumlara aynı sürüm üst üste atılıyor ve yükseltmenin
@@ -4915,6 +4963,7 @@ Kayıt: değişiklik `log_activity` ile eski ve yeni numarayla birlikte yazılı
 Ekran zaten `validate_area_access($user, 'administrator')` arkasında.
 
 ---
+
 ## 2026.4.4 — Bütünlük referansında dosya olmayan girdi (2026-09-13)
 
 **Belirti (Erdal, beta site):** site günlüğünde "Değiştirilmiş veya eksik
@@ -4972,6 +5021,7 @@ Dokunulan: `includes/fn/system_status.php` (`pg_integrity_reference_files()`),
 `clean_up.php`, `_software_create_hash.php`.
 
 ---
+
 ## 2026.4.4 — Sayfa bilgileri ve sayfa eylemleri çubuktan SEO paneline (2026-09-13)
 
 Sitede gezinen yöneticinin sayfa hakkında bildiği her şey — erişim türü,
@@ -7892,7 +7942,6 @@ yoksa test ettiği şey dosya olmaz.
 | Son açılanlar | 6 açılıştan 4'ü kalıyor, tekrar yok, sıra en yeniden |
 | Tema | açık ve koyu; bütün renkler Bootstrap jetonlarından |
 
-
 ### Geçiş: `settings2.php`
 
 Bölme canlı sitede denenirken eski ekran yerinde bırakıldı: `settings.php`
@@ -8259,8 +8308,6 @@ aynı anda görünür.
 **Doğrulama.** Dokuz kutu biçimi (bölünmüş yarı, kart gövdesi, `.pg-list`,
 özet satırlı gövde) ölçüldü: hepsinde mesaj kutusunu dolduruyor, merkez sapması
 0 piksel, hiçbir kutu taşmıyor, bölünmüş kart satır yönünde kalıyor.
-
-
 
 4.22–4.35 arası on dört yeni alt adım (çok sayfalı tasarımcı, tasarımcı iş
 birliği, dış API, pazaryerleri, web push, bildirim okundu kaydı, ürün KDV
@@ -10337,7 +10384,6 @@ hiçbiri hangisi olduğunu söylemiyordu. Ayrı başlıklara ayrıldı
 yalnız kırmızı hâli çiziliyordu. İpucu kapalıyken, yani iyi durumda, panel o
 kontrol hakkında hiçbir şey söylemiyordu; ağırlığın tutunacağı bir kayıt da
 olmuyordu. `else` dalı eklendi.
-
 
 Kart tek kolonluydu ve içinde on dokuz kutu vardı. Kutuların on ikisi bir
 okumaydı ("SSL · Tamam"), yedisi bir işti ("Önbellek · Temizle") ve **ikisi
@@ -16388,8 +16434,6 @@ bayat değer döndürebiliyor — sınıf kaldırıldığı hâlde eski genişli
 Ayrık bir eleman üzerinde aynı sınıfla ölçmek doğru değeri veriyor, ekran
 görüntüsü de öyle. Bu yüzden "daralma bozuldu" diye bir tur boşa harcandı;
 bozulan bir şey yoktu.
-
-
 
 ### Olay
 
