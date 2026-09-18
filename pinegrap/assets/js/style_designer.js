@@ -13821,7 +13821,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'tbody', customName: _sdT('Table Body') }, [
                             mkRow([mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell'))]),
                             mkRow([mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell'))]),
-                            mkRow([mkCell('td','Cell'), mkCell('td','Cell'), mkCell('td','Cell')])
+                            mkRow([mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell')), mkCell('td',_sdT('Cell'))])
                         ])
                     ]);
                 }
@@ -13905,7 +13905,7 @@ const StyleDesigner = (function () {
                             _attrs: [
                                 { name: 'type', value: 'text' },
                                 { name: 'placeholder', value: _sdT('Username') },
-                                { name: 'aria-label', value: 'Username' }
+                                { name: 'aria-label', value: _sdT('Username') }
                             ]
                         }),
                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Go'), customName: _sdT('Button'),
