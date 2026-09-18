@@ -1381,7 +1381,7 @@ function get_forgot_password_screen()
         $row = mysqli_fetch_assoc($result);
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
         // get page content
-        $output = get_page_content($row['page_id'], $content, $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
+        $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a forgot password page, so use default screen
     } else {
         require_once(PG_FUNCTIONS_DIR . '/get_forgot_password.php');
@@ -1439,6 +1439,15 @@ function get_affiliate_sign_up_form_screen()
         // else there is not an affiliate sign up form page, so use default screen
     } else {
         require_once(PG_FUNCTIONS_DIR . '/get_affiliate_sign_up_form_screen_content.php');
+        // There is no page of this type, so there are no page type properties
+        // to read: the default screen runs with no terms page, the built-in
+        // submit label and no next page.
+        $properties = array(
+            'current_page_id' => 0,
+            'terms_page_id' => 0,
+            'submit_button_label' => '',
+            'next_page_id' => 0
+        );
         $output = output_header_secure() . get_affiliate_sign_up_form_screen_content($properties) . output_footer_secure();
     }
     return $output;
@@ -1572,12 +1581,13 @@ function validate_email_address($email_address)
 function validate_time($time)
 {
     // if format of time is not valid
-    if (preg_match('/(\d{1,2})(:\d{1,2}) (AM|PM)/i', $time, $time_parts) == 0) {
+    if (preg_match('/(\d{1,2})(:\d{1,2})(:\d{1,2})? (AM|PM)/i', $time, $time_parts) == 0) {
         return false;
     }
     $hour = $time_parts[1];
     $minute = str_replace(':', '', $time_parts[2]);
-    $second = $time_parts[4];
+    // Seconds are optional; the group is empty when they were not given.
+    $second = (isset($time_parts[3]) && $time_parts[3] !== '') ? str_replace(':', '', $time_parts[3]) : 0;
     // if format of time is not valid
     if (($hour == 0) || ($hour > 12) || ($minute > 59) || ($second > 59)) {
         return false;
@@ -3026,6 +3036,7 @@ function generate_order_reference_code()
 function generate_affiliate_code()
 {
     $characters = array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z');
+    $affiliate_code = '';
     for ($i = 1; $i <= 5; $i++) {
         $index = mt_rand(0, 35);
         $affiliate_code .= $characters[$index];
@@ -3603,7 +3614,7 @@ function generate_email_recipient_reference_code()
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // if reference code is already in use, use recursion to generate a new reference code
     if (mysqli_num_rows($result) > 0) {
-        return generate_form_reference_code();
+        return generate_email_recipient_reference_code();
         // else reference code is not already in use, so return reference code
     } else {
         return $reference_code;

@@ -3029,14 +3029,15 @@ function validate_captcha_answer($liveform)
                     if ((isset($response['success']) == false) || ($response['success'] == false)) {
                         $error = '';
                         // If blacklist service returned an error, then include that info in log message.
-                        if ($response['error'] != '') {
+                        if (!empty($response['error'])) {
                             $error = ' (' . $response['error'] . ')';
                         }
-                        log_activity(lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), $_SESSION['sessionusername']);
+                        // The visitor is not signed in here (see the outer check), so there is no username to log.
+                        log_activity(lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), lang('UNKNOWN'));
                         // Otherwise there was not a communication error with the blacklist service,
                         // so if the visitor is on the blacklist, then log activity and add error.
-                    } else if ($response['ip']['appears'] == true) {
-                        log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round($response['ip']['confidence']), number_format($response['ip']['frequency'])))), $_SESSION['sessionusername']);
+                    } else if (!empty($response['ip']['appears'])) {
+                        log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round($response['ip']['confidence']), number_format($response['ip']['frequency'])))), lang('UNKNOWN'));
                         $liveform->mark_error('', lang('Sorry, we were not able to accept your request.'));
                     }
                 }

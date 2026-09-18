@@ -1475,8 +1475,7 @@ function get_date_time_picker_format()
         closeText: "' . lang('Ok') . '",
         ' . $output_first_day . '
         weekHeader: "' . lang('Wk') . '"};
-        var date_picker_format = "' . $output_date_picker_format . '";</script>
-        </script>';
+        var date_picker_format = "' . $output_date_picker_format . '";</script>';
 }
 
 // Create a function that is used to return JavaScript
@@ -2909,6 +2908,8 @@ function lang($properties = false)
 // example: get_mime_type('gif') returns that : image/gif
 function get_mime_type($file_extention)
 {
+    // Generic binary type for extensions not listed below.
+    $output = 'application/octet-stream';
     switch ($file_extention) {
         case 'jpeg':
         case 'jpg':
@@ -2934,9 +2935,6 @@ function get_mime_type($file_extention)
             break;
         case 'bmp':
             $output = 'image/bmp';
-            break;
-        case 'ico':
-            $output = 'image/x-icon';
             break;
         case 'ico':
             $output = 'image/x-icon';

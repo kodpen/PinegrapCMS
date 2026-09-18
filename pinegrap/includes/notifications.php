@@ -18,7 +18,7 @@
 // reach their phone either.
 //
 // Loaded on demand from api.php, which has already run init.php.
-if (!function_exists('validate_user')) {
+if (!defined('PG_FUNCTIONS_DIR')) {
 	exit;
 }
 

@@ -605,7 +605,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
             }
         }
-        $output_spacing_row_class = 'class="spacing_row' . ($field['office_use_only'] ? ' software_office_use_only" ' : '" ');
+        // office_use_only is only selected for custom forms
+        $output_spacing_row_class = 'class="spacing_row' . (!empty($field['office_use_only']) ? ' software_office_use_only" ' : '" ');
         // if field should have spacing above, add spacing
         if ($field['spacing_above']) {
             $form_info['content'] .= '<tr ' . $output_spacing_row_class . $output_hidden_style . '>
