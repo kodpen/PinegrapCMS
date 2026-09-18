@@ -41,6 +41,48 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Rol kapıları ve erişim denetimi, ikinci paket (2026-09-18)
+
+**Belirti.** Güvenlik incelemesinin ikinci turu (issue #59), menüyle ekranın
+kapısı arasında ya da ekranla onun AJAX yardımcısı arasında ayrışan on iki
+düşük öncelikli erişim denetimi buldu. Menüde yalnız yöneticiye gösterilen
+`cloudflare.php` ve `migration.php` sırasıyla `manager` ve `designer`
+kapısıyla açılıyordu; `add_order.php` ürün arama uç noktası yalnız oturum
+kontrol ediyor, e-ticaret yetkisine bakmıyor ve çevirisiz hata dönüyordu;
+`edit_user.php`, `add_user.php` ve `import_users.php` rol tavanını ham
+`$_POST['role']` üzerinde gevşek karşılaştırmayla denetliyordu (sayısal
+olmayan değer denetimi atlıyor, esnek SQL modunda `0` = yönetici olarak
+yazılabiliyordu); `image_editor_edit.php` GET dalında tanımsız `$file_design`
+değişkeni yüzünden tasarım dosyası kontrolü hiç çalışmıyordu;
+`get_files_for_picker.php` rol 3 için klasör ACL uygulamıyordu;
+`save_region_content.php` ortak bölge kaydında istekten gelen `page_id`'yi
+erişim kontrolü olmadan damgalıyordu; dosya gezgininin `explorer_file_usage`
+çağrısı herhangi bir dosya id'si için kullanım dökümü veriyordu; `view_log.php`
+error_log silme dalı düğmeyi görmeyen yöneticiye (manager) de açıktı.
+
+**Çözüm.** Her yerde aynı varlığın kardeş ekranındaki kapı kopyalandı:
+`cloudflare.php` ve `migration.php` menü koşuluyla aynı olacak şekilde
+`administrator`; ürün arama `USER_MANAGE_ECOMMERCE` (rol 0–2 muaf, rol 3
+bayrak ister) ve JSON içinde `lang()`; üç kullanıcı ekranında rol önce
+`(int)`'e çevrilir, `0–3` dışındaki değer reddedilir, tavan karşılaştırması
+sayı üzerinde yapılır (`isset` korunur: son yöneticinin devre dışı rol
+kartı hiçbir şey göndermez ve rol zaten yazılmaz); `$file_design` →
+`$design`; dosya seçici rol 3 için `get_folders_that_user_has_access_to()` /
+`check_folder_access_in_array()` ile `view_files.php` kuralını uygular;
+ortak bölge kaydı bölgeyi her durumda yazar, sayfayı yalnız
+`check_edit_access()` geçerse damgalar; `explorer_file_usage` listenin
+kuralı `pg_explorer_folder_visible()` ile kapılanır; error_log silme
+düğmeyi çizen `USER_ROLE < 1` koşuluna bağlanır.
+
+**Değiştirilmeyenler.** `set_password.php` / `change_password.php` cihaz
+sınırı kapısı: her iki dosya oturumu kurmadan hemen önce
+`pg_auth_token_revoke_user()` ile hesabın bütün jetonlarını siler,
+`pg_device_limit_exceeded()` bu yüzden hiçbir zaman doğru dönmez — kapı
+eklemek ölü kod olurdu. `pg_write_permission_repair()` 0777/0666 modu ve
+`edit_calendar.php` / `edit_contact_group.php` rol 3 yeniden adlandırma-silme
+davranışı ürün sahibinin kararını bekler (PR açıklamasında soru olarak
+duruyor).
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters

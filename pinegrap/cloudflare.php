@@ -18,7 +18,8 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'manager');
+// Administrators only, like the settings menu entry that leads here.
+validate_area_access($user, 'administrator');
 
 include_once('liveform.class.php');
 
