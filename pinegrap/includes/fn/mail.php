@@ -473,7 +473,7 @@ function send_comment_email_to_custom_form_submitter($comment_id)
         $extra_system_content = '';
         // if name is blank then output anonymous
         if ($name == '') {
-            $name = 'Anonymous';
+            $name = lang('Anonymous');
         }
         $output_file_attachment = '';
         // if there is a file attachment, then output it
@@ -500,7 +500,7 @@ function send_comment_email_to_custom_form_submitter($comment_id)
 
             </div>
 
-            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . '?r=' . $reference_code . '&comments=all#c-' . $comment_id) . '">View or Reply</a></div>';
+            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . '?r=' . $reference_code . '&comments=all#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
         $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
         email(array(
@@ -600,7 +600,7 @@ function send_comment_email_to_watchers($comment_id)
         }
         // if name is blank then output anonymous
         if ($name == '') {
-            $name = 'Anonymous';
+            $name = lang('Anonymous');
         }
         $output_file_attachment = '';
         // if there is a file attachment, then output it
@@ -621,7 +621,7 @@ function send_comment_email_to_watchers($comment_id)
         // set body message
         $extra_system_content = '<div class="comment">
 
-                <div class="name_line"><span class="added_by">Added by</span> <span class="name">' . h($name) . '</span></div>
+                <div class="name_line"><span class="added_by">' . lang('Added by') . '</span> <span class="name">' . h($name) . '</span></div>
 
                 <div class="date_and_time">' . get_absolute_time(array(
                 'timestamp' => $created_timestamp,

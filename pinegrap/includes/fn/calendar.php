@@ -1753,12 +1753,12 @@ function get_calendar_event($event_id, $recurrence_number)
                 $time_range = '';
                 // Otherwise if only the start time should be shown, then do that.
             } else if ($show_start_time && !$show_end_time) {
-                $date_and_time_range = date('l, ' . $month_and_day_format . ', Y g:i A', strtotime($start_date_and_time));
+                $date_and_time_range = date('l, ' . $month_and_day_format . ', Y ' . $hour_system_format, strtotime($start_date_and_time));
                 $time_range = prepare_form_data_for_output($start_time, 'time');
                 // Otherwise if only the end time should be shown, then do that.
             } else if (!$show_start_time && $show_end_time) {
-                $date_and_time_range = date('l, ' . $month_and_day_format . ', Y', strtotime($start_date_and_time)) . ' (ends at ' . date('g:i A', strtotime($end_date_and_time)) . ')';
-                $time_range = 'Ends at ' . prepare_form_data_for_output($end_time, 'time');
+                $date_and_time_range = date('l, ' . $month_and_day_format . ', Y', strtotime($start_date_and_time)) . ' (' . lang(array('string' => 'ends at {var:1}', 'vars' => date($hour_system_format, strtotime($end_date_and_time)))) . ')';
+                $time_range = lang(array('string' => 'Ends at {var:1}', 'vars' => prepare_form_data_for_output($end_time, 'time')));
             }
             // else start date is not equal to end date, so prepare date and time range and time range in a certain way
         } else {

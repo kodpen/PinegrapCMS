@@ -658,7 +658,7 @@ if (!$_POST) {
                             <label class="form-label">' . $field['label'] . '</label>
                             ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11')) . '
                             ' . $field_required . '
-                            <div class="form-text text-end">Format: h:mm AM/PM</div>                 
+                            <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
                             ' . get_time_picker_format() . '
                                 <script>
                                     $("#' . $field['id'] . '").timepicker(timepicker_options);
@@ -863,8 +863,8 @@ if (!$_POST) {
         
         // if the user does not have delete access (e.g. form editor), then log activity and output error
         if ($delete_access == FALSE) {
-            log_activity("access denied to delete submitted form", $_SESSION['sessionusername']);
-            output_error('Access denied. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            log_activity(lang('access denied to delete submitted form'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
         // get uploaded files for this form, so they can be deleted

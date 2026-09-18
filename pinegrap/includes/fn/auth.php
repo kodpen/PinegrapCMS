@@ -551,7 +551,7 @@ function pg_member_register($form, $opts = array())
             'to'                 => REGISTRATION_EMAIL_ADDRESS,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
-            'subject'            => 'Registration Confirmation',
+            'subject'            => lang('Registration Confirmation'),
             'format'             => 'html',
             'body'               => get_registration_confirmation_screen()));
     }
@@ -817,7 +817,7 @@ function pg_member_activate($form, $opts = array())
             'to'                 => MEMBERSHIP_EMAIL_ADDRESS,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
-            'subject'            => 'Registration Confirmation',
+            'subject'            => lang('Registration Confirmation'),
             'format'             => 'html',
             'body'               => get_membership_confirmation_screen()));
     }

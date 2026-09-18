@@ -233,8 +233,8 @@ function get_catalog($properties) {
                         <input type="hidden" name="previous_url_id" value="' . h(generate_url_id()) . '" />
                         <span class="search">
                             <span class="simple">
-                                <input type="text" name="' . $page_id . '_query" value="' . h($search_query) . '" placeholder="Search" class="software_input_text mobile_fixed_width query" style="margin-bottom: 0 !important">
-                                <input type="submit" name="' . $page_id . '_simple_submit" title="Search" value="" class="submit">
+                                <input type="text" name="' . $page_id . '_query" value="' . h($search_query) . '" placeholder="' . h(lang('Search')) . '" class="software_input_text mobile_fixed_width query" style="margin-bottom: 0 !important">
+                                <input type="submit" name="' . $page_id . '_simple_submit" title="' . h(lang('Search')) . '" value="" class="submit">
                                 ' . $output_clear_button . '
                             </span>
                         </span>
@@ -406,13 +406,13 @@ function get_catalog($properties) {
                 if (count($featured_items) > 0) {
                     $top_item_type = 'featured';
                     $top_item = $featured_items[0];
-                    $output_top_item_heading = 'Featured';
+                    $output_top_item_heading = lang('Featured');
                     
                 // else there is not at least one featured item, so prepare top item and prepare to output top item heading for a new item
                 } else {
                     $top_item_type = 'new';
                     $top_item = $new_items[0];
-                    $output_top_item_heading = 'New';
+                    $output_top_item_heading = lang('New');
                 }
                 
                 $output_top_item_full_description = '';
@@ -697,14 +697,14 @@ function get_catalog($properties) {
                                         // Output link to edit product group
                                         $output_edit_button_link = 'edit_product_group.php';
                                         // Output tooltip title
-                                        $tool_tip_title = 'Product Group';
+                                        $tool_tip_title = lang('Product Group');
                                         
                                     // else if the items is a product
                                     } else {
                                         // Output link to edit product
                                         $output_edit_button_link = 'edit_product.php';
                                         // Output tooltip title
-                                        $tool_tip_title = 'Product';
+                                        $tool_tip_title = lang('Product');
                                     }
                                     
                                     // If there is a short description, output short description in tooltip

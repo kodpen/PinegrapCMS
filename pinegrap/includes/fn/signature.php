@@ -624,7 +624,7 @@ function pg_signature_display($record, $options = array())
     // The download name says what the file is; files.name is a storage name
     // and means nothing to whoever opens it a year later. The download attribute
     // is enough because the file is served from this same origin.
-    $download_name = 'imza-' . (int) $record['form_id'] . '-' . (int) $record['form_field_id'] . '-' . date('Y-m-d', $signed) . '.png';
+    $download_name = 'signature-' . (int) $record['form_id'] . '-' . (int) $record['form_field_id'] . '-' . date('Y-m-d', $signed) . '.png';
 
     $output = '
 <div class="pg-signature-view">

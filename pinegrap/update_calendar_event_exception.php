@@ -25,8 +25,8 @@ validate_token_field();
 
 // Make sure that the user should be able to update a calendar exception before any data is processed.
 if (validate_calendar_event_access($_GET['calendar_event_id']) == false) {
-    log_activity("access denied to edit calendar event exception because user does not have access to calendar that the calendar event is in", $_SESSION['sessionusername']);
-    output_error('Access denied.');
+    log_activity(lang('access denied to edit calendar event exception because user does not have access to calendar that the calendar event is in'), $_SESSION['sessionusername']);
+    output_error(lang('Access denied.'));
 }
 
 // if user is a basic user and user does not have access to publish calendar events then check if calendar event is published
@@ -39,8 +39,8 @@ if (($user['role'] == 3) && ($user['publish_calendar_events'] == FALSE)) {
     
     // if the event has been published then log and output error
     if ($row['published'] == '1') {
-        log_activity("access denied to edit calendar event exception for a published calendar event because user does not have publish rights to calendar events", $_SESSION['sessionusername']);
-        output_error('Access denied.');
+        log_activity(lang('access denied to edit calendar event exception for a published calendar event because user does not have publish rights to calendar events'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied.'));
     }
 }
 
@@ -70,7 +70,7 @@ if (
             
             // Send a notice to let the user know the exception was created.
             $liveform = new liveform('calendars');
-            $liveform->add_notice('The instance of the repeating event has been removed.');
+            $liveform->add_notice(lang('The instance of the repeating event has been removed.'));
             // Redirect back to calendars.php
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/calendars.php');
             break;
@@ -280,7 +280,7 @@ if (
                     if ($check_availability != 'available') {
                         // If the user does not have access to the calendar event that caused the error, do not print out the event name.
                         if (validate_calendar_event_access($check_availability) == false) {
-                            $existing_calendar_name_statement = 'there is another event';
+                            $existing_calendar_name_statement = lang('there is another event');
                         } else {
                             // Query the database for the calendar event name that is using the location.
                             $query =
@@ -290,11 +290,11 @@ if (
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             
-                            $existing_calendar_name_statement = 'the event, ' . h($row['name']) . ', is';
+                            $existing_calendar_name_statement = lang(array('string' => 'the event "{var:1}" is', 'vars' => h($row['name'])));
                         }
                         // Mark the error
                         $liveform = new liveform('calendars');
-                        $liveform->mark_error('', 'The instance of the repeating event could not be unremoved because ' . $existing_calendar_name_statement . ' using the same location during the same time.');
+                        $liveform->mark_error('', lang(array('string' => 'The instance of the repeating event could not be unremoved because {var:1} using the same location during the same time.', 'vars' => $existing_calendar_name_statement)));
                         
                         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/calendars.php');
                         exit();
@@ -311,7 +311,7 @@ if (
                         // Check if the user has access to the calendar event, so we can display the name.
                         // If the user does nto have access, do not show the name.
                         if (validate_calendar_event_access($check_availability) == false) {
-                            $existing_calendar_name_statement = 'there is another event';
+                            $existing_calendar_name_statement = lang('there is another event');
                         } else {
                             // Query the name of the event so that we can display it to the user.
                             $query =
@@ -321,11 +321,11 @@ if (
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             
-                            $existing_calendar_name_statement = 'the event "' . h($row['name']) . '" is';
+                            $existing_calendar_name_statement = lang(array('string' => 'the event "{var:1}" is', 'vars' => h($row['name'])));
                         }
                         // Finally, display the error.
                         $liveform = new liveform('calendars');
-                        $liveform->mark_error('', 'The instance of the repeating event could not be unremoved because ' . $existing_calendar_name_statement . ' using the same location during the same time.');
+                        $liveform->mark_error('', lang(array('string' => 'The instance of the repeating event could not be unremoved because {var:1} using the same location during the same time.', 'vars' => $existing_calendar_name_statement)));
 
                         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/calendars.php');
                         exit();
@@ -343,7 +343,7 @@ if (
             
             // Mark a notice so that the user knows we did something with the selected event.
             $liveform = new liveform('calendars');
-            $liveform->add_notice('The instance of the repeating event has been unremoved.');
+            $liveform->add_notice(lang('The instance of the repeating event has been unremoved.'));
             
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/calendars.php');
             

@@ -671,7 +671,7 @@ function get_form_item_view($properties) {
                             // If there is an existing file for this field, then output info for that.
                             if ($file['name'] != '') {
                                 $output_file_info = '<div class="software_attachment" style="margin-bottom: .7em"><a href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank" style="background: none; padding: 0"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_attachment.png" width="16" height="16" alt="attachment" title="" border="0" style="padding-right: .5em; vertical-align: middle" /></a><a href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">' . h($file['name']) . '</a> (' . convert_bytes_to_string($file['size']) . ')</div>';
-                                $output_upload_label = 'Replace File: ';
+                                $output_upload_label = lang('Replace File') . ': ';
 
                                 // If this field is optional, then output delete option.
                                 if ($field['required'] == 0) {
@@ -747,7 +747,7 @@ function get_form_item_view($properties) {
                             $output_fields .=
                                 '<tr' . $row_class . '>
                                     <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
-                                    <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text')) . ' (Format: h:mm AM/PM)</td>
+                                    <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text')) . ' ' . lang('(Format: h:mm AM/PM)') . '</td>
                                 </tr>';
                             break;
                     }

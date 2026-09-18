@@ -100,7 +100,7 @@ if ($liveform->get_field_value('publish') == 'schedule') {
         ($liveform->check_field_error('publish_date_and_time') == false)
         && (validate_date_and_time($liveform->get_field_value('publish_date_and_time')) == false)
     ) {
-        $liveform->mark_error('publish_date_and_time', 'Please enter a valid date &amp; time when you want the ' . $output_comment_label_lowercase . ' to be published.');
+        $liveform->mark_error('publish_date_and_time', lang(array('string' => 'Please enter a valid date & time when you want the {var:1} to be published.', 'vars' => $output_comment_label_lowercase)));
     }
 
     // If there is not already an error for the date & time field,
