@@ -64,7 +64,7 @@ Dokunduğun bir dosyada Türkçe yorum görürsen aynı değişiklik içinde İn
 Bir kod yorumunda şunların hiçbiri geçemez: "kullanıcı kararı", "kullanıcı
 isteği", "kullanıcı onayıyla", "saha geri bildirimi", "Faz 1/2/3", plan dosyası
 referansı, oturum/konuşma referansı. Karar tarihçesinin yeri değişiklik günlüğüdür
-(`docs/degisiklikler.md`, depo dışı). Yorum klasik geliştirici yorumudur: kodun ne
+(`docs/degisiklikler.md`). Yorum klasik geliştirici yorumudur: kodun ne
 yaptığını ve teknik olarak neden öyle yapıldığını anlatır (kilitler, yarışlar,
 geriye dönük uyumluluk, güvenlik kapıları).
 
@@ -173,7 +173,7 @@ install_note('...');
 - Veri ifadeleri (`UPDATE`/`DELETE`) tekrar koşulabilir yazılır.
 - Enum daraltan `MODIFY` önce `install_column_info()` ile önceki şekli kontrol
   eder.
-- Her yükseltme değişiklik günlüğüne kaydedilir (`docs/degisiklikler.md`, depo dışı).
+- Her yükseltme değişiklik günlüğüne kaydedilir (`docs/degisiklikler.md`).
 
 ### 9. `.src.js` düzenlenir, `.min.js` servis edilir — ikisi birden
 
@@ -316,10 +316,14 @@ Depoda iki katkı rehberi bulunur ve bunlar sandbox'ta okunabilir:
 | Palette component yazımı (zorunlu okuma) | `docs/component-development-guide.md` |
 | `lang()` sözdizimi ve kullanımı | `docs/LANG_USAGE.md` |
 
-Geri kalan iç belgeler — tam bağlam dosyası, değişiklik günlüğü ve konu
-planları — **bilerek depo dışındadır** ve yalnız geliştirme makinasında durur
-(`docs/CLAUDE-tam.md`, `docs/degisiklikler.md`, `docs/_plan_*.md`).
+Tam bağlam dosyası ve değişiklik günlüğü (`docs/CLAUDE-tam.md`,
+`docs/degisiklikler.md`) **depoda takip edilir** ve güncel tutulur: önemli
+değişiklikler `docs/degisiklikler.md`'ye, proje bağlamını etkileyen değişiklikler
+`docs/CLAUDE-tam.md`'ye yazılır. Bu dosyalara yazmadan hemen önce
+`git fetch && git merge origin/main` çalıştır ki en güncel kopya düzenlensin.
 
-Bu dosyaları sandbox'ta **arama, olmadıklarını sorun sanma ve içeriklerini
-tahmin etme.** Yukarıdaki kurallar günlük işin tamamına yeter; bir kararın
-gerekçesi gerçekten gerekiyorsa PR açıklamasına soru olarak yaz, uydurma.
+Konu planları (`docs/_plan_*.md`) **bilerek depo dışındadır** ve yalnız
+geliştirme makinasında durur. Bu dosyaları sandbox'ta **arama, olmadıklarını
+sorun sanma ve içeriklerini tahmin etme.** Yukarıdaki kurallar günlük işin
+tamamına yeter; bir kararın gerekçesi gerçekten gerekiyorsa PR açıklamasına
+soru olarak yaz, uydurma.
