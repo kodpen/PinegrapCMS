@@ -544,8 +544,8 @@ function pg_purge_caches()
     // browser. Two files, bounded cost.
     $backend_dir   = PG_FUNCTIONS_DIR . '/assets/';
     $backend_files = array(
-        $backend_dir . 'backend.min.css',
-        $backend_dir . 'backend.min.js',
+        $backend_dir . 'css/backend.src.css',
+        $backend_dir . 'js/backend.src.js',
     );
     $backend_touched = 0;
     foreach ($backend_files as $f) {
@@ -557,9 +557,10 @@ function pg_purge_caches()
         $cleared[] = lang('Backend assets') . ' (' . $backend_touched . ')';
     }
 
-    // Touch frontend system CSS / JS. pinegrap.min.css, frontend.min.css,
-    // responsive.min.css and friends carry a ?v=filemtime(...) suffix, so a new
-    // timestamp does reach the browser.
+    // Touch frontend system CSS / JS. Of the root *.min.css / *.min.js files
+    // only frontend.<suffix>.js is linked with a ?v=filemtime(...) suffix
+    // (get_page_content.php), so that is the file whose new timestamp reaches
+    // the browser; the other files matched by the globs are touched harmlessly.
     //
     // These are kept because they ship inside the update package, and
     // ZipArchive::extractTo() preserves the archive's timestamps -- a freshly

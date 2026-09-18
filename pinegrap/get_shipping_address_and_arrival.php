@@ -1103,7 +1103,7 @@ function get_shipping_address_and_arrival($properties) {
                 if ($date_and_time_fields) {
                     // Include JS file for timepicker.
                     $system .=
-                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
+                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
 
                     foreach ($date_and_time_fields as $date_and_time_field) {
                         $system .=

@@ -107,7 +107,10 @@ const LOCKED_PAGES = array(
    UI / Branding
 ------------------------------ */
 define('LOGO_URL', '/pinegrap/assets/images/logo.png'); // Default logo path
-define('CONTROL_PANEL_STYLESHEET_URL', '/pinegrap/assets/css/backend.css'); // Default backend CSS
+// Leave undefined to serve assets/css/backend.src.css with a ?v=filemtime
+// cache-bust suffix. Define only to point the control panel at a custom stylesheet.
+// Example: '/pinegrap/assets/css/backend.src.css'
+// define('CONTROL_PANEL_STYLESHEET_URL', '/pinegrap/assets/css/backend.src.css');
 
 /* -----------------------------
    Error Reporting
