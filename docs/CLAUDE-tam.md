@@ -2247,6 +2247,25 @@ aynı kutuyu açıyordu.
 çağırır; bir bağlantıda bu gezinmeyi durdurur, bir düğmede durduracak bir şey
 yoktur.
 
+### Sistem Durumu — CA sertifika paketi yaşı (2026-09-18)
+
+`get_system_status_checks()` içinde, SSL kontrolünün hemen ardından ve aynı
+`security` grubunda, "CA Certificate Bundle" kontrolü (`bi-patch-*` ailesi,
+kısa etiket "CA bundle", ağırlık `ca_bundle` = 8, Moderate sınıfının en altı,
+IndexNow ile aynı). Yalnız `CURL_CA_BUNDLE` tanımlı, boş değil ve dosya
+okunabilirken koşar; boşsa sistem deposu kullanılıyordur ve **hiç satır
+eklenmez** — gri "Uygulanmaz" da yok. Dosyanın ilk 10 satırında curl'ün
+`mk-ca-bundle` başlığı aranır (`## Certificate data from Mozilla as of:
+<tarih>`), tarih `strtotime()` ile okunur, yaş `date_diff()` ile tam ay
+cinsinden hesaplanır. Başlık yoksa, ayrıştırılamıyorsa ya da tarih
+gelecekteyse kontrol sessizce atlanır (satır yok, uyarı yok). Eşikler: 12
+aydan eski → sarı (ağırlığın yarısı), 24 aydan eski → kırmızı (tam ağırlık),
+aksi hâlde yeşil. Mesaj ayrıştırılan tarihi (site `DATE_FORMAT`'ına göre) ve
+ay cinsinden yaşı taşır; karo değeri "N ay". Kontrol 10 dakikalık durum
+önbelleğine tabidir; `config.php`'de sabiti değiştirdikten sonra
+`data/temp/system_status_cache.json` silinmeden yeni satır görünmez. Önbellek
+şekil sürümü (`v`) değişmedi: her kontrole yeni anahtar eklenmedi.
+
 ---
 
 ## Sayfa Bazında Arama Motoru Dizini (2026.4.3)
