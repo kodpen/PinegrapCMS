@@ -688,7 +688,7 @@ if (!$_POST) {
                 '" . escape($_POST['office_use_only'] ?? '') . "',
                 $sql_upload_folder_id_value
                 '" . escape($_POST['quiz_question'] ?? '') . "',
-                '" . escape(prepare_form_data_for_input($_POST['quiz_answer'], $_POST['type'])) . "',
+                '" . escape(prepare_form_data_for_input($_POST['quiz_answer'] ?? '', $_POST['type'])) . "',
                 '" . $user['id'] . "',
                 UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
