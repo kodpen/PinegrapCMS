@@ -1740,15 +1740,15 @@ if (!$_POST) {
                               
                                 <div class="row g-2 p-3 mb-4">
                                     <div class="col-12">
-                                    <p>Yeni harf ID ve Kısa Açıklama alanından silinen 1 karakter yerine eklenecek yeni harftir.</p>
+                                    <p>' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
                                     </div>
                                     <div class="col-auto">
-                                        <label for="lettertodelete">Silinecek Harf Sayısı</label>
+                                        <label for="lettertodelete">' . h(lang('Number of Letters to Remove')) . '</label>
                                         <input type="number" class="form-control" id="lettertodelete" name="lettertodelete" value="1" min="1" />
-                                        <span class="small">Her boşluk için de +1 ekleyin</span>
+                                        <span class="small">' . h(lang('Add +1 for each space as well')) . '</span>
                                     </div>
                                     <div class="col">
-                                        <label for="newletter">Eklenecek Kelime veya Harf</label>
+                                        <label for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
                                         <input type="text" class="form-control" id="newletter" name="newletter" />
                                     </div>
                                     <div class="col">
@@ -1766,7 +1766,7 @@ if (!$_POST) {
                                         <option value="93" >Assortment X</option>
                                         <option value="135" >Assortment Y</option>
                                     </select></div>
-                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-4 btn btn-secondary"><span class="material-icons me-2">edit</span>Seçilenleri Çoğalt</button></div>
+                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-4 btn btn-secondary"><span class="material-icons me-2">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
                                 </div>
                                 
                             </form>
