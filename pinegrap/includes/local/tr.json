@@ -11531,7 +11531,7 @@
     "lb": "lb",
     "We're sorry. New comments are no longer being accepted.": "Üzgünüz. Artık yeni yorum kabul edilmiyor.",
     "Default: {var:1}": "Varsayılan: {var:1}",
-    "(Format: h:mm AM/PM)": "(Biçim: s:dd AM/PM)",
+    "(Format: h:mm AM/PM)": "(Biçim: h:mm AM/PM)",
     "had {var:1}page style changed to {var:2}": "{var:1}sayfa stili {var:2} olarak değiştirildi",
     "access denied to edit region because user does not have access to modify folder that page is in": "kullanıcının sayfanın bulunduğu klasörü düzenleme yetkisi olmadığı için bölgeyi düzenleme erişimi reddedildi",
     "access denied because user does not have access to edit designer region ({var:1})": "kullanıcının tasarımcı bölgesini ({var:1}) düzenleme yetkisi olmadığı için erişim reddedildi",
