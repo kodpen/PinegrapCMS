@@ -41,6 +41,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — İçerik ekranlarında silinmiş/olmayan kayıt kimliği (2026-09-18)
+
+**Belirti.** Sorgu dizesindeki `id` / `page_id` silinmiş ya da hiç var
+olmamış bir kayda işaret ettiğinde altı ekran satırı okumadan devam ediyordu.
+(1) `duplicate_style.php` kaynak satır yokken `INSERT INTO style` çalıştırıp
+adı ve türü boş bir stil satırı bırakıyordu ("Tüm Sayfa Stilleri" listesinde
+adsız bir satır belirir), ardından `edit__style.php?id=…` gibi bozuk bir
+adrese yönlendiriyordu; ayrıca klasik stillerde `NULL` olan
+`style_tree_json` kopyaya `''` olarak yazılıyordu. (2) `get_file.php`
+doğrudan istendiğinde (`/pinegrap/get_file.php?name=X`; dosya gerçek
+olduğundan yeniden yazma kuralları onu `router.php`'ye göndermez) `db`
+sınıfı tanımsız olduğu için ilk sorguda ölümcül hatayla HTTP 500 veriyordu.
+(3) `view_fields.php` ve `add_field.php` sayfa satırı yokken sayfa türünden
+tablo adı üretip (`_pages`) ham "Query failed. Table … doesn't exist"
+metnini — veritabanı adıyla birlikte — HTTP 200 ile basıyordu. (4)
+`edit_file.php` ve `edit_custom_style.php` silinmiş kimlik için boş bir
+düzenleyici çiziyordu (dosya ekranı istek başına 44 uyarı); aynı kimlikle
+tekrar "Sil" gönderildiğinde `edit_file.php` `unlink()`'i çıplak dosya dizini
+yoluyla çağırıyordu (bugün dizin olduğu için reddediliyor, ama bir
+yeniden düzenleme uzağında yanlış dosyayı silme riski).
+
+**Düzeltme.** Her ekranda ilk `SELECT`'in hemen ardından satır yoksa
+`output_error(lang('Sorry, the item/page could not be found.'), 404)` —
+`edit_submitted_form.php`'nin zaten uyguladığı desen. `duplicate_style.php`
+kapıyı `INSERT`'ten önce alıyor ve `style_tree_json` için kaynak `NULL` ise
+`NULL` yazıyor. `get_file.php` en başta `class_exists('db', false)` yoksa
+düz `HTTP/1.1 404` ile çıkıyor: bu dosya yalnız `router.php` üzerinden
+çalışır ve dosyalar kendi adresleriyle sunulur; `init.php` yüklemek bilerek
+seçilmedi (dosya `functions.php`'yi hiç yüklemez, başlığında anlatıldığı
+gibi). `edit_file.php`'de kapı erişim denetiminden önce durduğundan GET ve
+POST (sil) dallarını birlikte kapatır. Şema yok, yeni lang anahtarı yok.
+Yayınlanmış 2026.4.3'ü de etkiler: (1) veri kirliliği, (2) üretimde
+erişilebilir 500.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19, MariaDB 10.11), yönetici oturumu. Önce/sonra:
+`duplicate_style.php?id=1766` (yok) → 302 + 58 günlük satırı + boş stil
+satırı / **404, satır yok, 0 yeni uyarı**; `id=760` (var) → her ikisinde 302
+ve kopya satırı, tek fark `style_tree_json` artık `NULL` (kaynak gibi).
+`GET /pinegrap/get_file.php?name=Blue.css` → 500 + fatal / **404, günlük
+boş**; `GET /Blue.css` (router yolu) → 200, 5923 bayt, iki çıktı birebir.
+`view_fields.php?page_id=2085`, `?page_id=abc`, `add_field.php?page_id=2085`
+→ 200 "Query failed. Table 'pinegrap_sandbox._pages' doesn't exist" /
+**404 "Üzgünüz, sayfa bulunamadı."**; `page_id=296` (var) → 200, HTML aynı.
+`edit_file.php?id=99999`, `?id=abc` → 200 boş düzenleyici, 44 uyarı / **404,
+0**; POST `id=99999 delete=Delete` → 302 + `unlink(…/data/files/): Is a
+directory` / **404**; `id=6909` (var) → 200, 250208 bayt, HTML aynı.
+`edit_custom_style.php?id=1766`, `?id=abc` → 200, 10 uyarı / **404, 0**;
+`id=760` → 200, HTML aynı. `php tools/lint.php` ve `php tools/check_lang.php`
+temiz.
+
+**Açık kalan:** 404 sayfasında hâlâ görülen tek günlük satırı
+(`h(null)`, `liveform.class.php:1347` ← `get_custom_form_screen_content.php:799`,
+alt bilgi form widget'ı) bu ekranlardan bağımsız, önceden bilinen bir
+uyarıdır. `edit_custom_style.php:39`'daki denetlenmeyen `mysqli_query`
+sonucu (ayrı kayıt) ve `edit_custom_style.php` POST dalında var olmayan
+kimlikle "Sil" (0 satır etkileyen `DELETE`, veri riski yok) bu değişikliğin
+dışındadır. PHP 7.x üzerinde koşturulmadı.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
