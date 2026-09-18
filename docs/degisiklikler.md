@@ -41,6 +41,72 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Panel ekranlarında eksik rol kapıları: anahtar kodu silme, araç çubuğu, migration, sayfa düzenleme (2026-09-18)
+
+**Belirti.** Panel ekranlarının her rolle tek tek gezilmesinde dört ekran
+rol modelinin dışına düştü. (1) `delete_key_codes.php` yalnız
+`validate_user()` çağırıyordu; e-ticaret bayrağı olmayan rol-3 kullanıcı
+gerçek "Anahtar Kodlarını Sil" ekranını (Sil düğmesi ve geçerli token
+dahil) görüyordu ve POST dalı yalnız token'a bakıp `TRUNCATE key_codes`
+çalıştırıyordu — `view_key_codes.php`, `add_key_code.php`,
+`edit_key_code.php`, `import_key_codes.php` hepsi `validate_ecommerce_access()`
+ile kapalıyken. (2) `toolbar.php` `page_id` ile istenen her sayfanın araç
+çubuğunu, sayfa adıyla birlikte, klasör erişimine bakmadan çiziyordu:
+sitede 403 alan özel klasördeki bir sayfanın adı ve eylemleri rol-3
+kullanıcıya `toolbar.php?page_id=…` üzerinden görünüyordu. (3) `edit_page.php`
+`$output_button_bar`, `$output_page_type_selector` ve
+`$output_page_type_properties` değişkenlerini yalnız sayfa türü bloğunun
+içinde başlatıyordu; rol-3 kullanıcı, kendisine açık olmayan türdeki bir
+sayfayı (ör. "form item view") düzenlerken o blok atlanır, şablon üçünü de
+basar — istek başına üç "Undefined variable" bildirimi. (4) `migration.php`
+özellik kapalıyken (`MIG` tanımsız) "Bu özellik şu anda kullanılamıyor"
+sayfasını `validate_user()`'dan önce basıyordu; oturumsuz istek giriş
+yönlendirmesi yerine bu sayfayı alıyordu.
+
+**Düzeltme.** `delete_key_codes.php` diğer anahtar kodu ekranlarıyla aynı
+kapıyı aldı: `validate_user()`'ın hemen ardından
+`validate_ecommerce_access($user)`; GET ve POST dalları birlikte kapanır.
+`toolbar.php` sayfa satırını okuduktan sonra klasöre `check_view_access()`
+uyguluyor — sitenin sayfayı sunmadan önce uyguladığı test — ve tutmazsa
+standart "Erişim reddedildi." hatasını basıyor. Düzenleme hakkı değil
+görüntüleme hakkı seçildi, çünkü araç çubuğu herkese açık bir sayfayı
+görüntüleyen her panel kullanıcısı için (yalnız takvim ya da form yöneten
+kullanıcı dahil) sayfanın içine gömülü çizilir; düzenleme hakkına bağlamak o
+kullanıcıların gördüğü çubuğu kırardı. `edit_page.php` üç değişkeni sayfa
+türü bloğundan önce boş dizgeyle başlatıyor; bloğun içindeki eski
+`$output_button_bar = ''` satırı kaldırıldı. `migration.php` önce
+`validate_user()` ve `validate_area_access($user, 'designer')`, sonra `MIG`
+denetimi; `MIG` açıkken sıra zaten böyleydi. Yeni lang anahtarı yok, şema
+değişikliği yok.
+
+### Doğrulama
+
+Sandbox (PHP 8.4, MariaDB 10.11), `ROLETEST_user` (rol 3, klasör 188 ve 290'da
+düzenleme hakkı, e-ticaret bayrağı yok), `ROLETEST_ecomuser` (rol 3 +
+e-ticaret), `ROLETEST_designer`, `ROLETEST_manager`, `admin`.
+`GET delete_key_codes.php` rol 3: önce 200 gerçek ekran (66 KB, token
+alanı), sonra "Erişim reddedildi."; aynı kullanıcının önceki ekranından
+alınan geçerli token ile POST: "Erişim reddedildi.", `key_codes` satır sayısı
+değişmedi. Ecomuser, yönetici, tasarımcı, müdür: önce/sonra aynı ekran.
+`GET toolbar.php?page_id=291` (özel klasör 104'teki `exam`; sitede `/exam`
+aynı kullanıcıya 403) rol 3: önce 200, sayfa adı iki kez; sonra "Erişim
+reddedildi.". `page_id=98` (herkese açık klasör) ve `page_id=85` (kullanıcının
+hakkı olan klasör): önce/sonra aynı çubuk — sitede `/checkout-preview-terms`
+zaten aynı kullanıcıya `toolbar.php?page_id=98` iframe'iyle sunuluyor.
+`GET edit_page.php?id=85` rol 3 ve ecomuser: önce üç bildirim
+(`:3392`, `:3400`, `:3448`), sonra sıfır; HTML birebir aynı. Rol 0–2: önce/
+sonra sıfır bildirim, HTML aynı (tek fark menü günlük sayacı ve eş zamanlı
+sandbox işlerinin değiştirdiği sayfa seçim listeleri). Oturumsuz
+`GET migration.php`: önce 200 "Bu özellik şu anda kullanılamıyor", sonra 302
+`index.php?send_to=%2Fpinegrap%2Fmigration.php`; oturumlu roller önce/sonra
+aynı "kullanılamıyor" sayfası. `php tools/lint.php` ve
+`php tools/check_lang.php` temiz.
+
+**Açık kalan:** `toolbar.php` var olmayan `page_id` için satır alanlarını
+denetimsiz okumaya devam ediyor (ayrı bulgu). `migration.php` kapısının
+`designer` mı `administrator` mı olacağı (menü koşulu `administrator`) ürün
+kararı, dokunulmadı. `MIG` açık kurulumda migration ekranı koşturulmadı.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
