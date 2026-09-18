@@ -41,6 +41,66 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Sepette sıfır/geçersiz miktar ve önizlemede eksik fatura adresi (2026-09-18)
+
+**Belirti.** Üç ayrı hata, üçü de yayınlanmış 2026.4.3'te. (1) Ürün detay
+formu (`catalog_detail.php`) miktarı `^\d+$` ile denetliyordu; `0` bu
+denetimden geçiyor ve henüz sepette olmayan ürün için `order_items`
+tablosuna `quantity=0` satırı yazılıyordu; sepet ekranı bu satırı `₺0.00`
+tutarla gösteriyordu.
+(2) JSON `add_to_cart` ucu (`api.php` → `add_to_cart.php`) `quantity`
+anahtarını `isset` olmadan okuyordu — mağaza düğmesi bu anahtarı hiç
+göndermediği için her normal tıklamada bir `Undefined array key` uyarısı —
+ve `-5` ya da `abc` gibi değerleri olduğu gibi `add_order_item()`'a
+geçiriyordu; SQL'e giren değer `0`'a dönüşüyor ve yine `quantity=0` satırı
+oluşuyordu. Yanıt `status:success` idi. (3) Başlangıç sitelerinin sipariş
+önizleme düzenleri (`data/backups/turkish_default/layouts/101.php`,
+`1077.php` ve `english_default` eşleri) fatura adresini
+`if ($$billing_address_1)` ile yazıyordu — çift `$` bunu bir değişken-değişken
+yapıyor, `$Test Sok. No 1` adında bir değişken aranıyor, koşul hiç
+sağlanmıyor ve **fatura bloğunda sokak satırı hiç basılmıyordu**
+(`ECOMTEST Musteri / Istanbul, Istanbul 34000`); PHP ayrıca her önizlemede
+`Undefined variable` kaydediyordu.
+
+**Düzeltme.** `catalog_detail.php` miktar denetimine `(int) < 1` koşulu
+eklendi; sıfır artık negatif değerlerle aynı "Lütfen geçerli bir miktar
+girin." yoluna düşüyor. `add_to_cart.php` miktarı isteğe bağlı sayıyor
+(anahtar yok ya da boş → 1); anahtar varsa yalnız pozitif tam sayı kabul
+ediyor, aksi hâlde ucun zaten kullandığı `{"status":"error","message":…}`
+biçiminde aynı çevrili iletiyi döndürüyor. Dört düzen dosyasında fazla `$`
+silindi. `add_order_item()` bilerek değiştirilmedi: çağıranlar denetliyor,
+fonksiyon sözleşmesi aynı kaldı.
+
+**Mevcut kurulumlar için not.** Düzen dosyaları kurulumda
+`data/backups/<site>/layouts/` altından `data/layouts/` altına kopyalanır;
+bu düzeltme yalnız yeni kurulumlara kendiliğinden ulaşır. Çalışan bir sitede
+`data/layouts/101.php` (ve varsa `1077.php`) içindeki `$$billing_address_1`
+elle `$billing_address_1` yapılmalı ya da düzen yeniden içe aktarılmalı.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19, MariaDB 10.11, Türkçe başlangıç sitesi), taze
+ziyaretçi oturumu. Öncesi: `POST catalog_detail.php quantity=0` →
+`/cart`'a yönlendirme ve `order_items` satırı `quantity=0`; JSON
+`add_to_cart quantity:-5` ve `"abc"` → `status:success`, satır
+`quantity=0`; miktarsız normal istek → `add_to_cart.php:24` uyarısı;
+`/checkout-preview` fatura bloğunda sokak yok, günlükte
+`Undefined variable $Test Sok. No 1 @ data/layouts/101.php:1069`.
+Sonrası: `quantity=0` → ürün sayfasına geri, "Lütfen geçerli bir miktar
+girin.", satır yok; `-5` / `abc` / `0` → `{"status":"error","message":"Lütfen
+geçerli bir miktar girin."}`, satır yok; `2` → `quantity=2`; miktarsız istek
+→ `quantity=1`, uyarı yok; önizleme fatura bloğu `ECOMTEST Musteri / Test
+Sok. No 1 / Istanbul, Istanbul 34000`, o satırdan uyarı yok. Öncesi/sonrası
+önizleme HTML'i karşılaştırıldı: token ve captcha dışında tek fark eklenen
+sokak satırı. `php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** Sepet sayfasındaki miktar güncelleme (`shopping_cart.php
+submit_update`) ve hızlı sipariş widget'ı (`cart_action.php`) bu değişiklikte
+ele alınmadı; `add_order_item()` hâlâ verilen miktarı denetimsiz yazıyor,
+yeni bir çağıran eklenirse aynı denetim orada da gerekir. Bağış tipi ürünün
+miktar dalı (`selection_type == 'donation'`) değiştirilmedi. Mevcut
+kurulumlardaki `data/layouts/` kopyaları yukarıdaki notla elle düzeltilmeli.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
