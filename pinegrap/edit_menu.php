@@ -26,23 +26,29 @@ $liveform = new liveform('edit_menu', $_REQUEST['id']);
 
 // if the form has not been submitted
 if (!$_POST) {
+    // get menu information
+    $query =
+        "SELECT
+            name,
+            effect,
+            first_level_popup_position,
+            second_level_popup_position,
+            class,
+            active_item_class
+        FROM menus
+        WHERE id = '" . escape($_GET['id']) . "'";
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+
+    // If the menu does not exist, then output error.
+    if ($row === null) {
+        output_error(lang('Invalid request.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    $menu_name = $row['name'];
+
     // if edit menu screen has not been submitted already, pre-populate fields with data
     if (!$liveform->field_in_session('name')) {
-        // get menu information
-        $query =
-            "SELECT
-                name,
-                effect,
-                first_level_popup_position,
-                second_level_popup_position,
-                class,
-                active_item_class
-            FROM menus
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        $menu_name = $row['name'];
-        
         // Assign the values to the fields.
         $liveform->assign_field_value('name', $row['name']);
         $liveform->assign_field_value('effect', $row['effect']);

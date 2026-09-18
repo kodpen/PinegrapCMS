@@ -21,6 +21,7 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 if (!isset($_POST['name'])) {
+    $output = '';
     $output .= 
     pg_page_shell([
         'title'=> lang('Create Common Region'),

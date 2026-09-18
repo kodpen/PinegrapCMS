@@ -24,22 +24,27 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_login_region', $_REQUEST['id']);
 
 if (!$_POST) {
+    // get login name, header and footer information to use for later
+    $query =
+        "SELECT 
+            name,
+            not_logged_in_header,
+            login_form,
+            not_logged_in_footer,
+            logged_in_header,
+            logged_in_footer
+        FROM login_regions
+        WHERE id = '" . escape($_REQUEST['id']) . "'";
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+
+    // If the login region does not exist, then output error.
+    if ($row === null) {
+        output_error(lang('Invalid request.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // if edit login region screen has not been submitted already, pre-populate fields with data
     if (isset($_SESSION['software']['liveforms']['edit_login_region'][$_GET['id']]) == false) {
-        // get login name, header and footer information to use for later
-        $query =
-            "SELECT 
-                name,
-                not_logged_in_header,
-                login_form,
-                not_logged_in_footer,
-                logged_in_header,
-                logged_in_footer
-            FROM login_regions
-            WHERE id = '" . escape($_REQUEST['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        
         // Assign the values to the fields.
         $liveform->assign_field_value('name', $row['name']);
         $liveform->assign_field_value('not_logged_in_header', $row['not_logged_in_header']);

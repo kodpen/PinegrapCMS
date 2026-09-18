@@ -34,6 +34,7 @@ if (!isset($_POST['name'])) {
     $cregion_content = $row['cregion_content'];
     $cregion_designer_type = $row['cregion_designer_type'];
     
+    $output = '';
     $output .= 
     pg_page_shell([
         'title'=> lang('Edit Common Region'),
