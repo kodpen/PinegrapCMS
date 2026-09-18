@@ -42,6 +42,13 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         WHERE page_id = '" . escape($_GET['page_id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // A deleted or mistyped page id must stop here: the page type below is
+    // used to build a table name, and a missing row would turn that into a
+    // query against a table that does not exist.
+    if (!$row) {
+        output_error(lang('Sorry, the page could not be found.'), 404);
+    }
     
     $page_type = $row['page_type'];
     $folder_id = $row['page_folder'];
