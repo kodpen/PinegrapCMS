@@ -41,6 +41,27 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Mozilla kök sertifika paketi tazelendi (2026-09-18)
+
+`pinegrap/data/cacert.pem` 10 Ocak 2023 tarihli Mozilla paketiydi (137 kök);
+operatör `CURL_CA_BUNDLE` ile bu dosyayı gösterdiğinde güncelleme kanalı,
+webhook göndericisi ve push istemcisi karşı tarafı buna göre doğrular. Dosya,
+Mozilla'nın güncel `certdata.txt`'inden (Firefox release dalı) curl'ün
+`mk-ca-bundle.pl` betiğiyle üretilen paketle değiştirildi: 18 Eylül 2026,
+121 kök. Sayının düşmesi eksiklik değil: Mozilla 2026'da eski kökleri
+(Baltimore CyberTrust, DigiCert Global Root CA, GlobalSign Root CA, Entrust,
+Go Daddy Class 2 …) TLS için güvenilir olmaktan çıkardı; curl.se'nin dağıttığı
+paket aynı betikle aynı veriden üretildiğinden o kökleri artık o da taşımıyor.
+Yerine 2022–2024 tarihli yeni kökler geldi (SSL.com, Sectigo R46/E46, Telekom
+Security, SECOM 2024, D-TRUST 2023 …).
+
+`includes/iyzipay-php/cacert.pem` (aynı içerikli eski kopya) **bilerek
+dokunulmadı**: `includes/` 2026.4.4'ten beri dosya bütünlüğü hash kapsamında
+ve referansı yalnız dev makinadaki `_software_create_hash.php` üretebiliyor.
+Yayın öncesi bu kopya da değiştirilip referans yeniden üretilmeli;
+`docs/CLAUDE-tam.md`'deki bütünlük bölümüne kontrol maddesi eklendi. Kod,
+migration ve `tr.json` değişmedi.
+
 ## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
 
 Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve
