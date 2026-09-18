@@ -41,6 +41,68 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Herkese açık API konsolu: `integration.php/docs` (2026-09-18)
+
+Panelde `api_docs.php` vardı ama dış geliştiricinin panel hesabı yok ve
+olmayacak: elinde yalnız uygulama anahtarı ve secret var. Aynı konsol artık
+API'nin kendisinden, oturum gerektirmeden `integration.php/docs` adresinde
+sunuluyor. Kimlik bilgisi HTTP Basic ile girilir (kullanıcı adı anahtar, parola
+secret), sunucuya yalnız okuyucunun yaptığı çağrıların içinde gider ve tarayıcı
+tarafında **yalnız sekmenin `sessionStorage`'ında** durur — sekme kapanınca
+silinir. Bağlanınca `/meta` okunur ve "bağlı uygulama" kutusu uygulamanın
+adını, izinlerini, API sürümünü ve sunucu saatini gösterir; **Unut** düğmesi
+kimlik bilgisini sekmeden siler.
+
+### Tek renderer, iki ekran
+
+Uç listesi ve deneme alanı `includes/api/console_view.php` içinde tek
+renderer'da toplandı (`api_console_endpoints_html()`, `api_console_css()`,
+`api_console_script()`); `api_docs.php` de aynı renderer'ı kullanıyor. Biri
+güncellenince diğeri de güncellenir; iki konsolun farklı uç göstermesi mümkün
+değil. Paneldeki konsol, panel hesabı olmayan geliştiriciyi açık konsola
+yönlendiren bir not gösteriyor.
+
+### Sayfa kabuk, içerik ayrı rota
+
+`docs` ve `docs.endpoints` `schema.php`'de kapsamsız iki açık rota. `docs`
+kimlik bilgisi okunmadan önce servis edilir — sayfaya hiçbir uç, parametre ya
+da kapsam yazılı değildir, panel giriş ekranının herkese açık olması gibi.
+Uç bloklarını sayfa tarayıcıda `/docs/endpoints`'ten okuyucunun yazdığı
+anahtarla çeker; bu rota `/openapi.json` ile **aynı `openapi_public`
+kuralına** bağlıdır: tanım herkese açıksa anahtarsız, değilse kimlik
+bilgisiyle.
+
+### Yanıt yardımcıları
+
+- `api_send_html()` (`response.php`): HTML yanıtı `Cache-Control: no-store`,
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer` ve `default-src 'none'` tabanlı, betik ve
+  stil için `'self' 'unsafe-inline'`, `connect-src 'self'` CSP ile basar;
+  `X-Request-Id` JSON yanıtlardaki gibi eklenir.
+- `api_fail_unauthorized()` `X-Requested-With: XMLHttpRequest` taşıyan
+  isteklerde `WWW-Authenticate` başlığını basmıyor: tarayıcı yoksa yanlış
+  secret'ta kendi giriş diyaloğunu öne koyuyor ve `fetch()` yanıtı hiç
+  görmüyordu. Komut satırı istemcisi ve üretilmiş SDK bu başlığı göndermez,
+  challenge onlar için aynen kalır.
+
+### Panel çerçevesi, oturumsuz
+
+Konsol `output_header_secure()` / `output_footer_secure()` ile açılıyor;
+`backend.src.css` ve `backend.src.js` yüklendiği için açık/koyu/otomatik tema
+düğmeleri (`data-bs-theme-value`) panelin kullanıcı menüsündeki anahtarla
+aynı kodla çalışıyor ve aynı `localStorage` anahtarını
+(`pinegrap backend color scheme`) kullanıyor.
+`output_control_panel_header_includes($include_assistant = true)` parametresi
+eklendi; güvenli başlık `false` ile çağırıyor ve Cloudflare AI arama
+betiğini atlıyor — oturumsuz bir sayfaya panel asistanının yükü girmiyor.
+Şema, migration yok; `tr.json`'a 29 anahtar.
+
+### Doğrulama
+
+Yerelde: açık/koyu tema geçişi, Türkçe arayüz, `GET /meta` ve `GET /offers`
+denemeleri, `/docs` yanıtında CSP ve diğer güvenlik başlıkları doğrulandı.
+Dev sunucuda denenmedi.
+
 ## 2026.4.4 — Mozilla kök sertifika paketi tazelendi (2026-09-18)
 
 `pinegrap/data/cacert.pem` 10 Ocak 2023 tarihli Mozilla paketiydi (137 kök);
