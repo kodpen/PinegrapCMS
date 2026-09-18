@@ -241,7 +241,7 @@ if (!empty($_POST['quick_add'])) {
         
     // else no quick add product was selected, so prepare error
     } else {
-        $liveform->mark_error('quick_add_product_id', 'Please select an item to add.');
+        $liveform->mark_error('quick_add_product_id', lang('Please select an item to add.'));
     }
     
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_POST['page_id']));

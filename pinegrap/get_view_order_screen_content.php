@@ -1581,38 +1581,38 @@ function get_view_order_screen_content($properties)
             // if Credit/Debit Card payment method was selected, then prepare to output value for that
             if ($payment_method == 'Credit/Debit Card') {
                 $output_credit_debit_card_information =
-                    'Card Type: ' . $card_type . '<br />
-                    Card Number: ' . $card_number . '<br />';
+                    lang('Card Type') . ': ' . $card_type . '<br />
+                    ' . lang('Card Number') . ': ' . $card_number . '<br />';
             }
             
             $output_payment_information =
-                '<div class="payment heading">Payment Information</div>
+                '<div class="payment heading">' . lang('Payment Information') . '</div>
                 <div class="payment data">
-                Payment Method: ' . $output_payment_method . '<br />' 
+                ' . lang('Payment Method') . ': ' . $output_payment_method . '<br />' 
                 . $output_credit_debit_card_information . '</div>';
         }
 
         // if order is complete, then prepare to output order number
         if ($status != 'incomplete') {
-            $output_order_number_or_reference_code = 'Order Number: <strong>' . $order_number . '</strong>';
+            $output_order_number_or_reference_code = lang('Order Number') . ': <strong>' . $order_number . '</strong>';
 
         // else order is incomplete, so prepare to output reference code
         } else {
-            $output_order_number_or_reference_code = 'Reference Code: <strong>' . $reference_code . '</strong>';
+            $output_order_number_or_reference_code = lang('Reference Code') . ': <strong>' . $reference_code . '</strong>';
         }
         
         $output =
             '<div class="product_messages">' . $output_order_receipt_messages . '</div>
-            <div class="order data" style="margin-bottom: 15px">' . $output_order_number_or_reference_code . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Order Date: ' . get_absolute_time(array('timestamp' => $order_date, 'size' => 'long')) . '</div>
+            <div class="order data" style="margin-bottom: 15px">' . $output_order_number_or_reference_code . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' . lang('Order Date') . ': ' . get_absolute_time(array('timestamp' => $order_date, 'size' => 'long')) . '</div>
             <table class="order_receipt_totals" style="width: 100%; margin-bottom: 15px">
                 ' . $output_ship_tos . '
                 <tr class="order_totals data">
                     <td colspan="' . (5 + $number_of_shipped_quantity_columns) . '">
-                        <div class="heading">Order Totals</div>
+                        <div class="heading">' . lang('Order Totals') . '</div>
                     </td>
                 </tr>
                 <tr class="order_totals data">
-                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">Subtotal:</td>
+                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">' . lang('Subtotal') . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>
                 ' . $output_discount . '
@@ -1621,14 +1621,14 @@ function get_view_order_screen_content($properties)
                 ' . $output_gift_card_discount . '
                 ' . $output_surcharge . '
                 <tr class="order_totals data">
-                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right"><strong>Total:</strong></td>
+                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right"><strong>' . lang('Total') . ':</strong></td>
                     <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'html') . $output_unconverted_total . '</strong></td>
                 </tr>
             </table>
             ' . $output_multicurrency_disclaimer . '
             ' . $output_recurring_products . '
             ' . $output_applied_offers . '
-            <div class="billing heading">Billing Information</div>
+            <div class="billing heading">' . lang('Billing Information') . '</div>
             <div class="billing data" style="margin-bottom: 15px">
                 '. $output_billing_information . '
                 ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_billing_form', 'order_id' => $order_id)) . '
@@ -1637,14 +1637,14 @@ function get_view_order_screen_content($properties)
             ' . $output_payment_information;
 
         if($status != 'incomplete'){
-            $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_reorder.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_primary">Reorder</a>&nbsp;&nbsp;&nbsp;';
+            $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_reorder.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_primary">' . lang('Reorder') . '</a>&nbsp;&nbsp;&nbsp;';
         }else {
             // if this incomplete order is not the active order, then prepare to output retrieve button
             if ($order_id != ($_SESSION['ecommerce']['order_id'] ?? '')) {
-                $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_retrieve_order.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_primary">Retrieve</a>&nbsp;&nbsp;&nbsp;';
+                $output_primary_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_retrieve_order.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_primary">' . lang('Retrieve') . '</a>&nbsp;&nbsp;&nbsp;';
             }
             // Example code desc.: Replaced custom confirm dialog with native browser confirm for link redirection
-            $output_delete_button = '&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_delete_order.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_secondary delete_button" onclick="return confirm(\'' . addslashes(lang('The order will be deleted.')) . '\');">Delete</a>';
+            $output_delete_button = '&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/order_history_delete_order.php?id=' . h($order_id) . get_token_query_string_field() . '" class="software_button_secondary delete_button" onclick="return confirm(\'' . addslashes(lang('The order will be deleted.')) . '\');">' . lang('Delete') . '</a>';
         }
 
         return

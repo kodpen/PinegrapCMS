@@ -28,7 +28,7 @@ $token = $form->get('k');
 
 if (!$token) {
     log_activity('Set Password: missing token');
-    output_error('Sorry, the token is missing, so we can\'t allow you to set a password.');
+    output_error(lang('Sorry, the token is missing, so we can\'t allow you to set a password.'));
 }
 
 // Create a hash of the token, because that is what we store in db.
@@ -48,7 +48,7 @@ if (!is_array($user) || !$user['id']) {
 
     log_activity('Set Password: invalid token');
 
-    output_error('Sorry, the token is not valid, so we can\'t allow you to set a password. The token might be old, so please <a href="' . h(get_page_type_url('forgot password')) . '">request a new email</a>.');
+    output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. The token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(get_page_type_url('forgot password'))))));
 }
 
 $token_timestamp = $user['token_timestamp'];
@@ -59,11 +59,11 @@ if (($token_timestamp + $time_24hrs) < time()) {
 
     log_activity('Set Password: expired token');
 
-    output_error('Sorry, the token has expired. Please <a href="' . h(get_page_type_url('forgot password')) . '">request a new email</a>.');
+    output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(get_page_type_url('forgot password'))))));
 }   
 
 // validate required fields
-$form->validate_required_field('new_password', 'Password is required.');
+$form->validate_required_field('new_password', lang('Password is required.'));
 
 // if there is not already an error for the new password field,
 // and strong password is enabled,
@@ -74,7 +74,7 @@ if (
     && (STRONG_PASSWORD == true)
     && (validate_password_strength($form->get('new_password')) == false)
 ) {
-    $form->mark_error('new_password', 'The password you entered does not meet the requirements. Please enter a different password.');
+    $form->mark_error('new_password', lang('The password you entered does not meet the requirements. Please enter a different password.'));
     $form->set('new_password', '');
 }
 
@@ -84,7 +84,7 @@ if (($form->get('password_hint') != '') && ($form->get('new_password') != '')) {
         ($form->get('password_hint') == $form->get('new_password'))
          || (mb_strpos(mb_strtolower($form->get('password_hint')), mb_strtolower($form->get('new_password'))) !== false) 
        ) {
-            $form->mark_error('password_hint', 'Your password hint cannot contain your password.');
+            $form->mark_error('password_hint', lang('Your password hint cannot contain your password.'));
             $form->set('password_hint', '');
     }
 }
@@ -175,6 +175,6 @@ if ($send_to != '') {
     $continue_url = PATH;
 }
 
-$form->add_notice('We have set your password, and you are now logged in. <a href="' . h(escape_url($continue_url)) . '">Continue</a>');
+$form->add_notice(lang(array('string' => 'We have set your password, and you are now logged in. <a href="{var:1}">Continue</a>', 'vars' => array(h(escape_url($continue_url))))));
 
 go(get_page_type_url('set password'));

@@ -99,13 +99,13 @@ function get_registration_entrance($properties = array()) {
             $output_login_remember_me_checkbox = 
                 '<tr>
                     <td class="mobile_hide">&nbsp;</td>
-                    <td>' . $login_form->output_field(array('type'=>'checkbox', 'name'=>'login_remember_me', 'id'=>'login_remember_me', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="login_remember_me"> Remember Me</label></td>
+                    <td>' . $login_form->output_field(array('type'=>'checkbox', 'name'=>'login_remember_me', 'id'=>'login_remember_me', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="login_remember_me"> ' . lang('Remember Me') . '</label></td>
                 </tr>';
 
             $output_register_remember_me_checkbox = 
                 '<tr>
                     <td class="mobile_hide">&nbsp;</td>
-                    <td>' . $register_form->output_field(array('type'=>'checkbox', 'name'=>'register_remember_me', 'id'=>'register_remember_me', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="register_remember_me"> Remember Me</label></td>
+                    <td>' . $register_form->output_field(array('type'=>'checkbox', 'name'=>'register_remember_me', 'id'=>'register_remember_me', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="register_remember_me"> ' . lang('Remember Me') . '</label></td>
                 </tr>';
 
         }
@@ -118,20 +118,20 @@ function get_registration_entrance($properties = array()) {
                 $output_send_to_query_string = h('?send_to=' . urlencode(($_GET['send_to'] ?? '')));
             }
             
-            $output_forgot_password_link = '<a class="forgot_button" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/forgot_password.php' . $output_send_to_query_string . '">Forgot password?</a><br />' . "\n";
+            $output_forgot_password_link = '<a class="forgot_button" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/forgot_password.php' . $output_send_to_query_string . '">' . lang('Forgot password?') . '</a><br />' . "\n";
         }
         
         // If allow_guest is true, display the continue as guest button
         if ((isset($_GET['allow_guest']) == true) && ($_GET['allow_guest'] == 'true')) {
             $output_continue_as_a_guest_link = 
                 '<div class="heading" style="padding-bottom: 20px;">
-                    Continue as a Guest
+                    ' . lang('Continue as a Guest') . '
                     <form class="data" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/registration_entrance.php" method="post" class="software" style="margin: 0; margin-top: 10px" id="guest-form">
                         ' . get_token_field() . '
                         <input type="hidden" name="continue" value="true">
                         <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                         ' . $allow_guest_hidden_field . '
-                        <input type="submit" name="submit_continue" value="Continue" class="software_input_submit_primary guest_button" /><br />
+                        <input type="submit" name="submit_continue" value="' . h(lang('Continue')) . '" class="software_input_submit_primary guest_button" /><br />
                     </form>
                 </div>';
         }
@@ -152,7 +152,7 @@ function get_registration_entrance($properties = array()) {
         if (PASSWORD_HINT == true) {
             $output_password_hint_field =
                 '<tr>
-                    <td><label for="password_hint">Password Hint:</label></td>
+                    <td><label for="password_hint">' . lang('Password Hint') . ':</label></td>
                     <td>' .
                         $register_form->field(array(
                             'type' => 'text',
@@ -185,7 +185,7 @@ function get_registration_entrance($properties = array()) {
                 $login_form->get_messages() .
                 $register_form->get_messages() . '
                 <div class="login" style="vertical-align: top; padding-top: 1em; padding-right: 2em">
-                    <div class="heading" style="border: none">Login</div>
+                    <div class="heading" style="border: none">' . lang('Login') . '</div>
                     <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em" id="login-form">
                         ' . get_token_field() . '
                         <input type="hidden" name="login" value="true">
@@ -193,7 +193,7 @@ function get_registration_entrance($properties = array()) {
                         <input type="hidden" name="require_cookies" value="true" />
                         <table style="margin-bottom: 1em">
                             <tr>
-                                <td><label for="login_email">Email:</label></td>
+                                <td><label for="login_email">' . lang('Email') . ':</label></td>
                                 <td>' .
                                     $login_form->field(array(
                                         'type' => 'email',
@@ -206,7 +206,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="login_password">Password:</label></td>
+                                <td><label for="login_password">' . lang('Password') . ':</label></td>
                                 <td>' .
                                     $login_form->field(array(
                                         'type' => 'password',
@@ -221,7 +221,7 @@ function get_registration_entrance($properties = array()) {
                             ' . $output_login_remember_me_checkbox . '
                         </table>
                         ' . $allow_guest_hidden_field . '
-                        <input type="submit" name="submit_login" value="Login" class="software_input_submit_primary login_button"><br>
+                        <input type="submit" name="submit_login" value="' . h(lang('Login')) . '" class="software_input_submit_primary login_button"><br>
                         <br />
                         ' . $output_forgot_password_link . '
                     </form>
@@ -229,7 +229,7 @@ function get_registration_entrance($properties = array()) {
 
                 <div class="register" style="vertical-align: top; padding-top: 2em">
                     ' . $output_continue_as_a_guest_link . '
-                    <div class="heading" style="border:none;">Register</div>
+                    <div class="heading" style="border:none;">' . lang('Register') . '</div>
                     <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em" id="register-form">
                         ' . get_token_field() . '
                         <input type="hidden" name="register" value="true">
@@ -237,7 +237,7 @@ function get_registration_entrance($properties = array()) {
                         <input type="hidden" name="require_cookies" value="true">
                         <table style="margin-bottom: 1em">
                             <tr>
-                                <td><label for="first_name">First Name*:</label></td>
+                                <td><label for="first_name">' . lang('First Name') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'text',
@@ -250,7 +250,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="last_name">Last Name*:</label></td>
+                                <td><label for="last_name">' . lang('Last Name') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'text',
@@ -262,7 +262,7 @@ function get_registration_entrance($properties = array()) {
                                         'spellcheck' => 'false')) . '</td>
                             </tr>
                             <tr>
-                                <td><label for="username">Username*:</label></td>
+                                <td><label for="username">' . lang('Username') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'text',
@@ -275,7 +275,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="register_email">Email*:</label></td>
+                                <td><label for="register_email">' . lang('Email') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'email',
@@ -288,7 +288,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="email_verify">Confirm Email*:</label></td>
+                                <td><label for="email_verify">' . lang('Confirm Email') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'email',
@@ -302,7 +302,7 @@ function get_registration_entrance($properties = array()) {
                             </tr>
                             ' . $output_strong_password_requirement_row . '
                             <tr>
-                                <td><label for="register_password">Password*:</label></td>
+                                <td><label for="register_password">' . lang('Password') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'password',
@@ -315,7 +315,7 @@ function get_registration_entrance($properties = array()) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="password_verify">Confirm Password*:</label></td>
+                                <td><label for="password_verify">' . lang('Confirm Password') . '*:</label></td>
                                 <td>' .
                                     $register_form->field(array(
                                         'type' => 'password',
@@ -347,7 +347,7 @@ function get_registration_entrance($properties = array()) {
                                 <td colspan="2">
                                 ' . $output_captcha_fields . '
                                 ' . $allow_guest_hidden_field . '
-                                <input type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button"><br>
+                                <input type="submit" name="submit_register" value="' . h(lang('Register')) . '" class="software_input_submit_primary register_button"><br>
                                 </td>
                             </tr>
                         </table>
@@ -363,7 +363,7 @@ function get_registration_entrance($properties = array()) {
                 <table width="100%" cellspacing="0" cellpadding="0" border="0">
                     <tr>
                         <td class="login desktop_left" style="vertical-align: top; padding-right: 1em">
-                            <div class="heading" style="border:none;">Login</div>
+                            <div class="heading" style="border:none;">' . lang('Login') . '</div>
                             <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em" id="login-form">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="login" value="true">
@@ -371,7 +371,7 @@ function get_registration_entrance($properties = array()) {
                                 <input type="hidden" name="require_cookies" value="true" />
                                 <table style="margin-bottom: 1em">
                                     <tr>
-                                        <td><label for="login_email">Email:</label></td>
+                                        <td><label for="login_email">' . lang('Email') . ':</label></td>
                                         <td>' .
                                             $login_form->field(array(
                                                 'type' => 'email',
@@ -384,7 +384,7 @@ function get_registration_entrance($properties = array()) {
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td><label for="login_password">Password:</label></td>
+                                        <td><label for="login_password">' . lang('Password') . ':</label></td>
                                         <td>' .
                                             $login_form->field(array(
                                                 'type' => 'password',
@@ -399,7 +399,7 @@ function get_registration_entrance($properties = array()) {
                                     ' . $output_login_remember_me_checkbox . '
                                 </table>
                                 ' . $allow_guest_hidden_field . '
-                                <input type="submit" name="submit_login" value="Login" class="software_input_submit_primary login_button" /><br />
+                                <input type="submit" name="submit_login" value="' . h(lang('Login')) . '" class="software_input_submit_primary login_button" /><br />
                                 <br />
                                 ' . $output_forgot_password_link . '
                             </form>
@@ -407,7 +407,7 @@ function get_registration_entrance($properties = array()) {
                         <td class="register desktop_right" style="vertical-align: top">
                             ' . $output_continue_as_a_guest_link . '
                             <div>
-                                <div class="heading" style="border:none;">Register</div>
+                                <div class="heading" style="border:none;">' . lang('Register') . '</div>
                                 <form class="data" action="' . $action_url . '" method="post" class="software" style="margin: 0em" id="register-form">
                                     ' . get_token_field() . '
                                     <input type="hidden" name="register" value="true">
@@ -415,7 +415,7 @@ function get_registration_entrance($properties = array()) {
                                     <input type="hidden" name="require_cookies" value="true" />
                                     <table style="margin-bottom: 1em">
                                         <tr>
-                                            <td><label for="first_name">First Name*:</label></td>
+                                            <td><label for="first_name">' . lang('First Name') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'text',
@@ -428,7 +428,7 @@ function get_registration_entrance($properties = array()) {
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td><label for="last_name">Last Name*:</label></td>
+                                            <td><label for="last_name">' . lang('Last Name') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'text',
@@ -440,7 +440,7 @@ function get_registration_entrance($properties = array()) {
                                                     'spellcheck' => 'false')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td><label for="username">Username*:</label></td>
+                                            <td><label for="username">' . lang('Username') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'text',
@@ -453,7 +453,7 @@ function get_registration_entrance($properties = array()) {
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td><label for="register_email">Email*:</label></td>
+                                            <td><label for="register_email">' . lang('Email') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'email',
@@ -466,7 +466,7 @@ function get_registration_entrance($properties = array()) {
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td><label for="email_verify">Confirm Email*:</label></td>
+                                            <td><label for="email_verify">' . lang('Confirm Email') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'email',
@@ -480,7 +480,7 @@ function get_registration_entrance($properties = array()) {
                                         </tr>
                                         ' . $output_strong_password_requirement_row . '
                                         <tr>
-                                            <td><label for="register_password">Password*:</label></td>
+                                            <td><label for="register_password">' . lang('Password') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'password',
@@ -493,7 +493,7 @@ function get_registration_entrance($properties = array()) {
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td><label for="password_verify">Confirm Password*:</label></td>
+                                            <td><label for="password_verify">' . lang('Confirm Password') . '*:</label></td>
                                             <td>' .
                                                 $register_form->field(array(
                                                     'type' => 'password',
@@ -523,7 +523,7 @@ function get_registration_entrance($properties = array()) {
                                     </table>
                                     ' . $output_captcha_fields . '
                                     ' . $allow_guest_hidden_field . '
-                                    <input type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button"><br>
+                                    <input type="submit" name="submit_register" value="' . h(lang('Register')) . '" class="software_input_submit_primary register_button"><br>
                                     ' . pg_google_signin_button(($_GET['send_to'] ?? '')) . '
                                 </form>
                             </div>

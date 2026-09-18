@@ -41,12 +41,12 @@ include('init.php');
 validate_token_field();
 
 if (!defined('ECOMMERCE') || ECOMMERCE !== true) {
-    output_error('E-commerce is not enabled on this site.');
+    output_error(lang('E-commerce is not enabled on this site.'));
 }
 
 $order_id = isset($_POST['order_id']) ? (int) $_POST['order_id'] : 0;
 if ($order_id <= 0) {
-    output_error('Order id is missing.');
+    output_error(lang('Order id is missing.'));
 }
 
 // ── Identify the caller ─────────────────────────────────────────────────
@@ -69,7 +69,7 @@ $current_user_id = defined('USER_ID') ? (int) USER_ID : 0;
 if (!$is_admin) {
     $cancel_allowed = defined('ECOMMERCE_ORDER_CANCEL_ALLOWED') && ECOMMERCE_ORDER_CANCEL_ALLOWED === true;
     if (!$cancel_allowed) {
-        output_error('Order cancellation is not enabled on this site.');
+        output_error(lang('Order cancellation is not enabled on this site.'));
     }
 }
 
@@ -80,7 +80,7 @@ if (!$is_admin) {
     );
     if ($current_user_id <= 0 || $owner_id !== $current_user_id) {
         log_activity('Access denied — non-owner attempted to cancel order #' . $order_id);
-        output_error('You are not allowed to cancel this order.');
+        output_error(lang('You are not allowed to cancel this order.'));
     }
 }
 

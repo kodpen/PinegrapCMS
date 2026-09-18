@@ -20,10 +20,10 @@ if (!defined('PG_INIT_LOADED')) {
 <?=$messages?>
 <div class="row">
 	<div class="col-sm-6">
-		<h2>Login</h2>
+		<h2><?=h(lang('Login'))?></h2>
 		<form <?=$login_attributes?>>
 			<div class="form-group">
-				<label for="login_email">Email</label>
+				<label for="login_email"><?=h(lang('Email'))?></label>
 				<input
 					type="email"
 					id="login_email"
@@ -33,7 +33,7 @@ if (!defined('PG_INIT_LOADED')) {
 					spellcheck="false">
 			</div>
 			<div class="form-group">
-				<label for="login_password">Password</label>
+				<label for="login_password"><?=h(lang('Password'))?></label>
 				<input
 					type="password"
 					id="login_password"
@@ -46,34 +46,34 @@ if (!defined('PG_INIT_LOADED')) {
 			<div class="checkbox">
 				<label>
 				<input type="checkbox" name="login_remember_me" value="1">
-				Remember Me
+				<?=h(lang('Remember Me'))?>
 				</label>
 			</div>
 			<?php endif ?>
 			<div class="form-group">
-				<button type="submit" class="btn btn-primary">Login</button>
+				<button type="submit" class="btn btn-primary"><?=h(lang('Login'))?></button>
 			</div>
 			<!-- Required hidden fields (do not remove) -->
 			<?=$login_system?>
 		</form>
 		<?=$google_signin ?? ''?>
 		<?php if ($forgot_password_url): ?>
-		<p><a href="<?=h($forgot_password_url)?>">Forgot password?</a></p>
+		<p><a href="<?=h($forgot_password_url)?>"><?=h(lang('Forgot password?'))?></a></p>
 		<?php endif ?>
 	</div>
 	<div class="col-sm-6">
 		<?php if ($guest): ?>
-		<h2>Continue as a Guest</h2>
+		<h2><?=h(lang('Continue as a Guest'))?></h2>
 		<form <?=$guest_attributes?>>
-			<button type="submit" class="btn btn-primary">Continue</button>
+			<button type="submit" class="btn btn-primary"><?=h(lang('Continue'))?></button>
 			<!-- Required hidden fields (do not remove) -->
 			<?=$guest_system?>
 		</form>
 		<?php endif ?>
-		<h2>Register</h2>
+		<h2><?=h(lang('Register'))?></h2>
 		<form <?=$register_attributes?>>
 			<div class="form-group">
-				<label for="first_name">First Name*</label>
+				<label for="first_name"><?=h(lang('First Name'))?>*</label>
 				<input
 					type="text"
 					id="first_name"
@@ -83,7 +83,7 @@ if (!defined('PG_INIT_LOADED')) {
 					spellcheck="false">
 			</div>
 			<div class="form-group">
-				<label for="last_name">Last Name*</label>
+				<label for="last_name"><?=h(lang('Last Name'))?>*</label>
 				<input
 					type="text"
 					id="last_name"
@@ -93,7 +93,7 @@ if (!defined('PG_INIT_LOADED')) {
 					spellcheck="false">
 			</div>
 			<div class="form-group">
-				<label for="username">Username*</label>
+				<label for="username"><?=h(lang('Username'))?>*</label>
 				<input
 					type="text"
 					id="username"
@@ -103,7 +103,7 @@ if (!defined('PG_INIT_LOADED')) {
 					spellcheck="false">
 			</div>
 			<div class="form-group">
-				<label for="register_email">Email*</label>
+				<label for="register_email"><?=h(lang('Email'))?>*</label>
 				<input
 					type="email"
 					id="register_email"
@@ -113,7 +113,7 @@ if (!defined('PG_INIT_LOADED')) {
 					spellcheck="false">
 			</div>
 			<div class="form-group">
-				<label for="email_verify">Confirm Email*</label>
+				<label for="email_verify"><?=h(lang('Confirm Email'))?>*</label>
 				<input
 					type="email"
 					id="email_verify"
@@ -126,7 +126,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?=$strong_password_help?>
 			<?php endif ?>
 			<div class="form-group">
-				<label for="register_password">Password*</label>
+				<label for="register_password"><?=h(lang('Password'))?>*</label>
 				<input
 					type="password"
 					id="register_password"
@@ -136,7 +136,7 @@ if (!defined('PG_INIT_LOADED')) {
 					spellcheck="false">
 			</div>
 			<div class="form-group">
-				<label for="password_verify">Confirm Password*</label>
+				<label for="password_verify"><?=h(lang('Confirm Password'))?>*</label>
 				<input
 					type="password"
 					id="password_verify"
@@ -147,7 +147,7 @@ if (!defined('PG_INIT_LOADED')) {
 			</div>
 			<?php if (PASSWORD_HINT): ?>
 			<div class="form-group">
-				<label for="password_hint">Password Hint</label>
+				<label for="password_hint"><?=h(lang('Password Hint'))?></label>
 				<input
 					type="text"
 					id="password_hint"
@@ -159,7 +159,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<div class="checkbox">
 				<label>
 				<input type="checkbox" name="register_remember_me" value="1">
-				Remember Me
+				<?=h(lang('Remember Me'))?>
 				</label>
 			</div>
 			<?php endif ?>
@@ -170,13 +170,13 @@ if (!defined('PG_INIT_LOADED')) {
 				</label>
 			</div>
 			<?php if ($captcha_question): ?>
-			<h5>To prevent spam, please tell us:</h5>
+			<h5><?=h(lang('To prevent spam, please tell us'))?>:</h5>
 			<div class="form-group">
 				<label for="captcha_submitted_answer"><?=h($captcha_question)?>*</label>
 				<input type="number" name="captcha_submitted_answer" id="captcha_submitted_answer" class="form-control">
 			</div>
 			<?php endif ?>
-			<button type="submit" class="btn btn-primary">Register</button>
+			<button type="submit" class="btn btn-primary"><?=h(lang('Register'))?></button>
 			<!-- Required hidden fields (do not remove) -->
 			<?=$register_system?>
 		</form>

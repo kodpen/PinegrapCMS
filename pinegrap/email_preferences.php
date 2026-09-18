@@ -32,7 +32,7 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
-    $liveform->validate_required_field('email_address', 'Email is required.');
+    $liveform->validate_required_field('email_address', lang('Email is required.'));
     
     // get email preferences page, if one exists
     $query = "SELECT page_id FROM page WHERE page_type = 'email preferences'";
@@ -49,7 +49,7 @@ if (!$_POST) {
     }
     
     // if an id was submitted, set id for query string in case we need to forward user back to e-mail preferences screen
-    if ($_POST['id']) {
+    if (!empty($_POST['id'])) {
         $url_id = '?id=' . $_POST['id'];
     } else {
         $url_id = '';
@@ -63,7 +63,7 @@ if (!$_POST) {
 
     // validate e-mail address
     if (validate_email_address($liveform->get_field_value('email_address')) == false) {
-        $liveform->mark_error('email_address', 'Please enter a valid email address.');
+        $liveform->mark_error('email_address', lang('Please enter a valid email address.'));
         $liveform->assign_field_value('email_address', '');
         
         // send user back to e-mail preferences screen
@@ -74,7 +74,7 @@ if (!$_POST) {
     $user_id = 0;
     
     // if user is logged in
-    if ($_SESSION['sessionusername']) {
+    if (!empty($_SESSION['sessionusername'])) {
         // check to see if e-mail address is already in use
         $query =
             "SELECT user_id
@@ -89,7 +89,7 @@ if (!$_POST) {
         
         // if e-mail address is already in use by another user
         if (mysqli_num_rows($result) > 0) {
-            $liveform->mark_error('email_address', 'That email address is already in use.  Please enter a different email address.');
+            $liveform->mark_error('email_address', lang('That email address is already in use. Please enter a different email address.'));
             $liveform->assign_field_value('email_address', '');
             
             // send user back to e-mail preferences screen
@@ -168,7 +168,7 @@ if (!$_POST) {
             // update username in session
             $_SESSION['sessionusername'] = $liveform->get_field_value('email_address');
             
-            $liveform->add_notice('Your username has been updated. Username: ' . $liveform->get_field_value('email_address'));
+            $liveform->add_notice(lang(array('string' => 'Your username has been updated. Username: {var:1}', 'vars' => array($liveform->get_field_value('email_address')))));
         }
     
     // else user is not logged in
@@ -203,7 +203,7 @@ if (!$_POST) {
             
             // if e-mail address is already in use by a contact
             if (mysqli_num_rows($result) > 0) {
-                $liveform->mark_error('email_address', 'That email address is already in use.  Please enter a different email address.');
+                $liveform->mark_error('email_address', lang('That email address is already in use. Please enter a different email address.'));
                 $liveform->assign_field_value('email_address', '');
                 
                 // send user back to e-mail preferences screen
@@ -360,7 +360,7 @@ if (!$_POST) {
         }
     }
     
-    $liveform->add_notice('Your email preferences have been updated.');
+    $liveform->add_notice(lang('Your email preferences have been updated.'));
     
     // send user back to e-mail preferences screen
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . $email_preferences_path . $url_id);

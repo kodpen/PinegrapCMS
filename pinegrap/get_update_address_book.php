@@ -131,14 +131,14 @@ function get_update_address_book($properties = array()) {
                 
                 // if there is a page name, then page still exists, so output what is this link
                 if ($address_type_page_name != '') {
-                    $output_address_type_what_is_this_link = '&nbsp;&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . h(encode_url_path($address_type_page_name)) . '" target="_blank">What is this?</a>';
+                    $output_address_type_what_is_this_link = '&nbsp;&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . h(encode_url_path($address_type_page_name)) . '" target="_blank">' . lang('What is this?') . '</a>';
                 }
             }
             
             $output_address_type_row =
                 '<tr>
-                    <td>Address Type*</td>
-                    <td style="padding-top: 0.5em; padding-bottom: 0.5em">' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_residential', 'value'=>'residential', 'class'=>'software_input_radio')) . '<label for="address_type_residential"> Residential</label>&nbsp;&nbsp;&nbsp;&nbsp;' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_business', 'value'=>'business', 'class'=>'software_input_radio')) . '<label for="address_type_business"> Business</label>' . $output_address_type_what_is_this_link . '</td>
+                    <td>' . lang('Address Type') . '*</td>
+                    <td style="padding-top: 0.5em; padding-bottom: 0.5em">' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_residential', 'value'=>'residential', 'class'=>'software_input_radio')) . '<label for="address_type_residential"> ' . lang('Residential') . '</label>&nbsp;&nbsp;&nbsp;&nbsp;' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_business', 'value'=>'business', 'class'=>'software_input_radio')) . '<label for="address_type_business"> ' . lang('Business') . '</label>' . $output_address_type_what_is_this_link . '</td>
                 </tr>';
         }
 
@@ -150,30 +150,30 @@ function get_update_address_book($properties = array()) {
                 <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '" />
                 <table style="margin-bottom: 15px">
                     <tr>
-                        <td>Ship to Name*</td>
+                        <td>' . lang('Ship to Name') . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'ship_to_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
                         <td colspan="2">&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Salutation</td>
+                        <td>' . lang('Salutation') . '</td>
                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'salutation', 'options'=>get_salutation_options(), 'class'=>'software_select')) . '</td>
                     </tr>
                     <tr>
-                        <td>First Name*</td>
+                        <td>' . lang('First Name') . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'first_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>Last Name*</td>
+                        <td>' . lang('Last Name') . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'last_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>Organization</td>
+                        <td>' . lang('Organization') . '</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'company', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>Address*</td>
+                        <td>' . lang('Address') . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'address_1', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
@@ -181,21 +181,21 @@ function get_update_address_book($properties = array()) {
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>City*</td>
+                        <td>' . lang('City') . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>Country*</td>
+                        <td>' . lang('Country') . '*</td>
                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'country', 'id'=>'country', 'options'=>$country_options, 'class'=>'software_select')) . '</td>
                     </tr>
                     <tr>
                         <td>
                             <label for="state_text_box">
-                                State / Province
+                                ' . lang('State / Province') . '
                             </label>
 
                             <label for="state_pick_list" style="display: none">
-                                State / Province*
+                                ' . lang('State / Province') . '*
                             </label>
                         </td>
                         <td>' .
@@ -205,16 +205,16 @@ function get_update_address_book($properties = array()) {
                         </td>
                     </tr>
                     <tr>
-                        <td>Zip / Postal Code<span id="zip_code_required" style="display: none">*</span></td>
+                        <td>' . lang('Zip / Postal Code') . '<span id="zip_code_required" style="display: none">*</span></td>
                         <td>' . $form->output_field(array('type'=>'text', 'id' => 'zip_code', 'name'=>'zip_code', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     ' . $output_address_type_row . '
                     <tr>
-                        <td>Phone</td>
+                        <td>' . lang('Phone') . '</td>
                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'phone_number', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                 </table>
-                <input type="submit" name="submit" value="Submit" class="software_input_submit_primary submit_button" />&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="Cancel" onclick="javascript:window.location.href=\'' . h(escape_javascript(get_page_type_url('my account'))) . '\'" class="software_input_submit_secondary cancel_button">
+                <input type="submit" name="submit" value="' . h(lang('Submit')) . '" class="software_input_submit_primary submit_button" />&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="' . h(lang('Cancel')) . '" onclick="javascript:window.location.href=\'' . h(escape_javascript(get_page_type_url('my account'))) . '\'" class="software_input_submit_secondary cancel_button">
                 ' . $system . '
             </form>';
 

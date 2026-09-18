@@ -36,7 +36,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if ship to is not found, output error
 if (mysqli_num_rows($result) == 0) {
-    output_error('The recipient could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The recipient could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -47,7 +47,7 @@ $address_verified = $row['address_verified'];
 
 // if order id for ship to is not equal to order id in session, output error
 if ($row['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
-    output_error('You do not have access to this recipient. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('You do not have access to this recipient.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 // get page info and make sure that a shipping address & arrival page exists for the id that the user passed
@@ -67,7 +67,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if a shipping address & arrival page was not found for the id that was passed, then output error
 if (mysqli_num_rows($result) == 0) {
-    output_error('A shipping address &amp; arrival page could not be found for the id that was passed. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('A shipping address &amp; arrival page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -186,7 +186,7 @@ if (isset($_POST['arrival_date'])) {
             
             // if custom date is not valid, then mark error
             if ((is_numeric($month) == false) || (is_numeric($day) == false) || (is_numeric($year) == false) || (checkdate($month, $day, $year) == false)) {
-                $liveform->mark_error('custom_arrival_date_' . $liveform->get_field_value('arrival_date'), 'The custom arrival date is not valid.');
+                $liveform->mark_error('custom_arrival_date_' . $liveform->get_field_value('arrival_date'), lang('The custom arrival date is not valid.'));
                 $arrival_date = '';
             }
         }
@@ -200,7 +200,7 @@ if (isset($_POST['arrival_date'])) {
             && ($arrival_date_custom_maximum_arrival_date != '0000-00-00')
             && ($arrival_date > $arrival_date_custom_maximum_arrival_date)
         ) {
-            $liveform->mark_error('custom_arrival_date_' . $liveform->get_field_value('arrival_date'), 'The custom arrival date that you entered is after the latest allowed arrival date. Please enter a date that is on or before ' . prepare_form_data_for_output($arrival_date_custom_maximum_arrival_date, 'date') . '.');
+            $liveform->mark_error('custom_arrival_date_' . $liveform->get_field_value('arrival_date'), lang(array('string' => 'The custom arrival date that you entered is after the latest allowed arrival date. Please enter a date that is on or before {var:1}.', 'vars' => array(prepare_form_data_for_output($arrival_date_custom_maximum_arrival_date, 'date')))));
             $arrival_date = '';
         }
     }
@@ -415,7 +415,7 @@ if (isset($_POST['arrival_date'])) {
 
         // if no valid shipping methods could be found for requested arrival date, mark error for requested arrival date
         if ($valid_shipping_methods_exist == false) {
-            $liveform->mark_error('arrival_date', 'We could not find a shipping method that would guarantee delivery of your shipment by the Requested Arrival Date. Please select a different Requested Arrival Date to continue.');
+            $liveform->mark_error('arrival_date', lang('We could not find a shipping method that would guarantee delivery of your shipment by the Requested Arrival Date. Please select a different Requested Arrival Date to continue.'));
         }
     }
 }

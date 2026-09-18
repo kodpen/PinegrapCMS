@@ -37,14 +37,14 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if ship to is not found, output error
 if (mysqli_num_rows($result) == 0) {
-    output_error('The recipient could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The recipient could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
 
 // if order id for ship to is not equal to order id in session, output error
 if ($row['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
-    output_error('You do not have access to this recipient. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('You do not have access to this recipient.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 // set state and country for ship to for later when we check to see if there are any invalid products
@@ -113,7 +113,7 @@ if ($liveform->check_form_errors() == false) {
 
     // if shipping method cannot be found, then shipping method was recently deleted or someone is trying to hack, so output error
     if (mysqli_num_rows($result) == 0) {
-        output_error('The selected shipping method could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+        output_error(lang('The selected shipping method could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     $row = mysqli_fetch_assoc($result);
@@ -190,7 +190,7 @@ if ($liveform->check_form_errors() == false) {
 
     // If there was an error getting the realtime rate, then output error.
     if ($realtime_rate === false) {
-        output_error('Sorry, that shipping method is not currently available, because we could not find a real-time rate.');
+        output_error(lang('Sorry, that shipping method is not currently available, because we could not find a real-time rate.'));
     }
 
     $shipping_cost += $realtime_rate;

@@ -21,7 +21,7 @@ if (!defined('PG_INIT_LOADED')) {
 <form <?=$attributes?>>
 	<div class="form-group input-group col-sm-4">
 		<input type="search" name="<?=$page_id?>_query"
-			class="form-control" placeholder="Search" autofocus>
+			class="form-control" placeholder="<?=h(lang('Search'))?>" autofocus>
 		<span class="input-group-btn">
 		<button type="submit" class="btn btn-default btn-secondary">
 		<span class="glyphicon glyphicon-search"></span>
@@ -32,24 +32,21 @@ if (!defined('PG_INIT_LOADED')) {
 	<?=$system?>
 </form>
 <?php if ($query == ''): ?>
-<p><strong>Please enter a keyword or phrase to search.</strong></p>
+<p><strong><?=h(lang('Please enter a keyword or phrase to search.'))?></strong></p>
 <?php elseif ($number_of_results == 0): ?>
-<p><strong>No results were found for: <?=h($query)?></strong></p>
+<p><strong><?=lang(array('string' => 'No results were found for: {var:1}', 'vars' => array(h($query))))?></strong></p>
 <?php else: ?>
 <?php if ($limited): ?>
 <p>
-	<strong>Showing <?=number_format($number_of_results)?> of the most
-	relevant results for: <?=h($query)?></strong>
+	<strong><?=lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(number_format($number_of_results), h($query))))?></strong>
 </p>
 <?php else: ?>
 <p>
-	<strong>Found <?=number_format($number_of_results)?>
-	result<?php if ($number_of_results > 1): ?>s<?php endif ?> for:
-	<?=h($query)?></strong>
+	<strong><?=($number_of_results > 1) ? lang(array('string' => 'Found {var:1} results for: {var:2}', 'vars' => array(number_format($number_of_results), h($query)))) : lang(array('string' => 'Found {var:1} result for: {var:2}', 'vars' => array(number_format($number_of_results), h($query))))?></strong>
 </p>
 <?php endif ?>
 <?php if ($featured_items): ?>
-<h2>Featured Results</h2>
+<h2><?=h(lang('Featured Results'))?></h2>
 <div>
 	<?php foreach($featured_items as $item): ?>
 	<div>
@@ -69,7 +66,7 @@ if (!defined('PG_INIT_LOADED')) {
 </div>
 <?php endif ?>
 <?php if ($catalog_items): ?>
-<h2>Catalog Results</h2>
+<h2><?=h(lang('Catalog Results'))?></h2>
 <div>
 	<?php foreach($catalog_items as $item): ?>
 	<div>
@@ -94,7 +91,7 @@ if (!defined('PG_INIT_LOADED')) {
 <?php endif ?>
 <?php if ($results): ?>
 <?php if ($featured_items or $catalog_items): ?>
-<h2>Other Results</h2>
+<h2><?=h(lang('Other Results'))?></h2>
 <?php endif ?>
 <div>
 	<?php foreach($results as $result): ?>

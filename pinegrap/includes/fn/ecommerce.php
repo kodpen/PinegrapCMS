@@ -4569,7 +4569,7 @@ function prepare_price_for_output($original_price, $discounted, $discounted_pric
         case 'plain_text':
             // if the product is discounted by an offer, then prepare to show original price and discounted price
             if ($discounted == true) {
-                return $discounted_negative . $output_symbol . number_format($discounted_amount, 2, '.', ',') . $output_code . ' (was ' . $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code . ')';
+                return lang(array('string' => '{var:1} (was {var:2})', 'vars' => array($discounted_negative . $output_symbol . number_format($discounted_amount, 2, '.', ',') . $output_code, $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code)));
                 // else the product is not discounted by an offer, so prepare to just show the product price
             } else {
                 return $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code;
@@ -4914,7 +4914,7 @@ function check_reservations($liveform)
                 // if there are no remaining spots, then remove order item and add notice
                 if ($calendar_event['number_of_remaining_spots'] == 0) {
                     remove_order_item($reservation_order_item['id']);
-                    $liveform->add_notice('We\'re sorry, ' . h($product_description) . ' has been removed from your order because it is no longer available. ' . $calendar_event['no_remaining_spots_message']);
+                    $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is no longer available.', 'vars' => array(h($product_description)))) . ' ' . $calendar_event['no_remaining_spots_message']);
                     // else there are remaining spots, so if the quantity is greater than the number of remaining spots,
                     // then adjust quantity for order item and add notice
                 } else if ($reservation_order_item['quantity'] > $calendar_event['number_of_remaining_spots']) {
@@ -6307,7 +6307,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 {
     $order_id = (int) $order_id;
     if ($order_id <= 0) {
-        return array('status' => 'error', 'message' => 'Order id is missing.', 'refund_status' => '', 'order_id' => 0);
+        return array('status' => 'error', 'message' => lang('Order id is missing.'), 'refund_status' => '', 'order_id' => 0);
     }
 
     // Minimal selection — enough for cancel gating + email + refund.
@@ -6321,12 +6321,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     );
 
     if (!$order) {
-        return array('status' => 'not_found', 'message' => 'Order not found.', 'refund_status' => '', 'order_id' => $order_id);
+        return array('status' => 'not_found', 'message' => lang('Order not found.'), 'refund_status' => '', 'order_id' => $order_id);
     }
 
     // Already cancelled — idempotent no-op.
     if ($order['status'] === 'cancelled') {
-        return array('status' => 'already', 'message' => 'Order was already cancelled.', 'refund_status' => '', 'order_id' => $order_id);
+        return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
     }
 
     // ── Pre-shipment guard (CUSTOMERS ONLY) ─────────────────────────────
@@ -6343,7 +6343,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     $cancel_until_shipped = !defined('ECOMMERCE_ORDER_CANCEL_UNTIL_SHIPPED')
         || ECOMMERCE_ORDER_CANCEL_UNTIL_SHIPPED !== false;
     if (!$is_admin && $cancel_until_shipped && _order_has_shipped($order_id)) {
-        return array('status' => 'shipped', 'message' => 'Order has already shipped.', 'refund_status' => '', 'order_id' => $order_id);
+        return array('status' => 'shipped', 'message' => lang('Order has already shipped.'), 'refund_status' => '', 'order_id' => $order_id);
     }
 
     $reason_clean = trim(mb_substr((string) $reason, 0, 500));
@@ -6499,7 +6499,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     return array(
         'status'        => 'success',
-        'message'       => 'Order cancelled.',
+        'message'       => lang('Order cancelled.'),
         'refund_status' => $refund_status_outcome,
         'order_id'      => $order_id,
     );

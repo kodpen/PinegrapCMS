@@ -2455,7 +2455,7 @@ function get_shipping_methods($properties) {
 
             // Otherwise product restriction message is not set, so use default message
             } else {
-                $message = 'Sorry, this item cannot be delivered to the specified shipping address. Please remove it from your order to continue.';
+                $message = lang('Sorry, this item cannot be delivered to the specified shipping address. Please remove it from your order to continue.');
             }
 
             $message .= ' (' . $item['name'] . ' - ' . $item['short_description'] . ')';
@@ -2493,7 +2493,7 @@ function get_shipping_methods($properties) {
     if (!$shipping_methods) {
         return array(
             'status' => 'error',
-            'message' => 'Sorry, we could not find a shipping method for this recipient. There may be no enabled shipping methods in general or no enabled methods for your address type (street or PO box).');
+            'message' => lang('Sorry, we could not find a shipping method for this recipient. There may be no enabled shipping methods in general or no enabled methods for your address type (street or PO box).'));
     }
 
     // get valid zones
@@ -2625,7 +2625,7 @@ function get_shipping_methods($properties) {
     if (!$shipping_methods) {
         return array(
             'status' => 'error',
-            'message' => 'Sorry, we could not find a shipping method for this recipient, even after trying to resolve issue with no intersecting shipping methods.');
+            'message' => lang('Sorry, we could not find a shipping method for this recipient, even after trying to resolve issue with no intersecting shipping methods.'));
     }
 
     // if requested arrival date was set (and it was not At Once), determine which shipping methods can guarantee arrival by requested arrival date
@@ -2680,7 +2680,7 @@ function get_shipping_methods($properties) {
         if (!$shipping_methods) {
             return array(
                 'status' => 'error',
-                'message' => 'Sorry, we could not find a shipping method that would guarantee delivery of your shipment by the Requested Arrival Date. Please select a different Requested Arrival Date to continue.');
+                'message' => lang('Sorry, we could not find a shipping method that would guarantee delivery of your shipment by the Requested Arrival Date. Please select a different Requested Arrival Date to continue.'));
         }
     }
 
@@ -2909,7 +2909,7 @@ function get_shipping_methods($properties) {
     if (!$shipping_methods_for_output) {
         return array(
             'status' => 'error',
-            'message' => 'Sorry, we could not find a shipping method for this recipient because we could not get the real-time rate. Please check that the address is correct.  If it is already correct, then you might try again in a few minutes.');
+            'message' => lang('Sorry, we could not find a shipping method for this recipient because we could not get the real-time rate. Please check that the address is correct.  If it is already correct, then you might try again in a few minutes.'));
     }
 
     // sort shipping methods by cost
@@ -2987,7 +2987,7 @@ function check_shipping_method($properties) {
     if (!$shipping_method) {
         return array(
             'status' => 'error',
-            'message' => 'Sorry, that shipping method is not valid for the recipient. It may not be available anymore or might not be valid for the recipient\'s address. Please select a different method.');
+            'message' => lang('Sorry, that shipping method is not valid for the recipient. It may not be available anymore or might not be valid for the recipient\'s address. Please select a different method.'));
     }
 
     // Get zones that are valid for destination
@@ -3040,7 +3040,7 @@ function check_shipping_method($properties) {
         } else {
             return array(
                 'status' => 'error',
-                'message' => 'Sorry, that shipping method is not allowed for the recipient because the recipient\'s address and/or items are not supported by the method. Please select a different method.');
+                'message' => lang('Sorry, that shipping method is not allowed for the recipient because the recipient\'s address and/or items are not supported by the method. Please select a different method.'));
         }
     }
 
@@ -3070,7 +3070,7 @@ function check_shipping_method($properties) {
     if ($cutoff and $cutoff <= date('Y-m-d H:i:s')) {
         return array(
             'status' => 'error',
-            'message' => 'Sorry, the shipping method is no longer available for that arrival date. The cut-off time has passed. You might try selecting a different arrival date or shipping method.');
+            'message' => lang('Sorry, the shipping method is no longer available for that arrival date. The cut-off time has passed. You might try selecting a different arrival date or shipping method.'));
     }
 
     $response = get_delivery_date(array(
@@ -3087,7 +3087,7 @@ function check_shipping_method($properties) {
     if (!$delivery_date or $delivery_date > $arrival_date) {
         return array(
             'status' => 'error',
-            'message' => 'Sorry, the shipping method cannot guarantee delivery of the shipment by the requested arrival date. You might try selecting a different arrival date or shipping method.');
+            'message' => lang('Sorry, the shipping method cannot guarantee delivery of the shipment by the requested arrival date. You might try selecting a different arrival date or shipping method.'));
     }
 
     // If we have gotten here then the shipping method is valid, so return success
@@ -3256,9 +3256,9 @@ function verify_address($properties) {
                             case '-2147219401':
                             case '-2147219403':
                                 if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = 'We were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.';
+                                    $message = lang('We were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
                                 } else {
-                                    $message = 'Sorry, we were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.';
+                                    $message = lang('Sorry, we were not able to find the address in our postal database, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
                                 }
 
                                 // output error
@@ -3272,9 +3272,9 @@ function verify_address($properties) {
                             // invalid city error
                             case '-2147219400':
                                 if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = 'According to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.';
+                                    $message = lang('According to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
                                 } else {
-                                    $message = 'Sorry, according to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.';
+                                    $message = lang('Sorry, according to our postal database, the city is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
                                 }
 
                                 // output error
@@ -3284,9 +3284,9 @@ function verify_address($properties) {
                             // invalid state error
                             case '-2147219402':
                                 if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = 'According to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.';
+                                    $message = lang('According to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
                                 } else {
-                                    $message = 'Sorry, according to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.';
+                                    $message = lang('Sorry, according to our postal database, the state/province is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
                                 }
 
                                 // output error
@@ -3296,9 +3296,9 @@ function verify_address($properties) {
                             // invalid zip code error
                             case '-2147219399':
                                 if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = 'According to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.';
+                                    $message = lang('According to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then you may leave it unchanged and continue below.');
                                 } else {
-                                    $message = 'Sorry, according to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.';
+                                    $message = lang('Sorry, according to our postal database, the zip/postal code is not valid, so please review it below.  If it is incorrect, then please correct it.  If you are sure that it is correct then please feel free to contact us.');
                                 }
 
                                 // output error
@@ -3396,9 +3396,9 @@ function verify_address($properties) {
                             // if there is response text, then return an error
                             if ($matches[1] != '') {
                                 if (ECOMMERCE_ADDRESS_VERIFICATION_ENFORCEMENT_TYPE == 'warning') {
-                                    $message = 'Our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then you may leave it unchanged and continue below.';
+                                    $message = lang('Our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then you may leave it unchanged and continue below.');
                                 } else {
-                                    $message = 'Sorry, our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then please feel free to contact us.';
+                                    $message = lang('Sorry, our postal database indicates that the address might be missing information, such as an apartment, suite, or box number, so please review the address below.  If there is missing information, then please add the missing information.  If you are sure that it is complete then please feel free to contact us.');
                                 }
 
                                 // output error

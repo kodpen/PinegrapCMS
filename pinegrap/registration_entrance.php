@@ -122,6 +122,8 @@ if (!$_POST) {
                 if (validate_username($username) == true) {
                     log_activity(lang(array('string'=>'access denied (password invalid) (email or username: {var:1})','vars'=>$username)), lang('UNKNOWN') );
                     
+                    $forgot_password_message = '';
+                    
                     if (FORGOT_PASSWORD_LINK == true) {
                         $forgot_password_message = lang(' If you have forgotten your password, please click on the forgot password link below.');
                     }
