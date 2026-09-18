@@ -199,7 +199,7 @@ if (!$_POST)
             ImageEditorLocale.cropLabelTabZoom = "' . lang('Zoom') . '";
             ImageEditorLocale.cropLabelSelectPreset = "' . lang('Crop Shape') . '";
             ImageEditorLocale.cropLabelCropBoundary = "' . lang('Crop Boundary') . '";
-            ImageEditorLocale.cropLabelCropBoundaryEdge = "' . lang('Resim merkezinden') . '";
+            ImageEditorLocale.cropLabelCropBoundaryEdge = "' . lang('From image center') . '";
             ImageEditorLocale.cropLabelCropBoundaryNone = "' . lang('None') . '";
             ImageEditorLocale.cropLabelButtonFlipHorizontal = "' . lang('Flip Horizontal') . '";
             ImageEditorLocale.cropLabelButtonFlipVertical = "' . lang('Flip Vertical') . '";
@@ -243,7 +243,7 @@ if (!$_POST)
             ImageEditorLocale.shapeLabelToolEllipse = "' . lang('Ellipse') . '";
             ImageEditorLocale.shapeLabelToolEraser = "' . lang('Eraser') . '";
             ImageEditorLocale.shapeLabelToolLine = "' . lang('Line') . '";
-            ImageEditorLocale.shapeLabelToolPreset = "' . lang('Ön Ayar') . '";
+            ImageEditorLocale.shapeLabelToolPreset = "' . lang('Preset') . '";
             ImageEditorLocale.shapeLabelToolRectangle = "' . lang('Rectangle') . '";
             ImageEditorLocale.shapeLabelToolSharpie = "' . lang('Sharpie') . '";
             ImageEditorLocale.shapeLabelToolText = "' . lang('Text') . '";

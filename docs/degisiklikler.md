@@ -41,6 +41,37 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
+
+**Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
+Türkçe metin kullanılmış on iki yer vardı (`catalog_detail.php`,
+`image_editor_edit.php`, `includes/fn/widgets_catalog.php`,
+`includes/fn/designer.php`); `tr.json` bunları Türkçe→Türkçe eşliyordu, yani
+çeviri katmanı o metinler için işlevsizdi ve İngilizce arayüz Türkçe
+gösteriyordu. (2) `api_docs.php` başlığa `icon => 'settings'` geçiyordu,
+dosyanın adı ise `setting.ico` / `setting.png`; sayfa başına beş favicon
+404'ü oluşuyordu. (3) `output_header_secure()` `extra classes` verildiğinde
+`<bodyclass="…">` basıyordu — `class=` önünde boşluk yoktu.
+
+**Düzeltme.** Anahtarlar doğal İngilizce kaynak metne çevrildi
+(`Not enough stock. Available: {var:1}`, `From image center`, `Main Catalog`,
+`Categories`, `Frequently bought together`, `Product added to cart.`,
+`Select recipient...`, `+ Add new recipient`, `An empty design cannot be
+saved. Refresh the page and try again.`); zaten var olan `Preset`, `Search`
+ve `Select...` anahtarları yeniden kullanıldı. Yeni İngilizce→Türkçe çiftler
+`tr.json` sonuna eklendi, ölü Türkçe anahtarlar silindi. `api_docs.php`
+ikon adı `setting` yapıldı (varlık dosyaları yerinde). `output.php`
+`$output_body_class` dizgesi öncü boşlukla kuruluyor; `output_header()`
+farklı kalıp kullandığından dokunulmadı.
+
+### Doğrulama
+
+`php -l` dokunulan altı PHP dosyasında temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz; `tr.json` `json_decode` "No error";
+`lang('…[çğıöşü]')` taraması ürün kodunda anahtar bırakmıyor. Çalışan
+örnek kurulmadı: favicon isteklerinin 200 döndüğü ve `<body class>` çıktısı
+tarayıcıda görülmedi.
+
 ## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
 
 Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve

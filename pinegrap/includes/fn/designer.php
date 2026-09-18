@@ -452,7 +452,7 @@ function _validate_and_clean_tree_json($json)
     if ($json === '' || $json === null) {
         return array(
             'ok'           => false,
-            'error'        => lang('Boş bir tasarım kaydedilemez. Sayfayı yenileyin ve yeniden deneyin.'),
+            'error'        => lang('An empty design cannot be saved. Refresh the page and try again.'),
             'warnings'     => array(),
             'cleaned_json' => '',
         );

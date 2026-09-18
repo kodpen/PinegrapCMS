@@ -649,7 +649,7 @@ function output_header_secure($properties = false)
 
     $output_body_class = '';
     if (isset($properties['extra classes'])) {
-        $output_body_class = 'class="' . $properties['extra classes'] . '"';
+        $output_body_class = ' class="' . $properties['extra classes'] . '"';
     }
 
     $output_fav_icon = '';
