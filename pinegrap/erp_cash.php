@@ -40,8 +40,12 @@ $output_rows = '';
 foreach ($cash_accounts as $till) {
     $id = (int) $till['id'];
     $balance = (int) $till['balance'];
+    $till_currency = strtoupper(trim((string) $till['currency']));
 
-    if ((int) $till['is_active'] === 1) {
+    // A till's balance is in its own currency. The total across tills only
+    // means something in one currency, so a till kept in another is shown but
+    // not added in.
+    if (((int) $till['is_active'] === 1) && (!erp_fx_enabled() || ($till_currency === erp_base_currency()))) {
         $total += $balance;
     }
 
@@ -60,7 +64,7 @@ foreach ($cash_accounts as $till) {
             <td style="max-width:220px" class="text-nowrap text-truncate align-middle">' . h($till['iban']) . '</td>
             <td class="align-middle">' . h($till['currency']) . '</td>
             <td class="align-middle text-end" data-order="' . $movements . '">' . number_format($movements) . '</td>
-            <td class="align-middle text-end fw-bold ' . (($balance < 0) ? 'text-danger' : '') . '" data-order="' . $balance . '">' . h(erp_money_out($balance)) . '</td>
+            <td class="align-middle text-end fw-bold ' . (($balance < 0) ? 'text-danger' : '') . '" data-order="' . $balance . '">' . h(erp_fx_enabled() ? erp_money_out_currency($balance, $till_currency) : erp_money_out($balance)) . '</td>
         </tr>';
 }
 

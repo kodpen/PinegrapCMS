@@ -18,9 +18,11 @@ if (!defined('PG_ERP_ENTRY')) {
  * The fields a till or bank account is described by.
  *
  * @param liveform $liveform
+ * @param bool     $currency_locked  The till already has movements, so its
+ *                                   currency is shown but cannot be changed.
  * @return string  HTML
  */
-function erp_till_form_cards($liveform)
+function erp_till_form_cards($liveform, $currency_locked = false)
 {
     $kind_options = array();
     $kind_options[lang('Cash')] = 'cash';
@@ -79,11 +81,12 @@ function erp_till_form_cards($liveform)
                             'type' => 'text', 'id' => 'opening_balance', 'name' => 'opening_balance',
                             'class' => 'form-control text-end', 'maxlength' => '15',
                             'inputmode' => 'decimal', 'autocomplete' => 'off')) . '
-                        <label class="input-group-text" for="opening_balance">' . BASE_CURRENCY_SYMBOL . '</label>
+                        <label class="input-group-text" for="opening_balance">' . (erp_fx_enabled() ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</label>
                     </div>
                     <div class="form-text">' . lang('What was in it before the first movement was recorded here.') . '</div>
                 </div>
             </div>
+            ' . erp_currency_form_row($liveform, $currency_locked, lang('The currency the till or bank account holds. Every movement through it is in this currency.')) . '
         </div>
     </div>';
 }

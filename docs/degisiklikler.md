@@ -41,6 +41,101 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — ERP döviz desteği: ana para birimi, kur geçmişi, otomatik kur farkı (2026-09-18)
+
+**Neden.** ERP Faz 0'da TL sabit yazılmıştı: `'TRY'` literal'leri, `amount_try`
+/ `grand_total_try` sütunları, kur kaynağı olarak TCMB önerisi. Ürün sahibi
+bunu düzeltti: Pinegrap dünyanın her yerinden indirilip kurulan bir üründür,
+ERP'nin ev para birimi `edit_currency.php`'de ana işaretlenen para birimidir
+(`BASE_CURRENCY_CODE`), ülkeye özel veri kaynağı ya da vergi kuralı çekirdeğe
+girmez. Dövizli cari ve `fx_diff` Faz 1'den beri "henüz yapılmayanlar"
+listesindeydi; bu tur ikisini de o ilkeyle kapatıyor.
+
+**Ana para birimi.** `includes/erp/` altındaki her `'TRY'` gitti; varsayılan
+`erp_base_currency()` (= `BASE_CURRENCY_CODE`). Sürüm yayınlanmadığı için
+dönüştürülmüş sütunlar yeniden adlandırıldı: `amount_try → amount_base`
+(`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`),
+`grand_total_try → grand_total_base` (`erp_invoices`). `erp_to_try()` →
+`erp_to_base()`; `includes/erp/` dışında çağıran yoktu, takma ad bırakılmadı.
+`erp_money_out()` artık ziyaretçi kurunu **uygulamaz**: eskiden
+`prepare_price_for_output()` üzerinden `VISITOR_CURRENCY_EXCHANGE_RATE` ile
+çarpıyordu, mağaza vitrininde başka para birimi seçmiş bir yönetici ERP
+rakamlarını çevrilmiş görürdü. Yeni `erp_money_out_currency($kurus, $kod)`
+`currencies` tablosundaki simgeyle biçimler, dönüştürmez.
+
+**Opt-in.** `config.erp_fx_enabled` (varsayılan 0), `ERP_FX_ENABLED`. Kapalıyken
+fatura, tahsilat, cari ve kasa formlarında para birimi / kur alanı yok, ana para
+birimi sessizce kullanılır, kur farkı yazılmaz, `erp_fx_currencies()` boş döner.
+Kur geçmişi kapalıyken de yazılır (ucuz, zararsız) ama ERP okumaz. Her döviz
+dalı `erp_fx_enabled()` kontrol eder (`includes/erp/fx.php`).
+
+**Kur geçmişi.** `currency_rates (rate_date, base_code, currency_code) UNIQUE`,
+`rate DECIMAL(18,8)` = **ana para birimi / 1 birim döviz** — defterin çarptığı
+yön (`currencies.exchange_rate` ters yöndedir ve yerinde ezilir). Getirme
+mantığı `update_exchange_rates.php`'den `includes/fn/currency_rates.php`'ye
+taşındı: `pg_currency_rates_fetch()` (Frankfurter tek çağrıda toplu, kalanlar
+HexaRate; TLS doğrulaması **açık** — eski betik `CURLOPT_SSL_VERIFYPEER=false`
+ile çalışıyordu — `api_http_request` varsa o, yoksa cURL + `pg_curl_tls`),
+`pg_currency_rate_store()` (upsert), `pg_currency_rate($kod, $tarih)` (o gün ya
+da öncesindeki son gün: hafta sonu/tatil), `pg_currency_rate_latest()`. Betik
+mağaza kurunu eskisi gibi yazar, ayrıca günün satırlarını `currencies`
+tablosundaki + `ERP_FX_CURRENCIES`'teki her kod için geçmişe ekler. Cron
+kaydı aynı (`update_exchange_rates`, tek iş). Frankfurter listesine TRY dâhil
+ECB'nin yayımladığı kodlar eklendi; desteklenmeyen kod 404 verir ve HexaRate'e
+düşer.
+
+**Belge.** `add_erp_invoice.php` döviz açıkken "Elle girilen fatura" kartı
+kazandı (`includes/erp/invoice_manual.php` → `erp_invoice_create_manual()`):
+yön (satış/alış), cari, para birimi (ana + izinliler), kur (boşsa düzenleme
+tarihinin kaydı; yazılmışsa kayıtla eşleşiyorsa kaynak feed, değilse
+`manual`), 6 satır. Tutarlar belge para biriminde; `grand_total_base =
+erp_to_base(grand_total, kur)` tek noktada. Siparişten fatura her zaman ana
+para birimi (`order_bridge.php`: `currency = BASE`, `exchange_rate_source =
+'base'`). İade ana faturanın para birimi **ve kurunu** kopyalar; tam iade
+`grand_total_base`'i kuruşuna kopyalar. İptal ters kaydı belgenin kendi para
+birimi/kuru/ana karşılığıyla atar. `edit_erp_invoice.php` dövizli belgede kur,
+kur tarihi, kaynak ve ana karşılığı gösterir; tüm tutarlar belge para
+biriminde. Şablon yer tutucuları: `invoice.is_foreign`, `.base_currency`,
+`.exchange_rate`, `.exchange_rate_date`, `.grand_total_base`,
+`totals.grand_total_base` — ana para birimi belgede boş string döner,
+`invoice_default.html` bunları `{{#invoice.is_foreign}}` içinde basar.
+
+**Tahsilat ve kur farkı.** Tahsilat faturanın para biriminde girilir
+(`add_erp_receipt.php`: fatura seçiliyse para birimi kilitli, kur alanı boşsa
+tahsilat gününün kaydı). `erp_post_receipt()` kasanın para birimiyle
+tahsilatın para birimini, faturanın para birimiyle tahsilatı eşleştirir
+(yalnız döviz açıkken — eski kurulumlarda kasa `'TRY'` yazılıydı); tahsis
+`amount` belge para biriminde, `amount_base = erp_to_base(tahsis, tahsilat
+kuru)`. Fatura `paid` olduğunda ve `ERP_FX_AUTO_DIFF` açıkken
+`erp_fx_post_difference()` aynı transaction içinde tek `kind='fx_diff'`
+satırı atar: `Σ tahsis.amount_base − (grand_total_base − Σ iade
+.grand_total_base)`, yön satış/alışa göre, `doc_type='fx_diff'`,
+`doc_id=fatura` (idempotens anahtarı; ek sütun gerekmedi). Böylece carinin
+ana para birimi bakiyesi sıfıra kapanır. Virman iki kasanın aynı para
+biriminde olmasını ister.
+
+**Cari ve kasa.** Formlarda para birimi seçimi (döviz açıkken); hareketi olan
+kayıtta salt okunur (bakiye `balance_fc` o para birimindeki hareketlerin
+toplamı). Açılış bakiyesi cari para biriminde, tarihinin kayıtlı kuruyla
+dönüştürülür; kur yoksa hata. Listelerde dövizli kayıt kendi para biriminde
+de gösterilir; kasa toplamı yalnız ana para birimindeki kasaları toplar.
+
+**Ayarlar.** `pgset-erp` kartı: anahtar (`collapse-switcher`), `currencies`
+tablosundaki ana olmayan her kod için onay kutusu (`erp_fx_currencies[]`,
+kayıtta doğrulanıp virgülle birleşir), otomatik kur farkı anahtarı. Kayıt
+`waf_table_has_column('config','erp_fx_enabled')` ile korunur. Sabitler
+`ERP_FX_ENABLED` / `ERP_FX_CURRENCIES` / `ERP_FX_AUTO_DIFF` savunmacı okunur.
+
+**Migration 4.49** `upgrade_2026_4_4_erp_foreign_currency()`: dört
+`install_rename_column` (yeni ad varsa atlanır, tip/null/default
+`install_column_info`'dan), `currency_rates`, `config.erp_fx_enabled /
+erp_fx_currencies / erp_fx_auto_diff`, `erp_invoices.exchange_rate_source`,
+`erp_cash_transactions.exchange_rate_source`. İkinci koşuda tümü "zaten var".
+
+**Kapsam dışı.** İhracat fatura tipi (`IHRACAT` enum değeri olduğu gibi durur,
+üzerine bir şey kurulmadı); dönem sonu değerleme; TCMB ya da başka ülkeye özel
+kaynak.
+
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
 **Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip

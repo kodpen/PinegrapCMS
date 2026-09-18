@@ -120,6 +120,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_invoice_document();   // 4.47
 
 	upgrade_2026_4_4_offline_payment_awaiting(); // 4.48
+
+	upgrade_2026_4_4_erp_foreign_currency(); // 4.49
 }
 
 
@@ -2580,5 +2582,99 @@ function upgrade_2026_4_4_offline_payment_awaiting() {
 	install_add_column('config', 'ecommerce_offline_payment_cancel_days', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Bank transfer orders show as awaiting payment until the payment is recorded, and unpaid ones can be cancelled automatically after a set number of days.');
+
+}
+
+
+// 4.49 - the ERP counts in the store's base currency, and can hold documents
+// in another one.
+//
+// The Faz 0 schema named its converted columns amount_try / grand_total_try:
+// the module was drafted for one country. Pinegrap is installed anywhere, and
+// its home currency is whatever edit_currency.php marks as base, so the
+// columns are renamed to *_base while 2026.4.4 is still unreleased - nobody
+// has run the earlier shape. Each rename copies the column's type, nullability
+// and default from the column as it stands, and is skipped once the new name
+// exists.
+//
+// currency_rates is the dated history behind update_exchange_rates.php. The
+// store's own currencies.exchange_rate is one figure overwritten in place and
+// points the other way (units of the foreign currency per base unit); an
+// invoice raised in March and paid in May needs both days' rates months later,
+// in the direction the ledger multiplies (base units per unit of the document
+// currency). One row per (day, base, currency) so a second run of the job on
+// the same day corrects rather than duplicates.
+//
+// Foreign-currency support is an opt-in setting (erp_fx_enabled); with it off
+// every document, account and till is in the base currency and the screens do
+// not ask.
+function upgrade_2026_4_4_erp_foreign_currency() {
+
+	$renames = array(
+		array('erp_account_transactions', 'amount_try', 'amount_base'),
+		array('erp_cash_transactions', 'amount_try', 'amount_base'),
+		array('erp_invoices', 'grand_total_try', 'grand_total_base'),
+		array('erp_settlements', 'amount_try', 'amount_base'),
+	);
+
+	foreach ($renames as $rename) {
+
+		list($table, $old, $new) = $rename;
+
+		if (install_column_exists($table, $new)) {
+
+			install_skipped(lang(array('string' => '{var:1} was already renamed to {var:2}', 'vars' => array($table . '.' . $old, $new))));
+
+			continue;
+
+		}
+
+		$column = install_column_info($table, $old);
+
+		if (!is_array($column)) {
+
+			install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => $table . '.' . $old)));
+
+			continue;
+
+		}
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? ' DEFAULT NULL' : '') : " DEFAULT '" . e((string) $column['Default']) . "'";
+
+		install_rename_column($table, $old, $new, (string) $column['Type'] . ($nullable ? ' NULL' : ' NOT NULL') . $default);
+
+	}
+
+	// rate = base units per 1 unit of currency_code, the direction the ledger
+	// multiplies in. source names the feed the figure came from.
+	install_create_table('currency_rates', "CREATE TABLE currency_rates (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		rate_date     DATE NOT NULL DEFAULT '0000-00-00',
+		base_code     CHAR(3) NOT NULL DEFAULT '',
+		currency_code CHAR(3) NOT NULL DEFAULT '',
+		rate          DECIMAL(18,8) NOT NULL DEFAULT 0,
+		source        VARCHAR(32) NOT NULL DEFAULT '',
+		fetched_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_day (rate_date, base_code, currency_code)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Off by default: a shop that never sees a foreign invoice keeps today's
+	// single-currency screens.
+	install_add_column('config', 'erp_fx_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	// Comma-separated ISO codes offered on documents besides the base currency.
+	install_add_column('config', 'erp_fx_currencies', "VARCHAR(64) NOT NULL DEFAULT 'USD,EUR,GBP'");
+
+	// Post the base-currency gap between an invoice and the receipts that closed it.
+	install_add_column('config', 'erp_fx_auto_diff', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	// Where a document's rate came from; the ledger rows already record it.
+	install_add_column('erp_invoices', 'exchange_rate_source', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_cash_transactions', 'exchange_rate_source', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_note('The ERP counts in the store\'s base currency and, when switched on in the ERP settings, can raise invoices and keep accounts and tills in another currency; daily exchange rates are kept as a dated history.');
 
 }

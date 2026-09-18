@@ -797,6 +797,33 @@
          özellik PHP 7.1 ve üzeri ister; daha eski PHP'de PDF düğmesi çalışmaz,
          panelin geri kalanı etkilenmez.
 
+  [YENİ] [ŞEMA] Dövizli fatura, cari ve kasa. ERP artık mağazanın ana para
+         birimiyle çalışır — Para Birimleri ekranında "ana" işaretlediğiniz
+         hangisiyse o; TL'ye özel hiçbir varsayım kalmadı. Ayarlar → E-Ticaret
+         → ERP kartındaki "Dövizli fatura ve cari hesapları etkinleştir"
+         seçeneği kapalıyken her şey bugünkü gibi tek para birimindedir ve
+         ekranlar para birimi sormaz.
+
+         Açıldığında, seçtiğiniz para birimlerinde (varsayılan USD, EUR, GBP)
+         elle fatura kesebilir, cari ve kasa açabilirsiniz. Belgenin
+         tutarları kendi para biriminde kalır; düzenleme tarihinin kuru
+         belgeye yazılır (isterseniz elle değiştirebilirsiniz) ve ana para
+         birimi karşılığı bir kez hesaplanır. Fatura ekranı ve PDF dövizli
+         belgede kuru, kur tarihini ve ana para birimi toplamını gösterir.
+         Tahsilat faturanın para biriminde, tahsilat gününün kuruyla girilir.
+
+         Kur farkı kendiliğinden kapanır: fatura kendi gününün kuruyla cariye
+         yazılır, tahsilatlar kendi günlerinin kuruyla düşer; fatura tamamen
+         ödendiğinde aradaki ana para birimi farkı tek bir "kur farkı"
+         hareketiyle kapatılır, cari bakiye sıfıra iner. Bu davranış aynı
+         karttan kapatılabilir.
+
+         Günlük kurlar mevcut "Döviz Kurları" işinden gelir (Frankfurter,
+         yedek HexaRate); iş artık her günün kurunu tarihli olarak saklar,
+         böylece Mart'ta kesilen bir fatura Mayıs'ta da kendi gününün kuruyla
+         okunur. Ülkeye özel bir kur kaynağı yoktur. Mağazadan gelen sipariş
+         her zaman ana para biriminde faturalanır.
+
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
 

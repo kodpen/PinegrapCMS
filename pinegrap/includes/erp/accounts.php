@@ -87,7 +87,7 @@ function erp_account_save($data)
         'city' => trim((string) ($data['city'] ?? '')),
         'country_code' => strtoupper(trim((string) ($data['country_code'] ?? 'TR'))),
         'postcode' => trim((string) ($data['postcode'] ?? '')),
-        'currency' => strtoupper(trim((string) ($data['currency'] ?? 'TRY'))),
+        'currency' => strtoupper(trim((string) ($data['currency'] ?? erp_base_currency()))),
         'contact_id' => (int) ($data['contact_id'] ?? 0),
         'status' => (($data['status'] ?? 'active') === 'passive') ? 'passive' : 'active',
         'notes' => trim((string) ($data['notes'] ?? '')),
@@ -128,7 +128,8 @@ function erp_account_save($data)
  * schema did.
  *
  * @param array $data  account_id, amount (kurus, signed: positive = they owe us),
- *                     doc_date, created_by
+ *                     doc_date, currency, exchange_rate, exchange_rate_date,
+ *                     exchange_rate_source, created_by
  * @return array ['success' => bool, 'error' => string]
  */
 function erp_account_open($data)
@@ -157,8 +158,10 @@ function erp_account_open($data)
         'kind' => 'opening',
         'direction' => ($amount >= 0) ? 'debit' : 'credit',
         'amount' => abs($amount),
-        'currency' => $data['currency'] ?? 'TRY',
+        'currency' => $data['currency'] ?? erp_base_currency(),
         'exchange_rate' => $data['exchange_rate'] ?? 1,
+        'exchange_rate_date' => $data['exchange_rate_date'] ?? ($data['doc_date'] ?? date('Y-m-d')),
+        'exchange_rate_source' => $data['exchange_rate_source'] ?? '',
         'description' => lang('Opening balance'),
         'created_by' => $data['created_by'] ?? 0,
     ));

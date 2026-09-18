@@ -164,7 +164,7 @@ function erp_invoice_refresh_paid($invoice_id)
  * does not quietly pay the invoice twice.
  *
  * @param array $data  invoice_id, account_txn_id, account_id, amount (kurus),
- *                     amount_try, doc_date, created_by
+ *                     amount_base, doc_date, created_by
  * @return bool
  */
 function erp_settle($data)
@@ -177,7 +177,7 @@ function erp_settle($data)
         return false;
     }
 
-    $amount_try = (int) ($data['amount_try'] ?? $amount);
+    $amount_base = (int) ($data['amount_base'] ?? $amount);
 
     $ok = erp_query("INSERT INTO erp_settlements SET
             invoice_id = '" . $invoice_id . "',
@@ -185,12 +185,12 @@ function erp_settle($data)
             account_id = '" . (int) ($data['account_id'] ?? 0) . "',
             doc_date = '" . escape($data['doc_date'] ?? date('Y-m-d')) . "',
             amount = '" . $amount . "',
-            amount_try = '" . $amount_try . "',
+            amount_base = '" . $amount_base . "',
             created_by = '" . (int) ($data['created_by'] ?? 0) . "',
             created_at = '" . time() . "'
         ON DUPLICATE KEY UPDATE
             amount = '" . $amount . "',
-            amount_try = '" . $amount_try . "',
+            amount_base = '" . $amount_base . "',
             doc_date = '" . escape($data['doc_date'] ?? date('Y-m-d')) . "'");
 
     if ($ok === false) {

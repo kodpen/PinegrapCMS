@@ -51,18 +51,39 @@ if ($preset_invoice_id > 0) {
 
 if (!$_POST) {
 
+    // The currency the money is in: the invoice's when closing one, the base
+    // otherwise, and only a choice at all with foreign currency switched on.
+    $fx_on = erp_fx_enabled();
+    $preset_currency = ($preset_invoice !== null) ? strtoupper(trim((string) $preset_invoice['currency'])) : erp_base_currency();
+
     if ($liveform->field_in_session('doc_date') == false) {
         $liveform->assign_field_value('doc_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
         $liveform->assign_field_value('payment_method', 'cash');
+        $liveform->assign_field_value('currency', $preset_currency);
+        $liveform->assign_field_value('exchange_rate', '');
 
         if ($preset_invoice !== null) {
             $liveform->assign_field_value('account_id', (string) (int) $preset_invoice['account_id']);
-            $liveform->assign_field_value('amount', erp_money_out(erp_invoice_open_amount($preset_invoice), false));
+            $liveform->assign_field_value('amount', erp_money_out_currency(erp_invoice_open_amount($preset_invoice), $preset_currency, false));
             $liveform->assign_field_value('description', lang(array(
                 'string' => 'Invoice {var:1}',
                 'vars' => $preset_invoice['full_number'],
             )));
         }
+    }
+
+    // Today's recorded rate for each currency the money may come in, so the
+    // operator sees what an empty rate box will be filled with.
+    $output_rate_hints = '';
+    if ($fx_on) {
+        $rate_hints = array();
+        foreach (($preset_invoice !== null && $preset_currency !== erp_base_currency()) ? array($preset_currency) : erp_fx_currencies() as $code) {
+            $known = erp_fx_rate_for($code, date('Y-m-d'));
+            $rate_hints[] = $code . ': ' . (is_array($known)
+                ? (erp_fx_rate_out($known['rate']) . ' (' . prepare_form_data_for_output($known['rate_date'], 'date') . ')')
+                : lang('no rate recorded'));
+        }
+        $output_rate_hints = h(implode(', ', $rate_hints));
     }
 
     $account_options = array();
@@ -76,8 +97,9 @@ if (!$_POST) {
     $till_options = array();
     $till_options[lang('Choose a till or bank account')] = '';
 
-    foreach ((array) db_items("SELECT id, name FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
-        $till_options[h($till['name'])] = (string) (int) $till['id'];
+    foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
+        // The till's currency on the label, since the money has to match it.
+        $till_options[h($till['name'] . ($fx_on ? (' (' . strtoupper(trim((string) $till['currency'])) . ')') : ''))] = (string) (int) $till['id'];
     }
 
     $method_options = array();
@@ -95,7 +117,7 @@ if (!$_POST) {
 
     if (($preset_invoice === null) && $is_collection) {
 
-        $open_invoices = (array) db_items("SELECT i.id, i.doc_type, i.full_number, i.issue_date,
+        $open_invoices = (array) db_items("SELECT i.id, i.doc_type, i.full_number, i.issue_date, i.currency,
                 i.grand_total, i.paid_total, i.status, a.title AS account_title
             FROM erp_invoices i
             LEFT JOIN erp_accounts a ON i.account_id = a.id
@@ -121,7 +143,7 @@ if (!$_POST) {
                 }
 
                 $label = h($open_invoice['account_title'] . ' - ' . $open_invoice['full_number']
-                    . ' - ' . erp_money_out($still_open));
+                    . ' - ' . erp_money_out_currency($still_open, (string) $open_invoice['currency']));
                 $invoice_options[$label] = (string) (int) $open_invoice['id'];
             }
 
@@ -179,7 +201,7 @@ if (!$_POST) {
                                 <input class="form-control" type="text" value="' . h($preset_invoice['account_title']) . '" readonly="readonly" />
                                 <div class="form-text">' . lang(array(
                                         'string' => 'Closing invoice {var:1}, {var:2} still outstanding.',
-                                        'vars' => array($preset_invoice['full_number'], erp_money_out(erp_invoice_open_amount($preset_invoice))),
+                                        'vars' => array($preset_invoice['full_number'], erp_money_out_currency(erp_invoice_open_amount($preset_invoice), $preset_currency)),
                                     )) . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
@@ -198,10 +220,33 @@ if (!$_POST) {
                                         'type' => 'text', 'id' => 'amount', 'name' => 'amount',
                                         'class' => 'form-control text-end', 'maxlength' => '15',
                                         'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
-                                    <label class="input-group-text" for="amount">' . BASE_CURRENCY_SYMBOL . '</label>
+                                    <label class="input-group-text" for="amount">' . ($fx_on ? h($preset_currency) : BASE_CURRENCY_SYMBOL) . '</label>
                                 </div>
                             </div>
                         </div>
+                        ' . ($fx_on
+                            ? '<div class="row">
+                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                                <label for="currency" class="form-label">' . lang('Currency') . '</label>
+                                ' . (($preset_invoice !== null)
+                                    ? '<input type="hidden" name="currency" value="' . h($preset_currency) . '" />
+                                <input class="form-control" type="text" value="' . h($preset_currency) . '" readonly="readonly" />
+                                <div class="form-text">' . lang('The invoice\'s currency; the receipt is entered in it.') . '</div>'
+                                    : $liveform->output_field(array(
+                                        'type' => 'select', 'id' => 'currency', 'name' => 'currency',
+                                        'class' => 'form-select', 'options' => erp_fx_currency_options())) . '
+                                <div class="form-text">' . lang('Has to match the till and, when one is chosen, the invoice.') . '</div>') . '
+                            </div>
+                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                                <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
+                                ' . $liveform->output_field(array(
+                                    'type' => 'text', 'id' => 'exchange_rate', 'name' => 'exchange_rate',
+                                    'class' => 'form-control text-end', 'maxlength' => '20', 'inputmode' => 'decimal',
+                                    'autocomplete' => 'off', 'placeholder' => lang('rate of the receipt date'))) . '
+                                <div class="form-text">' . h(lang(array('string' => '{var:1} per unit; leave empty for the recorded rate of the receipt date. Ignored for the base currency.', 'vars' => erp_base_currency()))) . (($output_rate_hints !== '') ? ' ' . $output_rate_hints : '') . '</div>
+                            </div>
+                        </div>'
+                            : '') . '
                         ' . $output_invoice_picker . '
                         <div class="row">
                             <div class="col-12 col-sm-4 col-lg-3 my-2">
@@ -259,12 +304,55 @@ if (!$_POST) {
         go($back);
     }
 
+    $doc_date_sql = ($doc_date !== '') ? prepare_form_data_for_input($doc_date, 'date') : date('Y-m-d');
+
+    // The money's currency and the rate of its day. Without foreign currency
+    // the base is used and the rate is 1; with it, an empty rate box means
+    // the recorded rate of the receipt date, a typed one is the operator's.
+    $currency = erp_base_currency();
+    $exchange_rate = 1.0;
+    $rate_date = $doc_date_sql;
+    $rate_source = 'base';
+
+    if (erp_fx_enabled()) {
+        $currency = strtoupper(trim((string) $liveform->get_field_value('currency')));
+
+        if ($currency === '') {
+            $currency = erp_base_currency();
+        }
+
+        if ($currency !== erp_base_currency()) {
+            $recorded = erp_fx_rate_for($currency, $doc_date_sql);
+            $typed = erp_fx_rate_in($liveform->get_field_value('exchange_rate'));
+
+            if ($typed > 0) {
+                $exchange_rate = $typed;
+                $rate_source = (is_array($recorded) && (abs($recorded['rate'] - $typed) < 0.0000005)) ? $recorded['source'] : 'manual';
+                $rate_date = ($rate_source === 'manual') ? $doc_date_sql : $recorded['rate_date'];
+            } elseif (is_array($recorded)) {
+                $exchange_rate = $recorded['rate'];
+                $rate_date = $recorded['rate_date'];
+                $rate_source = $recorded['source'];
+            } else {
+                $liveform->mark_error('exchange_rate', lang(array(
+                    'string' => 'No exchange rate is recorded for {var:1} on {var:2}. Run Update Exchange Rates or enter the rate.',
+                    'vars' => array($currency, prepare_form_data_for_output($doc_date_sql, 'date')),
+                )));
+                go($back);
+            }
+        }
+    }
+
     $result = erp_post_receipt(array(
         'direction' => $direction,
         'account_id' => (int) $liveform->get_field_value('account_id'),
         'cash_account_id' => (int) $liveform->get_field_value('cash_account_id'),
         'amount' => erp_kurus($liveform->get_field_value('amount')),
-        'doc_date' => ($doc_date !== '') ? prepare_form_data_for_input($doc_date, 'date') : date('Y-m-d'),
+        'doc_date' => $doc_date_sql,
+        'currency' => $currency,
+        'exchange_rate' => $exchange_rate,
+        'exchange_rate_date' => $rate_date,
+        'exchange_rate_source' => $rate_source,
         'payment_method' => $liveform->get_field_value('payment_method'),
         'description' => trim((string) $liveform->get_field_value('description')),
         'invoice_id' => (int) $liveform->get_field_value('invoice_id'),

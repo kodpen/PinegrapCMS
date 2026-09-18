@@ -850,6 +850,31 @@ idempotent adımlar "zaten var" diyerek o boşluğu sabitler.
 yok. Oranlar `DECIMAL(6,3)` / `DECIMAL(15,6)`, miktar `DECIMAL(15,4)`.
 Tek çarpım/yuvarlama noktası `includes/erp/money.php` olacak.
 
+**Ev para birimi mağazanın ana para birimidir, `'TRY'` değil.** Pinegrap
+dünyanın her yerinde kurulur; ERP `BASE_CURRENCY_CODE`'u
+(`erp_base_currency()`, `includes/erp/fx.php`) izler. Ülkeye özel kur kaynağı
+ya da vergi kuralı çekirdeğe girmez. Dönüştürülmüş sütunlar `*_base`'dir
+(`amount_base`, `grand_total_base`; 2026.4.4 yayınlanmadan `*_try`'dan
+yeniden adlandırıldı, migration 4.49); dönüşüm `erp_to_base($kurus, $kur)`,
+kur = **ana para birimi / 1 birim belge para birimi**. Ekran biçimleme
+`erp_money_out_currency($kurus, $kod)` — `currencies` tablosundaki simgeyle,
+**ziyaretçi kuru uygulanmaz** (`erp_money_out()` bunun ana para birimi
+sarmalayıcısıdır).
+
+**Döviz opt-in'dir:** `config.erp_fx_enabled` / `ERP_FX_ENABLED`. Kapalıyken
+form para birimi sormaz, ana para birimi sessizce kullanılır, kur farkı
+yazılmaz; her döviz dalı `erp_fx_enabled()` kontrol eder. Açıkken izinli
+kodlar `ERP_FX_CURRENCIES` ∩ `currencies` − ana (`erp_fx_currencies()`).
+Kur geçmişi `currency_rates (rate_date, base_code, currency_code) UNIQUE`,
+`update_exchange_rates.php` yazar (getirme `includes/fn/currency_rates.php`,
+Frankfurter → HexaRate, TLS doğrulaması açık), `pg_currency_rate($kod,
+$tarih)` o gün ya da öncesindeki son günü verir. Kur farkı:
+`erp_fx_post_difference()` fatura `paid` olduğunda `erp_post_receipt()`
+transaction'ı içinde tek `kind='fx_diff'` satırı (`doc_type='fx_diff'`,
+`doc_id=fatura` idempotens anahtarı), tutar `Σ tahsis.amount_base − (grand_total_base −
+Σ iade.grand_total_base)`. Siparişten fatura her zaman ana para birimi;
+dövizli fatura elle girilir (`add_erp_invoice.php` → `erp_invoice_create_manual()`).
+
 **`erp_invoice_items.tax_total` bilerek `tax` değil** — `order_items.tax`
 birim vergidir, fatura satırı satırın toplam vergisini tutar. Ad farkı okuma
 anında durduruyor.
@@ -1845,6 +1870,7 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.49) | `_erp_foreign_currency`: `amount_try → amount_base` (`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`), `grand_total_try → grand_total_base` (`erp_invoices`) — yeni ad varsa atlanır, tip/null/default `install_column_info`'dan —, `currency_rates` tablosu (`UNIQUE (rate_date, base_code, currency_code)`, `rate DECIMAL(18,8)` = ana / 1 birim döviz), `config.erp_fx_enabled TINYINT(1) DEFAULT 0` / `erp_fx_currencies VARCHAR(64) DEFAULT 'USD,EUR,GBP'` / `erp_fx_auto_diff TINYINT(1) DEFAULT 1`, `erp_invoices.exchange_rate_source` ve `erp_cash_transactions.exchange_rate_source VARCHAR(32)` |
 | `2026.4.4` (4.48) | `_offline_payment_awaiting`: `orders.payment_method` ENUM'una `'Pay With Iyzico'` eklendi (mevcut liste `install_column_info` ile okunup korunur, ENUM değilse atlanır), `config.ecommerce_offline_payment_cancel_days TINYINT UNSIGNED NOT NULL DEFAULT 0` (0 = otomatik iptal yok) |
 | `2026.4.4` (4.47) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |
 | `2026.4.4` (4.46) | `_erp_return_series`: `erp_document_series.doc_kind` ENUM'una `'sales_return'` ve `'purchase_invoice'` eklendi (iade kendi serisinde koşar) |

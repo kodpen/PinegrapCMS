@@ -87,7 +87,7 @@ if (!$_POST) {
                 <td class="align-middle">' . h($line['description']) . '</td>
                 <td class="align-middle text-end">' . h($tidy($line['quantity'])) . '</td>
                 <td class="align-middle text-end ' . (($returned > 0) ? 'text-warning' : 'text-body-secondary') . '">' . h($tidy($returned)) . '</td>
-                <td class="align-middle text-end">' . h(erp_money_out((int) $line['unit_price'])) . '</td>
+                <td class="align-middle text-end">' . h(erp_money_out_currency((int) $line['unit_price'], (string) $invoice['currency'])) . '</td>
                 <td class="align-middle" style="width:9rem">'
                     . (($line['remaining_qty'] > 0.00001)
                         ? $liveform->output_field(array(
