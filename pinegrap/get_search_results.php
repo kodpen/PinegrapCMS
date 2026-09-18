@@ -306,25 +306,12 @@ function get_search_results($properties) {
             
             // loop through all comments that matched the search results to see if they should be outputted
             foreach ($comments as $comment) {
-                $increment_value = 0;
-                $private = FALSE;
-                $access = FALSE;
-                
-                // Get the access control type that is needed to view this page.
-                $get_access_control = get_access_control_type($comment['page_folder']);
-                
-                // if the user is logged in, and if this is a private page, then check to see if the user has view access
-                if ((($_SESSION['sessionusername'] ?? '') != '') && ($get_access_control == 'private')) {
-                    $access_check = check_private_access($comment['page_folder']);
-
-                    // if the user is a manger or above, or if this is a basic user and if they have access to view the page, then allow access
-                    if ($access_check['access'] == true) {
-                        $access = TRUE;
-                    }
-                }
-                
-                // if the user has access or if this is not a private page, then count the amount of matches, and add comment to the array
-                if(($access == TRUE) || ($get_access_control != 'private')) {
+                // Count the matches only where the visitor may view the page the
+                // comment sits on - the same check the page results above use.
+                // Testing for private folders alone let comments on membership
+                // pages count towards the ranking, which told an anonymous
+                // visitor whether a word appears in them.
+                if (check_view_access($comment['page_folder'], true)) {
                     // increment rating depending on how many times the query is found (case-insensitive)
                     $increment_value = mb_substr_count(mb_strtolower($comment['name']), mb_strtolower($query));
                     $increment_value = $increment_value + mb_substr_count(mb_strtolower($comment['message']), mb_strtolower($query));

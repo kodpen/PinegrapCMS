@@ -202,6 +202,9 @@ if (
     // ownership, captcha and rate limiting live inside chat.php.
     and (strpos($action, 'site_chat_') !== 0)
 
+    // Every panel page fires the sitemap check whatever the visitor's role,
+    // so it is exempted from the role <= 1 gate below; the case block checks
+    // the session and the token for itself.
     and ($action != 'sitemap_check')
 
     and ($action != 'shared_component')
@@ -326,7 +329,21 @@ switch ($action) {
         break;
 
     case 'sitemap_check':
-        // No token validation required, it's a safe internal fallback trigger
+
+        // The action sits on the general gate's exemption list because every
+        // panel role's pages fire it, and that gate would turn away anyone
+        // above role 1. The exemption also skips the session and token checks,
+        // so they happen here: regenerating the sitemap and pinging the search
+        // engines is work an anonymous request must not be able to start.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
+
+        validate_token();
+
         if (defined('DB_CONNECTED')) {
             $current_timestamp = time();
             if ($current_timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 259200)) {

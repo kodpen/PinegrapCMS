@@ -38,6 +38,17 @@
 // relying on the timestamp alone.
 
 require('init.php');
+
+// A background run (crontab, or the general job's dispatcher) has no user.
+// Every other request is a web request and must come from a signed-in
+// manager, the same gate the scheduled jobs settings sit behind; without it
+// anybody could make the server render pages for the whole time budget
+// with one request.
+if (!pg_cron_is_background_run()) {
+    $user = validate_user();
+    validate_area_access($user, 'manager');
+}
+
 require_once(dirname(__FILE__) . '/seo.php');
 require_once(dirname(__FILE__) . '/seo_structure.php');
 require_once(dirname(__FILE__) . '/seo_links.php');

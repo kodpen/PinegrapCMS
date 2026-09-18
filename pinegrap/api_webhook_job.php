@@ -16,6 +16,15 @@
 
 require('init.php');
 
+// A background run (crontab, or the general job's dispatcher) has no user.
+// Every other request is a web request and must come from a signed-in
+// manager, the same gate the scheduled jobs settings sit behind; without it
+// anybody could start the job from a browser.
+if (!pg_cron_is_background_run()) {
+	$user = validate_user();
+	validate_area_access($user, 'manager');
+}
+
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 
 $result = api_webhook_dispatch(20);
