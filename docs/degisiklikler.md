@@ -337,6 +337,71 @@ sonucu (ayrı kayıt) ve `edit_custom_style.php` POST dalında var olmayan
 kimlikle "Sil" (0 satır etkileyen `DELETE`, veri riski yok) bu değişikliğin
 dışındadır. PHP 7.x üzerinde koşturulmadı.
 
+## 2026.4.4 — Sınır girdilerinde takvim/ziyaretçi raporu 500'ü ve ham SQL sızıntısı (2026-09-18)
+
+**Belirti.** Dört ekran sorgu dizgesinden gelen değeri, gezinme
+bağlantılarının ürettiği biçimde varsayarak doğrudan tarih aritmetiğine ya
+da SQL metnine koyuyordu. (1) `includes/fn/calendar.php` `get_calendar()`
+`?date=` değerini `-` ile bölüp parçaları `mktime()`'a veriyordu;
+`31/02/2026` ya da `abc` gibi bir değerde PHP 8 `TypeError` fırlatıyor ve
+takvim sayfası **oturum açmamış ziyaretçiye HTTP 500** veriyordu. Değer
+oturumda saklandığı için aynı ziyaretçi `?date=` olmadan da 500 almaya
+devam ediyordu. (2) `view_visitor_report.php` ve `view_order_report.php`
+`start_*`/`stop_*` parçalarını olduğu gibi oturuma yazıyordu; bir sonraki
+istekte `"abc" - 1` `TypeError` veriyor (`:525` / `:480`) ve rapor o
+oturum boyunca açılmıyordu; `0000` yılı `-1`/`1999` gibi anlamsız aralık
+üretiyordu.
+(3) `edit_menu_item.php` boş, bilinmeyen ya da sayısal olmayan `id` ile
+"üstteki menü öğesi" sorgusunu boş `sort_order <` karşılaştırmasıyla
+kuruyor, sorgu başarısız oluyor ve başlangıç yapılandırması `debug=1`
+olduğundan **sorgunun tam metni ve MySQL hatası ekrana basılıyordu**.
+(4) `add_field.php` sayfa/ürün grubu/ürün kimliği olmadan sıralama ön
+doldurma sorgusunu boş `WHERE` ile çalıştırıyor ve aynı şekilde SQL
+hatasını gösteriyordu.
+
+**Düzeltme.** Değer, bağlantıların ürettiği biçime uymuyorsa daha kaynağa
+inmeden düşürülüyor; kodun boş değer için zaten yaptığı geri dönüş
+kullanılıyor. `get_calendar()` tarihi görünüm `switch`'inden önce bir kez
+denetliyor (üç yalnız-rakam parça, `checkdate()` ile gerçek bir gün,
+`AA-GG-YYYY`); uymuyorsa `$date = ''` ve aylık/haftalık görünüm bugüne
+düşüyor. Ziyaretçi ve sipariş raporları yalnız `checkdate()` geçen tam sayı aralığını,
+tarih değiştirici bağlantılarıyla aynı sıfır dolgulu biçimde oturuma
+yazıyor; geçersiz aralıkta önceki aralık korunuyor, eski bir oturumda
+sayısal olmayan yıl varsa varsayılan aralığa sıfırlanıyor. Menü öğesi
+ekranı ilk sorgu satır döndürmediğinde `output_error(lang('Sorry, the
+item could not be found.'), 404)` ile duruyor (`edit_submitted_form.php`
+deseni). Alan ekleme ekranı form filtresi boşken ön doldurma sorgusunu
+atlıyor ve konumu `top` sayıyor. `config.debug` varsayılanına ve
+`output_error()`'a dokunulmadı; ham hata metninin gösterilmesi ayrı bir
+karar.
+
+### Doğrulama
+
+Sandbox (PHP 8.4.19 / MariaDB 10.11, `turkish_default`). Öncesi: anonim
+`GET /calendar?date=31/02/2026` ve `?date=abc` → HTTP 500, 0 bayt,
+günlükte `mktime(): Argument #4 ($month) must be of type ?int, string
+given … calendar.php:48`; aynı çerezle `GET /calendar` de 500. Yönetici:
+`view_visitor_report.php?id=1&start_year=abc…` ikinci istekte 500,
+`Unsupported operand types: string - int … view_visitor_report.php:525`,
+sonra düz `?id=1` de 500; `view_order_report.php?start_year=abc…` aynı
+şekilde ikinci istekte 500 (`view_order_report.php:480`), sonra düz istek
+de 500. `edit_menu_item.php`, `?id=`, `?id=abc` → 200
+ve ekranda "Query failed. SELECT id FROM menu_items WHERE (menu_id = '')
+AND (sort_order < ) …" + MySQL hatası. `add_field.php`, `?page_id=` →
+200 ve "Query failed. You have an error in your SQL syntax …".
+Sonrası: aynı isteklerin hepsi 200 (menü öğesi: 404 "Üzgünüz, öğe
+bulunamadı."), o istekler için yeni günlük satırı yok. Geçerli yol:
+`/calendar`, `/calendar?date=02-01-2026`, `?view=weekly&date=02-15-2026`,
+`edit_menu_item.php?id=329`, `add_field.php?page_id=183`, geçerli yıl
+aralığıyla ziyaretçi ve sipariş raporları — öncesi/sonrası HTML'leri
+captcha rastgelesi ve ziyaret sayacı dışında birebir aynı. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** `add_field.php` form bağlamı olmadan hâlâ boş bir form
+ekranı çiziyor (uyarılarla); erken 404, sayfa satırı kapısıyla birlikte
+ayrı ele alınmalı. `config.debug=1` başlangıç varsayılanı ham MySQL
+hatasını göstermeye devam ediyor. PHP 7.x üzerinde koşturulmadı.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
