@@ -580,7 +580,7 @@ switch($filter) {
 }
 
 // If the user is not viewing all site administrators, designers or managers
-if (($filter != 'all_site_administrators') || ($filter != 'all_site_designers') || ($filter != 'all_site_managers')) {
+if (($filter != 'all_site_administrators') && ($filter != 'all_site_designers') && ($filter != 'all_site_managers')) {
     
     // Join contacts table
     $sql_join_contacts_table = "LEFT JOIN contacts ON user.user_contact = contacts.id";
@@ -710,25 +710,15 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
     
     // If the user is not viewing the my manager, administrators, designers or all my users
-    if (($filter != 'default') || ($filter != 'all_site_administrators') || ($filter != 'all_site_designers') || ($filter != 'all_site_managers')) {
+    if (($filter != 'default') && ($filter != 'all_site_administrators') && ($filter != 'all_site_designers') && ($filter != 'all_site_managers')) {
         
         // Set database variables
-        // NOTE: the condition above is always true (a value cannot differ from every one of those
-        // filters at once), so these columns are read even for the filters whose query does not
-        // select them.  Left as-is on purpose; only the missing-key warnings are silenced here.
         $contact_id = isset($row['contact_id']) ? $row['contact_id'] : '';
         $contact_salutation = isset($row['contact_salutation']) ? $row['contact_salutation'] : '';
         $contact_first_name = isset($row['contact_first_name']) ? $row['contact_first_name'] : '';
         $contact_last_name = isset($row['contact_last_name']) ? $row['contact_last_name'] : '';
         $contact_nickname = isset($row['contact_nickname']) ? $row['contact_nickname'] : '';
         $contact_suffix = isset($row['contact_suffix']) ? $row['contact_suffix'] : '';
-    }
-    
-    // If the user is viewing the my registered users or my member users view
-    if (($filter == 'my_registered_users') || ($filter == 'my_member_users')) {
-        
-        // Set database variables
-        $contact_timestamp = $row['contact_timestamp'];
     }
     
     // get current date

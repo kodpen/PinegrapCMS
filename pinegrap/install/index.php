@@ -105,7 +105,7 @@ $output_enforcement ='';
 // dedect user language from list, default is en
 function dedect_user_language(){
 	$supportedLanguages=['en','tr'];
-	$lang = substr(isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '', 0, 2);
+	$lang = substr(($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 0, 2);
 	if(!in_array($lang,$supportedLanguages)){
 		$lang='en';
 	}
@@ -121,16 +121,15 @@ if(
 }else{
 	
 	//else user is not request we check config defines. if ENFORCEMENT_SOFTWARE_LANGUAGE exits use it
-	if( defined('ENFORCEMENT_SOFTWARE_LANGUAGE') ){
-		define('DEFAULT_SOFTWARE_LANGUAGE', ENFORCEMENT_SOFTWARE_LANGUAGE);
-		$output_enforcement = '(' . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
-	}else{
-		// else check if there is DEFAULT_SOFTWARE_LANGUAGE setup in config.
-		if( defined('DEFAULT_SOFTWARE_LANGUAGE') ){
-			define('SOFTWADEFAULT_SOFTWARE_LANGUAGERE_LANGUAGE', DEFAULT_SOFTWARE_LANGUAGE);
-		}else{
-			define('DEFAULT_SOFTWARE_LANGUAGE', dedect_user_language());
+	if( defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && (ENFORCEMENT_SOFTWARE_LANGUAGE !== '') ){
+		// config.php may define DEFAULT_SOFTWARE_LANGUAGE as well; do not redefine it.
+		if( !defined('DEFAULT_SOFTWARE_LANGUAGE') ){
+			define('DEFAULT_SOFTWARE_LANGUAGE', ENFORCEMENT_SOFTWARE_LANGUAGE);
 		}
+		$output_enforcement = '(' . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
+	}elseif( !defined('DEFAULT_SOFTWARE_LANGUAGE') ){
+		// else DEFAULT_SOFTWARE_LANGUAGE is not set up in config, so detect it.
+		define('DEFAULT_SOFTWARE_LANGUAGE', dedect_user_language());
 	}
 
 }
@@ -5080,6 +5079,8 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 
 			// prepare hidden password
+			$hidden_password = '';
+
 			for ($i = 1;$i <= mb_strlen($liveform->get_field_value('admin_password'));$i++) {
 
 				$hidden_password .= '*';
@@ -5094,7 +5095,7 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 ' . lang('Login') . ':
 http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 
-			$headers .= 'From: noreply@kodpen.com' . "\r\n";
+			$headers = 'From: noreply@kodpen.com' . "\r\n";
 
 			// send e-mail to administrator
 			@mb_send_mail($to, $subject, $body, $headers);

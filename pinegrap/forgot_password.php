@@ -57,6 +57,22 @@ if (is_scalar($return_to) && (string) $return_to !== '') {
 
 $form->validate_required_field('email', lang(array('string'=>'{var:1} is required.','vars'=>lang('Email') )) );
 
+// The reset link can only point at a page of type 'set password': that page
+// is the sole renderer of the set-password form. set_password.php itself only
+// handles that form's POST and starts with the CSRF check, so a link to it
+// would greet the visitor with a "session expired" error instead of the form.
+// Without such a page there is nowhere to send the visitor, so stop here,
+// before the account lookup and the token write, and do not mail a dead link.
+// Stopping before the lookup keeps the answer identical for every address.
+$set_password_url = get_page_type_url('set password');
+
+if ($set_password_url === false) {
+    log_activity('Forgot Password: no set password page');
+    $form->mark_error('email', lang('Sorry, password reset is not available on this website right now.'));
+
+    go($url);
+}
+
 // Rate limit before the account lookup and, above all, before the mail send
 // below. That send holds this request's database connection for as long as the
 // mail server takes to answer, which is how a bot loop on this endpoint filled
@@ -170,7 +186,7 @@ email(array(
     'body' =>
         lang('We received a request to reset your password. You can reset your password by clicking the link below.') . "\n" .
         "\n" .
-        URL_SCHEME . HOSTNAME_SETTING . get_page_type_url('set password') . '?k=' . $token['token'] . "\n" .
+        URL_SCHEME . HOSTNAME_SETTING . $set_password_url . '?k=' . $token['token'] . "\n" .
         "\n" .
         lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.') ));
 

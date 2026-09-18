@@ -30,7 +30,7 @@ function get_update_address_book($properties = array()) {
     $form = new liveform('update_address_book');
 
     // if an id was passed and form has not been filled out yet, get recipient data in order to populate fields
-    if ($_GET['id'] && ($form->field_in_session('ship_to_name') == false)) {
+    if (($_GET['id'] ?? '') && ($form->field_in_session('ship_to_name') == false)) {
         // get user id because we want to make sure that this user has access to the recipient that they are requesting to update
         $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -147,7 +147,7 @@ function get_update_address_book($properties = array()) {
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/update_address_book.php" method="post" class="software">
                 ' . get_token_field() . '
                 <input type="hidden" name="page_id" value="' . $page_id . '" />
-                <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
+                <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '" />
                 <table style="margin-bottom: 15px">
                     <tr>
                         <td>Ship to Name*</td>
@@ -277,7 +277,7 @@ function get_update_address_book($properties = array()) {
             get_token_field() . '
 
             <input type="hidden" name="page_id" value="' . h($page_id) . '">
-            <input type="hidden" name="id" value="' . h($_GET['id']) . '">';
+            <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '">';
 
         $output = render_layout(array(
             'page_id' => $page_id,

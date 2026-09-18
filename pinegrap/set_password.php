@@ -44,7 +44,7 @@ $user = db_item(
     WHERE token = '" . e($token_hash) . "'");
 
 // If query to database return no results for token
-if (!$user['id']) {
+if (!is_array($user) || !$user['id']) {
 
     log_activity('Set Password: invalid token');
 

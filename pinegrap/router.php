@@ -118,7 +118,8 @@ if (!db::$con) {
     pg_db_guard_clear();
 
     // check db connected but if it's empty or has no config table.
-    if(!mysqli_num_rows(mysqli_query(db::$con,"SHOW TABLES LIKE 'config'"))) {
+    $config_table_result = mysqli_query(db::$con, "SHOW TABLES LIKE 'config'");
+    if (($config_table_result === false) || !mysqli_num_rows($config_table_result)) {
         router_output_error('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
         exit();
     }
@@ -362,7 +363,7 @@ if (mysqli_num_rows($result) > 0) {
         default:
             // If this short link has a tracking code and there is not already
             // a tracking code in the query string, then set it.
-            if (($short_link['tracking_code'] != '') && ($_GET['t'] == '')) {
+            if (($short_link['tracking_code'] != '') && (($_GET['t'] ?? '') == '')) {
                 $_GET['t'] = $short_link['tracking_code'];
             }
 
@@ -417,7 +418,10 @@ if (mysqli_num_rows($result) > 0) {
             $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
             $config = mysqli_fetch_assoc($result);
 
-            $url_parts = parse_url($short_link['url']);
+            // parse_url() omits the parts that are absent from the URL.
+            $url_parts = array_merge(
+                array('scheme' => '', 'host' => '', 'path' => '', 'query' => '', 'fragment' => ''),
+                (array) parse_url($short_link['url']));
 
             $url = '';
 
@@ -523,7 +527,7 @@ function router_output_error($error_message) {
     }else{
         
         //else user is not request we check config defines. if ENFORCEMENT_SOFTWARE_LANGUAGE exits use it
-        if( defined('ENFORCEMENT_SOFTWARE_LANGUAGE') ){
+        if( defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && (ENFORCEMENT_SOFTWARE_LANGUAGE !== '') ){
             define('SOFTWARE_LANGUAGE', ENFORCEMENT_SOFTWARE_LANGUAGE);
             $output_enforcement = '(' . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
         }else{
@@ -749,7 +753,7 @@ function router_h($content)
 // dedect user language from list, default is en
 function dedect_user_language(){
 	$supportedLanguages=['en','tr'];
-	$lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
+	$lang = substr(($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 0, 2);
 	if(!in_array($lang,$supportedLanguages)){
 		$lang='en';
 	}

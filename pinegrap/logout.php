@@ -27,7 +27,8 @@ logout();
 
 // if there is a send to value, then send the user to that page
 if (($_REQUEST['send_to'] ?? '') != '') {
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')) . '?logged_out=true');
+    $send_to = pg_safe_redirect_path(($_REQUEST['send_to'] ?? ''));
+    header('Location: ' . URL_SCHEME . HOSTNAME . $send_to . (strpos($send_to, '?') === false ? '?' : '&') . 'logged_out=true');
 
 // else, print a default logout page
 } else {

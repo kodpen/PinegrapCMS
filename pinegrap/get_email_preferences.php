@@ -50,7 +50,7 @@ function get_email_preferences($properties = array()) {
     } else {
         // If an id was not passed in the query string, then the visitor did not come to this page
         // from an email preferences link in an email campaign, so require that the visitor login or register.
-        if (!$_GET['id']) {
+        if (!($_GET['id'] ?? '')) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
             exit();
         }
@@ -187,7 +187,7 @@ function get_email_preferences($properties = array()) {
     $system =
         get_token_field() . '
 
-        <input type="hidden" name="id" value="' . h($_GET['id']) . '">';
+        <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '">';
 
     // If this is being outputted on the frontend, then call frontend JS function.
     if ($page_id) {

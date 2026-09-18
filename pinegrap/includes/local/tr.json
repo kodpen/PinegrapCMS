@@ -11523,5 +11523,6 @@
     "{var:1} per unit; leave empty for the recorded rate of the receipt date. Ignored for the base currency.": "1 birim = {var:1}; tahsilat tarihinin kayıtlı kuru için boş bırakın. Ana para biriminde dikkate alınmaz.",
     "This folder could not be loaded. The connection or the server may have timed out during a long operation.": "Bu klasör yüklenemedi. Uzun süren bir işlem sırasında bağlantı veya sunucu zaman aşımına uğramış olabilir.",
     "Nothing here matches the search.": "Burada aramayla eşleşen bir şey yok.",
-    "Developer PIN is not configured.": "Geliştirici PIN yapılandırılmamış."
+    "Developer PIN is not configured.": "Geliştirici PIN yapılandırılmamış.",
+    "Sorry, password reset is not available on this website right now.": "Maalesef bu web sitesinde şifre sıfırlama şu anda kullanılamıyor."
 }

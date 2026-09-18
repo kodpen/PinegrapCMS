@@ -1411,7 +1411,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     
                 // else if the filter is set to my contacts by home address, then set the sort column to home country
                 } elseif ($filter == 'my_contacts_by_home_address') {
-                    $sort_column = 'home_zip_code';
+                    $sort_column = 'home_country';
                 
                 // else set sort column to the default
                 } else {

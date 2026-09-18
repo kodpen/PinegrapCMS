@@ -177,6 +177,8 @@ function get_registration_entrance($properties = array()) {
             }
         }
 
+        $output = '';
+
         if ($device_type == 'mobile') {
             // output tableless version for wrapping
             $output .=
@@ -522,6 +524,7 @@ function get_registration_entrance($properties = array()) {
                                     ' . $output_captcha_fields . '
                                     ' . $allow_guest_hidden_field . '
                                     <input type="submit" name="submit_register" value="Register" class="software_input_submit_primary register_button"><br>
+                                    ' . pg_google_signin_button(($_GET['send_to'] ?? '')) . '
                                 </form>
                             </div>
                         </td>
