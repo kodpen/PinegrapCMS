@@ -900,7 +900,22 @@ if ($if_modified_since == $last_modified) {
     if (isset($mimetype[$extension]) && ($mimetype[$extension] != 'application/octet-stream')) {
         header('Content-type: ' . $mimetype[$extension]);
         header('Content-disposition: filename=' . $file['name']);
-        
+
+        // HTML, XHTML, SVG and XML are documents the browser will execute
+        // when they are opened by their own address: an inline <script> in
+        // an uploaded .svg or .html would then run on this site's origin with
+        // the visitor's session. Uploading them stays allowed -- SVG logos
+        // and XML feeds are ordinary site content -- so the response is
+        // neutralised instead: the sandbox directive drops the document into
+        // an opaque origin with scripting, forms and plugins disabled, and
+        // nosniff stops the browser from promoting a mislabelled type to a
+        // document. A CSP header only governs documents, so an .svg placed in
+        // an <img> tag or a CSS background keeps rendering exactly as before.
+        if (in_array($extension, array('html', 'htm', 'xhtml', 'xht', 'svg', 'svgz', 'xml', 'xsl'), true)) {
+            header('Content-Security-Policy: sandbox');
+            header('X-Content-Type-Options: nosniff');
+        }
+
     // else file cannot be displayed in browser, so force download dialog
     } else {
         header('Content-type: application/octet-stream');

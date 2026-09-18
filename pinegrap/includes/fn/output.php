@@ -49,11 +49,23 @@ function output_control_panel_header_includes($include_assistant = true)
         define('CUSTOM_CSS', '');
     }
 
-    // Session-less pages (the public API console) are served under a strict Content Security
-    // Policy and to anonymous readers, so the panel's AI assistant snippet is skipped there.
+    // The AI chat's UI module is a third-party script. The chat launcher
+    // (chat_backend.src.js) loads it on demand when a staff member opens the
+    // AI conversation, so nothing in the panel depends on it being in <head>.
+    // Fetching it from every panel page would hand the vendor a request per
+    // page view and run remote code on every screen, so the preload is off
+    // unless config.php defines CHAT_AI_PRELOAD as true; the URL then follows
+    // the same CHAT_AI_SCRIPT_URL override the launcher uses.
+    //
+    // Session-less pages (the public API console) are served under a strict
+    // Content Security Policy and to anonymous readers, so the preload is
+    // skipped there in every case.
     $assistant_snippet = '';
-    if ($include_assistant) {
-        $assistant_snippet = '<script type="module" src="https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js"></script>';
+    if ($include_assistant && defined('CHAT_AI_PRELOAD') && CHAT_AI_PRELOAD) {
+        $assistant_script_url = defined('CHAT_AI_SCRIPT_URL')
+            ? CHAT_AI_SCRIPT_URL
+            : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js';
+        $assistant_snippet = '<script type="module" src="' . h($assistant_script_url) . '"></script>';
     }
 
     // Strings the panel scripts (backend.src.js, via lang() / pgLang()) ask

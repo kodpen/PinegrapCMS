@@ -11786,7 +11786,7 @@ switch ($action) {
                             $parent_id = db("SELECT folder_parent FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
                             $parent_folder_name = db("SELECT folder_name FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
                             if ($parent_folder_name) {
-                                $output_parent_folder_name = '<li class="breadcrumb-item"><a class="text-body-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . $parent_id . '\'});">' . $parent_folder_name . '</a></li>' . $output_parent_folder_name;
+                                $output_parent_folder_name = '<li class="breadcrumb-item"><a class="text-body-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . (int) $parent_id . '\'});">' . h($parent_folder_name) . '</a></li>' . $output_parent_folder_name;
                             }
 
                         }
@@ -11797,7 +11797,7 @@ switch ($action) {
                         '<nav class="overflow-auto" style="--bs-border-opacity: 0.05;--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'8\' height=\'8\'%3E%3Cpath d=\'M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z\' fill=\'%236c757d\'/%3E%3C/svg%3E&#34;);">
                         <ol class="breadcrumb mb-0">
                             ' . $output_parent_folder_name . '
-                            <li class="breadcrumb-item active text-body" aria-current="page">' . $current_folder_name . '</li>
+                            <li class="breadcrumb-item active text-body" aria-current="page">' . h($current_folder_name) . '</li>
                         </ol>
                     </nav>';
                 }
