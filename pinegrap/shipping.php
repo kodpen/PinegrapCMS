@@ -18,6 +18,23 @@
 
 // Various functions related to shipping
 
+// Carrier requests are written to the activity log for troubleshooting. The
+// account credentials they carry (USPS user id, UPS access key and password,
+// FedEx key, password, account and meter number) are replaced with a fixed
+// placeholder first, so the log never holds a working set of credentials.
+function shipping_mask_credentials($request) {
+
+    $request = preg_replace('/(USERID=")[^"]*(")/', '$1[redacted]$2', $request);
+
+    $request = preg_replace(
+        '/(<((?:ns1:)?(?:AccessLicenseNumber|UserId|Password|Key|AccountNumber|MeterNumber))>)[^<]*(<\/\2>)/',
+        '$1[redacted]$3',
+        $request
+    );
+
+    return $request;
+
+}
 
 function update_shipping_cost_for_ship_to($ship_to_id) {
 
@@ -519,7 +536,7 @@ function get_usps_delivery_date($properties) {
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL,
-        'http://production.shippingapis.com/ShippingAPI.dll?API=SDCGetLocations&XML=' .
+        'https://production.shippingapis.com/ShippingAPI.dll?API=SDCGetLocations&XML=' .
         urlencode($request));
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -531,8 +548,7 @@ function get_usps_delivery_date($properties) {
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+    pg_curl_tls($ch);
     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
     $response = curl_exec($ch);
     $curl_errno = curl_errno($ch);
@@ -545,7 +561,7 @@ function get_usps_delivery_date($properties) {
         $message = 
             'An error occurred while trying to communicate with USPS for delivery date. ' .
             'cURL Error Number: ' . $curl_errno . '. ' .
-            'cURL Error Message: ' . $curl_error . '. Request: ' . $request;
+            'cURL Error Message: ' . $curl_error . '. Request: ' . shipping_mask_credentials($request);
 
         log_activity($message);
 
@@ -561,7 +577,7 @@ function get_usps_delivery_date($properties) {
     // If there was a problem processing the XML, then log the error and return false.
     if ($response === false) {
 
-        $message = 'An error occurred while trying to communicate with USPS for delivery date. The XML response from USPS could not be processed. ' . $response_content . ' Request: ' . $request;
+        $message = 'An error occurred while trying to communicate with USPS for delivery date. The XML response from USPS could not be processed. ' . $response_content . ' Request: ' . shipping_mask_credentials($request);
 
         log_activity($message);
 
@@ -575,7 +591,7 @@ function get_usps_delivery_date($properties) {
 
         $message = 
             'An error occurred while trying to communicate with USPS for delivery date: ' .
-            $response->Description . ' Request: ' . $request;
+            $response->Description . ' Request: ' . shipping_mask_credentials($request);
 
         log_activity($message);
 
@@ -711,7 +727,7 @@ function get_usps_delivery_date($properties) {
     // made for, then log and return error.
     if (!$service_delivery_date) {
 
-        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . '). Request: ' . $request . ' Response: ' . $response_content;
+        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . '). Request: ' . shipping_mask_credentials($request) . ' Response: ' . $response_content;
 
         log_activity($message);
 
@@ -862,8 +878,7 @@ function get_fedex_delivery_date($properties) {
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+    pg_curl_tls($ch);
     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
     curl_setopt($ch, CURLOPT_POST, 1);
@@ -878,7 +893,7 @@ function get_fedex_delivery_date($properties) {
         $message = 
             'An error occurred while trying to communicate with FedEx for delivery date. ' .
             'cURL Error Number: ' . $curl_errno . '. ' .
-            'cURL Error Message: ' . $curl_error . '. Request: ' . $request;
+            'cURL Error Message: ' . $curl_error . '. Request: ' . shipping_mask_credentials($request);
 
         log_activity($message);
 
@@ -899,7 +914,7 @@ function get_fedex_delivery_date($properties) {
 
         $message = 
             'An error occurred while trying to communicate with FedEx for delivery date: ' .
-            (string) $response->Body->RateReply->Notifications->Message . ' Request: ' . $request;
+            (string) $response->Body->RateReply->Notifications->Message . ' Request: ' . shipping_mask_credentials($request);
 
         log_activity($message);
 
@@ -920,7 +935,7 @@ function get_fedex_delivery_date($properties) {
 
         $message = 
             'An error occurred while trying to communicate with FedEx for delivery date. ' .
-            $soap_response . ' Request: ' . $request;
+            $soap_response . ' Request: ' . shipping_mask_credentials($request);
 
         log_activity($message);
 
@@ -1654,11 +1669,11 @@ function get_shipping_realtime_rate($properties) {
                     
                 $request .= '</RateV4Request>';
 
-                log_activity($request);
+                log_activity(shipping_mask_credentials($request));
 
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL,
-                    'http://production.shippingapis.com/ShippingAPI.dll?API=RateV4&XML=' .
+                    'https://production.shippingapis.com/ShippingAPI.dll?API=RateV4&XML=' .
                     urlencode($request));
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
@@ -1669,8 +1684,7 @@ function get_shipping_realtime_rate($properties) {
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
+                pg_curl_tls($ch);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                 $response = curl_exec($ch);
                 $curl_errno = curl_errno($ch);
@@ -1713,7 +1727,7 @@ function get_shipping_realtime_rate($properties) {
 
                     log_activity(
                         'An error occurred while trying to communicate with USPS for real-time
-                        rates.' . $log_error . ' Request: ' . $request);
+                        rates.' . $log_error . ' Request: ' . shipping_mask_credentials($request));
 
                     return false;
 
@@ -1732,7 +1746,7 @@ function get_shipping_realtime_rate($properties) {
                         log_activity(
                             'An error occurred while trying to communicate with USPS for real-time
                             rates.  We could not find info for a package in the USPS response. ' .
-                            'Request: ' . $request . ' ' .
+                            'Request: ' . shipping_mask_credentials($request) . ' ' .
                             'Response: ' . $response);
                         return false;
                     }
@@ -1974,7 +1988,7 @@ function get_shipping_realtime_rate($properties) {
                         </Package>
                         ' . $request_footer;
 
-                    log_activity($request);
+                    log_activity(shipping_mask_credentials($request));
 
                     $ch = curl_init();
                     curl_setopt($ch, CURLOPT_URL, 'https://onlinetools.ups.com/ups.app/xml/Rate');
@@ -1982,9 +1996,8 @@ function get_shipping_realtime_rate($properties) {
                     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     $response = curl_exec($ch);
@@ -2033,7 +2046,7 @@ function get_shipping_realtime_rate($properties) {
 
                         log_activity(
                             'An error occurred while trying to communicate with UPS for real-time
-                            rates.' . $log_error . ' Request: ' . $request);
+                            rates.' . $log_error . ' Request: ' . shipping_mask_credentials($request));
 
                         return false;
 
@@ -3208,7 +3221,7 @@ function verify_address($properties) {
                 // initialize cURL
                 $ch = curl_init();
                 
-                curl_setopt($ch, CURLOPT_URL, 'http://production.shippingapis.com/ShippingAPI.dll?API=Verify&XML=' . urlencode($usps_api_url_parameters));
+                curl_setopt($ch, CURLOPT_URL, 'https://production.shippingapis.com/ShippingAPI.dll?API=Verify&XML=' . urlencode($usps_api_url_parameters));
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
                 // We had issues in the past where the timeout did not work, when USPS' service
@@ -3218,8 +3231,7 @@ function verify_address($properties) {
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
+                pg_curl_tls($ch);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                 
                 // get cURL response
