@@ -1171,7 +1171,7 @@ if (!$_POST) {
         
         // if form view directory's form list view heading is blank, then set it to the default value
         if (($form_view_directory_properties['form_list_view_heading'] ?? '') == '') {
-            $form_view_directory_form_list_view_heading = 'Forum';
+            $form_view_directory_form_list_view_heading = lang('Forum');
             
         // else the form view directory's form list view heading is not blank, so set it to the saved value
         } else {
@@ -1189,7 +1189,7 @@ if (!$_POST) {
         
         // if form view directory's number of submitted forms heading is blank, then set it to the default value
         if (($form_view_directory_properties['number_of_submitted_forms_heading'] ?? '') == '') {
-            $form_view_directory_number_of_submitted_forms_heading = 'Forms';
+            $form_view_directory_number_of_submitted_forms_heading = lang('Forms');
             
         // else the form view directory's number of submitted forms heading is not blank, so set it to the saved value
         } else {
@@ -4353,7 +4353,7 @@ if (!$_POST) {
                         
                         // if the form list view heading is blank, then set it to the default value
                         if ($form_list_view_heading == '') {
-                            $form_list_view_heading = 'Forum';
+                            $form_list_view_heading = lang('Forum');
                         }
                         
                         // if the subject heading is blank, then set it to the default value
@@ -4363,7 +4363,7 @@ if (!$_POST) {
                         
                         // if the number of submitted forms heading is blank, then set it to the default value
                         if ($number_of_submitted_forms_heading == '') {
-                            $number_of_submitted_forms_heading = 'Forms';
+                            $number_of_submitted_forms_heading = lang('Forms');
                         }
                         
                         $properties = array(
@@ -4978,7 +4978,7 @@ if (!$_POST) {
             pg_seo_recalculate('page', array((int) $page_id));
         }
 
-        log_activity("page ($name) was modified", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('page'), $name))), $_SESSION['sessionusername']);
         
         $send_to = $_POST['send_to'];
         

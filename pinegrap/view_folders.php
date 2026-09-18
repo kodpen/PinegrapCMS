@@ -8189,7 +8189,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             item_id: shortLinkEditing ? shortLinkEditing.id : 0,
             destination_type: destinationType,
             tracking_code: value('sl_tracking'),
-            name: shortLinkEditing ? value('sl_name') : 'yeni_kisa_link'
+            name: shortLinkEditing ? value('sl_name') : ''
         };
 
         // Only what this type actually uses. Sending every field on every save
@@ -8264,8 +8264,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             hideModal(shortLinkModal, 'short_link_modal');
 
             // A link that already had a name keeps it; only a new one is
-            // walked into renaming, because only a new one is called
-            // yeni_kisa_link.
+            // walked into renaming, because a new one is sent without a name
+            // and the server gives it the default (new_short_link).
             if (shortLinkEditing) {
 
                 shortLinkEditing = null;

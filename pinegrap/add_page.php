@@ -2089,7 +2089,7 @@ if (!$_POST) {
             $sql_style_values
             '',
             '',
-            'We\'re sorry. New comments are no longer being accepted.',
+            '" . escape(lang('We\'re sorry. New comments are no longer being accepted.')) . "',
             $sql_noindex_values
             '" . $sitemap . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -2267,7 +2267,7 @@ if (!$_POST) {
                 'custom_form_page_id' => $form_list_view_custom_form_page_id,
                 'maximum_number_of_results_per_page' => 25,
                 'search' => 1,
-                'search_label' => 'Search',
+                'search_label' => lang('Search'),
                 'show_results_by_default' => 1,
                 'form_item_view_page_id' => $_POST['form_list_view_form_item_view_page_id'],
                 'viewer_filter' => $_POST['form_list_view_viewer_filter'],
@@ -2321,7 +2321,7 @@ if (!$_POST) {
             
             // if the form list view heading is blank, then set it to the default value
             if ($form_list_view_heading == '') {
-                $form_list_view_heading = 'Forum';
+                $form_list_view_heading = lang('Forum');
             }
             
             // if the subject heading is blank, then set it to the default value
@@ -2331,7 +2331,7 @@ if (!$_POST) {
             
             // if the number of submitted forms heading is blank, then set it to the default value
             if ($number_of_submitted_forms_heading == '') {
-                $number_of_submitted_forms_heading = 'Forms';
+                $number_of_submitted_forms_heading = lang('Forms');
             }
             
             $properties = array(

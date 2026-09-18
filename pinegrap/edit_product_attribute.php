@@ -170,7 +170,7 @@ if (!$_POST) {
         db("DELETE FROM products_attributes_xref WHERE attribute_id = '" . escape($liveform->get_field_value('id')) . "'");
         db("DELETE FROM product_groups_attributes_xref WHERE attribute_id = '" . escape($liveform->get_field_value('id')) . "'");
         
-        log_activity('product attribute (' . $product_attribute['name'] . ') was deleted', $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} ({var:2}) was deleted', 'vars' => array(lang('product attribute'), $product_attribute['name']))), $_SESSION['sessionusername']);
         
         $liveform_view_product_attributes = new liveform('view_product_attributes');
         $liveform_view_product_attributes->add_notice(lang('The product attribute has been deleted.'));
@@ -270,7 +270,7 @@ if (!$_POST) {
             db("DELETE FROM products_attributes_xref WHERE option_id = '" . $option['id'] . "'");
         }
         
-        log_activity('product attribute (' . $product_attribute['name'] . ') was modified', $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product attribute'), $product_attribute['name']))), $_SESSION['sessionusername']);
         
         $liveform_view_product_attributes = new liveform('view_product_attributes');
         $liveform_view_product_attributes->add_notice(lang('The product attribute has been saved.'));

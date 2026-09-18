@@ -1315,7 +1315,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             $weight = '';
 
             if ($row['weight'] > 0) {
-                $weight = ($row['weight']+0) . ' lb';
+                $weight = ($row['weight']+0) . ' ' . lang('lb');
             }
 
             $primary_weight_points = $row['primary_weight_points'];
@@ -1423,14 +1423,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 
                 // If the start is set to one day then output day, else output days.
                 if ($recurring_start == '1') {
-                    $output_recurring_start .= ' Day';
+                    $output_recurring_start .= ' ' . lang('Day');
                 } else {
-                    $output_recurring_start .= ' Days';
+                    $output_recurring_start .= ' ' . lang('Days');
                 }
                 
             // else output default
             } else {
-                $output_recurring_start = 'Immediately';
+                $output_recurring_start = lang('Immediately');
             }
             
             // if number of payments is not 0 then output the number of payments
@@ -1439,7 +1439,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 
             // else output default
             } else {
-                $output_number_of_payments = 'Unlimited';
+                $output_number_of_payments = lang('Unlimited');
             }
             
             // output columns
@@ -1502,9 +1502,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 
                 // If the membership renewal field is set to one day then output day, else output days.
                 if ($membership_renewal == '1') {
-                    $output_membership_renewal .= ' Day';
+                    $output_membership_renewal .= ' ' . lang('Day');
                 } else {
-                    $output_membership_renewal .= ' Days';
+                    $output_membership_renewal .= ' ' . lang('Days');
                 }
                 
             // else do not output anything

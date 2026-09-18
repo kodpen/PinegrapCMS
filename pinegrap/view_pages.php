@@ -1278,7 +1278,7 @@ if ($pages) {
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
 
-                    $output_style_name = 'Default: ' . h($row['style_name']);
+                    $output_style_name = lang(array('string' => 'Default: {var:1}', 'vars' => h($row['style_name'])));
                 }
             }
 

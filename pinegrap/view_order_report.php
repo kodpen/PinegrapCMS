@@ -1549,7 +1549,7 @@ if (!$_POST) {
                         if ($liveform->get_field_value('detail') == 1) {
                             foreach ($summarize_by_2_result['orders'] as $order) {
                                 if (!$order['order_number']) {
-                                    $order['order_number'] = '[Incomplete]';
+                                    $order['order_number'] = '[' . lang('Incomplete') . ']';
                                 }
                                 
                                 // prevent division by zero
@@ -1585,7 +1585,7 @@ if (!$_POST) {
                 if ($liveform->get_field_value('detail') == 1) {
                     foreach ($summarize_by_1_result['orders'] as $order) {
                         if (!$order['order_number']) {
-                            $order['order_number'] = '[Incomplete]';
+                            $order['order_number'] = '[' . lang('Incomplete') . ']';
                         }
                         
                         // prevent division by zero
@@ -1621,7 +1621,7 @@ if (!$_POST) {
         if ($liveform->get_field_value('detail') == 1) {
             foreach ($orders as $order) {
                 if (!$order['order_number']) {
-                    $order['order_number'] = '[Incomplete]';
+                    $order['order_number'] = '[' . lang('Incomplete') . ']';
                 }
                 
                 // prevent division by zero

@@ -2507,7 +2507,7 @@ function output_menu($properties = false)
             $output_menu_item_icon = $options['svg'];
         } else {
             //else generate icon
-            $output_menu_item_icon = '<svg style="font-size:10px" width="16px" height="16px" class="me-2 ' . $options['color_class'] . '" data-name="empty icon" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><text transform="translate(5 12)"><tspan x="0" y="0">' . substr(lang($options['title']), 0, 1) . '</tspan></text><path d="M8,.55C3.89.55.55,3.89.55,8s3.34,7.45,7.45,7.45,7.45-3.34,7.45-7.45S12.11.55,8,.55ZM8,14.86c-3.79,0-6.86-3.07-6.86-6.86S4.21,1.14,8,1.14s6.86,3.07,6.86,6.86-3.07,6.86-6.86,6.86Z"/></svg>';
+            $output_menu_item_icon = '<svg style="font-size:10px" width="16px" height="16px" class="me-2 ' . $options['color_class'] . '" data-name="empty icon" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><text transform="translate(5 12)"><tspan x="0" y="0">' . (function_exists('mb_substr') ? mb_substr(lang($options['title']), 0, 1, 'UTF-8') : substr(lang($options['title']), 0, 1)) . '</tspan></text><path d="M8,.55C3.89.55.55,3.89.55,8s3.34,7.45,7.45,7.45,7.45-3.34,7.45-7.45S12.11.55,8,.55ZM8,14.86c-3.79,0-6.86-3.07-6.86-6.86S4.21,1.14,8,1.14s6.86,3.07,6.86,6.86-3.07,6.86-6.86,6.86Z"/></svg>';
 
         }
 

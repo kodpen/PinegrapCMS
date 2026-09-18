@@ -379,14 +379,14 @@ if (!$_POST) {
                         $row = mysqli_fetch_assoc($result);
                         
                         // output message for log
-                        $log_message = "were moved to " . $row['folder_name'];
+                        $log_message = lang(array('string' => 'were moved to {var:1}', 'vars' => array($row['folder_name'])));
                     }
                     
                     // if a page style was selected to be applied to the page(s), then set message for log
                     if ($_POST['edit_page_style'] != '') {
                         // if the log message is not blank, then add separator
                         if ($log_message != '') {
-                            $log_message .= ', and ';
+                            $log_message .= ', ' . lang('and') . ' ';
                         }
                         
                         // If page style is equal to 0 then output default
@@ -421,19 +421,19 @@ if (!$_POST) {
                             && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
                             && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
                         ) {
-                            $preview = 'preview ';
+                            $preview = lang('preview ');
 
                         }
                         
                         // output message for log
-                        $log_message .= 'had ' . $preview . 'page style changed to ' . $style;
+                        $log_message .= lang(array('string' => 'had {var:1}page style changed to {var:2}', 'vars' => array($preview, $style)));
                     }
 
                     // if a mobile page style was selected to be applied to the page(s), then set message for log
                     if ($_POST['edit_mobile_style_id'] != '') {
                         // if the log message is not blank, then add separator
                         if ($log_message != '') {
-                            $log_message .= ', and ';
+                            $log_message .= ', ' . lang('and') . ' ';
                         }
                         
                         // if mobile page style is equal to 0 then output default
@@ -486,9 +486,9 @@ if (!$_POST) {
                         
                         // prepare site search value for log
                         if ($_POST['edit_site_search'] == '1') {
-                            $on_off = 'on';
+                            $on_off = lang('on');
                         } else {
-                            $on_off = 'off';
+                            $on_off = lang('off');
                         }
                         
                         // output message for log

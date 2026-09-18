@@ -439,7 +439,7 @@ if (!$_POST) {
                 
                 case 'product':
                     $liveform->validate_required_field('catalog_detail_page_id', lang('Catalog Detail Page is required.'));
-                    $liveform->validate_required_field('product_id', 'Product is required.');
+                    $liveform->validate_required_field('product_id', lang('Product is required.'));
 
                     // If there is not already an error for the product, then check if product exists.
                     if ($liveform->check_field_error('product_id') == FALSE) {
