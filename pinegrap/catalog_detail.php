@@ -185,7 +185,7 @@ if (
     && ($quantity > $inventory_quantity)
 ) {
     $liveform->mark_error('quantity', lang(array(
-        'string' => 'Yeterli stok yok. Mevcut: {var:1}',
+        'string' => 'Not enough stock. Available: {var:1}',
         'vars'   => array((int)$inventory_quantity),
     )));
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('current_url')));

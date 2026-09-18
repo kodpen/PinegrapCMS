@@ -382,7 +382,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             $node['props']['btnType']    = 'submit';
             $node['props']['text']       = $_pg_default_text(
                 isset($node['props']['text']) ? $node['props']['text'] : '',
-                lang('Ara')
+                lang('Search')
             );
         }
     }
@@ -1725,7 +1725,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         if ($crumbs) {
             // Drilled into a sub-category: "Ana Katalog" is a link back to
             // the catalog root; the trail ends at the active group as text.
-            $bcParts[] = '<a href="' . h($listing_root_url) . '">' . h(lang('Ana Katalog')) . '</a>';
+            $bcParts[] = '<a href="' . h($listing_root_url) . '">' . h(lang('Main Catalog')) . '</a>';
             $last_idx = count($crumbs) - 1;
             foreach ($crumbs as $i => $c) {
                 if ($i === $last_idx) {
@@ -1740,7 +1740,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         } else {
             // At root (no drill): single non-link "Ana Katalog" crumb so the
             // designer-bound <nav> still has visible content.
-            $bcParts[] = '<span class="active">' . h(lang('Ana Katalog')) . '</span>';
+            $bcParts[] = '<span class="active">' . h(lang('Main Catalog')) . '</span>';
         }
         $breadcrumb_inner_html =
             '<ol class="breadcrumb mb-0">' .
@@ -1779,7 +1779,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             $detail_url_prefix
         );
         if ($group_tree_inner_html !== '') {
-            $group_tree_html = '<nav class="pg-sw-cl-group-tree" aria-label="' . h(lang('Kategoriler')) . '">'
+            $group_tree_html = '<nav class="pg-sw-cl-group-tree" aria-label="' . h(lang('Categories')) . '">'
                              . $group_tree_inner_html
                              . '</nav>';
         }
@@ -2320,7 +2320,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     if ($atc_stay) {
         $_atc_toast_msg = (string)(isset($cfg['add_to_cart_toast_message'])
             ? $cfg['add_to_cart_toast_message']
-            : lang('Ürün sepete eklendi.'));
+            : lang('Product added to cart.'));
         $toast_html = '<script>(function(){'
             . 'if(window.__pgCartToastInit)return;window.__pgCartToastInit=1;'
             . 'document.addEventListener("DOMContentLoaded",function(){'
@@ -2732,9 +2732,9 @@ function _civ_render_breadcrumb($p, $select_group_id, $select_group_name, $catal
     $bcParts = array();
     // First crumb: "Ana Katalog" — link if catalog page configured, text otherwise.
     if ($catalog_root_url !== '') {
-        $bcParts[] = '<a href="' . h($catalog_root_url) . '">' . h(lang('Ana Katalog')) . '</a>';
+        $bcParts[] = '<a href="' . h($catalog_root_url) . '">' . h(lang('Main Catalog')) . '</a>';
     } else {
-        $bcParts[] = '<span>' . h(lang('Ana Katalog')) . '</span>';
+        $bcParts[] = '<span>' . h(lang('Main Catalog')) . '</span>';
     }
     // Group ancestors → link when catalog page configured + address_name set.
     if ($crumbs) {
@@ -2951,7 +2951,7 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
                     $opts   = isset($options_by_field[$fid]) ? $options_by_field[$fid] : array();
                     $out .= '<select name="' . h($name . $multi_n) . '" id="' . h($id) . '"'
                           . ' class="form-select"' . $multi . $form_attr . $req_attr . '>';
-                    if (!$multi) $out .= '<option value="">' . h(lang('Seçim yapın...')) . '</option>';
+                    if (!$multi) $out .= '<option value="">' . h(lang('Select...')) . '</option>';
                     foreach ($opts as $opt) {
                         $sel = ((string)$opt['value'] === (string)$val) ? ' selected' : '';
                         $out .= '<option value="' . h($opt['value']) . '"' . $sel . '>' . h($opt['name']) . '</option>';
@@ -3371,7 +3371,7 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
                         // (.pg-civ-variant-attr) keeps working unchanged
                         // — the visible radios update its value on change.
                         $out .= '<select class="pg-civ-variant-attr d-none" data-pg-civ-attr="' . $aid_int . '">';
-                        $out .= '<option value="">' . h(lang('Seçim yapın...')) . '</option>';
+                        $out .= '<option value="">' . h(lang('Select...')) . '</option>';
                         foreach ($options as $oid => $olbl) {
                             $sel = ((int)$oid === $sel_oid) ? ' selected' : '';
                             $out .= '<option value="' . (int)$oid . '"' . $sel . '>' . h((string)$olbl) . '</option>';
@@ -3399,7 +3399,7 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
                         $is_vertical = ($style === 'button_list');
                         $grp_cls = $is_vertical ? 'btn-group-vertical w-100' : 'btn-group';
                         $out .= '<select class="pg-civ-variant-attr d-none" data-pg-civ-attr="' . $aid_int . '">';
-                        $out .= '<option value="">' . h(lang('Seçim yapın...')) . '</option>';
+                        $out .= '<option value="">' . h(lang('Select...')) . '</option>';
                         foreach ($options as $oid => $olbl) {
                             $sel = ((int)$oid === $sel_oid) ? ' selected' : '';
                             $out .= '<option value="' . (int)$oid . '"' . $sel . '>' . h((string)$olbl) . '</option>';
@@ -3431,7 +3431,7 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
                     case 'select':
                     default:
                         $out .= '<select class="form-select pg-civ-variant-attr ' . h($ctlCls) . '" data-pg-civ-attr="' . $aid_int . '">';
-                        $out .= '<option value="">' . h(lang('Seçim yapın...')) . '</option>';
+                        $out .= '<option value="">' . h(lang('Select...')) . '</option>';
                         foreach ($options as $oid => $olbl) {
                             $sel = ((int)$oid === $sel_oid) ? ' selected' : '';
                             $out .= '<option value="' . (int)$oid . '"' . $sel . '>' . h((string)$olbl) . '</option>';
@@ -3646,7 +3646,7 @@ function _civ_render_cross_sell($product_id, $catalog_detail_pid, $opts = array(
     $items   = _civ_get_cross_sell_items($product_id, $catalog_detail_pid, $count);
     $heading = $custom_heading !== null
                 ? $custom_heading
-                : (lang('Birlikte sıkça satın alınanlar'));
+                : (lang('Frequently bought together'));
 
     if (empty($items)) {
         return $wrapper_open . $wrapper_close;
@@ -3826,7 +3826,7 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         // open. Not `selected`, so the FIRST REAL option below it is the
         // active default value when the page first paints.
         $optsHtml = '<option value="" disabled>'
-                  . h(lang('Alıcı seçin...')) . '</option>';
+                  . h(lang('Select recipient...')) . '</option>';
         $is_first_real = true;
         foreach ($opts as $val => $label) {
             $val_s   = (string)$val;
@@ -3834,7 +3834,7 @@ function _apply_catalog_item_view_bindings(&$node, $context)
             if ($val_s === '' && $label_s === '') continue; // skip legacy blank
             if ($val_s === $add_sentinel) {
                 $optsHtml .= '<option value="' . h($val_s) . '" data-pg-recipient-add="1">'
-                           . h(lang('+ Yeni alıcı ekle')) . '</option>';
+                           . h(lang('+ Add new recipient')) . '</option>';
             } else {
                 // `selected` on the first real entry so the dropdown opens
                 // with a sane default rather than the placeholder text.

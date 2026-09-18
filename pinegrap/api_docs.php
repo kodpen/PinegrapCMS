@@ -154,7 +154,7 @@ $console_url = $api_base_url . '/docs';
 echo pg_page_shell(array(
 	'title'               => lang('API Documentation'),
 	'extra classes'       => 'api-docs',
-	'icon'                => 'settings',
+	'icon'                => 'setting',
 	'heading'             => lang('API Documentation'),
 	'heading_description' => lang('Every endpoint this site offers, read from the same table the API itself dispatches from.'),
 	'breadcrumb'          => array(
