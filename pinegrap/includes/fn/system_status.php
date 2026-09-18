@@ -1011,7 +1011,8 @@ function get_system_status_checks()
     //              -- tampered files, php.ini, passwords, the rules file,
     //                 a broken database, a firewall that is off
     //   Moderate   worth fixing this week
-    //              -- PHP version, SSL, CAPTCHA, bot filtering, IndexNow
+    //              -- PHP version, SSL, CAPTCHA, bot filtering, IndexNow,
+    //                 CA bundle age
     //   Minor      housekeeping
     //              -- extensions, scheduled tasks, backup age, update status
     //
@@ -1037,6 +1038,11 @@ function get_system_status_checks()
         'captcha'         => 10,
         'bot_filter'      => 10,
         'indexnow'        => 8,
+        // A stale trust list breaks outbound verification quietly --
+        // update downloads, payment and API calls -- rather than opening
+        // the site, so it sits at the bottom of this class beside
+        // IndexNow, not among the housekeeping below.
+        'ca_bundle'       => 8,
         // Minor
         'extensions'      => 6,
         'cron'            => 6,
@@ -1054,6 +1060,7 @@ function get_system_status_checks()
     $check_weights = array(
         'Directory File Integrity' => $weights['file_integrity'],
         'SSL Status'               => $weights['ssl'],
+        'CA Certificate Bundle'    => $weights['ca_bundle'],
         'Password Hint'            => $weights['password'],
         'CAPTCHA Protection'       => $weights['captcha'],
         'Strong Password'          => $weights['strong_password'],
@@ -1100,6 +1107,7 @@ function get_system_status_checks()
     //   robot     → unknown bot filter    broadcast→ IndexNow
     //   terminal  → PHP version           database → database health
     //   puzzle    → PHP extensions        sliders  → php.ini directives
+    //   patch     → CA certificate bundle
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1116,6 +1124,7 @@ function get_system_status_checks()
     $short_labels = array(
         'Directory File Integrity' => 'Files',
         'SSL Status'               => 'SSL',
+        'CA Certificate Bundle'    => 'CA bundle',
         'Password Hint'            => 'Password hint',
         'Strong Password'          => 'Strong password',
         'CAPTCHA Protection'       => 'CAPTCHA',
@@ -1311,6 +1320,86 @@ function get_system_status_checks()
             'SSL is not active. Your connection may not be secure.'
         );
         $score -= $weights['ssl'];
+    }
+
+    // 🩹 CA certificate bundle age -- a patch, because the file is a trust list
+    // kept current by replacing it whole, and the padlock is SSL's.
+    //
+    // Only measured when the configuration points outbound TLS at its own
+    // cacert.pem. With CURL_CA_BUNDLE empty the system store is in use and the
+    // package manager keeps that current; there is nothing here to read, so no
+    // row at all rather than a grey "not applicable". The bundle carries its
+    // own date in the header curl's mk-ca-bundle writes:
+    //   ## Certificate data from Mozilla as of: Tue Jan 10 04:12:06 2023 GMT
+    // A file without that line, or with one that does not parse, is skipped
+    // the same way: a guess about its age is worse than no row. Only the first
+    // lines are read; the file is a few hundred kilobytes and the header is at
+    // the top.
+    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE) && is_readable(CURL_CA_BUNDLE)) {
+        $ca_bundle_stamp = 0;
+        $ca_bundle_handle = @fopen(CURL_CA_BUNDLE, 'r');
+        if ($ca_bundle_handle) {
+            for ($ca_bundle_line = 0; $ca_bundle_line < 10; $ca_bundle_line++) {
+                $ca_bundle_text = fgets($ca_bundle_handle);
+                if ($ca_bundle_text === false) {
+                    break;
+                }
+                if (preg_match('/^##\s*Certificate data from Mozilla as of:\s*(.+?)\s*$/', $ca_bundle_text, $ca_bundle_match)) {
+                    $ca_bundle_stamp = (int) strtotime($ca_bundle_match[1]);
+                    break;
+                }
+            }
+            fclose($ca_bundle_handle);
+        }
+
+        // A date in the future is a clock or a parse gone wrong, not a fresh
+        // bundle; it is skipped with the unreadable ones.
+        if (($ca_bundle_stamp > 0) && ($ca_bundle_stamp <= time())) {
+            // Whole months from the header date to today, the unit the
+            // thresholds below are written in.
+            $ca_bundle_diff = date_diff(date_create('@' . $ca_bundle_stamp), date_create('@' . time()));
+            $ca_bundle_months = ($ca_bundle_diff->y * 12) + $ca_bundle_diff->m;
+            $ca_bundle_date = defined('DATE_FORMAT')
+                ? date(get_date_format_code() . '/Y', $ca_bundle_stamp)
+                : date('Y-m-d', $ca_bundle_stamp);
+
+            // Mozilla refreshes the list several times a year. A bundle that
+            // has missed a year of them is behind; one that has missed two no
+            // longer describes the roots current certificates chain to, and
+            // outbound verification starts failing for no visible reason.
+            if ($ca_bundle_months > 24) {
+                $ca_bundle_icon = 'bi-patch-exclamation-fill';
+                $ca_bundle_color = 'text-danger';
+                $ca_bundle_message = array(
+                    'string' => 'The bundled CA certificate file is more than two years old: Mozilla data as of {var:1}, {var:2} months old. Outbound TLS verification may fail against current certificates; update cacert.pem.',
+                    'vars'   => array($ca_bundle_date, $ca_bundle_months),
+                );
+                $score -= $weights['ca_bundle'];
+            } elseif ($ca_bundle_months > 12) {
+                $ca_bundle_icon = 'bi-patch-exclamation-fill';
+                $ca_bundle_color = 'text-warning';
+                $ca_bundle_message = array(
+                    'string' => 'The bundled CA certificate file is more than a year old: Mozilla data as of {var:1}, {var:2} months old. Update cacert.pem.',
+                    'vars'   => array($ca_bundle_date, $ca_bundle_months),
+                );
+                $score -= $weights['ca_bundle'] * 0.5;
+            } else {
+                $ca_bundle_icon = 'bi-patch-check-fill';
+                $ca_bundle_color = 'text-success';
+                $ca_bundle_message = array(
+                    'string' => 'The bundled CA certificate file is current: Mozilla data as of {var:1}, {var:2} months old.',
+                    'vars'   => array($ca_bundle_date, $ca_bundle_months),
+                );
+            }
+
+            $output .= $makeIcon(
+                $ca_bundle_icon,
+                $ca_bundle_color,
+                'CA Certificate Bundle',
+                $ca_bundle_message,
+                lang(array('string' => '{var:1} months', 'vars' => array($ca_bundle_months)))
+            );
+        }
     }
 
     // 👁 Password hint — an eye, because the risk is that the hint reveals something.
