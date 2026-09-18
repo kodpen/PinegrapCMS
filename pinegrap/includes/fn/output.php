@@ -1856,10 +1856,10 @@ function output_menu($properties = false)
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[2]['data-bs-content'] .= '<a  onclick=\'open_search_index_window();\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-input-cursor bi-me-2\'>' . lang('Update Search Index') . '</a>';
         }
-        // PAGES > Short Links
-        $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-link-45deg bi-me-2\'>' . lang('Short Links') . '</a>';
-        if (USER_ROLE != 3) {
+        // PAGES > Short Links (short links sit outside the folder-based rights, so the screens are gated at manager level and users do not get the entries)
+        if ($user['role'] < 3) {
+            $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-link-45deg bi-me-2\'>' . lang('Short Links') . '</a>';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_short_link.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))) . '</a>';
         }
         // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
@@ -3219,7 +3219,8 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
         ORDER BY last_modified_timestamp DESC
         LIMIT 1");
 
-    if (is_array($short_link) && ($short_link['name'] != '')) {
+    // Short links are a manager-and-up area, so a plain user is not shown one.
+    if (($user['role'] < 3) && is_array($short_link) && ($short_link['name'] != '')) {
         $facts[] = array(
             'label' => lang('Short Link'),
             'text'  => $short_link['name'],
