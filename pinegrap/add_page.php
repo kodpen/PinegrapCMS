@@ -2053,10 +2053,12 @@ if (!$_POST) {
     // insert row into page table
     //
     // page_home and page_search are literals: a new page is never the home page
-    // and starts outside the site search. page_search is an INT column, so its
-    // literal has to be a number - a server running with STRICT_TRANS_TABLES,
-    // the default since MySQL 5.7 and MariaDB 10.2, rejects an empty string for
-    // it and page creation fails on the query.
+    // and starts outside the site search. Both literals have to match their
+    // column types - page_home is ENUM('no','yes') (a numeric string would be
+    // read as an enum index) and page_search is an INT column - because a
+    // server running with STRICT_TRANS_TABLES, the default since MySQL 5.7 and
+    // MariaDB 10.2, rejects a mistyped value and page creation fails on the
+    // query.
     $query =
         "INSERT INTO page (
             page_name,
@@ -2079,7 +2081,7 @@ if (!$_POST) {
             '" . escape($_POST['folder'] ?? '') . "',
             '" . escape($type) . "',
             '" . e($layout_type) . "',
-            '0',
+            'no',
             '0',
             '',
             UNIX_TIMESTAMP(),

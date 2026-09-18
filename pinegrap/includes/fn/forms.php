@@ -1490,7 +1490,7 @@ function log_activity($description, $user = '')
     // how the scheduled jobs reach this function.
     $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
 
-    $query = "INSERT INTO log (log_id, log_description, log_ip, log_user, log_timestamp) " . "VALUES ('', '" . escape($description) . "', '" . escape($ip) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
+    $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) " . "VALUES ('" . escape($description) . "', '" . escape($ip) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // get a random number between 1 and 100 in order to determine if we should delete old log entries
     // there is a 1 in 100 chance that we will delete old log entries each time a log entry is added

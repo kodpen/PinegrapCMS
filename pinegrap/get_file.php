@@ -1140,8 +1140,8 @@ function get_access_control_type($folder_id) {
 
 function log_activity($description, $user)
 {
-    $query = "INSERT INTO log (log_id, log_description, log_ip, log_user, log_timestamp) "
-            ."VALUES ('', '" . escape($description) . "', '" . escape($_SERVER['REMOTE_ADDR']) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
+    $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) "
+            ."VALUES ('" . escape($description) . "', '" . escape($_SERVER['REMOTE_ADDR']) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // get a random number between 1 and 100 in order to determine if we should delete old log entries

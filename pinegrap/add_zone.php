@@ -177,10 +177,10 @@ if (!$_POST) {
     $item_rate = str_replace(' ', '',$item_rate); 
 
     // convert rates from dollars to cents
-    $base_rate = $base_rate * 100;
-    $primary_weight_rate = $primary_weight_rate * 100;
-    $secondary_weight_rate = $secondary_weight_rate * 100;
-    $item_rate = $item_rate * 100;
+    $base_rate = (int) round($base_rate * 100);
+    $primary_weight_rate = (int) round($primary_weight_rate * 100);
+    $secondary_weight_rate = (int) round($secondary_weight_rate * 100);
+    $item_rate = (int) round($item_rate * 100);
     
     // create zone
     $query = "INSERT INTO zones (

@@ -41,6 +41,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Veritabanına yazılan değerler: kampanya kilidi, menü kopyası, ERP ödeme yöntemi, kuruş yuvarlama (2026-09-18)
+
+**Belirti.** `email_campaign_job.php`, `calendar_event_reserved` alıcıları
+için `LOCK TABLES` listesinde var olmayan `number_of_remaining_spots`
+tablosunu adlıyordu; sorgu sessizce `false` dönüyor, kilit hiç alınmıyor ve
+gönderim kilitsiz ilerliyordu (aynı alıcıya iki gönderim koruması yoktu).
+`duplicate_menu.php` menüyü kopyalarken `menus.active_item_class` ve
+`menu_items.class` sütunlarını taşımıyordu; kopyalanan menü CSS sınıflarını
+kaybediyordu. `add_erp_receipt.php` ödeme yöntemi seçiminde `credit_card` ve
+`cheque` gönderiyordu; `erp_cash_transactions.payment_method` ENUM'unda bu
+üyeler yok, değer boş üye olarak kaydediliyordu. Bunların yanında bir dizi
+yazma ifadesi sütun tipine uymayan literal kullanıyordu: `page_home`
+ENUM'una `'0'` (`add_page.php`), `folder_access_control_type` ENUM'una `''`
+(`view_folder_and_files_f.php`), `comments.publish_date_and_time` /
+`publish_cancel` sıfırlaması `''` (`add_comment.php`),
+`last_modified_user_id` INT'e `''` (`delete_order.php`), AUTO_INCREMENT
+`log.log_id`'ye `''` (`includes/fn/forms.php` ve `get_file.php`'deki yerel
+kopya). Kargo tarafında indirimli kargo bedeli yuvarlanmadan float olarak,
+`offer_id` teklif yokken `''` olarak yazılıyor (`shipping.php`,
+`shopping_cart.php`, `shipping_method.php`); bölge ve kargo yöntemi
+oranları `* 100` ile kuruşa çevrilirken `round()` kullanılmıyordu
+(`add_zone.php`, `add_shipping_method.php`, `edit_shipping_method.php`).
+
+**Düzeltme.** Kilit listesindeki ad `remaining_reservation_spots WRITE`
+oldu ve `LOCK TABLES` sonucu denetleniyor: `false` dönerse hata
+`error_log()` ile yazılır ve `continue` ile sonraki alıcıya geçilir; alıcı
+tamamlanmamış kalır ve bir sonraki koşuda yeniden denenir. Neden atlama:
+kilitsiz gönderim, kilidin var olma sebebini (aynı etkinlik için çift
+gönderim) ortadan kaldırır; hatayı gizleyip devam etmek yerine o alıcıyı
+ertelemek daha güvenlidir. Menü kopyasında iki sütun SELECT/INSERT'e
+eklendi, NULL kaynak `e((string) ...)` ile `''` olur — `add_menu.php` /
+`add_menu_item.php` de böyle yazar. ERP fişinde kredi kartı `card` gönderir,
+`Çek` seçeneği kaldırıldı (ENUM'da karşılığı yok; `Diğer` seçeneği
+duruyor) ve POST dalında değer `in_array(..., true)` beyaz listesinden
+geçer, liste dışı değer sütun varsayılanı `cash`'e düşer — ENUM'a bilinmeyen
+değer yazmak strict olmayan bağlantıda boş üye üretir, o yüzden kapı sunucu
+tarafında. Tip uyumsuz literaller sütun tipine göre düzeltildi: `page_home`
+`'no'`, `folder_access_control_type` SQL `NULL`, `publish_date_and_time`
+`'0000-00-00 00:00:00'`, `publish_cancel` `'0'`, `last_modified_user_id`
+`USER_ID` tanımlıysa `(int) USER_ID` yoksa `0`, `log_id` sütun listesinden
+çıkarıldı (AUTO_INCREMENT kendi atar). Kargo indirimi `(int) round(...)`
+ile kuruşa sabitlendi, `offer_id` `(int) ($offer['id'] ?? 0)`; oran
+dönüşümleri `(int) round($x * 100)`. Formüller değişmedi; `(int)` kırpma
+yerine `round()` kullanılması CLAUDE.md'nin kuruş kuralıdır (kesirli kuruş
+yalnız yuvarlanır).
+
+### Doğrulama
+
+`php -l` dokunulan 15 dosyada temiz; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: sorguların hiçbiri
+MariaDB'ye karşı koşturulmadı. `remaining_reservation_spots` kilidi, `NULL`
+klasör erişim tipi, `card` ile ERP fişi, menü kopyası ve kargo indirimi
+akışları yalnız kod okunarak doğrulandı.
+
+**Açık kalan:** `erp_cash_transactions` tablosunda `''` olarak kaydedilmiş
+mevcut ödeme yöntemi satırları onarılmadı (veri migration'ı gerekir, bu turda
+şema/migration kapalı). `lang('Cheque')` anahtarı artık bu dosyada
+kullanılmıyor, `tr.json`'da bırakıldı.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

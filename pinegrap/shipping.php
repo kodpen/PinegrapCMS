@@ -186,7 +186,7 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
         $original_shipping_cost = $shipping_cost;
         
         // Update shipping cost to contain discount.
-        $shipping_cost = $shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100));
+        $shipping_cost = (int) round($shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100)));
     }
     
     // Update shipping cost for recipient.
@@ -195,7 +195,7 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
         SET
             shipping_cost = '$shipping_cost',
             original_shipping_cost = '$original_shipping_cost',
-            offer_id = '" . e($offer['id']) . "'
+            offer_id = '" . (int) ($offer['id'] ?? 0) . "'
         WHERE id = '" . e($ship_to_id) . "'");
 }
 

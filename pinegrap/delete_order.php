@@ -39,7 +39,7 @@ function delete_order($request) {
         "UPDATE email_campaigns
         SET
             email_campaigns.status = 'cancelled',
-            email_campaigns.last_modified_user_id = '',
+            email_campaigns.last_modified_user_id = '" . (defined('USER_ID') ? (int) USER_ID : 0) . "',
             email_campaigns.last_modified_timestamp = UNIX_TIMESTAMP()
         WHERE
             (email_campaigns.action = 'order_abandoned')

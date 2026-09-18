@@ -591,7 +591,7 @@ if (!$_POST) {
         $base_rate = str_replace(',', '', $_POST['base_rate']);
         $base_rate = str_replace(' ', '',$base_rate); 
         // convert price from dollars to cents
-        $base_rate = $base_rate * 100;
+        $base_rate = (int) round($base_rate * 100);
     }
     $primary_weight_rate = 0;
     if($_POST['primary_weight_rate']){
@@ -599,7 +599,7 @@ if (!$_POST) {
         $primary_weight_rate = str_replace(',', '', $_POST['primary_weight_rate']);
         $primary_weight_rate = str_replace(' ', '',$primary_weight_rate); 
         // convert price from dollars to cents
-        $primary_weight_rate = $primary_weight_rate * 100;
+        $primary_weight_rate = (int) round($primary_weight_rate * 100);
     }
     $secondary_weight_rate = 0;
     if($_POST['secondary_weight_rate']){
@@ -607,7 +607,7 @@ if (!$_POST) {
         $secondary_weight_rate = str_replace(',', '', $_POST['secondary_weight_rate']);
         $secondary_weight_rate = str_replace(' ', '',$secondary_weight_rate); 
         // convert price from dollars to cents
-        $secondary_weight_rate = $secondary_weight_rate * 100;
+        $secondary_weight_rate = (int) round($secondary_weight_rate * 100);
     }
     $item_rate = 0;
     if($_POST['item_rate']){
@@ -615,7 +615,7 @@ if (!$_POST) {
         $item_rate = str_replace(',', '', $_POST['item_rate']);
         $item_rate = str_replace(' ', '',$item_rate); 
         // convert price from dollars to cents
-        $item_rate = $item_rate * 100;
+        $item_rate = (int) round($item_rate * 100);
     }
 
     $variable_base_rate = 0;
@@ -644,11 +644,11 @@ if (!$_POST) {
                 $variable_base_rate = str_replace(',', '', $_POST['base_rate_' . $number . '_subtotal']);
                 $variable_base_rate = str_replace(' ', '',$variable_base_rate); 
                 // convert price from dollars to cents
-                $variable_base_rate = $variable_base_rate * 100;
+                $variable_base_rate = (int) round($variable_base_rate * 100);
 
                 $variable_base_rates[] = array(
                     'subtotal' =>  $variable_base_rate,
-                    'rate' => $_POST['base_rate_' . $number] * 100);
+                    'rate' => (int) round($_POST['base_rate_' . $number] * 100));
             }
         }
 
