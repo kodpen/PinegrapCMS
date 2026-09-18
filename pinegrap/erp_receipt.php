@@ -82,6 +82,9 @@ if ($_POST) {
 
         // One invoice at a time, each in its own transaction, so a refused
         // line does not undo the accepted ones and the message names the line.
+        // The figure typed is what to allocate on top of what this receipt
+        // already holds on that invoice: the pair is unique, so the total is
+        // what gets written.
         foreach ($amounts as $invoice_id => $text) {
             $amount = erp_kurus((string) $text);
 
@@ -89,10 +92,13 @@ if ($_POST) {
                 continue;
             }
 
+            $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
+                WHERE account_txn_id = '" . $ledger_id . "' AND invoice_id = '" . (int) $invoice_id . "'");
+
             $result = erp_settlement_allocate(array(
                 'invoice_id' => (int) $invoice_id,
                 'account_txn_id' => $ledger_id,
-                'amount' => $amount,
+                'amount' => $amount + $held,
                 'created_by' => (int) $user['id'],
             ));
 

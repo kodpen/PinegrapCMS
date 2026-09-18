@@ -632,7 +632,13 @@ function erp_settlement_allocate($data)
         )));
     }
 
-    $open = erp_invoice_open_amount($invoice);
+    // The unique pair means an allocation to this invoice from this receipt
+    // replaces the earlier figure, so what it already holds counts as free
+    // on both sides: on the receipt and on the invoice.
+    $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
+        WHERE account_txn_id = '" . $txn_id . "' AND invoice_id = '" . $invoice_id . "'");
+
+    $open = erp_invoice_open_amount($invoice) + $held;
 
     if ($open <= 0) {
         return $fail(lang('That invoice is already closed.'));
@@ -641,11 +647,6 @@ function erp_settlement_allocate($data)
     if ($amount > $open) {
         return $fail(lang('That amount is more than the invoice is short of.'));
     }
-
-    // The unique pair means an allocation to this invoice from this receipt
-    // replaces the earlier figure, so what it already holds is free again.
-    $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
-        WHERE account_txn_id = '" . $txn_id . "' AND invoice_id = '" . $invoice_id . "'");
 
     if ($amount > erp_txn_unallocated($txn_id) + $held) {
         return $fail(lang('That amount is more than is unallocated on this receipt.'));
