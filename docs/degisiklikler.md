@@ -41,6 +41,61 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — E-ticaret yönetim ekranları: ürün oluşturucu, barkod tarayıcı, kargo ve ülke düzeltmeleri (2026-09-18)
+
+**Belirti (issue #38).** (1) `product_builder.php` içindeki Submit Form
+paneli eski işaretlemeden kalan ikinci bir `#submit_form_row` collapse'ı ve
+başıboş bir `#add_comment` girdisi taşıyordu; panel açılıp kapanmıyor, aynı
+`id` iki kez basılıyordu. Form Tipi radyosu kayıtlı değeri hiç okumuyor, her
+kayıtta "One Form per Quantity"ye dönüyordu. (2) Barkod envanter tarayıcıları
+(`barcode_decrease_inventory.php`, `barcode_increase_inventory.php`) okunan
+barkodu yalnız `products.name` ile eşliyordu; sistemin ürettiği ve
+`product_barcodes` tablosunda duran barkodlar tanınmıyordu. Ürün silinirken
+`product_barcodes` satırları da geride kalıyordu. Yeniden stoklama
+`out_of_stock` bayrağını yalnız yeni miktar ≤ 1 iken temizliyordu. (3)
+`shipping.php` `get_shipping_methods()` içinde bölge oran değişkenleri
+yöntemler arası sıfırlanmıyordu: bölgesi eşleşmeyen zorlanmış bir yöntem,
+önceki yöntemin bölge oranıyla fiyatlanıyordu. Değişken baz oranı binlik
+ayraçla girilince reddediliyordu. (4) `add_country.php` / `edit_country.php`
+transit gün girdisi yanlış `name` taşıyordu, değer hiç kaydedilmiyordu; ülke
+silinince `tax_zones_countries_xref` satırları yetim kalıyordu.
+`view_states.php` stil ekranından kopyalanmış bir silme formu taşıyordu. (5)
+Toplu fiyat değişimi (`edit_products.php`), konteyner maliyeti ve hediye
+kartı tutarları kuruşa `round()` olmadan çevriliyor, ürün grubu kopyalama
+`default_option_id` ve ek görselleri düşürüyordu.
+
+**Düzeltme.** Submit Form bloğu tek sarmalayıcıya indirildi;
+`pg_pb_render_switch()` zaten `#submit_form_row`'u bastığı için iç collapse
+fazlalıktı, kaldırıldı. Radyo `$v('form_quantity_type', ...)` ile kayıtlı
+değeri okuyor; boş eski değer eski varsayılanı korur. Tarayıcılar okumayı
+önce `product_barcodes` üzerinden çözüp ürün adına düşüyor ve `UPDATE`'i
+ada değil `id`'ye göre yapıyor — aynı adda iki ürün varken yanlış satırın
+güncellenmemesi için. Ekranın "evet" dönüşü değişmedi (CLAUDE.md 12. kural).
+`pg_pb_delete_product()` ve toplu silme `product_barcodes`'ı da temizliyor.
+Bölge oranları her yöntem döngüsü başında 0'a çekildi; `shipping_method.php`
+bunu zaten yapıyordu, iki yol aynı hizaya getirildi. Oran/ara toplam
+`is_numeric()` öncesi virgül ve boşluktan arındırılıp `(int) round(x * 100)`
+ile saklanıyor. Para dönüşümlerinin hepsi `round()`'a alındı: yüzde indirimi
+kesirli kuruş üretir, `(int)` kırpması bir kuruş eksik yazar. Ülke ekranında
+girdi adı `transit_adjustment_days` oldu; ülke silme vergi bölgesi xref'ini de
+siliyor. Grup kopyalama `default_option_id`'yi taşıyor ve
+`product_groups_images_xref` satırlarını yeni gruba kopyalıyor.
+
+### Doğrulama
+
+`php -l` dokunulan 19 dosyada, `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: ürün oluşturucu,
+tarayıcılar, kargo hesabı, ülke/eyalet, konteyner ve hediye kartı ekranları
+tarayıcıda açılmadı, form gönderilmedi; collapse davranışı, radyo kalıcılığı,
+`product_barcodes` çözümü ve bölge oranı sıfırlaması yalnız kod okumayla
+doğrulandı. USPS/UPS gerçek zamanlı oran yolları çalıştırılmadı.
+
+**Açık kalan:** `pg_page_shell` `extra classes` anahtarı yalnız
+`add_gift_card.php` ve `add_shipping_method.php`'de düzeltildi; bulgudaki ERP
+ekranları ERP çalışmasına bırakıldı. `shipping.php:431`'deki her zaman doğru
+`isset($excluded_transit_dates)` zararsız olduğu için bırakıldı.
+
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
