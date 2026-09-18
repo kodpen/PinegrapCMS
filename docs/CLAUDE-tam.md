@@ -884,6 +884,15 @@ anında durduruyor.
 diye bir tablo yok. `parasut_contact_id` `contacts`'ta durur, `erp_accounts`'a
 kopyalanmaz.
 
+**Dışa aktarım** (`erp_export.php`, profiller `includes/erp/export.php`):
+profil = sütunlar + satır eşleyici + biçimleme (`erp_export_amount/rate/
+date/currency()`, tek nokta). Genel CSV (BOM, `;`, ISO tarih) varsayılan;
+Paraşüt profilleri depodaki `includes/phpexcel/templates/parasut_*.xlsx`
+şablonlarını zip olarak açıp yalnız 4. satırdan itibaren yazar (kütüphane
+yok). Ne çıktı `erp_export_log` (4.52: entity, doc_id, profile, run_token)
+tutar; `erp_parasut_log` API çağrı izidir, karıştırılmaz. İptal hiç, iade
+sayılıp atlanır, taslak isteğe bağlı. Para eşlemesi yalnız TRY→TRL.
+
 **Yetki üç sütun:** `manage_erp` (kapı), `manage_erp_cash`,
 `manage_erp_settings` — hepsi öneksiz `TINYINT`. Üçlü Yok/Okuma/Yazma deseni
 bu kod tabanında yok. Yeni bir yetki eklerken rol-3 kullanıcının panele

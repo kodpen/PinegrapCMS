@@ -41,6 +41,50 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — ERP dışa aktarım ve Paraşüt profilleri (2026-09-18)
+
+**Belirti.** ERP defteri kendi rakamlarının son durağı değil: mali müşavir,
+ön muhasebe programı ya da bir tablo hepsini kendi biçiminde ister. Modülde
+tek dışa aktarım fatura PDF'iydi. Eski `view_orders.php` "Paraşüt için dışa
+aktar" ise sipariş tabanlı, tek sabit KDV oranıyla, PHPExcel ile
+`includes/phpexcel/temps/` altına yazıyor; ERP faturalarını ve carileri hiç
+görmüyor. Kullanıcıda Paraşüt API anahtarı yok; `includes/fn/parasut.php`
+canlı denenemiyor.
+
+**Çözüm.** Genel bir ekran, `erp_export.php`, ve profil soyutlaması
+`includes/erp/export.php`. Profil = sütun listesi + satır eşleyici + para,
+oran, tarih ve para birimi kodunun nasıl yazıldığı; tek biçimleme noktası
+`erp_export_amount/rate/date/currency()`. Beş profil: genel CSV (cari,
+satır başına bir kayıtla fatura, tahsilat/ödeme; UTF-8 BOM, `;`, ISO tarih,
+nokta ondalık — içe aktarma ekranının geri okuduğu biçim, varsayılan
+seçim) ve Paraşüt'ün kendi içe aktarma şablonları (depodaki
+`includes/phpexcel/templates/parasut_*.xlsx`). Şablon zip olarak açılır,
+yalnız `xl/worksheets/sheet1.xml` içindeki 4. satırdan itibaren satırlar
+yazılır: yardım metni, başlıklar, sütun genişlikleri ve paylaşılan
+dizgiler olduğu gibi kalır — karşı taraf bunları denetler. Kütüphane yok;
+tutarlar sayısal hücre, tarihler `g.a.Y` metin. Şablon dosyası yoksa düz
+tek sayfalık kitap üretilir. Çok satırlı fatura Paraşüt'ün istediği gibi
+ilk satırda başlık, devam satırlarında yalnız kalem sütunlarıyla yazılır;
+birim fiyat net (bizde net saklanır, geri hesap yok). Para birimi eşlemesi
+yalnız `TRY → TRL`; ana para birimi başka ise dosya yine üretilir, uyarı
+gösterilir. Dosya `data/temp/` altında oturum jetonuyla bekler, indirilince
+silinir; ekran indirmeyi sonuç ve uyarılardan sonra başlatır.
+
+**Ayrı günlük (4.52).** `erp_export_log`: kayıt başına, çalıştırma başına
+bir satır (entity, doc_id, profile, run_token). "Yalnız henüz aktarılmamış"
+filtresi ve son çalıştırmalar tablosu buradan okur. `erp_parasut_log`'a
+yazılmadı: o tablo API çağrılarının izi, dosya aktarımı çağrı yapmaz;
+ikisini karıştırmak ilerideki API günlüğünün anlamını bozardı. İptal
+faturalar hiç aktarılmaz, iadeler sayılır ve atlanır (şablonda satır tipi
+yok), taslaklar yalnız istenirse (Paraşüt'te "Taslak").
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` ve komut satırı öz-testi
+(biçimleme noktası, beş profilin satırları, CSV BOM/`;`, şablonlu xlsx'in
+PHPExcel okuyucuyla geri okunması, düz xlsx yedeği) temiz. Sandbox sonucu
+PR açıklamasında.
+
 ## 2026.4.4 — Veritabanına yazılan değerler: kampanya kilidi, menü kopyası, ERP ödeme yöntemi, kuruş yuvarlama (2026-09-18)
 
 **Belirti.** `email_campaign_job.php`, `calendar_event_reserved` alıcıları
