@@ -41,6 +41,82 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Ürün kod bloğu, komisyon sayfalama, MySQL 5.7 uyumu, 2026.1 migration'ı (2026-09-18)
+
+Ürün sahibinin #73'teki kararları uygulanmıştır; dördü de yayınlanmış
+2026.4.3'te bulunan davranışları düzeltir.
+
+**Ürün kod bloğu (`product_builder.php`).** Kod alanı hem oluştururken hem
+düzenlerken `config.product_image_code_template`'ten doluyordu; bir ürünü
+düzenleyen operatör o ürünün `products.code` değerini değil site
+varsayılanını görüyordu. Varsayılan da yalnız gönderilen blok üç görsel
+döngü etiketini (`^^image_loop_start^^`, `^^image_url^^`,
+`^^image_loop_end^^`) birden içeriyorsa geri yazılıyordu; etiketsiz bir kod
+kaydedildiğinde bir sonraki ürün eski blokla açılıyordu. Karar: "son
+kaydetmedeki kod `common` olur ve bir sonraki ürün eklemede `code` alanı o
+kodla dolar; `common`, her ürün kaydetmede değişiklik varsa güncellenmeli."
+Düzenleme ekranı artık ürünün kendi kodunu gösterir (ürünün kodu boşsa site
+varsayılanına düşer); her kayıtta gönderilen blok varsayılandan farklıysa
+etiket şartı aranmadan yazılır. Üç etiket koruması kaldırıldı — kararın
+sözü koşulsuzdur ve koruma tam olarak güncellemeyi engelleyen şeydi. Yalnız
+`code` alanı hiç gönderilmemişse varsayılana dokunulmaz; boş gönderilen
+alan ise operatörün son bloğu sayılır ve varsayılanı boşaltır.
+
+**Komisyon listesi (`view_commissions.php`).** Sayfa bağlantıları
+hesaplanıyor ama basılmıyordu, sonuç sorgusunda `LIMIT` yoktu: her ekranda
+tüm komisyonlar geliyordu. Sorgu `LIMIT/OFFSET` aldı, bağlantılar tablonun
+altına basıldı, etkin sayfa öğesinin `class` değerindeki fazla tırnak
+kaldırıldı. Sayfa boyutu 100, tablonun istemci tarafı DataTables sayfa
+boyutuyla aynı.
+
+**Katalog widget'ları (`includes/fn/widgets_catalog.php`).** Özellik filtre
+paneli ve grup araması `WITH RECURSIVE` kullanıyordu; bu MySQL 8 ister,
+ürün MySQL 5.7'yi desteklemeye devam eder. İki sorgu da grup kümesini
+listeleme kapsamı ve fiyat aralıklarının zaten yaptığı gibi
+`_pg_catalog_group_subtree_ids()` ile PHP'de kuruyor ve `IN (...)` listesi
+geçiyor. Grup aramasında eski CTE eşleşen üründen yukarı tırmanıyordu;
+yeni kod aday alt grubun (etkin) alt ağacını aşağı yürüyüp eşleşen grubu
+arar. Fark yalnız, aday ile eşleşen ürün arasında **devre dışı** bir ara
+grup varsa ortaya çıkar: eski sorgu adayı yine gösterirdi, yenisi
+göstermez — listeleme kapsamı da o alt ağacı zaten dışlıyor. Ürün kodunda
+CTE kalmadı.
+
+**`get_generator_meta_tag()` (`includes/fn/content.php`).** İki dalı da `''`
+döndürüyordu; fonksiyon ve yedi çağrısı kaldırıldı, `<head>` çıktısında
+yalnız boş satırlar gitti.
+
+**`2026.1` migration'ı.** `custom_apps.permissions` için `JSON NOT NULL`
+MySQL 5.6 / MariaDB < 10.2'de başarısız olup yükseltme zincirini
+durduruyordu. `LONGTEXT NOT NULL` yapıldı: MariaDB JSON'u zaten LONGTEXT
+olarak saklar, sütunu JSON fonksiyonuyla okuyan yer yok, 2026.4.4 tabloyu
+düşürüyor. Yayınlanmış bir migration'a dokunma istisnası ürün sahibinin
+kararıdır (CLAUDE.md kural 12): adımı zaten geçmiş kurulumun bu satırla işi
+yoktur.
+
+### Doğrulama
+
+Sandbox'ta (MariaDB 10.11) çalıştırılarak: ürün A kod X ile oluşturuldu →
+`products.code` ve `config.product_image_code_template` X; yeni ürün formu X
+ile dolu; A'nın kodu etiketsiz Y yapıldı → ikisi de Y; kendi kodu olan ürün
+B düzenlemede kendi kodunu, kodu boş ürün site varsayılanını gösterdi; C
+oluşturulurken alan Y ile doluydu. 250 komisyon satırıyla `screen=1/2/3`
+100/100/50 satır ve 3 sayfa bağlantısı (ana kopyada 250 satır, bağlantı
+yok); satırlar silindi. Katalog widget'ı ana kopya ve düzeltilmiş ağaçta
+aynı DB'ye karşı altı senaryoda (grup 37/31/0, arama Mocha/Sandalye/Kart/
+Hediye) bayt bayt aynı çıktı; MariaDB genel günlüğü ana kopyada 10 CTE,
+düzeltilmiş ağaçta CTE'siz `IN (28)` sorgusunu gösterdi. Ziyaretçi ve panel
+sayfaları hatasız; `grep get_generator_meta_tag` boş. Düzeltilmiş ağaçtan
+ikinci bir DB'ye sıfır kurulum: 194 tablo, `config.version = 2026.4.4`,
+`custom_apps` 2026.4.4'te düşürülmüş; `ALTER TABLE … ADD permissions
+LONGTEXT NOT NULL` MariaDB'de `longtext NOT NULL` üretti.
+`php tools/lint.php` ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** MySQL 5.6 / 5.7 gerçek sunucuda koşulmadı (sandbox
+MariaDB). Devre dışı ara grup içeren katalog senaryosu sandbox verisinde
+yok, o fark yalnız kod okumasıyla saptandı. Boş gönderilen kod bloğunun
+site varsayılanını boşaltması kararın sözünden çıkarılmıştır; ürün sahibi
+farklı isterse tek satırlık değişikliktir.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
