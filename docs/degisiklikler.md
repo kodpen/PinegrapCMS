@@ -95,6 +95,7 @@ engeli). Depo taramasının geri kalanı (2. tur oturumunun dosyaları,
 `turkish_scan.md` içinde.
 
 ---
+
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
 **Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip
