@@ -116,6 +116,7 @@ MariaDB). Devre dışı ara grup içeren katalog senaryosu sandbox verisinde
 yok, o fark yalnız kod okumasıyla saptandı. Boş gönderilen kod bloğunun
 site varsayılanını boşaltması kararın sözünden çıkarılmıştır; ürün sahibi
 farklı isterse tek satırlık değişikliktir.
+
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
 **Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip
