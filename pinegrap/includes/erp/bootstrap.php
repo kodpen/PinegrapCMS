@@ -38,6 +38,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/numbering.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/settlement.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/aging.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/notify.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/document.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/export.php');

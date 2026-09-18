@@ -113,6 +113,12 @@ function erp_account_save($data)
         'notes' => trim((string) ($data['notes'] ?? '')),
     );
 
+    // Days overdue before this account's invoices are announced; 0 leaves it
+    // to the store's threshold. Written only once the upgrade has added it.
+    if (function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'overdue_notify_days')) {
+        $columns['overdue_notify_days'] = min(3650, max(0, (int) ($data['overdue_notify_days'] ?? 0)));
+    }
+
     $pairs = array();
     foreach ($columns as $column => $value) {
         $pairs[] = $column . " = '" . escape($value) . "'";

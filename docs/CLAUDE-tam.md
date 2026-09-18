@@ -1017,6 +1017,20 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
   `erp_fx_post_difference()` çevrilmiş orijinali saymaz. Tahsis kalmayan
   faturanın `payment_date`'i sıfırlanır (internet satışı hariç).
 
+- **Vade ve yaşlandırma tek kaynaktan:** `includes/erp/aging.php`.
+  `erp_aging_invoices($yön, $tarih, $filtreler)` o tarihte açık faturaları
+  verir — tarihten sonraki tahsis/iade düşülmez, sonra kesilen belge yok
+  (nokta-zaman); `open_base` kayıt kurundaki `*_base` sütunlarından
+  (`grand_total_base − Σ amount_base − Σ iade.grand_total_base`, <0 → 0),
+  yeni yuvarlama yok. Kovalar `erp_aging_bucket()` (≤0 / 1-30 / 31-60 /
+  61-90 / 90+); `due_date = 0000-00-00` fatura tarihi sayılır
+  (`erp_aging_due_sql()`). Rapor `erp_aging.php` (`?csv=1` aynı tablo, log
+  yok), liste rozetleri ve `?filter=overdue|due_week|open` + `direction` /
+  `account_id` / `bucket` / `as_of` süzgeçleri, pano kartları hep bu
+  fonksiyonları okur; yeni bir vade görünümü de buradan beslenir, kendi
+  sorgusunu yazmaz. Vade günü ayarı yoktur (ayrı PR); rapor yalnız
+  `due_date` okur.
+
 ### İndirimli siparişin KDV'si
 
 `submit_order.php:851` indirimi **toplamı hesaplamadan önce** KDV'den düşer
@@ -1618,6 +1632,37 @@ Aktif cart query'si `saved_for_later = 0` filter'ı uygular — saved item'lar c
 - `edit_comment.php?id={id}`
 
 ---
+
+### Gecikmiş alacak hatırlatmaları (2026-09-18, migration 4.55)
+
+`includes/erp/notify.php`, `erp_overdue_check($force, $from_job)`. Dönem
+başına tek özet, yalnız eşiği **ilk kez** geçen belgeler; duyurulan belge
+`erp_invoices.overdue_notified_at` ile damgalanır ve bir daha listelenmez
+(yalnız "hâlâ açık" toplamında sayılır). Eşik `ERP_OVERDUE_NOTIFY_DAYS`
+(0 = kapalı), cari `erp_accounts.overdue_notify_days` > 0 ise onunki.
+
+- **Teslimat kanalı yazılmaz, mevcut olan çağrılır.** Panel
+  `create_notification(action 'erp_overdue')`; cihaz aynı satır için
+  `pg_push_enqueue_notification()` (core.php'deki sipariş çağrısının aynısı);
+  e-posta `email(type 'system', format 'html')`. Yeni bir bildirim türü
+  = `pg_notification_visible()`'a bir dal + `pg_notification_display()`'e bir
+  dal; başka yere metin yazılmaz (service worker ve zil aynı fonksiyondan
+  okur).
+- **Zamanlama ikili:** kayıt defterinde `erp_overdue_job` (86400) + panodan
+  saatte bir denemeyle `erp_overdue_check()` (WAF bot listesi deseni,
+  `config.erp_overdue_notify_checked`). Dönem "an" üzerinden hesaplanır
+  (`erp_overdue_notify_slot`): geç gelen kontrol dönemi atlamaz, erken gelen
+  iki kez göndermez. İş betiği saati beklemez.
+- Zilde aynı anda tek özet: okunmamış önceki `erp_overdue` satırı silinir.
+  Panel anahtarı kapalı, cihaz açıkken satır yine yazılır ve herkes için
+  okunmuş işaretlenir (banner satırdan beslenir).
+- Alıcı listesi boşsa `ECOMMERCE_EMAIL_ADDRESS`, o da boşsa `EMAIL_ADDRESS`;
+  iki yedek alternatiftir, ikisine birden gitmez.
+- **`config` tablosuna yeni VARCHAR eklenmez, TEXT eklenir.** Satırın VARCHAR
+  sütunları utf8mb4'te ~63 KB; 65535 baytlık InnoDB satır sınırına birkaç yüz
+  bayt kaldı. `erp_overdue_notify_recipients VARCHAR(500)` yükseltmede 1118
+  (Row size too large) verdi, `TEXT DEFAULT NULL` yapıldı (`waf_exclusions`
+  deseni). Kısa sabit alanlar (TINYINT/INT/ENUM) sorun değil.
 
 ## Dosya Yapısı (Önemli Dosyalar)
 

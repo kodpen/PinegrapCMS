@@ -92,6 +92,9 @@ function erp_import_fields()
             'durum', 'durumu', 'status', 'active')),
         'notes' => array('label' => lang('Notes'), 'length' => 65535, 'synonyms' => array(
             'not', 'notlar', 'açıklama', 'aciklama', 'notes', 'note', 'description', 'comments')),
+        'overdue_notify_days' => array('label' => lang('Reminder threshold (days)'), 'length' => 4, 'synonyms' => array(
+            'hatırlatma eşiği', 'hatirlatma esigi', 'hatırlatma günü', 'hatirlatma gunu', 'gecikme eşiği', 'gecikme esigi',
+            'reminder days', 'reminder threshold', 'overdue days', 'overdue reminder')),
     );
 
     foreach ($fields as $field => $definition) {
@@ -447,7 +450,7 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
     $account = array(
         'title' => '', 'kind' => $defaults['kind'], 'is_person' => null, 'tax_number' => '', 'tax_office' => '',
         'email' => '', 'phone' => '', 'address' => '', 'district' => '', 'city' => '', 'postcode' => '',
-        'country_code' => '', 'currency' => '', 'status' => 'active', 'notes' => '',
+        'country_code' => '', 'currency' => '', 'status' => 'active', 'notes' => '', 'overdue_notify_days' => '',
     );
     $mapped = array();
     $unparsed = array();
@@ -563,6 +566,12 @@ function erp_import_validate_row($account)
         if (!erp_fx_enabled() || !erp_fx_currency_allowed($account['currency'])) {
             $errors[] = lang('Currency not enabled.');
         }
+    }
+
+    // A threshold is whole days; ten years is more than any reminder needs.
+    if (((string) ($account['overdue_notify_days'] ?? '') !== '')
+        && ((preg_match('/^[0-9]{1,4}$/', (string) $account['overdue_notify_days']) !== 1) || ((int) $account['overdue_notify_days'] > 3650))) {
+        $errors[] = lang('Reminder threshold must be a whole number of days, 0 to 3650.');
     }
 
     foreach ($account['unparsed'] as $field => $value) {
@@ -711,6 +720,7 @@ function erp_import_merge($existing, $account)
         'contact_id' => (int) $existing['contact_id'],
         'status' => $existing['status'],
         'notes' => (string) $existing['notes'],
+        'overdue_notify_days' => (int) ($existing['overdue_notify_days'] ?? 0),
     );
 
     foreach ($account['mapped'] as $field => $unused) {
@@ -943,7 +953,7 @@ function erp_import_template_csv()
     $example = array(
         lang('Example Ltd.'), lang('Customer'), lang('Company'), '1234567890', lang('Central'), 'info@example.com',
         '+90 212 000 00 00', lang('Example Street 1'), '', '', '', erp_default_country_code(), erp_base_currency(),
-        lang('Active'), '',
+        lang('Active'), '', '',
     );
 
     $handle = fopen('php://temp', 'r+');

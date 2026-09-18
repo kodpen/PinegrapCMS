@@ -188,6 +188,30 @@ function pg_parasut_credentials_for_save()
             erp_fx_auto_diff = '" . ((post_value('erp_fx_auto_diff') == 1) ? 1 : 0) . "',";
     }
 
+    // Overdue receivable reminders (2026.4.4, 4.55). Whole days, ten years at
+    // most; the recipient list keeps only well-formed addresses.
+    $sql_erp_overdue = "";
+
+    if (waf_table_has_column('config', 'erp_overdue_notify_days')) {
+        $erp_overdue_recipients = array();
+
+        foreach (explode(',', (string) post_value('erp_overdue_notify_recipients')) as $erp_overdue_address) {
+            $erp_overdue_address = trim($erp_overdue_address);
+
+            if (($erp_overdue_address !== '') && filter_var($erp_overdue_address, FILTER_VALIDATE_EMAIL) && !in_array($erp_overdue_address, $erp_overdue_recipients, true)) {
+                $erp_overdue_recipients[] = $erp_overdue_address;
+            }
+        }
+
+        $sql_erp_overdue = "erp_overdue_notify_days = '" . min(3650, max(0, (int) post_value('erp_overdue_notify_days'))) . "',
+            erp_overdue_notify_panel = '" . ((post_value('erp_overdue_notify_panel') == 1) ? 1 : 0) . "',
+            erp_overdue_notify_email = '" . ((post_value('erp_overdue_notify_email') == 1) ? 1 : 0) . "',
+            erp_overdue_notify_push = '" . ((post_value('erp_overdue_notify_push') == 1) ? 1 : 0) . "',
+            erp_overdue_notify_recipients = '" . escape(substr(implode(', ', $erp_overdue_recipients), 0, 500)) . "',
+            erp_overdue_notify_frequency = '" . ((post_value('erp_overdue_notify_frequency') === 'weekly') ? 'weekly' : 'daily') . "',
+            erp_overdue_notify_hour = '" . min(23, max(0, (int) post_value('erp_overdue_notify_hour'))) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -249,6 +273,7 @@ function pg_parasut_credentials_for_save()
             erp_seller_vkn = '" . escape(substr(preg_replace('/\D/', '', (string) post_value('erp_seller_vkn')), 0, 11)) . "',
             erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             " . $sql_erp_fx . "
+            " . $sql_erp_overdue . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',

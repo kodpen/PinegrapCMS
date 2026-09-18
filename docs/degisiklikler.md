@@ -41,6 +41,146 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Gecikmiş alacak bildirimleri: panel, e-posta ve cihaz bildirimi (2026-09-18)
+
+**Belirti.** Yaşlandırma raporu kimin geciktiğini gösteriyor, ama kimseye
+haber vermiyordu: gecikmeyi görmek için rapora bakmak gerekiyordu. Ürün
+sahibinin isteği, ayarlardan belirlenen X günü geçen alacaklar için panel
+bildirimi ve e-posta idi; PWA/cihaz bildirimi de sistemde hazır olduğu için
+üçüncü kanal olarak eklendi.
+
+**Çözüm.** `includes/erp/notify.php` — `erp_overdue_check($force, $from_job)`.
+Dönem başına **tek özet**: eşiği (`config.erp_overdue_notify_days`, 0 = kapalı;
+cari `erp_accounts.overdue_notify_days` > 0 ise onun eşiği) geçen açık satış
+faturalarından **ilk kez duyurulanlar** listelenir, daha önce duyurulanlar
+yalnız "önceki hatırlatmalardan hâlâ açık: N belge, toplam" satırında sayılır.
+Yeni belge yoksa hiçbir şey gönderilmez — her sabah aynı listeyi tekrarlayan
+bir hatırlatma bir kez okunur, sonra görmezden gelinir; duran toplam zaten
+pano kartında. Duyurulan belge `erp_invoices.overdue_notified_at` ile
+damgalanır (tablo değil sütun: soru belge başına ve ikili, günlük sorguya
+join eklemez, sonra fatura ekranında "hatırlatıldı" olarak gösterilebilir).
+
+**Teslimat için yeni hiçbir şey yazılmadı.** Panel: `create_notification()`
+(`action = 'erp_overdue'`, `title` = adet, `order_total` = biçimli toplam —
+sipariş satırının numara/toplam taşıdığı gibi); görünürlük merdivenine
+(`includes/notifications.php`) `erp_overdue → ERP_ENABLED && manage_erp` dalı
+ve `pg_notification_display()`'e cümle + `erp_invoices.php?filter=overdue`
+bağlantısı eklendi. Zilde aynı anda tek özet durur: okunmamış öncekisi
+silinir, okunmuşlar tarihçe olarak kalır. Cihaz: aynı satır
+`pg_push_enqueue_notification()` ile kuyruğa yazılır (core.php'nin sipariş
+için yaptığı çağrının aynısı); merdiven kimlere gideceğini seçer,
+`push_job`/`job.php` dağıtır, service worker metni `push_pending` ile aynı
+`pg_notification_display()`'den alır. E-posta: `email()` (`type = 'system'`,
+HTML; `prepare_page_for_email` + metin alternatifi helper'dan gelir), gövde
+`erp_overdue_notify_digest_html()` — satır içi stilli tek tablo (cari, belge,
+vade, gün, açık tutar), bağlantı. Alıcılar `erp_overdue_notify_recipients`;
+boşsa `ECOMMERCE_EMAIL_ADDRESS`, o da boşsa `EMAIL_ADDRESS`.
+
+**Zamanlama.** Kayıt defterine (`pg_cron_jobs()`) `erp_overdue_job`
+(86400 sn, dağıtıcıda) ve `erp_overdue_job.php` (kapı
+`update_exchange_rates.php` ile aynı: arka plan koşusu ya da
+`validate_erp_access`). Ayrıca `erp_dashboard.php` her yüklemede
+`erp_overdue_check()` çağırır — WAF bot listelerinin yaptığı gibi
+`config.erp_overdue_notify_checked` ile saatte bir deneme; cron'u olmayan
+site özeti hatırlatma saatinden sonraki ilk panel ziyaretinde alır.
+Dönem hesabı **an** üzerinden: günlük = bugünün (geçmemişse dünün) saati,
+haftalık = bu (ya da önceki) pazartesinin saati; `sent_at` o andan eskiyse
+özet borçludur. Böylece geç gelen kontrol (salı günü ilk ziyaret, gece koşan
+iş) haftayı atlamaz. İş betiği saati beklemez (`$from_job`): dağıtıcının
+denk geldiği tik'te, gece yarısından itibaren dönem sayılır.
+
+**Şema (4.55).** `config`: `erp_overdue_notify_days` (0), `_panel` (1),
+`_email` (1), `_push` (1), `_recipients` TEXT, `_frequency`
+ENUM(daily,weekly), `_hour` (9), `_checked`, `_sent_at`;
+`erp_accounts.overdue_notify_days`; `erp_invoices.overdue_notified_at`.
+Anahtarlar açık gelir ki gün sayısını girmek tek adım olsun. **`_recipients`
+TEXT'tir, VARCHAR değil:** `config` satırının VARCHAR sütunları utf8mb4'te
+~63 KB tutuyor ve 65535 baytlık InnoDB satır sınırına birkaç yüz bayt kaldı;
+VARCHAR(500) ile yükseltme 1118 (Row size too large) verdi (sandbox'ta
+görüldü). TEXT satır dışında saklanır. 4.54 başka bir
+PR'ın (makbuz `payment_method` ENUM); numara boşluğu o birleşene kadar
+beklenen durumdur.
+
+**Ayarlar.** pgset-erp kartında yeni grup: eşik, sıklık, saat, üç anahtar
+(cihaz anahtarı VAPID anahtarı yokken "önce ana ekrana ekle" ipucunu
+gösterir), alıcılar (yalnız geçerli adresler saklanır). Cari formunda
+"Hatırlatma eşiği (gün)" (vade günü alanıyla aynı doğrulama: 0–3650 tam
+sayı), içe/dışa aktarımda aynı adlı sütun.
+
+**Ertelenenler (v2).** İkinci uyarı (X+30), fatura başına erteleme,
+ERP menüsünde rozet, müşteriye hatırlatma e-postası (`erp_accounts.email`
+hazır; dışa dönük posta ayrı PR ve cari başına vazgeçme ister).
+
+---
+
+## 2026.4.4 — Vade takibi, yaşlandırma raporu ve ERP gösterge paneli (2026-09-18)
+
+**Belirti.** `erp_invoices.due_date` her yazıcıda dolduruluyordu ama hiçbir
+ekran okumuyordu: fatura listesi vadeyi göstermiyor ve süzmüyor, belge
+ekranı vadeyi basmıyor, "gecikmiş" kavramı yoktu. Gösterge paneli
+(`erp_dashboard.php`) tek kartlı boş kabuktu. Vadeli satan işletme haftalık
+tahsilat takibini modül dışında yapıyordu. (Eksik envanteri, aday 3.)
+
+**Çözüm.** Tek kaynak `includes/erp/aging.php` (kapı `PG_ERP_ENTRY`,
+`bootstrap.php` yükler): `erp_aging_days()` / `erp_aging_bucket()` saf
+fonksiyonlardır (≤0 vadesi gelmemiş, 1-30, 31-60, 61-90, 90+ gün);
+`erp_aging_invoices($yön, $tarih, $filtreler)` o tarihte açık olan
+faturaları getirir; `erp_aging_by_account()` cari matrisini,
+`erp_aging_summary()` pano rakamlarını, `erp_aging_cash_total()` kasa
+toplamını, `erp_aging_csv()` dosya satırlarını üretir. Üç ekran aynı
+fonksiyonları okur, bu yüzden pano kartı, rapor hücresi ve liste rozeti
+aynı belgeyi sayar.
+
+- **Yeni ekran `erp_aging.php`** (kapı `validate_erp_access`): alacak /
+  borç geçişi, "tarih itibarıyla" alanı, cari × yaş kovası tablosu
+  (`table.chart`, `tfoot` genel toplam), her hücre `erp_invoices.php`'ye
+  süzülü bağlantı, `?csv=1` ile aynı tablo CSV (`erp_export_write_csv()`
+  `php://output`'a yazar; rapor bir kayıt devri olmadığı için
+  `erp_export_log`'a satır düşmez). Menü slotu 22'ye "Yaşlandırma raporu".
+- **Fatura listesi** `.pg-toolbar` reçetesine geçti; "Vade Tarihi" sütunu
+  (gecikmiş → `text-bg-danger` rozet gün sayısıyla, 7 gün içinde →
+  `text-bg-warning`), araç çubuğunda Tümü / Gecikmiş / Bu hafta geçişleri
+  (`?filter=`). Rapor `direction` / `account_id` / `bucket` / `as_of` ile
+  süzer; hepsi beyaz listeyle doğrulanır, `account_id` `(int)`. Belge ekranı
+  vadeyi basar.
+- **Pano:** Alacaklar, Borçlar, Vadesi geçen alacaklar (adet + tutar), 7 gün
+  içinde vadesi gelen; Kasa ve Banka (yalnız ana para birimindeki kasalar
+  toplanır, `erp_cash.php` kuralı), Alacakların yaşlandırması (Bootstrap
+  `progress-stacked` + tablo; Chart.js eklenmedi), En çok geciken 5 cari.
+
+**Kararlar.**
+- **Şema değişikliği yok.** `due_date = '0000-00-00'` fatura tarihinde vadeli
+  sayılır (`erp_aging_due_sql()`, tek SQL ifadesi). Vade günü ayarı (config
+  ya da cari başına) ayrı bir PR'dır; rapor yalnız `due_date` okur, o PR
+  buraya dokunmaz.
+- **Tarih itibarıyla = o günkü durum.** Tarihten sonraki tahsis
+  (`erp_settlements.doc_date`) ve iade (`issue_date`) düşülmez, tarihten
+  sonra kesilen belge listelenmez; `paid` görünen fatura o gün açıksa
+  açık sayılır. Bugün için sonuç `erp_invoice_open_amount()` ile satır satır
+  aynıdır (kendi testinde toplamları eşitlenir). Tarih bugün ya da ileriyse
+  `status IN ('issued','partially_paid')` ile tarama daraltılır.
+- **Döviz kayıt kurundan.** Ana para birimi rakamı `grand_total_base − Σ
+  tahsis.amount_base − Σ iade.grand_total_base`: bakiyeyi oluşturan aynı
+  tamsayılar, yeni çarpım/yuvarlama yok; cari bakiyesiyle mutabık kalır.
+  Tahsilat yüksek kurla geldiğinde negatife düşen rakam 0'a kırpılır (belge
+  para biriminde açık sürer; fark kapanışta `fx_diff` ile kapanır). Tablonun
+  altında not basılır.
+- Yön filtresi boş bırakılabilir (iki yön birden), liste ekranının süzgeci
+  bunu kullanır. Pano paylarında `round()` yalnız yüzde içindir, para değil.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Sandbox'ta (TRY ana,
+FX açık) gerçek ERP fonksiyonlarıyla 50 iddialı kendi testi: kova sınırları
+(0/1/30/31/60/61/90/91), sıfır vade → fatura tarihi, taslak hiç açık değil,
+kısmi tahsilat / kısmi iade / tam ödeme sonrası açık rakamlar, cari matris
+toplamı = satır toplamı = genel toplam, `Σ open == Σ erp_invoice_open_amount()`,
+süzgeçler (gecikmiş, 7 gün, kova, yön boş), tarih itibarıyla (−4 gün:
+tahsilat ve iade düşülmedi, sonra kesilenler yok), USD 250 @41.25 − 100 @42
+→ `open_base 6112.50`, kırpma örneği 0, cari `balance` kayıt toplamlarıyla
+eşit, kasa toplamı yalnız TRY, CSV 8 sütun + toplam. Ekran akışı (rapor,
+liste rozetleri + Gecikmiş süzgeci, pano) Playwright ile PR açıklamasında.
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters

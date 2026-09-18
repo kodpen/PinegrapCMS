@@ -128,6 +128,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_account_snapshot();   // 4.51
 
 	upgrade_2026_4_4_erp_export_log();         // 4.52
+
+	upgrade_2026_4_4_erp_overdue_notify();     // 4.55
 }
 
 
@@ -2787,5 +2789,42 @@ function upgrade_2026_4_4_erp_export_log() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Accounts, invoices and receipts can be exported as CSV or as a spreadsheet for an accounting package, and the export remembers what has already gone out.');
+
+}
+
+
+// ERP: overdue receivable reminders (2026.4.4, 4.55).
+//
+// The aging report shows who is late; nobody is told. These columns let the
+// store set a threshold in days and be reminded - in the panel bell, by
+// e-mail, on a subscribed device - of the sales invoices that have newly
+// passed it. The threshold on the account overrides the store's for that
+// customer (0 = the store's). overdue_notified_at on the invoice is the
+// once-only rule: a document is announced in one digest and afterwards only
+// counted in the "still open" line.
+//
+// Zero days means off, which is what every installation says until somebody
+// sets a threshold; the channel switches default on so that setting the days
+// is the only step.
+function upgrade_2026_4_4_erp_overdue_notify() {
+
+	install_add_column('config', 'erp_overdue_notify_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'erp_overdue_notify_panel', "TINYINT(1) NOT NULL DEFAULT 1");
+	install_add_column('config', 'erp_overdue_notify_email', "TINYINT(1) NOT NULL DEFAULT 1");
+	install_add_column('config', 'erp_overdue_notify_push', "TINYINT(1) NOT NULL DEFAULT 1");
+	// TEXT, not VARCHAR: the config row is a few hundred bytes short of the
+	// 65535-byte InnoDB row limit (its VARCHAR columns alone are ~63 KB in
+	// utf8mb4), and one more VARCHAR(500) tips it over with error 1118. A TEXT
+	// column is stored off the row and costs it nothing.
+	install_add_column('config', 'erp_overdue_notify_recipients', "TEXT DEFAULT NULL");
+	install_add_column('config', 'erp_overdue_notify_frequency', "ENUM('daily','weekly') NOT NULL DEFAULT 'daily'");
+	install_add_column('config', 'erp_overdue_notify_hour', "TINYINT UNSIGNED NOT NULL DEFAULT 9");
+	install_add_column('config', 'erp_overdue_notify_checked', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'erp_overdue_notify_sent_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('erp_accounts', 'overdue_notify_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('erp_invoices', 'overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('The ERP can remind you of receivables that pass a number of days overdue: in the panel bell, by e-mail and on a subscribed device, once per document, with a threshold of its own on any account.');
 
 }
