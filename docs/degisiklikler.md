@@ -61,6 +61,48 @@ Yayın öncesi bu kopya da değiştirilip referans yeniden üretilmeli;
 `docs/CLAUDE-tam.md`'deki bütünlük bölümüne kontrol maddesi eklendi. Kod,
 migration ve `tr.json` değişmedi.
 
+## 2026.4.4 — Sistem Durumu: CA sertifika paketi yaşı kontrolü (2026-09-18)
+
+`CURL_CA_BUNDLE` ile kendi `cacert.pem` dosyasını gösteren kurulumlarda o dosya
+paket yöneticisinin değil operatörün sorumluluğundadır ve sessizce eskir:
+Mozilla kök listesi yılda birkaç kez yenilenir, iki yıl geride kalan bir paket
+güncel sertifikaların zincirlendiği kökleri tanımaz ve dışa giden TLS
+doğrulaması (güncelleme indirme, ödeme ve API çağrıları) görünür bir sebep
+olmadan başarısız olmaya başlar. Depodaki `data/cacert.pem` Ocak 2023 tarihli.
+
+### Kontrol
+
+`includes/fn/system_status.php` `get_system_status_checks()` içine, SSL
+kontrolünün ardından ve aynı `security` grubunda "CA Certificate Bundle"
+kontrolü eklendi. Yalnız `CURL_CA_BUNDLE` tanımlı, boş değil ve dosya
+okunabilirken koşar; sabit boşsa sistem deposu kullanılıyordur ve hiç satır
+eklenmez (gri "Uygulanmaz" da yok — ölçülecek bir şey yok). Dosyanın ilk 10
+satırında curl `mk-ca-bundle` başlığı (`## Certificate data from Mozilla as
+of: <tarih>`) aranır; tarih `strtotime()`, yaş `date_diff()` ile tam ay olarak
+hesaplanır. Başlık yoksa, ayrıştırılamıyorsa ya da tarih gelecekteyse kontrol
+sessizce atlanır: yaş hakkında tahmin, satır olmamasından kötüdür.
+
+Eşikler: 12 aydan eski → sarı, 24 aydan eski → kırmızı, aksi hâlde yeşil.
+Ağırlık `ca_bundle` = 8 (Moderate sınıfının altı, IndexNow ile aynı): bayat
+bir güven listesi siteyi açmaz ama dışa giden doğrulamayı sessizce kırar;
+kırmızı tam ağırlık, sarı yarısı. Glif `bi-patch-check-fill` /
+`bi-patch-exclamation-fill` — asma kilit SSL'in. Kısa etiket "CA bundle",
+karo değeri "N ay"; mesaj ayrıştırılan tarihi (`DATE_FORMAT`'a göre) ve ay
+cinsinden yaşı taşır. Yeni metinler `tr.json`'da SSL anahtarlarının yanında.
+Önbellek şekil sürümü değişmedi; sabit değiştirildikten sonra
+`data/temp/system_status_cache.json` silinmeden (10 dk) yeni satır görünmez.
+
+### Doğrulama
+
+Sandbox'ta `CURL_CA_BUNDLE` sırayla `data/cacert.pem` (Ocak 2023 → kırmızı,
+"44 ay"), 6 ay önce tarihli başlık (yeşil), 15 ay (sarı), başlıksız dosya
+(satır yok) ve boş sabit (satır yok) ile denendi; pano widget'ı `api.php`
+`get_widget_data` üzerinden okundu. `tools/lint.php` ve `tools/check_lang.php`
+temiz.
+
+**Açık kalan:** 12/24 ay eşikleri uygun mu, yoksa başka bir aralık mı
+isteniyor?
+
 ## 2026.4.4 — ORDER BY yönü: 15 liste ekranında beyaz liste (2026-09-17)
 
 Yönetim liste ekranlarının çoğu sıralama yönünü `?order=asc|desc` ile alır ve
