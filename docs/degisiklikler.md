@@ -90,6 +90,7 @@ pakete dokunulmadı.
 yeniden üretilecek; üretilmezse iki dosya "missing" görünür. Yükselen sitede
 dosyalar Temizle aracı çalıştırılana kadar diskte durur (bu, listedeki diğer
 kalıntılarla aynı davranış).
+
 ## 2026.4.4 — DKIM özel anahtarı herkese açık dosya olarak sunuluyordu (2026-09-18)
 
 **Belirti.** `smtp_settings.php` "anahtar üret" eylemi DKIM çiftini üretip
