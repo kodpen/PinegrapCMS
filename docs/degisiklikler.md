@@ -72,6 +72,23 @@ farklı kalıp kullandığından dokunulmadı.
 örnek kurulmadı: favicon isteklerinin 200 döndüğü ve `<body class>` çıktısı
 tarayıcıda görülmedi.
 
+## 2026.4.4 — POST /files: uzantısız ad tamamlanıyor (2026-09-18)
+
+Dış istemciler ve AI ajanları dosya adını sık sık uzantısız gönderiyor
+(`piksums` gibi) ve tek aldıkları yanıt "yalnız şu türler kabul edilir"
+hatasıydı; oysa tür zaten ellerindeki adresten ya da içerikten belli. Uzantı
+artık önce `source_url` yolundan, o da yoksa içeriğin gerçek türünden (finfo:
+jpg, png, gif, webp, pdf) tamamlanıyor. Tanınmayan içerik aynı 422'yi vermeye
+devam ediyor; eklenen uzantı da adın engelli-ad ve içerik-uyum denetimlerinden
+geçiyor, yani güvenlik kapısı gevşemedi. Şema açıklaması (`files.create` →
+`name`) buna göre güncellendi.
+
+### Doğrulama
+
+Yerelde base64 PNG ve PDF → 201 (`piksums.png`, `piksums-doc.pdf`), rastgele
+bayt → 422; `source_url` dalı sandbox'ta https olmadığından denenmedi. Dev
+sunucuda denenmedi.
+
 ## 2026.4.4 — Herkese açık API konsolu: `integration.php/docs` (2026-09-18)
 
 Panelde `api_docs.php` vardı ama dış geliştiricinin panel hesabı yok ve
