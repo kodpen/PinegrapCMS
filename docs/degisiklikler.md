@@ -462,6 +462,40 @@ yeni bir çağıran eklenirse aynı denetim orada da gerekir. Bağış tipi ür�
 miktar dalı (`selection_type == 'donation'`) değiştirilmedi. Mevcut
 kurulumlardaki `data/layouts/` kopyaları yukarıdaki notla elle düzeltilmeli.
 
+## 2026.4.4 — ERP: satır KDV oranı, kısmi iade sonrası fatura durumu (2026-09-18)
+
+**Belirti (issue #80).** (1) `erp_order_lines()` satır KDV oranını
+`round(tax_total × 100 / line_total, 3)` ile yuvarlanmış kuruş tutarlarından
+geri türetiyordu: 7015/38970 → %18.001, 361/2008 → %17.978; ürün oranı %18.
+Belge ve PDF'te "%18.001" yazıyordu. (2) Kısmi iade bu türetilmiş oranla
+`erp_apply_rate(1004, 17.978)` = 180 kuruş KDV alıyordu (doğrusu 181), iade
+belgesi 1184 yerine 1185. (3) `erp_invoice_refresh_paid()` tahsisi tam
+`grand_total`'a karşı ölçüyor, `erp_invoice_open_amount()` ise iadeyi
+düşüyordu: kısmi iadeden sonra açık tutarın tamamı tahsil edilince ekran
+"Kalan 0.00" diyor, ek tahsilat "zaten kapalı" ile reddediliyor ama fatura
+`partially_paid`, `payment_date` boş, sipariş `paid_at = 0` kalıyordu.
+
+**Düzeltme.** `erp_line_tax_rate()` (`order_bridge.php`): önce
+`products.tax_rate` denenir (sorguya `product_tax_rate` eklendi), saklanan
+vergiyi `erp_apply_rate()` ile aynen üretiyorsa o alınır; yoksa oran 0→3
+ondalıkta en sade eşleşene oturtulur; hiçbiri tutmazsa eski oran. Tutarlar
+değişmez. `erp_returnable_lines()` satıra `returned_tax` ekler; iade satırının
+KDV'si kalanla sınırlanır, satırı boşaltan parça kalanı aynen alır (iki yarı
+181 + 180 = 361). `erp_invoice_refresh_paid()` `paid >= grand_total −
+erp_invoice_returned_total()` ile karşılaştırır; `paid`e geçince boş
+`payment_date`'i kapatan tahsilatın tarihiyle doldurur ve `Offline Payment`
+sipariş için `pg_order_mark_paid()` çağırır. İade açılınca ve iade iptal
+edilince ana fatura yeniden hesaplanır. Hediye kartı (#72) bu PR'ın dışında.
+
+### Doğrulama
+
+Sandbox'ta CLI betiği (issue'daki rakamlarla): fatura satırları %18.000
+(önce 18.001 / 17.978); 1 adet iade KDV 181 / toplam 1185 (önce 180 / 1184);
+açık tutarın tamamı tahsil edilince fatura `paid`, `payment_date` dolu,
+`orders.paid_at` set (önce `partially_paid`, boş, 0); ikinci iade 180 (toplam
+361); iade iptali durumu `partially_paid`e geri düşürür. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz. UI ekranı görsel olarak gezilmedi.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak

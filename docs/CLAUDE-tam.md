@@ -903,16 +903,26 @@ Kesilmiş fatura düzenlenmez; geri dönüş iki yoldan olur (`includes/erp/retu
 - **Tam iade ana faturanın rakamlarını kopyalar**, yeniden hesaplamaz: ana
   faturanın KDV'si siparişin başlık KDV'sine bağlıydı ve satırlardan türetilenin
   bir kuruş uzağında olabilir. Kısmi iadede satır orantılı bölünür
-  (`round(indirim × miktar / satılan)`, KDV kalan matrahtan).
+  (`round(indirim × miktar / satılan)`, KDV kalan matrahtan). İade satırının
+  KDV'si ana satırda **kalan** KDV'yi aşamaz ve satırı boşaltan parça kalanı
+  aynen alır (`erp_returnable_lines()` → `returned_tax`, ürüne göre eşlenir):
+  361 kuruşluk satırın iki yarısı 181 + 180'dir, 181 + 181 değil.
+- **Satır KDV oranı** siparişten yasal oran olarak taşınır, yuvarlanmış iki
+  kuruş tutarının bölümü olarak değil (`erp_line_tax_rate()`): önce
+  `products.tax_rate` denenir, saklanan vergiyi `erp_apply_rate()` ile aynen
+  üretiyorsa o alınır; yoksa oran 0–3 ondalıkta en sade eşleşene oturtulur
+  (361/2008 → 18, 17.978 değil). Tutarlar değişmez, yalnız oran.
 - `erp_invoice_items.returned_qty` ana faturada birikir; iade iptal edilirse geri
   düşülür. Aynı malın iki belgeyle iki kez iade edilmesini bu engeller.
 - **İptal** yalnız üzerine hiçbir şey asılmamışken yapılabilir (tahsis yok, iade
   yok). Defter kaydını silmez, **ters kayıtla çevirir**; numarayı serbest
   bırakmaz. Faturadan gelen sipariş `erp_invoice_id = 0` ile yeniden
   faturalanabilir hâle döner.
-- `erp_invoice_open_amount()` hem tahsisi hem iadeyi düşer; ama **durumu yalnız
-  tahsis belirler** — iade edilmiş bir fatura "ödenmiş" değildir, tahsil
-  edilecek bir şeyi kalmamıştır.
+- `erp_invoice_open_amount()` hem tahsisi hem iadeyi düşer; `erp_invoice_refresh_paid()`
+  de tahsisi **aynı rakama** (toplam − iade) karşı ölçer, ikisi ayrışmaz. Yine
+  de faturayı yalnız para "ödenmiş" yapar: hiç tahsilat görmemiş, tamamı iade
+  edilmiş fatura `issued` kalır. İade açılınca ve iade iptal edilince ana
+  faturanın durumu yeniden hesaplanır (`returns.php`, transaction içinde).
 
 ### Fatura kapatma: tahsis, para değil
 
@@ -1028,8 +1038,9 @@ faturadan **kopyalar**, yeniden türetmez.
   `submit_mark_paid` (ortak `validate_token_field()` + `pg_order_awaiting_payment`
   kapısı; düğme `#button_bar` içinde kendi formuyla, yalnız beklerken).
   `erp_invoice_refresh_paid()` (`includes/erp/settlement.php`) fatura `paid`
-  olduğunda aynı UPDATE'i `erp_query` ile doğrudan, tahsilatın işlemi içinde
-  yapar — ERP tahsilatı havalenin onaylı ödeme anıdır.
+  olduğunda sipariş `Offline Payment` ise aynı fonksiyonu çağırır (tahsilatın
+  işlemi içinde) ve faturanın boş `payment_date`'ini kapatan tahsilatın
+  `doc_date`'i ile doldurur — ERP tahsilatı havalenin onaylı ödeme anıdır.
 - **Süpürme:** `job.php`, terk edilmiş sipariş bloğundan hemen sonra.
   `ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS > 0` iken
   (`config.ecommerce_offline_payment_cancel_days`, `init.php`'de `?? 0`;
