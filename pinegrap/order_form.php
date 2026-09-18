@@ -41,7 +41,7 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 if (mysqli_num_rows($result) == 0) {
-    output_error('The page, for the order form you submitted, can no longer be found. <a href="javascript:history.go(-1);">Go back</a>.');
+    output_error(lang('The page, for the order form you submitted, can no longer be found.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -56,7 +56,7 @@ $folder_id = $row['folder_id'];
 // If visitor does not have view access to the order that he/she claimed they submitted, log and output error.
 if (check_view_access($folder_id) == false) {
     log_activity('access denied to submit order form (' . $page_name . ') because visitor does not have access to view order form', $_SESSION['sessionusername']);
-    output_error('You do not have access to submit this order form. <a href="javascript:history.go(-1);">Go back</a>.');
+    output_error(lang('You do not have access to submit this order form.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if the add button was clicked or the enter key was pressed, then proceed with adding products to order
@@ -162,7 +162,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 
                             // else the product is not available, so add error
                             } else {
-                                $liveform->mark_error('product_' . $product['id'], 'Sorry, ' . h($product_description) . ' is not currently available.');
+                                $liveform->mark_error('product_' . $product['id'], lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($product_description))));
                             }
                         }
                         break;
@@ -192,7 +192,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 
                             // else the product is not available, so add error
                             } else {
-                                $liveform->mark_error('product_' . $product['id'], 'Sorry, ' . h($product_description) . ' is not currently available.');
+                                $liveform->mark_error('product_' . $product['id'], lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($product_description))));
                             }
                         }
                         break;
@@ -232,7 +232,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 
                             // else the product is not available, so add error
                             } else {
-                                $liveform->mark_error('donation_' . $product['id'], 'Sorry, ' . h($product_description) . ' is not currently available.');
+                                $liveform->mark_error('donation_' . $product['id'], lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($product_description))));
                             }
                         }
                         break;
@@ -295,7 +295,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         
                         // else the product is not available, so add error
                         } else {
-                            $liveform->mark_error('autoselect_' . $product['id'], 'Sorry, ' . h($product_description) . ' is not currently available.');
+                            $liveform->mark_error('autoselect_' . $product['id'], lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($product_description))));
                         }
                         
                         break;
@@ -310,7 +310,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         ($product['recurring'] == 1)
                         && ($product['recurring_schedule_editable_by_customer'] == 1)
                     ) {
-                        $liveform->validate_required_field('recurring_payment_period_' . $product['id'], 'Frequency is required.');
+                        $liveform->validate_required_field('recurring_payment_period_' . $product['id'], lang('Frequency is required.'));
                         
                         // if credit/debit card is enabled as a payment method and the payment gateway is set to ClearCommerce or First Data Global Gateway
                         // then require number of payments
@@ -322,12 +322,12 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 || (ECOMMERCE_PAYMENT_GATEWAY == 'First Data Global Gateway')
                             )
                         ) {
-                            $liveform->validate_required_field('recurring_number_of_payments_' . $product['id'], 'Number of Payments is required.');
+                            $liveform->validate_required_field('recurring_number_of_payments_' . $product['id'], lang('Number of Payments is required.'));
                         }
                         
                         // if credit/debit card payment method is not enabled or the payment gateway is not ClearCommerce, then require start date
                         if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
-                            $liveform->validate_required_field('recurring_start_date_' . $product['id'], 'Start Date is required.');
+                            $liveform->validate_required_field('recurring_start_date_' . $product['id'], lang('Start Date is required.'));
                         }
                         
                         // if credit/debit card is selected as a payment method and a payment gateway is selected and there is a value for the number of payments field,
@@ -337,14 +337,14 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 case 'ClearCommerce':
                                     // if the value is not 2-999, then mark error
                                     if (($liveform->get_field_value('recurring_number_of_payments_' . $product['id']) < 2) || ($liveform->get_field_value('recurring_number_of_payments_' . $product['id']) > 999)) {
-                                        $liveform->mark_error('recurring_number_of_payments_' . $product['id'], 'Number of Payments requires a value from 2-999.');
+                                        $liveform->mark_error('recurring_number_of_payments_' . $product['id'], lang('Number of Payments requires a value from 2-999.'));
                                     }
                                     break;
                                     
                                 case 'First Data Global Gateway':
                                     // if the value is not 1-99, then mark error
                                     if (($liveform->get_field_value('recurring_number_of_payments_' . $product['id']) < 1) || ($liveform->get_field_value('recurring_number_of_payments_' . $product['id']) > 99)) {
-                                        $liveform->mark_error('recurring_number_of_payments_' . $product['id'], 'Number of Payments requires a value from 1-99.');
+                                        $liveform->mark_error('recurring_number_of_payments_' . $product['id'], lang('Number of Payments requires a value from 1-99.'));
                                     }
                                     break;
                             }
@@ -360,7 +360,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         ) {
                             // if the date is not valid, then mark error
                             if (validate_date($liveform->get_field_value('recurring_start_date_' . $product['id'])) == false) {
-                                $liveform->mark_error('recurring_start_date_' . $product['id'], 'Start Date must contain a valid date.');
+                                $liveform->mark_error('recurring_start_date_' . $product['id'], lang('Start Date must contain a valid date.'));
                                 
                             // else the date is valid, so check if date is in the past
                             } else {
@@ -368,7 +368,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 
                                 // if the date is in the past, then mark error
                                 if ($start_date_for_comparison < date('Y-m-d')) {
-                                    $liveform->mark_error('recurring_start_date_' . $product['id'], 'Start Date may not contain a date in the past.');
+                                    $liveform->mark_error('recurring_start_date_' . $product['id'], lang('Start Date may not contain a date in the past.'));
                                 }
                             }
                         }
@@ -390,7 +390,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         )
                         && ($liveform->get_field_value('add_name') == '')
                     ) {
-                        $liveform->mark_error('ship_to', 'Please select or enter a recipient.');
+                        $liveform->mark_error('ship_to', lang('Please select or enter a recipient.'));
                         $liveform->mark_error('add_name');
                     }
                 }
@@ -518,7 +518,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                 } else {
                     // If the quantity is not valid, then output error.
                     if (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 0) {
-                        $liveform->mark_error('quantity', 'Please enter a valid quantity.');
+                        $liveform->mark_error('quantity', lang('Please enter a valid quantity.'));
                         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($liveform->get_field_value('page_id'))));
                         exit();
                     }
@@ -554,7 +554,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     $product_description .= $product['short_description'];
                 }
                 
-                $liveform->mark_error('product_id', 'Sorry, ' . h($product_description) . ' is not currently available.');
+                $liveform->mark_error('product_id', lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($product_description))));
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($liveform->get_field_value('page_id'))));
                 exit();
             }

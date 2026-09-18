@@ -607,7 +607,7 @@ function get_express_order($properties) {
                             $recipient_options[$row['ship_to_name']] = $row['ship_to_name'];
                         }
                         
-                        $output_select_recipient = '<strong>Ship to</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select'));
+                        $output_select_recipient = '<strong>' . h(lang('Ship to')) . '</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select'));
                         
                     // else all recipients are allowed for this offer action
                     } else {
@@ -625,7 +625,7 @@ function get_express_order($properties) {
                             }
                         }
                         
-                        $output_select_recipient = '<strong>Ship to</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select')) . ' ' . $form->output_field(array('type'=>'text', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_add_name', 'value'=>'or add name', 'size'=>'15', 'maxlength'=>'50', 'class'=>'software_input_text', 'onfocus'=>'if (this.value == \'or add name\') {this.value = \'\'}'));
+                        $output_select_recipient = '<strong>' . h(lang('Ship to')) . '</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select')) . ' ' . $form->output_field(array('type'=>'text', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_add_name', 'value'=>lang('or add name'), 'size'=>'15', 'maxlength'=>'50', 'class'=>'software_input_text', 'onfocus'=>'if (this.value == \'' . h(escape_javascript(lang('or add name'))) . '\') {this.value = \'\'}'));
                     }
                 }
                 
@@ -914,7 +914,7 @@ function get_express_order($properties) {
                             <td>' . $form->output_field(array('type'=>'select', 'name'=>'quick_add_ship_to', 'options'=>$quick_add_ship_to_options, 'class'=>'software_select')) . '</td>
                         </tr>
                         <tr id="quick_add_add_name_row" style="' . $quick_add_add_name_row_style . '">
-                            <td>or add name:</td>
+                            <td>' . lang('or add name') . ':</td>
                             <td>' . $form->output_field(array('type'=>'text', 'name'=>'quick_add_add_name', 'maxlength'=>'50', 'size'=>'12', 'class'=>'software_input_text  mobile_text_width')) . ' &nbsp;(e.g. "Tom")</td>
                         </tr>';
                 }
@@ -1883,7 +1883,7 @@ function get_express_order($properties) {
                         $output_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="6">
-                                    <div class="heading">Ship to ' . $output_ship_to_name . '</div>
+                                    <div class="heading">' . lang('Ship to') . ' ' . $output_ship_to_name . '</div>
                                 </td>
                             </tr>';
                     }
@@ -2254,7 +2254,7 @@ function get_express_order($properties) {
                         $output_recurring_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="7">
-                                    <div class="heading">Ship to ' . $output_ship_to_name . '</div>
+                                    <div class="heading">' . lang('Ship to') . ' ' . $output_ship_to_name . '</div>
                                 </td>
                             </tr>';
                     }
@@ -3182,7 +3182,7 @@ function get_express_order($properties) {
                                 <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'html') . '</td>
                             </tr>
                             <tr class="order_totals data surcharge_total_row" id="software_surcharge_total_row">
-                                <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total Due:</strong></td>
+                                <td class="mobile_left" colspan="4" style="text-align: right"><strong>' . lang('Total Due') . ':</strong></td>
                                 <td class="mobile_right" style="text-align: right">
                                     <strong>' . prepare_price_for_output($grand_total_with_surcharge * 100, FALSE, $discounted_price = '', 'html') . $output_surcharge_unconverted_total . '</strong>
                                     <input type="hidden" name="total_with_surcharge" value="' . h($grand_total_with_surcharge) . '">
@@ -3460,7 +3460,7 @@ function get_express_order($properties) {
                         ' . $output_ship_tos . '
                         <tr class="order_totals">
                             <td colspan="6">
-                                <div class="heading">Order Totals</div>
+                                <div class="heading">' . lang('Order Totals') . '</div>
                             </td>
                         </tr>
                         ' . $output_subtotal . '
@@ -3470,7 +3470,7 @@ function get_express_order($properties) {
                         ' . $output_gift_card_discount . '
                         ' . $output_surcharge_rows . '
                         <tr class="ship_tos data total_row" id="software_total_row">
-                            <td class="mobile_left" colspan="4" style="text-align: right; font-weight: bold; white-space: nowrap">Total Due:</td>
+                            <td class="mobile_left" colspan="4" style="text-align: right; font-weight: bold; white-space: nowrap">' . lang('Total Due') . ':</td>
                             <td class="mobile_right" style="text-align: right"><strong><span class="total">' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'html') . '</span>' . $output_unconverted_total . '</strong></td>
                             <td class="mobile_hide">&nbsp;</td>
                         </tr>
@@ -3484,7 +3484,7 @@ function get_express_order($properties) {
                             <input type="submit" name="submit_update" value="' . $output_update_button_label . '" class="software_input_submit_secondary update_button" formnovalidate>
                         </div>
                     </div>
-                    <div class="billing heading">Billing Information</div>
+                    <div class="billing heading">' . lang('Billing Information') . '</div>
                     <div class="billing data">
                         ' . $output_billing_same_as_shipping . '
                         <table style="margin-bottom: 1.5em">

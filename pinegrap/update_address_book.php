@@ -43,12 +43,12 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
-    $liveform->validate_required_field('ship_to_name', 'Ship to Name is required.');
-    $liveform->validate_required_field('first_name', 'First Name is required.');
-    $liveform->validate_required_field('last_name', 'Last Name is required.');
-    $liveform->validate_required_field('address_1', 'Address 1 is required.');
-    $liveform->validate_required_field('city', 'City is required.');
-    $liveform->validate_required_field('country', 'Country is required.');
+    $liveform->validate_required_field('ship_to_name', lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Ship to Name')))));
+    $liveform->validate_required_field('first_name', lang('First Name is required.'));
+    $liveform->validate_required_field('last_name', lang('Last Name is required.'));
+    $liveform->validate_required_field('address_1', lang('Address 1 is required.'));
+    $liveform->validate_required_field('city', lang('City is required.'));
+    $liveform->validate_required_field('country', lang('Country is required.'));
 
     // If a country has been selected and then determine if state and zip code are required.
     if ($liveform->get('country')) {
@@ -60,7 +60,7 @@ if (!$_POST) {
             WHERE countries.code = '" . e($liveform->get('country')) . "'
             LIMIT 1")
         ) {
-            $liveform->validate_required_field('state', 'State/Province is required.');
+            $liveform->validate_required_field('state', lang('State/Province is required.'));
         }
 
         // If this country requires a zip code, then require it.
@@ -69,13 +69,13 @@ if (!$_POST) {
                 "SELECT zip_code_required FROM countries
                 WHERE code = '" . e($liveform->get('country')) . "'")
         ) {
-            $liveform->validate_required_field('zip_code', 'Zip/Postal Code is required.');
+            $liveform->validate_required_field('zip_code', lang('Zip/Postal Code is required.'));
         }
     }
     
     // if this page has the address type field enabled, then require the field
     if ($address_type == 1) {
-        $liveform->validate_required_field('address_type', 'Address Type is required.');
+        $liveform->validate_required_field('address_type', lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Address Type')))));
     }
 
     // get user id
@@ -88,7 +88,7 @@ if (!$_POST) {
     $query = "SELECT id FROM address_book WHERE (user = '$user_id') AND (id != '" . (int) ($_POST['id'] ?? 0) . "') AND (ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     if (mysqli_num_rows($result) > 0) {
-        $liveform->mark_error('ship_to_name', 'That ship to name is already in use. Please enter a different ship to name.');
+        $liveform->mark_error('ship_to_name', lang('That ship to name is already in use. Please enter a different ship to name.'));
         $liveform->assign_field_value('ship_to_name', '');
     }
     

@@ -780,7 +780,7 @@ function get_order_receipt($properties) {
                         $output_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="5">
-                                    <div class="heading">Ship to' . $output_ship_to_name . '</div>
+                                    <div class="heading">' . lang('Ship to') . $output_ship_to_name . '</div>
                                     <div class="data">
                                         ' . $address . '
                                         ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_shipping_form', 'ship_to_id' => $ship_to_id)) . '
@@ -966,7 +966,7 @@ function get_order_receipt($properties) {
                         $output_recurring_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="6">
-                                    <div class="heading">Ship to' . $output_ship_to_name . '</div>
+                                    <div class="heading">' . lang('Ship to') . $output_ship_to_name . '</div>
                                     <div class="data">
                                         ' . $address . '
                                         ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_shipping_form', 'ship_to_id' => $ship_to_id)) . '
@@ -1469,7 +1469,7 @@ function get_order_receipt($properties) {
                 ' . $output_ship_tos . '
                 <tr class="order_totals data">
                     <td colspan="5">
-                        <div class="heading">Order Totals</div>
+                        <div class="heading">' . lang('Order Totals') . '</div>
                     </td>
                 </tr>
                 <tr class="order_totals data">
@@ -1491,7 +1491,7 @@ function get_order_receipt($properties) {
             ' . $output_multicurrency_disclaimer . '
             ' . $output_recurring_products . '
             ' . $output_applied_offers . '
-            <div class="billing heading">Billing Information</div>
+            <div class="billing heading">' . lang('Billing Information') . '</div>
             <div class="billing data" style="margin-bottom: 15px">
                 '. $output_billing_information . '
                 ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_billing_form', 'order_id' => $order_id)) . '

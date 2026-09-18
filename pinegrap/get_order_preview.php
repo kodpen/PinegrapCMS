@@ -1410,7 +1410,7 @@ function get_order_preview($properties) {
             
         // else a submit button label could not be found, so use a default label for standard submit button label
         } else {
-            $standard_submit_button_label = 'Purchase Now';
+            $standard_submit_button_label = lang('Purchase Now');
         }
         
         // assume that we will not output payment information until we find out otherwise
@@ -1555,7 +1555,7 @@ function get_order_preview($properties) {
                         )
                     ) {
                         // Output surcharge percentage with unnecessary zeros removed.
-                        $output_surcharge_message = '<div class="software_surcharge_message" style="margin-top: .25em">' . h(floatval(ECOMMERCE_SURCHARGE_PERCENTAGE)) . '% surcharge has been added.</div>';
+                        $output_surcharge_message = '<div class="software_surcharge_message" style="margin-top: .25em">' . h(lang(array('string' => '{var:1}% surcharge has been added.', 'vars' => array(floatval(ECOMMERCE_SURCHARGE_PERCENTAGE))))) . '</div>';
                     }
                 }
 				// get software iyzipay max installment option where set in settings.php
@@ -1563,35 +1563,19 @@ function get_order_preview($properties) {
 				//Payment 3dsecure
 				$threedsEnabled = ECOMMERCE_IYZIPAY_THREEDS;
 
-				if($accepted_iyzipay_installment > 1){
+				$installment_output = '';
+				$threeds_output = '';
 
-					if(lang(array('info'=>'')) == 'en'){
-						if($accepted_iyzipay_installment == 12){
-							$output_software_ecommerce_iyzipay_installment_options = array('Cash In Advance' => '1','2 installments' => '2','3 installments' => '3','6 installments' => '6','9 installments' => '9','12 installments' => '12');
-						}elseif($accepted_iyzipay_installment == 9){
-							$output_software_ecommerce_iyzipay_installment_options = array('Cash In Advance' => '1','2 installments' => '2','3 installments' => '3','6 installments' => '6','9 installments' => '9');
-						}elseif($accepted_iyzipay_installment == 6){
-							$output_software_ecommerce_iyzipay_installment_options = array('Cash In Advance' => '1','2 installments' => '2','3 installments' => '3','6 installments' => '6');
-						}elseif($accepted_iyzipay_installment == 3){
-							$output_software_ecommerce_iyzipay_installment_options = array('Cash In Advance' => '1','2 installments' => '2','3 installments' => '3');
-						}elseif($accepted_iyzipay_installment == 2){
-							$output_software_ecommerce_iyzipay_installment_options = array('Cash In Advance' => '1','2 installments' => '2');
-						}
-					}elseif(lang(array('info'=>'')) == 'tr'){
-						if($accepted_iyzipay_installment == 12){
-							$output_software_ecommerce_iyzipay_installment_options = array('Taksit yok' => '1','2 ' => '2','3 Taksit' => '3','6 Taksit' => '6','9 Taksit' => '9','12 Taksit' => '12');
-						}elseif($accepted_iyzipay_installment == 9){
-							$output_software_ecommerce_iyzipay_installment_options = array('Taksit yok' => '1','2 Taksit' => '2','3 Taksit' => '3','6 Taksit' => '6','9 Taksit' => '9');
-						}elseif($accepted_iyzipay_installment == 6){
-							$output_software_ecommerce_iyzipay_installment_options = array('Taksit yok' => '1','2 Taksit' => '2','3 Taksit' => '3','6 Taksit' => '6');
-						}elseif($accepted_iyzipay_installment == 3){
-							$output_software_ecommerce_iyzipay_installment_options = array('Taksit yok' => '1','2 Taksit' => '2','3 Taksit' => '3');
-						}elseif($accepted_iyzipay_installment == 2){
-							$output_software_ecommerce_iyzipay_installment_options = array('Taksit yok' => '1','2 Taksit' => '2');
+				if ($accepted_iyzipay_installment > 1) {
+					// Build the installment options up to the configured maximum; the labels
+					// come from the language file, so no per-language branch is needed.
+					$output_software_ecommerce_iyzipay_installment_options = array(lang('Cash In Advance') => '1');
+
+					foreach (array(2, 3, 6, 9, 12) as $installment_count) {
+						if ($installment_count <= $accepted_iyzipay_installment) {
+							$output_software_ecommerce_iyzipay_installment_options[lang(array('string' => '{var:1} installments', 'vars' => array($installment_count)))] = (string) $installment_count;
 						}
 					}
-					
-
 
 					$installment_output = '
 						<tr>
@@ -1601,17 +1585,11 @@ function get_order_preview($properties) {
 						</tr>
 					
 					';
-					if($threedsEnabled == 1){
-						if(lang(array('info'=>'')) == 'en'){
-							$threedsEnabled_text ='3D Secure Enabled For your security.';
-						}else if(lang(array('info'=>'')) == 'tr'){
-							$threedsEnabled_text = 'G&uuml;venli&#287;iniz i&ccedil;in 3D g&uuml;venlik aktif';
-						}
-
-						$threeds_output ='
+					if ($threedsEnabled == 1) {
+						$threeds_output = '
 							<tr>
 								<td>
-									'.$threedsEnabled_text.'
+									' . h(lang('3D Secure Enabled For your security.')) . '
 								</td>
 							</tr>';
 					}
@@ -1870,7 +1848,7 @@ function get_order_preview($properties) {
                     ' . $output_ship_tos . '
                     <tr class="order_totals">
                         <td colspan="5">
-                            <div class="heading">Order Totals</div>
+                            <div class="heading">' . lang('Order Totals') . '</div>
                         </td>
                     </tr>
                     <tr class="order_totals data">
@@ -2753,7 +2731,7 @@ function get_order_preview($properties) {
             // If a purchase now button label was not entered for the page,
             // then set default label.
             if ($submit_button_label == '') {
-                $purchase_now_button_label = 'Purchase Now';
+                $purchase_now_button_label = lang('Purchase Now');
             } else {
                 $purchase_now_button_label = $submit_button_label;
             }

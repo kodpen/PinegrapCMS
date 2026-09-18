@@ -37,8 +37,8 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
-    $liveform->validate_required_field('first_name', 'First Name is required.');
-    $liveform->validate_required_field('last_name', 'Last Name is required.');
+    $liveform->validate_required_field('first_name', lang('First Name is required.'));
+    $liveform->validate_required_field('last_name', lang('Last Name is required.'));
 
     // If this PHP version supports user timezones, and a timezone was set,
     // and timezone is not valid, then output error.
@@ -47,7 +47,7 @@ if (!$_POST) {
         && ($liveform->get_field_value('timezone') != '')
         && (in_array($liveform->get_field_value('timezone'), get_timezones()) == false)
     ) {
-        $liveform->mark_error('timezone', 'Sorry, that timezone is not valid.');
+        $liveform->mark_error('timezone', lang('Sorry, that timezone is not valid.'));
     }
     
     // get my account profile page, if one exists
@@ -190,7 +190,7 @@ if (!$_POST) {
 
         log_activity("user ($_SESSION[sessionusername]) updated account", $_SESSION['sessionusername']);
         
-        $my_account->add_notice('Your profile has been updated.');
+        $my_account->add_notice(lang('Your profile has been updated.'));
 
         // remove liveform because software does not need it anymore
         $liveform->remove_form('my_account_profile');

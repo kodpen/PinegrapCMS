@@ -103,7 +103,7 @@ function get_my_account_profile($properties = array()) {
             $site_timezone_label = $site_timezone;
         }
 
-        $timezone_options['Default: ' . h($site_timezone_label)] = '';
+        $timezone_options[lang('Default') . ': ' . h($site_timezone_label)] = '';
 
         $timezone_options = array_merge($timezone_options, $timezones);
     }
@@ -195,7 +195,7 @@ function get_my_account_profile($properties = array()) {
         if ($show_timezone) {
             $output_timezone_row =
                 '<tr>
-                    <td>Timezone</td>
+                    <td>' . lang('Timezone') . '</td>
                     <td>' . $form->output_field(array('type' => 'select', 'name' => 'timezone', 'options' => $timezone_options, 'class' => 'software_select')) . '</td>
                 </tr>';
         }
@@ -208,18 +208,18 @@ function get_my_account_profile($properties = array()) {
                     <tr>
                         <td style="width: 50%; vertical-align: top; padding-right: 20px">       
                             <div class="contact" style="margin-bottom:2em;">
-                                <div class="heading" style="margin-bottom: 10px">Contact Information</div>
+                                <div class="heading" style="margin-bottom: 10px">' . lang('Contact Information') . '</div>
                                 <table class="data">
                                     <tr>
                                         <td>Salutation</td>
                                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'salutation', 'options'=>get_salutation_options(), 'class'=>'software_select')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>First Name*</td>
+                                        <td>' . lang('First Name') . '*</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'first_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Last Name*</td>
+                                        <td>' . lang('Last Name') . '*</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'last_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
@@ -227,19 +227,19 @@ function get_my_account_profile($properties = array()) {
                                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'suffix', 'options'=>get_suffix_options(), 'class'=>'software_select')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Title</td>
+                                        <td>' . lang('Title') . '</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'title', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Main Phone</td>
+                                        <td>' . lang('Main Phone') . '</td>
                                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'business_phone', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Mobile Phone&nbsp;</td>
+                                        <td>' . lang('Mobile Phone') . '&nbsp;</td>
                                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'mobile_phone', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Home Phone</td>
+                                        <td>' . lang('Home Phone') . '</td>
                                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'home_phone', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>                                <tr>
                                         <td>Fax</td>
@@ -256,14 +256,14 @@ function get_my_account_profile($properties = array()) {
                                 </table>
                             </div>
                             <div class="billing" style="margin-bottom: 1em">
-                                <div class="heading" style="margin-bottom: 10px">Billing / Mailing Address</div>
+                                <div class="heading" style="margin-bottom: 10px">' . lang('Billing / Mailing Address') . '</div>
                                 <table class="data">
                                     <tr>
                                         <td>Organization</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'company', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Address</td>
+                                        <td>' . lang('Address') . '</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'business_address_1', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
@@ -271,21 +271,21 @@ function get_my_account_profile($properties = array()) {
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'business_address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>City</td>
+                                        <td>' . lang('City') . '</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'business_city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Country</td>
+                                        <td>' . lang('Country') . '</td>
                                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'business_country', 'id'=>'business_country', 'options'=>$business_country_options, 'class'=>'software_select')) . '</td>
                                     </tr>
                                     <tr>
                                         <td>
                                             <label for="business_state_text_box">
-                                                State / Province
+                                                ' . lang('State / Province') . '
                                             </label>
 
                                             <label for="business_state_pick_list" style="display: none">
-                                                State / Province
+                                                ' . lang('State / Province') . '
                                             </label>
                                         </td>
                                         <td>' .
@@ -295,7 +295,7 @@ function get_my_account_profile($properties = array()) {
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td>Zip / Postal Code&nbsp;</td>
+                                        <td>' . lang('Zip / Postal Code') . '&nbsp;</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'id' => 'business_zip_code', 'name'=>'business_zip_code', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     ' . $output_timezone_row . '
@@ -304,7 +304,7 @@ function get_my_account_profile($properties = array()) {
                         </td>
                     </tr>
                 </table>
-                <input type="submit" name="submit" value="Update" class="software_input_submit_primary update_button" />&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="Cancel" onclick="javascript:window.location.href=\'' . h(escape_javascript(get_page_type_url('my account'))) . '\'" class="software_input_submit_secondary cancel_button">
+                <input type="submit" name="submit" value="' . h(lang('Update')) . '" class="software_input_submit_primary update_button" />&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="' . h(lang('Cancel')) . '" onclick="javascript:window.location.href=\'' . h(escape_javascript(get_page_type_url('my account'))) . '\'" class="software_input_submit_secondary cancel_button">
                 ' . $system . '
             </form>' . pg_account_security_section();
 

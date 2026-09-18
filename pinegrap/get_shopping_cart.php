@@ -203,7 +203,7 @@ function get_shopping_cart($properties) {
                             $recipient_options[$row['ship_to_name']] = $row['ship_to_name'];
                         }
                         
-                        $output_select_recipient = '<strong>Ship to</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select'));
+                        $output_select_recipient = '<strong>' . h(lang('Ship to')) . '</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select'));
                         
                     // else all recipients are allowed for this offer action
                     } else {
@@ -221,7 +221,7 @@ function get_shopping_cart($properties) {
                             }
                         }
                         
-                        $output_select_recipient = '<strong>Ship to</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select')) . ' ' . $form->output_field(array('type'=>'text', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_add_name', 'value'=>'or add name', 'size'=>'15', 'maxlength'=>'50', 'class'=>'software_input_text', 'onfocus'=>'if (this.value == \'or add name\') {this.value = \'\'}'));
+                        $output_select_recipient = '<strong>' . h(lang('Ship to')) . '</strong> ' . $form->output_field(array('type'=>'select', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_ship_to', 'options'=>$recipient_options, 'class'=>'software_select')) . ' ' . $form->output_field(array('type'=>'text', 'name'=>'pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '_add_name', 'value'=>lang('or add name'), 'size'=>'15', 'maxlength'=>'50', 'class'=>'software_input_text', 'onfocus'=>'if (this.value == \'' . h(escape_javascript(lang('or add name'))) . '\') {this.value = \'\'}'));
                     }
                 }
                 
@@ -510,7 +510,7 @@ function get_shopping_cart($properties) {
                             <td>' . $form->output_field(array('type'=>'select', 'name'=>'quick_add_ship_to', 'options'=>$quick_add_ship_to_options, 'class'=>'software_select')) . '</td>
                         </tr>
                         <tr id="quick_add_add_name_row" style="' . $quick_add_add_name_row_style . '">
-                            <td>or add name:</td>
+                            <td>' . lang('or add name') . ':</td>
                             <td>' . $form->output_field(array('type'=>'text', 'name'=>'quick_add_add_name', 'maxlength'=>'50', 'size'=>'12', 'class'=>'software_input_text  mobile_text_width')) . ' &nbsp;(e.g. "Tom")</td>
                         </tr>';
                 }
@@ -1701,7 +1701,7 @@ function get_shopping_cart($properties) {
 
         // else the number of ship tos is 0, so there are no products in the cart, so output notice
         } else {
-            $output_shopping_cart = '<p style="font-weight:bold">No items have been added.</p>';
+            $output_shopping_cart = '<p style="font-weight:bold">' . lang('No items have been added.') . '</p>';
         }
         
         $output =

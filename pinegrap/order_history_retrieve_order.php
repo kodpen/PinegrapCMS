@@ -172,11 +172,11 @@ if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
         
         // if orders were switched then prepare to alert user to that fact
         if ($order_switched == true) {
-            $order_switched_notice = ' Your previous order has been saved and may be retrieved when needed.';
+            $order_switched_notice = ' ' . lang('Your previous order has been saved and may be retrieved when needed.');
         }
         
         // prepare confirmation notice for next screen
-        $liveform->add_notice('The order has been retrieved, and it appears below.' . $order_switched_notice);
+        $liveform->add_notice(lang('The order has been retrieved, and it appears below.') . $order_switched_notice);
     }
     
     // send user to next page
@@ -190,11 +190,11 @@ if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
     
     // if orders were switched then prepare to alert user to that fact
     if ($order_switched == true) {
-        $order_switched_notice = ' Your previous order has been saved and may be retrieved when needed.';
+        $order_switched_notice = ' ' . lang('Your previous order has been saved and may be retrieved when needed.');
     }
     
     // prepare confirmation notice for next screen
-    $liveform->add_notice('The order has been retrieved.' . $order_switched_notice);
+    $liveform->add_notice(lang('The order has been retrieved.') . $order_switched_notice);
 
     go(get_page_type_url('my account'));
 }

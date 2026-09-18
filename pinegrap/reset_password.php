@@ -64,7 +64,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if a user could not be found, then output error
 if (mysqli_num_rows($result) == 0) {
-    output_error('The user could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The user could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $row = mysqli_fetch_assoc($result);
@@ -87,7 +87,7 @@ $user_manage_visitors = $row['user_manage_visitors'];
 // output error because user does not have access to do this
 if (($user['role'] > 0) && ($user['role'] >= $user_role)) {
     log_activity("access denied because user does not have access to reset password for user", $_SESSION['sessionusername']);
-    output_error('Access denied. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
 $random_password = get_random_string(array(
@@ -130,13 +130,13 @@ if (
     || (count(get_items_user_can_edit('ad_regions', $_POST['user_id'])) > 0)
 ) {
     $login = 
-        'Login:' . "\n" .
+        lang('Login') . ':' . "\n" .
         URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . "\n";
 
 // else if there was a send to page selected for this user        
 } elseif ($user_home) {
     $login =
-        'Login:' . "\n" .
+        lang('Login') . ':' . "\n" .
         URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . encode_url_path(get_page_name($user_home)) . "\n";
 }
 
@@ -144,18 +144,15 @@ email(array(
     'to' => $user_email,
     'from_name' => ORGANIZATION_NAME,
     'from_email_address' => EMAIL_ADDRESS,
-    'subject' => 'Password Reset',
+    'subject' => lang('Password Reset'),
     'body' =>
-"Your password was reset by an administrator.  You can find your new password below.
-
-Email: $user_email
-Password: $random_password
-
-$login
-"));
+        lang('Your password was reset by an administrator. You can find your new password below.') . "\n\n" .
+        lang('Email') . ': ' . $user_email . "\n" .
+        lang('Password') . ': ' . $random_password . "\n\n" .
+        $login . "\n"));
     
 log_activity("password was reset for user ($user_username)", $_SESSION['sessionusername']);
-$liveform_view_users->add_notice('The user\'s password has been reset, and a new password, &quot;' . h($random_password) . '&quot;, has been e-mailed to the user.');
+$liveform_view_users->add_notice(lang(array('string' => 'The user\'s password has been reset, and a new password, &quot;{var:1}&quot;, has been e-mailed to the user.', 'vars' => array(h($random_password)))));
 
 // If there is a send to value then send user back to that screen
 if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

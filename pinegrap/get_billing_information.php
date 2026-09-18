@@ -483,7 +483,7 @@ function get_billing_information($properties) {
             if (ECOMMERCE_TAX_EXEMPT_LABEL) {
                 $output_tax_exempt_label = ECOMMERCE_TAX_EXEMPT_LABEL;
             } else {
-                $output_tax_exempt_label = 'Tax-Exempt?';
+                $output_tax_exempt_label = lang('Tax-Exempt?');
             }
             
             $output_tax_exempt =
@@ -766,7 +766,7 @@ function get_billing_information($properties) {
             if (ECOMMERCE_TAX_EXEMPT_LABEL != '') {
                 $tax_exempt_label = ECOMMERCE_TAX_EXEMPT_LABEL;
             } else {
-                $tax_exempt_label = 'Tax-Exempt?';
+                $tax_exempt_label = lang('Tax-Exempt?');
             }
 
         } else {

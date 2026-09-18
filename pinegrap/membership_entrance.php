@@ -105,17 +105,19 @@ if (!$_POST) {
                 if (validate_username($username) == true) {
                     log_activity('access denied (password invalid) (email or username: ' . $username . ')', 'UNKNOWN');
                     
+                    $forgot_password_message = '';
+                    
                     if (FORGOT_PASSWORD_LINK == true) {
-                        $forgot_password_message = ' If you have forgotten your password, please click on the forgot password link below.';
+                        $forgot_password_message = lang(' If you have forgotten your password, please click on the forgot password link below.');
                     }
                     
-                    $liveform->mark_error('p', 'The password is incorrect. Please remember that passwords are case sensitive.' . $forgot_password_message);
+                    $liveform->mark_error('p', lang('The password you entered is incorrect. Please remember that passwords are case sensitive.') . $forgot_password_message);
                     $liveform->assign_field_value('p', '');
                     
                 // else username does not exist, so output error about username not existing
                 } else {
                     log_activity('access denied (email or username invalid: ' . $username . ')', 'UNKNOWN');
-                    $liveform->mark_error('u', 'The email address or username you entered could not be found. Please register if you have not already done so.');
+                    $liveform->mark_error('u', lang('The email address or username you entered could not be found. Please register if you have not already done so.'));
                 }
             }
         }
