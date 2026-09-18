@@ -930,7 +930,7 @@ Kesilmiş fatura düzenlenmez; geri dönüş iki yoldan olur (`includes/erp/retu
   bir kuruş uzağında olabilir. Kısmi iadede satır orantılı bölünür
   (`round(indirim × miktar / satılan)`, KDV kalan matrahtan). İade satırının
   KDV'si ana satırda **kalan** KDV'yi aşamaz ve satırı boşaltan parça kalanı
-  aynen alır (`erp_returnable_lines()` → `returned_tax`, ürüne göre eşlenir):
+  aynen alır (`erp_returnable_lines()` → `returned_tax`, `parent_line_id` ile eşlenir):
   361 kuruşluk satırın iki yarısı 181 + 180'dir, 181 + 181 değil.
 - **Satır KDV oranı** siparişten yasal oran olarak taşınır, yuvarlanmış iki
   kuruş tutarının bölümü olarak değil (`erp_line_tax_rate()`): önce
@@ -938,7 +938,12 @@ Kesilmiş fatura düzenlenmez; geri dönüş iki yoldan olur (`includes/erp/retu
   üretiyorsa o alınır; yoksa oran 0–3 ondalıkta en sade eşleşene oturtulur
   (361/2008 → 18, 17.978 değil). Tutarlar değişmez, yalnız oran.
 - `erp_invoice_items.returned_qty` ana faturada birikir; iade iptal edilirse geri
-  düşülür. Aynı malın iki belgeyle iki kez iade edilmesini bu engeller.
+  düşülür. Aynı malın iki belgeyle iki kez iade edilmesini bu engeller. İade
+  satırı alındığı ana satırı `parent_line_id` ile taşır (4.50); iptal ve
+  `returned_tax` eşlemesi bu kimlik üzerinden yapılır, ürüne göre değil — aynı
+  ürünün iki satırı (farklı fiyat/indirim) ürünle ayırt edilemez. 4.50 öncesi
+  yazılmış satırlar (`parent_line_id = 0`) için ürün eşlemesi yedek olarak
+  kalır; migration tekil eşleşenleri geri doldurur.
 - **İptal** yalnız üzerine hiçbir şey asılmamışken yapılabilir (tahsis yok, iade
   yok). Defter kaydını silmez, **ters kayıtla çevirir**; numarayı serbest
   bırakmaz. Faturadan gelen sipariş `erp_invoice_id = 0` ile yeniden
@@ -968,6 +973,19 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
 - `erp_post_receipt()`'in `invoice_id`'si tahsisi çağıranın transaction'ı içinde
   yazar. Reddedilen bir tahsis tüm tahsilatı geri alır — yarım yazılmış tahsilat
   bırakmaz.
+- **Hediye kartı tek otomatik tahsistir.** Siparişin hediye kartıyla ödenen
+  kısmı sipariş anında, o siparişe karşı ödenmiştir; fatura kesilirken
+  `erp_settle_gift_card()` cariye `kind = collection`, `doc_type = gift_card`,
+  `doc_id = invoice_id` bir alacak kaydı atar ve bu hareketi faturaya tahsis
+  eder — aynı transaction içinde. Kasa hareketi yoktur (para zaten alınmış).
+  Tamamı hediye kartıyla ödenen sipariş `paid` doğar; kısmen ödenen
+  `partially_paid`. Bu tahsis iptali engellemez (`erp_invoice_receipt_count()`
+  onu saymaz); iptalde `erp_unsettle_gift_card()` alacağı ters kayıtla çevirir
+  ve tahsis satırını siler. `erp_invoice_settlements()` kasa join'ini
+  `doc_type` ile de eşler; hediye kartı satırı kasa adı boş görünür.
+- `erp_tx_begin/commit/rollback` derinliği tek sayaçta tutar
+  (`$GLOBALS['_erp_tx_depth']`, `erp_tx_depth()`); aynı istekte ikinci bir
+  posting gerçekten yeni transaction açar.
 
 ### İndirimli siparişin KDV'si
 
@@ -1870,6 +1888,7 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.50) | `_erp_return_line_link`: `erp_invoice_items.parent_line_id INT UNSIGNED NOT NULL DEFAULT 0` + `idx_parent_line` (iade satırı → ana fatura satırı; iade iptali doğru satırı geri açar); tekil ürün eşleşmesi olan eski satırlar geri doldurulur, çoklu olanlar 0 kalır — yeniden koşturulabilir |
 | `2026.4.4` (4.49) | `_erp_foreign_currency`: `amount_try → amount_base` (`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`), `grand_total_try → grand_total_base` (`erp_invoices`) — yeni ad varsa atlanır, tip/null/default `install_column_info`'dan —, `currency_rates` tablosu (`UNIQUE (rate_date, base_code, currency_code)`, `rate DECIMAL(18,8)` = ana / 1 birim döviz), `config.erp_fx_enabled TINYINT(1) DEFAULT 0` / `erp_fx_currencies VARCHAR(64) DEFAULT 'USD,EUR,GBP'` / `erp_fx_auto_diff TINYINT(1) DEFAULT 1`, `erp_invoices.exchange_rate_source` ve `erp_cash_transactions.exchange_rate_source VARCHAR(32)` |
 | `2026.4.4` (4.48) | `_offline_payment_awaiting`: `orders.payment_method` ENUM'una `'Pay With Iyzico'` eklendi (mevcut liste `install_column_info` ile okunup korunur, ENUM değilse atlanır), `config.ecommerce_offline_payment_cancel_days TINYINT UNSIGNED NOT NULL DEFAULT 0` (0 = otomatik iptal yok) |
 | `2026.4.4` (4.47) | `config.erp_seller_vkn` / `erp_seller_tax_office` / `erp_invoice_template` (satıcı VKN ve vergi dairesi `pgset-erp` kartında; fatura şablonu, `NULL` = varsayılan dosya) |

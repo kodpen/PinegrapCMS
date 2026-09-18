@@ -41,6 +41,61 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
+
+**Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
+fatura tutarın tamamını istiyordu: `gift_card_total` yalnız bilgi olarak
+yazılıyor, tahsis edilmiyordu. Tamamı hediye kartıyla ödenen sipariş `issued`
+kalıyor, açık tutar 11.800 görünüyor, cari hesapta müşteri o kadar borçlu
+duruyordu. (2) `erp_tx_begin()` derinliği hem `static $depth` hem
+`$GLOBALS['_erp_tx_depth']` ile tutuyordu; commit yalnız global'i sıfırladığı
+için aynı istekte ikinci posting hiç transaction açmıyordu — rollback'i işe
+yaramıyordu. (3) İade iptali `returned_qty`'yi `product_id ... LIMIT 1` ile
+geri düşüyordu; aynı ürünün iki satırı olan faturada yanlış satır açılıyor,
+doğru satır kapalı kalıyordu. (4) Kasa açılış bakiyesi `erp_money_out(..,
+false)` ile işaretsiz ön doldurulup kaydediliyordu: −1.234,56 kaydedince
++1.234,56 oluyordu. (5) Breadcrumb etiketleri `h()` ile önceden kaçırılıyor,
+renderer bir kez daha kaçırıyordu (`&amp;amp;`). (6) `edit_erp_account.php`
+POST'u `id` boşsa `erp_account_save()` INSERT dalına düşüp yeni cari açıyordu.
+
+**Düzeltme.** (1) `erp_settle_gift_card()` (`settlement.php`): fatura
+transaction'ı içinde cariye `kind = collection`, `doc_type = gift_card` alacak
+kaydı ve o hareketin faturaya tahsisi. Neden tahsis + alacak, neden yalnız
+`open_amount`'tan düşmek değil: hediye kartı bir ödemedir; yalnız açığı
+küçültmek faturayı kapatır ama cari bakiyeyi hediye kartı tutarı kadar borçlu
+bırakır. Kasa hareketi yok, para kart satılırken alınmıştı. İptal bu tahsisi
+engellemez (`erp_invoice_receipt_count()` operatör tahsislerini sayar);
+`erp_unsettle_gift_card()` alacağı ters kayıtla çevirip tahsisi siler.
+`erp_invoice_settlements()` kasa join'i `doc_type` ile de eşleşir — hediye
+kartı hareketinin `doc_id`'si fatura kimliğidir, rastgele bir kasa satırıyla
+çakışmamalı. (2) Tek sayaç: `erp_tx_depth()`. (3) Migration **4.50**
+`erp_invoice_items.parent_line_id` + index; iade satırı yazılırken doldurulur,
+iptal ve `returned_tax` bu kimlikle eşleşir; `parent_line_id = 0` eski
+satırlarda ürün eşlemesi yedek kalır (`ORDER BY line_no`), migration tekil
+eşleşenleri geri doldurur, çoklu olanlara dokunmaz — yeniden koşturulabilir.
+(4) Ön doldurma işaretli; `erp_kurus()` eksiyi okur. (5) Dört ERP ekranında
+ham etiket. (6) `erp_account($id) === null` ise liste ekranına hata ile döner.
+Ölü şema bulgusu (issue madde 7) bu PR'da yapılmadı; envanter ayrı.
+Dövizli ERP (4.49) ile birleştirildiğinde hediye kartı alacağı ve ters kaydı
+ana para biriminde yazılır (`currency = erp_base_currency()`, kur 1,
+`amount_base = amount`; tahsis satırı `amount_base`): sipariş faturası her
+zaman ana para birimindedir. Çağrı sırası 4.49 → 4.50.
+
+### Doğrulama
+
+Sandbox'ta CLI betiği: tamamı hediye kartıyla ödenen sipariş → fatura `paid`,
+`paid_total = 11800`, açık 0, cari bakiye 0 (önce `issued` / 11800 / 11800);
+5.000 hediye kartı + 6.800 tahsilat → `partially_paid` → `paid`, bakiye 0;
+hediye kartlı faturanın iptali bakiyeyi 0'a döndürür, tahsis kalmaz. İkinci
+`erp_tx_begin()` sonrası rollback satırı geri alır (önce kalıyordu). Aynı
+ürünün iki satırı: iade 2. satırdan, iptal sonrası her iki satır 0 (önce 1.
+satır 0−1→0, 2. satır 1'de kalıyordu). Migration iki kez koşuldu, ikinci koş
+atlandı; eski iade satırı tekil eşleşmede geri dolduruldu. curl ile giriş:
+breadcrumb `Tom &amp; Jerry` (önce `&amp;amp;`), boş `id` ile POST hesap
+oluşturmuyor ve listede "Cari hesap bulunamadı." gösteriyor, açılış bakiyesi
+`-1,234.56` ön doluyor. `php tools/lint.php` ve `php tools/check_lang.php`
+temiz; UI ekranları tarayıcıda gezilmedi.
+
 ## 2026.4.4 — Panel JS: genel `.ui-sortable` başlatması opt-in `pg-sortable` sınıfına alındı (2026-09-18)
 
 **Belirti.** `assets/js/backend.src.js` ready işleyicisi her panel ekranında
