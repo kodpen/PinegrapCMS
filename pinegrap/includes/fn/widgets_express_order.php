@@ -224,7 +224,9 @@ function _eo_compute_static_tokens($state)
         '^^total_formatted^^'              => $fmt($tot),
         '^^total_with_surcharge_formatted^^' => $fmt($tws),
         '^^cart_count^^'                   => (string)$cnt,
-        '^^cart_count_label^^'             => $cnt . ' ' . lang($cnt === 1 ? 'item' : 'items'),
+        '^^cart_count_label^^'             => ($cnt === 1
+            ? lang(array('string' => '{var:1} item',  'vars' => array($cnt)))
+            : lang(array('string' => '{var:1} items', 'vars' => array($cnt)))),
         '^^subtotal_cents^^'               => (string)$sub,
         '^^total_cents^^'                  => (string)$tot,
         '^^total_with_surcharge_cents^^'   => (string)$tws,
@@ -791,7 +793,7 @@ function _eo_default_designer_tree()
     // Real form input — bound via `_bindings.eo_field` so designer can swap
     // <input> for <select> while the binding survives (server reads the
     // binding and injects name/id/value attrs). Designer also sees the
-    // binding label in the property panel\'s Veri Bağla dropdown.
+    // binding label in the property panel\'s "Bind Data" dropdown.
     // $required:    real HTML5 `required` attribute (browser enforces on submit).
     // $cc_required: emits `data-pg-cc-required` instead — the widget JS
     //               (pg-eo-cc-fields toggler) flips this to real `required`
@@ -867,7 +869,7 @@ function _eo_default_designer_tree()
     // the BIN-lookup → installment-fetcher script reveal it on demand.
     $installment_fee_row = $sem('tr', 'pg-eo-installment-fee-row', array(
         $sem('th', 'ps-0 fw-normal text-warning', array(
-            $sem('span', 'pg-eo-tot-label', 'Taksit Bedeli'),
+            $sem('span', 'pg-eo-tot-label', lang('Instalment Fee')),
         )),
         $sem('td', 'text-end pe-0 text-warning', array(
             $sem('span', 'pg-eo-tot-value pg-eo-installment-fee-value', '0,00'),
@@ -931,7 +933,7 @@ function _eo_default_designer_tree()
 
             // ----- NO errors / notices band here on purpose.
             // The widget already carries a `messages` content node ("PHP
-            // Mesajları") fed by the SAME liveform, so having both printed
+            // Messages") fed by the SAME liveform, so having both printed
             // every error twice. The messages node is the general mechanism
             // (shared by every system widget, movable and stylable by the
             // designer), so it is the single source; the renderer blanks the
@@ -962,7 +964,7 @@ function _eo_default_designer_tree()
                     // Saved cart link sits INSIDE the body, above the table.
                     $sem('div', 'card mb-3 pg-eo-cart', array(
                         $sem('div', 'card-header d-flex justify-content-between align-items-center', array(
-                            $sem('h2', 'h6 mb-0 fw-semibold', 'Sepetiniz'),
+                            $sem('h2', 'h6 mb-0 fw-semibold', lang('Your cart')),
                         )),
                         $sem('div', 'card-body p-0', array(
                             // Saved-cart link appears inside the cart body
@@ -978,15 +980,15 @@ function _eo_default_designer_tree()
                             // `table-responsive` can't help — the table never
                             // overflows, it just compresses.
                             // MUST stay in lockstep with _buildExpressOrderStarterTree()
-                            // in style_designer.js (the "Varsayılan Düzeni Yükle" twin).
+                            // in style_designer.js (the "Load Default Layout" twin).
                             $sem('div', 'table-responsive', array(
                                 $sem('table', 'table align-middle mb-0', array(
                                     $sem('thead', 'd-none d-md-table-header-group', array(
                                         $sem('tr', 'd-block d-md-table-row', array(
-                                            $sem('th', 'text-muted small ps-3 d-block d-md-table-cell', 'Öğe'),
-                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', 'Miktar', array('style' => 'width:6rem')),
-                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', 'Birim Fiyat',  array('style' => 'width:8rem')),
-                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', 'Tutar',  array('style' => 'width:8rem')),
+                                            $sem('th', 'text-muted small ps-3 d-block d-md-table-cell', lang('Item')),
+                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', lang('Quantity'), array('style' => 'width:6rem')),
+                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', lang('Unit Price'),  array('style' => 'width:8rem')),
+                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', lang('Amount'),  array('style' => 'width:8rem')),
                                             $sem('th', 'd-block d-md-table-cell', '',         array('style' => 'width:3rem')),
                                         )),
                                     )),
@@ -1038,7 +1040,7 @@ function _eo_default_designer_tree()
                                                                     array('name' => 'type',                'value' => 'button'),
                                                                     array('name' => 'data-pg-qty-action', 'value' => 'dec'),
                                                                     array('name' => 'tabindex',           'value' => '-1'),
-                                                                    array('name' => 'aria-label',         'value' => 'Decrease'),
+                                                                    array('name' => 'aria-label',         'value' => lang('Decrease')),
                                                                 ),
                                                             ), 'children' => array()),
                                                             array('type' => 'semantic', 'props' => array(
@@ -1061,7 +1063,7 @@ function _eo_default_designer_tree()
                                                                     array('name' => 'type',                'value' => 'button'),
                                                                     array('name' => 'data-pg-qty-action', 'value' => 'inc'),
                                                                     array('name' => 'tabindex',           'value' => '-1'),
-                                                                    array('name' => 'aria-label',         'value' => 'Increase'),
+                                                                    array('name' => 'aria-label',         'value' => lang('Increase')),
                                                                 ),
                                                             ), 'children' => array()),
                                                         // max-width, not width: a hard 9rem made
@@ -1118,21 +1120,21 @@ function _eo_default_designer_tree()
                     // Tax-exempt checkbox lives at the bottom of this card
                     // — wrapped in visibility binding so it disappears when
                     // the site hasn\'t enabled ECOMMERCE_TAX + ECOMMERCE_TAX_EXEMPT.
-                    // The separate "Sipariş Tercihleri" card was removed
+                    // The separate "Order Preferences" card was removed
                     // (opt_in moved to the totals card, tax_exempt moved here).
-                    $card('Fatura Bilgileri', array(
+                    $card(lang('Billing Information'), array(
                         $sem('div', 'row', array(
-                            $field('col-12 col-md-3 mb-3', 'Selamlama', 'billing_salutation', 'text', 'Bay/Bayan'),
+                            $field('col-12 col-md-3 mb-3', lang('Salutation'), 'billing_salutation', 'text', lang('Mr/Ms')),
                             $sem('div', 'col-md-9'),
-                            $field('col-12 col-md-6 mb-3', 'Ad',     'billing_first_name', 'text', '', true),
-                            $field('col-12 col-md-6 mb-3', 'Soyad',  'billing_last_name',  'text', '', true),
-                            $field('col-12 col-md-6 mb-3', 'Şirket', 'billing_company',    'text'),
-                            $field('col-12 col-md-6 mb-3', 'E-posta','billing_email_address', 'email', '', true),
-                            $field('col-12 col-md-6 mb-3', 'Adres 1','billing_address_1',  'text', '', true),
-                            $field('col-12 col-md-6 mb-3', 'Adres 2','billing_address_2',  'text'),
-                            $field('col-12 col-md-6 mb-3', 'Şehir',  'billing_city',       'text', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('First Name'), 'billing_first_name', 'text', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Last Name'),  'billing_last_name',  'text', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Company'),    'billing_company',    'text'),
+                            $field('col-12 col-md-6 mb-3', lang('Email'),      'billing_email_address', 'email', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Address 1'),  'billing_address_1',  'text', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Address 2'),  'billing_address_2',  'text'),
+                            $field('col-12 col-md-6 mb-3', lang('City'),       'billing_city',       'text', '', true),
                             $sem('div', 'col-12 col-md-6 mb-3', array(
-                                $label('billing_country', 'Ülke', true),
+                                $label('billing_country', lang('Country'), true),
                                 // Real <select> with eo_field binding — server
                                 // injects the <option> list (240+ countries) at
                                 // render time. Designer can swap to a different
@@ -1141,9 +1143,9 @@ function _eo_default_designer_tree()
                                     'bindings' => array('eo_field' => 'billing_country'),
                                 )),
                             )),
-                            $field('col-12 col-md-6 mb-3', 'Eyalet / İl', 'billing_state',        'text', '', true),
-                            $field('col-12 col-md-6 mb-3', 'Posta Kodu',  'billing_zip_code',     'text', '', true),
-                            $field('col-12 col-md-6 mb-3', 'Telefon', 'billing_phone_number', 'tel', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('State / Province'), 'billing_state',        'text', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Zip Code'),         'billing_zip_code',     'text', '', true),
+                            $field('col-12 col-md-6 mb-3', lang('Phone'),            'billing_phone_number', 'tel', '', true),
                         )),
                         // Tax-exempt checkbox — wrapped in visibility binding;
                         // only renders when both ECOMMERCE_TAX and
@@ -1151,29 +1153,29 @@ function _eo_default_designer_tree()
                         // Sits right after the address fields so corporate
                         // buyers can flag the order at the same step.
                         $sem('div', 'pt-2 border-top mt-2', array(
-                            $check_row('tax_exempt', 'Vergi muafiyetim var (kurumsal alımlar)', 'mb-0'),
+                            $check_row('tax_exempt', lang('I am tax exempt (corporate purchases)'), 'mb-0'),
                         ), array('bindings' => array('eo_visible_if' => 'tax_exempt_allowed'))),
                     )),
 
-                    // ┌── CARD: offer code ("Özel Teklif Kodu") ────────┐
-                    $card('Özel Teklif Kodu', array(
+                    // ┌── CARD: offer code ("Special Offer Code") ──────┐
+                    $card(lang('Special Offer Code'), array(
                         $sem('div', 'input-group mb-1', array(
-                            $input('special_offer_code', 'text', 'Kodunuz varsa girin', false),
-                            $sem('button', 'btn btn-outline-primary', 'Uygula',
+                            $input('special_offer_code', 'text', lang('Enter your code if you have one'), false),
+                            $sem('button', 'btn btn-outline-primary', lang('Apply'),
                                  array('bindings' => array('action' => 'eo_submit_update'))),
                         )),
                         $sem('div', 'form-text small text-muted',
-                             'İndirim kodunuzu girin, "Uygula"\'ya tıklayın — toplamlar yeniden hesaplanır.'),
+                             lang('Enter your discount code and click "Apply" — the totals are recalculated.')),
                     )),
 
-                    // ┌── CARD: shipping ("Teslimat") — visibility-bound at card level (drops
+                    // ┌── CARD: shipping address — visibility-bound at card level (drops
                     // when no shippable items) AND nested row visibility for
                     // single-vs-multi recipient. Single-recipient: tree\'s real
                     // form fields render. Multi-recipient: row dropped, server
                     // section binding renders the full per-recipient form.
                     $sem('div', 'card mb-3 pg-eo-shipping', array(
                         $sem('div', 'card-header', array(
-                            $sem('h2', 'h6 mb-0 fw-semibold', 'Teslimat Adresi'),
+                            $sem('h2', 'h6 mb-0 fw-semibold', lang('Shipping Address')),
                         )),
                         $sem('div', 'card-body', array(
                             // Address fields row — VISIBLE only for single-
@@ -1182,23 +1184,23 @@ function _eo_default_designer_tree()
                             // server-rendered shipping section below supplies
                             // a full address form PER recipient).
                             $sem('div', 'row', array(
-                                $field('col-12 col-md-3 mb-3', 'Selamlama',  'shipping_salutation',  'text', 'Bay/Bayan'),
+                                $field('col-12 col-md-3 mb-3', lang('Salutation'),  'shipping_salutation',  'text', lang('Mr/Ms')),
                                 $sem('div', 'col-md-9'),
-                                $field('col-12 col-md-6 mb-3', 'Ad',         'shipping_first_name',  'text', '', true),
-                                $field('col-12 col-md-6 mb-3', 'Soyad',      'shipping_last_name',   'text', '', true),
-                                $field('col-12 col-md-6 mb-3', 'Şirket',     'shipping_company',     'text'),
-                                $field('col-12 col-md-6 mb-3', 'Telefon',    'shipping_phone_number','tel'),
-                                $field('col-12 col-md-6 mb-3', 'Adres 1',    'shipping_address_1',   'text', '', true),
-                                $field('col-12 col-md-6 mb-3', 'Adres 2',    'shipping_address_2',   'text'),
-                                $field('col-12 col-md-6 mb-3', 'Şehir',      'shipping_city',        'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('First Name'),  'shipping_first_name',  'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Last Name'),   'shipping_last_name',   'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Company'),     'shipping_company',     'text'),
+                                $field('col-12 col-md-6 mb-3', lang('Phone'),       'shipping_phone_number','tel'),
+                                $field('col-12 col-md-6 mb-3', lang('Address 1'),   'shipping_address_1',   'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Address 2'),   'shipping_address_2',   'text'),
+                                $field('col-12 col-md-6 mb-3', lang('City'),        'shipping_city',        'text', '', true),
                                 $sem('div', 'col-12 col-md-6 mb-3', array(
-                                    $label('shipping_country', 'Ülke', true),
+                                    $label('shipping_country', lang('Country'), true),
                                     $sem('select', 'form-select', null, array(
                                         'bindings' => array('eo_field' => 'shipping_country'),
                                     )),
                                 )),
-                                $field('col-12 col-md-6 mb-3', 'Eyalet / İl', 'shipping_state',     'text', '', true),
-                                $field('col-12 col-md-6 mb-3', 'Posta Kodu',  'shipping_zip_code',  'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('State / Province'), 'shipping_state',     'text', '', true),
+                                $field('col-12 col-md-6 mb-3', lang('Zip Code'),         'shipping_zip_code',  'text', '', true),
                             ), array('bindings' => array('eo_visible_if' => 'has_single_recipient'))),
                             // Arrival date + shipping method picker section.
                             // Single-recipient: shows ONLY extras (auto-skip
@@ -1211,7 +1213,7 @@ function _eo_default_designer_tree()
                     ), array('bindings' => array('eo_visible_if' => 'has_shipping'))),
 
                     // ┌── CARD: payment method + card + installments + 2nd submit ┐
-                    // Card footer hosts a secondary "Siparişi Tamamla" button
+                    // Card footer hosts a secondary "Complete Order" button
                     // so visitor doesn\'t have to scroll up to the sidebar.
                     //
                     // CC fields use `data-pg-cc-required` instead of `required`
@@ -1225,16 +1227,16 @@ function _eo_default_designer_tree()
                     // CC fields are actually visible). See _eo_render_widget_js.
                     $sem('div', 'card mb-3 pg-eo-payment', array(
                         $sem('div', 'card-header', array(
-                            $sem('h2', 'h6 mb-0 fw-semibold', 'Ödeme Yöntemi'),
+                            $sem('h2', 'h6 mb-0 fw-semibold', lang('Payment Method')),
                         )),
                         $sem('div', 'card-body', array(
                             $bind('payment_methods', 'mb-3'),
                             $sem('div', 'pg-eo-cc-fields', array(
-                                $sem('p', 'small text-muted mb-2', 'Kredi/Banka Kartı seçildiğinde kart alanları görünür.'),
+                                $sem('p', 'small text-muted mb-2', lang('The card fields appear when Credit/Debit Card is selected.')),
                                 $sem('div', 'row', array(
-                                    $field('col-12 mb-3', 'Kart Numarası', 'card_number', 'text', '•••• •••• •••• ••••', false, true),
-                                    $field('col-6 mb-3',  'Son Kullanma',  'expiration',  'text', 'AA / YY', false, true),
-                                    $field('col-6 mb-3',  'Güvenlik Kodu (CVC)', 'card_verification_number', 'text', 'CVC', false, true),
+                                    $field('col-12 mb-3', lang('Card Number'), 'card_number', 'text', '•••• •••• •••• ••••', false, true),
+                                    $field('col-6 mb-3',  lang('Expiry date'),  'expiration',  'text', lang('MM / YY'), false, true),
+                                    $field('col-6 mb-3',  lang('Security Code (CVC)'), 'card_verification_number', 'text', 'CVC', false, true),
                                 )),
                                 $bind('installment', 'mt-2'),
                             ), array('attrs' => array(array('name' => 'data-pg-eo-cc-fields', 'value' => '1')))),
@@ -1244,7 +1246,7 @@ function _eo_default_designer_tree()
                         // binding → same submit_purchase_now POST.
                         $sem('div', 'card-footer', array(
                             $sem('div', 'd-grid', array(
-                                $sem('button', 'btn btn-primary btn-lg', 'Siparişi Tamamla',
+                                $sem('button', 'btn btn-primary btn-lg', lang('Complete Order'),
                                      array('bindings' => array('action' => 'eo_submit_purchase'))),
                             )),
                         )),
@@ -1265,7 +1267,7 @@ function _eo_default_designer_tree()
                     $sem('div', 'sticky-sm-top', array(
                         $sem('div', 'card pg-eo-totals mb-3', array(
                             $sem('div', 'card-header', array(
-                                $sem('h2', 'h6 mb-0 fw-semibold', 'Sipariş Özeti'),
+                                $sem('h2', 'h6 mb-0 fw-semibold', lang('Order summary')),
                             )),
                             $sem('div', 'card-body', array(
                                 $sem('table', 'table table-sm mb-3', array(
@@ -1273,7 +1275,7 @@ function _eo_default_designer_tree()
                                         // Subtotal — always visible (every order has a subtotal).
                                         // valueSpanCss='pg-eo-subtotal-formatted' — the shipping-method
                                         // picker's recomputeSidebarTotal() (below, in the shipping JS)
-                                        // reads this exact class to live-recalculate "Toplam" when the
+                                        // reads this exact class to live-recalculate the total when the
                                         // visitor changes shipping method before a full page reload.
                                         // Without it, that JS silently treated the row as 0 and
                                         // overwrote the correct total with "0.00" — see recomputeSidebarTotal's
@@ -1291,7 +1293,7 @@ function _eo_default_designer_tree()
                                         $tot_row(lang('Gift card'),      'gift_card_discount_formatted',      'has_gift_card'),
                                         // Card surcharge — only when CC is selected AND a surcharge applies
                                         $tot_row(lang('Card surcharge'), 'surcharge_formatted',               'has_surcharge', 'pg-eo-surcharge-row'),
-                                        // Taksit Bedeli — visibility-bound; install JS also updates value text on plan change.
+                                        // Instalment fee — visibility-bound; the instalment JS also updates the value text on plan change.
                                         $installment_fee_row,
                                         // Total — always visible (last row, bold + border-top accent)
                                         $tot_row(lang('Total'),          'total_with_surcharge_formatted',    '',
@@ -1322,36 +1324,36 @@ function _eo_default_designer_tree()
                                         '_bindings' => array('eo_field' => 'agree_terms'),
                                     ), 'children' => array()),
                                     $sem('label', 'form-check-label small', array(
-                                        $sem('span', '', 'Siparişimi tamamlayarak '),
+                                        $sem('span', '', lang('By completing my order I accept')),
                                         array('type' => 'semantic', 'props' => array(
                                             'tag' => 'a',
                                             'cssClass' => '',
-                                            'text' => 'satış sözleşmesi ve kullanım şartlarını',
+                                            'text' => lang('the sales agreement and the terms of use'),
                                             '_attrs' => array(
                                                 array('name' => 'href',           'value' => '#'),
                                                 array('name' => 'data-bs-toggle', 'value' => 'modal'),
                                                 array('name' => 'data-bs-target', 'value' => '#pg-eo-terms-modal'),
                                             ),
                                         ), 'children' => array()),
-                                        $sem('span', '', ' okudum ve kabul ediyorum.'),
+                                        $sem('span', '', lang('and confirm I have read them.')),
                                     ), array('attrs' => array(array('name' => 'for', 'value' => 'agree_terms')))),
                                 )),
 
                                 // ── Newsletter subscription (opt_in) ───────
-                                // Moved here from "Sipariş Tercihleri" card —
+                                // Moved here from the "Order Preferences" card —
                                 // sits between terms acceptance and the
                                 // submit button so the visitor opts-in as
                                 // the last step before confirming the order.
                                 // Plain checkbox (no required) — purely
                                 // permission-based, default off.
-                                $check_row('opt_in', 'Kampanya ve fırsat bültenine abone olmak istiyorum', 'pg-eo-opt-in mb-3'),
+                                $check_row('opt_in', lang('I want to subscribe to the campaign and offer newsletter'), 'pg-eo-opt-in mb-3'),
 
                                 // Real <button> elements. eo_action binding
                                 // forces type/name/value attrs at render.
                                 $sem('div', 'd-grid gap-2 mt-3', array(
-                                    $sem('button', 'btn btn-primary btn-lg', 'Siparişi Tamamla',
+                                    $sem('button', 'btn btn-primary btn-lg', lang('Complete Order'),
                                          array('bindings' => array('action' => 'eo_submit_purchase'))),
-                                    $sem('button', 'btn btn-outline-secondary', 'Güncelle',
+                                    $sem('button', 'btn btn-outline-secondary', lang('Update'),
                                          array('bindings' => array('action' => 'eo_submit_update'))),
                                 )),
                             )),
@@ -1361,7 +1363,7 @@ function _eo_default_designer_tree()
                 // ╰─────────────────────────────────────────────────────╯
             )),
 
-            // ── Real Bootstrap modal: order terms ("Sipariş Koşulları") ──
+            // ── Real Bootstrap modal: order terms ("Order Terms") ──
             // No extraction, no system binding — this is a normal Bootstrap
             // modal element the designer can edit, restyle, add fields to,
             // or delete entirely. The trigger <a> above uses standard
@@ -1375,7 +1377,7 @@ function _eo_default_designer_tree()
             array('type' => 'semantic', 'props' => array(
                 'tag' => 'div',
                 'cssClass' => 'modal fade',
-                'customName' => 'Koşullar Modal\'ı',
+                'customName' => lang('Terms Modal'),
                 '_attrs' => array(
                     array('name' => 'id',                'value' => 'pg-eo-terms-modal'),
                     array('name' => 'tabindex',          'value' => '-1'),
@@ -1389,7 +1391,7 @@ function _eo_default_designer_tree()
                             array('type' => 'semantic', 'props' => array(
                                 'tag' => 'h5',
                                 'cssClass' => 'modal-title',
-                                'text' => 'Sipariş Koşulları',
+                                'text' => lang('Order Terms'),
                                 '_attrs' => array(array('name' => 'id', 'value' => 'pg-eo-terms-modal-label')),
                             ), 'children' => array()),
                             array('type' => 'semantic', 'props' => array(
@@ -1398,27 +1400,27 @@ function _eo_default_designer_tree()
                                 '_attrs' => array(
                                     array('name' => 'type',           'value' => 'button'),
                                     array('name' => 'data-bs-dismiss','value' => 'modal'),
-                                    array('name' => 'aria-label',     'value' => 'Close'),
+                                    array('name' => 'aria-label',     'value' => lang('Close')),
                                 ),
                             ), 'children' => array()),
                         )),
                         $sem('div', 'modal-body', array(
-                            $sem('h6', 'mb-3',         '1. Genel Şartlar'),
-                            $sem('p',  'small',        'Siparişinizi onayladığınızda, ödeme yöntemi olarak seçtiğiniz yöntemle bedelin tahsil edilmesini, ürünlerin/hizmetlerin tarafımızca size sunulmasını kabul etmiş sayılırsınız.'),
-                            $sem('h6', 'mb-3 mt-4',    '2. İptal ve İade'),
-                            $sem('p',  'small',        'Dijital ürünler indirildikten sonra iade edilemez. Fiziksel ürünler için teslimat tarihinden itibaren 14 gün içinde cayma hakkınız bulunmaktadır.'),
-                            $sem('h6', 'mb-3 mt-4',    '3. Teslimat'),
-                            $sem('p',  'small',        'Kargo süresi seçilen kargo firmasına ve adresinize göre değişir. Sipariş onayı sonrasında e-posta ile takip numaranız iletilir.'),
-                            $sem('h6', 'mb-3 mt-4',    '4. Kişisel Verilerin Korunması'),
-                            $sem('p',  'small',        'Sipariş sırasında verdiğiniz bilgiler yalnızca siparişinizin tamamlanması, faturalandırma ve teslimat amacıyla işlenir. KVKK kapsamında haklarınız saklıdır.'),
-                            $sem('h6', 'mb-3 mt-4',    '5. İletişim'),
-                            $sem('p',  'small mb-0',   'Sorularınız için iletişim sayfamızdan bize ulaşabilirsiniz.'),
+                            $sem('h6', 'mb-3',         lang('1. General Terms')),
+                            $sem('p',  'small',        lang('By confirming your order you agree that the amount is charged with the payment method you chose and that the products/services are supplied to you by us.')),
+                            $sem('h6', 'mb-3 mt-4',    lang('2. Cancellation and Refund')),
+                            $sem('p',  'small',        lang('Digital products cannot be returned once downloaded. For physical products you have the right to withdraw within 14 days of delivery.')),
+                            $sem('h6', 'mb-3 mt-4',    lang('3. Delivery')),
+                            $sem('p',  'small',        lang('Delivery time depends on the carrier you choose and on your address. Your tracking number is emailed to you once the order is confirmed.')),
+                            $sem('h6', 'mb-3 mt-4',    lang('4. Protection of Personal Data')),
+                            $sem('p',  'small',        lang('The information you give while ordering is processed only to complete your order, to invoice it and to deliver it. Your rights under data protection law are reserved.')),
+                            $sem('h6', 'mb-3 mt-4',    lang('5. Contact')),
+                            $sem('p',  'small mb-0',   lang('You can reach us from our contact page with any question.')),
                         )),
                         $sem('div', 'modal-footer', array(
                             array('type' => 'semantic', 'props' => array(
                                 'tag' => 'button',
                                 'cssClass' => 'btn btn-outline-secondary',
-                                'text' => 'Kapat',
+                                'text' => lang('Close'),
                                 '_attrs' => array(
                                     array('name' => 'type',            'value' => 'button'),
                                     array('name' => 'data-bs-dismiss', 'value' => 'modal'),
@@ -1427,7 +1429,7 @@ function _eo_default_designer_tree()
                             array('type' => 'semantic', 'props' => array(
                                 'tag' => 'button',
                                 'cssClass' => 'btn btn-primary',
-                                'text' => 'Okudum, Kabul Ediyorum',
+                                'text' => lang('I Have Read and Accept'),
                                 '_attrs' => array(
                                     array('name' => 'type',                     'value' => 'button'),
                                     array('name' => 'data-bs-dismiss',          'value' => 'modal'),
