@@ -947,7 +947,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             $contact_name = h($contact_name);
         }
 
-        $username = $submitted_username;
+        $username = $submitted_username ?? '';
 
         if (!$submitted_username) {
             $submitted_username = '[' . lang('Unknown') . ']';

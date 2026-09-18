@@ -656,7 +656,11 @@ class liveform {
         // we must do this in order to clear values for check boxes and pick lists because they do not pass POST values when nothing is selected
         if (isset($_SESSION['software']['liveforms'][$this->form][$this->index]) && $_SESSION['software']['liveforms'][$this->form][$this->index]) {
             foreach ($_SESSION['software']['liveforms'][$this->form][$this->index] as $field => $value) {
-                unset($_SESSION['software']['liveforms'][$this->form][$this->index][$field]['value']);
+                // Only field entries are arrays; the '__prefill' marker set
+                // below is a plain boolean and has no value to clear.
+                if (is_array($value)) {
+                    unset($_SESSION['software']['liveforms'][$this->form][$this->index][$field]['value']);
+                }
             }
         }
         
