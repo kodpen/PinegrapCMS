@@ -41,6 +41,53 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
+
+**Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
+ve `english_default/sql.sql`) `config` satırında `debug = 1` taşıyordu.
+`init.php` bu değeri `DEBUG` sabitine bağlar ve `output_error()` sabit
+açıkken başarısız sorgunun metnini `mysqli_error` çıktısıyla birlikte
+ziyaretçiye basar. Kurulum sihirbazı bu alana dokunmadığı için taze kurulan
+her site, ayarlar ekranında "Ayrıntılı Veritabanı Hataları" kapatılana
+kadar her sorgu hatasında SQL parçalarını ve veritabanı adını dışarı
+sızdırıyordu (#88, FUNC-6). Aynı kararda (#88, F21) özel form yönetici
+bildirim e-postasının varsayılan biçiminin `plain_text` olması istendi:
+`html` biçimi bir e-posta sayfası seçilmeden kaydedilirse gövde boş kalır ve
+PHPMailer "Message body empty" ile gönderimi düşürür.
+
+**Çözüm.** İki başlangıç dökümünde `config` satırındaki `debug` değeri
+`1` → `0` yapıldı; dosyalarda başka hiçbir bayt değişmedi. `data/backups/`
+klasörüne dokunulmaz kuralının tek istisnasıdır ve yalnız bu değer için
+verilmiştir. Bildirim biçimi için kod değişikliği gerekmedi:
+`add_page.php` şablonunda `plain_text` radyosu ilk commit'ten beri
+`checked`, `custom_form_pages.administrator_email_format` sütununun
+şema varsayılanı da `'plain_text'`. Karar, mevcut durumun kayda geçirilmesi
+oldu; `html` + boş sayfa ile kaydedilmiş mevcut kayıtlar bilinçli olarak
+değiştirilmedi (veri taşıma yok).
+
+Rol matrisi maddeleri (#88 D1, D2, D3) bilinçli model olarak onaylandı ve
+değişmedi: `'manager'` kapısı Designer (1) ve Manager (2) için site
+yönetiminin tamamını açar, yalnız `config.php` düzeyindeki ayarlar ve
+gelişmiş tasarım alanları rol 0 / rol 1'e ayrılmıştır; Görsel Sayfa Editörü
+rol 2 ve 3'e içerik modunda açık kalır; tema önizlemesi Manager'a açık
+kalır.
+
+### Doğrulama
+
+Çalışma kopyası ikinci bir veritabanına sihirbazla (turkish_default) taze
+kuruldu: kurulum sonrası `SELECT debug, version FROM config` → `0 |
+2026.4.4`; ziyaretçi ana sayfası, `view_pages.php` ve
+`settings_general.php` 200 döndü, PHP hata günlüğüne satır düşmedi.
+`add_page.php` GET (ca5196c sandbox'ı ve bu dal) her ikisinde `plain_text`
+radyosu `checked`; varsayılanlarla oluşturulan özel form sayfasında
+`administrator_email_format = 'plain_text'` kaydedildi. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** `english_default` ile kurulum koşturulmadı (aynı tek değer
+değişti, döküm ayrıştırılarak doğrulandı). Mevcut sitelerde `html` biçimli
+ve e-posta sayfasız kayıtlar hâlâ boş gövde üretir; #88 F21 seçeneği (b)
+(otomatik özet gövdesi) ayrı bir karar konusudur.
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters
