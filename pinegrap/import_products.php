@@ -114,8 +114,11 @@ if (!$_POST) {
         exit();
     }
 
-    // Fix Mac line-ending issue.
-    ini_set('auto_detect_line_endings', true);
+    // Fix classic Mac (CR-only) line endings. The setting is deprecated since
+    // PHP 8.1, where fgetcsv() already handles them, so only set it on older PHP.
+    if (PHP_VERSION_ID < 80100) {
+        ini_set('auto_detect_line_endings', true);
+    }
 
     // A spreadsheet is turned into the CSV this importer already reads, and
     // everything below carries on unaware. See import_products_f.php for why

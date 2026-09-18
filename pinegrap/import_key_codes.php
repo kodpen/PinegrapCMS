@@ -79,8 +79,11 @@ if (!$_POST) {
         output_error(lang('Please select a file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // Fix Mac line-ending issue.
-    ini_set('auto_detect_line_endings', true);
+    // Fix classic Mac (CR-only) line endings. The setting is deprecated since
+    // PHP 8.1, where fgetcsv() already handles them, so only set it on older PHP.
+    if (PHP_VERSION_ID < 80100) {
+        ini_set('auto_detect_line_endings', true);
+    }
 
     // get file handle for uploaded CSV file
     $handle = fopen($_FILES['file']['tmp_name'], "r");
@@ -124,6 +127,7 @@ if (!$_POST) {
     }
 
     // build list of column names for database query
+    $column_list = '';
     foreach ($column_names as $key => $value) {
         $column_list .= "$value, ";
     }
