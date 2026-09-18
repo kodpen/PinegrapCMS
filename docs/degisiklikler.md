@@ -41,6 +41,65 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Sırlar, yedekler ve dosya yolları: güvenlik düzeltmeleri (2026-09-18)
+
+**Belirti.** Güvenlik incelemesi (#62) yedekleme ve kimlik doğrulama
+yollarında bir dizi açık buldu: `api.php` `software_backup` adımlarında
+`backup_name` yalnız ilk adımda temizleniyordu, sonraki adımlar istemciden
+gelen adı olduğu gibi yol olarak kullanıyordu (`../` ile `data/backups/`
+dışına döküm ve kopya yazılabiliyordu). `auto_backup.php` oturum kapısı
+olmadan çalışıyordu: anonim bir GET tam veritabanı dökümünü haftanın adıyla
+bilinen bir klasöre yazdırabiliyordu. `data/config(default).php` dosyanın
+sonunda etkin bir `AUTOMATED_UPGRADE_SECRET` tanımı ile geliyordu ve değeri
+herkesin okuyabildiği yer tutucuydu. API kimlik bilgileri, üstteki not
+"yalnız test anahtarı" dese de gövde ve sorgu dizesinden her anahtar için
+kabul ediliyordu. IndexNow anahtarı `<anahtar>.txt` dosya adı olarak
+süzgeçsiz kullanılıyordu (yol geçişiyle yazma ve silme). ShipWorks uç
+noktası parola denetiminde giriş ekranının kilidini paylaşmıyordu. Giriş
+ekranı kimlik bilgilerini `$_REQUEST` üzerinden, yani sorgu dizesinden de
+okuyordu. Hediye kartı kodu, form/sipariş/bayi/komisyon/e-posta alıcı
+referans kodları ve kurulumdaki `ENCRYPTION_KEY` `mt_rand()` ile
+üretiliyordu. `update_search_index.php` PDF yolunu `shell_exec()`'e
+tırnaksız veriyordu.
+
+**Çözüm.** `software_backup` adı switch'ten önce tek kez
+`preg_replace('/[^A-Za-z0-9_-]/', '_', basename($ad))` ile klasör adına
+indirir; ikinci geçişte değişmediği için adımlar arasında gidip gelen ad
+kararlıdır; boş sonuç yalnız ilk adımda kabul edilir (ad orada üretilir),
+diğer adımlarda "Yedek adı geçerli değil." ile reddedilir. `auto_backup.php`
+`update_exchange_rates.php` ile aynı kalıbı alır:
+`pg_cron_is_background_run()` değilse `validate_user()` +
+`validate_area_access('manager')` — `backups.php` ile aynı kapı; kapı
+`pg_cron_ran()` kaydından önce durur ki reddedilen istek çalışma sayılmasın.
+Crontab ve `job.php` dağıtıcısı etkilenmez. `config(default).php`'deki etkin
+tanım kaldırıldı; 49. satırdaki yorumlu örnek kalır ve
+`install_secret_matches()` tanımsız sabiti "kapalı" sayar. `api_read_credentials()`
+gövde/sorgu dizesindeki anahtarı yalnız `pg_test_` önekiyle okur; canlı
+anahtar bu yoldan "kimlik bilgisi yok" (401) alır. IndexNow anahtarı
+`/^[A-Za-z0-9-]{8,128}$/` ile doğrulanır (IndexNow'un kendi biçimi),
+uymazsa alan hatası verilip yazma yapılmaz; eski kayıtlı anahtar da aynı
+biçime uymuyorsa silme için yol olarak kullanılmaz. ShipWorks
+`pg_login_throttle_guard()` / `pg_login_record_failure()` /
+`pg_login_throttle_pass()` alır (kilitli istek 429 ile döner). Giriş
+yalnız `REQUEST_METHOD === 'POST'` ve `$_POST['email']` varken giriş sayılır;
+eski `u`/`p` takma adları da yalnız POST'tan okunur; kimlik bilgisi taşıyan
+GET boş formu gösterir. Kod üreticileri `random_int()` kullanır.
+`escapeshellarg()` PDF yolunu sarar. **Şema değişikliği yok.**
+
+**Karar bekleyen maddeler (bu sürümde dokunulmadı).**
+`data/backups/turkish_default/sql.sql` config satırında UPS/USPS kimlik
+bilgileri taşıyor — `data/backups/` kural 12 gereği dokunulmaz, ürün
+sahibinin kararı. `backups.php` menüde manager'a da gösteriliyor
+(`registry.php`), `welcome.php` ve `api.php` yorumları bunu "manager ve
+üstü" politikası olarak yazıyor; yalnız-admin yapılsın mı sorusu açık.
+Google Client Secret'ın Güvenlik ekranında geri gösterilmesi
+(`prep.php`) kod yorumunda yazılı bir operatör tercihi; kural 10 ile
+çelişiyor, hangisi geçerli sorusu açık. Unsplash Access Key ön yüze
+gömülü kalır: Unsplash bu anahtarı istemci tarafı `client_id` olarak
+tasarlamıştır ve sayfa oturum kapısı arkasındadır; sunucu tarafı vekil
+ayrı bir iştir. Teklif anahtar kodunun form referans kodunu yeniden
+kullanması (`custom_form.php`) ayrı bir iş olarak bırakıldı.
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters

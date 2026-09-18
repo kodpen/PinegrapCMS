@@ -28,6 +28,13 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 // HTTP/1.0
 header("Pragma: no-cache");
 
+$shipworks_username = isset($_REQUEST['username']) ? (string) $_REQUEST['username'] : '';
+
+// This endpoint checks a password like the sign-in screen does, so it shares
+// the screen's lockout: a locked address or account is refused before the
+// lookup, a wrong password is counted, a right one clears the account's count.
+pg_login_throttle_guard($shipworks_username);
+
 // Try to find the user by name, then verify the raw password against the stored
 // hash in PHP (pg_password_verify handles legacy MD5, wrapped and modern rows,
 // and upgrades on a correct password). A wrong password empties $user so the
@@ -42,8 +49,8 @@ $user = db_item(
     FROM user
     WHERE
         (
-            (user_username = '" . escape($_REQUEST['username']) . "')
-            OR (user_email = '" . escape($_REQUEST['username']) . "')
+            (user_username = '" . escape($shipworks_username) . "')
+            OR (user_email = '" . escape($shipworks_username) . "')
         )
     LIMIT 1");
 
@@ -55,6 +62,8 @@ if (!is_array($user)
 
 // If a user was not found (login invalid), then output error.
 if ($user['id'] == '') {
+    pg_login_record_failure($shipworks_username);
+
     print
         '<?xml version="1.0" standalone="yes" ?>
         <ShipWorks moduleVersion="3.0.0" schemaVersion="1.0.0">
@@ -80,6 +89,8 @@ if ($user['id'] == '') {
 
     exit;
 }
+
+pg_login_throttle_pass($shipworks_username);
 
 switch ($_REQUEST['action']) {
     case 'getmodule':

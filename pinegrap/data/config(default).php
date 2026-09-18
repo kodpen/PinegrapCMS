@@ -287,8 +287,4 @@ define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 // Seconds to stop attempting connections after an overload, so the pool can
 // drain. Too long keeps the site down after the database has recovered.
 // define('DB_UNAVAILABLE_BACKOFF', 30);
-
-// Automated upgrade from a cron job over the web: install/index.php?automated_upgrade=true&secret=<this value>
-// Optional. Undefined or shorter than 16 characters means the key path is closed; php from the command line never needs it.
- define('AUTOMATED_UPGRADE_SECRET', 'change-this-to-a-long-random-string');
 ?>

@@ -1931,7 +1931,7 @@ function generate_gift_card_code()
 {
     $code = '';
     for ($i = 1; $i <= 16; $i++) {
-        $code .= mt_rand(0, 9);
+        $code .= random_int(0, 9);
     }
     // If code is already in use, use recursion to generate a new code.
     if (db_value("SELECT COUNT(*) FROM gift_cards WHERE code = '" . $code . "'") > 0) {
