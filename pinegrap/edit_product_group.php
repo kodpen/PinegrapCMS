@@ -1097,10 +1097,7 @@ if (!$_POST) {
             FROM product_groups
             WHERE id = '" . e($_POST['id'] ?? '') . "'");
 
-        $selected_images = array();
-        foreach ($_POST['selected_images'] as $selected_image ) {
-            $selected_images[] = $selected_image ;
-        }
+        $selected_images = pg_pb_selected_images();
 
         $selected_count = 0;
         foreach ($selected_images as $value) {

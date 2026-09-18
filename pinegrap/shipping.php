@@ -1229,7 +1229,7 @@ function get_shipping_realtime_rate($properties) {
     foreach ($items as $item) {
 
         // If this is a free-shipping item, then skip to next item.
-        if ($item['free_shipping']) {
+        if (!empty($item['free_shipping'])) {
             continue;
         }
 
@@ -1747,7 +1747,7 @@ function get_shipping_realtime_rate($properties) {
 
                         // Get the class id so we can figure out the service.
                         preg_match('/CLASSID="(.*?)"/si', $postage[1], $class_id_match);
-                        $class_id = $class_id_match[1];
+                        $class_id = isset($class_id_match[1]) ? $class_id_match[1] : '';
 
                         // If we could not find the class id for some reason, then skip to the next
                         // postage.
@@ -1782,7 +1782,7 @@ function get_shipping_realtime_rate($properties) {
 
                         // Get the rate.
                         preg_match('/<Rate>(.*?)<\/Rate>/si', $postage[2], $rate_match);
-                        $rate = $rate_match[1];
+                        $rate = isset($rate_match[1]) ? $rate_match[1] : '';
 
                         // If we could not find the rate for some reason, then skip to the next
                         // postage.
@@ -2007,7 +2007,7 @@ function get_shipping_realtime_rate($properties) {
                     preg_match('/<ResponseStatusCode>(.*?)<\/ResponseStatusCode>/si', $response, $match);
 
                     // If there was an error, then log error(s) and return false.
-                    if ($match[1] != '1') {
+                    if (!isset($match[1]) || ($match[1] != '1')) {
 
                         // Get all errors.  Normally, it appears there is just one error per
                         // response, however it appears multiple errors can technically appear,
@@ -2198,7 +2198,7 @@ function get_shipping_realtime_rate($properties) {
         } else {
 
             // If this package is a container and it has a cost, then add cost to the rate.
-            if ($package['container']['cost']) {
+            if (!empty($package['container']['cost'])) {
                 $package['rate'] += $package['container']['cost'];
             }
 
@@ -2215,7 +2215,7 @@ function get_shipping_realtime_rate($properties) {
                 }
 
                 // If this package is a container of items, then describe package in a certain way.
-                if ($package['container']) {
+                if (!empty($package['container'])) {
 
                     $description .=
                         $package['container']['name'] .
@@ -2740,6 +2740,13 @@ function get_shipping_methods($properties) {
         $shipping_method_item_rate_first_item_excluded = $row['item_rate_first_item_excluded'];
         $protected = $row['protected'];
 
+        // A method forced onto the destination without a matching zone has no zone
+        // rates; start from zero so the previous method's rates are not reused.
+        $zone_base_rate = 0;
+        $zone_primary_weight_rate = 0;
+        $zone_secondary_weight_rate = 0;
+        $zone_item_rate = 0;
+
         // loop through all valid zones in order to find a zone that is allowed for this shipping method
         foreach ($zones as $zone_id) {
             $query = "SELECT shipping_method_id
@@ -3233,15 +3240,15 @@ function verify_address($properties) {
                     
                     // get Errors
                     preg_match('/<error>(.*?)<\/error>/msi', $response_data, $matches);
-                    $usps_error = $matches[1];
+                    $usps_error = isset($matches[1]) ? $matches[1] : '';
                     
                     // if there is a USPS error, then process the error
                     if ($usps_error != '') {
                         preg_match('/<number>(.*?)<\/number>/msi', $response_data, $matches);
-                        $usps_error_number = $matches[1];
+                        $usps_error_number = isset($matches[1]) ? $matches[1] : '';
                         
                         preg_match('/<description>(.*?)<\/description>/msi', $response_data, $matches);
-                        $usps_error_description = $matches[1];
+                        $usps_error_description = isset($matches[1]) ? $matches[1] : '';
                         
                         // determine what needs to be done based on the error code
                         switch($usps_error_number) {

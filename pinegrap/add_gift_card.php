@@ -67,7 +67,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Create Gift Card'),
-        'extra_classes'=>'products',
+        'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Create Gift Card'),
         'heading_description' => lang('Create one or more new gift cards by entering an amount.  The code will be generated for you.'),
@@ -232,7 +232,7 @@ if (!$_POST) {
     }
 
     // Convert amount into cents.
-    $amount = $amount * 100;
+    $amount = (int) round($amount * 100);
 
     // Create a gift card for each quantity.
     for ($i = 1; $i <= $quantity; $i++) { 

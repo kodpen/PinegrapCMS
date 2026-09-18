@@ -123,8 +123,6 @@ pg_page_shell([
             </div>
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
-                    <form name="form" action="delete_styles.php" method="post" class="disable_shortcut"> 
-                        ' . get_token_field() . '
                         <table class="chart table-hover table " style="width:100%;display:none">
                             <thead>
                                 <tr>
@@ -137,14 +135,6 @@ pg_page_shell([
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
                         </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
-                            <div class="container">
-                                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-loading-content="' . lang(array('string'=>'Deleting') ) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('page styles')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
                 </div>
             </div>
         </div>

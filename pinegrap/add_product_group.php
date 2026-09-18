@@ -420,10 +420,7 @@ $liveform->remove_form();
     // prepare the address name for the database
     $address_name = prepare_catalog_item_address_name($address_name);
 
-    $selected_images = array();
-    foreach ($_POST['selected_images'] as $selected_image ) {
-        $selected_images[] = $selected_image ;
-    }
+    $selected_images = pg_pb_selected_images();
     
     $selected_count = 0;
     foreach ($selected_images as $value) {

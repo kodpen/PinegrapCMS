@@ -355,7 +355,8 @@ if (!$_POST) {
         $attributes = db_items(
             "SELECT
                 attribute_id,
-                sort_order
+                sort_order,
+                default_option_id
             FROM product_groups_attributes_xref
             WHERE product_group_id = '" . $product_group['id'] . "'");
 
@@ -364,11 +365,29 @@ if (!$_POST) {
                 "INSERT INTO product_groups_attributes_xref (
                     product_group_id,
                     attribute_id,
-                    sort_order)
+                    sort_order,
+                    default_option_id)
                 VALUES (
                     '" . $new_product_group['id'] . "',
                     '" . $attribute['attribute_id'] . "',
-                    '" . $attribute['sort_order'] . "')");
+                    '" . $attribute['sort_order'] . "',
+                    '" . (int) $attribute['default_option_id'] . "')");
+        }
+
+        // Duplicate the extra images associated with this product group.
+        $images = db_items(
+            "SELECT file_name
+            FROM product_groups_images_xref
+            WHERE product_group = '" . $product_group['id'] . "'");
+
+        foreach ($images as $image) {
+            db(
+                "INSERT INTO product_groups_images_xref (
+                    product_group,
+                    file_name)
+                VALUES (
+                    '" . $new_product_group['id'] . "',
+                    '" . e($image['file_name']) . "')");
         }
 
         return $new_product_group['id'];
