@@ -248,10 +248,11 @@ if (!$_POST) {
     $contact_image = $row['contact_image'];
     $contact_file_id = $row['contact_file_id'];
     $contact_id = $row['contact_id'];
-    $first_name = trim($row['first_name']);
-    $last_name = trim($row['last_name']);
-    $email_address = trim($row['email_address']);
-    $member_id = trim($row['member_id']);
+    // Contact columns come from a LEFT JOIN and are NULL for a user without a contact.
+    $first_name = trim((string) $row['first_name']);
+    $last_name = trim((string) $row['last_name']);
+    $email_address = trim((string) $row['email_address']);
+    $member_id = trim((string) $row['member_id']);
 
     $output_login_as_user_button = '';
 

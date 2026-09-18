@@ -11522,5 +11522,6 @@
     "{var:1} per unit of the document currency. Leave empty to use the recorded rate of the issue date.": "1 birim belge para birimi = {var:1}. Düzenleme tarihinin kayıtlı kurunu kullanmak için boş bırakın.",
     "{var:1} per unit; leave empty for the recorded rate of the receipt date. Ignored for the base currency.": "1 birim = {var:1}; tahsilat tarihinin kayıtlı kuru için boş bırakın. Ana para biriminde dikkate alınmaz.",
     "This folder could not be loaded. The connection or the server may have timed out during a long operation.": "Bu klasör yüklenemedi. Uzun süren bir işlem sırasında bağlantı veya sunucu zaman aşımına uğramış olabilir.",
-    "Nothing here matches the search.": "Burada aramayla eşleşen bir şey yok."
+    "Nothing here matches the search.": "Burada aramayla eşleşen bir şey yok.",
+    "Developer PIN is not configured.": "Geliştirici PIN yapılandırılmamış."
 }

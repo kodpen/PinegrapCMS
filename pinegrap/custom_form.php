@@ -423,7 +423,7 @@ if ($liveform->check_form_errors() == false) {
                 '$reference_code',
                 '" . escape(get_tracking_code()) . "',
                 '" . escape(get_affiliate_code()) . "',
-                '" . escape($_SESSION['software']['http_referer']) . "',
+                '" . escape(isset($_SESSION['software']['http_referer']) ? $_SESSION['software']['http_referer'] : '') . "',
                 IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
                 UNIX_TIMESTAMP(),
                 '" . $user_id . "',
@@ -1215,6 +1215,9 @@ if ($liveform->check_form_errors() == false) {
             WHERE
                 (user_username = '" . escape($liveform->get_field_value('add_watcher')) . "')
                 OR (user_email = '" . escape($liveform->get_field_value('add_watcher')) . "')");
+        if (!$add_watcher_user) {
+            $add_watcher_user = array();
+        }
     }
 
     // If the submitter email is enabled, then send it to the submitter and possibly a watcher.
@@ -1230,7 +1233,7 @@ if ($liveform->check_form_errors() == false) {
 
         // If the add watcher feature was used and a user was found for the watcher,
         // then add watcher's email address to array.
-        if ($add_watcher_user['id'] != '') {
+        if (!empty($add_watcher_user['id'])) {
             $submitter_and_watcher_email_addresses[] = $add_watcher_user['email_address'];
         }
 
@@ -1486,7 +1489,7 @@ if ($liveform->check_form_errors() == false) {
     // If the add watcher feature has been used, then determine if we should add the watcher.
     // The add watcher feature allows a watcher to be passed in the query string to the custom form.
     if (
-        ($add_watcher_user['id'] != '')
+        (!empty($add_watcher_user['id']))
         && ($liveform->get_field_value('add_watcher_page_id') != '')
     ) {
         // Get details for form item view page.

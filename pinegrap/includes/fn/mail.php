@@ -156,7 +156,7 @@ function initialize_recipients()
         while ($row = mysqli_fetch_assoc($result)) {
             $recipient_in_session = false;
             // if there are recipients in the session
-            if ($_SESSION['ecommerce']['recipients']) {
+            if (!empty($_SESSION['ecommerce']['recipients'])) {
                 // loop through all recipients
                 foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                     // if recipient from address book is already in session, remember that
@@ -186,7 +186,7 @@ function add_recipient($ship_to_name)
         // initialize variable that will be used to determine if recipient is already in session
         $recipient_in_session = false;
         // if recipients have been stored in session
-        if ($_SESSION['ecommerce']['recipients']) {
+        if (!empty($_SESSION['ecommerce']['recipients'])) {
             // loop through all recipients
             foreach ($_SESSION['ecommerce']['recipients'] as $recipient) {
                 // if recipient from address book is already in session, remember that
@@ -1137,7 +1137,7 @@ function create_auto_email_campaigns($properties)
                     break;
             }
 
-            log_activity(lang(array('string' => 'auto campaign for profile ({var:1}) was created because of an action ({var:2})', 'vars' => array($email_campaign_profile['name'], $log_action))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'auto campaign for profile ({var:1}) was created because of an action ({var:2})', 'vars' => array($email_campaign_profile['name'], $log_action))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
         }
     }
 }
@@ -1280,7 +1280,7 @@ function email($properties)
             if (defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '') {
                 $mail->SMTPAuth = true;
                 $mail->Username = SYSTEM_SMTP_USERNAME;
-                $mail->Password = SYSTEM_SMTP_PASSWORD;
+                $mail->Password = defined('SYSTEM_SMTP_PASSWORD') ? SYSTEM_SMTP_PASSWORD : '';
             }
             $mail->Port = (defined('SYSTEM_SMTP_PORT') && SYSTEM_SMTP_PORT !== '') ? SYSTEM_SMTP_PORT : 587;
         } elseif ($type === 'campaign' && defined('CAMPAIGN_SMTP_HOSTNAME') && CAMPAIGN_SMTP_HOSTNAME !== '') {
@@ -1289,7 +1289,7 @@ function email($properties)
             if (defined('CAMPAIGN_SMTP_USERNAME') && CAMPAIGN_SMTP_USERNAME !== '') {
                 $mail->SMTPAuth = true;
                 $mail->Username = CAMPAIGN_SMTP_USERNAME;
-                $mail->Password = CAMPAIGN_SMTP_PASSWORD;
+                $mail->Password = defined('CAMPAIGN_SMTP_PASSWORD') ? CAMPAIGN_SMTP_PASSWORD : '';
             }
             $mail->Port = (defined('CAMPAIGN_SMTP_PORT') && CAMPAIGN_SMTP_PORT !== '') ? CAMPAIGN_SMTP_PORT : 587;
         } elseif (!function_exists('mail')) {

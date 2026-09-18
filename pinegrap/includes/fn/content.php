@@ -312,7 +312,7 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit')
 // get form info (i.e. field content, wysiwyg fields, file upload exists)
 function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, $label_column_width, $office_use_only, $liveform, $interface, $editable = false, $device_type = 'desktop', $folder_id_for_default_value = 0, $reference_code_field_id = 0, $express_order_form_type = '', $prefix = '')
 {
-    $form_info = array();
+    $form_info = array('content' => '');
     // if page id is not equal to 0, then this is a page form
     if ($page_id != 0) {
         // get page type
@@ -527,7 +527,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
         // Assume that field will be shown until we find out otherwise.
         $show = true;
         // If a query string value was passed that says to not show field then remember that.
-        if ($_GET['show_' . $field['id']] == 'false') {
+        if ((isset($_GET['show_' . $field['id']])) && ($_GET['show_' . $field['id']] == 'false')) {
             $show = false;
         }
         $output_hidden_style = '';
@@ -561,7 +561,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             $field['label'] .= '*';
         }
         $default_value = '';
-        $value_from_query_string = trim($_GET['value_' . $field['id']]);
+        $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
         // If a default value was passed in the query string, then use that.
         if ($value_from_query_string != '') {
             $default_value = $value_from_query_string;
@@ -1219,7 +1219,7 @@ function get_submitted_product_form_content_without_form_fields($order_item_id, 
 function get_submitted_form_content_with_form_fields($properties)
 {
     $type = $properties['type'];
-    $order_id = $properties['order_id'];
+    $order_id = isset($properties['order_id']) ? $properties['order_id'] : '';
 
     // Only passed for shipping forms.
     $ship_to_id = isset($properties['ship_to_id']) ? $properties['ship_to_id'] : '';
@@ -1656,7 +1656,7 @@ function get_form_review_info($properties)
 function get_submitted_form_content_without_form_fields($properties)
 {
     $type = $properties['type'];
-    $order_id = $properties['order_id'];
+    $order_id = isset($properties['order_id']) ? $properties['order_id'] : '';
 
     // Only passed for shipping forms.
     $ship_to_id = isset($properties['ship_to_id']) ? $properties['ship_to_id'] : '';
@@ -2381,7 +2381,8 @@ function get_catalog_item_from_url($forget = false)
     }
 
     // get the address name
-    $address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
+    $page_parameter = isset($_GET['page']) ? $_GET['page'] : '';
+    $address_name = mb_substr(mb_substr($page_parameter, mb_strpos($page_parameter, '/')), 1);
     $item_id = '';
     $item_image_name = '';
     $item_type = '';

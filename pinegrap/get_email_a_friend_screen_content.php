@@ -28,12 +28,13 @@ function get_email_a_friend_screen_content($properties)
     // if the form has not been submitted yet, then prefill values
     if ($liveform->field_in_session('from_email_address') == false) {
         // parse the http referer url in order to get hostname
-        $http_referer_parsed_url = parse_url($_SERVER['HTTP_REFERER']);
+        $http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+        $http_referer_parsed_url = parse_url($http_referer);
         
         // if there is a hostname in the http referer and the hostname is this website's hostname
         if ((isset($http_referer_parsed_url['host']) == true) && ($http_referer_parsed_url['host'] == HOSTNAME)) {
             // set the link URL to the http referer until we find out if we need to modify the link URL
-            $liveform->assign_field_value('link_url', $_SERVER['HTTP_REFERER']);
+            $liveform->assign_field_value('link_url', $http_referer);
             
             // get the position of the page name in case it exists in the URL
             $page_name_position = mb_strlen(PATH);

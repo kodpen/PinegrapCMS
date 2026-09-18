@@ -19,6 +19,12 @@
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
+
+// The PIN is an optional config constant; without it there is nothing to unlock against.
+if (!defined('DEVELOPER_PIN')) {
+    output_error(lang('Developer PIN is not configured.'));
+}
+
 $page_name = initialize_developer_security();
 include_once('liveform.class.php');
 
@@ -34,7 +40,7 @@ if (!$_POST) {
               WHERE user_username = '" . mysqli_real_escape_string(db::$con, $SUser) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $firstname_or_username = trim($row['first_name']) ?: $row['user_username'];
+    $firstname_or_username = trim((string) $row['first_name']) ?: $row['user_username'];
 
     // build pin input fields in rows of 4
     $pin_inputs = '';
