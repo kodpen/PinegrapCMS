@@ -29,6 +29,42 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // follows a save already uses the scheme that was just chosen.
     $url_scheme = (post_value('secure_mode') ? 'https://' : 'http://');
 
+    // Turning Secure Mode on is accepted only from a request this server itself
+    // sees as HTTPS. Saved from a request it sees as plain HTTP, the mode would
+    // redirect every request - the operator's next one included - to a scheme
+    // that never reaches the server, and the site is locked out. Only the
+    // OFF -> ON transition is checked: a site already on HTTPS keeps saving,
+    // and turning the mode off is how a locked-out site is recovered.
+    //
+    // check_if_request_is_secure() is the one definition of "is this HTTPS"
+    // (direct TLS, or forwarded headers only under TRUST_PROXY_SSL_HEADERS).
+    // pg_request_is_https() is deliberately not used here: it honours the
+    // forwarded headers without the opt-in, so a proxy that terminates SSL in
+    // front of a plain-HTTP origin (Cloudflare "Flexible") would pass the check
+    // and the saved setting would loop the site. Two messages, because the two
+    // situations have different fixes: the forwarded headers say whether a
+    // proxy is involved at all.
+    if (($url_scheme === 'https://') && (URL_SCHEME !== 'https://') && !check_if_request_is_secure()) {
+
+        $secure_mode_test_link = '<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('Secure Mode test page') . '</a>';
+
+        if (check_proxy_ssl_headers()) {
+            $liveform->add_error(lang(array(
+                'string' => 'Secure Mode was not enabled: a proxy or CDN reports HTTPS, but this server itself sees plain HTTP, so SSL is being terminated in front of it (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or switch the proxy to Full (end-to-end) mode. Then check what this server sees on the {var:1} and save this setting from a session opened over HTTPS.',
+                'vars'   => $secure_mode_test_link)));
+        } else {
+            $liveform->add_error(lang(array(
+                'string' => 'Secure Mode was not enabled: this request did not arrive over HTTPS, so no encrypted connection is reaching this server. Install an SSL certificate first. Then check what this server sees on the {var:1} and save this setting from a session opened over HTTPS.',
+                'vars'   => $secure_mode_test_link)));
+        }
+
+        // Nothing is written. The caller redirects on $url_scheme, and the
+        // scheme this request arrived on is the only one known to work.
+        $url_scheme = URL_SCHEME;
+
+        return;
+    }
+
     if (function_exists('waf_table_has_column')
         && waf_table_has_column('config', 'waf_enabled')
     ) {
