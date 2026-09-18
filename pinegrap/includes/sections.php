@@ -8,6 +8,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Section rail
 // ─────────────────────────────────────────────────────────────────────────────

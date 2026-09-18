@@ -39,6 +39,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 if (!defined('PG_DESIGNER_ACCESS_FULL')) {
     define('PG_DESIGNER_ACCESS_FULL', 'full');
     define('PG_DESIGNER_ACCESS_CONTENT', 'content');

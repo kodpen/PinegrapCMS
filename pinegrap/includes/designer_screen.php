@@ -23,7 +23,9 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-if (!function_exists('validate_user')) { exit; }
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
 
 // ── Screen ──────────────────────────────────────────────────────────────────
 

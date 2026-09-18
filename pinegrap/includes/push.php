@@ -17,7 +17,7 @@
 // this is the half that lets a browser say "notify me" and be remembered.
 //
 // Loaded on demand from api.php, which has already run init.php.
-if (!function_exists('validate_user')) {
+if (!defined('PG_FUNCTIONS_DIR')) {
 	exit;
 }
 
