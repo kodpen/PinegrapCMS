@@ -41,6 +41,54 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — PHP 8 altında tanımsız sabit ve null okuma düzeltmeleri (2026-09-18)
+
+**Belirti (issue #52).** Varsayılan `config.php` ile PHP 8 üzerinde üç akış
+fatal veriyordu: `developer_lock.php`, `DEVELOPER_PIN` sabiti tanımlı olmadan
+`strlen(DEVELOPER_PIN)` çağırıyordu; `auth.php` içindeki kilitli sayfa
+denetimi yalnız `LOCKED_PAGES` tanımlıyken de `DEVELOPER_PIN`'i okuyordu;
+`mail.php` yalnız `*_SMTP_USERNAME` tanımlı hesaplarda `SYSTEM_SMTP_PASSWORD`
+ve `CAMPAIGN_SMTP_PASSWORD` sabitlerine erişiyordu (PHP 8'de tanımsız sabit
+uyarı değil hata). `send_email_campaign.php` ve `email_campaign_job.php`
+elle girilen alıcıda `contact_id = 0` ile sorgu çalıştırıp null satırdan alan
+okuyordu. Geri kalanı `$_GET`/`$_COOKIE`/`$_SESSION` okumalarında `isset()`
+eksikliği, `trim(null)` / `e(null)` kullanımı ve `select_field_type()`
+gibi yerlerde başlatılmamış değişkenlerden çıkan uyarı ve deprecation
+gürültüsüydü.
+
+**Düzeltme.** Sabitler okunmadan önce `defined()` ile denetlenir:
+`developer_lock.php` PIN tanımlı değilse `validate_area_access()` hemen
+ardından `output_error(lang('Developer PIN is not configured.'))` ile durur,
+`auth.php`'deki `&&` zinciri `defined('DEVELOPER_PIN')` ile kısa devre olur,
+SMTP parolası tanımsızsa boş string kullanılır. Bu yol seçildi çünkü sabit
+tanımlı olmayan kurulumda doğru davranış "kilit yok / parolasız giriş"
+zaten böyleydi; yalnız PHP 8 semantiği bunu hataya çevirmişti. Kampanya
+alıcı sorgusu yalnız `contact_id > 0` iken koşar, aksi hâlde `$row` boş dizi
+olur ve alttaki `$mail_merge_*` varsayılanları değişmeden çalışır.
+Superglobal okumaları `isset()` üçlüsü veya `!empty()` ile korunur; eski
+davranış korunmuştur (`edit_theme` gevşek `==` karşılaştırması, `device_type`
+`desktop` varsayılanı, referer boşsa `''`). `get_form_info()` `content`
+anahtarını baştan başlatır; `create_or_update_page_type_record()`
+işaretlenmemiş onay kutusunda `e('')` yazar. Dokunulan dosyalar:
+`includes/fn/content.php`, `includes/fn/forms.php`, `includes/fn/auth.php`,
+`includes/fn/mail.php`, `includes/fn/custom_form.php`, `includes/fn/editor.php`,
+`add_comment.php`, `custom_form.php`, `developer_lock.php`, `edit_user.php`,
+`send_email_campaign.php`, `email_campaign_job.php`, `get_billing_information.php`,
+`get_shopping_cart.php`, `get_express_order.php`,
+`get_email_a_friend_screen_content.php`, `install/index.php`.
+
+### Doğrulama
+
+`php -l` (dokunulan her dosya), `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı: geliştirici kilit
+ekranı, kilitli sayfa yönlendirmesi, parolasız SMTP ile gönderim, elle girilen
+alıcıya kampanya ve ön yüz form/ödeme render'ları yalnız statik okuma ile
+doğrulandı.
+
+**Açık kalan:** `add_page.php` tarafındaki korumasız `$_POST` okumaları
+(onay kutuları) değişmedi; yalnız `forms.php` tarafındaki `e()` çağrısı
+korundu, kaynakta tanımsız anahtar uyarısı hâlâ görülebilir.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca
