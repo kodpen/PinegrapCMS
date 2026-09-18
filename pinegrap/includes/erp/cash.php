@@ -40,15 +40,18 @@ function erp_cash_post($movement)
         return false;
     }
 
-    $currency = strtoupper(trim((string) ($movement['currency'] ?? 'TRY')));
-    $exchange_rate = (float) ($movement['exchange_rate'] ?? 1);
-    $amount_try = isset($movement['amount_try'])
-        ? (int) $movement['amount_try']
-        : (($currency === 'TRY') ? $amount : erp_to_try($amount, $exchange_rate));
+    // Same rule as the ledger: no currency means the base, and the base needs
+    // no conversion.
+    $base = erp_base_currency();
+    $currency = strtoupper(trim((string) ($movement['currency'] ?? $base)));
+    $exchange_rate = ($currency === $base) ? 1.0 : (float) ($movement['exchange_rate'] ?? 1);
+    $amount_base = isset($movement['amount_base'])
+        ? (int) $movement['amount_base']
+        : (($currency === $base) ? $amount : erp_to_base($amount, $exchange_rate));
 
     $ok = erp_query("INSERT INTO erp_cash_transactions
             (cash_account_id, doc_date, direction, amount, currency, exchange_rate,
-             exchange_rate_date, amount_try, account_id, doc_type, doc_id,
+             exchange_rate_date, exchange_rate_source, amount_base, account_id, doc_type, doc_id,
              payment_method, transfer_pair_id, description, created_by, created_at)
         VALUES (
             '" . $cash_account_id . "',
@@ -58,7 +61,8 @@ function erp_cash_post($movement)
             '" . escape($currency) . "',
             '" . escape((string) $exchange_rate) . "',
             '" . escape($movement['exchange_rate_date'] ?? ($movement['doc_date'] ?? date('Y-m-d'))) . "',
-            '" . $amount_try . "',
+            '" . escape($movement['exchange_rate_source'] ?? '') . "',
+            '" . $amount_base . "',
             '" . (int) ($movement['account_id'] ?? 0) . "',
             '" . escape($movement['doc_type'] ?? '') . "',
             '" . (int) ($movement['doc_id'] ?? 0) . "',
@@ -112,11 +116,18 @@ function erp_cash_refresh_balance($cash_account_id)
  * Both rows are tagged with the same doc_type and doc_id - the till movement's
  * own id - so the pair can be found from either side.
  *
+ * The money is in the till's currency. With foreign currency switched on that
+ * may be a currency other than the base, and then the receipt carries the
+ * rate of its own day: the till and the account move by the amount, the base
+ * columns by the converted figure. An invoice named for closing has to be in
+ * the same currency, because the allocation is measured against it.
+ *
  * @param array $data  direction ('collection'|'payment'), account_id,
  *                     cash_account_id, amount (kurus), doc_date, currency,
- *                     exchange_rate, payment_method, description, created_by,
- *                     and optionally invoice_id to close that invoice with this
- *                     money (never more than it is short of)
+ *                     exchange_rate, exchange_rate_date, exchange_rate_source,
+ *                     payment_method, description, created_by, and optionally
+ *                     invoice_id to close that invoice with this money (never
+ *                     more than it is short of)
  * @return array ['success' => bool, 'cash_id' => int, 'account_id' => int,
  *                'settled' => int, 'error' => string]
  */
@@ -141,6 +152,30 @@ function erp_post_receipt($data)
         return $fail(lang('Choose a till or bank account.'));
     }
 
+    $base = erp_base_currency();
+    $currency = erp_fx_enabled() ? strtoupper(trim((string) ($data['currency'] ?? $base))) : $base;
+    $exchange_rate = ($currency === $base) ? 1.0 : (float) ($data['exchange_rate'] ?? 0);
+
+    if (!erp_fx_currency_allowed($currency)) {
+        return $fail(lang('That currency is not enabled for the ERP.'));
+    }
+    if ($exchange_rate <= 0) {
+        return $fail(lang('Enter an exchange rate greater than zero.'));
+    }
+
+    // A till holds one currency; its balance is a plain sum of its movements.
+    // Only checked while the feature is on: before it, every till was written
+    // with one fixed code whatever the store's base was.
+    $till_currency = erp_fx_enabled()
+        ? strtoupper(trim((string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $cash_account_id . "' LIMIT 1")))
+        : '';
+    if (($till_currency !== '') && ($till_currency !== $currency)) {
+        return $fail(lang(array(
+            'string' => 'That till or bank account is kept in {var:1}, so it cannot take a movement in {var:2}.',
+            'vars' => array($till_currency, $currency),
+        )));
+    }
+
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
     }
@@ -148,8 +183,10 @@ function erp_post_receipt($data)
     $shared = array(
         'doc_date' => $data['doc_date'] ?? date('Y-m-d'),
         'amount' => $amount,
-        'currency' => $data['currency'] ?? 'TRY',
-        'exchange_rate' => $data['exchange_rate'] ?? 1,
+        'currency' => $currency,
+        'exchange_rate' => $exchange_rate,
+        'exchange_rate_date' => $data['exchange_rate_date'] ?? ($data['doc_date'] ?? date('Y-m-d')),
+        'exchange_rate_source' => ($currency === $base) ? 'base' : (string) ($data['exchange_rate_source'] ?? ''),
         'description' => $data['description'] ?? '',
         'created_by' => $data['created_by'] ?? 0,
     );
@@ -198,12 +235,22 @@ function erp_post_receipt($data)
 
     if ($invoice_id > 0) {
 
-        $invoice = db_item("SELECT id, account_id, direction, currency, grand_total, paid_total, status
+        $invoice = db_item("SELECT id, account_id, direction, currency, full_number, grand_total, grand_total_base, paid_total, status
             FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 
         if (!is_array($invoice) || ((int) $invoice['account_id'] !== $account_id)) {
             erp_tx_rollback();
             return $fail(lang('That invoice does not belong to this account.'));
+        }
+
+        // The allocation is measured in the invoice's currency, so the money
+        // has to be in it too.
+        if (erp_fx_enabled() && (strtoupper(trim((string) $invoice['currency'])) !== $currency)) {
+            erp_tx_rollback();
+            return $fail(lang(array(
+                'string' => 'Invoice {var:1} is in {var:2}; record the receipt in that currency.',
+                'vars' => array((string) $invoice['full_number'], strtoupper(trim((string) $invoice['currency']))),
+            )));
         }
 
         // Money in closes what was sold; money out closes what was bought.
@@ -229,13 +276,26 @@ function erp_post_receipt($data)
             'account_txn_id' => $ledger_id,
             'account_id' => $account_id,
             'amount' => $allocated,
-            'amount_try' => $allocated,
+            'amount_base' => ($currency === $base) ? $allocated : erp_to_base($allocated, $exchange_rate),
             'doc_date' => $shared['doc_date'],
             'created_by' => $shared['created_by'],
         ))) {
             $error = erp_db_error();
             erp_tx_rollback();
             return $fail(lang('The receipt was not saved.') . ' ' . $error);
+        }
+
+        // Once a foreign invoice is paid off, the base-currency sides no longer
+        // agree by whatever the rate did between issue and receipt; the gap is
+        // posted here, in the same transaction as the receipt that closed it.
+        if (($currency !== $base) && erp_fx_auto_diff()) {
+            $status_now = (string) db_value("SELECT status FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
+
+            if (($status_now === 'paid') && !erp_fx_post_difference($invoice, (int) $shared['created_by'])) {
+                $error = erp_db_error();
+                erp_tx_rollback();
+                return $fail(lang('The receipt was not saved.') . ' ' . $error);
+            }
         }
     }
 
@@ -285,6 +345,34 @@ function erp_post_transfer($data)
         return $fail(lang('Choose two different accounts.'));
     }
 
+    // Money moves between two tills in one currency: a transfer that changed
+    // currency would need a rate and a difference of its own, and this is
+    // not that. The rows carry the tills' currency so each till's balance
+    // stays a plain sum.
+    $currency = erp_base_currency();
+    $exchange_rate = 1.0;
+
+    if (erp_fx_enabled()) {
+        $from_currency = strtoupper(trim((string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $from_id . "' LIMIT 1")));
+        $to_currency = strtoupper(trim((string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $to_id . "' LIMIT 1")));
+
+        if (($from_currency !== '') && ($to_currency !== '') && ($from_currency !== $to_currency)) {
+            return $fail(lang(array(
+                'string' => 'The two accounts are kept in different currencies ({var:1} and {var:2}); a transfer has to stay in one.',
+                'vars' => array($from_currency, $to_currency),
+            )));
+        }
+
+        if ($from_currency !== '') {
+            $currency = $from_currency;
+        }
+
+        if ($currency !== erp_base_currency()) {
+            $known = erp_fx_rate_for($currency, (string) ($data['doc_date'] ?? date('Y-m-d')));
+            $exchange_rate = is_array($known) ? (float) $known['rate'] : (float) ($data['exchange_rate'] ?? 1);
+        }
+    }
+
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
     }
@@ -292,8 +380,8 @@ function erp_post_transfer($data)
     $shared = array(
         'doc_date' => $data['doc_date'] ?? date('Y-m-d'),
         'amount' => $amount,
-        'currency' => $data['currency'] ?? 'TRY',
-        'exchange_rate' => $data['exchange_rate'] ?? 1,
+        'currency' => $currency,
+        'exchange_rate' => $exchange_rate,
         'description' => $data['description'] ?? '',
         'created_by' => $data['created_by'] ?? 0,
         'doc_type' => 'transfer',

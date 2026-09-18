@@ -120,7 +120,8 @@ function erp_tx_rollback()
  * movement on its own is rarely the whole story.
  *
  * @param array $movement  account_id, doc_date, kind, direction, amount (kurus),
- *                         currency, exchange_rate, amount_try, doc_type, doc_id,
+ *                         currency, exchange_rate, exchange_rate_date,
+ *                         exchange_rate_source, amount_base, doc_type, doc_id,
  *                         description, created_by
  * @return int|false  Row id, or false with the caller expected to roll back
  */
@@ -133,15 +134,18 @@ function erp_account_post($movement)
         return false;
     }
 
-    $currency = strtoupper(trim((string) ($movement['currency'] ?? 'TRY')));
-    $exchange_rate = (float) ($movement['exchange_rate'] ?? 1);
-    $amount_try = isset($movement['amount_try'])
-        ? (int) $movement['amount_try']
-        : (($currency === 'TRY') ? $amount : erp_to_try($amount, $exchange_rate));
+    // A movement with no currency is in the store's base currency, and a base
+    // movement is its own base value; anything else is converted once, here.
+    $base = erp_base_currency();
+    $currency = strtoupper(trim((string) ($movement['currency'] ?? $base)));
+    $exchange_rate = ($currency === $base) ? 1.0 : (float) ($movement['exchange_rate'] ?? 1);
+    $amount_base = isset($movement['amount_base'])
+        ? (int) $movement['amount_base']
+        : (($currency === $base) ? $amount : erp_to_base($amount, $exchange_rate));
 
     $ok = erp_query("INSERT INTO erp_account_transactions
             (account_id, doc_date, kind, direction, amount, currency, exchange_rate,
-             exchange_rate_date, exchange_rate_source, amount_try, doc_type, doc_id,
+             exchange_rate_date, exchange_rate_source, amount_base, doc_type, doc_id,
              description, created_by, created_at)
         VALUES (
             '" . $account_id . "',
@@ -153,7 +157,7 @@ function erp_account_post($movement)
             '" . escape((string) $exchange_rate) . "',
             '" . escape($movement['exchange_rate_date'] ?? ($movement['doc_date'] ?? date('Y-m-d'))) . "',
             '" . escape($movement['exchange_rate_source'] ?? '') . "',
-            '" . $amount_try . "',
+            '" . $amount_base . "',
             '" . escape($movement['doc_type'] ?? '') . "',
             '" . (int) ($movement['doc_id'] ?? 0) . "',
             '" . escape($movement['description'] ?? '') . "',
@@ -170,9 +174,10 @@ function erp_account_post($movement)
 /**
  * Recompute an account's cached balance from its own ledger.
  *
- * balance is the position in lira and balance_fc the same in the account's own
- * currency, counting only the movements actually made in it - a lira movement
- * on a euro account says nothing about the euro position.
+ * balance is the position in the base currency and balance_fc the same in the
+ * account's own currency, counting only the movements actually made in it - a
+ * base-currency movement on a euro account says nothing about the euro
+ * position.
  *
  * The cache exists so a list of two thousand accounts does not become two
  * thousand SUMs. It is never the source of the figure: this function derives it
@@ -197,7 +202,7 @@ function erp_account_refresh_balance($account_id)
 
     return (erp_query("UPDATE erp_accounts SET
             balance = COALESCE((
-                SELECT SUM(CASE WHEN direction = 'debit' THEN amount_try ELSE -amount_try END)
+                SELECT SUM(CASE WHEN direction = 'debit' THEN amount_base ELSE -amount_base END)
                 FROM erp_account_transactions WHERE account_id = '" . $account_id . "'), 0),
             balance_fc = COALESCE((
                 SELECT SUM(CASE WHEN direction = 'debit' THEN amount ELSE -amount END)
@@ -216,7 +221,7 @@ function erp_account_refresh_balance($account_id)
  * @param int    $account_id
  * @param string $from  Y-m-d, optional
  * @param string $to    Y-m-d, optional
- * @return array  Rows with a running_balance in kurus
+ * @return array  Rows with a running_balance in base-currency kurus
  */
 function erp_account_statement($account_id, $from = '', $to = '')
 {
@@ -233,7 +238,7 @@ function erp_account_statement($account_id, $from = '', $to = '')
     // Anything before the window is one opening figure rather than a list.
     $opening = 0;
     if ($from !== '') {
-        $opening = (int) db_value("SELECT COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_try ELSE -amount_try END), 0)
+        $opening = (int) db_value("SELECT COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_base ELSE -amount_base END), 0)
             FROM erp_account_transactions
             WHERE account_id = '" . $account_id . "' AND doc_date < '" . escape($from) . "'");
     }
@@ -242,7 +247,7 @@ function erp_account_statement($account_id, $from = '', $to = '')
 
     $running = $opening;
     foreach ($rows as $index => $row) {
-        $running += ($row['direction'] === 'debit') ? (int) $row['amount_try'] : -((int) $row['amount_try']);
+        $running += ($row['direction'] === 'debit') ? (int) $row['amount_base'] : -((int) $row['amount_base']);
         $rows[$index]['running_balance'] = $running;
     }
 

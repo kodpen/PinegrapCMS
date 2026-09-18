@@ -267,6 +267,15 @@ function erp_invoice_return($data)
 
     $totals = $built['totals'];
 
+    // The return is drawn in the parent's currency at the parent's rate: it
+    // gives back what the invoice asked for, and a full return has to cancel
+    // the invoice's base value to the kurus as well.
+    $currency = strtoupper(trim((string) $parent['currency']));
+    $exchange_rate = ($currency === erp_base_currency()) ? 1.0 : (float) $parent['exchange_rate'];
+    $grand_total_base = ($currency === erp_base_currency())
+        ? (int) $totals['grand_total']
+        : ($built['is_full'] ? (int) $parent['grand_total_base'] : erp_to_base((int) $totals['grand_total'], $exchange_rate));
+
     $ok = erp_query("INSERT INTO erp_invoices SET
             direction = '" . escape($parent['direction']) . "',
             doc_type = 'return',
@@ -280,12 +289,15 @@ function erp_invoice_return($data)
             parent_invoice_id = '" . $parent_id . "',
             issue_date = '" . escape($issue_date) . "',
             due_date = '" . escape($issue_date) . "',
-            currency = '" . escape($parent['currency']) . "',
+            currency = '" . escape($currency) . "',
+            exchange_rate = '" . escape(number_format($exchange_rate, 6, '.', '')) . "',
+            exchange_rate_date = '" . escape((string) ($parent['exchange_rate_date'] ?? $issue_date)) . "',
+            exchange_rate_source = '" . escape((string) ($parent['exchange_rate_source'] ?? '')) . "',
             subtotal = '" . (int) $totals['subtotal'] . "',
             discount_total = '" . (int) $totals['discount_total'] . "',
             tax_total = '" . (int) $totals['tax_total'] . "',
             grand_total = '" . (int) $totals['grand_total'] . "',
-            grand_total_try = '" . (int) $totals['grand_total'] . "',
+            grand_total_base = '" . $grand_total_base . "',
             status = 'issued',
             is_internet_sale = '" . (int) $parent['is_internet_sale'] . "',
             payment_method = '" . escape($parent['payment_method'] ?? '') . "',
@@ -350,7 +362,11 @@ function erp_invoice_return($data)
         'kind' => 'return',
         'direction' => ((string) $parent['direction'] === 'sales') ? 'credit' : 'debit',
         'amount' => (int) $totals['grand_total'],
-        'currency' => 'TRY',
+        'currency' => $currency,
+        'exchange_rate' => $exchange_rate,
+        'exchange_rate_date' => (string) ($parent['exchange_rate_date'] ?? $issue_date),
+        'exchange_rate_source' => (string) ($parent['exchange_rate_source'] ?? ''),
+        'amount_base' => $grand_total_base,
         'doc_type' => 'return',
         'doc_id' => $return_id,
         'description' => $numbered['full'],
@@ -435,7 +451,13 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         'kind' => 'adjustment',
         'direction' => (((string) $invoice['direction'] === 'sales') xor $is_return) ? 'credit' : 'debit',
         'amount' => (int) $invoice['grand_total'],
-        'currency' => 'TRY',
+        // The reversal is the document's own movement with the arrow turned,
+        // so it carries the document's currency, rate and base value.
+        'currency' => (string) $invoice['currency'],
+        'exchange_rate' => (float) $invoice['exchange_rate'],
+        'exchange_rate_date' => (string) $invoice['exchange_rate_date'],
+        'exchange_rate_source' => (string) ($invoice['exchange_rate_source'] ?? ''),
+        'amount_base' => (int) $invoice['grand_total_base'],
         'doc_type' => 'cancel',
         'doc_id' => $invoice_id,
         'description' => lang(array(
