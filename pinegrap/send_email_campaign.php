@@ -150,9 +150,16 @@ if (mysqli_num_rows($result) > 0) {
                 salutation,
                 suffix
              FROM contacts
-             WHERE id = " . $email_recipient['contact_id'];
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+             WHERE id = " . (int) $email_recipient['contact_id'];
+        $row = null;
+        // Manually entered recipients are stored with contact_id 0 and have no contact row.
+        if ((int) $email_recipient['contact_id'] > 0) {
+            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $row = mysqli_fetch_assoc($result);
+        }
+        if (!$row) {
+            $row = array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');
+        }
 
         $first_name = trim($row['first_name']);
         $last_name = trim($row['last_name']);
