@@ -3980,8 +3980,7 @@ function submit_order($type) {
             // main account.
             if (!$ghost) {
 
-                $_SESSION['sessionuserid']  = db_value("SELECT user_id FROM user WHERE user_username = '" . escape($username) . "'");
-                $_SESSION['sessionusername'] = $username;
+                pg_session_sign_in($user_id, $username);
 
                 // Bind this fresh session to a device token while the device
                 // limit is on, so it counts toward the limit and can be signed

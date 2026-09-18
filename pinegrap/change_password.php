@@ -174,8 +174,7 @@ if (isset($_COOKIE['software']['auth'])) {
 pg_auth_token_revoke_user($change_user_id);
 
 // keep this browser signed in under the same user id
-$_SESSION['sessionuserid']  = $change_user_id;
-$_SESSION['sessionusername'] = $username;
+pg_session_sign_in($change_user_id, $username);
 log_activity("user changed password", $username);
 
 // The revoke above took THIS browser's token with it, so a fresh one has to

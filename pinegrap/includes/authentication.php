@@ -194,3 +194,28 @@ function pg_load_user_row($user_id)
 
         WHERE user.user_id = '" . (int) $user_id . "'");
 }
+
+// Promote the current session to a signed-in one. Every sign-in path ends
+// here - the password forms, remember-me, Google, registration, activation,
+// auto-registration, the device-limit confirmation - so the identity is
+// written the same way everywhere and each of them gets a fresh session id.
+//
+// The fresh id is what defeats session fixation: an id the browser held
+// before the visitor authenticated (planted through a link or a script on a
+// shared machine) refers to nothing once the sign-in completes, because the
+// old session is deleted. $_SESSION itself carries over unchanged, so the
+// CSRF token, the cart and order keys and any pending redirect survive.
+//
+// Regeneration needs a running session and unsent headers (the new id
+// travels in a Set-Cookie header); when either is missing the identity is
+// still written and the id is left as it was - PHP would only warn and keep
+// the old id anyway.
+function pg_session_sign_in($user_id, $username)
+{
+    if ((session_status() === PHP_SESSION_ACTIVE) && !headers_sent()) {
+        session_regenerate_id(true);
+    }
+
+    $_SESSION['sessionuserid']  = $user_id;
+    $_SESSION['sessionusername'] = $username;
+}

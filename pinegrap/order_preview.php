@@ -24,21 +24,10 @@ include('init.php');
 // then validate token field.  PayPal Express Checkout uses "token" for a query string parameter,
 // like we do, so that is why we can't validate the token.  This should not expose any major problem.
 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
-    //fix samesite error while 3dsecure
-    // if php version above 7.3+
-    if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
-        if (URL_SCHEME == 'https://') {
-            setcookie('' . session_name() . '', '' . session_id() . '', ['samesite' => 'None', 'secure' => true]);
-        }else{
-            setcookie('' . session_name() . '', '' . session_id() . '', ['samesite' => 'None']);
-        }
-    }else{
-        if (URL_SCHEME == 'https://') {
-            header('Set-Cookie: cross-site-cookie=bar; SameSite=None; Secure');
-        }else{
-            header('Set-Cookie: same-site-cookie=foo; SameSite=Lax');
-        }
-    }
+    // The 3-D Secure and PayPal returns are cross-site POSTs; re-issue the
+    // session cookie with SameSite=None (HttpOnly, Secure on https) so they
+    // still carry the session. See pg_session_cookie_allow_cross_site().
+    pg_session_cookie_allow_cross_site();
 
     // Pay With Iyzico callback is a cross-site POST from iyzico and does not include the CSRF token field
     if (($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
