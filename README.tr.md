@@ -2,7 +2,7 @@
 
 [English](README.md) | **Türkçe**
 
-![PHP Version](https://img.shields.io/badge/PHP-7.0%20--%208.5-777BB4?style=flat-square&logo=php)
+![PHP Version](https://img.shields.io/badge/PHP-7.1%20--%208.5-777BB4?style=flat-square&logo=php)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-success?style=flat-square)
 
@@ -25,7 +25,7 @@ Pinegrap **bilinçli olarak monolitiktir** — ve bu bir özür değil, bir öze
 
 ### Öne Çıkanlar
 
-* **Geniş Uyumluluk:** PHP 7.0'dan PHP 8.5'e kadar sorunsuz çalışır.
+* **Geniş Uyumluluk:** PHP 7.1'dan PHP 8.5'e kadar sorunsuz çalışır.
 * **Sunucu Desteği:** Apache, Nginx ve Microsoft IIS ile uyumludur (otomatik yönlendirme ve `.htaccess` / `web.config` rewrite desteği dahil).
 * **Kurumsal Mimari:** Güçlü form yönetimi (`liveform`), dinamik sayfa motoru ve güvenli oturum yönetimi.
 * **Özelleştirilebilir Arayüz:** Modern temalar ve Bootstrap 5 entegrasyonu için yerleşik destek.
