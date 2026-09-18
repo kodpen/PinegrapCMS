@@ -842,9 +842,11 @@ $(document).ready(function() {
 
     // Load Google MAP API JS with callback to initialise when fully loaded
     if(document.querySelector('[data-maps-api-key]') && !document.querySelector('.gMapsAPI')){
-        if($('[data-maps-api-key]').length){
+        // An empty key means the site has not been given a Google Maps key yet, so the
+        // API is not requested at all: a request with an empty key only shows an error overlay.
+        var apiKey = $('[data-maps-api-key]:first').attr('data-maps-api-key');
+        if(apiKey){
             var script = document.createElement('script');
-            var apiKey = $('[data-maps-api-key]:first').attr('data-maps-api-key');
             script.type = 'text/javascript';
             script.src = 'https://maps.googleapis.com/maps/api/js?key='+apiKey+'&callback=initializeMaps';
             script.className = 'gMapsAPI';
