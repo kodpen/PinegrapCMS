@@ -35,7 +35,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $product = mysqli_fetch_assoc($result);
     // If an enabled product was not found, then return false.
-    if ($product['id'] == '') {
+    if (!$product or ($product['id'] == '')) {
         return false;
     }
     // if shipping is on and product is shippable, create ship to record or get existing ship to id
@@ -6246,7 +6246,7 @@ function get_product_groups($properties)
 function get_protected_shipping_method_filter()
 {
     // If this visitor is not a manager or above, then don't get protected methods.
-    if (!USER_LOGGED_IN or ((USER_ROLE == 3) and !$_SESSION['software']['logged_in_as_different_user'])) {
+    if (!USER_LOGGED_IN or ((USER_ROLE == 3) and empty($_SESSION['software']['logged_in_as_different_user']))) {
         return "AND (shipping_methods.protected = '0')";
         // Otherwise this is a manager or above, so don't return any filter, so that all shipping
         // methods, including protected ones, will be retrieved.
