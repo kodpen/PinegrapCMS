@@ -41,6 +41,42 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Yönetim ekranlarında kaçışsız çıktı: XSS düzeltmeleri (1/2) (2026-09-18)
+
+**Belirti.** İkinci tur güvenlik incelemesi (#65) on yönetim ekranında
+kullanıcı ya da veritabanı kaynaklı bir değerin HTML'e ham basıldığını buldu.
+Dördü yansıtılan XSS: `add_menu_item.php` `menu_id`'yi gizli alana ve
+breadcrumb adresine, `duplicate_folder.php` şablonu `send_to`'yu breadcrumb
+`href`'ine, `view_order.php` `id`'yi `onclick`'e, `view_email_campaign.php`
+`r`'yi basılan kampanya gövdesine olduğu gibi yazıyordu; `mass_edit.php` form
+`action`'ına `PHP_SELF`'i basıyordu (path-info ile kapatılabilir).
+`editor_select_image.php` `file_input_name`'i ve `image_editor_edit.php`
+dosya yolunu inline JavaScript string'ine kaçışsız gömüyordu; ikincisi
+`send_to`/`object_type`/`object_id` gizli alanlarını da. Üçü saklı XSS:
+`edit_page.php` sayfa tipi özelliklerini (düğme etiketleri, alan
+başlıkları, sayısal ayarlar) `value="…"` içine, `edit_product_group.php`
+`meta_keywords`'ü aynı şekilde, `product_builder.php` ürünün kısa
+açıklamasını `pg_page_shell()` başlığına — kabuk başlığı `lang()` metni
+kabul ettiği için ham basar — kaçışsız veriyordu.
+
+**Çözüm.** Düzeltme çıktı satırlarında kalır, akış değişmez. Sayısal
+kimlikler okunduğu yerde `(int)`'e çekildi (`menu_id`, `print_order` `id`).
+HTML öznitelik ve metin bağlamları `h()` ile kaçışlanır; `edit_page.php`'de
+`value="…"` içine giren 39 saklı özellik değerinin hepsi tek kalıpla
+kapatıldı. Inline JavaScript bağlamları için dosyanın kendi kalıbı izlendi:
+`onclick` özniteliğindeki string literal `h(escape_javascript())`,
+`<script>` bloğundaki `src` değeri `json_encode(JSON_HEX_TAG | JSON_HEX_APOS
+| JSON_HEX_QUOT | JSON_HEX_AMP)` — `h()` burada `&`'yi `&amp;`'ye çevirip
+adresi bozardı. `view_email_campaign.php`'de `preg_replace` yerine
+`str_replace` kullanıldı: değiştirme metni istekten geldiği için `$1`
+türü geri referansların yorumlanması da böylece kapanır. Kampanya gövdesi
+HTML olarak basıldığından referans kodu `h()`'den geçer. `duplicate_folder.php`
+kök dosyasında yönlendirmeye eklenen `send_to` `urlencode()`'dan geçer;
+şablondaki `h(escape_javascript($_GET['id']))` da düz `h()` oldu — `href`
+JavaScript bağlamı değildir, ters bölü eklemesi yanlış kaçıştı. Zengin
+metin taşıyan hiçbir alana dokunulmadı; ürün kısa açıklaması düz metin
+`<input>`'tan gelir, `h()` ile daraltılması davranış değiştirmez.
+
 ## 2026.4.4 — Tahsilat iptali, tahsis kaldırma ve yeniden tahsis (2026-09-18)
 
 **Belirti.** Yanlış girilen bir tahsilat ya da ödeme düzeltilemiyordu: ters

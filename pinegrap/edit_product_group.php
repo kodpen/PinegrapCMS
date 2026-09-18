@@ -676,7 +676,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 mt-1 mb-2">
                                             <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . $meta_keywords . '"/>
+                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . h($meta_keywords) . '"/>
                                             <script>
                                                 if(document.body.contains(document.querySelector("input#keywords"))){
                                                     tagin(document.querySelector("#meta_keywords"));

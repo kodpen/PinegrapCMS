@@ -4271,7 +4271,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         // one of them tells the operator nothing they did not already know, and
         // with several tabs open it is the only thing that tells them apart.
         'heading'       => ($pg_mode === 'edit')
-            ? (($v('short_description') !== '') ? $v('short_description') : $v('name'))
+            ? h(($v('short_description') !== '') ? $v('short_description') : $v('name'))
             : lang('Create Product'),
         // Cancel and the breadcrumb go back where the operator came from -- the
         // product group they were standing in, say -- when the screen that

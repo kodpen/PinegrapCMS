@@ -25,7 +25,7 @@ validate_area_access($user, 'user');
 
 $send_to = '';
 if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''){
-    $send_to = '&send_to=' . ($_GET['send_to'] ?? '');
+    $send_to = '&send_to=' . urlencode($_GET['send_to'] ?? '');
 }
 
 $form = new liveform('duplicate_folder');
