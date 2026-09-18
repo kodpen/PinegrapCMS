@@ -34,6 +34,7 @@ require_once($pg_api_directory . '/idempotency.php');
 require_once($pg_api_directory . '/schema.php');
 require_once($pg_api_directory . '/router.php');
 require_once($pg_api_directory . '/openapi.php');
+require_once($pg_api_directory . '/console.php');
 require_once($pg_api_directory . '/seo.php');
 
 require_once($pg_api_directory . '/resources/meta.php');
@@ -185,12 +186,27 @@ function api_run() {
 
 	}
 
+	// The console is served before anything reads a credential. The page is a
+	// shell: it names no endpoint and no parameter, all of which it fetches from
+	// /docs/endpoints under the description's rule once the reader has typed a
+	// key - so handing it out costs nothing that the description does not
+	// already guard, the same way the panel's login screen is public while the
+	// panel is not.
+	if ($route['id'] === 'docs') {
+
+		call_user_func($route['handler'], array());
+
+		api_fail_server();
+
+	}
+
 	$input = api_request_input();
 
 	// The description of the API is the one thing that can be public, and only
-	// when the operator has said so. Otherwise it authenticates like everything
-	// else.
-	if ($route['scope'] === '' && $route['id'] === 'openapi' && $settings['openapi_public']) {
+	// when the operator has said so - in either of its two shapes, the JSON
+	// document and the console's rendered list. Otherwise it authenticates like
+	// everything else.
+	if ($route['scope'] === '' && in_array($route['id'], array('openapi', 'docs.endpoints'), true) && $settings['openapi_public']) {
 
 		call_user_func($route['handler'], array());
 
