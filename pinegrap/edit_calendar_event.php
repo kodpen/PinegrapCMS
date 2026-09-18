@@ -319,10 +319,10 @@ if (!$_POST) {
     // set options for recurrence type pick list
     $recurrence_type_options =
         array(
-            'Day(s)' => 'day',
-            'Week(s)' => 'week',
-            'Month(s)' => 'month',
-            'Year(s)' => 'year'
+            lang('Day(s)') => 'day',
+            lang('Week(s)') => 'week',
+            lang('Month(s)') => 'month',
+            lang('Year(s)') => 'year'
         );
     
     // if there is at least one location, then prepare to output locations

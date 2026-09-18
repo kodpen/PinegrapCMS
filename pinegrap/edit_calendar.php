@@ -23,7 +23,7 @@ validate_calendars_access($user);
 
 // if user does not have access to edit calendar, output error
 if (validate_calendar_access($_REQUEST['id']) == false) {
-    log_activity("access denied to edit calendar", $_SESSION['sessionusername']);
+    log_activity(lang('access denied to edit calendar'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.'));
 }
 

@@ -48,7 +48,7 @@ $folder_id = $row['folder_id'];
 
 // if user does not have access then output error
 if (check_edit_access($folder_id) == false) {
-    log_activity("access denied to allow or disallow new comments for an item for page ($page_name) because user does not have access to modify folder that the page is in", $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'access denied to allow or disallow new comments for an item for page ({var:1}) because user does not have access to modify folder that the page is in', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('Access denied. <a href="javascript:history.go(-1)">Go back</a>.'));
 }
 

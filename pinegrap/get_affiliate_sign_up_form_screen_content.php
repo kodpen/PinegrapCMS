@@ -130,7 +130,7 @@ function get_affiliate_sign_up_form_screen_content($properties)
 
     // if a terms page is selected for this page then prepare output for terms checkbox
     if ($terms_page_name) {
-        $output_terms = '<div style="margin-bottom: 15px">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'terms_and_conditions', 'name'=>'terms_and_conditions', 'class'=>'software_input_checkbox')) . '<label for="terms_and_conditions"> I agree to the </label><a href="' . OUTPUT_PATH . $terms_page_name . '" target="_blank"> terms and conditions</a>.</div>';
+        $output_terms = '<div style="margin-bottom: 15px">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'terms_and_conditions', 'name'=>'terms_and_conditions', 'class'=>'software_input_checkbox')) . '<label for="terms_and_conditions"> ' . lang(array('string' => 'I agree to the {var:1}.', 'vars' => '<a href="' . OUTPUT_PATH . $terms_page_name . '" target="_blank">' . lang('terms and conditions') . '</a>')) . '</label></div>';
     }
     
     // if a submit button label was entered for the page, then use that
@@ -139,7 +139,7 @@ function get_affiliate_sign_up_form_screen_content($properties)
     
     // else a submit button label could not be found, so use a default label
     } else {
-        $output_submit_button_label = 'Sign Up';
+        $output_submit_button_label = h(lang('Sign Up'));
     }
     
     // we are limiting the affiliate code to 50 characters because the key code database field only supports 50 characters (group offer feature will put affiliate code in key code)
@@ -152,37 +152,37 @@ function get_affiliate_sign_up_form_screen_content($properties)
             <input type="hidden" name="next_page_id" value="' . $next_page_id . '" />
             <table style="margin-bottom: 15px">
                 <tr>
-                    <td>First Name*</td>
+                    <td>' . lang('First Name') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'first_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Last Name*</td>
+                    <td>' . lang('Last Name') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'last_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Address 1*</td>
+                    <td>' . lang('Address 1') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'address_1', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Address 2</td>
+                    <td>' . lang('Address 2') . '</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>City*</td>
+                    <td>' . lang('City') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Country*</td>
+                    <td>' . lang('Country') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'select', 'name'=>'country', 'id'=>'country', 'options'=>$country_options, 'class'=>'software_select')) . '</td>
                 </tr>
                 <tr>
                     <td>
                         <label for="state_text_box">
-                            State / Province
+                            ' . lang('State / Province') . '
                         </label>
 
                         <label for="state_pick_list" style="display: none">
-                            State / Province*
+                            ' . lang('State / Province') . '*
                         </label>
                     </td>
                     <td>' .
@@ -192,34 +192,34 @@ function get_affiliate_sign_up_form_screen_content($properties)
                     </td>
                 </tr>
                 <tr>
-                    <td>Zip / Postal Code<span id="zip_code_required" style="display: none">*</span></td>
+                    <td>' . lang('Zip / Postal Code') . '<span id="zip_code_required" style="display: none">*</span></td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'id' => 'zip_code', 'name'=>'zip_code', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Phone*</td>
+                    <td>' . lang('Phone') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'tel', 'name'=>'phone_number', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Fax</td>
+                    <td>' . lang('Fax') . '</td>
                     <td>' . $liveform->output_field(array('type'=>'tel', 'name'=>'fax_number', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Email*</td>
+                    <td>' . lang('Email') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'email', 'name'=>'email_address', 'size'=>'30', 'maxlength'=>'100', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Affiliate / Company Name*</td>
+                    <td>' . lang('Affiliate / Company Name') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'affiliate_name', 'size'=>'30', 'maxlength'=>'100', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Affiliate Website</td>
+                    <td>' . lang('Affiliate Website') . '</td>
                     <td>' . $liveform->output_field(array('type'=>'url', 'name'=>'affiliate_website', 'value'=>'http://', 'size'=>'40', 'maxlength'=>'255', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Create your own Affiliate Code to share with others.</td>
+                    <td colspan="2">' . lang('Create your own Affiliate Code to share with others.') . '</td>
                 </tr>
                 <tr>
-                    <td>Affiliate Code*</td>
+                    <td>' . lang('Affiliate Code') . '*</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'affiliate_code', 'size'=>'30', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
             </table>

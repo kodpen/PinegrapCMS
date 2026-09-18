@@ -2175,7 +2175,7 @@ function submit_custom_form($properties)
             $error_message = '';
             // If there is a field label, then prepare error message.
             if ($field['label']) {
-                $error_message = $field['label'] . ' is required.';
+                $error_message = lang(array('string' => '{var:1} is required.', 'vars' => $field['label']));
             }
             $form->validate_required_field($html_field_name, $error_message);
         }

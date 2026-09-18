@@ -34,9 +34,9 @@ function get_affiliate_welcome_screen_content() {
     
     $output =
         '<div>
-            Affiliate Code: ' . h(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? '')) . '<br />
-            Affiliate Link: <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '</a><br>
-            Affiliate Commission Rate: ' . $affiliate_commission_rate . '%
+            ' . lang('Affiliate Code') . ': ' . h(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? '')) . '<br />
+            ' . lang('Affiliate Link') . ': <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '</a><br>
+            ' . lang('Affiliate Commission Rate') . ': ' . $affiliate_commission_rate . '%
         </div>';
 
     return $output;

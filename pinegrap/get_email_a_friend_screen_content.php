@@ -92,7 +92,7 @@ function get_email_a_friend_screen_content($properties)
         // else the hostname in the http referer is not allowed, so set the link URL to the home page and add a notice
         } else {
             $liveform->assign_field_value('link_url', URL_SCHEME . HOSTNAME . PATH);
-            $liveform->add_notice('We could not determine which link you wanted to e-mail, so we will include a link to the home page. If you prefer a different link, please browse to the desired page and click to e-mail that link.');
+            $liveform->add_notice(lang('We could not determine which link you wanted to e-mail, so we will include a link to the home page. If you prefer a different link, please browse to the desired page and click to e-mail that link.'));
         }
         
         // if the user is logged in, then prefill e-mail address
@@ -126,7 +126,7 @@ function get_email_a_friend_screen_content($properties)
         
     // else the submit button label is blank, so set default value
     } else {
-        $output_submit_button_label = 'Submit';
+        $output_submit_button_label = h(lang('Submit'));
     }
     
     $output = 
@@ -138,23 +138,23 @@ function get_email_a_friend_screen_content($properties)
             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'link_url')) . '
             <table style="margin-bottom: 0.5em">
                 <tr>
-                    <td>Your E-mail Address*:</td>
+                    <td>' . lang('Your E-mail Address') . '*:</td>
                     <td>' . $liveform->output_field(array('type'=>'email', 'name'=>'from_email_address', 'size'=>'40', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Recipient\'s E-mail Address*:</td>
+                    <td>' . lang('Recipient\'s E-mail Address') . '*:</td>
                     <td>' . $liveform->output_field(array('type'=>'email', 'name'=>'recipients_email_address', 'size'=>'40', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Subject*:</td>
+                    <td>' . lang('Subject') . '*:</td>
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'size'=>'40', 'maxlength'=>'255', 'class'=>'software_input_text')) . '</td>
                 </tr>
             </table>
-            <div>Message:</div>
+            <div>' . lang('Message') . ':</div>
             <div style="margin-bottom: 1em">' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'rows'=>'3', 'cols'=>'46', 'class'=>'software_textarea', 'style'=>'width: 98%')) . '</div>
-            <div>The following link will be included in the e-mail:</div>
+            <div>' . lang('The following link will be included in the e-mail:') . '</div>
             <div style="margin-bottom: 1em"><a href="' . h(escape_url($liveform->get_field_value('link_url'))) . '" target="_blank">' . h($liveform->get_field_value('link_url')) . '</a></div>
-            <div style="margin-bottom: 1em">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'send_me_a_copy', 'id'=>'send_me_a_copy', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="send_me_a_copy"> Send me a copy.</label></div>
+            <div style="margin-bottom: 1em">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'send_me_a_copy', 'id'=>'send_me_a_copy', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="send_me_a_copy"> ' . lang('Send me a copy.') . '</label></div>
             ' . $output_captcha_fields . '
             <input type="submit" name="submit" value="' . $output_submit_button_label . '" class="software_input_submit_primary submit_button" />
         </form>';

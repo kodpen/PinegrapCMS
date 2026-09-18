@@ -98,7 +98,7 @@ function get_calendar_event_view_screen_content($properties)
         
         // if locations are not blank, then output them to the page
         if ($calendar_event['location'] != '') {
-            $output_location = 'Location(s): ' . h($calendar_event['location']) . '<br />';
+            $output_location = lang('Location(s)') . ': ' . h($calendar_event['location']) . '<br />';
         }
         
         $output_recurrence_number = '';
@@ -129,7 +129,7 @@ function get_calendar_event_view_screen_content($properties)
         if (($notes == 1) && ($calendar_event['notes_content'] != '')) {
             $output_notes = 
                 '<fieldset class="software_fieldset" style="margin-bottom: 15px; clear: both;">
-                    <legend class="software_legend">Notes</legend>
+                    <legend class="software_legend">' . lang('Notes') . '</legend>
                     <div style="margin: 10px">
                         ' . $calendar_event['notes_content'] . '
                     </div>
@@ -234,7 +234,7 @@ function get_calendar_event_view_screen_content($properties)
                 ' . $calendar_event['date_and_time_range'] . '<br />
                 ' . $output_location . '
             </div>
-            <div class="software_icalendar_link"><a class="software_button_tiny_secondary" style="font-weight: normal;" href="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path(get_page_name($current_page_id))) . '?id=' . h($calendar_event_id) . $output_recurrence_number . '&icalendar=true">Add Event to my Personal Calendar</a></div>
+            <div class="software_icalendar_link"><a class="software_button_tiny_secondary" style="font-weight: normal;" href="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path(get_page_name($current_page_id))) . '?id=' . h($calendar_event_id) . $output_recurrence_number . '&icalendar=true">' . lang('Add Event to my Personal Calendar') . '</a></div>
             <div class="data" style="margin-top: 10px; margin-bottom: 15px">
                 ' . $calendar_event['full_description'] . '
             </div>

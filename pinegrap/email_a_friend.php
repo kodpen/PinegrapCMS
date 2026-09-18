@@ -32,7 +32,7 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 // if the page does not exist or it is not an e-mail a friend page, then log activity and output error
 if (mysqli_num_rows($result) == 0) {
     log_activity('access denied to e-mail a link to a friend because the page that the visitor came from no longer existed or was not an e-mail a friend page', $_SESSION['sessionusername']);
-    output_error('The e-mail could not be sent because the page you came from no longer exists or it is not an e-mail a friend page. <a href="javascript:history.go(-1);">Go back</a>.');
+    output_error(lang('The e-mail could not be sent because the page you came from no longer exists or it is not an e-mail a friend page.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // get folder id for later when we check if user has edit rights to folder
@@ -134,11 +134,11 @@ if ($message != '') {
 }
 
 $body .=
-    $from_email_address . ' would like to share the following link with you:' . "\n" .
+    lang(array('string' => '{var:1} would like to share the following link with you:', 'vars' => $from_email_address)) . "\n" .
     "\n" .
     $link_url . "\n" .
     "\n" .
-    'This e-mail was sent to you by ' . $from_email_address . ' via the website for ' . ORGANIZATION_NAME . ' (' . URL_SCHEME . HOSTNAME_SETTING . '). For your privacy, your e-mail address has not been stored.';
+    lang(array('string' => 'This e-mail was sent to you by {var:1} via the website for {var:2} ({var:3}). For your privacy, your e-mail address has not been stored.', 'vars' => array($from_email_address, ORGANIZATION_NAME, URL_SCHEME . HOSTNAME_SETTING)));
 
 // In the past we would set the from info to the submitter's address
 // however this caused issues with mail providers using DMARC (e.g. Yahoo, AOL),

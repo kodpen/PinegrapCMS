@@ -1690,7 +1690,7 @@ function get_form_list_view($properties) {
 
                             // If the help has not been disabled, then show help for time fields
                             if (($field['help'] !== FALSE) && ($field['type'] == 'time')) {
-                                $output_help = ' (Format: h:mm AM/PM)';
+                                $output_help = ' ' . lang('(Format: h:mm AM/PM)');
                             }
 
                             $output_field = $liveform->output_field(array(
@@ -1834,7 +1834,7 @@ function get_form_list_view($properties) {
 
                     // If the label is blank, then set default label.
                     if ($label == '') {
-                        $label = 'Search';
+                        $label = lang('Search');
                     }
 
                     // If the class is blank, then set default class.
@@ -1848,7 +1848,7 @@ function get_form_list_view($properties) {
 
                     // If the label is blank, then set default label.
                     if ($label == '') {
-                        $label = 'Clear';
+                        $label = lang('Clear');
                     }
 
                     // If the class is blank, then set default class.
@@ -3246,7 +3246,7 @@ function get_form_list_view($properties) {
                         
                         // if this is the newest comment name field and the value is blank and there is a newest comment, then set name to "Anonymous"
                         if (($field_name == 'newest_comment_name') && ($data == '') && ($form['newest_comment_id'] != '')) {
-                            $data = 'Anonymous';
+                            $data = lang('Anonymous');
                         }
                         
                         // If this is the submitter field and badge is enabled for the submitter,

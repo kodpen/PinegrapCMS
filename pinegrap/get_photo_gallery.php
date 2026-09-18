@@ -195,7 +195,7 @@ function get_photo_gallery($properties) {
                 }
                 
                 // output the back button
-                $output_back_button = '<div style="margin-top: 1em; margin-bottom: 5px"><a href="' . OUTPUT_PATH . h(encode_url_path($page_name)) . $folder_parent_id_for_url . '" class="software_button_secondary back_button">Back</a></div>';
+                $output_back_button = '<div style="margin-top: 1em; margin-bottom: 5px"><a href="' . OUTPUT_PATH . h(encode_url_path($page_name)) . $folder_parent_id_for_url . '" class="software_button_secondary back_button">' . lang('Back') . '</a></div>';
             }
             
             // get child folders for current folder, they will be used in several places below
@@ -418,16 +418,14 @@ function get_photo_gallery($properties) {
                             $output_album_thumbnail_image_tag = add_edit_button_for_images('photo_gallery', 0, $output_album_thumbnail_image_tag);
                         }
                         
-                        // start to output the number of photos
-                        $output_number_of_photos = '(' . $album['number_of_photos'] . ' Photo';
-                        
-                        // if there is more than one image, then add "s"
+                        // output the number of photos, pluralized when there is more than one
+                        $photo_suffix = '';
+
                         if ($album['number_of_photos'] > 1) {
-                            $output_number_of_photos .= 's';
+                            $photo_suffix = 's';
                         }
-                        
-                        // close the parenthesis
-                        $output_number_of_photos .= ')';
+
+                        $output_number_of_photos = '(' . lang(array('string' => '{var:1} Photo{suffix:1}', 'vars' => array($album['number_of_photos']), 'suffix' => array($photo_suffix))) . ')';
                         
                         // output the cell
                         $output_album_thumbnail_table_cells .= 
@@ -581,7 +579,7 @@ function get_photo_gallery($properties) {
                     '<div class="software_photo_gallery">
                         <div class="software_photo_gallery_album">
                             <div class="heading" style="border: none"><h4>' . h($folder_name) . '</h4></div>
-                            <p>There are no albums or photos in this photo gallery.</p>
+                            <p>' . lang('There are no albums or photos in this photo gallery.') . '</p>
                         </div>
                     </div>';
                

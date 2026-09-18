@@ -26,7 +26,7 @@ function get_custom_form_confirmation_screen_content($properties)
     
     // if the user came from the control panel, then return placeholder content
     if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
-        return '<p class="software_notice">The submitted data for the Custom Form will be displayed here when this page is linked from a Custom Form Page Type.</p>';
+        return '<p class="software_notice">' . lang('The submitted data for the Custom Form will be displayed here when this page is linked from a Custom Form Page Type.') . '</p>';
     }
 
     $where = "";
@@ -158,12 +158,12 @@ function get_custom_form_confirmation_screen_content($properties)
     // then show user account info.
     if ($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] != '') {
         $output_auto_registration =
-            '<div class="account heading" style="margin-top: 1em">New Account</div>
+            '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>
             <div class="account data">
-                <p>We have created a new account for you on our site. You can find your login info below.</p>
+                <p>' . lang('We have created a new account for you on our site. You can find your login info below.') . '</p>
                 <p>
-                    Email: ' . h($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address']) . '<br>
-                    Password: ' . h($_SESSION['software']['custom_form_auto_registration'][$form_id]['password']) . '
+                    ' . lang('Email') . ': ' . h($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address']) . '<br>
+                    ' . lang('Password') . ': ' . h($_SESSION['software']['custom_form_auto_registration'][$form_id]['password']) . '
                 </p>
             </div>';
     }
@@ -176,7 +176,7 @@ function get_custom_form_confirmation_screen_content($properties)
         
         // else a continue button label could not be found, so use a default label
         } else {
-            $output_continue_button_label = 'Continue';
+            $output_continue_button_label = lang('Continue');
         }
         
         $output_continue_button = '<div style="text-align: right; margin-bottom: 5px"><a href="' . OUTPUT_PATH . h($next_page_name) . '" class="software_button_primary">' . h($output_continue_button_label) . '</a></div>';
@@ -189,15 +189,15 @@ function get_custom_form_confirmation_screen_content($properties)
     $output =
         '<table style="margin-bottom: 15px">
             <tr>
-                <td>Form:</td>
+                <td>' . lang('Form') . ':</td>
                 <td>' . h($form_name) . '</td>
             </tr>
             <tr>
-                <td>Reference Code:</td>
+                <td>' . lang('Reference Code') . ':</td>
                 <td>' . $reference_code . '</td>
             </tr>
             <tr>
-                <td>Date Submitted:</td>
+                <td>' . lang('Date Submitted') . ':</td>
                 <td>' . get_absolute_time(array('timestamp' => $submitted_timestamp, 'size' => 'long')) . '</td>
             </tr>
         </table>

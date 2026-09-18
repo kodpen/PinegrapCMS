@@ -497,7 +497,7 @@ if (!$_POST) {
                                 <label class="form-label">' . $field['label'] . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11')) . '
                                 ' . $field_required . '
-                                <div class="form-text text-end">Format: h:mm AM/PM</div>
+                                <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
                                 ' . get_time_picker_format() . '
                                     <script>
                                         $("#' . $field['id'] . '").timepicker(timepicker_options);

@@ -33,7 +33,7 @@ function get_catalog_detail($properties) {
     if ((isset($_GET['from'])) && (($_GET['from'] ?? '') == 'control_panel')) {
         return
             '<div class="software_catalog_detail">
-                <p class="software_notice">Product details will be displayed here when this page is linked to from a Catalog Page Type.</p>
+                <p class="software_notice">' . lang('Product details will be displayed here when this page is linked to from a Catalog Page Type.') . '</p>
             </div>';
     }
     
@@ -49,12 +49,12 @@ function get_catalog_detail($properties) {
 
     // If an item was not found, then output error.
     if (!$item['id']) {
-        return error('Sorry, the item could not be found.', 404);
+        return error(lang('Sorry, the item could not be found.'), 404);
     }
 
     // If the item is disabled, then output error.
     if (!$item['enabled']) {
-        return error('Sorry, the item is not currently available.', 410);
+        return error(lang('Sorry, the item is not currently available.'), 410);
     }
 
     if ($item['type'] == 'product group') {
@@ -713,7 +713,7 @@ function get_catalog_detail($properties) {
                         // labels are shorter than "or add name:".
                         $output_product_attribute_table =
                             '<table class="product_attributes">
-                                <tr class="attribute_spacer" style="visibility: collapse"><td>or add name:</td><td></td></tr>
+                                <tr class="attribute_spacer" style="visibility: collapse"><td>' . lang('or add name') . ':</td><td></td></tr>
                                 ' . $output_attribute_rows . '
                             </table>';
 
@@ -743,11 +743,11 @@ function get_catalog_detail($properties) {
                 if ($output_product_attribute_table == '') {
                     // if there are available products or there is only one product, then prepare singular label
                     if (($available_products_exist == TRUE) || (count($products) == 1)) {
-                        $output_item_label = 'Item';
+                        $output_item_label = lang('Item');
                         
                     // else prepare plural label
                     } else {
-                        $output_item_label = 'Items';
+                        $output_item_label = lang('Items');
                     }
                     
                     $output_products = '';
@@ -861,12 +861,12 @@ function get_catalog_detail($properties) {
                 if ((ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') && ($shippable_products == true)) {
                     $output_recipient_rows =
                         '<tr id="ship_to_row">
-                            <td><strong>Ship to:</strong></td>
+                            <td><strong>' . lang('Ship to') . ':</strong></td>
                             <td>' . $form->output_field(array('type'=>'select', 'name'=>'ship_to', 'options'=>get_recipient_options(), 'class'=>'software_select')) . '</td>
                         </tr>
                         <tr id="add_name_row">
-                            <td>or add name:</td>
-                            <td>' . $form->output_field(array('type'=>'text', 'name'=>'add_name', 'maxlength'=>'50', 'size'=>'12', 'class'=>'software_input_text  mobile_text_width')) . ' &nbsp;(e.g. "Tom")</td>
+                            <td>' . lang('or add name') . ':</td>
+                            <td>' . $form->output_field(array('type'=>'text', 'name'=>'add_name', 'maxlength'=>'50', 'size'=>'12', 'class'=>'software_input_text  mobile_text_width')) . ' &nbsp;(' . lang('e.g. "Tom"') . ')</td>
                         </tr>';
                 }
 
@@ -876,7 +876,7 @@ function get_catalog_detail($properties) {
                 if ($non_donation_products_exist == true) {
                     $output_quantity_row =
                         '<tr id="quantity_row">
-                            <td><strong>Qty:</strong></td>
+                            <td><strong>' . lang('Qty') . ':</strong></td>
                             <td class="mobile_left">' . $form->output_field(array('type'=>'number', 'name'=>'quantity', 'size'=>'3', 'maxlength'=>'9', 'min'=>'1', 'max'=>'999999999', 'value'=>'1', 'class'=>'software_input_text')) . '</td>
                         </tr>';
                 }
@@ -889,7 +889,7 @@ function get_catalog_detail($properties) {
                 
                 // else an add button label could not be found, so use a default label
                 } else {
-                    $output_add_button_label = 'Continue';
+                    $output_add_button_label = h(lang('Continue'));
                 }
                 
                 $output_add_button = '<input type="submit" name="submit" value="' . $output_add_button_label . '" class="software_input_submit_primary add_button" />';
@@ -908,7 +908,7 @@ function get_catalog_detail($properties) {
                 
                 // if back button label is blank, then set to "Back"
                 if ($back_button_label == '') {
-                    $back_button_label = 'Back';
+                    $back_button_label = lang('Back');
                 }
                 
                 $output_back_button = $output_spacing . '<a href="' . h($_SESSION['software']['urls'][$_GET['previous_url_id']]) . '" class="software_button_secondary back_button">' . h($back_button_label) . '</a>';
@@ -959,7 +959,7 @@ function get_catalog_detail($properties) {
         if (($output_form == '') && (isset($_GET['previous_url_id']) == true) && (isset($_SESSION['software']['urls'][$_GET['previous_url_id']]) == true)) {
             // if back button label is blank, then set to "Back"
             if ($back_button_label == '') {
-                $back_button_label = 'Back';
+                $back_button_label = lang('Back');
             }
             
             $output_back_button = '<div style="margin-top: 1em"><a href="' . h($_SESSION['software']['urls'][$_GET['previous_url_id']]) . '" class="software_button_secondary back_button">' . h($back_button_label) . '</a></div>';
@@ -1373,7 +1373,7 @@ function get_catalog_detail($properties) {
 
                 // If an add button label was not entered for the page, then set default label.
                 if ($add_button_label == '') {
-                    $add_button_label = 'Continue';
+                    $add_button_label = lang('Continue');
                 }
 
             }
@@ -1387,7 +1387,7 @@ function get_catalog_detail($properties) {
 
             // If a back button label was not entered for the page, then set default label.
             if ($back_button_label == '') {
-                $back_button_label = 'Back';
+                $back_button_label = lang('Back');
             }
         }
 

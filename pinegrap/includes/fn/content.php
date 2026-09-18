@@ -968,7 +968,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'maxlength' => '11',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . ' (Format: h:mm AM/PM)</td>
+                            )) . ' ' . lang('(Format: h:mm AM/PM)') . '</td>
 
                     </tr>';
                 break;
@@ -2673,7 +2673,7 @@ function add_edit_button_for_images($object_type = '', $object_id = 0, $content 
                 $column_to_update = '&amp;column_to_update=' . $column_to_update;
             }
             // add link to the image editor
-            $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($image_name)) . '&amp;object_type=' . $object_type . '&amp;object_id=' . $object_id . $column_to_update . '&amp;send_to=' . h(urlencode(get_request_uri())) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="Edit Image (' . h($image_name) . ') with Software Image Editor" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_image_editor.png" width="50" height="auto" alt="' . lang('Software Image Editor') . '"></a>';
+            $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($image_name)) . '&amp;object_type=' . $object_type . '&amp;object_id=' . $object_id . $column_to_update . '&amp;send_to=' . h(urlencode(get_request_uri())) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang(array('string' => 'Edit Image ({var:1}) with Software Image Editor', 'vars' => h($image_name))) . '" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_image_editor.png" width="50" height="auto" alt="' . lang('Software Image Editor') . '"></a>';
             // output the image we created above with a link around it
             $content = preg_replace('/' . escape_regex($match[0]) . '/i', $image_content, $content, 1);
         }
@@ -3048,7 +3048,7 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                     }
                     // if this is the newest comment name field and the value is blank and there is a newest comment, then set name to "Anonymous"
                     if (($field_name == 'newest_comment_name') && ($data == '') && ($submitted_form['newest_comment_id'] != '')) {
-                        $data = 'Anonymous';
+                        $data = lang('Anonymous');
                     }
                     // If this is the submitter field and badge is enabled for the submitter,
                     // or if this is the last modifier field and badge is enabled for the last modifier,

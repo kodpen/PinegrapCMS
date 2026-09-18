@@ -48,7 +48,7 @@ function get_custom_form_screen_content($properties) {
     ) {
         $output =
             '<div class="save_confirmation_message">
-                Your form has been saved for later.
+                ' . lang('Your form has been saved for later.') . '
             </div>';
 
     // If the confirmation type is message and the message should be shown, then show it.
@@ -776,7 +776,7 @@ function get_custom_form_screen_content($properties) {
 
                     // If a submit button label was not entered for the page, then set default label.
                     if ($submit_button_label == '') {
-                        $submit_button_label = 'Submit';
+                        $submit_button_label = lang('Submit');
                     }
                     $question = '';
                     if(isset($captcha_info['question'])){
