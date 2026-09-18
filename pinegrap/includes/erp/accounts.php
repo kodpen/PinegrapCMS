@@ -60,6 +60,26 @@ function erp_accounts($filters = array())
 }
 
 /**
+ * The country an account is in when nothing says otherwise.
+ *
+ * The store names its home country in the countries table (default_selected),
+ * the same place the checkout reads it from. Nothing here assumes where the
+ * store is; a shop that has not chosen a country gets an empty code.
+ *
+ * @return string  ISO 3166-1 alpha-2 code, or '' when no country is selected
+ */
+function erp_default_country_code()
+{
+    static $code = null;
+
+    if ($code === null) {
+        $code = strtoupper(trim((string) db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1")));
+    }
+
+    return $code;
+}
+
+/**
  * Create or update an account.
  *
  * @param array $data  id (0 to create), title, kind, is_person, tax_number, ...
@@ -85,7 +105,7 @@ function erp_account_save($data)
         'address' => trim((string) ($data['address'] ?? '')),
         'district' => trim((string) ($data['district'] ?? '')),
         'city' => trim((string) ($data['city'] ?? '')),
-        'country_code' => strtoupper(trim((string) ($data['country_code'] ?? 'TR'))),
+        'country_code' => strtoupper(trim((string) ($data['country_code'] ?? erp_default_country_code()))),
         'postcode' => trim((string) ($data['postcode'] ?? '')),
         'currency' => strtoupper(trim((string) ($data['currency'] ?? erp_base_currency()))),
         'contact_id' => (int) ($data['contact_id'] ?? 0),
@@ -237,7 +257,7 @@ function erp_account_for_contact($contact_id, $created_by = 0)
         'city' => $contact['business_state'],
         'district' => $contact['business_city'],
         'postcode' => $contact['business_zip_code'],
-        'country_code' => (trim((string) $contact['business_country']) !== '') ? $contact['business_country'] : 'TR',
+        'country_code' => (trim((string) $contact['business_country']) !== '') ? $contact['business_country'] : erp_default_country_code(),
         'contact_id' => $contact_id,
         'created_by' => $created_by,
     ));

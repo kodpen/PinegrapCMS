@@ -884,6 +884,16 @@ anında durduruyor.
 diye bir tablo yok. `parasut_contact_id` `contacts`'ta durur, `erp_accounts`'a
 kopyalanmaz.
 
+**Cari CSV içe aktarma** (`erp_accounts_import.php`, mantık
+`includes/erp/import.php`): tek adreste üç adım — yükle (dosya `data/temp/`
+altında oturum jetonuyla bekler, ayırıcı ve karakter kümesi algılanır,
+Windows-1254 → UTF-8), eşle ve önizle (TR/EN başlık eş anlamlıları, ilk 20
+satır için oluşturulacak / zaten var / tekrar / hata), çalıştır (100'lük
+partiler, parti başına transaction). Eşleşme vergi no → e-posta → tam ad
+(ad yalnız ikisi de boşken). Güncelleme yalnız dosyanın verdiği sütunları
+yazar, bakiyeye dokunmaz. Varsayılan ülke `erp_default_country_code()`
+(`countries.default_selected`), `'TR'` değil.
+
 **Yetki üç sütun:** `manage_erp` (kapı), `manage_erp_cash`,
 `manage_erp_settings` — hepsi öneksiz `TINYINT`. Üçlü Yok/Okuma/Yazma deseni
 bu kod tabanında yok. Yeni bir yetki eklerken rol-3 kullanıcının panele
