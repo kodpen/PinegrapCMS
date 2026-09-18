@@ -118,7 +118,7 @@ function erp_export_columns($profile)
         case 'csv_invoices':
             return array(lang('Invoice Number'), lang('Date'), lang('Due Date'), lang('Direction'), lang('Document Type'), lang('Status'),
                 lang('Account'), lang('VKN / TCKN'), lang('Tax Office'), lang('Country'), lang('Currency'), lang('Exchange Rate'),
-                lang('Line'), lang('Description'), lang('Quantity'), lang('Unit'), lang('Unit Price'), lang('Discount'), lang('VAT Rate'),
+                lang('Line No'), lang('Description'), lang('Quantity'), lang('Unit'), lang('Unit Price'), lang('Discount'), lang('VAT Rate'),
                 lang('VAT'), lang('Line Total'), lang('Invoice Subtotal'), lang('Invoice VAT'), lang('Invoice Total'),
                 lang('Invoice Total (base currency)'), lang('Paid'), lang('Order Number'), lang('Invoice ID'));
 
