@@ -41,6 +41,47 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Panel JS: genel `.ui-sortable` başlatması opt-in `pg-sortable` sınıfına alındı (2026-09-18)
+
+**Belirti.** `assets/js/backend.src.js` ready işleyicisi her panel ekranında
+`$(".ui-sortable").sortable({...})` çağırıyordu. `ui-sortable`, jQuery UI'nin
+sortable yaptığı her kapsayıcıya kendisinin eklediği işaret sınıfıdır; depoda
+bu sınıfı kendi işaretlemesinde taşıyan tek bir liste yok. Dolayısıyla seçici
+hiçbir zaman "sıralanabilir olsun" diye işaretlenmiş bir listeyi bulmuyor, o
+ana kadar kendi sortable'ını kurmuş kapsayıcıları buluyor ve `items: "a"`,
+`handle: this` (= document), `axis: "y"`, `delay: 300`, `containment: "parent"`
+ile ayarlarını eziyordu. `product_builder.js` (112–129) bunun için ready'ye
+erteleme ve her seçeneği yeniden yazma geçici çözümü taşıyor. Blokta ayrıca
+`tolerance` iki kez tanımlıydı (`touch`, sonra `pointer`; yalnız ikincisi
+geçerliydi) ve jQuery UI'nin tanımadığı `disable` anahtarı vardı. Yapılandırma
+neden böyle kurulmuştu hatırlanmıyor; #73'te değiştirilmesine ve üç sortable
+ekranının elle denenmesine karar verildi.
+
+**Düzeltme.** Seçici `.pg-sortable` (opt-in) oldu; `handle: this`, yinelenen
+`tolerance: 'touch'` ve `disable` kaldırıldı, diğer seçenekler aynı. Depoda bu
+varsayılan başlatmaya bağlı liste bulunmadığından hiçbir işaretlemeye sınıf
+eklenmedi. Panel `backend.src.js`'i `ENVIRONMENT_SUFFIX`'ten bağımsız yüklüyor
+(`includes/fn/output.php:140`), `.min` ikizi yok. `product_builder.js` geçici
+çözümü artık gereksiz, ama o dosyada başka açık çalışma olduğu için bu PR'da
+dokunulmadı.
+
+### Doğrulama
+
+Sandbox (turkish_default), Playwright gerçek fare sürüklemesi, hem değişmemiş
+main (:8000) hem bu dal (:8010): widget ekranı (`welcome.php`;
+`dashboard.order_widgets` 1,2,3,4,… → 2,3,4,1,…), ürün düzenleme
+(`edit_product.php?id=72`; sürüklenen görsel kapak oldu, `products.image_name`
+kaydedildi), menü sıralama (`view_menu_items.php?id=11`; parent 548 grubunda
+543↔479, `menu_items.sort_order` güncellendi). Üçünde de davranış iki sunucuda
+birebir aynı, ekranlarda konsol hatası yok. DOMContentLoaded'da eklenen
+`<div class="pg-sortable">` bu dalda sortable oluyor (`items: "a"`), düz
+`class="ui-sortable"` div artık başlatılmıyor; main'de tersi.
+
+**Açık kalan:** `products_images_xref` sıra sütunu taşımıyor ve `SELECT`
+`ORDER BY`'sız; kapak dışındaki görsel sırası kayıt sonrası rastgele geliyor
+(bu değişiklikten bağımsız, main'de de aynı). `product_builder.js:112-129`
+geçici çözümü ayrı bir PR'da sadeleştirilebilir.
+
 ## 2026.4.4 — Türkçe lang() anahtarları, api_docs favicon adı, body class boşluğu (2026-09-18)
 
 **Belirti.** Üç ayrı küçük hata. (1) `lang()` çağrılarında anahtar olarak
