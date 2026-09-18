@@ -27,6 +27,11 @@
 // makes. They are kept in the tab's sessionStorage - gone when the tab closes -
 // and the page is sent with no-store, a deny-frame header and a policy that
 // lets its script talk to this site alone.
+//
+// The chrome is the panel's own session-less header and footer, so the page
+// looks like the panel, follows the same stored colour scheme and picks up the
+// backend stylesheet and scripts - the theme switch in the header is handled
+// by the same code as the one in the panel's user menu.
 
 if (!defined('PG_API_ENTRY')) {
 	exit;
@@ -50,11 +55,7 @@ function api_console_page($params) {
 
 	$base_url = api_openapi_base_url();
 
-	$assets = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '') . '/assets';
-
 	$site_title = defined('TITLE') ? TITLE : 'Pinegrap';
-
-	$title = $site_title . ' — ' . lang('API console');
 
 	// Everything the page's own script says to the reader, translated here and
 	// handed over as one object so the script holds no prose.
@@ -80,20 +81,16 @@ function api_console_page($params) {
 
 	$curl_example = 'curl -u APPLICATION_KEY:SECRET_KEY "' . $base_url . '/meta"';
 
-	$html = '<!DOCTYPE html>
-<html lang="' . h(lang(array('info' => ''))) . '">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>' . h($title) . '</title>
-<link rel="stylesheet" href="' . h($assets) . '/lib/bootstrap-5.3.8/css/bootstrap.min.css">
-<link rel="stylesheet" href="' . h($assets) . '/fonts/bootstrap-icons/bootstrap-icons.min.css">
+	// The panel's session-less chrome: Bootstrap, the icon font, the backend
+	// stylesheet and the theme bootstrap that reads the reader's stored colour
+	// scheme before the first paint. Its footer closes two wrappers, opened
+	// below around the page.
+	$html = output_header_secure(array('title' => lang('API console'), 'icon' => 'setting')) . '
 <style>
-body { background: var(--bs-body-bg); }
-.con-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.con-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .con-head h1 { font-size: 22px; margin: 0; }
 .con-head .con-sub { font-size: 14px; opacity: .6; }
+.con-head .con-theme { margin-left: auto; }
 .con-base { font-size: 12.5px; word-break: break-all; }
 .con-meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 12.5px; }
 .con-meta dt { font-weight: 600; opacity: .7; }
@@ -103,14 +100,19 @@ body { background: var(--bs-body-bg); }
 .doc-nav { max-height: calc(100vh - 32px); }
 ' . api_console_css() . '
 </style>
-</head>
-<body>
-<main class="container-fluid py-4" style="max-width: 1500px">
+<div class="container-fluid py-4" style="max-width: 1500px">
+<div class="con-page">
 
 	<div class="con-head">
 		<h1>' . h($site_title) . '</h1>
 		<span class="con-sub"><i class="bi bi-terminal me-1"></i>' . lang('API console') . '</span>
+		<div class="btn-group btn-group-sm con-theme" role="group" aria-label="' . h(lang('Appearance')) . '">
+			<button type="button" id="theme-light" class="btn btn-outline-secondary" data-bs-theme-value="light" title="' . h(lang('Light')) . '" aria-label="' . h(lang('Light')) . '"><i class="bi bi-sun-fill" aria-hidden="true"></i></button>
+			<button type="button" id="theme-dark" class="btn btn-outline-secondary" data-bs-theme-value="dark" title="' . h(lang('Dark')) . '" aria-label="' . h(lang('Dark')) . '"><i class="bi bi-moon-stars-fill" aria-hidden="true"></i></button>
+			<button type="button" id="theme-auto" class="btn btn-outline-secondary" data-bs-theme-value="auto" title="' . h(lang('Auto')) . '" aria-label="' . h(lang('Auto')) . '"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
+		</div>
 	</div>
+
 	<div class="con-base mb-3"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code></div>
 
 	<div class="row g-3 mb-3">
@@ -155,8 +157,6 @@ body { background: var(--bs-body-bg); }
 		<div id="doc_main"><div id="doc_empty">' . lang('Enter your application key and secret to load the description.') . '</div></div>
 	</div>
 
-</main>
-
 <script>
 ' . api_console_script() . '
 </script>
@@ -176,17 +176,6 @@ body { background: var(--bs-body-bg); }
 	var metaBox = document.getElementById("con_meta");
 	var nav = document.getElementById("doc_nav");
 	var main = document.getElementById("doc_main");
-
-	// Follows the reader\'s own colour scheme; Bootstrap 5.3 restyles itself
-	// from this one attribute.
-	function applyTheme() {
-		var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-		document.documentElement.setAttribute("data-bs-theme", dark ? "dark" : "light");
-	}
-	applyTheme();
-	if (window.matchMedia) {
-		try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme); } catch (e) {}
-	}
 
 	function fill(template, values) {
 		return template.replace(/\{var:(\d+)\}/g, function (all, index) {
@@ -385,8 +374,7 @@ body { background: var(--bs-body-bg); }
 
 })();
 </script>
-</body>
-</html>';
+' . output_footer_secure();
 
 	api_send_html(200, $html);
 
