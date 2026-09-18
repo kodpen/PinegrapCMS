@@ -195,6 +195,56 @@ hatanın göründüğü sonucu `get_forgot_password.php` ve `widgets.php` okunar
 
 **Açık kalan:** yok.
 
+## 2026.4.4 — E-posta kampanyası, takvim ve içe aktarma ekranlarında düzeltmeler (2026-09-18)
+
+**Belirti (issue #40).** (1) `create_auto_email_campaigns()` (`includes/fn/mail.php`)
+`email_campaigns` tablosuna tanımsız `$status` yazıyordu: kayıt boş status ile
+oluşuyor, strict `sql_mode`'da hiç oluşmuyordu; hemen ardından gelen `UPDATE`
+bunu örtmeye çalışıyordu. Aynı dosyada `lang(array('info'))` yanlış dizi
+biçimiyle çağrıldığı için PHPMailer'ın Türkçe dil dalı ölüydü. (2) Rol-3
+kullanıcı başkasının kampanyasını açınca `edit_email_campaign.php` var olmayan
+`output_error_in_popup()` fonksiyonunu çağırıp ölümcül hata veriyordu; aynı
+ekranda ve `view_email_campaign_history.php`'de birkaç çıktı değişkeni tanımsız
+kullanılıyordu. (3) Takvim yaklaşan-etkinlik görünümünde (`includes/fn/calendar.php`)
+gün başlığı döngüden önce bayat `$event`'ten hesaplanıyordu, bütün günler aynı
+tarihi gösteriyordu; komşu etkinlik karşılaştırmaları `$events[$key ± 1]`'i
+`isset` olmadan okuyordu. (4) `update_calendar_event_exception.php` tekrar
+etmeyen etkinlikte konum çakışması bulunca `break` ile devam ediyor, istisnayı
+yine de siliyordu. (5) `view_calendar_event_locations.php` sıralama anahtarını
+çevrilmemiş literal ile karşılaştırdığı için Türkçe arayüzde konumlar
+sıralanamıyordu. (6) Aylık tekrar doğrulaması `recurrence_month_type` yerine
+`recurrence_type`'a bakıyordu. (7) Konum ve kampanya silinince
+`calendar_events_calendar_event_locations_xref` / `email_recipients` satırları
+yetim kalıyordu. (8) `import_contacts.php` e-posta sütunu olmayan CSV'de "yalnız
+benzersiz kişiler" seçiliyken hiç kişi aktarmıyordu; `import_products.php`
+"güncellendi" bildirimi içe aktarılan sayıyı gösteriyordu; `import_zip.php`
+klasör girişini `mb_strlen()` karakter indisiyle bulduğu için çok baytlı klasör
+adları boş dosya olarak giriyor, `$matches[0]` eşleşme yokken okunuyordu.
+
+**Düzeltme.** Her bulguda en dar değişiklik seçildi: `$status = 'ready'` INSERT'in
+hemen önüne konup örtücü `UPDATE` kaldırıldı — kaydın doğru status ile doğması,
+ikinci sorguyla düzeltilmesinden hem strict modda hem yarış açısından
+güvenlidir. Erişim reddi `output_error(lang('Access denied.'))` ile veriliyor.
+Gün başlığı döngünün yeni-gün dalında güncel `$event`'ten hesaplanıyor; komşu
+okumaları `!isset(...) ||` ile korunarak kapsayıcı aç/kapa anlamı korundu.
+Çakışmada `break` yerine `exit()` — tekrar eden dal zaten böyleydi. Sıralama
+`case lang('Name')` vb. ile `view_calendars.php`'nin desenine getirildi. Silme
+uçları bağlı satırları da siliyor; şema değişikliği yok. ZIP klasör denetimi bayt
+düzeyinde `substr(..., -1) == '/'`. `import_submitted_forms.php` tarih biçimi
+bulgusu bilerek bırakıldı: ihracat da ham biçimde yazdığı için dönüştürme,
+dışa aktar → içe aktar döngüsünü kırardı; bu bir ürün biçimi kararıdır.
+
+### Doğrulama
+
+`php -l` (dokunulan 16 PHP dosyası), `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Çalışan örnek kurulmadı; strict `sql_mode`
+altında kampanya INSERT'i, gün başlığı çizimi, istisna silme yönlendirmesi,
+Türkçe arayüzde konum sıralaması, e-posta sütunsuz CSV ve çok baytlı ZIP
+klasörleri çalışma zamanında denenmedi.
+
+**Açık kalan:** `import_submitted_forms.php:342` tarih/saat değerlerinin ham
+saklanması — ihracat biçimiyle birlikte karar verilmeli.
+
 ## 2026.4.4 — ERP: hediye kartı tahsisi, iade satırı bağı, transaction sayacı (2026-09-18)
 
 **Belirti (issue #72).** (1) Hediye kartıyla ödenen sipariş faturalanınca

@@ -11524,5 +11524,6 @@
     "This folder could not be loaded. The connection or the server may have timed out during a long operation.": "Bu klasör yüklenemedi. Uzun süren bir işlem sırasında bağlantı veya sunucu zaman aşımına uğramış olabilir.",
     "Nothing here matches the search.": "Burada aramayla eşleşen bir şey yok.",
     "Developer PIN is not configured.": "Geliştirici PIN yapılandırılmamış.",
-    "Sorry, password reset is not available on this website right now.": "Maalesef bu web sitesinde şifre sıfırlama şu anda kullanılamıyor."
+    "Sorry, password reset is not available on this website right now.": "Maalesef bu web sitesinde şifre sıfırlama şu anda kullanılamıyor.",
+    "access denied to edit e-mail campaign because user is not the creator of the e-mail campaign": "kullanıcı e-posta kampanyasının oluşturucusu olmadığı için e-posta kampanyasını düzenleme erişimi reddedildi"
 }

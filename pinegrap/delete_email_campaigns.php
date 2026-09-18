@@ -66,6 +66,10 @@ if ($_POST['email_campaigns']) {
             $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE email_campaign_id  = '" . escape($email_campaign_id) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
+            // delete the recipients that were queued for this e-mail campaign
+            $query = "DELETE FROM email_recipients WHERE email_campaign_id = '" . escape($email_campaign_id) . "'";
+            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            
             $number_of_email_campaigns++;
         }
     }

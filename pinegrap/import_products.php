@@ -709,8 +709,8 @@ if (!$_POST) {
         $liveform_view_products->add_notice( lang(array('string'=>'{var:1} {var:2} have been imported.','vars'=>array($product_imported_count,lang('product(s)')))) );
         log_activity( lang(array('string'=>'{var:1} {var:2} have been imported.','vars'=>array($product_imported_count,lang('product(s)')))) , $_SESSION['sessionusername']);
     } elseif ($product_updated_count > 0) {
-        $liveform_view_products->add_notice( lang(array('string'=>'{var:1} {var:2} have been updated.','vars'=>array($product_imported_count,lang('product(s)')))) );
-        log_activity( lang(array('string'=>'{var:1} {var:2} have been updated.','vars'=>array($product_imported_count,lang('product(s)')))) , $_SESSION['sessionusername']);
+        $liveform_view_products->add_notice( lang(array('string'=>'{var:1} {var:2} have been updated.','vars'=>array($product_updated_count,lang('product(s)')))) );
+        log_activity( lang(array('string'=>'{var:1} {var:2} have been updated.','vars'=>array($product_updated_count,lang('product(s)')))) , $_SESSION['sessionusername']);
     } else {
         $liveform_view_products->add_notice( lang(array('string'=>'No {var:1} have been imported or updated.','vars'=>array(lang('product')))) );
     }

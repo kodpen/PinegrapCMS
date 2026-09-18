@@ -474,7 +474,7 @@ if (mysqli_num_rows($result) > 0) {
     }
     
     // log end of sending e-mails
-    log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, number_format($number_of_email_recipients)) . $log_page)), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, number_format($number_of_email_recipients)))), $_SESSION['sessionusername']);
     
     // If this is an automatic campaign, then check if auto campaigns need to be created.
     if ($type == 'automatic') {

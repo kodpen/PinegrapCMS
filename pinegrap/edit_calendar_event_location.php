@@ -113,6 +113,10 @@ if (!$_POST) {
         $query = "DELETE FROM calendar_event_locations WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
+        // delete the records that assign this location to calendar events
+        $query = "DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_location_id = '" . escape($_POST['id'] ?? '') . "'";
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event location'), $calendar_event_location_name) )), $_SESSION['sessionusername']);
         $liveform_view_calendar_event_locations = new liveform('view_calendar_event_locations');
         $liveform_view_calendar_event_locations->add_notice(lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Event Location') )));

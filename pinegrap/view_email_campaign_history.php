@@ -154,6 +154,8 @@ if ($email_campaigns) {
     foreach ($email_campaigns as $email_campaign) {
         $output_link_url = 'edit_email_campaign.php?id=' . $email_campaign['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
         
+        $output_start_time_cell = '';
+        
         // if the e-mail campaign job is enabled, then prepare to show start time cell
         if (email_campaign_job_enabled()) {
             // if start time was not set, then clear start time

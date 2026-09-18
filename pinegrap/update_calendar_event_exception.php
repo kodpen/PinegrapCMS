@@ -328,7 +328,7 @@ if (
                         $liveform->mark_error('', 'The instance of the repeating event could not be unremoved because ' . $existing_calendar_name_statement . ' using the same location during the same time.');
 
                         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/calendars.php');
-                        break;
+                        exit();
                     }
                 }
             }

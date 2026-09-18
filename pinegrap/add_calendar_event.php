@@ -302,7 +302,7 @@ if (!$_POST) {
                                                 <label class="form-check-label" for="all_day">' . lang('All Day Event') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 my-2" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
+                                        <div class="col-12 col-md-6 my-2">
                                             <div class="border-1 border p-2 my-2 rounded">
                                                 <label for="start_time" class="form-label">' . lang('Start Date') . '<span id="start_time_label"> ' . lang('& Time') . '</span></label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'start_time', 'name'=>'start_time', 'value'=>$default_start_date_and_time, 'class'=>'form-control', 'maxlength'=>'19')) . '
@@ -314,7 +314,7 @@ if (!$_POST) {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 my-2" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
+                                        <div class="col-12 col-md-6 my-2">
                                             <div class="border-1 border p-2 my-2 rounded">
                                                 <label for="end_time" class="form-label">' . lang('End Date') . '<span id="end_time_label"> ' . lang('& Time') . '</span></label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'end_time', 'name'=>'end_time', 'value'=>$default_end_date_and_time, 'class'=>'form-control', 'maxlength'=>'19')) . '
@@ -678,7 +678,7 @@ if (!$_POST) {
 
         // If the recurrence type is set to month then validate month type.
         if ($liveform->get_field_value('recurrence_type') == 'month') {
-            $liveform->validate_required_field('recurrence_type', lang('Repeat month type is required.'));
+            $liveform->validate_required_field('recurrence_month_type', lang('Repeat month type is required.'));
         }
     }
 
