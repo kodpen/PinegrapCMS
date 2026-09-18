@@ -2,7 +2,7 @@
 include('init.php');
 $user = validate_user();
 include_once('liveform.class.php');
-$liveform = new liveform('edit_javascript');
+$liveform = new liveform('editor_edit_file');
 validate_area_access($user, 'designer');
 
 // if there has not been a post then continue to output the page
@@ -72,7 +72,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_REQUEST['id']) . '">
                     <input type="hidden" name="name" value="' . h($file_name) . '">
-                    <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to']) . '">
+                    <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to'] ?? '') . '">
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">

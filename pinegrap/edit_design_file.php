@@ -26,7 +26,7 @@ $from = '';
 if(isset($_GET['from'])){
     $from = ($_GET['from'] ?? '');
 }
-if (!$_POST['name']) {
+if (empty($_POST['name'])) {
     $query = 
         "SELECT 
             files.name, 
@@ -86,7 +86,7 @@ if (!$_POST['name']) {
 
     $optimize_button = '';
     $image_buttons = '';
-    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . $output_file_name . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
+    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
 
     $file['type'] = mb_strtolower($row['type']);
     if (    ($file['type'] == 'jpg')
@@ -300,11 +300,12 @@ print $output;
     
     $result=mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
     $row=mysqli_fetch_array($result);
+    $stored_name = ($row) ? $row['name'] : '';
 
-    $name = prepare_file_name($_POST['name']);
+    $name = prepare_file_name($_POST['name'] ?? '');
     
     // if file was selected for delete
-    if ($_POST['delete'])
+    if (!empty($_POST['delete']))
     {
         // delete file row
         $query = "DELETE FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
@@ -324,10 +325,11 @@ print $output;
 
         db("DELETE FROM preview_styles WHERE theme_id = '" . escape($_POST['id'] ?? '') . "'");
 
-        // Delete file on file system.
-        @unlink(FILE_DIRECTORY_PATH . '/' . $name);
+        // Delete the file under its stored name; the posted name may have
+        // been edited in the same submit and does not exist on disk.
+        @unlink(FILE_DIRECTORY_PATH . '/' . $stored_name);
         
-        log_activity(lang(array('string'=>'design file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'design file ({var:1}) was deleted','vars'=>$stored_name)), $_SESSION['sessionusername']);
         $notice = lang('The design file was deleted successfully.');
     }
     else

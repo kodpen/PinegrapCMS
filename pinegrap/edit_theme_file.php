@@ -222,7 +222,7 @@ if (!$_POST) {
     $name = prepare_file_name($liveform->get_field_value('name'));
     
     // if file was selected for delete
-    if ($_POST['delete']) {
+    if (!empty($_POST['delete'])) {
         // delete file row
         $query = "DELETE FROM files WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
@@ -233,11 +233,12 @@ if (!$_POST) {
 
         db("DELETE FROM preview_styles WHERE theme_id = '" . escape($liveform->get_field_value('id')) . "'");
         
-        // Delete file on file system.
-        @unlink(FILE_DIRECTORY_PATH . '/' . $name);
+        // Delete the file under its stored name; the posted name may have
+        // been edited in the same submit and does not exist on disk.
+        @unlink(FILE_DIRECTORY_PATH . '/' . $original_name);
         
         // log activity, add a notice to the liveform, and then send the user back to the view themes screen
-        log_activity("theme file ($name) was deleted", $_SESSION['sessionusername']);
+        log_activity("theme file ($original_name) was deleted", $_SESSION['sessionusername']);
         $liveform_view_themes->add_notice('The theme file was deleted successfully.');
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_themes.php');
     
