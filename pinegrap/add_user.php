@@ -446,7 +446,7 @@ if (!$_POST) {
         // else if the user was given view rights to this folder, then deal with that.
         } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
             // Remove spaces from beginning and end of date.
-            $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date']);
+            $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date'] ?? '');
 
             // If an expiration date was entered, then validate it.
             if ($expiration_date != '') {
@@ -535,7 +535,7 @@ if (!$_POST) {
         }
         
         // if manage contacts or manage e-mails was checked, check to see which contact groups the user needs to be given access to
-        if (($_POST['manage_contacts'] == 'yes') || ($_POST['manage_emails'] == 'yes')) {
+        if ((($_POST['manage_contacts'] ?? '') == 'yes') || (($_POST['manage_emails'] ?? '') == 'yes')) {
             // get all contact groups
             $query = "SELECT id FROM contact_groups";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

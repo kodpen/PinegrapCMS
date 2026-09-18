@@ -1162,6 +1162,10 @@ if (!$_POST) {
 
         // if the user is allowed to be deleted
         if ($allow_delete == true) {
+            // Revoke sign-in tokens first, as delete_users.php does, so no token
+            // outlives the user row it belongs to.
+            pg_auth_token_revoke_user((int) ($_POST['id'] ?? 0));
+
             // delete user record
             $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1392,7 +1396,7 @@ if (!$_POST) {
             // else if the user was given view rights to this folder, then deal with that.
             } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
                 // Remove spaces from beginning and end of date.
-                $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date']);
+                $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date'] ?? '');
 
                 // If an expiration date was entered, then validate it.
                 if ($expiration_date != '') {
@@ -1493,7 +1497,7 @@ if (!$_POST) {
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if manage contacts or manage e-mails was checked, check to see which contact groups the user needs to be given access to
-            if (($_POST['manage_contacts'] == 'yes') || ($_POST['manage_emails'] == 'yes')) {
+            if ((($_POST['manage_contacts'] ?? '') == 'yes') || (($_POST['manage_emails'] ?? '') == 'yes')) {
                 // get all contact groups
                 $query = "SELECT id FROM contact_groups";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1525,7 +1529,7 @@ if (!$_POST) {
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if manage calendars was checked, check to see which calendars the user needs to be given access to
-            if ($_POST['manage_calendars'] == 'yes') {
+            if (($_POST['manage_calendars'] ?? '') == 'yes') {
                 // get all calendars
                 $query = "SELECT id FROM calendars";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

@@ -627,7 +627,7 @@ if (!$_POST) {
             // else if the user was given view rights to this folder, then deal with that.
             } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
                 // Remove spaces from beginning and end of date.
-                $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date']);
+                $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date'] ?? '');
 
                 // If an expiration date was entered, then validate it.
                 if ($expiration_date != '') {
@@ -716,7 +716,7 @@ if (!$_POST) {
             }
             
             // if manage contacts or manage e-mails was checked, check to see which contact groups the user needs to be given access to
-            if (($_POST['manage_contacts'] == 'yes') || ($_POST['manage_emails'] == 'yes')) {
+            if ((($_POST['manage_contacts'] ?? '') == 'yes') || (($_POST['manage_emails'] ?? '') == 'yes')) {
                 // loop through all contact groups
                 foreach ($contact_groups as $contact_group) {
                     // if contact group was selected for user to be given access to, give access to user to contact group
@@ -734,7 +734,7 @@ if (!$_POST) {
             }
             
             // if manage calendars was checked, check to see which calendars the user needs to be given access to
-            if ($_POST['manage_calendars'] == 'yes') {
+            if (($_POST['manage_calendars'] ?? '') == 'yes') {
                 // get all calendars
                 $query = "SELECT id FROM calendars";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -833,7 +833,7 @@ if (!$_POST) {
         }
 
         // If the user checked to notify the user, then send email to user.
-        if ($_POST['notify_user'] == 1) {
+        if (($_POST['notify_user'] ?? '') == 1) {
             $login = '';
             
             // if user's role is administrator, designer, or manager
@@ -843,13 +843,13 @@ if (!$_POST) {
             if (
                 ($_POST['role'] < 3)
                 || (no_acl_check($user_id) == true)
-                || ($_POST['manage_calendars'] == 'yes')
-                || ($_POST['manage_forms'] == 'yes')
-                || ($_POST['manage_visitors'] == 'yes')
-                || ($_POST['manage_contacts'] == 'yes')
-                || ($_POST['manage_emails'] == 'yes')
-                || ($_POST['manage_ecommerce'] == 'yes')
-                || $_POST['manage_ecommerce_reports']
+                || (($_POST['manage_calendars'] ?? '') == 'yes')
+                || (($_POST['manage_forms'] ?? '') == 'yes')
+                || (($_POST['manage_visitors'] ?? '') == 'yes')
+                || (($_POST['manage_contacts'] ?? '') == 'yes')
+                || (($_POST['manage_emails'] ?? '') == 'yes')
+                || (($_POST['manage_ecommerce'] ?? '') == 'yes')
+                || ($_POST['manage_ecommerce_reports'] ?? '')
                 || ($_POST['manage_erp'] ?? '')
                 || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
             ) {
