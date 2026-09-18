@@ -2484,10 +2484,11 @@ function upgrade_2026_4_4_erp_settlements() {
 // 4.46 - returns count on a series of their own.
 //
 // erp_document_series.doc_kind was an ENUM that only knew about the documents
-// Faz 0 had planned for, so asking it for a return number silently produced no
-// row at all: MySQL will not store a value the column has never heard of, and
-// the read-back then found nothing. Widening the column is the fix; the read-back
-// now also says so out loud rather than returning an empty error.
+// the original ERP schema had planned for, so asking it for a return number
+// silently produced no row at all: MySQL will not store a value the column has
+// never heard of, and the read-back then found nothing. Widening the column is
+// the fix; the read-back now also says so out loud rather than returning an
+// empty error.
 //
 // A return gets its own counter so a missing number in the invoice run never has
 // to be explained as "that one was a return".
@@ -2589,7 +2590,7 @@ function upgrade_2026_4_4_offline_payment_awaiting() {
 // 4.49 - the ERP counts in the store's base currency, and can hold documents
 // in another one.
 //
-// The Faz 0 schema named its converted columns amount_try / grand_total_try:
+// The first ERP schema named its converted columns amount_try / grand_total_try:
 // the module was drafted for one country. Pinegrap is installed anywhere, and
 // its home currency is whatever edit_currency.php marks as base, so the
 // columns are renamed to *_base while 2026.4.4 is still unreleased - nobody
