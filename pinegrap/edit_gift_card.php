@@ -307,26 +307,6 @@ if (!$_POST) {
                                             <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                             <script>$("#expiration_date").datepicker(datetimepicker_options);</script>
                                         </div>
-                                        <div class="col-12 col-sm-4 col-xl-3 my-2">
-                                            <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
-                                            <div class="input-group number-controls">
-                                                <button class="btn material-icons minus border border-end-0" type="button">remove</button>
-                                                ' . $liveform->output_field(array(
-                                                    'type' => 'text',
-                                                    'name' => 'quantity',
-                                                    'id' => 'quantity',
-                                                    'value' => '1',
-                                                    'min' => '1',
-                                                    'max' => $quantity_max,
-                                                    'class' => 'form-control text-center border-start-0 border-end-0',
-                                                    'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'decimal',
-                                                    'data-inputmask-placeholder'=>'0')) . '
-                                                <button class="btn material-icons plus border border-start-0" type="button">add</button>
-                                            </div>
-                                            
-                                            <div class="text-end form-text">' . lang('increase quantity to create multiple gift cards at once') . '</div>
-                                        </div>
                                         <div class="col-12 col-xl-8 my-2">
                                             <label for="notes" class="form-label">' . lang('Notes') . '</label>
                                             ' . $liveform->output_field(array(
@@ -411,7 +391,7 @@ if (!$_POST) {
         }
 
         // Convert balance into cents.
-        $balance = $balance * 100;
+        $balance = (int) round($balance * 100);
         
         // Update gift card properties.
         db(
