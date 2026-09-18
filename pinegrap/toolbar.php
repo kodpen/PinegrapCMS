@@ -24,7 +24,11 @@ $user = validate_user();
 // Get page info via the per-request cached helper. output_header() will
 // trigger output_toolbar() further down, which reuses the same cached row
 // instead of issuing a duplicate page+folder JOIN query.
-$row = get_toolbar_page_row($_GET['page_id']);
+$row = get_toolbar_page_row((int) ($_GET['page_id'] ?? 0));
+
+if (!$row) {
+    output_error(lang('Sorry, the page could not be found.'), 404);
+}
 
 $page_id = $row['page_id'];
 $page_name = $row['page_name'];

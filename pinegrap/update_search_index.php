@@ -1055,7 +1055,7 @@ db("DELETE FROM search_items WHERE timestamp != '" . $timestamp . "'");
 
 // Ping IndexNow if the sitemap has changed and at least 12 hours have passed since the last ping.
 // This runs here so the CURL call stays off the interactive page load path.
-if ($current_timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
+if ($timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
     update_sitemap_and_ping();
 }
 

@@ -24,7 +24,7 @@ $default_dialog_message = lang('Do you want to continue?');
 $default_continue_button_label = lang('Continue');
 $default_logout_button_label = lang('Exit');
 
-switch ($_GET['action']) {
+switch ($_GET['action'] ?? '') {
     default:
         // Only accept a same-origin redirect target. pg_safe_back_url()
         // passes relative paths and absolute URLs on this host, and rejects
@@ -41,7 +41,7 @@ switch ($_GET['action']) {
         // If an inactivity time was passed in the query string,
         // and the value is a positive integer, then store the value in the session.
         if (
-            ($_GET['inactivity_time'] != '')
+            (($_GET['inactivity_time'] ?? '') != '')
             && (is_numeric($_GET['inactivity_time']) == true)
             && ($_GET['inactivity_time'] > 0)
             && ($_GET['inactivity_time'] == round($_GET['inactivity_time']))
@@ -56,7 +56,7 @@ switch ($_GET['action']) {
         // If a dialog time was passed in the query string,
         // and the value is a positive integer, then store the value in the session.
         if (
-            ($_GET['dialog_time'] != '')
+            (($_GET['dialog_time'] ?? '') != '')
             && (is_numeric($_GET['dialog_time']) == true)
             && ($_GET['dialog_time'] > 0)
             && ($_GET['dialog_time'] == round($_GET['dialog_time']))
@@ -69,7 +69,7 @@ switch ($_GET['action']) {
         }
 
         // If a dialog message was passed in the query string, then store value in session.
-        if ($_GET['dialog_message'] != '') {
+        if (($_GET['dialog_message'] ?? '') != '') {
             $_SESSION['software']['kiosk']['dialog_message'] = $_GET['dialog_message'];
 
         // Otherwise store default value in session.
@@ -78,7 +78,7 @@ switch ($_GET['action']) {
         }
 
         // If a continue button label was passed in the query string, then store value in session.
-        if ($_GET['continue_button_label'] != '') {
+        if (($_GET['continue_button_label'] ?? '') != '') {
             $_SESSION['software']['kiosk']['continue_button_label'] = $_GET['continue_button_label'];
             
         // Otherwise store default value in session.
@@ -87,7 +87,7 @@ switch ($_GET['action']) {
         }
 
         // If a logout button label was passed in the query string, then store value in session.
-        if ($_GET['logout_button_label'] != '') {
+        if (($_GET['logout_button_label'] ?? '') != '') {
             $_SESSION['software']['kiosk']['logout_button_label'] = $_GET['logout_button_label'];
             
         // Otherwise store default value in session.
@@ -120,7 +120,7 @@ switch ($_GET['action']) {
         $logout_button_label = ($_SESSION['software']['kiosk']['logout_button_label'] ?? '');
 
         // If kiosk user is logged into a user account, then logout from that user account.
-        if ($_SESSION['sessionusername'] != '') {
+        if (!empty($_SESSION['sessionusername'])) {
             logout();
 
         // Otherwise the kiosk user is not logged into a user account, so just clear session.
