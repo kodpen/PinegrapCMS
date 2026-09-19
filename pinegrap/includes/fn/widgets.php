@@ -1865,18 +1865,38 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         $like  = "%" . escape_like($raw_q) . "%";
         $q_like = e($like);
 
-        // Search pages (title + name) — exclude hidden/system page types
+        // Search pages (title + name) — exclude hidden/system page types.
+        // The same fences as the legacy search (get_search_results.php): only
+        // pages that opted into site search, none from an archived folder or
+        // the Recycle Bin, and none in a folder the visitor may not view --
+        // the title of a page in a private or membership folder is otherwise
+        // published to anyone who guesses a word of it.
         if ($search_scope === 'all' || $search_scope === 'pages') {
+            $sql_recycle_bin = '';
+            $recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
+            if (is_array($recycle_bin_folder_ids) && count($recycle_bin_folder_ids) > 0) {
+                $sql_recycle_bin = " AND page.page_folder NOT IN (" . implode(',', array_map('intval', $recycle_bin_folder_ids)) . ")";
+            }
+
             $page_rows = db_items(
-                "SELECT page_id, page_title, page_name, page_type
+                "SELECT page.page_id, page.page_title, page.page_name, page.page_type, page.page_folder
                  FROM page
-                 WHERE (page_title LIKE '$q_like' OR page_name LIKE '$q_like')
-                   AND page_type NOT IN ('login','logout','error','folder view')
-                 ORDER BY page_title ASC
+                 LEFT JOIN folder ON page.page_folder = folder.folder_id
+                 WHERE (page.page_title LIKE '$q_like' OR page.page_name LIKE '$q_like')
+                   AND page.page_type NOT IN ('login','logout','error','folder view')
+                   AND page.page_search = '1'
+                   AND folder.folder_archived = '0'" . $sql_recycle_bin . "
+                 ORDER BY page.page_title ASC
                  LIMIT $sql_limit"
             );
             if (is_array($page_rows)) {
                 foreach ($page_rows as $pr) {
+                    // Visitor-side view check: public folders pass, private and
+                    // membership folders only for a visitor who satisfies them.
+                    if (!check_view_access($pr['page_folder'], true)) {
+                        continue;
+                    }
+
                     // get_page_type_name() returns null for a type it does not know.
                     $type_name = $pr['page_type'] !== '' ? get_page_type_name((string)$pr['page_type']) : null;
                     $excerpt = (is_string($type_name) && $type_name !== '') ? $type_name : lang('Page');

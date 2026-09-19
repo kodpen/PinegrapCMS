@@ -163,6 +163,7 @@ if (!$_POST) {
     // Prepare to keep track of how many campaign profiles were imported and updated.
     $imported_count = 0;
     $updated_count = 0;
+    $skipped_count = 0;
 
     // Loops through all rows of data in CSV file, in order to create or update campaign profiles.
     while ($row = fgetcsv($handle, 100000, ',')) {
@@ -176,8 +177,24 @@ if (!$_POST) {
             continue;
         }
 
+        $existing_profile = db_item("SELECT id, created_user_id FROM email_campaign_profiles WHERE name = '" . e($name) . "'");
+
+        // A basic user only sees and edits the profiles they created
+        // (view_email_campaign_profiles.php, edit_email_campaign_profile.php).
+        // A row named after another user's profile is neither written over nor
+        // created a second time under the same name; it is skipped and counted.
+        if (
+            $existing_profile
+            && (USER_ROLE == 3)
+            && (USER_ID != $existing_profile['created_user_id'])
+        ) {
+            $skipped_count++;
+            continue;
+        }
+
         // If an existing campaign profile has this name, then update campaign profile.
-        if ($id = db_value("SELECT id FROM email_campaign_profiles WHERE name = '" . e($name) . "'")) {
+        if ($existing_profile) {
+            $id = $existing_profile['id'];
             $sql_columns = '';
 
             // Loop through columns to build SQL update values.
@@ -264,6 +281,12 @@ if (!$_POST) {
 
     } else {
         $message = lang(array('string'=>'No {var:1} have been imported or updated.','vars'=>array(lang('campaign profile'))));
+    }
+
+    if ($skipped_count > 0) {
+        $skipped_message = lang(array('string'=>'{var:1} {var:2} were skipped because they belong to another user.','vars'=>array(number_format($skipped_count),lang('campaign profile(s)'))));
+        log_activity($skipped_message, $_SESSION['sessionusername']);
+        $message .= ' ' . $skipped_message;
     }
 
     $liveform_view_email_campaign_profiles->add_notice($message);

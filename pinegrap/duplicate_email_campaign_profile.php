@@ -41,9 +41,20 @@ $email_campaign_profile = db_item(
         schedule_unit,
         schedule_period,
         schedule_base,
-        purpose
+        purpose,
+        created_user_id
     FROM email_campaign_profiles
     WHERE id = '" . e($_GET['id']) . "'");
+
+// A basic user only sees and edits the profiles they created; the copy
+// follows the same rule as edit_email_campaign_profile.php.
+if (
+    (USER_ROLE == 3)
+    && (USER_ID != $email_campaign_profile['created_user_id'])
+) {
+    log_activity(lang('access denied to duplicate campaign profile because user does not have access to it'), $_SESSION['sessionusername']);
+    output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
 
 $original_name = $email_campaign_profile['name'];
 
