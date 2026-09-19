@@ -41,6 +41,62 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Şifre saklama, oturum sabitleme ve üyelik aktivasyonu sıkılaştırması (2026-09-18)
+
+**Belirti.** Parola saklama modern tuzlu hash'e geçmişti, ancak yöneticinin
+kullanıcı eklediği `add_user.php` ile CSV içe aktaran `import_users.php`
+hâlâ `md5()` yazıyor, algo damgası basmıyordu; içe aktarılan kullanıcılar
+ayrıca oluşturma damgası ve bildirim tohumlamasını da almıyordu. Hiçbir
+giriş yolu oturum kimliğini yenilemiyordu (session fixation): ziyaretçiye
+girişten önce verilen kimlik girişten sonra da geçerli kalıyordu; on dört
+ayrı dosya `$_SESSION['sessionuserid']`'yi elle yazıyordu.
+`express_order.php` ve `order_preview.php` ödeme geçidi dönüşleri için
+oturum çerezini `SameSite=None` ile yeniden basarken HttpOnly bayrağını
+düşürüyor ve çerezi yol belirtmeden gönderiyordu — tarayıcı onu `/` yerine
+betik dizinine (`/pinegrap`) ayrı bir çerez olarak kaydediyordu. Üyelik
+aktivasyonu yalnız üye numarasını doğruluyordu: soyad uymazsa aynı numarayla
+ikinci bir rehber kaydı açılıyor, uyarsa gerçek üyenin e-postası üzerine
+yazılıyordu; numaranın var olup olmadığı da form mesajından anlaşılıyordu.
+Geliştirici PIN'i `==` ile karşılaştırılıyordu. Cihaz sınırı kapalıyken
+`software[auth]` çerezi olmayan oturumlar her istekte yeni bir
+`auth_tokens` satırı üretiyordu (tarayıcı çerezi tutmuyorsa sınırsız).
+
+**Çözüm.** `pg_session_sign_in($user_id, $username)`
+(`includes/authentication.php`; `get_file.php` de yükleyebildiği için
+orada): `session_regenerate_id(true)` çağırır ve kimliği yazar; `$_SESSION`
+içeriği (CSRF token, sepet/sipariş anahtarları) kimlikle birlikte taşınır.
+Tüm giriş yolları — `index.php`, `membership_entrance.php`,
+`registration_entrance.php`, `google_auth.php`, `device_limit.php`,
+`set_password.php`, `change_password.php`, `login_as_user.php`,
+`custom_form.php` ve `submit_order.php` otomatik kayıtları,
+`pg_member_register()`, `pg_member_activate()`, `initialize_user()` ve
+`get_file.php` beni-hatırla terfileri — bu yardımcıdan geçer. `init.php` ve
+`get_file.php` `session.use_strict_mode = 1` açar: sunucunun üretmediği bir
+kimlik oturum olmaz. `pg_session_cookie_allow_cross_site()`
+(`includes/fn/auth.php`) `Set-Cookie` başlığını elle yazar (PHP 7.0
+uyumu; `setcookie()` SameSite'ı 7.3'te öğrendi): oturum çerezinin kendi
+path/domain/lifetime değerleri, her zaman HttpOnly, https'te Secure +
+SameSite=None, düz http'de Lax. Eski sürümlerin betik dizinine bıraktığı
+kopya, oturum kimliği artık girişte değiştiği için farklılaşıp gerçek çerezi
+gölgeleyebilirdi; yardımcı o yolu ayrıca süresi geçmiş olarak basar (yol
+oturum çerezinin yoluyla aynıysa hiçbir şey göndermez).
+`pg_password_insert_fragments()` `add_user.php` ve `import_users.php`
+INSERT'lerine `pg_password_hash()` + `user_password_algo = 2` verir; algo
+sütunu henüz yoksa (yükseltme koşmamış köprü) eski MD5 yazar, çünkü algo 0
+altındaki modern hash hiç doğrulanmaz. `import_users.php` artık
+`pg_user_created_stamp()`, `pg_notification_seed_user()` ve parola yaşı
+damgasını da çağırır. `pg_member_activate()` numara **ve** soyadla, henüz
+kullanıcısı olmayan tek bir rehber kaydı arar (`LEFT JOIN user ON
+user_contact`); bulamazsa tüm durumlar için tek genel mesaj verir ve asla
+ikinci rehber kaydı açmaz. `developer_lock.php` `hash_equals()` kullanır.
+Sessiz cihaz bağlama `$_SESSION['software']['auth_bind_attempted']` ile
+oturum başına bir kez denenir.
+
+**Kapsam dışı (karar bekliyor).** `submit_order.php` otomatik kaydı, fatura
+e-postası mevcut bir hesaba aitse siparişi o hesaba bağlar ve adres
+defterine yeni alıcı ekler; e-posta sahipliği doğrulanmaz. Ürün davranışı
+değişikliği gerektirdiği için bu PR'da dokunulmadı.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`

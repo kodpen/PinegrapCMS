@@ -297,8 +297,7 @@ if (isset($_GET['code'])) {
     // divert to the confirmation screen when this would pass the limit.
     pg_device_limit_gate($user_id, $username, $send_to, true);
 
-    $_SESSION['sessionuserid']  = $user_id;
-    $_SESSION['sessionusername'] = $username;
+    pg_session_sign_in($user_id, $username);
 
     pg_login_set_device_cookie($user_id, true);
     setcookie('software[remember_me]', 'true', time() + 315360000, '/');
