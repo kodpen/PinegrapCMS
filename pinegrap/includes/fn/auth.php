@@ -114,7 +114,7 @@ function pg_remember_me_lifetime()
 
 // The one place a new password hash is produced. PASSWORD_DEFAULT (bcrypt
 // today) rather than a pinned Argon2: a bcrypt hash verifies on every PHP 5.5+
-// build a backup might be restored onto, which Argon2 does not. Bkz. plan §2.
+// build a backup might be restored onto, which Argon2 does not.
 function pg_password_hash($password)
 {
     return password_hash((string) $password, PASSWORD_DEFAULT);

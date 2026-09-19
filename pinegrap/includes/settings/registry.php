@@ -27,6 +27,34 @@ if (!defined('PG_SETTINGS_ENTRY') && !defined('PG_SETTINGS_MENU')) {
 
 
 /**
+ * The search terms of one settings section, from the comma-separated list
+ * lang() returns for it.
+ *
+ * The list in the source is English. Its translation is the whole list in the
+ * panel language: the English terms kept, because an operator types "ssl" or
+ * "waf" whatever the language, and the local words added, spelling variants
+ * included. One string per section keeps it a single tr.json value rather
+ * than an array of keys, and splitting here keeps the consumers unchanged.
+ *
+ * @param string $terms comma-separated terms
+ * @return array lower-case terms, empty entries and repeats dropped
+ */
+function pg_settings_keywords($terms)
+{
+    $keywords = array();
+
+    foreach (explode(',', (string) $terms) as $term) {
+        $term = mb_strtolower(trim($term), 'UTF-8');
+        if ($term !== '') {
+            $keywords[$term] = true;
+        }
+    }
+
+    return array_keys($keywords);
+}
+
+
+/**
  * The categories, in the order they are read.
  *
  * Each section id is the id the card carries on its screen, so it is at once
@@ -36,7 +64,9 @@ if (!defined('PG_SETTINGS_ENTRY') && !defined('PG_SETTINGS_MENU')) {
  *
  * The keywords are the field names of a section rather than its title, because
  * nobody searches for "Feature Options" when they are looking for the cart. The
- * hub search and the command palette both read them.
+ * hub search and the command palette both read them. Each list is written in
+ * English and translated as a whole through lang(); pg_settings_keywords()
+ * turns the translated list back into an array.
  *
  * @return array key => array(label, icon, description, sections, keywords)
  */
@@ -56,11 +86,11 @@ function pg_settings_categories()
                 'pgset-cron'     => lang('Cron Jobs'),
             ),
             'keywords' => array(
-                'pgset-server'   => array('sunucu', 'alan adi', 'alan adı', 'hostname', 'ip', 'ssl', 'https', 'guvenli mod', 'secure', 'eposta', 'destek', 'vekil', 'proxy'),
-                'pgset-software' => array('yazilim', 'dil', 'language', 'lisans', 'licence', 'license', 'abonelik', 'subscription', 'hata', 'debug'),
-                'pgset-channel'  => array('guncelleme', 'güncelleme', 'update', 'kanal', 'channel', 'beta', 'kararli', 'stable', 'surum', 'sürüm'),
-                'pgset-datetime' => array('tarih', 'saat', 'date', 'time', 'zaman', 'timezone', 'saat dilimi', 'bicim', 'format'),
-                'pgset-cron'     => array('cron', 'zamanlanmis', 'zamanlanmış', 'gorev', 'görev', 'job', 'schedule', 'otomatik', 'is'),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
+                'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
+                'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
+                'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
+                'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
             ),
         ),
 
@@ -73,8 +103,8 @@ function pg_settings_categories()
                 'pgset-editor' => lang('Rich-text Editor'),
             ),
             'keywords' => array(
-                'pgset-theme'  => array('tema', 'theme', 'gorunum', 'görünüm', 'renk', 'color', 'custom css', 'ozel css', 'akrilik', 'acrylic'),
-                'pgset-editor' => array('editor', 'editör', 'metin', 'text', 'yazi', 'wysiwyg', 'zengin', 'rich', 'yazi tipi', 'font'),
+                'pgset-theme'  => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
+                'pgset-editor' => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
             ),
         ),
 
@@ -88,9 +118,9 @@ function pg_settings_categories()
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
-                'pgset-features' => array('ozellik', 'özellik', 'feature', 'sepet', 'cart', 'yorum', 'comment', 'blog', 'takvim', 'calendar', 'form', 'reklam', 'ads', 'paylasim', 'arama', 'search', 'performans', 'mobil'),
-                'pgset-images'   => array('resim', 'gorsel', 'görsel', 'image', 'foto', 'photo', 'optimizasyon', 'optimization', 'webp', 'kalite', 'quality', 'boyut', 'yukleme', 'upload', 'filigran', 'watermark'),
-                'pgset-signature' => array('imza', 'signature', 'zaman damgasi', 'zaman damgası', 'timestamp', 'time stamp', 'tsa', 'rfc 3161', 'kontor', 'kontör', 'kamusm', 'kamu sm', 'e-guven', 'e-tugra', 'sozlesme', 'sözleşme', 'delil', 'kanit', 'kanıt'),
+                'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile')),
+                'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, quality, size, upload, watermark')),
+                'pgset-signature' => pg_settings_keywords(lang('signature, timestamp, time stamp, tsa, rfc 3161, credit, kamusm, kamu sm, e-guven, e-tugra, contract, evidence, proof')),
             ),
         ),
 
@@ -103,8 +133,8 @@ function pg_settings_categories()
                 'pgset-analytics' => lang('Visitor Tracking'),
             ),
             'keywords' => array(
-                'pgset-seo'       => array('seo', 'meta', 'robots', 'sitemap', 'site haritasi', 'baslik', 'title', 'aciklama', 'description', 'jsonld', 'json-ld', 'canonical', 'indexnow', 'paylasim', 'social', 'og', 'merchant', 'yapilandirilmis veri'),
-                'pgset-analytics' => array('ziyaretci', 'ziyaretçi', 'visitor', 'analytics', 'analitik', 'takip kodu', 'tracking', 'istatistik', 'google analytics'),
+                'pgset-seo'       => pg_settings_keywords(lang('seo, meta, robots, sitemap, title, description, jsonld, json-ld, canonical, indexnow, sharing, social, og, merchant, structured data')),
+                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
             ),
         ),
 
@@ -118,9 +148,9 @@ function pg_settings_categories()
                 'pgset-mailchimp' => lang('MailChimp'),
             ),
             'keywords' => array(
-                'pgset-campaigns' => array('kampanya', 'campaign', 'bulten', 'newsletter', 'abone', 'subscribe', 'kurum', 'organization', 'adres'),
-                'pgset-chat'      => array('sohbet', 'chat', 'canli destek', 'operator', 'balon', 'mesaj'),
-                'pgset-mailchimp' => array('mailchimp', 'mail chimp', 'liste', 'list id', 'api key', 'anahtar', 'senkron', 'sync', 'otomasyon', 'automation', 'magaza', 'store'),
+                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
+                'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
+                'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
             ),
         ),
 
@@ -135,10 +165,10 @@ function pg_settings_categories()
                 'pgset-membership' => lang('Registration & Membership'),
             ),
             'keywords' => array(
-                'pgset-session'    => array('guvenlik', 'security', 'sifre', 'password', 'parola', 'oturum', 'session', 'captcha', 'giris', 'login', 'kisitlama', 'throttle', 'toplu silme'),
-                'pgset-device'     => array('cihaz', 'device', 'beni hatirla', 'remember', 'sinir', 'limit'),
-                'pgset-signin'     => array('google', 'oauth', 'google ile giris', 'sso', 'client id', 'client secret'),
-                'pgset-membership' => array('uyelik', 'üyelik', 'kayit', 'registration', 'membership', 'uye ol', 'signup', 'onay', 'approval', 'dogrulama', 'uye numarasi'),
+                'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
+                'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
+                'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')),
+                'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
             ),
         ),
 
@@ -153,10 +183,10 @@ function pg_settings_categories()
                 'pgset-headers' => lang('HTTPS and Security Headers'),
             ),
             'keywords' => array(
-                'pgset-waf'     => array('waf', 'firewall', 'guvenlik duvari', 'saldiri', 'attack', 'imza', 'hiz siniri', 'rate limit', 'yasak', 'ban'),
-                'pgset-bots'    => array('bot', 'tarayici', 'crawler', 'googlebot', 'ai', 'gptbot', 'claudebot'),
-                'pgset-iplists' => array('ip', 'ip engel', 'block', 'allow', 'izin listesi', 'eposta engel', 'blocked email', 'yasakli'),
-                'pgset-headers' => array('https', 'ssl', 'guvenli mod', 'güvenli mod', 'secure mode', 'sertifika', 'certificate', 'header', 'baslik', 'csp', 'content security policy', 'hsts', 'frame', 'clickjacking', 'fail2ban', 'iptables', 'nosniff', 'referrer'),
+                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, rate limit, ban')),
+                'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
+                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, blocked email, banned')),
+                'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
             ),
         ),
 
@@ -173,13 +203,13 @@ function pg_settings_categories()
                 'pgset-affiliate' => lang('Affiliate Program'),
             ),
             'keywords' => array(
-                'pgset-store'     => array('magaza', 'mağaza', 'store', 'ticaret', 'ecommerce', 'siparis numarasi', 'vergi', 'tax', 'kdv', 'barkod', 'barcode', 'para birimi', 'currency'),
-                'pgset-shipping'  => array('nakliye', 'kargo', 'shipping', 'teslimat', 'ups', 'fedex', 'usps', 'alici', 'adres dogrulama'),
-                'pgset-giftcards' => array('hediye karti', 'hediye kartı', 'gift card', 'puan', 'odul', 'ödül', 'reward', 'givex'),
-                'pgset-invoice'   => array('fatura', 'e-fatura', 'invoice', 'parasut', 'paraşüt', 'muhasebe'),
-                'pgset-erp'       => array('erp', 'cari', 'kasa', 'banka', 'ön muhasebe', 'irsaliye', 'tahsilat'),
-                'pgset-payments'  => array('odeme', 'ödeme', 'payment', 'kart', 'kredi karti', 'iyzico', 'iyzipay', 'paypal', 'stripe', 'taksit', 'havale', 'kapida', '3d secure'),
-                'pgset-affiliate' => array('ortaklik', 'ortaklık', 'affiliate', 'komisyon', 'commission', 'referans'),
+                'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
+                'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
+                'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
+                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, parasut, accounting')),
+                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection')),
+                'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
+                'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
         ),
 
@@ -192,8 +222,8 @@ function pg_settings_categories()
                 'pgset-api-storage' => lang('Uploads & Logs'),
             ),
             'keywords' => array(
-                'pgset-api'         => array('api', 'uygulama', 'application', 'anahtar', 'key', 'https', 'openapi', 'swagger', 'webhook', 'entegrasyon', 'integration'),
-                'pgset-api-storage' => array('gunluk', 'günlük', 'log', 'saklama', 'retention', 'yukleme klasoru', 'upload folder', 'dosya'),
+                'pgset-api'         => pg_settings_keywords(lang('api, application, key, https, openapi, swagger, webhook, integration')),
+                'pgset-api-storage' => pg_settings_keywords(lang('log, retention, upload folder, file')),
             ),
         ),
 
