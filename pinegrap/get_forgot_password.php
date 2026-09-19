@@ -59,9 +59,10 @@ function get_forgot_password($properties = array()) {
             $form->assign_field_value('send_to', PATH);
         }
 
-        // Escape the send to URL for security reasons,
-        // because the send to is placed in an anchor href.
-        $send_to = escape_url($form->get_field_value('send_to'));    
+        // The send to is placed in an anchor href and carried on to the
+        // set password screen, so only a same-site path is accepted; a
+        // foreign or protocol-relative target falls back to the home page.
+        $send_to = pg_safe_redirect_path($form->get_field_value('send_to'), PATH);
 
         $form->assign_field_value('send_to', $send_to);
 

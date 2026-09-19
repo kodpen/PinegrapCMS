@@ -546,5 +546,5 @@ $liveform->remove_form();
     log_activity( lang(array('string'=>'product group ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
 
     // forward user to view product groups page
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
 }

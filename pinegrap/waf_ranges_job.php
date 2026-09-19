@@ -53,6 +53,6 @@ if (($_GET['send_to'] ?? '')) {
     include_once('liveform.class.php');
     $liveform = new liveform('settings');
     $liveform->add_notice(lang('The bot IP lists have been refreshed.'));
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . ($_GET['send_to'] ?? ''));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? ''));
     exit();
 }

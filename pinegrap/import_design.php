@@ -28,8 +28,10 @@ ini_set('memory_limit', '-1');
 include('init.php');
 require('url_to_absolute.php');
 $command_line = '';
-// If the script was run from the command line, then remember that.
-if (!isset($_SERVER['HTTP_HOST'])) {
+// If the script was run from the command line, then remember that. The SAPI
+// name is what tells a shell run apart; a missing Host header does not, since
+// a web request can leave that header out.
+if (PHP_SAPI === 'cli') {
 
     $command_line = true;
 

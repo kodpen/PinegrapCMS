@@ -23,7 +23,11 @@ ini_set('memory_limit', '-1');
 include('init.php');
 
 include_once('liveform.class.php');
-$liveform = new liveform($_POST['from'] ?? '');
+// The screen that posted the form names itself in "from". It is both the
+// liveform the notices are left for and the screen the user is sent back to,
+// so only the two screens that post here are accepted.
+$from = in_array($_POST['from'] ?? '', array('view_files', 'view_design_files'), true) ? $_POST['from'] : 'view_files';
+$liveform = new liveform($from);
 $user = validate_user();
 validate_area_access($user, 'user');
 
@@ -423,6 +427,6 @@ if (!$_POST) {
         
     // else send user to the default view
     } else {
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $_POST['from'] . '.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $from . '.php');
     }
 }

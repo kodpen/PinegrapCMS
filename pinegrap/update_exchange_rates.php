@@ -112,7 +112,7 @@ pg_cron_ran('update_exchange_rates');
 // Redirect if needed
 if (($_GET['send_to'] ?? '')) {
     $liveform->add_notice(lang('The exchange rates have been updated.'));
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . ($_GET['send_to'] ?? ''));
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? '', PATH . SOFTWARE_DIRECTORY . '/view_currencies.php'));
     exit();
 }
 
