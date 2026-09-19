@@ -382,6 +382,10 @@ pg_page_shell([
                             <div>' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</div>
                         </div>
                         <div class="col-12 col-sm-4 col-lg-2 my-2">
+                            <div class="form-label text-body-secondary">' . lang('Due Date') . '</div>
+                            <div>' . h(prepare_form_data_for_output(((string) $invoice['due_date'] !== '0000-00-00') ? $invoice['due_date'] : $invoice['issue_date'], 'date')) . '</div>
+                        </div>
+                        <div class="col-12 col-sm-4 col-lg-2 my-2">
                             <div class="form-label text-body-secondary">' . lang('Status') . '</div>
                             <div>' . h($status_labels[$invoice['status']] ?? $invoice['status']) . '</div>
                         </div>
