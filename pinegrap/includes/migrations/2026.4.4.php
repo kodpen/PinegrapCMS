@@ -2814,6 +2814,10 @@ function upgrade_2026_4_4_erp_payment_terms() {
 	install_add_column('erp_accounts', 'payment_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Accounts can carry a payment term in days, and the ERP settings a default term for the rest; new invoices take their due date from it.');
+
+}
+
+
 // 4.54 - cheque as a payment method on till movements.
 //
 // The receipt form offered a cheque option, but erp_cash_transactions.payment_method
