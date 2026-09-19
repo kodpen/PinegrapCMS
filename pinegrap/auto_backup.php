@@ -19,6 +19,16 @@
 use Ifsnop\Mysqldump as IMysqldump;
 include('init.php');
 
+// A background run (crontab, or the general job's dispatcher) has no user.
+// Every other request is a web request and must come from a signed-in user
+// who may open backups.php, the screen this job stands in for. Without the
+// gate an anonymous GET wrote a full database dump and a copy of every file
+// into a folder whose name is the current week. Checked before the job is
+// recorded as having run, so a refused request does not count as a run.
+if (!pg_cron_is_background_run()) {
+    $user = validate_user();
+    validate_area_access($user, 'manager');
+}
 
 // This feature can take a long time to run for a large site,
 // so increase the allowed execution time for the PHP script.

@@ -113,7 +113,10 @@ function api_read_credentials($input) {
 
 	}
 
-	if ($key === '' && isset($input['api_key'])) {
+	// Only a test key is read from the body or the query string, as the note
+	// above says. A live key offered this way is left where it is, so the
+	// request is answered as one that carried no credentials at all.
+	if ($key === '' && isset($input['api_key']) && strpos(trim((string)$input['api_key']), 'pg_test_') === 0) {
 
 		$key    = (string)$input['api_key'];
 		$secret = isset($input['api_secret']) ? (string)$input['api_secret'] : '';
