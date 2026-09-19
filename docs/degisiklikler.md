@@ -41,6 +41,52 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — TLS doğrulaması ve harici servis çağrıları (2026-09-18)
+
+**Belirti.** Ödeme ağ geçitlerine giden her cURL çağrısı (`submit_order.php`
+içindeki 17 çağrı, `recurring_payment_job.php` PayPal işi, `fn/ecommerce.php`
+Givex hediye kartı), kargo entegrasyonları (`shipping.php`: USPS, UPS, FedEx),
+lisans denetimi (`fn/output.php`) ve site içe aktarma (`import_design.php`)
+`CURLOPT_SSL_VERIFYPEER = 0` ile yapılıyordu; First Data, Givex ve lisans
+denetimi ayrıca `CURLOPT_SSL_VERIFYHOST = 0` taşıyordu. Kart verisi, ağ geçidi
+kimlik bilgileri ve lisans anahtarı TLS el sıkışmasına kim yanıt verirse ona
+gidiyordu. `shipping.php` USPS'i düz `http://` üzerinden çağırıyor, kargo
+isteklerini de olduğu gibi etkinlik günlüğüne yazıyordu — USPS kullanıcı
+kimliği, UPS erişim anahtarı / kullanıcı adı / parola ve FedEx anahtar /
+parola / hesap / sayaç numarası günlükte açık duruyordu. `cloudflare.php`
+gönderilen DNS kayıt kimliğini denetlemeden API yoluna yerleştiriyor, DNS
+izni eksik belirteç için topladığı `$permission_errors` dizisini hiç
+göstermiyordu. (Issue #70.)
+
+**Çözüm.** Bütün bu çağrılar güncelleme kanalının zaten kullandığı ortak
+yardımcıya bağlandı: `pg_curl_tls($ch)` eşi ve sunucu adını doğrular,
+`CURL_CA_BUNDLE` tanımlıysa `CURLOPT_CAINFO`'yu ona çevirir. İki
+`file_get_contents` yedeği (lisans denetimi, içe aktarma) aynı kuralı akış
+bağlamında uygular: `verify_peer` / `verify_peer_name` açık, `cafile`
+aynı sabitten. Doğrulama kapatan sessiz bir geri dönüş **eklenmedi**; CA
+deposu bozuk sunucunun çaresi `data/cacert.pem`'i `CURL_CA_BUNDLE`'a
+göstermektir (operatörün açık `ALLOW_INSECURE_UPDATE_TLS` son çaresi
+yardımcının içinde olduğu gibi kaldı ve artık bu çağrıları da kapsıyor).
+USPS uç noktaları `https://production.shippingapis.com` oldu. Günlüğe yazılan
+her kargo isteği `shipping_mask_credentials()`'dan geçer: kimlik bilgisi
+alanları sabit `[redacted]` yer tutucusuyla değiştirilir, isteğin geri kalanı
+olduğu gibi kalır. `cloudflare.php` 32 karakterlik hex olmayan kayıt
+kimliğini API'ye gitmeden reddeder ve izin hatalarını form hatası olarak
+gösterir. `update_exchange_rates.php` bulgusu ERP kur geçmişi çalışmasında
+(`ce6ab59`, `fn/currency_rates.php`) zaten kapanmıştı; `test_secure_mode.php`
+kalemi tasarım kararı bekliyor (sayfa bilerek `init.php` yüklemez, kapı
+eklemek bu tasarımı değiştirir).
+
+**Yayınlanmış sürüme etkisi.** Sertifika deposu eski ya da bozuk bir
+sunucuda ödeme, lisans ve kargo çağrıları "unable to get local issuer
+certificate" ile başarısız olur; daha önce sessizce geçiyordu. Çare
+`CURL_CA_BUNDLE`'ı `data/cacert.pem`'e göstermek (Sistem Durumu ekranındaki
+CA paketi güncelleme aracı dosyayı günceller). First Data Global Gateway
+(`secure.linkpt.net:1129`) ve Givex (`:50042`) için sunucu adı doğrulaması da
+ilk kez açıldığından, sertifikası ada uymayan bir uç nokta reddedilir.
+
+---
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
