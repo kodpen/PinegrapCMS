@@ -274,7 +274,7 @@ if (!$_POST)
             ImageEditorLocale.shapeTitleTextColor = "' . lang('Text Color') . '";
             // inline
             var editor = $(".inline-editor").doka({
-                src: "' . $image_location . '",
+                src: ' . json_encode($image_location, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ',
                 imageReader: createDefaultImageReader(),
                 imageWriter: createDefaultImageWriter(),
                 cropEnableInfoIndicator: true,
@@ -363,9 +363,9 @@ if (!$_POST)
                         <form id="image_form" name="form" action="image_editor_edit.php" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="file_id" value="' . $file_id . '" />
-                            <input type="hidden" name="send_to" value="' . $send_to . '" />
-                            <input type="hidden" name="object_type" value="' . $object_type . '" />
-                            <input type="hidden" name="object_id" value="' . $object_id . '" />
+                            <input type="hidden" name="send_to" value="' . h($send_to) . '" />
+                            <input type="hidden" name="object_type" value="' . h($object_type) . '" />
+                            <input type="hidden" name="object_id" value="' . h($object_id) . '" />
                             <input type="hidden" name="column_to_update" value="' . h($_GET['column_to_update'] ?? '') . '" />
                             <input type="hidden" name="image_file" value="" />
                             <input type="hidden" name="save_option" value="" />

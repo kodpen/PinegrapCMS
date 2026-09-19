@@ -236,7 +236,7 @@ if (!$_POST) {
                 <strong>' . lang('Find & Replace') . '</strong>
             </div>
             <div class="card-body">
-                <form method="post" action="' . $_SERVER['PHP_SELF'] . '" class="disable_shortcut">
+                <form method="post" action="' . h($_SERVER['PHP_SELF']) . '" class="disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="action" value="find_replace">
                     <div class="row g-3 align-items-end">
@@ -328,7 +328,7 @@ if (!$_POST) {
                     ' . $output_find_replace . '
                     <div class="card border-0 shadow-none">
                         <div class="card-body position-relative">
-                        <form name="form" action="' . $_SERVER['PHP_SELF'] . '" method="post" class="disable_shortcut">
+                        <form name="form" action="' . h($_SERVER['PHP_SELF']) . '" method="post" class="disable_shortcut">
                             ' . get_token_field() . '
                             ' . $outputs . '
                         </form>
