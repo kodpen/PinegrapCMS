@@ -416,6 +416,20 @@ function escape_csv($string)
     return str_replace('"', '""', $string);
 }
 
+// Prepares an untrusted value for a double-quoted CSV cell. Besides doubling
+// embedded quotes it prefixes a leading formula trigger (=, +, -, @, tab or
+// carriage return) with an apostrophe so spreadsheet software shows the text
+// instead of evaluating it. Returns the cell body only; the caller adds the
+// surrounding quotes.
+function csv_cell($value)
+{
+    $value = (string) $value;
+    if (($value !== '') && (strpos("=+-@\t\r", $value[0]) !== false)) {
+        $value = "'" . $value;
+    }
+    return str_replace('"', '""', $value);
+}
+
 /**
  * Make a redirect target safe to place after URL_SCHEME . HOSTNAME.
  *

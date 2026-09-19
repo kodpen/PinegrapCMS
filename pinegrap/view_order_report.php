@@ -295,11 +295,11 @@ if (!$_POST) {
         
         $output_filters_for_javascript .=
             'filters[' . $count . '] = new Array();
-            filters[' . $count . ']["field"] = "' . $filter['field'] . '";
-            filters[' . $count . ']["operator"] = "' . $filter['operator'] . '";
+            filters[' . $count . ']["field"] = "' . escape_javascript($filter['field']) . '";
+            filters[' . $count . ']["operator"] = "' . escape_javascript($filter['operator']) . '";
             filters[' . $count . ']["value"] = "' . escape_javascript($filter['value']) . '";
-            filters[' . $count . ']["dynamic_value"] = "' . $filter['dynamic_value'] . '";
-            filters[' . $count . ']["dynamic_value_attribute"] = "' . $filter['dynamic_value_attribute'] . '";' . "\n";
+            filters[' . $count . ']["dynamic_value"] = "' . escape_javascript($filter['dynamic_value']) . '";
+            filters[' . $count . ']["dynamic_value_attribute"] = "' . escape_javascript($filter['dynamic_value_attribute']) . '";' . "\n";
         
         $count++;
     }

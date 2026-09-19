@@ -41,6 +41,47 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — XSS ve kaçışsız çıktı, 2. paket (2026-09-18)
+
+**Belirti.** Güvenlik incelemesinin ikinci turu (#66) dokuz kaçışsız çıktı
+buldu. Sipariş ve ziyaretçi raporlarında kayıtlı filtrenin `field`,
+`operator`, `dynamic_value` ve `dynamic_value_attribute` değerleri
+`<script>` bloğuna ham yazılıyordu; yalnız `value` `escape_javascript()`
+ile geçiyordu. `view_orders_for_contact.php` cari adını `<title>`'a,
+`view_products.php` ürün kısa açıklamasını listeye, `view_arrival_dates.php`
+varış tarihi adını tabloya, `view_design_files.php` dosya adını `data-src`
+niteliğine ham basıyordu. `view_visitor_report.php` `?id=` değerini hiç
+süzmeden tarih değiştirici bağlantılarına ekliyordu (yansıtılan XSS).
+Sepette müşterinin gönderdiği tekrarlayan ödeme dönemi seçenek listesiyle
+karşılaştırılmadan `order_items.recurring_payment_period` alanına yazılıyor,
+form dışa aktarımı ise ziyaretçi değerlerini formül karakterlerini
+etkisizleştirmeden CSV'ye döküyordu.
+
+**Çözüm.** Çıktı satırında kaçış: `<script>` içindeki dört filtre değeri
+`escape_javascript()` ile (komşu `value` satırıyla aynı kalıp), HTML metin
+ve nitelik bağlamındaki değerler `h()` ile, dosya adı
+`h(encode_url_path())` ile, sayısal kimlikler `(int)` ile. Ziyaretçi
+raporunda `$id` okunduğu yerde `(int)`'e çevrildi; böylece bağlantılar,
+oturum indeksi ve yönlendirme başlığı aynı anda güvene alındı.
+`shopping_cart.php` gönderilen dönemi `get_payment_period_options()`
+değerleriyle katı karşılaştırır; listede yoksa alan hatası işaretlenir ve
+boş kaydedilir (`cart_action.php` ile aynı davranış). Kısa açıklama ürün
+düzenleyicide düz metin `<input>` olduğu için `h()` anlam kaybettirmez.
+Yeni `csv_cell()` yardımcısı (`includes/fn/core.php`, `escape_csv()`
+yanında) tırnakları ikiler ve `=`, `+`, `-`, `@`, sekme ya da CR ile
+başlayan hücreyi kesme işaretiyle önekler; `view_submitted_forms.php` dışa
+aktarımı standart sütunlarda ve özel alan döngüsünde bunu kullanır. Baştaki
+`-` ile başlayan negatif sayılar da öneklenir; hedef tablo yazılımı hücreyi
+metin olarak gösterir, bu kabul edilen bir bedeldir. **Şema değişikliği
+yok, yeni dil anahtarı yok.**
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Çalışan örnek
+kurulmadı; her hunk statik olarak okundu: `h()` uygulanan alanların hiçbiri
+zengin metin taşımıyor, `escape_javascript()` uygulanan değerler çift
+tırnaklı JS literal içinde.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
