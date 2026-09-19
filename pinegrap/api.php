@@ -11269,6 +11269,20 @@ switch ($action) {
     case 'update_dynamic_region':
         validate_token();
 
+        // A dynamic region is PHP that runs on every page it is placed on.
+        // Creating and editing one (add_dynamic_region.php,
+        // edit_dynamic_region.php) stands at administrator, and the page
+        // designer only offers the region editor to role 0, so the save
+        // endpoint holds the same line rather than the general designer gate.
+        $user = validate_user();
+
+        if ((int) $user['role'] !== 0) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+        }
+
         $dynamic_region = db_item(
             "SELECT dregion_id AS id
             FROM dregion

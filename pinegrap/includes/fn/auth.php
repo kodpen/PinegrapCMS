@@ -2895,6 +2895,75 @@ function get_fake_captcha_answer($real_answer)
         return $fake_answer;
     }
 }
+/**
+ * Issue a form captcha question and keep its answer in the session.
+ *
+ * The hidden captcha_validation field used to carry the answer itself, only
+ * thinly encoded, so a script could read it back and never look at the
+ * question. It now carries a random key and nothing else; the answer stays
+ * in the session under that key. One entry per rendered form, so two open
+ * tabs do not cancel each other out. An entry is consumed by the first check
+ * and expires after an hour; the store holds at most twenty pending
+ * questions and drops the oldest first.
+ *
+ * Returns the key to put in the hidden field.
+ */
+function pg_form_captcha_issue($answer)
+{
+    $pending = array();
+
+    if (isset($_SESSION['software']['form_captcha']) && is_array($_SESSION['software']['form_captcha'])) {
+        $pending = $_SESSION['software']['form_captcha'];
+    }
+
+    $now = time();
+
+    foreach ($pending as $key => $entry) {
+        if (!is_array($entry) || !isset($entry['issued']) || (((int) $entry['issued'] + 3600) < $now)) {
+            unset($pending[$key]);
+        }
+    }
+
+    // Insertion order is kept, so the first key is the oldest question.
+    while (count($pending) >= 20) {
+        reset($pending);
+        unset($pending[key($pending)]);
+    }
+
+    $key = bin2hex(random_bytes(16));
+
+    $pending[$key] = array('answer' => (int) $answer, 'issued' => $now);
+
+    $_SESSION['software']['form_captcha'] = $pending;
+
+    return $key;
+}
+
+/**
+ * Check a submitted answer against the question issued under $key, and
+ * consume that question either way so it cannot be answered twice.
+ */
+function pg_form_captcha_check($key, $answer)
+{
+    $key = (string) $key;
+
+    if (($key == '') || !isset($_SESSION['software']['form_captcha'][$key]) || !is_array($_SESSION['software']['form_captcha'][$key])) {
+        return false;
+    }
+
+    $entry = $_SESSION['software']['form_captcha'][$key];
+
+    unset($_SESSION['software']['form_captcha'][$key]);
+
+    if (!isset($entry['answer']) || !isset($entry['issued']) || (((int) $entry['issued'] + 3600) < time())) {
+        return false;
+    }
+
+    $answer = trim((string) $answer);
+
+    return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $entry['answer']));
+}
+
 function get_captcha_fields($liveform)
 {
     if (!CAPTCHA) {
@@ -2906,11 +2975,8 @@ function get_captcha_fields($liveform)
         // randomly generate the numbers to add and the question to be asked
         $first_number = rand(0, 9);
         $second_number = rand(0, 9);
-        // Prepare an encypted version of the correct answer.
-        // The encrypted format contains a random digit at the beginning and the end with a value in the middle
-        // that is 2 higher than the correct value, and all of that base64 encoded.
-        $correct_answer_encrypted = base64_encode(rand(0, 9) . ($first_number + $second_number + 2) . rand(0, 9));
-        $liveform->assign_field_value('captcha_validation', $correct_answer_encrypted);
+        // The hidden field carries only the key the session stores the answer under.
+        $liveform->assign_field_value('captcha_validation', pg_form_captcha_issue($first_number + $second_number));
         // store incorrect, fake answer in hidden form field
         $liveform->assign_field_value('captcha_correct_answer', get_fake_captcha_answer($first_number + $second_number));
         // set the value for the submitted answer field to blank
@@ -2966,11 +3032,8 @@ function get_captcha_info($form)
     // randomly generate the numbers to add and the question to be asked
     $first_number = rand(0, 9);
     $second_number = rand(0, 9);
-    // Prepare an encypted version of the correct answer.
-    // The encrypted format contains a random digit at the beginning and the end with a value in the middle
-    // that is 2 higher than the correct value, and all of that base64 encoded.
-    $correct_answer_encrypted = base64_encode(rand(0, 9) . ($first_number + $second_number + 2) . rand(0, 9));
-    $form->assign_field_value('captcha_validation', $correct_answer_encrypted);
+    // The hidden field carries only the key the session stores the answer under.
+    $form->assign_field_value('captcha_validation', pg_form_captcha_issue($first_number + $second_number));
     // store incorrect, fake answer in hidden form field
     $form->assign_field_value('captcha_correct_answer', get_fake_captcha_answer($first_number + $second_number));
     $question = lang(array('string' => 'What is {var:1} + {var:2} ?', 'vars' => array($first_number, $second_number)));
@@ -3008,16 +3071,10 @@ function validate_captcha_answer($liveform)
             $liveform->validate_required_field('captcha_submitted_answer', lang('You must answer the question before continuing. Please try again.'));
             // If there is not already an error for the answer field, then determine if answer is correct.
             if ($liveform->check_field_error('captcha_submitted_answer') == false) {
-                // Start off decrypting the correct answer by base64 decoding the encrypted answer.
-                $correct_answer_decrypted = base64_decode($liveform->get_field_value('captcha_validation'));
-                // Remove the first character which is garbage.
-                $correct_answer_decrypted = mb_substr($correct_answer_decrypted, 1);
-                // Remove the last character which is also garbage.
-                $correct_answer_decrypted = mb_substr($correct_answer_decrypted, 0, -1);
-                // Subtract the remaining value by 2 to get the correct answer.
-                $correct_answer_decrypted = $correct_answer_decrypted - 2;
-                // If the answer that the visitor submitted is incorrect, then add error
-                if ($liveform->get_field_value('captcha_submitted_answer') != $correct_answer_decrypted) {
+                // Look the question up by the key the form carried and compare the answer;
+                // the question is spent whatever the outcome, and a fresh one is issued
+                // when the form is shown again.
+                if (!pg_form_captcha_check($liveform->get_field_value('captcha_validation'), $liveform->get_field_value('captcha_submitted_answer'))) {
                     $liveform->mark_error('captcha_submitted_answer', lang('The answer you entered for the question was incorrect. Please try again.'));
                     // Otherwise the answer is correct, so if a blacklist is enabled,
                     // then determine if IP address is on a blacklist and should be rejected.

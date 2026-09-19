@@ -41,6 +41,59 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Rol kapıları ve erişim denetimi eksikleri, 1. paket (2026-09-18)
+
+**Belirti.** İkinci tur güvenlik incelemesi (issue #58) on iki yerde rol ya da
+sahiplik kapısının eksik olduğunu buldu. Ortak nokta: ekranın girişindeki kapı
+doğruydu ama aynı isteğin dokunduğu *ikinci* nesne — hedef klasör, yeni sayfa
+tipi, başka kullanıcının kaydı — denetlenmiyordu. Site üyeleri de `user`
+tablosunda rol 3 satırı olduğundan, yalnız `validate_user()` ile korunan bir
+yol kendi kaydını açan her üyeye açıktı.
+
+**Çözüm.** Her yerde komşu ekranın kullandığı kapı olduğu gibi kopyalandı, yeni
+bir yetki modeli kurulmadı:
+
+- `api.php` `update_dynamic_region`: dinamik bölge her sayfada çalışan PHP'dir;
+  oluşturma ve düzenleme ekranları yönetici kapısındadır, sayfa tasarımcısı da
+  bölge düzenleyicisini yalnız rol 0'a açar. Kayıt ucu artık aynı çizgide
+  (`$user['role'] !== 0` → hata yanıtı). Tasarımcı bir şey kaybetmez; arayüz
+  ona bu düzenleyiciyi zaten göstermiyordu.
+- `duplicate_email_campaign_profile.php`: rol 3 için `created_user_id`
+  sahiplik denetimi, `edit_email_campaign_profile.php` ile aynı kalıp.
+- `import_email_campaign_profiles.php`: rol 3 kullanıcı CSV ile başka
+  kullanıcının profilini ada göre ezebiliyordu. Satır artık atlanır ve sayılır;
+  aynı adla ikinci profil de açılmaz. Bildirime "… başka bir kullanıcıya ait
+  olduğu için atlandı" cümlesi eklendi.
+- `edit_file.php`, `edit_folder.php`, `edit_page.php`: taşımada hedef klasör
+  `check_edit_access()` ile denetlenir (`add_page.php`'nin yeni sayfa için
+  yaptığı denetim). Yalnız klasör değişiyorsa çalışır; rol 0–2 için
+  `pg_folder_edit_access()` her zaman `true` döner, yani bu roller etkilenmez.
+- `edit_page.php`: yetki denetimi `$_REQUEST['id']` yerine işleyicinin
+  okuduğu kaynaktan (`$_POST` / `$_GET`) alınan tek id üzerinde çalışır. Sayfa
+  tipi kapısı eskiden yalnız mevcut tipe bakıyordu; rol 3 için gönderilen yeni
+  tip de aynı `set_page_type_*` listesinden geçmelidir (liste `add_page.php`
+  ile aynı, bir closure'a alındı). Bilinmeyen tip değeri mevcut tipe düşer;
+  eskiden `page_type = ''` yazılabiliyordu.
+- `includes/fn/widgets.php` `search_results`: eski aramanın
+  (`get_search_results.php`) çitleri eklendi — `page_search = '1'`,
+  `folder_archived = '0'`, Geri Dönüşüm Kutusu dışı, ziyaretçi için
+  `check_view_access($folder, true)`. Özel/üyelik klasöründeki sayfa başlıkları
+  artık dışarı sızmaz.
+- `includes/fn/auth.php` form CAPTCHA: doğru cevap gizli alanda base64 ile
+  taşınıyordu, bir betik okuyup geri yazıyordu. Cevap artık oturumda durur
+  (`pg_form_captcha_issue()` / `pg_form_captcha_check()`): gizli alan yalnız
+  rastgele anahtar taşır, soru tek kullanımlık, bir saat geçerli, oturumda en
+  fazla yirmi bekleyen soru. Alan adları (`captcha_validation`,
+  `captcha_correct_answer`) korunduğu için özel yerleşimler değişmez. Bu
+  formlar zaten `validate_token_field()` ile oturum istediğinden sayfa
+  önbelleği ya da çerezsiz ziyaretçi açısından yeni bir koşul doğmaz.
+- `delete_key_codes.php`: issue'daki bulgu 74746b0 ile kapanmıştı
+  (`validate_ecommerce_access`), yalnız doğrulandı.
+
+Yeni `tr.json` anahtarları: "access denied to duplicate campaign profile
+because user does not have access to it", "{var:1} {var:2} were skipped because
+they belong to another user.". Şema değişikliği yok.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
