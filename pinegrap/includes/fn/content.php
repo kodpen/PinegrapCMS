@@ -423,7 +423,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
                     (form_field_id = '" . $office_use_only_field['id'] . "')
 
-                    AND (value = '$default_value')
+                    AND (value = '" . escape($default_value) . "')
 
                     AND (target_form_field_id != '0')");
             // If an option with a trigger for the default value was found, then add target options to array.

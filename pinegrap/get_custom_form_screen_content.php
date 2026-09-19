@@ -423,7 +423,7 @@ function get_custom_form_screen_content($properties) {
                                 FROM form_field_options
                                 WHERE
                                     (form_field_id = '" . $office_use_only_field['id'] . "')
-                                    AND (value = '$default_value')
+                                    AND (value = '" . e($default_value) . "')
                                     AND (target_form_field_id != '0')");
 
                             // If an option with a trigger for the default value was found, then add target options to array.
