@@ -494,6 +494,11 @@ $pg_settings_cards[] = '
                         <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
                         <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
                     </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_default_due_days">' . lang('Default payment term (days)') . '</label>
+                        <input type="number" class="form-control" id="erp_default_due_days" name="erp_default_due_days" value="' . (int) $erp_default_due_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
+                        <div class="form-text">' . lang('A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.') . '</div>
+                    </div>
                     <div class="col-12">
                         <div class="form-check form-switch">
                             <input value="1"' . $erp_fx_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" />

@@ -778,6 +778,55 @@ değişti, döküm ayrıştırılarak doğrulandı). Mevcut sitelerde `html` bi�
 ve e-posta sayfasız kayıtlar hâlâ boş gövde üretir; #88 F21 seçeneği (b)
 (otomatik özet gövdesi) ayrı bir karar konusudur.
 
+## 2026.4.4 — Cari vade günü ve genel vade varsayılanı (2026-09-18)
+
+**Belirti.** Her otomatik yol `due_date = issue_date` yazıyordu: siparişten
+kesilen fatura, taslak/elle fatura başlığı boş bırakılınca, Paraşüt yolu.
+Elle bir tarih yazılmadıkça hiçbir belge gecikmiyor, yaşlandırma raporu ve
+rozetler boş kalıyordu. 45 gün vadeyle çalışan müşteriye her faturada aynı
+tarih elle giriliyordu.
+
+**Çözüm.** Migration alt adımı **4.53** `upgrade_2026_4_4_erp_payment_terms()`:
+`config.erp_default_due_days SMALLINT UNSIGNED DEFAULT 0` ve
+`erp_accounts.payment_days SMALLINT UNSIGNED DEFAULT 0`; tekrar koşulabilir
+(`install_add_column`). Sabit `ERP_DEFAULT_DUE_DAYS` (init.php, diğer ERP
+sabitleriyle aynı kalıp). Tek yardımcı `erp_account_due_date($account_id,
+$issue_date)` (`includes/erp/accounts.php`): **cari > mağaza > fatura tarihi**
+önceliğiyle `issue_date + gün` (`DateTime::modify`, PHP 7.1). Uygulandığı yerler:
+`order_bridge.php` (siparişten fatura), `invoice_manual.php`
+`erp_manual_header_build()` (taslak/elle fatura, `due_date` verilmediğinde),
+`invoice_form.php` (yeni formda vade kutusu artık **boş** açılır, boş
+kaydedilince yardımcı; yazılan tarih hiçbir zaman ezilmez). İade belgesi
+fatura tarihini korur (değişmedi); `parasut.php` legacy yolu ayrı bir işlev,
+dokunulmadı.
+
+- **Ayar:** pgset-erp kartında "Varsayılan vade (gün)" (`commerce.php`,
+  `prep.php`, `commerce.save.php` — `waf_table_has_column` kapısıyla, göç
+  almamış kurulumda kaydetme kırılmaz), 0–3650 sunucuda kırpılır.
+- **Cari formu:** "Vade (gün)" alanı (`account_form.php`; ekle/düzenle
+  ekranlarında tam sayı 0–3650 doğrulaması), `erp_account_save()` yazar,
+  `erp_account()` `SELECT *` ile döndürür. 0 = mağaza varsayılanı.
+- **CSV:** içe aktarma alanı `payment_days` (eş anlamlılar: vade, vade günü,
+  ödeme vadesi, payment days, payment term, terms…), 0–3650 doğrulaması,
+  şablonda örnek 30; dışa aktarma `csv_accounts` profiline aynı etiketle
+  ("Vade (Gün)") **Notlar'dan sonra, Bakiye'den önce** sütun — dosya gidip
+  gelir. Paraşüt cari profili değişmedi.
+
+**Kararlar.** Vade günü carinin özelliğidir, mağaza yalnız yedeği söyler;
+`aging.php` yalnız `due_date` okur, bu yüzden sonradan değişen vade kesilmiş
+belgeleri oynatmaz. Global 0 = fatura tarihinde vadeli: ayar yapılmadıkça
+davranış öncekiyle aynı. Registry arama sözcüklerine `vade` eklendi.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Sandbox: 4.53 kurulum
+sihirbazının yükseltme adımıyla iki kez koşuldu (ikincisi "zaten var"),
+genel vade 30, cari A 0 / cari B 45 ile elle faturalar +30 / +45 gün vadeli;
+form üzerinden yazılan tarih korunur; CSV içe aktarma → dışa aktarma
+`payment_days` gidip geldi. Ayrıntı PR açıklamasında.
+
+---
+
 ## 2026.4.4 — Kısa linkler rol 3'e kapatıldı (2026-09-18)
 
 **Karar (Erdal, 2026-09-18, #73 üzerinden):** Rol 3 (User) kısa linkleri

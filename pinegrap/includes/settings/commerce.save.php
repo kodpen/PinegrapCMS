@@ -164,6 +164,13 @@ function pg_parasut_credentials_for_save()
     // never stored because it is always allowed.
     $sql_erp_fx = "";
 
+    // The default payment term (2026.4.4, 4.53): whole days, ten years at most.
+    $sql_erp_due = "";
+
+    if (waf_table_has_column('config', 'erp_default_due_days')) {
+        $sql_erp_due = "erp_default_due_days = '" . min(3650, max(0, (int) post_value('erp_default_due_days'))) . "',";
+    }
+
     if (waf_table_has_column('config', 'erp_fx_enabled')) {
         $erp_fx_codes = array();
         $erp_fx_known = array();
@@ -246,6 +253,7 @@ function pg_parasut_credentials_for_save()
             erp_seller_vkn = '" . escape(substr(preg_replace('/\D/', '', (string) post_value('erp_seller_vkn')), 0, 11)) . "',
             erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             " . $sql_erp_fx . "
+            " . $sql_erp_due . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',

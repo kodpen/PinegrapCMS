@@ -129,6 +129,7 @@ function upgrade_to_2026_4_4() {
 
 	upgrade_2026_4_4_erp_export_log();         // 4.52
 
+	upgrade_2026_4_4_erp_payment_terms();      // 4.53
 	upgrade_2026_4_4_erp_cash_payment_method(); // 4.54
 }
 
@@ -2793,6 +2794,26 @@ function upgrade_2026_4_4_erp_export_log() {
 }
 
 
+// ERP: payment terms (2026.4.4, 4.53).
+//
+// Until now every automatic path wrote due_date = issue_date, so nothing was
+// ever late unless somebody typed a due date by hand. A term is a fact about
+// the counterparty - this customer pays at 45 days, that one on delivery - so
+// it lives on the account, and the store sets the fallback for accounts that
+// say nothing. Zero on the account means "use the store's default"; zero on
+// the store means "due on the issue date", which is what every document said
+// before this step, so existing behaviour does not change until somebody sets
+// a term.
+//
+// Only the writers read these columns, when a document is issued. The aging
+// report and the badges read due_date alone, so a term changed later leaves
+// issued documents as they were.
+function upgrade_2026_4_4_erp_payment_terms() {
+
+	install_add_column('config', 'erp_default_due_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('erp_accounts', 'payment_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Accounts can carry a payment term in days, and the ERP settings a default term for the rest; new invoices take their due date from it.');
 // 4.54 - cheque as a payment method on till movements.
 //
 // The receipt form offered a cheque option, but erp_cash_transactions.payment_method

@@ -367,6 +367,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_web_address = $row['erp_web_address'] ?? '';
     $erp_seller_vkn = $row['erp_seller_vkn'] ?? '';
     $erp_seller_tax_office = $row['erp_seller_tax_office'] ?? '';
+    $erp_default_due_days = (int) ($row['erp_default_due_days'] ?? 0);
     // Foreign currency in the ERP (2026.4.4). Read with fallbacks like the
     // rest of the ERP row, so the screen renders before the upgrade has run.
     $erp_fx_enabled = (int) ($row['erp_fx_enabled'] ?? 0);

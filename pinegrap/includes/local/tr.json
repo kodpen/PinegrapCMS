@@ -12301,5 +12301,12 @@
     "payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure": "payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure, odeme, ödeme, kart, kredi karti, taksit, havale, kapida",
     "affiliate, commission, referral": "affiliate, commission, referral, ortaklik, ortaklık, komisyon, referans",
     "api, application, key, https, openapi, swagger, webhook, integration": "api, application, key, https, openapi, swagger, webhook, integration, uygulama, anahtar, entegrasyon",
-    "log, retention, upload folder, file": "log, retention, upload folder, file, gunluk, günlük, saklama, yukleme klasoru, dosya"
+    "log, retention, upload folder, file": "log, retention, upload folder, file, gunluk, günlük, saklama, yukleme klasoru, dosya",
+    "A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.": "Yeni fatura, tarihinden bu kadar gün sonra vadesi gelir; carinin kendi vadesi varsa o geçerlidir. 0, fatura tarihinde vadeli demektir.",
+    "Days from the invoice date to its due date. 0 uses the store default, currently {var:1} days.": "Fatura tarihinden vade tarihine kadar geçen gün. 0 mağaza varsayılanını kullanır, şu an {var:1} gün.",
+    "Default payment term (days)": "Varsayılan vade (gün)",
+    "Leave empty for the account's payment term, or the store default.": "Boş bırakılırsa carinin vadesi, yoksa mağaza varsayılanı uygulanır.",
+    "Payment Term (days)": "Vade (Gün)",
+    "Payment term (days)": "Vade (gün)",
+    "Payment term must be a whole number of days, 0 to 3650.": "Vade 0 ile 3650 arasında tam gün olmalıdır."
 }
