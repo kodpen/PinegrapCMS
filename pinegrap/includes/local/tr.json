@@ -12297,7 +12297,7 @@
     "shipping, cargo, delivery, ups, fedex, usps, recipient, address verification": "shipping, cargo, delivery, ups, fedex, usps, recipient, address verification, nakliye, kargo, teslimat, alici, adres dogrulama",
     "gift card, points, reward, givex": "gift card, points, reward, givex, hediye karti, hediye kartı, puan, odul, ödül",
     "invoice, e-invoice, parasut, accounting": "invoice, e-invoice, parasut, accounting, fatura, e-fatura, paraşüt, muhasebe",
-    "erp, account, cash, bank, bookkeeping, waybill, collection": "erp, account, cash, bank, bookkeeping, waybill, collection, cari, kasa, banka, ön muhasebe, irsaliye, tahsilat",
+    "erp, account, cash, bank, bookkeeping, waybill, collection": "erp, account, cash, bank, bookkeeping, waybill, collection, cari, kasa, banka, ön muhasebe, irsaliye, tahsilat, vade",
     "payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure": "payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure, odeme, ödeme, kart, kredi karti, taksit, havale, kapida",
     "affiliate, commission, referral": "affiliate, commission, referral, ortaklik, ortaklık, komisyon, referans",
     "api, application, key, https, openapi, swagger, webhook, integration": "api, application, key, https, openapi, swagger, webhook, integration, uygulama, anahtar, entegrasyon",
