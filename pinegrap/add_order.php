@@ -60,6 +60,12 @@ validate_ecommerce_access($user);
 
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 
+// Every action below changes the cart or completes an order, so the token is
+// checked once here, before the dispatch. The page render has no action.
+if ($action !== '') {
+    validate_token_field();
+}
+
 /* ---------------------------------------------------------
    Helper: total qty in cart for a product (ignores offer items)
    --------------------------------------------------------- */
@@ -440,6 +446,7 @@ if (count($cart_items) > 0) {
                     <small class="text-secondary">' . h($item['short_description']) . '</small></td>
                 <td class="align-middle text-center" style="white-space:nowrap;">
                     <form method="post" action="' . $page_url . '" class="d-inline disable_shortcut">
+                        ' . get_token_field() . '
                         <input type="hidden" name="action" value="decrease_qty">
                         <input type="hidden" name="item_id" value="' . (int)$item['id'] . '">
                         <button type="submit" class="btn btn-sm btn-outline-secondary border-0 py-0 px-1"
@@ -447,6 +454,7 @@ if (count($cart_items) > 0) {
                     </form>
                     <span class="mx-1 fw-bold">' . (int)$item['quantity'] . '</span>
                     <form method="post" action="' . $page_url . '" class="d-inline disable_shortcut">
+                        ' . get_token_field() . '
                         <input type="hidden" name="action" value="increase_qty">
                         <input type="hidden" name="item_id" value="' . (int)$item['id'] . '">
                         <button type="submit" class="btn btn-sm btn-outline-secondary border-0 py-0 px-1"' . $plus_disabled . '
@@ -457,6 +465,7 @@ if (count($cart_items) > 0) {
                 <td class="align-middle text-end fw-bold">' . prepare_amount($item_subtotal) . '</td>
                 <td class="align-middle text-center">
                     <form method="post" action="' . $page_url . '" class="disable_shortcut">
+                        ' . get_token_field() . '
                         <input type="hidden" name="action" value="remove_item">
                         <input type="hidden" name="item_id" value="' . (int)$item['id'] . '">
                         <button type="submit" class="btn btn-sm btn-outline-danger border-0"
@@ -511,6 +520,7 @@ echo
                             title="' . lang('Last Scan & Manuel Read') . '">' . lang('Last Scan & Manuel Read') . ' (' . lang('what is this?') . ')</label>
 
                         <form id="scan_form" class="disable_shortcut" method="post" action="' . $page_url . '">
+                            ' . get_token_field() . '
                             <input type="hidden" name="action" value="add_to_cart">
                             <div class="input-group my-2">
                                 <label for="scanner_input" class="input-group-text">' . lang('Barcode') . ':</label>
@@ -538,6 +548,7 @@ echo
 
                         <!-- Hidden form submitted when user selects a product from search results -->
                         <form id="select_product_form" class="disable_shortcut" method="post" action="' . $page_url . '">
+                            ' . get_token_field() . '
                             <input type="hidden" name="action" value="add_to_cart">
                             <input type="hidden" name="product_id" id="selected_product_id" value="">
                         </form>
@@ -577,6 +588,7 @@ echo
                     </div>
                     <div class="card-footer bg-reset border-0 text-end">
                         <form method="post" class="disable_shortcut" action="' . $page_url . '">
+                            ' . get_token_field() . '
                             <input type="hidden" name="action" value="complete_order">
                             <button type="submit" class="btn btn-success"' . $complete_button_disabled . '>
                                 <span class="material-icons me-1 align-middle" style="font-size:1.1rem;">check_circle</span>

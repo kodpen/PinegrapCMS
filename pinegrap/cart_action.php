@@ -6,8 +6,8 @@
  * Pinegrap Editor's shopping_cart widget) post here so a `header('Location: …')`
  * redirect is guaranteed to fire — handling the POST from inside the widget
  * render function fights with the page-rendering pipeline (output buffering,
- * intermediate rendering steps, etc.) and the resulting "form yeniden
- * gönderme" prompt was the visible symptom.
+ * intermediate rendering steps, etc.) and the resulting "confirm form
+ * resubmission" prompt was the visible symptom.
  *
  * Supported actions (mutually exclusive per POST):
  *   submit_update_cart           — quantities[item_id] map → UPDATE order_items;
@@ -20,9 +20,9 @@
  *   send_to                      — same-host path the user returns to (the
  *                                  cart page URL the form was rendered on)
  *
- * No CSRF token validation here — the cart actions are visitor-side
- * operations on the visitor's own session order, same trust level as the
- * legacy add_order_item / remove_item_from_cart endpoints.
+ * Every form the widget renders carries get_token_field(), and the POST is
+ * refused when the token does not match the visitor's session: without that
+ * check a page on another site could empty or rewrite the visitor's cart.
  */
 
 include('init.php');
@@ -33,6 +33,9 @@ include('init.php');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     go(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
 }
+
+// The token travels in every cart form (update, coupon, save for later).
+validate_token_field();
 
 // Resolve the active session order. initialize_order creates one when
 // missing, so $oid is always > 0 after this call.

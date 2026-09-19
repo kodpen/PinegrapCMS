@@ -178,7 +178,49 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
 }else{
 // else this is a ajax request
     $request = json_decode(@file_get_contents('php://input'), true);
+    if (!is_array($request)) {
+        $request = array();
+    }
     include('init.php');
+
+    // Both helpers are declared inside this branch, so they have to come
+    // before the first call: PHP only defines a conditional function when
+    // execution reaches its declaration.
+    function respond($response) {
+        echo encode_json($response);
+        exit;
+    }
+    // A token is required to be passed in the request for session login requests
+    // that update an item.
+    function validate_token() {
+
+        global $token;
+
+        // If the user passed a username and password in this request
+        // and did not login via a session, then token validation is not
+        // necessary, so return true.
+        //
+        // API_AUTHENTICATED, not API_USERNAME: see the same check in api.php.
+        // Sending a user name is not proof of anything; a verified password is.
+        if (defined('API_AUTHENTICATED')) {
+            return true;
+        }
+
+        // If the token does not exist in the session,
+        // or the passed token does not match the token from the session,
+        // then this might be a CSRF attack so respond with an error.
+        $session_token = (string) ($_SESSION['software']['token'] ?? '');
+        if (
+            ($session_token === '')
+            || (!is_string($token))
+            || (!hash_equals($session_token, $token))
+        ) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid token.'));
+        }
+    }
+
     // Add header in order to start response.
     header('Content-Type: application/json');
     // If a user was not found then respond with an error.
@@ -205,8 +247,13 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             $role = lang('user');
         break;
     }
-    $action = $request['action'];
-    $token = $request['token'];
+    $action = $request['action'] ?? '';
+    $token = $request['token'] ?? '';
+
+    // The scanner page sends software_token in the JSON body; a request that
+    // does not carry the session token must not touch the stock.
+    validate_token();
+
     switch ($action) {
         case 'update_inventory_quantity':
             $barcode = $request['barcode'];
@@ -305,38 +352,6 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             exit();
             break;
 
-    }
-    function respond($response) {
-        echo encode_json($response);
-        exit;
-    }
-    // A token is required to be passed in the request for session login requests
-    // that update an item.
-    function validate_token() {
-
-        global $token;
-
-        // If the user passed a username and password in this request
-        // and did not login via a session, then token validation is not
-        // necessary, so return true.
-        //
-        // API_AUTHENTICATED, not API_USERNAME: see the same check in api.php.
-        // Sending a user name is not proof of anything; a verified password is.
-        if (defined('API_AUTHENTICATED')) {
-            return true;
-        }
-
-        // If the token does not exist in the session,
-        // or the passed token does not match the token from the session,
-        // then this might be a CSRF attack so respond with an error.
-        if (
-            ($_SESSION['software']['token'] == '')
-            || ($token != $_SESSION['software']['token'])
-        ) {
-            respond(array(
-                'status' => 'error',
-                'message' => 'Invalid token.'));
-        }
     }
 }
 ?>

@@ -3173,9 +3173,13 @@ function validate_token_field()
     // We don't log activity anymore for this because the log was getting filled up with these messages
     // when we tried to log it in the past.  Innocent activities (e.g. session expired, web crawlers, spammers)
     // and not CSRF attacks generate most of these errors, so it is not important to log them.
-    $post_token = isset($_POST['token']) ? $_POST['token'] : '';
-    $get_token = isset($_GET['token']) ? $_GET['token'] : '';
-    if ((($_SESSION['software']['token'] ?? '') == '') || (($post_token != ($_SESSION['software']['token'] ?? '')) && ($get_token != ($_SESSION['software']['token'] ?? '')))) {
+    // hash_equals() compares in constant time and only accepts strings, so a
+    // token posted as an array can never match; the loose != it replaces also
+    // treated "0" and "" as equal.
+    $session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+    $get_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+    if (($session_token === '') || (!hash_equals($session_token, $post_token) && !hash_equals($session_token, $get_token))) {
         // If the visitor has cookies disabled, then output unique error for that condition.
         if (!isset($_COOKIE[session_name()])) {
             output_error(lang(array('string' => 'Sorry, we could not accept your request, because it appears that cookies are disabled in your web browser. Please enable cookies and then {var:1} and try again. If the problem persists then you might need to refresh the page, after you go back.', 'vars' => '<a href="javascript:history.go(-1)">' . lang('go back') . '</a>')));
