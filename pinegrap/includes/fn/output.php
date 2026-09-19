@@ -2737,8 +2737,7 @@ function license_check($properties = false)
                 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                pg_curl_tls($ch);
                 // send JSON POST
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
@@ -2760,6 +2759,15 @@ function license_check($properties = false)
                 curl_close($ch);
             } else {
                 // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
+                // The certificate is verified here as well, against the same CA bundle
+                // pg_curl_tls() uses when one is configured.
+                $ssl_options = array(
+                    'verify_peer' => true,
+                    'verify_peer_name' => true
+                );
+                if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
+                    $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                }
                 $context = stream_context_create(array(
                     'http' => array(
                         'method' => 'POST',
@@ -2768,10 +2776,7 @@ function license_check($properties = false)
                         'content' => $data,
                         'timeout' => 10
                     ),
-                    'ssl' => array(
-                        'verify_peer' => false,
-                        'verify_peer_name' => false
-                    )
+                    'ssl' => $ssl_options
                 ));
                 $response = @file_get_contents($api_url, false, $context);
             }

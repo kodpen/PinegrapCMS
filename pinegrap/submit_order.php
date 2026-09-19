@@ -1816,9 +1816,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -1842,7 +1841,7 @@ function submit_order($type) {
                         array_unshift($response, '');
 
                         // If transaction failed, prepare error.
-                        // We had to güncelleme the test below to change "trim($response[1]) != 1",
+                        // We had to update the test below to change "trim($response[1]) != 1",
                         // "to trim($response[1]) !== '1'", because Authorize.Net started returning
                         // "1.0" for the response code when there was an error.  That is strange,
                         // because "1" means success, which was causing our previous PHP comparison to match.
@@ -1943,9 +1942,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, 'CLRCMRC_XML=' . urlencode($transaction_xml));
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -2071,9 +2069,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
                         // Setup an SSL connection using the supplied .pem file from First Data Global Gateway
                         curl_setopt($ch, CURLOPT_SSLCERT, FILE_DIRECTORY_PATH . '/' . ECOMMERCE_FIRST_DATA_GLOBAL_GATEWAY_PEM_FILE_NAME);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $transaction_xml);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  0);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -2207,9 +2204,8 @@ function submit_order($type) {
                                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                pg_curl_tls($ch);
                                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                 curl_setopt($ch, CURLOPT_POST, 1);
                                 
@@ -2444,8 +2440,7 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  false);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
@@ -2600,9 +2595,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -2746,7 +2740,7 @@ function submit_order($type) {
                         // Buyer IP
                         $ip = h($_SERVER['REMOTE_ADDR']);
                     
-                        // Identity number (TC kimlik no). Not: gerçek validasyon önerilir.
+                        // Identity number (Turkish national ID). Note: real validation is recommended.
                         if ($custom_field_1 && is_numeric($custom_field_1)) {
                             $identitynumber = substr($custom_field_1, 0, 11);
                         } else {
@@ -2965,7 +2959,7 @@ function submit_order($type) {
                             $lineCents = $priceCents * $qty;
                         
                             $item = new \Iyzipay\Model\BasketItem();
-                            // benzersiz ID tercih (DB id varsa onu kullan)
+                            // prefer a unique ID (use the DB id when there is one)
                             $item->setId((string)(isset($product['id']) ? $product['id'] : $product['product_name']));
                             $item->setName(($qty > 1 ? $qty . ' Qty/Adet - ' : '') . $product['short_description']);
                             $item->setPrice(sprintf("%01.2lf", $lineCents / 100));
@@ -3406,9 +3400,8 @@ function submit_order($type) {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                pg_curl_tls($ch);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                 curl_setopt($ch, CURLOPT_POST, 1);
                 
@@ -4599,10 +4592,9 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $transaction_xml);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     
                     // if there is a proxy address, then send cURL request through proxy
                     if (PROXY_ADDRESS != '') {
@@ -4723,9 +4715,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, 'CLRCMRC_XML=' . urlencode($transaction_xml));
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -4836,9 +4827,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
                     // Setup an SSL connection using the supplied .pem file from First Data Global Gateway
                     curl_setopt($ch, CURLOPT_SSLCERT, FILE_DIRECTORY_PATH . '/' . ECOMMERCE_FIRST_DATA_GLOBAL_GATEWAY_PEM_FILE_NAME);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $transaction_xml);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  0);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -4952,9 +4942,8 @@ function submit_order($type) {
                             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                             curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                            pg_curl_tls($ch);
                             curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                             curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                             curl_setopt($ch, CURLOPT_POST, 1);
                             
@@ -5093,9 +5082,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -5220,9 +5208,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -5288,9 +5275,8 @@ function submit_order($type) {
                             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                             curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                            pg_curl_tls($ch);
                             curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                             curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                             curl_setopt($ch, CURLOPT_POST, 1);
                             
@@ -5391,9 +5377,8 @@ function submit_order($type) {
                                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                    pg_curl_tls($ch);
                                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                     curl_setopt($ch, CURLOPT_POST, 1);
                                     
@@ -5485,9 +5470,8 @@ function submit_order($type) {
                                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                    pg_curl_tls($ch);
                                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                     curl_setopt($ch, CURLOPT_POST, 1);
                                     
@@ -5591,9 +5575,8 @@ function submit_order($type) {
                                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                pg_curl_tls($ch);
                                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                 curl_setopt($ch, CURLOPT_POST, 1);
                                 

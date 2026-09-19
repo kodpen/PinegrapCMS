@@ -11663,6 +11663,7 @@
     "Edit record failed": "Kayıt düzenlenemedi",
     "Record updated successfully.": "Kayıt başarıyla güncellendi.",
     "Delete record failed": "Kayıt silinemedi",
+    "The DNS record ID is not valid.": "DNS kayıt kimliği geçerli değil.",
     "Record deleted successfully.": "Kayıt başarıyla silindi.",
     "Development Mode toggle failed": "Geliştirme Modu değiştirilemedi",
     "Development Mode updated to {var:1}.": "Geliştirme Modu {var:1} olarak güncellendi.",

@@ -1396,8 +1396,7 @@ function fetch_url_response($url)
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     curl_setopt($ch, CURLOPT_ENCODING, ''); // Accept all encodings (gzip, deflate) and auto-decompress
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    pg_curl_tls($ch);
 
     $content = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1422,16 +1421,23 @@ function fetch_url_content($url)
 
 function get_http_stream_context()
 {
+    // Same verification as pg_curl_tls(): peer and name checked, and the
+    // configured CA bundle used when the host has one.
+    $ssl_options = array(
+        'verify_peer' => true,
+        'verify_peer_name' => true,
+    );
+    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
+        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+    }
+
     return stream_context_create(array(
         'http' => array(
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'follow_location' => 1,
             'timeout' => 30,
         ),
-        'ssl' => array(
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-        ),
+        'ssl' => $ssl_options,
     ));
 }
 
@@ -1464,8 +1470,7 @@ function check_if_url_exists($url)
     curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    pg_curl_tls($ch);
 
     curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
