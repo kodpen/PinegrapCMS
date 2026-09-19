@@ -49,7 +49,7 @@ if (!$_POST) {
     }
     
     // If BACKEND_STYLESHEET_URL global variable is not set to the default value, display it to the user
-    if (CONTROL_PANEL_STYLESHEET_URL != PATH . SOFTWARE_DIRECTORY . '/backend.' . ENVIRONMENT_SUFFIX . '.css?v=' . @filemtime(dirname(__FILE__) . '/backend.' . ENVIRONMENT_SUFFIX . '.css')) {
+    if (CONTROL_PANEL_STYLESHEET_URL != pg_default_control_panel_stylesheet_url()) {
         $liveform->assign_field_value('control_panel_stylesheet_url', CONTROL_PANEL_STYLESHEET_URL);
     }
     
@@ -131,69 +131,69 @@ if (!$_POST) {
                         }
                     }
                 </script>
-                <div style="margin-bottom: 1em"><label for="private_label">Enable Private Label: </label>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'private_label', 'id'=>'private_label', 'value'=>'1', 'class'=>'checkbox', 'onclick'=>'show_or_hide_private_label()')) . '</div>
+                <div style="margin-bottom: 1em"><label for="private_label">' . lang('Enable Private Label') . ': </label>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'private_label', 'id'=>'private_label', 'value'=>'1', 'class'=>'checkbox', 'onclick'=>'show_or_hide_private_label()')) . '</div>
                 <table id="private_label_table" style="margin-bottom: 1em; margin-left: 1em' . $private_label_table_style . '">
                     <tr>
-                        <td>Logo URL:</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'logo_url', 'size'=>'80')) . ' (leave blank to use the default product logo)</td>
+                        <td>' . lang('Logo URL') . ':</td>
+                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'logo_url', 'size'=>'80')) . ' (' . lang('leave blank to use the default product logo') . ')</td>
                     </tr>
                     <tr>
-                        <td>Control Panel Stylesheet URL:</td>
+                        <td>' . lang('Control Panel Stylesheet URL') . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'control_panel_stylesheet_url', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
                         <td colspan="2">&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 1 Label:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('1'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_1_label', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 1 URL:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('1'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_1_url', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
                         <td colspan="2">&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 2 Label:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('2'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_2_label', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 2 URL:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('2'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_2_url', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
                         <td colspan="2">&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 3 Label:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('3'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_3_label', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 3 URL:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('3'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_3_url', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
                         <td colspan="2">&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 4 Label:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('4'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_4_label', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 4 URL:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('4'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_4_url', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
                         <td colspan="2">&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 5 Label:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('5'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_5_label', 'size'=>'80')) . '</td>
                     </tr>
                     <tr>
-                        <td>Footer Link 5 URL:</td>
+                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('5'))) . ':</td>
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_5_url', 'size'=>'80')) . '</td>
                     </tr>
                 </table>
@@ -234,6 +234,8 @@ if (!$_POST) {
         fclose ($fd);
     }
 
+    $config_file_original = $config_file_content;
+
     // if private label is enabled, then deal with private label fields
     if ($_POST['private_label'] == 1) {
         // Initialize variables and strip single quotes
@@ -265,7 +267,7 @@ if (!$_POST) {
 
             // Else if the post value for the logo_url was not empty, then add the define statement after all of the other define statements.
             } else if ($logo_url != '') {
-                $config_file_content = str_replace('?>', "define('LOGO_URL', '" . $logo_url . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'LOGO_URL', $logo_url);
             }
         }
             
@@ -280,7 +282,7 @@ if (!$_POST) {
                     $config_file_content = update_config_define($config_file_content, 'CONTROL_PANEL_STYLESHEET_URL', $control_panel_stylesheet_url);
                 // Else, add the define statement after all of the other define statements.
                 } else {
-                    $config_file_content = str_replace('?>', "define('CONTROL_PANEL_STYLESHEET_URL', '" . $control_panel_stylesheet_url . "');\r\n?>", $config_file_content);
+                    $config_file_content = update_config_define($config_file_content, 'CONTROL_PANEL_STYLESHEET_URL', $control_panel_stylesheet_url);
                 }
             // Remove the CONTROL_PANEL_STYLESHEET_URL define statement
             } else {
@@ -303,7 +305,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_1_label)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_1_LABEL', '" . $footer_link_1_label . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_1_LABEL', $footer_link_1_label);
             }
         }
         //1 Url
@@ -320,7 +322,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_1_url)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_1_URL', '" . $footer_link_1_url . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_1_URL', $footer_link_1_url);
             }
         }
 
@@ -338,7 +340,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_2_label)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_2_LABEL', '" . $footer_link_2_label . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_2_LABEL', $footer_link_2_label);
             }
         }
         //2 Url
@@ -355,7 +357,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_2_url)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_2_URL', '" . $footer_link_2_url . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_2_URL', $footer_link_2_url);
             }
         }
 
@@ -373,7 +375,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_3_label)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_3_LABEL', '" . $footer_link_3_label . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_3_LABEL', $footer_link_3_label);
             }
         }
         //3 Url
@@ -390,7 +392,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_3_url)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_3_URL', '" . $footer_link_3_url . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_3_URL', $footer_link_3_url);
             }
         }
 
@@ -408,7 +410,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_4_label)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_4_LABEL', '" . $footer_link_4_label . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_4_LABEL', $footer_link_4_label);
             }
         }
         //4 Url
@@ -425,7 +427,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_4_url)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_4_URL', '" . $footer_link_4_url . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_4_URL', $footer_link_4_url);
             }
         }
 
@@ -443,7 +445,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_5_label)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_5_LABEL', '" . $footer_link_5_label . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_5_LABEL', $footer_link_5_label);
             }
         }
         //5 Url
@@ -460,7 +462,7 @@ if (!$_POST) {
         }else{
             if (!empty($footer_link_5_url)) {
                 // Else, add the define statement after all of the other define statements.
-                $config_file_content = str_replace('?>', "define('FOOTER_LINK_5_URL', '" . $footer_link_5_url . "');\r\n?>", $config_file_content);
+                $config_file_content = update_config_define($config_file_content, 'FOOTER_LINK_5_URL', $footer_link_5_url);
             }
         }
         
@@ -480,15 +482,20 @@ if (!$_POST) {
         $config_file_content = remove_config_define($config_file_content, 'FOOTER_LINK_5_URL');
     }
     
-    // Rewrite the config files contents.
-    $handle = fopen(CONFIG_FILE_PATH, 'w');
-    if ($fd) {
-        fwrite($handle, $config_file_content);
-        fclose($handle);
+    // Rewrite the config file only from a successful read: an empty result
+    // would replace config.php with an empty file. The write itself goes
+    // through a temp file and rename, so a failure leaves the old file intact.
+    if ($config_file_content === '') {
+        $liveform->add_error(lang('Config file could not be opened.'));
+    } elseif (($config_file_content !== $config_file_original) && !pg_write_config_file($config_file_content)) {
+        $liveform->add_error(lang('The config file could not be written.'));
     }
     
     // Send the user back to private_label.php
-    $liveform->add_notice('The private label settings have been saved.');
+    if (!$liveform->check_form_errors()) {
+        $liveform->add_notice(lang('The private label settings have been saved.'));
+    }
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/private_label.php');
+    exit;
 }
 ?>

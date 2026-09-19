@@ -169,6 +169,7 @@ function pg_settings_categories()
                 'pgset-shipping'  => lang('Shipping'),
                 'pgset-giftcards' => lang('Gift Cards & Rewards'),
                 'pgset-invoice'   => lang('E-Invoice'),
+                'pgset-erp'       => lang('ERP'),
                 'pgset-payments'  => lang('Payment Methods'),
                 'pgset-affiliate' => lang('Affiliate Program'),
             ),

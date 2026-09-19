@@ -78,14 +78,11 @@ function pg_parasut_credentials_for_save()
         }
         
         // get contents of config.php file in order to reset encryption key
-        $config_content = file_get_contents(CONFIG_FILE_PATH);
-        
-        // open the config.php file so the encryption key can be reset
-        $handle = @fopen(CONFIG_FILE_PATH, 'w');
-        
-        // if the config.php file could not be opened for writing, then output error
-        if ($handle == FALSE) {
-            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        $config_content = @file_get_contents(CONFIG_FILE_PATH);
+
+        // A file that could not be read must not be rewritten from nothing.
+        if (!is_string($config_content) || (trim($config_content) === '')) {
+            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
         $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
@@ -100,11 +97,11 @@ function pg_parasut_credentials_for_save()
             $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
         }
         
-        // update the config.php file with the new content
-        @fwrite($handle, $config_content);
-        
-        // close the config.php file
-        @fclose($handle);
+        // Write the new content before any card number is re-encrypted; a key
+        // that is not on disk must not be used on the stored data.
+        if (!pg_write_config_file($config_content)) {
+            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
         
         // get all orders that have an unencrypted credit card number or encrypted credit card number
         $query = 
