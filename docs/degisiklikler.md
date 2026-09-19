@@ -643,6 +643,24 @@ ilk kez açıldığından, sertifikası ada uymayan bir uç nokta reddedilir.
 
 ---
 
+## 2026.4.4 — Ayar arama eş anlamlıları tr.json'a taşındı, zaman damgası yardım anahtarı İngilizceleştirildi (2026-09-18)
+
+**Belirti.** `includes/settings/registry.php` içindeki ayar arama eş anlamlı
+dizileri Türkçe kelimeleri kaynak koda gömüyordu; `includes/settings/features.php`
+içindeki bir `lang()` anahtarı Türkçe hukuk terimi ("nitelikli zaman damgası")
+taşıyordu (#110; kural #73, tarama #107).
+
+**Çözüm.** Her bölümün arama terimleri kodda İngilizce ve virgülle ayrılmış tek
+bir `lang()` anahtarı; Türkçe kelimeler o anahtarın `tr.json` değerinde durur.
+Değer İngilizce terimleri de taşır ("ssl", "waf" her dilde yazılır). Yeni
+`pg_settings_keywords()` çevrilen listeyi diziye çevirir; tüketiciler
+(`api.php` komut paleti) değişmedi. Türkçe panelde davranış aynı kalır (eski
+liste yeni listenin alt kümesidir); İngilizce panelde Türkçe kelimeler artık
+eşleşmez, karşılığı olan İngilizce terimler eklendi. Zaman damgası yardım
+metninin anahtarı "qualified time stamp" oldu, Türkçe metin değişmedi.
+`submit_order.php` ve `includes/fn/auth.php` içinde dört Türkçe yorum
+İngilizceye çevrildi.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`

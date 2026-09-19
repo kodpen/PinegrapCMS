@@ -7004,7 +7004,7 @@ function submit_order($type) {
                             }
                         }
 
-                        // If pretty URLs are enabled, then güncelleme address name.
+                        // If pretty URLs are enabled, then update the address name.
                         if ($pretty_urls == true) {
                             update_submitted_form_address_name($submitted_form_id);
                         }
