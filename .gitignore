@@ -1,17 +1,54 @@
 # Development tree - never published
 /dev/
 
-# Internal documents: only the contribution guides live in the repo; plans
-# and the change log stay on the development machine
+# Internal documents: the contribution guides, the full context file and the
+# change log live in the repo; topic plans stay on the development machine
 /docs/*
 !/docs/component-development-guide.md
 !/docs/LANG_USAGE.md
+!/docs/CLAUDE-tam.md
+!/docs/degisiklikler.md
+
+# Runtime data. The tree under pinegrap/data/ belongs to the installation,
+# not to the product: it holds the real configuration, uploaded files, the
+# site's layouts, its backups and the caches. Only the .htaccess guards and
+# the two default site templates the installer ships are tracked.
+/pinegrap/data/*
+!/pinegrap/data/.htaccess
+!/pinegrap/data/config(default).php
+!/pinegrap/data/cacert.pem
+!/pinegrap/data/files/
+/pinegrap/data/files/*
+!/pinegrap/data/files/.htaccess
+!/pinegrap/data/layouts/
+/pinegrap/data/layouts/*
+!/pinegrap/data/layouts/.htaccess
+!/pinegrap/data/backups/
+/pinegrap/data/backups/*
+!/pinegrap/data/backups/.htaccess
+!/pinegrap/data/backups/english_default/
+!/pinegrap/data/backups/turkish_default/
+
+# Server configuration is per host (Apache / IIS / IIS Express); the repo
+# carries the product's own copies, a local one is never committed.
+*.ini
 
 # Local working files
 *.log
-/pinegrap/data/temp/
-/pinegrap/data/cache/
 
-# Real configuration - the repo holds only the empty template and config(default).php
+# Agent and development leftovers
+.claude/
+*.skill
+/_seed_*.php
+/_probe_*.php
+/_restore_*.php
+/_tr_*.json
+/_software_create_hash.php
+/pinegrap/_seed_*.php
+/pinegrap/_probe_*.php
+/HATA_RAPORU.md
+/DEVIR_*.md
+
+# Real configuration - never committed
 config.local.php
 .env
