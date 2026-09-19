@@ -287,4 +287,15 @@ define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 // Seconds to stop attempting connections after an overload, so the pool can
 // drain. Too long keeps the site down after the database has recovered.
 // define('DB_UNAVAILABLE_BACKOFF', 30);
+
+// ── AI chat ──────────────────────────────────────────────────────────────
+//
+// The AI conversation in the staff chat runs a vendor-hosted UI module. The
+// launcher loads that module the moment the conversation is opened, so the
+// panel pages themselves carry no third-party script. Set this to true to
+// have every panel page preload the module in <head> instead, for a faster
+// first open at the cost of a request to the vendor per page view. The
+// module and API addresses can be overridden with CHAT_AI_SCRIPT_URL and
+// CHAT_AI_API_URL.
+// define('CHAT_AI_PRELOAD', false);
 ?>

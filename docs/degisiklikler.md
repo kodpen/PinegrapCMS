@@ -560,6 +560,43 @@ bekler; #68 bu yüzden açık kalır.
 kurulmadı; CLI koşusu, dağıtıcı include'u, panelde `sitemap_check`
 çağrısı ve form gönderim akışları yalnız kod okumasıyla doğrulandı.
 
+## 2026.4.4 — Yüklenen HTML/SVG/XML sandbox'ta sunulur, panel sayfalarındaki üçüncü taraf AI betiği kapalı gelir (2026-09-18)
+
+**Belirti.** Üç güvenlik bulgusu (#69). (1) Dosya yöneticisi `.html`,
+`.svg`, `.xml` yüklemeyi kabul eder ve `get_file.php` bunları kendi MIME
+türüyle satır içi sunar; kendi adresinden açılan bir `.svg` ya da `.html`
+içindeki `<script>` sitenin origin'inde, ziyaretçinin oturumuyla çalışır.
+(2) `output_control_panel_header_includes()` her panel sayfasının
+`<head>`'ine Cloudflare'da barındırılan AI arama modülünü koşulsuz basıyordu;
+oysa sohbet başlatıcısı (`chat_backend.src.js`) aynı modülü AI sohbeti
+açıldığında zaten kendisi yüklüyor. Her sayfa görüntülemesi satıcıya bir
+istek gidiyor ve her ekranda uzak kod çalışıyordu. (3) `api.php` içindeki
+eski `file_explorer` → `get_breadcrumb` alt eylemi klasör adlarını
+kaçışsız HTML'e gömüyordu; dağıtılan hiçbir istemci çağırmıyor ama uç
+açık.
+
+**Çözüm.** (1) Yükleme engellenmedi — SVG logo ve XML besleme olağan site
+içeriğidir. `get_file.php` satır içi dalında `html, htm, xhtml, xht, svg,
+svgz, xml, xsl` uzantıları için `Content-Security-Policy: sandbox` ve
+`X-Content-Type-Options: nosniff` eklendi. Sandbox belgeyi opak origin'e
+alır; betik, form ve eklenti kapanır. CSP yalnız belgeleri yönettiği için
+`<img>` ya da CSS arka planındaki `.svg` eskisi gibi render edilir;
+`data/files/.htaccess` `deny from all` olduğundan dosyalar yalnız bu yoldan
+çıkar ve X-Sendfile PHP başlıklarını korur. `Content-Disposition:
+attachment` seçilmedi: yüklenen bir HTML'i tarayıcıda göstermek isteyen
+siteleri indirmeye zorlardı. (2) `<head>` içindeki betik etiketi yalnız
+`config.php`'de `CHAT_AI_PRELOAD` `true` tanımlıysa basılır; adres
+başlatıcının kullandığı `CHAT_AI_SCRIPT_URL` geçersiz kılmasını izler.
+Varsayılan kapalıdır çünkü tüketen tek kod modülü isteğe bağlı yüklüyor.
+Sabit `data/config(default).php`'de belgelendi. (3) `get_breadcrumb`
+içinde iki klasör adı `h()` ile kaçışlandı, `onclick`'e giren klasör
+kimliği `(int)`'e çevrildi; ölü kod silinmedi.
+
+**Doğrulanmayan.** Çalışan örnek kurulmadı; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Sandbox başlığının `<object>`/`<iframe>`
+içine gömülen SVG'lerde betik çalışmasını kestiği ama görüntüyü koruduğu
+tarayıcıda denenmedi.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
