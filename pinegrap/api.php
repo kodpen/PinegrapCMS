@@ -8628,23 +8628,39 @@ switch ($action) {
         // so increase the allowed execution time for the PHP script.
         ini_set('memory_limit', '512M');
         ini_set('max_execution_time', 500);
-        $step = $request['step'];
-        $backup_name = $request['backup_name'];
+        $step = isset($request['step']) ? (string) $request['step'] : '';
+        $backup_name = isset($request['backup_name']) ? (string) $request['backup_name'] : '';
 
         $backup_location = 'data/backups/';
-        $backup_folder_name = $backup_name;
+
+        // The name travels back to the client after every step and returns
+        // with the next one, so each step has to treat it as input. It is
+        // reduced once, here, to a single folder-name character class: path
+        // separators, dots and anything else outside it become underscores,
+        // which keeps every step's mkdir, dump, copy and unlink inside the
+        // backups directory. The result is stable under a second pass, so the
+        // name a step hands back is the name the next step will compute.
+        $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', basename($backup_name));
+
+        // Only the first step may start without a name; it makes its own. Every
+        // later step works on a folder that must already exist under a name.
+        if (($backup_folder_name === '') && ($step != 'create_backup_folder')) {
+            $response = array(
+                'status' => 'error',
+                'message' => lang('The backup name is not valid.')
+            );
+            echo encode_json($response);
+            exit();
+        }
 
         switch ($step) {
 
             case 'create_backup_folder':
-                if (!$backup_name) {
+                if ($backup_folder_name === '') {
                     $hostname_clean = defined('HOSTNAME') ? HOSTNAME : '';
                     $backup_name = ($hostname_clean ? $hostname_clean . '_' : '') . date('Y-m-d@H-i');
+                    $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', $backup_name);
                 }
-
-                // Replace remaining special characters (if any)
-                $sReplace = array('.', ',', '!', '?');
-                $backup_folder_name = str_replace($sReplace, '_', $backup_name);
 
                 //check if directory is exists
                 //if not exist Create directory.
@@ -8803,9 +8819,9 @@ switch ($action) {
                             if (file_exists($backup_location . $backup_folder_name . '/layouts')) {
                                 $liveform_backups = new liveform('backups');
 
-                                log_activity("Software Backup (" . $backup_name . ") Success", $_SESSION['sessionusername']);
+                                log_activity("Software Backup (" . $backup_folder_name . ") Success", $_SESSION['sessionusername']);
                                 // Add notice to liveform.
-                                $liveform_backups->add_notice('Software Backup (' . $backup_name . ') Create Success.');
+                                $liveform_backups->add_notice('Software Backup (' . $backup_folder_name . ') Create Success.');
                                 //return success json output
                                 $response = array(
                                     'status' => 'success',

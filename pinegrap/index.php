@@ -29,21 +29,31 @@ $liveform = new liveform('login');
 // not created - see pg_require_current_schema().
 pg_require_current_schema();
 
+// A sign-in is a posted form. The login screen, the login widget and the
+// question screen all post, and reading the credentials from the query string
+// as well put passwords into access logs, proxies and browser history. A GET
+// with credentials in it is treated as a visit to the empty form.
+$pg_login_posted = (isset($_SERVER['REQUEST_METHOD']) && ($_SERVER['REQUEST_METHOD'] === 'POST'));
+
 // If the request used the old u & p field names, then store those values in new field names.
-// We do this for backwards compatibility reasons so if someone bookmarked a login url or has a
-// customized form that posts to this script, then their old system will continue to work.
+// We do this for backwards compatibility reasons so if someone has a customized form that
+// posts to this script, then their old system will continue to work. $_REQUEST is filled as
+// well because the form library reads the submitted fields from there.
 if (
-    isset($_REQUEST['u'])
-    and isset($_REQUEST['p'])
-    and !isset($_REQUEST['email'])
-    and !isset($_REQUEST['password'])
+    $pg_login_posted
+    and isset($_POST['u'])
+    and isset($_POST['p'])
+    and !isset($_POST['email'])
+    and !isset($_POST['password'])
 ) {
-    $_REQUEST['email'] = $_REQUEST['u'];
-    $_REQUEST['password'] = $_REQUEST['p'];
+    $_POST['email'] = $_POST['u'];
+    $_POST['password'] = $_POST['p'];
+    $_REQUEST['email'] = $_POST['u'];
+    $_REQUEST['password'] = $_POST['p'];
 }
 
 // if the user has not submitted the form yet, then output form
-if (!isset($_REQUEST['email'])) {
+if (!$pg_login_posted || !isset($_POST['email'])) {
     // If there is not an error and
     // if the user is already logged in, then send user to login home.
     // For the registration entrance and membership entrance scripts, we allow the

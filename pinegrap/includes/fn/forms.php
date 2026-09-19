@@ -3019,7 +3019,7 @@ function generate_order_reference_code()
     $reference_code = '';
 
     for ($i = 1; $i <= 10; $i++) {
-        $index = mt_rand(0, 35);
+        $index = random_int(0, 35);
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
@@ -3038,7 +3038,7 @@ function generate_affiliate_code()
     $characters = array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z');
     $affiliate_code = '';
     for ($i = 1; $i <= 5; $i++) {
-        $index = mt_rand(0, 35);
+        $index = random_int(0, 35);
         $affiliate_code .= $characters[$index];
     }
     // check to see if affiliate code is already in use
@@ -3606,7 +3606,7 @@ function generate_email_recipient_reference_code()
     $reference_code = '';
 
     for ($i = 1; $i <= 10; $i++) {
-        $index = mt_rand(0, 35);
+        $index = random_int(0, 35);
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
@@ -3664,7 +3664,7 @@ function generate_form_reference_code()
     $reference_code = '';
 
     for ($i = 1; $i <= 10; $i++) {
-        $index = mt_rand(0, 35);
+        $index = random_int(0, 35);
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
@@ -3722,7 +3722,7 @@ function generate_commission_reference_code()
     $reference_code = '';
 
     for ($i = 1; $i <= 10; $i++) {
-        $index = mt_rand(0, 35);
+        $index = random_int(0, 35);
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
@@ -3778,7 +3778,7 @@ function generate_encryption_key()
     );
     $key = '';
     for ($i = 1; $i <= 32; $i++) {
-        $index = mt_rand(0, 35);
+        $index = random_int(0, 35);
         $key .= $characters[$index];
     }
     return $key;
