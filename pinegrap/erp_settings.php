@@ -142,8 +142,16 @@ $placeholders = array(
         'totals.has_surcharge' => lang('True when a surcharge was added'),
         'totals.has_gift_card' => lang('True when a gift card was used'),
         'generated_at' => lang('The moment the document was generated'),
+        'language' => lang('The language code of the site, for the html lang attribute'),
     ),
 );
+
+// The captions the built-in template prints, in the site language. They are
+// listed by what they print, since the caption is its own description.
+$placeholders[lang('Labels')] = array();
+foreach (erp_invoice_document_labels() as $name => $caption) {
+    $placeholders[lang('Labels')]['label.' . $name] = $caption;
+}
 
 $output_placeholders = '';
 

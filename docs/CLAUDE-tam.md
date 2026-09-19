@@ -1114,7 +1114,14 @@ Belge katmanı `includes/erp/document.php`:
   kaçışlı, `{{{alan}}}` ham, `{{#bölüm}}…{{/bölüm}}` döngü / koşul,
   `{{^bölüm}}…{{/bölüm}}` tersi, noktalı anahtar (`satici.vkn`).
 - `erp_invoice_document_data($invoice_id)` — şablonun gördüğü veri:
-  `seller` / `account` / `invoice` / `lines` / `totals` / `generated_at`.
+  `seller` / `account` / `invoice` / `lines` / `totals` / `label` /
+  `language` / `generated_at`.
+- `erp_invoice_document_labels()` — `label.*` yer tutucuları: belgenin bastığı
+  her başlık/sütun adı/dipnot etiketi, `lang()` ile site dilinde. Ana para
+  birimini adlandıran iki etiket (`label.exchange_rate`,
+  `label.grand_total_base`) burada `{var:1}` ile çözülür; şablon yer tutucusu
+  argüman almaz. Aynı dizi `erp_settings.php`'deki yer tutucu başvurusunun
+  *Etiketler* grubunu besler.
 - `erp_invoice_template()` — `config.erp_invoice_template` doluysa o, yoksa
   `includes/erp/templates/invoice_default.html`.
 - `erp_invoice_html($invoice_id)` ve `erp_invoice_pdf($invoice_id)` — ikincisi
@@ -1136,8 +1143,14 @@ olan demektir.
 (savunmacı okunur — eski kurulumda tanımsız olabilir). Ünvan ve adres
 `ORGANIZATION_NAME` / `merchant_*`'tan gelir.
 
-**Şablon metni yöneticiye dönük Türkçedir**, `lang()`'den geçmez — belgeyi
-operatör düzenler, yazılım dili onu değiştirmez. Şablon CSS'inde
+**Yerleşik şablonun kendi sözcüğü yoktur** (issue #109): her etiket
+`{{label.*}}` ile `tr.json`'dan gelir, `<html lang="{{language}}">`
+`SOFTWARE_LANGUAGE`'ı basar; dosyada Türkçe literal ya da Türkçe yorum
+bulunmaz. Kaydedilmiş özel şablon operatörün yazdığı gibi kalır — yer tutucular
+eklemelidir, düz metin de çalışır. Türkçeye özgü terimlerin anahtarları:
+`VKN / TCKN` (satıcı/alıcı), `Tax ID` → "VKN" (taşıyıcı), `VAT` → "KDV",
+`Discount` → "İndirim" (eski şablondaki "İskonto" yerine; ürün genelindeki
+çeviriyle aynı). Şablon CSS'inde
 `text-transform: uppercase` **kullanılmaz**: dompdf noktasız/noktalı I'yı
 karıştırır (`i` → `I`). Büyük harf gerekiyorsa metin büyük harfle yazılır.
 
