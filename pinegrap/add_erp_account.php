@@ -93,6 +93,11 @@ if (!$_POST) {
         $liveform->mark_error('payment_days', lang('Payment term must be a whole number of days, 0 to 3650.'));
     }
 
+    $overdue_notify_days = trim((string) $liveform->get_field_value('overdue_notify_days'));
+    if (($overdue_notify_days !== '') && ((preg_match('/^[0-9]{1,4}$/', $overdue_notify_days) !== 1) || ((int) $overdue_notify_days > 3650))) {
+        $liveform->mark_error('overdue_notify_days', lang('Reminder threshold must be a whole number of days, 0 to 3650.'));
+    }
+
     $opening_amount = trim((string) $liveform->get_field_value('opening_amount'));
     $opening_date = trim((string) $liveform->get_field_value('opening_date'));
 
@@ -154,6 +159,7 @@ if (!$_POST) {
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
+        'overdue_notify_days' => (int) $overdue_notify_days,
         'created_by' => (int) $user['id'],
     ));
 

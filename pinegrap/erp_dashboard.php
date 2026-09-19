@@ -23,6 +23,11 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+// Piggyback for the overdue reminders: staff traffic sends the period's digest
+// on a site where the job was never scheduled. Throttled inside to one attempt
+// an hour, so this is a no-op on almost every load.
+erp_overdue_check();
 include_once('liveform.class.php');
 $liveform = new liveform('erp_dashboard');
 

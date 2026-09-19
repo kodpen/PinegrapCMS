@@ -392,6 +392,26 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if ($output_erp_fx_currencies === '') {
         $output_erp_fx_currencies = '<div class="form-text">' . lang('Add the currencies you invoice in under E-Commerce > Currencies first.') . '</div>';
     }
+    // Overdue receivable reminders. The switches read as on when the column has
+    // not arrived yet, the same default the upgrade writes.
+    $erp_overdue_notify_days = (int) ($row['erp_overdue_notify_days'] ?? 0);
+    $erp_overdue_notify_panel_checked = ((int) ($row['erp_overdue_notify_panel'] ?? 1) === 1) ? ' checked="checked"' : '';
+    $erp_overdue_notify_email_checked = ((int) ($row['erp_overdue_notify_email'] ?? 1) === 1) ? ' checked="checked"' : '';
+    $erp_overdue_notify_push_checked = ((int) ($row['erp_overdue_notify_push'] ?? 1) === 1) ? ' checked="checked"' : '';
+    $erp_overdue_notify_recipients = (string) ($row['erp_overdue_notify_recipients'] ?? '');
+    $erp_overdue_notify_frequency = (($row['erp_overdue_notify_frequency'] ?? 'daily') === 'weekly') ? 'weekly' : 'daily';
+    $erp_overdue_notify_hour = min(23, max(0, (int) ($row['erp_overdue_notify_hour'] ?? 9)));
+    $erp_overdue_notify_default_recipient = (string) (($row['ecommerce_email_address'] ?? '') !== '' ? $row['ecommerce_email_address'] : ($row['email_address'] ?? ''));
+    $output_erp_overdue_hours = '';
+    for ($erp_overdue_hour = 0; $erp_overdue_hour < 24; $erp_overdue_hour++) {
+        $output_erp_overdue_hours .= '<option value="' . $erp_overdue_hour . '"' . (($erp_overdue_hour === $erp_overdue_notify_hour) ? ' selected="selected"' : '') . '>' . sprintf('%02d:00', $erp_overdue_hour) . '</option>';
+    }
+    // A device notification needs the site's push keys; without them the
+    // switch is kept but the person is told what is missing.
+    $output_erp_overdue_push_hint = '';
+    if (($row['push_vapid_public'] ?? '') === '') {
+        $output_erp_overdue_push_hint = '<div class="form-text">' . lang('Add the panel to your home screen first, then turn notifications on from there.') . '</div>';
+    }
     $parasut_default_product_id  = $row['parasut_default_product_id']  ?? '';
     $parasut_default_warehouse_id = $row['parasut_default_warehouse_id'] ?? '';
     $enable_iyzipay_protected_currency = $row['enable_iyzipay_protected_currency'];

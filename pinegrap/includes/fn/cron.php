@@ -250,6 +250,16 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'inline'      => true,
         ),
+        // Overdue receivable reminders. Once a day is the finest the setting
+        // offers; the script itself decides whether this period's digest is
+        // still owed, so the tick it lands on does not matter.
+        'erp_overdue_job' => array(
+            'label'       => lang('Overdue receivable reminders'),
+            'script'      => 'erp_overdue_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
     );
 }
 

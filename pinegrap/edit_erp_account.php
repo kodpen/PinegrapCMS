@@ -57,6 +57,7 @@ if (!$_POST) {
         $liveform->assign_field_value('postcode', $account['postcode']);
         $liveform->assign_field_value('notes', $account['notes']);
         $liveform->assign_field_value('payment_days', (string) (int) ($account['payment_days'] ?? 0));
+        $liveform->assign_field_value('overdue_notify_days', (string) (int) ($account['overdue_notify_days'] ?? 0));
         $liveform->assign_field_value('currency', strtoupper(trim((string) $account['currency'])));
     }
 
@@ -217,6 +218,11 @@ if (!$_POST) {
         $liveform->mark_error('payment_days', lang('Payment term must be a whole number of days, 0 to 3650.'));
     }
 
+    $overdue_notify_days = trim((string) $liveform->get_field_value('overdue_notify_days'));
+    if (($overdue_notify_days !== '') && ((preg_match('/^[0-9]{1,4}$/', $overdue_notify_days) !== 1) || ((int) $overdue_notify_days > 3650))) {
+        $liveform->mark_error('overdue_notify_days', lang('Reminder threshold must be a whole number of days, 0 to 3650.'));
+    }
+
     // The stored currency unless foreign currency is on and an allowed code
     // was posted; an account with movements posts its own code back.
     $stored = erp_account($account_id);
@@ -256,6 +262,7 @@ if (!$_POST) {
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
+        'overdue_notify_days' => (int) $overdue_notify_days,
         'created_by' => (int) $user['id'],
     ));
 

@@ -76,6 +76,12 @@ function pg_notification_visible($notification, $rights)
 		return pg_notification_comment_visible($notification, $rights);
 	}
 
+	// An overdue-receivable digest is for whoever may use the ERP; with the
+	// module off the row stays in the table but reaches nobody.
+	if ($action == 'erp_overdue') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
+	}
+
 	// Anything else - a message written by the software itself - is for
 	// everybody who can sign in.
 	return true;
@@ -88,7 +94,8 @@ function pg_notification_visible_to($notification, $user)
 		'id'               => $user['id'],
 		'role'             => $user['role'],
 		'manage_ecommerce' => (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE),
-		'manage_forms'     => (($user['role'] < 3) || ($user['manage_forms'] == true))
+		'manage_forms'     => (($user['role'] < 3) || ($user['manage_forms'] == true)),
+		'manage_erp'       => (($user['role'] < 3) || !empty($user['manage_erp']))
 	));
 }
 
@@ -104,7 +111,8 @@ function pg_notification_visible_to_user($notification, $user_row)
 		'id'               => (int) $user_row['id'],
 		'role'             => $role,
 		'manage_ecommerce' => (($role < 3) || ($user_row['manage_ecommerce'] == 'yes')),
-		'manage_forms'     => (($role < 3) || ($user_row['manage_forms'] == 'yes'))
+		'manage_forms'     => (($role < 3) || ($user_row['manage_forms'] == 'yes')),
+		'manage_erp'       => (($role < 3) || ((int) ($user_row['manage_erp'] ?? 0) === 1))
 	));
 }
 
@@ -263,6 +271,18 @@ function pg_notification_display($notification)
 		$display['url']         = 'edit_comment.php?id=' . (($comment) ? (int) $comment['id'] : '');
 		$display['icon']     = 'assets/images/notification-comment.png';
 		$display['badge']    = 'assets/images/notification-comment-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'erp_overdue') {
+
+		// The row carries the count in title and the formatted total in
+		// order_total, the way an order row carries its number and total; the
+		// sentence around them is built here.
+		$display['title']       = lang('Overdue receivables');
+		$display['description'] = lang(array('string' => '{var:1} receivable(s) passed the reminder threshold, {var:2} in total.', 'vars' => array((int) $notification['title'], h($notification['order_total']))));
+		$display['url']         = 'erp_invoices.php?filter=overdue&direction=sales';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
 	}
 

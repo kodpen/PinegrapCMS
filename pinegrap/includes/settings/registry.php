@@ -208,7 +208,7 @@ function pg_settings_categories()
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
                 'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, parasut, accounting')),
-                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection')),
+                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
