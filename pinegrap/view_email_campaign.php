@@ -202,7 +202,7 @@ if ($_GET['r']) {
         'format' => $format));
     
     // replace reference code tags with reference code
-    $body = preg_replace('/<reference_code><\/reference_code>/', $_GET['r'], $body);
+    $body = str_replace('<reference_code></reference_code>', h($_GET['r']), $body);
     
     // replace email_address_id with encoded email address string
     $body = preg_replace('/<email_address_id><\/email_address_id>/', urlencode(base64_encode(str_rot13($email_address))), $body);
