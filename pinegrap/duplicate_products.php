@@ -1787,6 +1787,10 @@ if (!$_POST) {
     }
 }else{
 
+    // The form above carries the token; a POST from anywhere else is refused
+    // before a single product is copied.
+    validate_token_field();
+
     function duplicate_products($id,$lettertodelete,$newletter,$option_id) {
         // get original product's info
         $result = mysqli_query(db::$con, "SELECT * FROM products WHERE id = '" . escape($id) . "'") or output_error(lang('Query failed'));

@@ -1602,7 +1602,7 @@ function output_header($properties = false)
                             </li>
                             ' . $output_private_label_list . '
                             <li class="pg-um-logout">
-                                <a class="logout_link_url dropdown-item text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php"' . $output_parent_target . '><i class="bi bi-box-arrow-right"></i><span>' . lang('Logout') . '</span></a>
+                                <a class="logout_link_url dropdown-item text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php?token=' . urlencode($_SESSION['software']['token'] ?? '') . '"' . $output_parent_target . '><i class="bi bi-box-arrow-right"></i><span>' . lang('Logout') . '</span></a>
                             </li>
                             <li class="pg-um-meta">
                                 <span class="pg-um-metaitem" title="' . lang('Version') . '">' . VERSION . '</span>
