@@ -495,6 +495,71 @@ e-postası mevcut bir hesaba aitse siparişi o hesaba bağlar ve adres
 defterine yeni alıcı ekler; e-posta sahipliği doğrulanmaz. Ürün davranışı
 değişikliği gerektirdiği için bu PR'da dokunulmadı.
 
+## 2026.4.4 — Kimlik doğrulamasız uç noktalar ve bilgi sızıntısı, 2. tur (2026-09-18)
+
+**Belirti.** #68'deki 14 bulgunun kimlik doğrulaması olmadan iş yapan ya
+da anonim ziyaretçiye fazla bilgi veren uç noktaları. Yayınlanmış 2026.4.3'ü
+de etkiler.
+
+**Düzeltme.**
+
+- `custom_form.php` otomatik kayıt: yazılan e-posta adresi mevcut bir
+  hesaba aitse gönderim artık o hesaba **bağlanmaz** — `forms.user_id`
+  yalnız yeni oluşturulan üye için yazılır, `$user_id` oturumun dediği
+  değerde kalır (anonim için boş). Böylece üyelik başlangıç sayfası
+  (`user.user_home`) ve özel klasör erişimi (`aclfolder`) de yabancı hesaba
+  değil gerçekten gönderen kişiye gider. Bir adres yazmak o hesabın sahibi
+  olmanın kanıtı değildir; eski davranış herhangi bir üyenin adına gönderim
+  yapmaya ve o üyenin özel klasör erişimini/başlangıç sayfasını
+  değiştirmeye izin veriyordu.
+- `custom_form.php` `add_watcher`: gizli alanla gelen izleyici yalnız
+  oturum açmış ziyaretçi kendini adlandırıyorsa ya da formun klasöründe
+  düzenleme hakkı varsa dikkate alınır; `add_watcher_page_id` ayrıca
+  `form_item_view_pages.custom_form_page_id` ile gönderilen formun sayfası
+  olmak zorundadır. Aksi hâlde anonim bir istek herhangi bir üyeyi, içeriği
+  kendisinin seçtiği bir gönderime e-postayla abone yapabiliyordu. Aynı
+  desen `submit_order.php` ürün formu izleyicisinde de var; bu turda
+  dokunulmadı.
+- `get_form_item_view.php`: "herhangi bir kayıtlı kullanıcı düzenleyebilir"
+  ayarı artık gerçekten oturum gerektirir (`USER_LOGGED_IN`); ofis içi
+  alan kapısında `$user['role']` `isset` ile okunur. Kaydeden
+  `edit_submitted_form.php` zaten `validate_user()` istiyordu; sızan şey
+  ofis içi alan değerleriyle dolu düzenleme formunun anonim ziyaretçiye
+  çizilmesiydi.
+- `api.php` `sitemap_check`: istisna listesinde kalır (her panel rolü
+  tetikler) ama case bloğu artık `USER_LOGGED_IN` ve `validate_token()`
+  ister — `update_dashboard_widgets` (#74) ile aynı kalıp. Tek çağıran
+  `assets/js/backend.src.js` artık `software_token` gönderir; token yoksa
+  çağrı yapılmaz. Bu dosyanın `.min.js` ikizi yok.
+- `get_search_results.php` yorum eşleşmeleri: yalnız `private` klasörü
+  eleyen test, sayfa sonuçlarının kullandığı `check_view_access($folder,
+  true)` ile değiştirildi; üyelik sayfalarındaki yorumlar anonim
+  ziyaretçiye sıralama üzerinden kelime sızdırmıyor.
+- `job.php`, `push_job.php`, `api_sync_job.php`, `api_webhook_job.php`,
+  `seo_analyze_job.php`: #83'te (`update_exchange_rates.php`,
+  `waf_ranges_job.php`) kurulan `pg_cron_is_background_run()` kapısı aynen
+  uygulandı — CLI ya da `job.php` dağıtıcısı kullanıcı istemez, diğer her
+  istek `validate_area_access('manager')`. Neden anahtar/IP değil: #83
+  girdisindeki gerekçe. **Dikkat:** cron'u `php job.php` yerine
+  `wget`/`curl` ile URL'den tetikleyen bir kurulum bu güncellemeden sonra
+  giriş sayfasına yönlenir; crontab satırı CLI'ye çevrilmelidir.
+- `router.php` `router_output_error()`: MySQL hata metni artık tam hâliyle
+  `error_log()`'a yazılır, sayfaya yalnız `DEBUG` açıkken eklenir —
+  `output_error()` ile aynı kapı. Router `init.php`'den önce çalıştığı için
+  `DEBUG` yalnız `config.php` tanımlıyorsa görünür; `output_error()` de
+  aynı durumdadır.
+
+**Dokunulmayanlar.** `pi.php` ve `si.php` kural 12 gereği herkese açık
+kalır. `email_preferences.php` anonim yolu (imzalı jeton mu, salt-okunur
+mu) ve `barcode.php`'nin silinmesi/taşınması ürün sahibinin kararını
+bekler; #68 bu yüzden açık kalır.
+
+### Doğrulama
+
+`php tools/lint.php` ve `php tools/check_lang.php` temiz. Çalışan örnek
+kurulmadı; CLI koşusu, dağıtıcı include'u, panelde `sitemap_check`
+çağrısı ve form gönderim akışları yalnız kod okumasıyla doğrulandı.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
