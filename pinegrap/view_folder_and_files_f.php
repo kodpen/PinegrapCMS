@@ -5106,6 +5106,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('Sorry, we could not find the file.')));
             }
 
+            // The same rule the listing applies: a file is only a question
+            // for someone who can see its folder.
+            if (pg_explorer_folder_visible($usage_file['folder'], $folders_that_user_has_access_to) == false) {
+                log_activity(lang('access denied because user does not have access to file'), $_SESSION['sessionusername']);
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
+
             $usage_name = (string) $usage_file['name'];
             $usage_like = '%' . escape_like($usage_name) . '%';
             $usage_groups = array();

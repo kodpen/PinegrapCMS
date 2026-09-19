@@ -23,7 +23,15 @@ if (isset($_GET['request']) && $_GET['request'] === 'search_products') {
     include('init.php');
     header('Content-Type: application/json');
     if (!USER_LOGGED_IN) {
-        echo encode_json(array('status' => 'error', 'message' => 'Not logged in.'));
+        echo encode_json(array('status' => 'error', 'message' => lang('You are not logged in.')));
+        exit();
+    }
+    // Same gate as the screen this search serves (validate_ecommerce_access):
+    // roles above user pass, a user needs the manage e-commerce right. The
+    // refusal is JSON because the caller is waiting for JSON.
+    if (!USER_MANAGE_ECOMMERCE) {
+        log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+        echo encode_json(array('status' => 'error', 'message' => lang('Access denied.')));
         exit();
     }
     $q = isset($_GET['q']) ? trim($_GET['q']) : '';

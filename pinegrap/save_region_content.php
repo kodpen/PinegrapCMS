@@ -325,9 +325,15 @@ switch ($liveform->get_field_value('region_type')) {
 // if this region is not a system region header or system region footer,
 // then update the page properties.  We have already updated the page for the
 // system region header and footer.
+//
+// The page region branch has already checked edit access on the page's folder.
+// The common region branch has not: its page id is only the page the editor
+// was open on, supplied by the request, so the page is stamped there only when
+// this user may edit it. The region itself is saved either way.
 if (
     ($liveform->get_field_value('region_type') != 'system_region_header')
     && ($liveform->get_field_value('region_type') != 'system_region_footer')
+    && (($liveform->get_field_value('region_type') != 'cregion') || (check_edit_access($folder_id) == true))
 ) {
     $query =
         "UPDATE page

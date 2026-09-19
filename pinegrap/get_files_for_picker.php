@@ -27,14 +27,26 @@ if ($filter === 'css') {
 }
 
 $rows = db_items(
-    "SELECT name, type FROM files
+    "SELECT name, type, folder FROM files
      WHERE type IN ($where_types) AND name != ''
      ORDER BY name ASC
      LIMIT 1000"
 );
 
+// A basic user sees only the files of the folders they may edit, the rule
+// view_files.php applies; everyone above sees them all.
+$folders_that_user_has_access_to = array();
+
+if ($user['role'] == 3) {
+    $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
+}
+
 $result = array();
 foreach ($rows as $row) {
+    if (check_folder_access_in_array($row['folder'], $folders_that_user_has_access_to) == false) {
+        continue;
+    }
+
     $result[] = array(
         'name' => $row['name'],
         'type' => $row['type'],
