@@ -503,7 +503,7 @@ function mp_listing_attributes($definitions, $chosen, $product_id) {
 // By name first - a shop whose attribute is called "Renk" and a category whose
 // variant attribute is called "Renk" are talking about the same thing - and
 // then by the value alone, because a shop that calls it "Colour" still sends
-// "Kırmızı", and that is what the marketplace matches on anyway.
+// "Red", and that is what the marketplace matches on anyway.
 function mp_listing_variant_value($definition, $own) {
 
 	$wanted = mb_strtolower(trim((string)$definition['name']));

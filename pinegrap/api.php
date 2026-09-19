@@ -1244,7 +1244,7 @@ switch ($action) {
                 // actually do about it, one to a line.
                 //
                 // The split is the point. This was a single grid in which
-                // "SSL · Tamam" and "Önbellek · Temizle" were the same shape --
+                // "SSL · OK" and "Cache · Clear" were the same shape --
                 // a reading and a button drawn identically, four characters
                 // wide. A reading is read; a job is pressed, and a job needs
                 // room for a verb and for the sentence that says what pressing
@@ -1467,8 +1467,8 @@ switch ($action) {
                     //
                     // A chip each, not a tile each. Twelve tiles across half a
                     // card put the label at nine pixels with the value at nine
-                    // more underneath, and at that size "Veritabanı" and
-                    // "Güncelleme" were both an ellipsis -- a grid of boxes
+                    // more underneath, and at that size "Database" and
+                    // "Update status" were both an ellipsis -- a grid of boxes
                     // whose labels had to be hovered to be read.
                     //
                     // The chip gets that width back by dropping the half that
@@ -1528,8 +1528,8 @@ switch ($action) {
                             ? $health_check['detail']
                             : array();
 
-                        // The value only when the check said it. "Tamam",
-                        // "Uyarı", "Sorun" and "Uygulanmaz" are the four words
+                        // The value only when the check said it. "OK",
+                        // "Warning", "Problem" and "Not applicable" are the four words
                         // functions.php puts in a check's mouth when it has
                         // none of its own -- they are the colour spelled out,
                         // and a red chip does not need to be told it is red.
@@ -1716,7 +1716,7 @@ switch ($action) {
                         } elseif (isset($job_check['href']) && ($job_check['href'] !== '')) {
 
                             // The verb belongs to the state, not to the row.
-                            // "Yazılım Güncelleme · 2026.4.4 · Güncelle" says
+                            // "Software Update · 2026.4.4 · Update" says
                             // an update is waiting when the middle of that line
                             // says the opposite -- the button is the loudest
                             // part of a row and it was contradicting the row.
@@ -1743,9 +1743,9 @@ switch ($action) {
                             'icon'   => $job_check['icon'],
                             'color'  => $job_check['color'],
                             // The full title, not the tile's short label. The
-                            // column has the width for "Web Sunucusu Kuralları"
+                            // column has the width for "Web Server Rules"
                             // and the point of moving these rows here was that
-                            // "Sunucu kuralları" in nine pixels was not telling
+                            // "Server rules" in nine pixels was not telling
                             // anybody what the row was about.
                             'name'   => $job_check['title'],
                             'note'   => $job_check['value'],
@@ -2529,7 +2529,7 @@ switch ($action) {
                         . $pg_count($quantity_total) . ' ' . lang('Piece(s)');
 
                     // Only when there is something to act on. A steady "0
-                    // tükendi" is a word the eye learns to skip, and then the
+                    // out of stock" is a phrase the eye learns to skip, and then the
                     // day it says 3 it gets skipped too.
                     if ($out_of_stock_count > 0) {
                         $output_stock_sub .= ' <span class="pg-ec-dot">&middot;</span> '
@@ -9528,8 +9528,8 @@ switch ($action) {
     // table: every installmentNumber Iyzipay reports (typically 1, 2, 3, 6,
     // 9, 12 — but never assumed) up to the operator's ECOMMERCE_IYZIPAY_INSTALLMENT
     // cap, plus card metadata (cardAssociation, cardFamilyName, bankName) so
-    // the widget can render brand-aware UI ("Bonus / Garanti Bankası — 3
-    // taksit ₺X.XX/ay, toplam ₺Y.YY"). Wraps the same SDK call the legacy
+    // the widget can render brand-aware UI ("Bonus / Garanti — 3
+    // installments at ₺X.XX/month, ₺Y.YY total"). Wraps the same SDK call the legacy
     // `get_installment_options` action uses, but doesn't lose entries when
     // Iyzipay returns additional rows (e.g. 4-installment cards).
     //
@@ -12986,7 +12986,7 @@ switch ($action) {
                 ));
                 break;
 
-            // Pages the "Sayfa Seç" picker may offer: every visual-designer
+            // Pages the "Select Page" picker may offer: every visual-designer
             // page not already on this design, with the design it belongs to
             // now so the picker can say what attaching it will change.
             case 'selectable_pages':
@@ -13036,7 +13036,7 @@ switch ($action) {
             // Take a page OUT of its design. The page is not deleted — it
             // becomes a design of its own, carrying a copy of the shared
             // assets and theme so it keeps rendering exactly as before. This
-            // is the reversible move: "Sayfa Seç" brings it back. Deleting a
+            // is the reversible move: "Select Page" brings it back. Deleting a
             // page is the pages list's job.
             //
             // Refused for the design's last page: a design with no pages is a
@@ -13760,9 +13760,9 @@ switch ($action) {
 
             // ── LIST CATALOG LISTING PAGES ──────────────────────────────────
             // Returns pages that contain a catalog_listing system widget.
-            // Used by the catalog_item_view widget's "Katalog sayfası"
+            // Used by the catalog_item_view widget's "Catalog page"
             // picker — designer chooses which catalog page the breadcrumb
-            // crumbs (Ana Katalog → Group → …) and cross-sell card URLs
+            // crumbs (Main Catalog → Group → …) and cross-sell card URLs
             // should link back to.
             //
             // Mirrors list_catalog_detail_pages but keys on
@@ -13984,7 +13984,7 @@ switch ($action) {
         break;
 
     // ========================= DESIGNER FILES =========================
-    // Visual Pinegrap Editor's "Yeni CSS/JS/JSON Dosyası" actions create a real
+    // Visual Pinegrap Editor's "New CSS/JS/JSON File" actions create a real
     // file (disk + `files` row) at click time so the asset is available
     // immediately in View Files and is referenced via a stable URL — same
     // mechanism create_file.php uses for manual file creation.
