@@ -1017,6 +1017,20 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
   `erp_fx_post_difference()` çevrilmiş orijinali saymaz. Tahsis kalmayan
   faturanın `payment_date`'i sıfırlanır (internet satışı hariç).
 
+- **Vade ve yaşlandırma tek kaynaktan:** `includes/erp/aging.php`.
+  `erp_aging_invoices($yön, $tarih, $filtreler)` o tarihte açık faturaları
+  verir — tarihten sonraki tahsis/iade düşülmez, sonra kesilen belge yok
+  (nokta-zaman); `open_base` kayıt kurundaki `*_base` sütunlarından
+  (`grand_total_base − Σ amount_base − Σ iade.grand_total_base`, <0 → 0),
+  yeni yuvarlama yok. Kovalar `erp_aging_bucket()` (≤0 / 1-30 / 31-60 /
+  61-90 / 90+); `due_date = 0000-00-00` fatura tarihi sayılır
+  (`erp_aging_due_sql()`). Rapor `erp_aging.php` (`?csv=1` aynı tablo, log
+  yok), liste rozetleri ve `?filter=overdue|due_week|open` + `direction` /
+  `account_id` / `bucket` / `as_of` süzgeçleri, pano kartları hep bu
+  fonksiyonları okur; yeni bir vade görünümü de buradan beslenir, kendi
+  sorgusunu yazmaz. Vade günü ayarı yoktur (ayrı PR); rapor yalnız
+  `due_date` okur.
+
 ### İndirimli siparişin KDV'si
 
 `submit_order.php:851` indirimi **toplamı hesaplamadan önce** KDV'den düşer
