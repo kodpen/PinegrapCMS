@@ -113,8 +113,7 @@ db(
 pg_auth_token_revoke_user($user['id']);
 
 // Auto-login the user so they do not have to sign in manually.
-$_SESSION['sessionuserid']  = $user['id'];
-$_SESSION['sessionusername'] = $user['username'];
+pg_session_sign_in($user['id'], $user['username']);
 
 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
 connect_user_to_order();

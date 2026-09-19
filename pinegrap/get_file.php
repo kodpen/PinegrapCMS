@@ -1182,8 +1182,7 @@ function initialize_user()
             $user = pg_load_user_row($token_user_id);
 
             if (is_array($user) && isset($user['id'])) {
-                $_SESSION['sessionuserid']  = $user['id'];
-                $_SESSION['sessionusername'] = $user['username'];
+                pg_session_sign_in($user['id'], $user['username']);
                 log_activity('user logged in', $user['username']);
             } else {
                 $user = null;

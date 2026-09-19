@@ -18,20 +18,18 @@
 
 include('init.php');
 
-// ── SameSite cookie handling for cross-site gateway callbacks ───────────
-// Iyzipay 3DS, PayPal Express, and Pay With Iyzico all POST back to this
-// page from their own domains. Modern browsers default session cookies to
-// SameSite=Lax which BLOCKS cross-site POSTs from carrying the session
-// cookie → server sees a fresh session with no form data → "Country is
-// required, First Name is required, …" validation cascade.
+// Cross-site gateway callbacks. Iyzipay 3DS, PayPal Express and Pay With
+// Iyzico all POST back to this page from their own domains. Browsers default
+// the session cookie to SameSite=Lax, which drops it on a cross-site POST: the
+// server would see a fresh session with no form data and the "Country is
+// required, First Name is required, ..." validation cascade follows.
 //
-// We re-stamp the session cookie with SameSite=None on EVERY page load
-// EXCEPT the return-mode requests themselves (those just consume the
-// already-set cookie). The initial visit + every Submit re-stamp the
-// cookie so it travels across the eventual gateway round-trip. Requires
-// HTTPS — browsers reject SameSite=None without Secure. On HTTP localhost
-// the cookie falls back to default (Lax/Strict) and cross-site return
-// will lose the session.
+// The session cookie is therefore re-issued with SameSite=None on every load
+// EXCEPT the return-mode requests themselves (those only consume the cookie
+// already set): the initial visit and every Submit re-stamp it so it travels
+// across the eventual gateway round-trip. That needs HTTPS - browsers reject
+// SameSite=None without Secure; on plain http the cookie stays Lax and the
+// cross-site return loses the session.
 //
 // The three gateway callbacks (PayPal Express Checkout, iyzipay 3-D Secure and
 // Pay With Iyzico) arrive as cross-site POSTs, so the cookie re-stamp, the CSRF
@@ -42,19 +40,7 @@ $is_gateway_return = in_array(
     true);
 
 if (!$is_gateway_return) {
-    if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
-        if (URL_SCHEME == 'https://') {
-            setcookie(session_name(), session_id(), ['samesite' => 'None', 'secure' => true]);
-        } else {
-            setcookie(session_name(), session_id(), ['samesite' => 'None']);
-        }
-    } else {
-        if (URL_SCHEME == 'https://') {
-            header('Set-Cookie: cross-site-cookie=bar; SameSite=None; Secure');
-        } else {
-            header('Set-Cookie: same-site-cookie=foo; SameSite=Lax');
-        }
-    }
+    pg_session_cookie_allow_cross_site();
 }
 
 // CSRF token validation — skipped for ALL three gateway return modes

@@ -573,12 +573,16 @@ if (!$_POST) {
                 '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
         }
         
+        // Modern password hash plus the algo stamp; see pg_password_insert_fragments().
+        $sql_password = pg_password_insert_fragments($random_password);
+
         // insert row into user table
         $query =
             "INSERT INTO user (
                 user_username,
                 user_email,
                 user_password,
+                {$sql_password['algo_column']}
                 user_role,
                 user_home,
                 user_badge,
@@ -608,7 +612,8 @@ if (!$_POST) {
             VALUES (
                 '" . escape($username) . "',
                 '" . escape($email_address) . "',
-                '" . md5($random_password) . "',
+                " . $sql_password['password'] . ",
+                {$sql_password['algo_value']}
                 '" . escape($_POST['role'] ?? '') . "',
                 '" . escape($_POST['home_page'] ?? '') . "',
                 '" . escape($_POST['badge'] ?? '') . "',
@@ -637,7 +642,21 @@ if (!$_POST) {
                 '$user[id]')";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $user_id = mysqli_insert_id(db::$con);
-        
+
+        // The same post-insert stamps a user created on the add-user screen
+        // gets: the creation date offers read, the notification history marked
+        // read so the first sign-in does not open onto every past announcement,
+        // and the password age (written after the INSERT so the column list
+        // stays valid on a schema that predates the 2026.4.4 step).
+        pg_user_created_stamp($user_id);
+
+        include_once(dirname(__FILE__) . '/includes/notifications.php');
+        pg_notification_seed_user($user_id);
+
+        if (pg_user_has_password_changed_at()) {
+            db("UPDATE user SET user_password_changed_at = UNIX_TIMESTAMP() WHERE user_id = '" . e($user_id) . "'");
+        }
+
         // insert data into aclfolder table
         $result = mysqli_query(db::$con, "SELECT folder_id FROM folder") or output_error('Query failed');
         while($row = mysqli_fetch_array($result))

@@ -154,8 +154,7 @@ if (!$_POST) {
                 setcookie('software[remember_me]', $pg_remember ? 'true' : 'false', time() + 315360000, '/');
             }
 
-            $_SESSION['sessionuserid']  = $login_user_id;
-            $_SESSION['sessionusername'] = $username;
+            pg_session_sign_in($login_user_id, $username);
 
             require_once(dirname(__FILE__) . '/connect_user_to_order.php');
             connect_user_to_order();

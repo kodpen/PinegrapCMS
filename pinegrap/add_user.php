@@ -358,12 +358,16 @@ if (!$_POST) {
             '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
     }
     
+    // Modern password hash plus the algo stamp; see pg_password_insert_fragments().
+    $sql_password = pg_password_insert_fragments($random_password);
+
     // insert row into user table
     $query =
         "INSERT INTO user (
             user_username,
             user_email,
             user_password,
+            {$sql_password['algo_column']}
             user_role,
             user_home,
             user_badge,
@@ -395,7 +399,8 @@ if (!$_POST) {
         VALUES (
             '" . escape($_POST['username'] ?? '') . "',
             '" . escape($_POST['email'] ?? '') . "',
-            '" . md5($random_password) . "',
+            " . $sql_password['password'] . ",
+            {$sql_password['algo_value']}
             '" . escape($_POST['role'] ?? '') . "',
             '" . escape($_POST['home_page'] ?? '') . "',
             '" . escape($_POST['badge'] ?? '') . "',

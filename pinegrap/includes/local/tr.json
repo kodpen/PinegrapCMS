@@ -7040,6 +7040,7 @@
     "Thank you for registering. You are now signed in.": "Kaydınız tamamlandı, teşekkürler. Giriş yaptınız.",
     "Your membership is active. You are now signed in.": "Üyeliğiniz etkinleştirildi. Giriş yaptınız.",
     "The {var:1} you entered was not found. Please enter a different {var:1}.": "Girdiğiniz {var:1} bulunamadı. Lütfen farklı bir {var:1} girin.",
+    "The {var:1} and last name you entered do not match a membership that can be activated.": "Girdiğiniz {var:1} ve soyad, aktive edilebilecek bir üyelikle eşleşmiyor.",
     "Google": "Google",
     "Only this page": "Sadece bu sayfa",
     "Select Page": "Sayfa Seç",

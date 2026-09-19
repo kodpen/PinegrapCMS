@@ -132,6 +132,31 @@ function pg_password_store($user_id, $password)
     return $hash;
 }
 
+// The password fragments for an INSERT INTO user that a screen builds by hand
+// (add_user.php, import_users.php): the quoted user_password value and, when
+// the column exists, the user_password_algo column and value with trailing
+// commas, ready to drop into the column and value lists. The hash is the same
+// modern shape validate_login() writes on a successful sign-in (algo 2). On a
+// schema that predates the algo column (the upgrade has not run yet) the
+// legacy MD5 is written instead, because a modern hash under algo 0 would
+// never verify; the batch job and the first sign-in upgrade it later.
+function pg_password_insert_fragments($password)
+{
+    if (pg_user_has_password_algo()) {
+        return array(
+            'password'    => "'" . escape(pg_password_hash($password)) . "'",
+            'algo_column' => 'user_password_algo,',
+            'algo_value'  => '2,',
+        );
+    }
+
+    return array(
+        'password'    => "'" . md5((string) $password) . "'",
+        'algo_column' => '',
+        'algo_value'  => '',
+    );
+}
+
 // The one place a customer-facing (role 3) member account row is written, so a
 // modern password hash is set from the start (no transient MD5) and a caller
 // cannot forget the algo stamp. Each caller keeps its own surrounding flow -
@@ -534,8 +559,7 @@ function pg_member_register($form, $opts = array())
         setcookie('software[remember_me]', $remember ? 'true' : 'false', time() + 315360000, '/');
     }
 
-    $_SESSION['sessionuserid']  = $new_user_id;
-    $_SESSION['sessionusername'] = $username;
+    pg_session_sign_in($new_user_id, $username);
 
     // A sign-up that was not remembered still binds this session to a device
     // token while the device limit is on. No-op when the limit is off.
@@ -616,16 +640,30 @@ function pg_member_activate($form, $opts = array())
     $email     = (string) $form->get_field_value($email_field);
     $last_name = (string) $form->get_field_value('last_name');
 
-    // The membership number has to be on the member list.
-    $expiration_date = '';
-    if ($form->check_field_error('member_id') == false) {
-        $member = db_item("SELECT expiration_date FROM contacts WHERE member_id = '" . escape($member_id) . "' LIMIT 1");
-        if (empty($member)) {
+    // The membership number and the last name together have to point at a
+    // member on the list who has no account yet. The number alone is not a
+    // credential: it is printed on cards and mailings, so the surname on file
+    // has to match too, and a contact that already activated an account cannot
+    // be claimed a second time. One message for every way this fails (unknown
+    // number, wrong surname, already activated) so the form cannot be used to
+    // find out which numbers exist. The matched contact is the one written
+    // below; no second contact is ever created under the same number.
+    $contact_id = 0;
+    if (($form->check_field_error('member_id') == false) && ($form->check_field_error('last_name') == false)) {
+        $contact_id = (int) db_value(
+            "SELECT contacts.id
+            FROM contacts
+            LEFT JOIN user ON user.user_contact = contacts.id
+            WHERE contacts.member_id = '" . escape($member_id) . "'
+                AND contacts.last_name = '" . escape($last_name) . "'
+                AND user.user_id IS NULL
+            ORDER BY contacts.id
+            LIMIT 1");
+        if ($contact_id <= 0) {
             $form->mark_error('member_id', lang(array(
-                'string' => 'The {var:1} you entered was not found. Please enter a different {var:1}.',
+                'string' => 'The {var:1} and last name you entered do not match a membership that can be activated.',
                 'vars'   => MEMBER_ID_LABEL)));
-        } else {
-            $expiration_date = (string) $member['expiration_date'];
+            $form->mark_error('last_name');
         }
     }
 
@@ -723,40 +761,14 @@ function pg_member_activate($form, $opts = array())
         $extra_set .= ", " . $column . " = '" . escape($value) . "'";
     }
 
-    // The member's own contact when number and surname match one; a new one
-    // carrying the number and its expiry otherwise.
-    $contact_id = (int) db_value(
-        "SELECT id FROM contacts
-        WHERE member_id = '" . escape($member_id) . "' AND last_name = '" . escape($last_name) . "'
-        LIMIT 1");
-    if ($contact_id > 0) {
-        db("UPDATE contacts
-            SET
-                first_name = '" . escape($form->get_field_value('first_name')) . "',
-                email_address = '" . escape($email) . "',
-                opt_in = '" . e($opt_in) . "'" . $extra_set . "
-            WHERE id = '" . $contact_id . "'");
-    } else {
-        $columns = array(
-            'first_name'      => (string) $form->get_field_value('first_name'),
-            'last_name'       => $last_name,
-            'email_address'   => $email,
-            'member_id'       => $member_id,
-            'expiration_date' => $expiration_date,
-            'opt_in'          => $opt_in,
-        );
-        foreach ($extra as $column => $value) $columns[$column] = $value;
-        $sql_columns = array();
-        $sql_values  = array();
-        foreach ($columns as $column => $value) {
-            $sql_columns[] = $column;
-            $sql_values[]  = "'" . escape($value) . "'";
-        }
-        $sql_columns[] = 'timestamp';
-        $sql_values[]  = 'UNIX_TIMESTAMP()';
-        db("INSERT INTO contacts (" . implode(', ', $sql_columns) . ") VALUES (" . implode(', ', $sql_values) . ")");
-        $contact_id = (int) mysqli_insert_id(db::$con);
-    }
+    // The member's own contact, matched above by number and surname. Its
+    // address becomes the one the member just typed.
+    db("UPDATE contacts
+        SET
+            first_name = '" . escape($form->get_field_value('first_name')) . "',
+            email_address = '" . escape($email) . "',
+            opt_in = '" . e($opt_in) . "'" . $extra_set . "
+        WHERE id = '" . $contact_id . "'");
 
     db("UPDATE contacts SET opt_in = '" . e($opt_in) . "' WHERE email_address = '" . e($email) . "'");
 
@@ -802,8 +814,7 @@ function pg_member_activate($form, $opts = array())
         setcookie('software[remember_me]', $remember ? 'true' : 'false', time() + 315360000, '/');
     }
 
-    $_SESSION['sessionuserid']  = $new_user_id;
-    $_SESSION['sessionusername'] = $username;
+    pg_session_sign_in($new_user_id, $username);
 
     if (!$remember) {
         pg_login_set_device_cookie($new_user_id, false);
@@ -1206,6 +1217,62 @@ function pg_request_is_https()
     }
 
     return false;
+}
+
+// Re-issue the session cookie with SameSite=None so that a cross-site POST
+// back from a payment gateway (3-D Secure, PayPal Express, Pay With Iyzico)
+// still carries the session. Browsers default a cookie without the attribute
+// to Lax, which drops it on such a POST, and the session extension has no
+// per-page switch for it, so the checkout screens that expect a gateway
+// return call this once per load.
+//
+// The header is written by hand: setcookie() only learned SameSite in PHP 7.3
+// and the product runs on 7.0. Path, domain and lifetime are read from the
+// session cookie's own parameters and HttpOnly is always set, so this
+// replaces the cookie the session started with instead of leaving a second,
+// script-readable copy at the script directory. SameSite=None is only honoured
+// together with Secure; on plain http the cookie is re-issued as Lax and a
+// cross-site return cannot keep the session there.
+function pg_session_cookie_allow_cross_site()
+{
+    if ((session_status() !== PHP_SESSION_ACTIVE) || headers_sent()) {
+        return;
+    }
+
+    $params = session_get_cookie_params();
+    $path   = (isset($params['path']) && ($params['path'] !== '')) ? (string) $params['path'] : '/';
+    $secure = pg_request_is_https() || !empty($params['secure']);
+
+    $cookie = session_name() . '=' . session_id() . '; Path=' . $path;
+    if (!empty($params['domain'])) {
+        $cookie .= '; Domain=' . $params['domain'];
+    }
+    if (!empty($params['lifetime'])) {
+        $cookie .= '; Expires=' . gmdate('D, d M Y H:i:s', time() + (int) $params['lifetime']) . ' GMT'
+            . '; Max-Age=' . (int) $params['lifetime'];
+    }
+    if ($secure) {
+        $cookie .= '; Secure';
+    }
+    $cookie .= '; HttpOnly; SameSite=' . ($secure ? 'None' : 'Lax');
+
+    header('Set-Cookie: ' . $cookie, false);
+
+    // Earlier releases issued this cookie without a path, which the browser
+    // files under the script directory (e.g. /pinegrap) as a cookie of its own
+    // beside the session's at /. Both hold the same id until the id changes -
+    // a sign-in now regenerates it - after which the browser sends the stale,
+    // more specific one first and PHP takes the first: the customer would be
+    // signed out on every screen under that directory. Expire that copy while
+    // it can still be around; nothing is sent when it would be the same cookie.
+    $request_path = isset($_SERVER['REQUEST_URI']) ? (string) strtok((string) $_SERVER['REQUEST_URI'], '?') : '';
+    $default_path = (substr_count($request_path, '/') > 1)
+        ? substr($request_path, 0, strrpos($request_path, '/'))
+        : '/';
+    if (($default_path !== '') && ($default_path !== $path) && ($default_path !== rtrim($path, '/'))) {
+        header('Set-Cookie: ' . session_name() . '=; Path=' . $default_path
+            . '; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0', false);
+    }
 }
 
 // Non-remember logins get a session-scoped token only so they can be counted
@@ -3335,11 +3402,15 @@ function initialize_user()
             // limit is in force.
             $auth_bind_kick = true;
             $auth_bind_reason = 'session carried no device token';
-        } else {
+        } elseif (empty($_SESSION['software']['auth_bind_attempted'])) {
             // No token and no limit: a session from before universal binding.
             // Bind it quietly so it appears in the session lists and can be
             // signed out remotely; from the next request on it is a normal
-            // token-bound session.
+            // token-bound session. Tried once per session: a browser that
+            // does not keep the cookie (blocked, or a Secure cookie reaching
+            // it over plain http) would otherwise mint a new auth_tokens row
+            // on every request.
+            $_SESSION['software']['auth_bind_attempted'] = time();
             pg_login_set_device_cookie((int) $_SESSION['sessionuserid'], false);
         }
 
@@ -3402,8 +3473,7 @@ function initialize_user()
             $user = pg_load_user_row($token_user_id);
 
             if (is_array($user) && isset($user['id'])) {
-                $_SESSION['sessionuserid']  = $user['id'];
-                $_SESSION['sessionusername'] = $user['username'];
+                pg_session_sign_in($user['id'], $user['username']);
                 log_activity(lang('user logged in'), $user['username']);
             } else {
                 $user = null;

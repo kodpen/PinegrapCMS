@@ -89,8 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Complete the sign-in the same way the login flow would: a persistent
     // cookie for a remembered login, a session cookie otherwise.
     unset($_SESSION['software']['device_limit_pending']);
-    $_SESSION['sessionuserid']  = $user_id;
-    $_SESSION['sessionusername'] = $username;
+    pg_session_sign_in($user_id, $username);
 
     pg_login_set_device_cookie($user_id, $remember);
     if (REMEMBER_ME == TRUE) {
