@@ -89,7 +89,7 @@ if (!$_POST)
         break;
     }
     // if user does not have access to edit this file, or if it is a design file, then output error
-    if (($user['role'] == 3) && ((check_edit_access($folder_id) == false) || ($file_design == 1)))
+    if (($user['role'] == 3) && ((check_edit_access($folder_id) == false) || ($design == 1)))
     {
         log_activity(lang('access denied to edit image with Image Editor because user does not have access to edit image'), $_SESSION['sessionusername']);
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');

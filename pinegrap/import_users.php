@@ -272,6 +272,18 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
+    // The role arrives as text. Cast it before the ceiling check so a
+    // non-numeric value cannot slip past the comparison and reach the SQL,
+    // where a lenient server would store it as 0 (administrator).
+    if (isset($_POST['role'])) {
+        $_POST['role'] = (int) $_POST['role'];
+
+        if (in_array($_POST['role'], array(0, 1, 2, 3), true) == false) {
+            log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+    }
+
     // if editor is not an administrator and the editor's role is less than or equal to the role that the editor is trying to set, then output error
     if (($user['role'] != 0) && ($user['role'] >= $_POST['role'])) {
         log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
