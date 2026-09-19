@@ -324,24 +324,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $last_modified_timestamp = $row['last_modified_timestamp'];
 	$ecommerce_iyzipay_installment = $row['ecommerce_iyzipay_installment'];
     $custom_css = $row['custom_css'];
-	if($ecommerce_iyzipay_installment){
-		$ecommerce_iyzipay_installment_option_1_selected='';
-		$ecommerce_iyzipay_installment_option_2_selected='';
-		$ecommerce_iyzipay_installment_option_3_selected='';
-		$ecommerce_iyzipay_installment_option_6_selected='';
-		$ecommerce_iyzipay_installment_option_9_selected='';
-		$ecommerce_iyzipay_installment_option_12_selected='';
+	// An unset or 0 value means no installment; the option list is always
+	// built, otherwise the select renders empty and the save writes ''.
+	if (!$ecommerce_iyzipay_installment) {
+		$ecommerce_iyzipay_installment = '1';
+	}
+	$ecommerce_iyzipay_installment_option_1_selected='';
+	$ecommerce_iyzipay_installment_option_2_selected='';
+	$ecommerce_iyzipay_installment_option_3_selected='';
+	$ecommerce_iyzipay_installment_option_6_selected='';
+	$ecommerce_iyzipay_installment_option_9_selected='';
+	$ecommerce_iyzipay_installment_option_12_selected='';
 
-		if($ecommerce_iyzipay_installment == '1'){$ecommerce_iyzipay_installment_option_1_selected ='selected="selected"';}
-		if($ecommerce_iyzipay_installment == '2'){$ecommerce_iyzipay_installment_option_2_selected ='selected="selected"';}
-		if($ecommerce_iyzipay_installment == '3'){$ecommerce_iyzipay_installment_option_3_selected ='selected="selected"';}
-		if($ecommerce_iyzipay_installment == '6'){$ecommerce_iyzipay_installment_option_6_selected ='selected="selected"';}
-		if($ecommerce_iyzipay_installment == '9'){$ecommerce_iyzipay_installment_option_9_selected ='selected="selected"';}
-		if($ecommerce_iyzipay_installment == '12'){$ecommerce_iyzipay_installment_option_12_selected ='selected="selected"';}
+	if($ecommerce_iyzipay_installment == '1'){$ecommerce_iyzipay_installment_option_1_selected ='selected="selected"';}
+	if($ecommerce_iyzipay_installment == '2'){$ecommerce_iyzipay_installment_option_2_selected ='selected="selected"';}
+	if($ecommerce_iyzipay_installment == '3'){$ecommerce_iyzipay_installment_option_3_selected ='selected="selected"';}
+	if($ecommerce_iyzipay_installment == '6'){$ecommerce_iyzipay_installment_option_6_selected ='selected="selected"';}
+	if($ecommerce_iyzipay_installment == '9'){$ecommerce_iyzipay_installment_option_9_selected ='selected="selected"';}
+	if($ecommerce_iyzipay_installment == '12'){$ecommerce_iyzipay_installment_option_12_selected ='selected="selected"';}
 
         $ecommerce_iyzipay_installment_options ='<option value="1" '.$ecommerce_iyzipay_installment_option_1_selected.'>' . lang('No Installment') . '</option><option value="2" '.$ecommerce_iyzipay_installment_option_2_selected.'>' . lang(array('string'=>'Maximum {var:1}','vars'=>array('2') )) . '</option><option value="3" '.$ecommerce_iyzipay_installment_option_3_selected.'>' . lang(array('string'=>'Maximum {var:1}','vars'=>array('3') )) . '</option><option value="6" '.$ecommerce_iyzipay_installment_option_6_selected.'>' . lang(array('string'=>'Maximum {var:1}','vars'=>array('6') )) . '</option><option value="9" '.$ecommerce_iyzipay_installment_option_9_selected.'>' . lang(array('string'=>'Maximum {var:1}','vars'=>array('9') )) . '</option><option value="12" '.$ecommerce_iyzipay_installment_option_12_selected.'>' . lang(array('string'=>'Maximum {var:1}','vars'=>array('12') )) . '</option>';
 
-	}
     $strutured_data = $row['strutured_data'];
     $advanced_visual_effects = $row['advanced_visual_effects'];
     $enable_parasut = $row['enable_parasut'] ?? 0;
@@ -1859,30 +1862,32 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // BSD, Solaris - is unix-like and takes the same command. The earlier
     // Linux/Windows pair left all of these variables undefined on those other
     // families, which printed a PHP warning inside each command box.
+    // The job scripts live in the software root (PG_FUNCTIONS_DIR); this
+    // file's own directory is includes/settings/, where no job exists.
     if ($php_os_family === "Windows") {
-        $cron_job_general = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\job.php';
-        $cron_job_exchange_rates = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\update_exchange_rates.php';
-        $cron_job_email_campaign = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\email_campaign_job.php';
-        $cron_job_search_index = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\update_search_index.php';
-        $cron_job_seo_score = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\seo_score_job.php';
-        $cron_job_seo_analyze = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\seo_analyze_job.php';
-        $cron_job_requrring_payment = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\recurring_payment_job.php';
-        $cron_job_membership = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\membership_job.php';
-        $cron_job_auto_backup = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\auto_backup.php';
-        $cron_job_webhook = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\api_webhook_job.php';
-        $cron_job_push = 'C:\PHP\php.exe -q '.dirname(__FILE__) . '\push_job.php';
+        $cron_job_general = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\job.php';
+        $cron_job_exchange_rates = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\update_exchange_rates.php';
+        $cron_job_email_campaign = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\email_campaign_job.php';
+        $cron_job_search_index = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\update_search_index.php';
+        $cron_job_seo_score = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\seo_score_job.php';
+        $cron_job_seo_analyze = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\seo_analyze_job.php';
+        $cron_job_requrring_payment = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\recurring_payment_job.php';
+        $cron_job_membership = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\membership_job.php';
+        $cron_job_auto_backup = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\auto_backup.php';
+        $cron_job_webhook = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\api_webhook_job.php';
+        $cron_job_push = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\push_job.php';
     } else {
-        $cron_job_general = '/usr/local/bin/php -q '.dirname(__FILE__) . '/job.php >/dev/null 2>&1';
-        $cron_job_exchange_rates = '/usr/local/bin/php -q '.dirname(__FILE__) . '/update_exchange_rates.php >/dev/null 2>&1';
-        $cron_job_email_campaign = '/usr/local/bin/php -q '.dirname(__FILE__) . '/email_campaign_job.php >/dev/null 2>&1';
-        $cron_job_search_index = '/usr/local/bin/php -q '.dirname(__FILE__) . '/update_search_index.php >/dev/null 2>&1';
-        $cron_job_seo_score = '/usr/local/bin/php -q '.dirname(__FILE__) . '/seo_score_job.php >/dev/null 2>&1';
-        $cron_job_seo_analyze = '/usr/local/bin/php -q '.dirname(__FILE__) . '/seo_analyze_job.php >/dev/null 2>&1';
-        $cron_job_requrring_payment = '/usr/local/bin/php -q '.dirname(__FILE__) . '/recurring_payment_job.php >/dev/null 2>&1';
-        $cron_job_membership = '/usr/local/bin/php -q '.dirname(__FILE__) . '/membership_job.php >/dev/null 2>&1';
-        $cron_job_auto_backup = '/usr/local/bin/php -q '.dirname(__FILE__) . '/auto_backup.php >/dev/null 2>&1';
-        $cron_job_webhook = '/usr/local/bin/php -q '.dirname(__FILE__) . '/api_webhook_job.php >/dev/null 2>&1';
-        $cron_job_push = '/usr/local/bin/php -q '.dirname(__FILE__) . '/push_job.php >/dev/null 2>&1';
+        $cron_job_general = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/job.php >/dev/null 2>&1';
+        $cron_job_exchange_rates = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/update_exchange_rates.php >/dev/null 2>&1';
+        $cron_job_email_campaign = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/email_campaign_job.php >/dev/null 2>&1';
+        $cron_job_search_index = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/update_search_index.php >/dev/null 2>&1';
+        $cron_job_seo_score = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/seo_score_job.php >/dev/null 2>&1';
+        $cron_job_seo_analyze = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/seo_analyze_job.php >/dev/null 2>&1';
+        $cron_job_requrring_payment = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/recurring_payment_job.php >/dev/null 2>&1';
+        $cron_job_membership = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/membership_job.php >/dev/null 2>&1';
+        $cron_job_auto_backup = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/auto_backup.php >/dev/null 2>&1';
+        $cron_job_webhook = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/api_webhook_job.php >/dev/null 2>&1';
+        $cron_job_push = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/push_job.php >/dev/null 2>&1';
     }
     $output_warnings_for_auto_backup = '';
     if (!extension_loaded('pdo_mysql') ) {

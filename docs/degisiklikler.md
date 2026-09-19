@@ -41,6 +41,61 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Ayarlar ekranları, private label ve kurulum: config.php yazımı ve sessiz kayıp kayıtlar (2026-09-18)
+
+**Belirti.** Güvenlik incelemesinin ikinci turu (issue #60), ayarlar
+katmanında on üç bulgu çıkardı. Beşi orta: `update_config_define()` değeri
+`preg_replace` yerine-koyma metni olarak kullanıyordu, `$1` ya da `\`
+içeren bir değer geri-başvuru sayılıyor ve sonu ters bölü ile biten bir
+değer `config.php`'yi kapanmamış string ile bırakıyordu (site tümden
+düşer). `private_label.php` dosyayı okuma başarısız olsa bile `w` ile açıp
+sıfırlıyor, ardından okuma tutamacını (`$fd`) denetlediği için boş dosya
+öyle kalıyordu; on iki `define()` ekleme satırı da değeri kaçışsız
+gömüyordu. Genel ekranda `hostname`'den şema soyulan `$hostname`
+hesaplanıyor ama `UPDATE`'e `post_value('hostname')` yazılıyordu — soyma
+etkisizdi; `subscription_key` `isset()`'ten önce okunuyordu. Cron kartındaki
+komutlar `dirname(__FILE__)` ile `includes/settings/` altını gösteriyordu;
+iş betikleri kökte durur. Düşükler: E-Fatura kartında çevrilmemiş
+etiketler, Iyzipay taksit listesinin 0/NULL değerde boş gelmesi, ERP
+kartının kayıt defterinde bölüm olmaması, kurulumda yönetici parolasının
+MD5 kalması, private label ekranının varsayılan stil sayfasını hiç var
+olmamış bir yolla karşılaştırması ve ekranın tümüyle çevrilmemiş olması.
+
+**Çözüm.** `update_config_define()` değeri `addcslashes($value, "\\'")`
+ile kaçırır ve yerine-koyma metnini `addcslashes(..., '\\$')` ile
+literal kılar; `edit_config.php` `LOCKED_PAGES` bloğu için aynı kaçışı
+yapar. Yeni `pg_write_config_file($content)` (`includes/fn/core.php`) boş
+içeriği reddeder, metni yan geçici dosyaya yazıp `config.php` üzerine
+`rename` eder (yarım dosya görülmez), dizin yazılabilir değilse yerinde
+yazmaya düşer ve dosyanın modunu korur. `edit_config.php`,
+`private_label.php` ve şifreleme anahtarı sıfırlama (`commerce.save.php`)
+artık bu yardımcıdan geçer; private label değişmeyen içeriği yazmaz, okuma
+başarısızsa hata verir, `define()` eklemeleri `update_config_define()`'a
+devredilir. Genel ekran `hostname`'i `#^https?://#i` ile soyup soyulmuş
+değeri yazar; `subscription_key` `post_value()` ile okunur. Cron komutları
+`PG_FUNCTIONS_DIR`'den kurulur. `screen.php` yönlendirmeden sonra
+`exit` eder (kaydın reddi zaten 7d93fe6'da `check_form_errors()` ile
+kapatılmıştı). Iyzipay taksit listesi her zaman kurulur, seçili değer
+yoksa "Taksit yok". Kayıt defterine `pgset-erp` bölümü eklendi.
+Kurulum, yükseltmeler `user_password_algo` sütununu ekledikten sonra
+`pg_password_store()` ile yönetici satırını modern hash'e çevirir.
+Varsayılan panel stil sayfası URL'si tek yardımcıda toplandı
+(`pg_default_control_panel_stylesheet_url()`, `init.php` ve `output.php`
+de onu kullanır). E-Fatura ve private label etiketleri `lang()`'e alındı;
+Paraşüt'ün kendi alan adları `Parasut field: {var:1}` anahtarıyla
+değişken olarak girer. Mcrypt bağımlılığı (`commerce.save.php:76`) ve
+`User Name` anahtarı önceki commit'lerde (df7d6e5, 761c550) zaten
+giderilmişti. **Şema değişikliği yok.**
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Çıkarılan
+`update_config_define()` / `pg_write_config_file()` fonksiyonları
+sandbox'ta `$1`, `\1`, sona ters bölü ve tek tırnak içeren değerlerle
+denendi: yazılan dosya PHP tarafından hatasız yüklendi, değerler birebir
+geri okundu, boş içerik reddedildi, mod korundu. Çalışan örnek
+kurulmadı; ekran akışları statik olarak izlendi.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`

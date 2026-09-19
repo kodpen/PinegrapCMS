@@ -414,15 +414,15 @@ $pg_settings_cards[] = '
                                                                <div class="row gy-3">
                                                                     <div class="col-12 "><h6 class="text-muted">' . lang('API Connection') . '</h6></div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_client_id">Client ID</label>
+                                                                        <label class="form-label" for="parasut_client_id">' . lang('Client ID') . '</label>
                                                                         <input type="text" class="form-control" id="parasut_client_id" name="parasut_client_id" value="' . h($parasut_client_id) . '" autocomplete="off" />
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_client_secret">Client Secret</label>
+                                                                        <label class="form-label" for="parasut_client_secret">' . lang('Client Secret') . '</label>
                                                                         <input type="password" class="form-control" id="parasut_client_secret" name="parasut_client_secret" value="" autocomplete="new-password" placeholder="' . h($parasut_credential_placeholder) . '" />
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_username">' . lang('Username') . ' (E-posta)</label>
+                                                                        <label class="form-label" for="parasut_username">' . lang('Username') . ' (' . lang('Email') . ')</label>
                                                                         <input type="text" class="form-control" id="parasut_username" name="parasut_username" value="' . h($parasut_username) . '" autocomplete="off" />
                                                                     </div>
                                                                     <div class="pg-f-md">
@@ -431,7 +431,7 @@ $pg_settings_cards[] = '
                                                                         <div class="form-text">' . h($parasut_credential_help) . '</div>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_company_id">' . lang('Company ID') . ' <span class="text-muted small">(Firma No)</span></label>
+                                                                        <label class="form-label" for="parasut_company_id">' . lang('Company ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')</span></label>
                                                                         <input type="text" class="form-control" id="parasut_company_id" name="parasut_company_id" value="' . h($parasut_company_id) . '" autocomplete="off" />
                                                                         <div class="form-text">' . lang('You can find your Company ID in the Parasut URL: app.parasut.com/v4/{company_id}') . '</div>
                                                                     </div>
@@ -441,12 +441,12 @@ $pg_settings_cards[] = '
                                                                         <select class="form-select" id="parasut_tc_in_field" name="parasut_tc_in_field">' . $parasut_tc_in_field_options . '</select>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="text-muted small">(Varsayılan Ürün/Hizmet)</span></label>
+                                                                        <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Ürün/Hizmet'))) . ')</span></label>
                                                                         <input type="text" class="form-control" id="parasut_default_product_id" name="parasut_default_product_id" value="' . h($parasut_default_product_id) . '" autocomplete="off" />
                                                                         <div class="form-text">' . lang('Parasut product/service ID used for all invoice line items. Create a generic product in Parasut and enter its ID here.') . '</div>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="text-muted small">(Varsayılan Depo)</span></label>
+                                                                        <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Depo'))) . ')</span></label>
                                                                         <input type="text" class="form-control" id="parasut_default_warehouse_id" name="parasut_default_warehouse_id" value="' . h($parasut_default_warehouse_id) . '" autocomplete="off" />
                                                                         <div class="form-text">' . lang('Fetched automatically from Parasut on first use. Override here if you have multiple warehouses.') . '</div>
                                                                     </div>

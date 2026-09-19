@@ -39,11 +39,7 @@ function output_control_panel_header_includes($include_assistant = true)
     }
 
     if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
-        define(
-            'CONTROL_PANEL_STYLESHEET_URL',
-            PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' .
-            @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css')
-        );
+        define('CONTROL_PANEL_STYLESHEET_URL', pg_default_control_panel_stylesheet_url());
     }
     if (!defined('CUSTOM_CSS')) {
         define('CUSTOM_CSS', '');
@@ -736,6 +732,15 @@ function pg_widget_empty($icon, $message, $tone = '', $action_label = '', $actio
     return $output . '</div>';
 }
 
+
+// The stylesheet the control panel loads when config.php does not name one.
+// init.php defines CONTROL_PANEL_STYLESHEET_URL from this, and private_label.php
+// compares against it to tell a private-label stylesheet from the default.
+function pg_default_control_panel_stylesheet_url()
+{
+    return PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' .
+        @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+}
 
 function output_header_secure($properties = false)
 {

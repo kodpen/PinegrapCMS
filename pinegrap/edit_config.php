@@ -89,7 +89,7 @@ $config_parsed  = parse_config_file(CONFIG_FILE_PATH);
 // ── Field group definitions ────────────────────────────────────────────────
 // [KEY, input_type, label, hint, readonly, default]
 // input_type : 'text' | 'password' | 'boolean' | 'select:opt1,opt2' | 'locked_pages'
-// default    : null = bilgi gösterme | '' = Boş | true/false = bool | 'string' = metin
+// default    : null = no default shown | '' = Empty | true/false = bool | 'string' = text
 $config_groups = [
 
     lang('Database Settings') => [
@@ -176,7 +176,7 @@ function render_config_field($liveform, $key, $type, $label, $hint, $readonly, $
         ? '<div class="form-text text-muted small">' . h($hint) . '</div>'
         : '';
 
-    // Varsayılan değer bilgisi (null ise gösterilmez)
+    // Default value hint (hidden when null)
     if ($default !== null) {
         if ($default === true)        $dval = 'true';
         elseif ($default === false)   $dval = 'false';
@@ -189,7 +189,7 @@ function render_config_field($liveform, $key, $type, $label, $hint, $readonly, $
     $ro_attr    = $readonly ? ' readonly' : '';
     $ro_class   = $readonly ? ' bg-secondary bg-opacity-10' : '';
 
-    // ── boolean: 3 durumlu select (Not Selected / true / false) ────────
+    // ── boolean: 3-state select (Not Selected / true / false) ──────────
     if ($type === 'boolean') {
         if ($current === true)       { $sel_true = ' selected'; $sel_false = ''; $sel_none = ''; }
         elseif ($current === false)  { $sel_true = ''; $sel_false = ' selected'; $sel_none = ''; }
@@ -427,9 +427,11 @@ foreach ($config_groups as $fields) {
                 }
                 $new_block = "const LOCKED_PAGES = array(\n" . $arr_items . ");";
                 if (preg_match('/const LOCKED_PAGES\s*=\s*array\s*\(.*?\);/si', $config_content)) {
+                    // The block carries file names; "$1" and "\\" in them
+                    // must stay literal in the replacement.
                     $config_content = preg_replace(
                         '/const LOCKED_PAGES\s*=\s*array\s*\(.*?\);/si',
-                        $new_block,
+                        addcslashes($new_block, '\\$'),
                         $config_content
                     );
                 } else {
@@ -446,7 +448,7 @@ foreach ($config_groups as $fields) {
             continue;
         }
 
-        // ── Boolean: artık 3 seçenekli select — '' / 'true' / 'false' ──────
+        // ── Boolean: 3-option select — '' / 'true' / 'false' ───────────────
         if ($type === 'boolean') {
             $val = isset($_POST[$field_name]) ? trim($_POST[$field_name]) : '';
             if ($val === '') {
@@ -499,14 +501,11 @@ if (($posted_version !== '') && ($posted_version !== $stored_version)) {
 if ($config_content === $config_raw) {
     $liveform->add_notice(lang('No changes detected. Config file was not modified.'));
 } else {
-    $write_handle = fopen(CONFIG_FILE_PATH, 'w');
-    if ($write_handle) {
-        fwrite($write_handle, $config_content);
-        fclose($write_handle);
+    if (pg_write_config_file($config_content)) {
         log_activity(lang('Config was modified'), $_SESSION['sessionusername']);
         $liveform->add_notice(lang('The config settings have been saved.'));
     } else {
-        $liveform->add_error(lang('Config file could not be opened.'));
+        $liveform->add_error(lang('The config file could not be written.'));
     }
 }
 

@@ -5044,6 +5044,14 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 
 		}
 
+		// The administrator row above was written as MD5 because the starter
+		// template predates user_password_algo. Now that the upgrades have added
+		// the column, store the modern hash right away instead of leaving the
+		// MD5 in place until the first sign-in upgrades it.
+		if (function_exists('pg_password_store') && install_column_exists('user', 'user_password_algo')) {
+			pg_password_store($user_id, $liveform->get_field_value('admin_password'));
+		}
+
 		add_install_step(lang('The installation is complete'), $software_version);
 
 		log_activity(lang('The software was installed'), $liveform->get_field_value('admin_username'));

@@ -752,7 +752,7 @@ if (!defined('LOGO_URL')) {
 
 // Check if we need to set a default value for control_panel_stylesheet_url
 if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
-    define('CONTROL_PANEL_STYLESHEET_URL', PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' . @filemtime(dirname(__FILE__) . '/assets/css/backend.src.css'));
+    define('CONTROL_PANEL_STYLESHEET_URL', pg_default_control_panel_stylesheet_url());
 }
 
 
