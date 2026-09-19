@@ -484,7 +484,7 @@ if ($number_of_results > 0) {
                 $output_properties .= 'SingleImage:true,';
             }
             if(($_GET['file_input_name'] ?? '')){
-                $output_properties .= 'file_input_name:\''  . ($_GET['file_input_name'] ?? '') . '\',';
+                $output_properties .= 'file_input_name:\'' . h(escape_javascript($_GET['file_input_name'] ?? '')) . '\',';
             }
             $output_onclick = 'window.opener.software_image_picker({' . $output_properties . 'return:true,file_id:' . $images[$key]['file_id'] . ',image_name: \'' . h(escape_javascript(encode_url_path($images[$key]['name']))) . '\'}); window.close();';
         }

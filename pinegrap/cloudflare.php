@@ -18,7 +18,8 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'manager');
+// Administrators only, like the settings menu entry that leads here.
+validate_area_access($user, 'administrator');
 
 include_once('liveform.class.php');
 
@@ -178,8 +179,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // A DNS record id is a 32-character hex string. Anything else is refused
+    // before it can become part of the API path.
+    $record_id = isset($_POST['id']) ? (string)$_POST['id'] : '';
+    if (($action === 'edit_record' || $action === 'delete_record') && (preg_match('/^[a-f0-9]{32}$/', $record_id) !== 1)) {
+        $liveform->mark_error('error', lang('The DNS record ID is not valid.'));
+        $action = '';
+    }
+
     if ($action === 'edit_record') {
-        $resp = cf_request('PUT', "zones/{$CF_ZONE_ID}/dns_records/" . $_POST['id'], $payload, $CF_API_BASE, $CF_API_TOKEN);
+        $resp = cf_request('PUT', "zones/{$CF_ZONE_ID}/dns_records/" . $record_id, $payload, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $msg = lang('Edit record failed');
             if (!empty($resp['json']['errors'][0]['message'])) {
@@ -192,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'delete_record') {
-        $resp = cf_request('DELETE', "zones/{$CF_ZONE_ID}/dns_records/" . $_POST['id'], null, $CF_API_BASE, $CF_API_TOKEN);
+        $resp = cf_request('DELETE', "zones/{$CF_ZONE_ID}/dns_records/" . $record_id, null, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $liveform->mark_error('error', lang('Delete record failed'));
         } else {
@@ -289,6 +298,12 @@ if (!($resp_dns['status'] === 200 && !empty($resp_dns['json']['success']))) {
     } else {
         $permission_errors[] = lang(array('string' => 'DNS records request failed: {var:1}', 'vars' => $err));
     }
+}
+
+// Without this a token lacking the DNS permission produced an empty record
+// table and no explanation; the reasons are shown with the other form errors.
+foreach ($permission_errors as $index => $permission_error) {
+    $liveform->mark_error('permission_' . $index, $permission_error);
 }
 
 $records = ($resp_dns['status'] === 200 && !empty($resp_dns['json']['success']))

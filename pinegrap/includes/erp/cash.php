@@ -24,6 +24,22 @@ if (!defined('PG_ERP_ENTRY')) {
 }
 
 /**
+ * The members of erp_cash_transactions.payment_method, in the order the
+ * receipt form offers them.
+ *
+ * Kept next to the write so the form and the column cannot drift apart again:
+ * the connection runs without strict mode, and a value outside the enum is
+ * stored as the empty member with no error, which is how cheque receipts once
+ * lost their method.
+ *
+ * @return string[]
+ */
+function erp_cash_payment_methods()
+{
+    return array('cash', 'transfer', 'card', 'cheque', 'other');
+}
+
+/**
  * Append one movement to a till or bank account.
  *
  * Runs inside the caller's transaction, like its counterpart in the ledger.
@@ -152,6 +168,16 @@ function erp_post_receipt($data)
         return $fail(lang('Choose a till or bank account.'));
     }
 
+    // Checked here and not in erp_cash_post(): a cancellation copies the
+    // original row's method onto the reversal, and rows written before the
+    // enum was widened may hold the empty member. Refusing them there would
+    // make those receipts impossible to cancel.
+    $payment_method = (string) ($data['payment_method'] ?? 'cash');
+
+    if (!in_array($payment_method, erp_cash_payment_methods(), true)) {
+        return $fail(lang('Choose a payment method.'));
+    }
+
     $base = erp_base_currency();
     $currency = erp_fx_enabled() ? strtoupper(trim((string) ($data['currency'] ?? $base))) : $base;
     $exchange_rate = ($currency === $base) ? 1.0 : (float) ($data['exchange_rate'] ?? 0);
@@ -195,7 +221,7 @@ function erp_post_receipt($data)
         'cash_account_id' => $cash_account_id,
         'direction' => $is_collection ? 'in' : 'out',
         'account_id' => $account_id,
-        'payment_method' => $data['payment_method'] ?? 'cash',
+        'payment_method' => $payment_method,
         'doc_type' => $is_collection ? 'collection' : 'payment',
     ));
 

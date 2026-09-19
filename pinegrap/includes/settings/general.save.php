@@ -21,10 +21,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 
     
-    $hostname = $_POST['hostname'];
-    // Remove http:// or https:// from hostname.
-    $hostname = preg_replace('/http:\/\//i', '', $hostname);
-    $hostname = preg_replace('/https:\/\//i', '', $hostname);
+    // Remove a leading http:// or https:// from the hostname; the scheme is
+    // kept in url_scheme and a pasted URL must not end up in the column.
+    $hostname = trim((string) post_value('hostname'));
+    $hostname = preg_replace('#^https?://#i', '', $hostname);
     
     // Secure Mode - the url_scheme column - is saved by the Firewall screen,
     // next to HSTS and the trusted proxies it depends on. It must not be
@@ -48,10 +48,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_software_language ="software_language = '" . escape($_POST['software_language'] ?? '') . "',";
     }
    
-    //prepare subscription_key for write to db
-    $subscription_key = str_replace('-','',$_POST['subscription_key']);
-    // check if subscription_key is set and subscription_key not equal to db subscription_key
-    if(isset($_POST['subscription_key']) && $_POST['subscription_key'] != SUBSCRIPTION_KEY){
+    // prepare subscription_key for write to db
+    $subscription_key_posted = post_value('subscription_key');
+    $subscription_key = str_replace('-', '', (string) $subscription_key_posted);
+    // check if subscription_key was posted and differs from the stored key
+    if (($subscription_key_posted !== null) && ($subscription_key_posted != SUBSCRIPTION_KEY)) {
         //remove all session about license, we will set it from license_check() again.
         unset($_SESSION['software']['settings']['license']['last_check']);
         unset($_SESSION['software']['settings']['license']['countdown']);
@@ -103,7 +104,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
-            hostname = '" . escape(post_value('hostname')) . "',
+            hostname = '" . escape($hostname) . "',
             email_address = '" . escape(post_value('email_address')) . "',
             proxy_address = '" . escape(post_value('proxy_address')) . "',
             debug = '" . escape(post_value('debug')) . "',

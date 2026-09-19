@@ -361,7 +361,16 @@ foreach ($order_items as $order_item) {
                 }
                 
                 // set values that will be updated
-                $recurring_payment_period = $liveform->get_field_value('recurring_payment_period_' . $order_item['id']);
+                $recurring_payment_period = (string) $liveform->get_field_value('recurring_payment_period_' . $order_item['id']);
+
+                // Only a period from the fixed option list may be stored: the value
+                // comes straight from the customer's POST and is later shown in the
+                // cart and on the order. Anything else is dropped and the customer
+                // is asked to pick again.
+                if (in_array($recurring_payment_period, array_values(get_payment_period_options()), true) == false) {
+                    $liveform->mark_error('recurring_payment_period_' . $order_item['id'], lang('Frequency is required.'));
+                    $recurring_payment_period = '';
+                }
                 $recurring_number_of_payments = $liveform->get_field_value('recurring_number_of_payments_' . $order_item['id']);
                 
                 // if credit/debit card payment method is not enabled or the payment gateway is not ClearCommerce, then set start date to the value that the customer entered

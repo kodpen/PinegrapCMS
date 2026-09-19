@@ -255,6 +255,18 @@ if (!$_POST) {
     $_POST['username'] = trim($_POST['username']);
     $_POST['email'] = trim($_POST['email']);
 
+    // The role arrives as text. Cast it before the ceiling check so a
+    // non-numeric value cannot slip past the comparison and reach the SQL,
+    // where a lenient server would store it as 0 (administrator).
+    if (isset($_POST['role'])) {
+        $_POST['role'] = (int) $_POST['role'];
+
+        if (in_array($_POST['role'], array(0, 1, 2, 3), true) == false) {
+            log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+    }
+
     // if editor is not an administrator and the editor's role is less than or equal to the role that the editor is trying to set, then output error
     if (($user['role'] != 0) && ($user['role'] >= $_POST['role'])) {
         log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
@@ -346,12 +358,16 @@ if (!$_POST) {
             '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
     }
     
+    // Modern password hash plus the algo stamp; see pg_password_insert_fragments().
+    $sql_password = pg_password_insert_fragments($random_password);
+
     // insert row into user table
     $query =
         "INSERT INTO user (
             user_username,
             user_email,
             user_password,
+            {$sql_password['algo_column']}
             user_role,
             user_home,
             user_badge,
@@ -383,7 +399,8 @@ if (!$_POST) {
         VALUES (
             '" . escape($_POST['username'] ?? '') . "',
             '" . escape($_POST['email'] ?? '') . "',
-            '" . md5($random_password) . "',
+            " . $sql_password['password'] . ",
+            {$sql_password['algo_value']}
             '" . escape($_POST['role'] ?? '') . "',
             '" . escape($_POST['home_page'] ?? '') . "',
             '" . escape($_POST['badge'] ?? '') . "',
@@ -640,15 +657,17 @@ if (!$_POST) {
             || ($_POST['manage_erp'] ?? '')
             || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
         ) {
+            // The link leaves the request in an e-mail, so it is built from the
+            // configured host name rather than the Host header of this request.
             $login = 
                 lang('Login') . ':' . "\n" .
-                URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . "\n";
+                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/' . "\n";
 
         // else if there was a send to page selected for this user        
         } elseif ($_POST['home_page']) {
             $login =
                 lang('Login') . ':' . "\n" .
-                URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . encode_url_path(get_page_name($_POST['home_page'])) . "\n";
+                URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(get_page_name($_POST['home_page'])) . "\n";
         }
 
         // e-mail user random password

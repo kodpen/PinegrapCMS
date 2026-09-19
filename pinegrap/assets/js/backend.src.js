@@ -8155,13 +8155,20 @@ function pg_background_calls_allowed() {
 (function () {
     if (!pg_background_calls_allowed()) { return; }
 
+    // software_token is defined globally by the backend header script; the
+    // endpoint refuses the call without it, so there is nothing to send then.
+    var token = (typeof software_token !== 'undefined') ? software_token : '';
+
+    if (!token) { return; }
+
     setTimeout(function () {
 
         $.ajax({
             contentType: "application/json",
             url: pg_api_url(),
             data: JSON.stringify({
-                action: "sitemap_check"
+                action: "sitemap_check",
+                token: token
             }),
             type: "POST"
         });

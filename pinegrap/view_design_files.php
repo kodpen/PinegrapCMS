@@ -35,7 +35,7 @@ if (isset($_REQUEST['sort'])) {
 // if order was set, update session
 if (isset($_REQUEST['order'])) {
     // store sort in session
-    $_SESSION['software']['design']['view_design_files']['order'] = $_REQUEST['order'];
+    $_SESSION['software']['design']['view_design_files']['order'] = sql_order_direction($_REQUEST['order'], '');
 }
 
 $output_clear_button = '';
@@ -78,7 +78,7 @@ switch (($_SESSION['software']['design']['view_design_files']['sort'] ?? '')) {
 }
 
 if (!empty($_SESSION['software']['design']['view_design_files']['order'])) {
-    $asc_desc = ($_SESSION['software']['design']['view_design_files']['order'] ?? '');
+    $asc_desc = sql_order_direction($_SESSION['software']['design']['view_design_files']['order'] ?? '');
 } elseif ($sort_column == 'timestamp') {
     $asc_desc = 'desc';
     $_SESSION['software']['design']['view_design_files']['order'] = 'desc';
@@ -205,7 +205,7 @@ if ($files) {
             $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
 
             // Output thumnail.
-            $output_thumbnail ='<img style="width: 50px;height:50px;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $file['name'] . '" />';
+            $output_thumbnail ='<img style="width: 50px;height:50px;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
 
         } else {
 

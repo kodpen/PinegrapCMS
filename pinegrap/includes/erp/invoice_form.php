@@ -322,6 +322,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                         'type' => 'text', 'id' => 'due_date', 'name' => 'due_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
+                    <div class="form-text">' . lang('Leave empty for the account\'s payment term, or the store default.') . '</div>
                 </div>
                 ' . $output_fx . '
             </div>
@@ -450,7 +451,9 @@ function erp_invoice_form_prefill($liveform, $invoice = null, $direction = 'sale
 
     $liveform->assign_field_value('direction', ($direction === 'purchase') ? 'purchase' : 'sales');
     $liveform->assign_field_value('issue_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
-    $liveform->assign_field_value('due_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
+    // Left empty so the account's payment term applies when the form is
+    // saved; a date typed here always wins over the term.
+    $liveform->assign_field_value('due_date', '');
     $liveform->assign_field_value('currency', erp_base_currency());
     $liveform->assign_field_value('exchange_rate', '');
 }
@@ -495,7 +498,7 @@ function erp_invoice_form_read($liveform, $user)
         return $fail('due_date', lang('Please enter a valid date.'));
     }
     if ($due_date === '') {
-        $due_date = $issue_date;
+        $due_date = erp_account_due_date((int) $liveform->get_field_value('account_id'), $issue_date);
     }
 
     $direction = ((string) $liveform->get_field_value('direction') === 'purchase') ? 'purchase' : 'sales';

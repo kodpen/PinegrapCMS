@@ -664,6 +664,8 @@ define('ERP_SELLER_TAX_OFFICE', $row['erp_seller_tax_office'] ?? '');
 define('ERP_FX_ENABLED', isset($row['erp_fx_enabled']) ? (int) $row['erp_fx_enabled'] : 0);
 define('ERP_FX_CURRENCIES', $row['erp_fx_currencies'] ?? 'USD,EUR,GBP');
 define('ERP_FX_AUTO_DIFF', isset($row['erp_fx_auto_diff']) ? (int) $row['erp_fx_auto_diff'] : 1);
+define('ERP_DEFAULT_DUE_DAYS', isset($row['erp_default_due_days']) ? (int) $row['erp_default_due_days'] : 0);
+
 // Overdue receivable reminders; zero days is off. The switches default on so
 // that setting the days is the only step.
 define('ERP_OVERDUE_NOTIFY_DAYS', isset($row['erp_overdue_notify_days']) ? (int) $row['erp_overdue_notify_days'] : 0);
@@ -761,7 +763,7 @@ if (!defined('LOGO_URL')) {
 
 // Check if we need to set a default value for control_panel_stylesheet_url
 if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
-    define('CONTROL_PANEL_STYLESHEET_URL', PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' . @filemtime(dirname(__FILE__) . '/assets/css/backend.src.css'));
+    define('CONTROL_PANEL_STYLESHEET_URL', pg_default_control_panel_stylesheet_url());
 }
 
 

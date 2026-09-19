@@ -89,7 +89,7 @@ if (!$_POST)
         break;
     }
     // if user does not have access to edit this file, or if it is a design file, then output error
-    if (($user['role'] == 3) && ((check_edit_access($folder_id) == false) || ($file_design == 1)))
+    if (($user['role'] == 3) && ((check_edit_access($folder_id) == false) || ($design == 1)))
     {
         log_activity(lang('access denied to edit image with Image Editor because user does not have access to edit image'), $_SESSION['sessionusername']);
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -274,7 +274,7 @@ if (!$_POST)
             ImageEditorLocale.shapeTitleTextColor = "' . lang('Text Color') . '";
             // inline
             var editor = $(".inline-editor").doka({
-                src: "' . $image_location . '",
+                src: ' . json_encode($image_location, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ',
                 imageReader: createDefaultImageReader(),
                 imageWriter: createDefaultImageWriter(),
                 cropEnableInfoIndicator: true,
@@ -363,9 +363,9 @@ if (!$_POST)
                         <form id="image_form" name="form" action="image_editor_edit.php" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="file_id" value="' . $file_id . '" />
-                            <input type="hidden" name="send_to" value="' . $send_to . '" />
-                            <input type="hidden" name="object_type" value="' . $object_type . '" />
-                            <input type="hidden" name="object_id" value="' . $object_id . '" />
+                            <input type="hidden" name="send_to" value="' . h($send_to) . '" />
+                            <input type="hidden" name="object_type" value="' . h($object_type) . '" />
+                            <input type="hidden" name="object_id" value="' . h($object_id) . '" />
                             <input type="hidden" name="column_to_update" value="' . h($_GET['column_to_update'] ?? '') . '" />
                             <input type="hidden" name="image_file" value="" />
                             <input type="hidden" name="save_option" value="" />
@@ -394,6 +394,10 @@ if (!$_POST)
 }
 else
 {
+
+    // The save form carries the token; a POST from anywhere else must not be
+    // able to overwrite a file or write a new one.
+    validate_token_field();
 
     // get parameters from image editor
     $object_type = $_POST['object_type'];

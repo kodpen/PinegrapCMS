@@ -2448,7 +2448,7 @@ if (!$_POST) {
                             ' . $output_cancel_button . '
                             ' . $output_parasut_buttons . '
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <button type="button" class="btn btn-link link-secondary py-0 mb-2 position-relative" title="' . lang('Print Order') . '" onclick="window.open(\'print_order.php?id=' . $_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;""><span class="material-icons me-1">print</span>' . lang('Print') . '</a>
+                                <button type="button" class="btn btn-link link-secondary py-0 mb-2 position-relative" title="' . lang('Print Order') . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;""><span class="material-icons me-1">print</span>' . lang('Print') . '</a>
 
                             </div>
                         </nav>

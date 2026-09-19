@@ -507,9 +507,16 @@ function router_output_error($error_message) {
         $mysql_error = mysqli_error(db::$con);
     }
 
-    // if there is a MySQL error, then add that to the error message
+    // A database error goes to the server log in full. It is shown on the
+    // page only when verbose database errors are on - the same DEBUG gate
+    // output_error() uses - because the table and column names in it tell an
+    // anonymous visitor more about the schema than an error page should.
     if ($mysql_error !== '') {
-        $output_error_message .= ' ' . router_h($mysql_error);
+        error_log('Pinegrap router: ' . $error_message . ' ' . $mysql_error);
+
+        if (defined('DEBUG') && DEBUG) {
+            $output_error_message .= ' ' . router_h($mysql_error);
+        }
     }
     if(defined('EDITION')){
         define('EDITION', EDITION);

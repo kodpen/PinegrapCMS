@@ -139,7 +139,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 echo
 pg_page_shell(
     array(
-        'title'=> lang('All Orders for Contact') . ' : ' . $first_name  . ' ' . $last_name,
+        'title'=> lang('All Orders for Contact') . ' : ' . h($first_name . ' ' . $last_name),
         'extra classes'=>'contact',
         'icon'=>'contact',
         'heading'=>lang('All Orders for Contact'),

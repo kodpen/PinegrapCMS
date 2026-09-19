@@ -178,9 +178,9 @@ if (!$_POST) {
         
         
         if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_folder.php?send_to=' . $_REQUEST['send_to']);
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_folder.php?send_to=' . urlencode($_REQUEST['send_to']));
         } else {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_folder.php');
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_folder.php');
         }
         
         exit();

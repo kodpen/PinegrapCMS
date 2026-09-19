@@ -958,7 +958,7 @@ foreach ($files as $file) {
 
                 // If a pdftotext path has been found, then convert PDF to text.
                 if ($pdftotext_path != '') {
-                    $content = shell_exec($pdftotext_path . ' ' . FILE_DIRECTORY_PATH . '/' . $file['name'] . ' -');
+                    $content = shell_exec($pdftotext_path . ' ' . escapeshellarg(FILE_DIRECTORY_PATH . '/' . $file['name']) . ' -');
                 }
                 break;
 

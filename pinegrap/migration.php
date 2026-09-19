@@ -19,7 +19,8 @@
 
 include('init.php');
 $user = validate_user();
-validate_area_access($user, 'designer');
+// Administrators only, like the design menu entry that leads here.
+validate_area_access($user, 'administrator');
 
 if ((defined('MIG') == false) || (MIG != true)) {
     output_error(lang('This feature is not currently available.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');

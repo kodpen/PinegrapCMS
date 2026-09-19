@@ -372,6 +372,15 @@ if (!$_POST['name']) {
         // if parent has changed then execute
         if ($folder != $row['folder_parent'])
         {
+            // The gate at the top of the file covers the folder being moved;
+            // the destination is a second folder the user needs edit rights
+            // to, otherwise a basic user could move a branch out of the part
+            // of the tree they were given.
+            if (check_edit_access($folder) == false) {
+                log_activity(lang('access denied because user does not have access to modify folder'), $_SESSION['sessionusername']);
+                output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
             // Refuse a move into the folder itself or into its own subtree:
             // select_folder() hides those options, but the posted value is
             // not bound to the form. A cycle would detach the branch from the

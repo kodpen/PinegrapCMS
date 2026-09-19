@@ -243,6 +243,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 } else {
     $action = $_POST['action'] ?? '';
 
+    // Repair, update and the update check work on an existing installation,
+    // so they are only accepted from the signed-in administrator validated
+    // above, and only when the form carries that session's token. A
+    // half-installed copy (the directory exists but the database does not)
+    // has neither a user nor a token, so those actions are refused there;
+    // all it can do is finish the install wizard. A fresh install is only
+    // accepted while there is no software directory at all.
+    if (in_array($action, ['repair', 'update', 'check'], true)) {
+        if (!$is_installed) {
+            $_SESSION['software']['download_assistant']['message'] = 'Complete the installation before you run a repair, an update or an update check.';
+            header('Location: ' . $_SERVER['REQUEST_URI']);
+            exit;
+        }
+
+        validate_token_field();
+    } elseif (($action === 'install') && $is_existing) {
+        $_SESSION['software']['download_assistant']['message'] = 'The software directory already exists, so a new install is not offered.';
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
     if (in_array($action, ['install', 'repair', 'update'])) {
 
         $software_file = ($action === 'install') ? 'pinegrap_software.zip' : 'pinegrap_software_update.zip';
@@ -488,7 +509,7 @@ function output_download_assistant_html_content(
                 background-attachment: fixed;
                 min-height: 100vh;
                 color: #fff;
-                /* Animasyon */
+                /* Animation */
                 animation: gradientShift 30s ease infinite;
             }
 
@@ -516,7 +537,7 @@ function output_download_assistant_html_content(
             }
 
             
-            /* Gradient animasyonu */
+            /* Gradient animation */
             @keyframes gradientShift {
                 0%   { background-position: 0% 50%; }
                 50%  { background-position: 100% 50%; }
@@ -556,6 +577,7 @@ function output_download_assistant_html_content(
                         ' . ($version ? '<p class="text-muted">' . htmlspecialchars($version) . '</p>' : '') . '
 
                         <form method="post">
+                            ' . (function_exists('get_token_field') ? get_token_field() : '') . '
                             <div class="d-inline-block">
                                 ' . $install_btn . $update_btn . $repair_btn . '
                             </div>

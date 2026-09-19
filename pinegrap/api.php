@@ -202,6 +202,9 @@ if (
     // ownership, captcha and rate limiting live inside chat.php.
     and (strpos($action, 'site_chat_') !== 0)
 
+    // Every panel page fires the sitemap check whatever the visitor's role,
+    // so it is exempted from the role <= 1 gate below; the case block checks
+    // the session and the token for itself.
     and ($action != 'sitemap_check')
 
     and ($action != 'shared_component')
@@ -326,7 +329,21 @@ switch ($action) {
         break;
 
     case 'sitemap_check':
-        // No token validation required, it's a safe internal fallback trigger
+
+        // The action sits on the general gate's exemption list because every
+        // panel role's pages fire it, and that gate would turn away anyone
+        // above role 1. The exemption also skips the session and token checks,
+        // so they happen here: regenerating the sitemap and pinging the search
+        // engines is work an anonymous request must not be able to start.
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
+
+        validate_token();
+
         if (defined('DB_CONNECTED')) {
             $current_timestamp = time();
             if ($current_timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 259200)) {
@@ -1227,7 +1244,7 @@ switch ($action) {
                 // actually do about it, one to a line.
                 //
                 // The split is the point. This was a single grid in which
-                // "SSL · Tamam" and "Önbellek · Temizle" were the same shape --
+                // "SSL · OK" and "Cache · Clear" were the same shape --
                 // a reading and a button drawn identically, four characters
                 // wide. A reading is read; a job is pressed, and a job needs
                 // room for a verb and for the sentence that says what pressing
@@ -1450,8 +1467,8 @@ switch ($action) {
                     //
                     // A chip each, not a tile each. Twelve tiles across half a
                     // card put the label at nine pixels with the value at nine
-                    // more underneath, and at that size "Veritabanı" and
-                    // "Güncelleme" were both an ellipsis -- a grid of boxes
+                    // more underneath, and at that size "Database" and
+                    // "Update status" were both an ellipsis -- a grid of boxes
                     // whose labels had to be hovered to be read.
                     //
                     // The chip gets that width back by dropping the half that
@@ -1511,8 +1528,8 @@ switch ($action) {
                             ? $health_check['detail']
                             : array();
 
-                        // The value only when the check said it. "Tamam",
-                        // "Uyarı", "Sorun" and "Uygulanmaz" are the four words
+                        // The value only when the check said it. "OK",
+                        // "Warning", "Problem" and "Not applicable" are the four words
                         // functions.php puts in a check's mouth when it has
                         // none of its own -- they are the colour spelled out,
                         // and a red chip does not need to be told it is red.
@@ -1699,7 +1716,7 @@ switch ($action) {
                         } elseif (isset($job_check['href']) && ($job_check['href'] !== '')) {
 
                             // The verb belongs to the state, not to the row.
-                            // "Yazılım Güncelleme · 2026.4.4 · Güncelle" says
+                            // "Software Update · 2026.4.4 · Update" says
                             // an update is waiting when the middle of that line
                             // says the opposite -- the button is the loudest
                             // part of a row and it was contradicting the row.
@@ -1726,9 +1743,9 @@ switch ($action) {
                             'icon'   => $job_check['icon'],
                             'color'  => $job_check['color'],
                             // The full title, not the tile's short label. The
-                            // column has the width for "Web Sunucusu Kuralları"
+                            // column has the width for "Web Server Rules"
                             // and the point of moving these rows here was that
-                            // "Sunucu kuralları" in nine pixels was not telling
+                            // "Server rules" in nine pixels was not telling
                             // anybody what the row was about.
                             'name'   => $job_check['title'],
                             'note'   => $job_check['value'],
@@ -2512,7 +2529,7 @@ switch ($action) {
                         . $pg_count($quantity_total) . ' ' . lang('Piece(s)');
 
                     // Only when there is something to act on. A steady "0
-                    // tükendi" is a word the eye learns to skip, and then the
+                    // out of stock" is a phrase the eye learns to skip, and then the
                     // day it says 3 it gets skipped too.
                     if ($out_of_stock_count > 0) {
                         $output_stock_sub .= ' <span class="pg-ec-dot">&middot;</span> '
@@ -8628,23 +8645,39 @@ switch ($action) {
         // so increase the allowed execution time for the PHP script.
         ini_set('memory_limit', '512M');
         ini_set('max_execution_time', 500);
-        $step = $request['step'];
-        $backup_name = $request['backup_name'];
+        $step = isset($request['step']) ? (string) $request['step'] : '';
+        $backup_name = isset($request['backup_name']) ? (string) $request['backup_name'] : '';
 
         $backup_location = 'data/backups/';
-        $backup_folder_name = $backup_name;
+
+        // The name travels back to the client after every step and returns
+        // with the next one, so each step has to treat it as input. It is
+        // reduced once, here, to a single folder-name character class: path
+        // separators, dots and anything else outside it become underscores,
+        // which keeps every step's mkdir, dump, copy and unlink inside the
+        // backups directory. The result is stable under a second pass, so the
+        // name a step hands back is the name the next step will compute.
+        $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', basename($backup_name));
+
+        // Only the first step may start without a name; it makes its own. Every
+        // later step works on a folder that must already exist under a name.
+        if (($backup_folder_name === '') && ($step != 'create_backup_folder')) {
+            $response = array(
+                'status' => 'error',
+                'message' => lang('The backup name is not valid.')
+            );
+            echo encode_json($response);
+            exit();
+        }
 
         switch ($step) {
 
             case 'create_backup_folder':
-                if (!$backup_name) {
+                if ($backup_folder_name === '') {
                     $hostname_clean = defined('HOSTNAME') ? HOSTNAME : '';
                     $backup_name = ($hostname_clean ? $hostname_clean . '_' : '') . date('Y-m-d@H-i');
+                    $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', $backup_name);
                 }
-
-                // Replace remaining special characters (if any)
-                $sReplace = array('.', ',', '!', '?');
-                $backup_folder_name = str_replace($sReplace, '_', $backup_name);
 
                 //check if directory is exists
                 //if not exist Create directory.
@@ -8803,9 +8836,9 @@ switch ($action) {
                             if (file_exists($backup_location . $backup_folder_name . '/layouts')) {
                                 $liveform_backups = new liveform('backups');
 
-                                log_activity("Software Backup (" . $backup_name . ") Success", $_SESSION['sessionusername']);
+                                log_activity("Software Backup (" . $backup_folder_name . ") Success", $_SESSION['sessionusername']);
                                 // Add notice to liveform.
-                                $liveform_backups->add_notice('Software Backup (' . $backup_name . ') Create Success.');
+                                $liveform_backups->add_notice('Software Backup (' . $backup_folder_name . ') Create Success.');
                                 //return success json output
                                 $response = array(
                                     'status' => 'success',
@@ -9495,8 +9528,8 @@ switch ($action) {
     // table: every installmentNumber Iyzipay reports (typically 1, 2, 3, 6,
     // 9, 12 — but never assumed) up to the operator's ECOMMERCE_IYZIPAY_INSTALLMENT
     // cap, plus card metadata (cardAssociation, cardFamilyName, bankName) so
-    // the widget can render brand-aware UI ("Bonus / Garanti Bankası — 3
-    // taksit ₺X.XX/ay, toplam ₺Y.YY"). Wraps the same SDK call the legacy
+    // the widget can render brand-aware UI ("Bonus / Garanti — 3
+    // installments at ₺X.XX/month, ₺Y.YY total"). Wraps the same SDK call the legacy
     // `get_installment_options` action uses, but doesn't lose entries when
     // Iyzipay returns additional rows (e.g. 4-installment cards).
     //
@@ -11269,6 +11302,20 @@ switch ($action) {
     case 'update_dynamic_region':
         validate_token();
 
+        // A dynamic region is PHP that runs on every page it is placed on.
+        // Creating and editing one (add_dynamic_region.php,
+        // edit_dynamic_region.php) stands at administrator, and the page
+        // designer only offers the region editor to role 0, so the save
+        // endpoint holds the same line rather than the general designer gate.
+        $user = validate_user();
+
+        if ((int) $user['role'] !== 0) {
+            respond(array(
+                'status' => 'error',
+                'message' => lang('Access denied.'),
+            ));
+        }
+
         $dynamic_region = db_item(
             "SELECT dregion_id AS id
             FROM dregion
@@ -11786,7 +11833,7 @@ switch ($action) {
                             $parent_id = db("SELECT folder_parent FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
                             $parent_folder_name = db("SELECT folder_name FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
                             if ($parent_folder_name) {
-                                $output_parent_folder_name = '<li class="breadcrumb-item"><a class="text-body-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . $parent_id . '\'});">' . $parent_folder_name . '</a></li>' . $output_parent_folder_name;
+                                $output_parent_folder_name = '<li class="breadcrumb-item"><a class="text-body-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . (int) $parent_id . '\'});">' . h($parent_folder_name) . '</a></li>' . $output_parent_folder_name;
                             }
 
                         }
@@ -11797,7 +11844,7 @@ switch ($action) {
                         '<nav class="overflow-auto" style="--bs-border-opacity: 0.05;--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'8\' height=\'8\'%3E%3Cpath d=\'M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z\' fill=\'%236c757d\'/%3E%3C/svg%3E&#34;);">
                         <ol class="breadcrumb mb-0">
                             ' . $output_parent_folder_name . '
-                            <li class="breadcrumb-item active text-body" aria-current="page">' . $current_folder_name . '</li>
+                            <li class="breadcrumb-item active text-body" aria-current="page">' . h($current_folder_name) . '</li>
                         </ol>
                     </nav>';
                 }
@@ -12939,7 +12986,7 @@ switch ($action) {
                 ));
                 break;
 
-            // Pages the "Sayfa Seç" picker may offer: every visual-designer
+            // Pages the "Select Page" picker may offer: every visual-designer
             // page not already on this design, with the design it belongs to
             // now so the picker can say what attaching it will change.
             case 'selectable_pages':
@@ -12989,7 +13036,7 @@ switch ($action) {
             // Take a page OUT of its design. The page is not deleted — it
             // becomes a design of its own, carrying a copy of the shared
             // assets and theme so it keeps rendering exactly as before. This
-            // is the reversible move: "Sayfa Seç" brings it back. Deleting a
+            // is the reversible move: "Select Page" brings it back. Deleting a
             // page is the pages list's job.
             //
             // Refused for the design's last page: a design with no pages is a
@@ -13713,9 +13760,9 @@ switch ($action) {
 
             // ── LIST CATALOG LISTING PAGES ──────────────────────────────────
             // Returns pages that contain a catalog_listing system widget.
-            // Used by the catalog_item_view widget's "Katalog sayfası"
+            // Used by the catalog_item_view widget's "Catalog page"
             // picker — designer chooses which catalog page the breadcrumb
-            // crumbs (Ana Katalog → Group → …) and cross-sell card URLs
+            // crumbs (Main Catalog → Group → …) and cross-sell card URLs
             // should link back to.
             //
             // Mirrors list_catalog_detail_pages but keys on
@@ -13937,7 +13984,7 @@ switch ($action) {
         break;
 
     // ========================= DESIGNER FILES =========================
-    // Visual Pinegrap Editor's "Yeni CSS/JS/JSON Dosyası" actions create a real
+    // Visual Pinegrap Editor's "New CSS/JS/JSON File" actions create a real
     // file (disk + `files` row) at click time so the asset is available
     // immediately in View Files and is referenced via a stable URL — same
     // mechanism create_file.php uses for manual file creation.

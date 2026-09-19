@@ -113,7 +113,12 @@ function mp_import_order($account, $package) {
 
 	}
 
-	db("INSERT INTO marketplace_order_map
+	// Written through mysqli_query() rather than db(): here a duplicate key is
+	// not a failure but the answer, and db() ends the process on any failed
+	// statement, so the lost race could never have been reported. The unique
+	// key on (account_id, remote_package_id) refuses the second writer with
+	// error 1062; anything else is a real failure and is returned as one.
+	$claimed = @mysqli_query(db::$con, "INSERT INTO marketplace_order_map
 		(account_id, order_id, remote_order_id, remote_package_id, remote_status, status,
 		 lines_json, remote_timestamp, imported_timestamp, updated_timestamp)
 		VALUES (
@@ -128,14 +133,20 @@ function mp_import_order($account, $package) {
 			UNIX_TIMESTAMP(),
 			UNIX_TIMESTAMP())");
 
-	$map_id = (int) mysqli_insert_id(db::$con);
+	if ($claimed === false) {
 
-	if (!$map_id) {
+		if ((int) mysqli_errno(db::$con) === 1062) {
 
-		// Another pass claimed it between the read and the write. Theirs.
-		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+			// Another pass claimed it between the read and the write. Theirs.
+			return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+
+		}
+
+		return array('ok' => false, 'order_id' => 0, 'skipped' => false, 'error' => (string) mysqli_error(db::$con));
 
 	}
+
+	$map_id = (int) mysqli_insert_id(db::$con);
 
 	$order_id = mp_order_write($account, $package, $map_id);
 

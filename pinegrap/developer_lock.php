@@ -168,7 +168,7 @@ $(document).ready(function() {
     $liveform_settings = new liveform('developer_lock');
     $pin = str_replace("'", '', $_POST['pin']);
 
-    if (DEVELOPER_PIN == $pin) {
+    if (hash_equals((string) DEVELOPER_PIN, (string) $pin)) {
         $hash = md5($pin);
         $query = "UPDATE user
                   SET user_devpasspin = '" . mysqli_real_escape_string(db::$con, $hash) . "'

@@ -237,8 +237,12 @@ function get_form_item_view($properties) {
         // assume that the visitor does not have delete access until we find out otherwise
         $delete_access = false;
         
-        // if submitted form is editable by registered user, the visitor has access to edit and delete submitted form
-        if ($submitted_form_editable_by_registered_user == '1') {
+        // if submitted form is editable by registered user and the visitor is
+        // signed in, the visitor has access to edit and delete submitted form.
+        // The setting means any registered user, not any visitor: the edit
+        // form below is filled with every stored value, and
+        // edit_submitted_form.php requires a signed-in user anyway.
+        if (($submitted_form_editable_by_registered_user == '1') && (USER_LOGGED_IN == true)) {
             $edit_access = true;
             $delete_access = true;
             
@@ -273,7 +277,7 @@ function get_form_item_view($properties) {
             
             // if the visitor has office use only access, then remember that
             if (
-                ($user['role'] < 3)
+                (isset($user['role']) && ($user['role'] < 3))
                 || ((check_edit_access($folder_id) == true) && ($user['manage_forms'] == TRUE))
                 || ($user['id'] == $submitted_form['form_editor_user_id'])
             ) {
@@ -1356,7 +1360,7 @@ function get_form_item_view($properties) {
                     
                     // if there is a send to, then output the back button.
                     if ((isset($_GET['send_to']) == TRUE) && (($_GET['send_to'] ?? '') != '')) {
-                        $output_back_button = '<a href="' . h(escape_url(($_GET['send_to'] ?? ''))) . '" class="software_button_primary back_button">' . lang('Back') . '</a>&nbsp;&nbsp;&nbsp;';
+                        $output_back_button = '<a href="' . h(pg_safe_redirect_path($_GET['send_to'] ?? '')) . '" class="software_button_primary back_button">' . lang('Back') . '</a>&nbsp;&nbsp;&nbsp;';
                     }
                     
                     // if visitor has access to edit submitted form, then output edit button
@@ -1396,7 +1400,7 @@ function get_form_item_view($properties) {
                     
                     // If there is a send to, then output the back button.
                     if (($_GET['send_to'] ?? '')) {
-                        $back_button_url = escape_url(($_GET['send_to'] ?? ''));
+                        $back_button_url = pg_safe_redirect_path($_GET['send_to'] ?? '');
                     }
                     
                     // If visitor has access to edit submitted form, then output edit button.

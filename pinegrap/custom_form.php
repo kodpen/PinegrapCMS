@@ -846,11 +846,11 @@ if ($liveform->check_form_errors() == false) {
         // message; what is refused is the membership it would have created.
         && (pg_email_blocked($submitter_email_address) == false)
     ) {
-        // Check if user exists for email address.
-        $user_id = db_value("SELECT user_id FROM user WHERE user_email = '" . escape($submitter_email_address) . "'");
+        // Check if a user already exists for the email address.
+        $existing_user_id = db_value("SELECT user_id FROM user WHERE user_email = '" . escape($submitter_email_address) . "'");
 
         // If a user does not exist, then create user.
-        if (!$user_id) {
+        if (!$existing_user_id) {
             // Create a username by using everything before "@" in the email address,
             // and, if necessary, add numbers to the end to make it unique.
             $username = strtok($submitter_email_address, '@');
@@ -879,8 +879,7 @@ if ($liveform->check_form_errors() == false) {
             // If the user is not already logged in, then auto-login user.
             // The user might already be logged in if connect-to-contact was disabled.
             if (!USER_LOGGED_IN) {
-                $_SESSION['sessionuserid']  = db_value("SELECT user_id FROM user WHERE user_username = '" . escape($username) . "'");
-                $_SESSION['sessionusername'] = $username;
+                pg_session_sign_in($user_id, $username);
 
                 // Bind this fresh session to a device token while the device
                 // limit is on, so it counts toward the limit and can be signed
@@ -893,17 +892,24 @@ if ($liveform->check_form_errors() == false) {
                 log_activity(lang('user was auto-logged in by custom form auto-registration'), $_SESSION['sessionusername']);
             }
 
-        // Otherwise a user was found, so remember that.
+            // Update the submitter for the submitted form, so it matches
+            // the user we just created.
+            db(
+                "UPDATE forms
+                SET user_id = '$user_id'
+                WHERE id = '$form_id'");
+
+        // Otherwise a user was found, so remember that. A typed e-mail address
+        // is not proof of being that user, so the submission is not bound to
+        // the account: $user_id stays what the session says - empty for an
+        // anonymous visitor, or the signed-in user, who may well have typed
+        // their own address. Binding it would let anybody attach a submission
+        // to an account they do not own, and the membership start page and the
+        // private folder access granted further below would follow that
+        // account instead of the person who actually submitted the form.
         } else {
             $auto_registration_existing_user_found = true;
         }
-
-        // Update the submitter for the submitted form, so it matches
-        // the user we just found or created.
-        db(
-            "UPDATE forms
-            SET user_id = '$user_id'
-            WHERE id = '$form_id'");
     }
 
     $key_code = '';
@@ -1206,7 +1212,14 @@ if ($liveform->check_form_errors() == false) {
 
     // If the add watcher feature was used where a watcher can be passed via
     // the query string to the custom form, then get watcher info.
-    if ($liveform->field_in_session('add_watcher') == true) {
+    //
+    // The value arrives through a hidden field from the query string, so it is
+    // whatever the visitor chose to send. It is honoured only for a signed-in
+    // visitor who names themselves, or who may edit the custom form's folder
+    // and so could subscribe anybody to its submissions anyway. Without that,
+    // an anonymous request could make the site e-mail any registered user a
+    // submission with content of the sender's choosing.
+    if (USER_LOGGED_IN && ($liveform->field_in_session('add_watcher') == true)) {
         $add_watcher_user = db_item(
             "SELECT
                 user_id AS id,
@@ -1215,7 +1228,10 @@ if ($liveform->check_form_errors() == false) {
             WHERE
                 (user_username = '" . escape($liveform->get_field_value('add_watcher')) . "')
                 OR (user_email = '" . escape($liveform->get_field_value('add_watcher')) . "')");
-        if (!$add_watcher_user) {
+        if (
+            (!$add_watcher_user)
+            || (($add_watcher_user['id'] != USER_ID) && (check_edit_access($folder_id) == false))
+        ) {
             $add_watcher_user = array();
         }
     }
@@ -1492,26 +1508,27 @@ if ($liveform->check_form_errors() == false) {
         (!empty($add_watcher_user['id']))
         && ($liveform->get_field_value('add_watcher_page_id') != '')
     ) {
-        // Get details for form item view page.
-        // In the future the query below should probably make sure that form item view for page id
-        // that was passed is connected to the custom form that was just submitted,
-        // in order to prevent visitors from adding watchers to unrelated pages.
+        // Get details for form item view page. The page has to be a form item
+        // view of the custom form that was just submitted, so that a watcher
+        // cannot be added to an unrelated page through this field.
         $add_watcher_page = db_item(
             "SELECT
-                page_id AS id,
-                page_folder AS folder_id
+                page.page_id AS id,
+                page.page_folder AS folder_id
             FROM page
+            LEFT JOIN form_item_view_pages ON (form_item_view_pages.page_id = page.page_id) AND (form_item_view_pages.collection = 'a')
             WHERE
-                (page_id = '" . escape($liveform->get_field_value('add_watcher_page_id')) . "')
-                AND (page_type = 'form item view')
-                AND (comments = '1')
-                AND (comments_watcher_email_page_id != '0')");
+                (page.page_id = '" . escape($liveform->get_field_value('add_watcher_page_id')) . "')
+                AND (page.page_type = 'form item view')
+                AND (page.comments = '1')
+                AND (page.comments_watcher_email_page_id != '0')
+                AND (form_item_view_pages.custom_form_page_id = '" . escape($_POST['page_id'] ?? '') . "')");
 
         // If a page was found and this visitor has view access to the page,
         // then continue to add watcher.  Checking view access just makes sure that
         // visitor can't add watcher to some other page that they don't have access to.
         if (
-            ($add_watcher_page['id'] != '')
+            (!empty($add_watcher_page['id']))
             && (check_view_access($add_watcher_page['folder_id'], true) == true)
         ) {
             db(

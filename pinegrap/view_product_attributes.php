@@ -33,6 +33,11 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
+// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
+if (isset($_SESSION['software']['ecommerce']['view_product_attributes']['order'])) {
+    $_SESSION['software']['ecommerce']['view_product_attributes']['order'] = sql_order_direction($_SESSION['software']['ecommerce']['view_product_attributes']['order'], '');
+}
+
 // if the sort is not set yet, then default it to empty so that the switch below falls
 // through to its default case
 if (isset($_SESSION['software']['ecommerce']['view_product_attributes']['sort']) == false) {
@@ -91,7 +96,7 @@ $query =
     FROM product_attributes
     LEFT JOIN user AS created_user ON product_attributes.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON product_attributes.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? ''));
+    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['ecommerce']['view_product_attributes']['order'] ?? '');
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $product_attributes = mysqli_fetch_items($result);
 

@@ -25,9 +25,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $current_indexnow_key = db("SELECT indexnow_key FROM config");
     $current_indexnow_key = ($current_indexnow_key !== null) ? $current_indexnow_key : '';
     $new_indexnow_key     = isset($_POST['indexnow_key']) ? trim($_POST['indexnow_key']) : '';
+
+    // The key becomes a file name under the public files directory
+    // (<key>.txt) and, when it changes, the name of the file that is deleted,
+    // so it has to be a plain token before it reaches the file system. This
+    // is IndexNow's own format: 8 to 128 letters, digits and dashes.
+    $indexnow_key_pattern = '/^[A-Za-z0-9-]{8,128}$/';
+
+    if ($new_indexnow_key !== '' && !preg_match($indexnow_key_pattern, $new_indexnow_key)) {
+        $liveform->mark_error('indexnow_key', lang('The IndexNow key must be 8 to 128 characters long and may only contain letters, digits and dashes.'));
+        return;
+    }
     
-    // If old key exists and changed, delete old file and its DB record
-    if ($current_indexnow_key !== '' && $current_indexnow_key !== $new_indexnow_key) {
+    // If old key exists and changed, delete old file and its DB record. A
+    // stored key that does not fit the format is left alone rather than used
+    // as a path.
+    if ($current_indexnow_key !== '' && $current_indexnow_key !== $new_indexnow_key && preg_match($indexnow_key_pattern, $current_indexnow_key)) {
         $old_file_name = $current_indexnow_key . '.txt';
         $old_file_path = FILE_DIRECTORY_PATH . '/' . $old_file_name;
     

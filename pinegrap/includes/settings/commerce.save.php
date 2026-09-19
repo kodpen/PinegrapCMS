@@ -78,14 +78,11 @@ function pg_parasut_credentials_for_save()
         }
         
         // get contents of config.php file in order to reset encryption key
-        $config_content = file_get_contents(CONFIG_FILE_PATH);
-        
-        // open the config.php file so the encryption key can be reset
-        $handle = @fopen(CONFIG_FILE_PATH, 'w');
-        
-        // if the config.php file could not be opened for writing, then output error
-        if ($handle == FALSE) {
-            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        $config_content = @file_get_contents(CONFIG_FILE_PATH);
+
+        // A file that could not be read must not be rewritten from nothing.
+        if (!is_string($config_content) || (trim($config_content) === '')) {
+            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
         $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
@@ -100,11 +97,11 @@ function pg_parasut_credentials_for_save()
             $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
         }
         
-        // update the config.php file with the new content
-        @fwrite($handle, $config_content);
-        
-        // close the config.php file
-        @fclose($handle);
+        // Write the new content before any card number is re-encrypted; a key
+        // that is not on disk must not be used on the stored data.
+        if (!pg_write_config_file($config_content)) {
+            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
         
         // get all orders that have an unencrypted credit card number or encrypted credit card number
         $query = 
@@ -166,6 +163,13 @@ function pg_parasut_credentials_for_save()
     // was ticked, kept to three-letter codes the store lists; the base is
     // never stored because it is always allowed.
     $sql_erp_fx = "";
+
+    // The default payment term (2026.4.4, 4.53): whole days, ten years at most.
+    $sql_erp_due = "";
+
+    if (waf_table_has_column('config', 'erp_default_due_days')) {
+        $sql_erp_due = "erp_default_due_days = '" . min(3650, max(0, (int) post_value('erp_default_due_days'))) . "',";
+    }
 
     if (waf_table_has_column('config', 'erp_fx_enabled')) {
         $erp_fx_codes = array();
@@ -273,6 +277,7 @@ function pg_parasut_credentials_for_save()
             erp_seller_vkn = '" . escape(substr(preg_replace('/\D/', '', (string) post_value('erp_seller_vkn')), 0, 11)) . "',
             erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             " . $sql_erp_fx . "
+            " . $sql_erp_due . "
             " . $sql_erp_overdue . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',

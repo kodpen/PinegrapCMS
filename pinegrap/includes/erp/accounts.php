@@ -111,6 +111,9 @@ function erp_account_save($data)
         'contact_id' => (int) ($data['contact_id'] ?? 0),
         'status' => (($data['status'] ?? 'active') === 'passive') ? 'passive' : 'active',
         'notes' => trim((string) ($data['notes'] ?? '')),
+        // Days from the invoice date to its due date; 0 leaves it to the
+        // store's default term.
+        'payment_days' => min(3650, max(0, (int) ($data['payment_days'] ?? 0))),
     );
 
     // Days overdue before this account's invoices are announced; 0 leaves it
@@ -144,6 +147,46 @@ function erp_account_save($data)
     }
 
     return array('success' => true, 'id' => (int) mysqli_insert_id(db::$con), 'error' => '');
+}
+
+/**
+ * The day an invoice issued to an account falls due.
+ *
+ * The account's own term wins; an account without one takes the store's
+ * default; with neither set the document is due on the day it is issued,
+ * which is what every document said before terms existed. Read once, when
+ * the document is written: a term changed afterwards does not move the due
+ * dates of documents already issued.
+ *
+ * @param int    $account_id
+ * @param string $issue_date  Y-m-d
+ * @return string  Y-m-d
+ */
+function erp_account_due_date($account_id, $issue_date)
+{
+    $issue_date = (string) $issue_date;
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $issue_date) !== 1) {
+        $issue_date = date('Y-m-d');
+    }
+
+    $days = 0;
+    if ((int) $account_id > 0) {
+        $days = (int) db_value("SELECT payment_days FROM erp_accounts WHERE id = '" . (int) $account_id . "' LIMIT 1");
+    }
+    if ($days <= 0) {
+        $days = defined('ERP_DEFAULT_DUE_DAYS') ? (int) ERP_DEFAULT_DUE_DAYS : 0;
+    }
+    if ($days <= 0) {
+        return $issue_date;
+    }
+
+    $date = date_create($issue_date);
+    if ($date === false) {
+        return $issue_date;
+    }
+
+    return $date->modify('+' . $days . ' days')->format('Y-m-d');
 }
 
 /**

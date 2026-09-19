@@ -99,5 +99,5 @@ if ($_POST['forms']) {
 }
 
 // forward user to view forms screen
-header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_submitted_forms.php');
+header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_submitted_forms.php');
 ?>

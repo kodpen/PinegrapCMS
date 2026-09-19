@@ -97,9 +97,9 @@ Anahtarlar açık gelir ki gün sayısını girmek tek adım olsun. **`_recipien
 TEXT'tir, VARCHAR değil:** `config` satırının VARCHAR sütunları utf8mb4'te
 ~63 KB tutuyor ve 65535 baytlık InnoDB satır sınırına birkaç yüz bayt kaldı;
 VARCHAR(500) ile yükseltme 1118 (Row size too large) verdi (sandbox'ta
-görüldü). TEXT satır dışında saklanır. 4.54 başka bir
-PR'ın (makbuz `payment_method` ENUM); numara boşluğu o birleşene kadar
-beklenen durumdur.
+görüldü). TEXT satır dışında saklanır. Alt adım, `main`'e
+önce giren 4.53 (vade günü) ve 4.54 (makbuz `payment_method` ENUM)
+adımlarının ardına eklendi.
 
 **Ayarlar.** pgset-erp kartında yeni grup: eşik, sıklık, saat, üç anahtar
 (cihaz anahtarı VAPID anahtarı yokken "önce ana ekrana ekle" ipucunu
@@ -112,6 +112,626 @@ ERP menüsünde rozet, müşteriye hatırlatma e-postası (`erp_accounts.email`
 hazır; dışa dönük posta ayrı PR ve cari başına vazgeçme ister).
 
 ---
+
+## 2026.4.4 — Rol kapıları ve erişim denetimi eksikleri, 1. paket (2026-09-18)
+
+**Belirti.** İkinci tur güvenlik incelemesi (issue #58) on iki yerde rol ya da
+sahiplik kapısının eksik olduğunu buldu. Ortak nokta: ekranın girişindeki kapı
+doğruydu ama aynı isteğin dokunduğu *ikinci* nesne — hedef klasör, yeni sayfa
+tipi, başka kullanıcının kaydı — denetlenmiyordu. Site üyeleri de `user`
+tablosunda rol 3 satırı olduğundan, yalnız `validate_user()` ile korunan bir
+yol kendi kaydını açan her üyeye açıktı.
+
+**Çözüm.** Her yerde komşu ekranın kullandığı kapı olduğu gibi kopyalandı, yeni
+bir yetki modeli kurulmadı:
+
+- `api.php` `update_dynamic_region`: dinamik bölge her sayfada çalışan PHP'dir;
+  oluşturma ve düzenleme ekranları yönetici kapısındadır, sayfa tasarımcısı da
+  bölge düzenleyicisini yalnız rol 0'a açar. Kayıt ucu artık aynı çizgide
+  (`$user['role'] !== 0` → hata yanıtı). Tasarımcı bir şey kaybetmez; arayüz
+  ona bu düzenleyiciyi zaten göstermiyordu.
+- `duplicate_email_campaign_profile.php`: rol 3 için `created_user_id`
+  sahiplik denetimi, `edit_email_campaign_profile.php` ile aynı kalıp.
+- `import_email_campaign_profiles.php`: rol 3 kullanıcı CSV ile başka
+  kullanıcının profilini ada göre ezebiliyordu. Satır artık atlanır ve sayılır;
+  aynı adla ikinci profil de açılmaz. Bildirime "… başka bir kullanıcıya ait
+  olduğu için atlandı" cümlesi eklendi.
+- `edit_file.php`, `edit_folder.php`, `edit_page.php`: taşımada hedef klasör
+  `check_edit_access()` ile denetlenir (`add_page.php`'nin yeni sayfa için
+  yaptığı denetim). Yalnız klasör değişiyorsa çalışır; rol 0–2 için
+  `pg_folder_edit_access()` her zaman `true` döner, yani bu roller etkilenmez.
+- `edit_page.php`: yetki denetimi `$_REQUEST['id']` yerine işleyicinin
+  okuduğu kaynaktan (`$_POST` / `$_GET`) alınan tek id üzerinde çalışır. Sayfa
+  tipi kapısı eskiden yalnız mevcut tipe bakıyordu; rol 3 için gönderilen yeni
+  tip de aynı `set_page_type_*` listesinden geçmelidir (liste `add_page.php`
+  ile aynı, bir closure'a alındı). Bilinmeyen tip değeri mevcut tipe düşer;
+  eskiden `page_type = ''` yazılabiliyordu.
+- `includes/fn/widgets.php` `search_results`: eski aramanın
+  (`get_search_results.php`) çitleri eklendi — `page_search = '1'`,
+  `folder_archived = '0'`, Geri Dönüşüm Kutusu dışı, ziyaretçi için
+  `check_view_access($folder, true)`. Özel/üyelik klasöründeki sayfa başlıkları
+  artık dışarı sızmaz.
+- `includes/fn/auth.php` form CAPTCHA: doğru cevap gizli alanda base64 ile
+  taşınıyordu, bir betik okuyup geri yazıyordu. Cevap artık oturumda durur
+  (`pg_form_captcha_issue()` / `pg_form_captcha_check()`): gizli alan yalnız
+  rastgele anahtar taşır, soru tek kullanımlık, bir saat geçerli, oturumda en
+  fazla yirmi bekleyen soru. Alan adları (`captcha_validation`,
+  `captcha_correct_answer`) korunduğu için özel yerleşimler değişmez. Bu
+  formlar zaten `validate_token_field()` ile oturum istediğinden sayfa
+  önbelleği ya da çerezsiz ziyaretçi açısından yeni bir koşul doğmaz.
+- `delete_key_codes.php`: issue'daki bulgu 74746b0 ile kapanmıştı
+  (`validate_ecommerce_access`), yalnız doğrulandı.
+
+Yeni `tr.json` anahtarları: "access denied to duplicate campaign profile
+because user does not have access to it", "{var:1} {var:2} were skipped because
+they belong to another user.". Şema değişikliği yok.
+
+## 2026.4.4 — Rol kapıları ve erişim denetimi, ikinci paket (2026-09-18)
+
+**Belirti.** Güvenlik incelemesinin ikinci turu (issue #59), menüyle ekranın
+kapısı arasında ya da ekranla onun AJAX yardımcısı arasında ayrışan on iki
+düşük öncelikli erişim denetimi buldu. Menüde yalnız yöneticiye gösterilen
+`cloudflare.php` ve `migration.php` sırasıyla `manager` ve `designer`
+kapısıyla açılıyordu; `add_order.php` ürün arama uç noktası yalnız oturum
+kontrol ediyor, e-ticaret yetkisine bakmıyor ve çevirisiz hata dönüyordu;
+`edit_user.php`, `add_user.php` ve `import_users.php` rol tavanını ham
+`$_POST['role']` üzerinde gevşek karşılaştırmayla denetliyordu (sayısal
+olmayan değer denetimi atlıyor, esnek SQL modunda `0` = yönetici olarak
+yazılabiliyordu); `image_editor_edit.php` GET dalında tanımsız `$file_design`
+değişkeni yüzünden tasarım dosyası kontrolü hiç çalışmıyordu;
+`get_files_for_picker.php` rol 3 için klasör ACL uygulamıyordu;
+`save_region_content.php` ortak bölge kaydında istekten gelen `page_id`'yi
+erişim kontrolü olmadan damgalıyordu; dosya gezgininin `explorer_file_usage`
+çağrısı herhangi bir dosya id'si için kullanım dökümü veriyordu; `view_log.php`
+error_log silme dalı düğmeyi görmeyen yöneticiye (manager) de açıktı.
+
+**Çözüm.** Her yerde aynı varlığın kardeş ekranındaki kapı kopyalandı:
+`cloudflare.php` ve `migration.php` menü koşuluyla aynı olacak şekilde
+`administrator`; ürün arama `USER_MANAGE_ECOMMERCE` (rol 0–2 muaf, rol 3
+bayrak ister) ve JSON içinde `lang()`; üç kullanıcı ekranında rol önce
+`(int)`'e çevrilir, `0–3` dışındaki değer reddedilir, tavan karşılaştırması
+sayı üzerinde yapılır (`isset` korunur: son yöneticinin devre dışı rol
+kartı hiçbir şey göndermez ve rol zaten yazılmaz); `$file_design` →
+`$design`; dosya seçici rol 3 için `get_folders_that_user_has_access_to()` /
+`check_folder_access_in_array()` ile `view_files.php` kuralını uygular;
+ortak bölge kaydı bölgeyi her durumda yazar, sayfayı yalnız
+`check_edit_access()` geçerse damgalar; `explorer_file_usage` listenin
+kuralı `pg_explorer_folder_visible()` ile kapılanır; error_log silme
+düğmeyi çizen `USER_ROLE < 1` koşuluna bağlanır.
+
+**Değiştirilmeyenler.** `set_password.php` / `change_password.php` cihaz
+sınırı kapısı: her iki dosya oturumu kurmadan hemen önce
+`pg_auth_token_revoke_user()` ile hesabın bütün jetonlarını siler,
+`pg_device_limit_exceeded()` bu yüzden hiçbir zaman doğru dönmez — kapı
+eklemek ölü kod olurdu. `pg_write_permission_repair()` 0777/0666 modu ve
+`edit_calendar.php` / `edit_contact_group.php` rol 3 yeniden adlandırma-silme
+davranışı ürün sahibinin kararını bekler (PR açıklamasında soru olarak
+duruyor).
+
+## 2026.4.4 — Ayarlar ekranları, private label ve kurulum: config.php yazımı ve sessiz kayıp kayıtlar (2026-09-18)
+
+**Belirti.** Güvenlik incelemesinin ikinci turu (issue #60), ayarlar
+katmanında on üç bulgu çıkardı. Beşi orta: `update_config_define()` değeri
+`preg_replace` yerine-koyma metni olarak kullanıyordu, `$1` ya da `\`
+içeren bir değer geri-başvuru sayılıyor ve sonu ters bölü ile biten bir
+değer `config.php`'yi kapanmamış string ile bırakıyordu (site tümden
+düşer). `private_label.php` dosyayı okuma başarısız olsa bile `w` ile açıp
+sıfırlıyor, ardından okuma tutamacını (`$fd`) denetlediği için boş dosya
+öyle kalıyordu; on iki `define()` ekleme satırı da değeri kaçışsız
+gömüyordu. Genel ekranda `hostname`'den şema soyulan `$hostname`
+hesaplanıyor ama `UPDATE`'e `post_value('hostname')` yazılıyordu — soyma
+etkisizdi; `subscription_key` `isset()`'ten önce okunuyordu. Cron kartındaki
+komutlar `dirname(__FILE__)` ile `includes/settings/` altını gösteriyordu;
+iş betikleri kökte durur. Düşükler: E-Fatura kartında çevrilmemiş
+etiketler, Iyzipay taksit listesinin 0/NULL değerde boş gelmesi, ERP
+kartının kayıt defterinde bölüm olmaması, kurulumda yönetici parolasının
+MD5 kalması, private label ekranının varsayılan stil sayfasını hiç var
+olmamış bir yolla karşılaştırması ve ekranın tümüyle çevrilmemiş olması.
+
+**Çözüm.** `update_config_define()` değeri `addcslashes($value, "\\'")`
+ile kaçırır ve yerine-koyma metnini `addcslashes(..., '\\$')` ile
+literal kılar; `edit_config.php` `LOCKED_PAGES` bloğu için aynı kaçışı
+yapar. Yeni `pg_write_config_file($content)` (`includes/fn/core.php`) boş
+içeriği reddeder, metni yan geçici dosyaya yazıp `config.php` üzerine
+`rename` eder (yarım dosya görülmez), dizin yazılabilir değilse yerinde
+yazmaya düşer ve dosyanın modunu korur. `edit_config.php`,
+`private_label.php` ve şifreleme anahtarı sıfırlama (`commerce.save.php`)
+artık bu yardımcıdan geçer; private label değişmeyen içeriği yazmaz, okuma
+başarısızsa hata verir, `define()` eklemeleri `update_config_define()`'a
+devredilir. Genel ekran `hostname`'i `#^https?://#i` ile soyup soyulmuş
+değeri yazar; `subscription_key` `post_value()` ile okunur. Cron komutları
+`PG_FUNCTIONS_DIR`'den kurulur. `screen.php` yönlendirmeden sonra
+`exit` eder (kaydın reddi zaten 7d93fe6'da `check_form_errors()` ile
+kapatılmıştı). Iyzipay taksit listesi her zaman kurulur, seçili değer
+yoksa "Taksit yok". Kayıt defterine `pgset-erp` bölümü eklendi.
+Kurulum, yükseltmeler `user_password_algo` sütununu ekledikten sonra
+`pg_password_store()` ile yönetici satırını modern hash'e çevirir.
+Varsayılan panel stil sayfası URL'si tek yardımcıda toplandı
+(`pg_default_control_panel_stylesheet_url()`, `init.php` ve `output.php`
+de onu kullanır). E-Fatura ve private label etiketleri `lang()`'e alındı;
+Paraşüt'ün kendi alan adları `Parasut field: {var:1}` anahtarıyla
+değişken olarak girer. Mcrypt bağımlılığı (`commerce.save.php:76`) ve
+`User Name` anahtarı önceki commit'lerde (df7d6e5, 761c550) zaten
+giderilmişti. **Şema değişikliği yok.**
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Çıkarılan
+`update_config_define()` / `pg_write_config_file()` fonksiyonları
+sandbox'ta `$1`, `\1`, sona ters bölü ve tek tırnak içeren değerlerle
+denendi: yazılan dosya PHP tarafından hatasız yüklendi, değerler birebir
+geri okundu, boş içerik reddedildi, mod korundu. Çalışan örnek
+kurulmadı; ekran akışları statik olarak izlendi.
+
+## 2026.4.4 — CSRF: token'sız POST'lar ve durum değiştiren GET'ler (2026-09-18)
+
+**Belirti.** Güvenlik incelemesi (issue #61) durum değiştiren on bir uç
+noktanın oturum token'ını hiç sormadığını ya da yalnız GET ile
+çalıştığını buldu: yerel sipariş ekranı (`add_order.php`), ortaklık onayı
+(`approve_affiliate.php`, e-postadaki bağlantı tek tıkla onaylıyordu),
+barkodla stok artırma/azaltma (`validate_token()` tanımlı ama hiç
+çağrılmıyordu), sepet widget'ının POST işleyicisi (`cart_action.php`),
+ürün çoğaltma, görsel düzenleyici kaydı, indirme yardımcısı (yarım kalmış
+kurulumda girişsiz onarım/güncelleme), eski yükseltme formu, çıkış ve
+sipariş dışa aktarımı (tamamlanan siparişi `exported` yapan GET). Ayrıca
+`validate_token_field()` token'ı gevşek `!=` ile karşılaştırıyordu. Bunların
+her biri, yöneticinin tarayıcısını başka bir sitedeki sayfadan
+tetiklenebilir kılıyordu.
+
+**Çözüm.** Form basan her ekran `get_token_field()` ekler, işleyen dal
+`validate_token_field()` çağırır; karşılaştırma `hash_equals()` ile sabit
+zamanlı yapılır ve dizi olarak gelen token hiçbir zaman eşleşmez. Token
+taşıyamayan iki akış POST onayına çevrildi: ortaklık onayı önce kişiyi
+gösterip onay düğmesi sunar (e-posta bağlantısı olduğu gibi kalır);
+`logout.php` token'sız gelen isteği önce "çıkış yapmak istiyor musunuz?"
+diye sorar, panel menüsü, üye widget'ı ve çıkış sayfa türü ise bağlantıya
+token ekleyerek tek tıkla çıkmaya devam eder. Barkod uç noktalarında yerel
+`respond()`/`validate_token()` tanımları ilk çağrıdan önceye alındı (koşullu
+tanımlanan fonksiyon ancak satırı çalışınca var olur) ve `switch`'ten önce
+çağrılıyor; tarayıcı sayfası token'ı zaten JSON gövdede gönderiyordu.
+`cart_action.php`'nin GET öz sınama sayfası daha önce kaldırılmıştı, bu
+turda token denetimi eklendi. İndirme yardımcısı onarım/güncelleme/denetim
+işlemlerini yalnız kurulu ve giriş yapılmış durumda, token'la kabul eder;
+yazılım dizini varken yeniden kurulum reddedilir. `install/index.php`
+yükseltme dalı, otomatik yükseltme değilse formun token'ını ister. Sipariş
+dışa aktarma düğmelerinin GET formuna token alanı eklendi; iki dışa aktarma
+dalı doğruluyor. Şema değişikliği yok.
+
+---
+
+## 2026.4.4 — Sırlar, yedekler ve dosya yolları: güvenlik düzeltmeleri (2026-09-18)
+
+**Belirti.** Güvenlik incelemesi (#62) yedekleme ve kimlik doğrulama
+yollarında bir dizi açık buldu: `api.php` `software_backup` adımlarında
+`backup_name` yalnız ilk adımda temizleniyordu, sonraki adımlar istemciden
+gelen adı olduğu gibi yol olarak kullanıyordu (`../` ile `data/backups/`
+dışına döküm ve kopya yazılabiliyordu). `auto_backup.php` oturum kapısı
+olmadan çalışıyordu: anonim bir GET tam veritabanı dökümünü haftanın adıyla
+bilinen bir klasöre yazdırabiliyordu. `data/config(default).php` dosyanın
+sonunda etkin bir `AUTOMATED_UPGRADE_SECRET` tanımı ile geliyordu ve değeri
+herkesin okuyabildiği yer tutucuydu. API kimlik bilgileri, üstteki not
+"yalnız test anahtarı" dese de gövde ve sorgu dizesinden her anahtar için
+kabul ediliyordu. IndexNow anahtarı `<anahtar>.txt` dosya adı olarak
+süzgeçsiz kullanılıyordu (yol geçişiyle yazma ve silme). ShipWorks uç
+noktası parola denetiminde giriş ekranının kilidini paylaşmıyordu. Giriş
+ekranı kimlik bilgilerini `$_REQUEST` üzerinden, yani sorgu dizesinden de
+okuyordu. Hediye kartı kodu, form/sipariş/bayi/komisyon/e-posta alıcı
+referans kodları ve kurulumdaki `ENCRYPTION_KEY` `mt_rand()` ile
+üretiliyordu. `update_search_index.php` PDF yolunu `shell_exec()`'e
+tırnaksız veriyordu.
+
+**Çözüm.** `software_backup` adı switch'ten önce tek kez
+`preg_replace('/[^A-Za-z0-9_-]/', '_', basename($ad))` ile klasör adına
+indirir; ikinci geçişte değişmediği için adımlar arasında gidip gelen ad
+kararlıdır; boş sonuç yalnız ilk adımda kabul edilir (ad orada üretilir),
+diğer adımlarda "Yedek adı geçerli değil." ile reddedilir. `auto_backup.php`
+`update_exchange_rates.php` ile aynı kalıbı alır:
+`pg_cron_is_background_run()` değilse `validate_user()` +
+`validate_area_access('manager')` — `backups.php` ile aynı kapı; kapı
+`pg_cron_ran()` kaydından önce durur ki reddedilen istek çalışma sayılmasın.
+Crontab ve `job.php` dağıtıcısı etkilenmez. `config(default).php`'deki etkin
+tanım kaldırıldı; 49. satırdaki yorumlu örnek kalır ve
+`install_secret_matches()` tanımsız sabiti "kapalı" sayar. `api_read_credentials()`
+gövde/sorgu dizesindeki anahtarı yalnız `pg_test_` önekiyle okur; canlı
+anahtar bu yoldan "kimlik bilgisi yok" (401) alır. IndexNow anahtarı
+`/^[A-Za-z0-9-]{8,128}$/` ile doğrulanır (IndexNow'un kendi biçimi),
+uymazsa alan hatası verilip yazma yapılmaz; eski kayıtlı anahtar da aynı
+biçime uymuyorsa silme için yol olarak kullanılmaz. ShipWorks
+`pg_login_throttle_guard()` / `pg_login_record_failure()` /
+`pg_login_throttle_pass()` alır (kilitli istek 429 ile döner). Giriş
+yalnız `REQUEST_METHOD === 'POST'` ve `$_POST['email']` varken giriş sayılır;
+eski `u`/`p` takma adları da yalnız POST'tan okunur; kimlik bilgisi taşıyan
+GET boş formu gösterir. Kod üreticileri `random_int()` kullanır.
+`escapeshellarg()` PDF yolunu sarar. **Şema değişikliği yok.**
+
+**Karar bekleyen maddeler (bu sürümde dokunulmadı).**
+`data/backups/turkish_default/sql.sql` config satırında UPS/USPS kimlik
+bilgileri taşıyor — `data/backups/` kural 12 gereği dokunulmaz, ürün
+sahibinin kararı. `backups.php` menüde manager'a da gösteriliyor
+(`registry.php`), `welcome.php` ve `api.php` yorumları bunu "manager ve
+üstü" politikası olarak yazıyor; yalnız-admin yapılsın mı sorusu açık.
+Google Client Secret'ın Güvenlik ekranında geri gösterilmesi
+(`prep.php`) kod yorumunda yazılı bir operatör tercihi; kural 10 ile
+çelişiyor, hangisi geçerli sorusu açık. Unsplash Access Key ön yüze
+gömülü kalır: Unsplash bu anahtarı istemci tarafı `client_id` olarak
+tasarlamıştır ve sayfa oturum kapısı arkasındadır; sunucu tarafı vekil
+ayrı bir iştir. Teklif anahtar kodunun form referans kodunu yeniden
+kullanması (`custom_form.php`) ayrı bir iş olarak bırakıldı.
+
+## 2026.4.4 — Kaçışsız sorgu parçaları ve ORDER BY yönü, ikinci tur (2026-09-18)
+
+**Belirti.** İkinci tur güvenlik incelemesi (issue #63) SQL'e kaçışsız giren
+13 parça saydı. Üçü değer konumunda kaçış eksikliği: form alanı tetikleyicisinin
+hedef seçenekleri (`add_field.php`, `edit_field.php`), "yalnız ofis kullanımı"
+alanının varsayılan değeri (`includes/fn/content.php`,
+`get_custom_form_screen_content.php`) ve sistem stili baş içeriği kaydında stil
+numarası (`view_system_style_source.php`). İkisi anahtar sözcük konumu:
+`device_type` çerezi doğrudan oturuma, oradan `activated_<tip>_theme` sütun
+adına giriyordu; `preview_style.php` ham `$_GET['style_id']` değerini oturuma
+yazıyor, `theme_designer.php` onu üç sorguya kaçışsız gömüyordu (ikinci
+dereceden enjeksiyon). Kalan sekizi, 2026.4.2'de sayfa/ürün listelerinde ve
+c5b382a'da 15 ekranda kapatılan ORDER BY yönü açığının henüz elden geçmemiş
+ekranları: `view_currencies`, `view_verified_shipping_addresses`,
+`view_product_attributes`, `view_short_links` (yön `escape()` ile sarılıydı —
+anahtar sözcük konumunda işe yaramaz) ve `view_design_files`, `view_styles`,
+`view_themes`, `view_regions` (beş alan; yön oturumdan ham geliyordu).
+
+**Çözüm.** Değer konumları `e()` / `escape()` ile kaçışlanır, stil numarası
+`(int)`'e çevrilir (yönlendirme adresinde de). Çerez yalnız `desktop` ya da
+`mobile` ise oturuma alınır; başka her değer "çerez yok" sayılır ve cihaz türü
+yeniden saptanıp çerez doğru değerle yazılır. `update_device_type.php` zaten
+beyaz liste uyguluyordu, oturuma başka giriş yolu yoktur. `preview_style.php`
+stil numarasını `(int)` olarak saklar (seçici yalnız tam sayı ya da "varsayılan"
+için boş gönderir; boş → 0, tüm okuma yerleri doğruluk denetimi yaptığı için
+davranış değişmez), `theme_designer.php` üç kullanım noktasında `escape()`
+uygular. ORDER BY ekranlarında c5b382a kalıbı birebir izlenir:
+`sql_order_direction()` istekten okunurken (`''` varsayılanıyla, ekranın kendi
+"yön seçilmedi" mantığı korunur), oturumdan sorguya inerken ve `$_REQUEST`
+döngüsüyle oturumu dolduran ekranlarda döngünün hemen ardından uygulanır, böylece
+daha önce zehirlenmiş oturumlar da temizlenir. Varsayılan sıralama yönleri ve
+sorgu anlamı değişmez. Şema değişikliği yok.
+
+**Doğrulanamayan.** Çalışan örnek kurulmadı; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Ekranların sıralama bağlantıları
+(`get_column_heading()`) yalnız `asc` / `desc` gönderir, beyaz liste bunları
+kabul eder.
+
+## 2026.4.4 — Açık yönlendirme ve Host başlığından üretilen adresler (2026-09-18)
+
+**Belirti.** Güvenlik incelemesi (issue #64) `send_to` parametresini
+doğrulamadan `Location` başlığına ya da bir `href`'e koyan ve adresleri
+`HOSTNAME` yerine doğrudan `$_SERVER['HTTP_HOST']`'tan kuran on iki yer
+buldu. `remove_item_from_cart.php`, `waf_ranges_job.php` ve
+`update_exchange_rates.php` `send_to` değerini ham hâliyle ana makinenin
+arkasına ekliyordu: `//evil.example` biçimindeki bir değer ziyaretçiyi
+yabancı bir siteye götürüyordu. Şifremi unuttum, şifre belirleme ve form
+öğesi görünümü ekranları aynı değeri `escape_url()` ile süzüyordu; bu
+yardımcı mutlak ve protokol-göreli adresleri kabul ettiği için tıklamayla
+yabancı siteye giden bir bağlantı basılıyordu. `add_user.php` yeni hesabın
+e-postasındaki giriş bağlantısını isteğin Host başlığından üretiyordu;
+`edit_files.php` `from` alanını süzgeçsiz liveform adı ve yönlendirme yolu
+olarak kullanıyordu; `import_design.php` komut satırını Host başlığının
+yokluğundan anlıyor, başlığı olmayan bir web isteği `validate_user()`'ı
+atlıyordu. Yayınlanmış 2026.4.3'ü de etkiler.
+
+**Çözüm.** Yönlendirmeler `pg_safe_redirect_path()`'ten geçer: yalnız tek
+`/` ile başlayan yol kabul edilir, gerisi (sorgu dizesi, köşeli parantez,
+UTF-8) olduğu gibi korunur; yabancı ya da protokol-göreli hedef site köküne,
+döviz kurlarında `view_currencies.php`'ye düşer. Şifre ekranları ve form
+öğesi görünümündeki geri düğmesi `escape_url()` yerine aynı yardımcıyı
+kullanır; `escape_url()` kendisi değişmedi, `href` içinde dış adresin doğru
+olduğu yerlerde kullanılmaya devam eder. Ana makine adı, isteğe dönen
+yönlendirmelerde `HOSTNAME` (`add_page`, `add_product_group`, `add_folder`,
+`delete_submitted_forms`, `remove_item_from_cart`, `submit_order`'ın ödeme
+dönüş adresleri dahil), isteği terk eden e-posta bağlantısında
+`HOSTNAME_SETTING` (`add_user.php`; `init.php`'deki kuralla aynı, spoof
+edilmiş Host başlığı alıcının gideceği yeri belirleyemez). `edit_files.php`
+`from`'u `view_files` / `view_design_files` beyaz listesine bağlar, bilinmeyen
+değer `view_files`'a düşer; `import_design.php` komut satırını
+`PHP_SAPI === 'cli'` ile anlar (`api_sync_job.php` ile aynı kalıp).
+`add_folder.php` hata dönüşünde `send_to`'yu `urlencode()` ile taşır. Şema
+değişikliği yok, yeni çeviri anahtarı yok.
+
+---
+
+## 2026.4.4 — Yönetim ekranlarında kaçışsız çıktı: XSS düzeltmeleri (1/2) (2026-09-18)
+
+**Belirti.** İkinci tur güvenlik incelemesi (#65) on yönetim ekranında
+kullanıcı ya da veritabanı kaynaklı bir değerin HTML'e ham basıldığını buldu.
+Dördü yansıtılan XSS: `add_menu_item.php` `menu_id`'yi gizli alana ve
+breadcrumb adresine, `duplicate_folder.php` şablonu `send_to`'yu breadcrumb
+`href`'ine, `view_order.php` `id`'yi `onclick`'e, `view_email_campaign.php`
+`r`'yi basılan kampanya gövdesine olduğu gibi yazıyordu; `mass_edit.php` form
+`action`'ına `PHP_SELF`'i basıyordu (path-info ile kapatılabilir).
+`editor_select_image.php` `file_input_name`'i ve `image_editor_edit.php`
+dosya yolunu inline JavaScript string'ine kaçışsız gömüyordu; ikincisi
+`send_to`/`object_type`/`object_id` gizli alanlarını da. Üçü saklı XSS:
+`edit_page.php` sayfa tipi özelliklerini (düğme etiketleri, alan
+başlıkları, sayısal ayarlar) `value="…"` içine, `edit_product_group.php`
+`meta_keywords`'ü aynı şekilde, `product_builder.php` ürünün kısa
+açıklamasını `pg_page_shell()` başlığına — kabuk başlığı `lang()` metni
+kabul ettiği için ham basar — kaçışsız veriyordu.
+
+**Çözüm.** Düzeltme çıktı satırlarında kalır, akış değişmez. Sayısal
+kimlikler okunduğu yerde `(int)`'e çekildi (`menu_id`, `print_order` `id`).
+HTML öznitelik ve metin bağlamları `h()` ile kaçışlanır; `edit_page.php`'de
+`value="…"` içine giren 39 saklı özellik değerinin hepsi tek kalıpla
+kapatıldı. Inline JavaScript bağlamları için dosyanın kendi kalıbı izlendi:
+`onclick` özniteliğindeki string literal `h(escape_javascript())`,
+`<script>` bloğundaki `src` değeri `json_encode(JSON_HEX_TAG | JSON_HEX_APOS
+| JSON_HEX_QUOT | JSON_HEX_AMP)` — `h()` burada `&`'yi `&amp;`'ye çevirip
+adresi bozardı. `view_email_campaign.php`'de `preg_replace` yerine
+`str_replace` kullanıldı: değiştirme metni istekten geldiği için `$1`
+türü geri referansların yorumlanması da böylece kapanır. Kampanya gövdesi
+HTML olarak basıldığından referans kodu `h()`'den geçer. `duplicate_folder.php`
+kök dosyasında yönlendirmeye eklenen `send_to` `urlencode()`'dan geçer;
+şablondaki `h(escape_javascript($_GET['id']))` da düz `h()` oldu — `href`
+JavaScript bağlamı değildir, ters bölü eklemesi yanlış kaçıştı. Zengin
+metin taşıyan hiçbir alana dokunulmadı; ürün kısa açıklaması düz metin
+`<input>`'tan gelir, `h()` ile daraltılması davranış değiştirmez.
+
+## 2026.4.4 — XSS ve kaçışsız çıktı, 2. paket (2026-09-18)
+
+**Belirti.** Güvenlik incelemesinin ikinci turu (#66) dokuz kaçışsız çıktı
+buldu. Sipariş ve ziyaretçi raporlarında kayıtlı filtrenin `field`,
+`operator`, `dynamic_value` ve `dynamic_value_attribute` değerleri
+`<script>` bloğuna ham yazılıyordu; yalnız `value` `escape_javascript()`
+ile geçiyordu. `view_orders_for_contact.php` cari adını `<title>`'a,
+`view_products.php` ürün kısa açıklamasını listeye, `view_arrival_dates.php`
+varış tarihi adını tabloya, `view_design_files.php` dosya adını `data-src`
+niteliğine ham basıyordu. `view_visitor_report.php` `?id=` değerini hiç
+süzmeden tarih değiştirici bağlantılarına ekliyordu (yansıtılan XSS).
+Sepette müşterinin gönderdiği tekrarlayan ödeme dönemi seçenek listesiyle
+karşılaştırılmadan `order_items.recurring_payment_period` alanına yazılıyor,
+form dışa aktarımı ise ziyaretçi değerlerini formül karakterlerini
+etkisizleştirmeden CSV'ye döküyordu.
+
+**Çözüm.** Çıktı satırında kaçış: `<script>` içindeki dört filtre değeri
+`escape_javascript()` ile (komşu `value` satırıyla aynı kalıp), HTML metin
+ve nitelik bağlamındaki değerler `h()` ile, dosya adı
+`h(encode_url_path())` ile, sayısal kimlikler `(int)` ile. Ziyaretçi
+raporunda `$id` okunduğu yerde `(int)`'e çevrildi; böylece bağlantılar,
+oturum indeksi ve yönlendirme başlığı aynı anda güvene alındı.
+`shopping_cart.php` gönderilen dönemi `get_payment_period_options()`
+değerleriyle katı karşılaştırır; listede yoksa alan hatası işaretlenir ve
+boş kaydedilir (`cart_action.php` ile aynı davranış). Kısa açıklama ürün
+düzenleyicide düz metin `<input>` olduğu için `h()` anlam kaybettirmez.
+Yeni `csv_cell()` yardımcısı (`includes/fn/core.php`, `escape_csv()`
+yanında) tırnakları ikiler ve `=`, `+`, `-`, `@`, sekme ya da CR ile
+başlayan hücreyi kesme işaretiyle önekler; `view_submitted_forms.php` dışa
+aktarımı standart sütunlarda ve özel alan döngüsünde bunu kullanır. Baştaki
+`-` ile başlayan negatif sayılar da öneklenir; hedef tablo yazılımı hücreyi
+metin olarak gösterir, bu kabul edilen bir bedeldir. **Şema değişikliği
+yok, yeni dil anahtarı yok.**
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Çalışan örnek
+kurulmadı; her hunk statik olarak okundu: `h()` uygulanan alanların hiçbiri
+zengin metin taşımıyor, `escape_javascript()` uygulanan değerler çift
+tırnaklı JS literal içinde.
+
+## 2026.4.4 — Şifre saklama, oturum sabitleme ve üyelik aktivasyonu sıkılaştırması (2026-09-18)
+
+**Belirti.** Parola saklama modern tuzlu hash'e geçmişti, ancak yöneticinin
+kullanıcı eklediği `add_user.php` ile CSV içe aktaran `import_users.php`
+hâlâ `md5()` yazıyor, algo damgası basmıyordu; içe aktarılan kullanıcılar
+ayrıca oluşturma damgası ve bildirim tohumlamasını da almıyordu. Hiçbir
+giriş yolu oturum kimliğini yenilemiyordu (session fixation): ziyaretçiye
+girişten önce verilen kimlik girişten sonra da geçerli kalıyordu; on dört
+ayrı dosya `$_SESSION['sessionuserid']`'yi elle yazıyordu.
+`express_order.php` ve `order_preview.php` ödeme geçidi dönüşleri için
+oturum çerezini `SameSite=None` ile yeniden basarken HttpOnly bayrağını
+düşürüyor ve çerezi yol belirtmeden gönderiyordu — tarayıcı onu `/` yerine
+betik dizinine (`/pinegrap`) ayrı bir çerez olarak kaydediyordu. Üyelik
+aktivasyonu yalnız üye numarasını doğruluyordu: soyad uymazsa aynı numarayla
+ikinci bir rehber kaydı açılıyor, uyarsa gerçek üyenin e-postası üzerine
+yazılıyordu; numaranın var olup olmadığı da form mesajından anlaşılıyordu.
+Geliştirici PIN'i `==` ile karşılaştırılıyordu. Cihaz sınırı kapalıyken
+`software[auth]` çerezi olmayan oturumlar her istekte yeni bir
+`auth_tokens` satırı üretiyordu (tarayıcı çerezi tutmuyorsa sınırsız).
+
+**Çözüm.** `pg_session_sign_in($user_id, $username)`
+(`includes/authentication.php`; `get_file.php` de yükleyebildiği için
+orada): `session_regenerate_id(true)` çağırır ve kimliği yazar; `$_SESSION`
+içeriği (CSRF token, sepet/sipariş anahtarları) kimlikle birlikte taşınır.
+Tüm giriş yolları — `index.php`, `membership_entrance.php`,
+`registration_entrance.php`, `google_auth.php`, `device_limit.php`,
+`set_password.php`, `change_password.php`, `login_as_user.php`,
+`custom_form.php` ve `submit_order.php` otomatik kayıtları,
+`pg_member_register()`, `pg_member_activate()`, `initialize_user()` ve
+`get_file.php` beni-hatırla terfileri — bu yardımcıdan geçer. `init.php` ve
+`get_file.php` `session.use_strict_mode = 1` açar: sunucunun üretmediği bir
+kimlik oturum olmaz. `pg_session_cookie_allow_cross_site()`
+(`includes/fn/auth.php`) `Set-Cookie` başlığını elle yazar (PHP 7.0
+uyumu; `setcookie()` SameSite'ı 7.3'te öğrendi): oturum çerezinin kendi
+path/domain/lifetime değerleri, her zaman HttpOnly, https'te Secure +
+SameSite=None, düz http'de Lax. Eski sürümlerin betik dizinine bıraktığı
+kopya, oturum kimliği artık girişte değiştiği için farklılaşıp gerçek çerezi
+gölgeleyebilirdi; yardımcı o yolu ayrıca süresi geçmiş olarak basar (yol
+oturum çerezinin yoluyla aynıysa hiçbir şey göndermez).
+`pg_password_insert_fragments()` `add_user.php` ve `import_users.php`
+INSERT'lerine `pg_password_hash()` + `user_password_algo = 2` verir; algo
+sütunu henüz yoksa (yükseltme koşmamış köprü) eski MD5 yazar, çünkü algo 0
+altındaki modern hash hiç doğrulanmaz. `import_users.php` artık
+`pg_user_created_stamp()`, `pg_notification_seed_user()` ve parola yaşı
+damgasını da çağırır. `pg_member_activate()` numara **ve** soyadla, henüz
+kullanıcısı olmayan tek bir rehber kaydı arar (`LEFT JOIN user ON
+user_contact`); bulamazsa tüm durumlar için tek genel mesaj verir ve asla
+ikinci rehber kaydı açmaz. `developer_lock.php` `hash_equals()` kullanır.
+Sessiz cihaz bağlama `$_SESSION['software']['auth_bind_attempted']` ile
+oturum başına bir kez denenir.
+
+**Kapsam dışı (karar bekliyor).** `submit_order.php` otomatik kaydı, fatura
+e-postası mevcut bir hesaba aitse siparişi o hesaba bağlar ve adres
+defterine yeni alıcı ekler; e-posta sahipliği doğrulanmaz. Ürün davranışı
+değişikliği gerektirdiği için bu PR'da dokunulmadı.
+
+## 2026.4.4 — Kimlik doğrulamasız uç noktalar ve bilgi sızıntısı, 2. tur (2026-09-18)
+
+**Belirti.** #68'deki 14 bulgunun kimlik doğrulaması olmadan iş yapan ya
+da anonim ziyaretçiye fazla bilgi veren uç noktaları. Yayınlanmış 2026.4.3'ü
+de etkiler.
+
+**Düzeltme.**
+
+- `custom_form.php` otomatik kayıt: yazılan e-posta adresi mevcut bir
+  hesaba aitse gönderim artık o hesaba **bağlanmaz** — `forms.user_id`
+  yalnız yeni oluşturulan üye için yazılır, `$user_id` oturumun dediği
+  değerde kalır (anonim için boş). Böylece üyelik başlangıç sayfası
+  (`user.user_home`) ve özel klasör erişimi (`aclfolder`) de yabancı hesaba
+  değil gerçekten gönderen kişiye gider. Bir adres yazmak o hesabın sahibi
+  olmanın kanıtı değildir; eski davranış herhangi bir üyenin adına gönderim
+  yapmaya ve o üyenin özel klasör erişimini/başlangıç sayfasını
+  değiştirmeye izin veriyordu.
+- `custom_form.php` `add_watcher`: gizli alanla gelen izleyici yalnız
+  oturum açmış ziyaretçi kendini adlandırıyorsa ya da formun klasöründe
+  düzenleme hakkı varsa dikkate alınır; `add_watcher_page_id` ayrıca
+  `form_item_view_pages.custom_form_page_id` ile gönderilen formun sayfası
+  olmak zorundadır. Aksi hâlde anonim bir istek herhangi bir üyeyi, içeriği
+  kendisinin seçtiği bir gönderime e-postayla abone yapabiliyordu. Aynı
+  desen `submit_order.php` ürün formu izleyicisinde de var; bu turda
+  dokunulmadı.
+- `get_form_item_view.php`: "herhangi bir kayıtlı kullanıcı düzenleyebilir"
+  ayarı artık gerçekten oturum gerektirir (`USER_LOGGED_IN`); ofis içi
+  alan kapısında `$user['role']` `isset` ile okunur. Kaydeden
+  `edit_submitted_form.php` zaten `validate_user()` istiyordu; sızan şey
+  ofis içi alan değerleriyle dolu düzenleme formunun anonim ziyaretçiye
+  çizilmesiydi.
+- `api.php` `sitemap_check`: istisna listesinde kalır (her panel rolü
+  tetikler) ama case bloğu artık `USER_LOGGED_IN` ve `validate_token()`
+  ister — `update_dashboard_widgets` (#74) ile aynı kalıp. Tek çağıran
+  `assets/js/backend.src.js` artık `software_token` gönderir; token yoksa
+  çağrı yapılmaz. Bu dosyanın `.min.js` ikizi yok.
+- `get_search_results.php` yorum eşleşmeleri: yalnız `private` klasörü
+  eleyen test, sayfa sonuçlarının kullandığı `check_view_access($folder,
+  true)` ile değiştirildi; üyelik sayfalarındaki yorumlar anonim
+  ziyaretçiye sıralama üzerinden kelime sızdırmıyor.
+- `job.php`, `push_job.php`, `api_sync_job.php`, `api_webhook_job.php`,
+  `seo_analyze_job.php`: #83'te (`update_exchange_rates.php`,
+  `waf_ranges_job.php`) kurulan `pg_cron_is_background_run()` kapısı aynen
+  uygulandı — CLI ya da `job.php` dağıtıcısı kullanıcı istemez, diğer her
+  istek `validate_area_access('manager')`. Neden anahtar/IP değil: #83
+  girdisindeki gerekçe. **Dikkat:** cron'u `php job.php` yerine
+  `wget`/`curl` ile URL'den tetikleyen bir kurulum bu güncellemeden sonra
+  giriş sayfasına yönlenir; crontab satırı CLI'ye çevrilmelidir.
+- `router.php` `router_output_error()`: MySQL hata metni artık tam hâliyle
+  `error_log()`'a yazılır, sayfaya yalnız `DEBUG` açıkken eklenir —
+  `output_error()` ile aynı kapı. Router `init.php`'den önce çalıştığı için
+  `DEBUG` yalnız `config.php` tanımlıyorsa görünür; `output_error()` de
+  aynı durumdadır.
+
+**Dokunulmayanlar.** `pi.php` ve `si.php` kural 12 gereği herkese açık
+kalır. `email_preferences.php` anonim yolu (imzalı jeton mu, salt-okunur
+mu) ve `barcode.php`'nin silinmesi/taşınması ürün sahibinin kararını
+bekler; #68 bu yüzden açık kalır.
+
+### Doğrulama
+
+`php tools/lint.php` ve `php tools/check_lang.php` temiz. Çalışan örnek
+kurulmadı; CLI koşusu, dağıtıcı include'u, panelde `sitemap_check`
+çağrısı ve form gönderim akışları yalnız kod okumasıyla doğrulandı.
+
+## 2026.4.4 — Yüklenen HTML/SVG/XML sandbox'ta sunulur, panel sayfalarındaki üçüncü taraf AI betiği kapalı gelir (2026-09-18)
+
+**Belirti.** Üç güvenlik bulgusu (#69). (1) Dosya yöneticisi `.html`,
+`.svg`, `.xml` yüklemeyi kabul eder ve `get_file.php` bunları kendi MIME
+türüyle satır içi sunar; kendi adresinden açılan bir `.svg` ya da `.html`
+içindeki `<script>` sitenin origin'inde, ziyaretçinin oturumuyla çalışır.
+(2) `output_control_panel_header_includes()` her panel sayfasının
+`<head>`'ine Cloudflare'da barındırılan AI arama modülünü koşulsuz basıyordu;
+oysa sohbet başlatıcısı (`chat_backend.src.js`) aynı modülü AI sohbeti
+açıldığında zaten kendisi yüklüyor. Her sayfa görüntülemesi satıcıya bir
+istek gidiyor ve her ekranda uzak kod çalışıyordu. (3) `api.php` içindeki
+eski `file_explorer` → `get_breadcrumb` alt eylemi klasör adlarını
+kaçışsız HTML'e gömüyordu; dağıtılan hiçbir istemci çağırmıyor ama uç
+açık.
+
+**Çözüm.** (1) Yükleme engellenmedi — SVG logo ve XML besleme olağan site
+içeriğidir. `get_file.php` satır içi dalında `html, htm, xhtml, xht, svg,
+svgz, xml, xsl` uzantıları için `Content-Security-Policy: sandbox` ve
+`X-Content-Type-Options: nosniff` eklendi. Sandbox belgeyi opak origin'e
+alır; betik, form ve eklenti kapanır. CSP yalnız belgeleri yönettiği için
+`<img>` ya da CSS arka planındaki `.svg` eskisi gibi render edilir;
+`data/files/.htaccess` `deny from all` olduğundan dosyalar yalnız bu yoldan
+çıkar ve X-Sendfile PHP başlıklarını korur. `Content-Disposition:
+attachment` seçilmedi: yüklenen bir HTML'i tarayıcıda göstermek isteyen
+siteleri indirmeye zorlardı. (2) `<head>` içindeki betik etiketi yalnız
+`config.php`'de `CHAT_AI_PRELOAD` `true` tanımlıysa basılır; adres
+başlatıcının kullandığı `CHAT_AI_SCRIPT_URL` geçersiz kılmasını izler.
+Varsayılan kapalıdır çünkü tüketen tek kod modülü isteğe bağlı yüklüyor.
+Sabit `data/config(default).php`'de belgelendi. (3) `get_breadcrumb`
+içinde iki klasör adı `h()` ile kaçışlandı, `onclick`'e giren klasör
+kimliği `(int)`'e çevrildi; ölü kod silinmedi.
+
+**Doğrulanmayan.** Çalışan örnek kurulmadı; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Sandbox başlığının `<object>`/`<iframe>`
+içine gömülen SVG'lerde betik çalışmasını kestiği ama görüntüyü koruduğu
+tarayıcıda denenmedi.
+
+## 2026.4.4 — TLS doğrulaması ve harici servis çağrıları (2026-09-18)
+
+**Belirti.** Ödeme ağ geçitlerine giden her cURL çağrısı (`submit_order.php`
+içindeki 17 çağrı, `recurring_payment_job.php` PayPal işi, `fn/ecommerce.php`
+Givex hediye kartı), kargo entegrasyonları (`shipping.php`: USPS, UPS, FedEx),
+lisans denetimi (`fn/output.php`) ve site içe aktarma (`import_design.php`)
+`CURLOPT_SSL_VERIFYPEER = 0` ile yapılıyordu; First Data, Givex ve lisans
+denetimi ayrıca `CURLOPT_SSL_VERIFYHOST = 0` taşıyordu. Kart verisi, ağ geçidi
+kimlik bilgileri ve lisans anahtarı TLS el sıkışmasına kim yanıt verirse ona
+gidiyordu. `shipping.php` USPS'i düz `http://` üzerinden çağırıyor, kargo
+isteklerini de olduğu gibi etkinlik günlüğüne yazıyordu — USPS kullanıcı
+kimliği, UPS erişim anahtarı / kullanıcı adı / parola ve FedEx anahtar /
+parola / hesap / sayaç numarası günlükte açık duruyordu. `cloudflare.php`
+gönderilen DNS kayıt kimliğini denetlemeden API yoluna yerleştiriyor, DNS
+izni eksik belirteç için topladığı `$permission_errors` dizisini hiç
+göstermiyordu. (Issue #70.)
+
+**Çözüm.** Bütün bu çağrılar güncelleme kanalının zaten kullandığı ortak
+yardımcıya bağlandı: `pg_curl_tls($ch)` eşi ve sunucu adını doğrular,
+`CURL_CA_BUNDLE` tanımlıysa `CURLOPT_CAINFO`'yu ona çevirir. İki
+`file_get_contents` yedeği (lisans denetimi, içe aktarma) aynı kuralı akış
+bağlamında uygular: `verify_peer` / `verify_peer_name` açık, `cafile`
+aynı sabitten. Doğrulama kapatan sessiz bir geri dönüş **eklenmedi**; CA
+deposu bozuk sunucunun çaresi `data/cacert.pem`'i `CURL_CA_BUNDLE`'a
+göstermektir (operatörün açık `ALLOW_INSECURE_UPDATE_TLS` son çaresi
+yardımcının içinde olduğu gibi kaldı ve artık bu çağrıları da kapsıyor).
+USPS uç noktaları `https://production.shippingapis.com` oldu. Günlüğe yazılan
+her kargo isteği `shipping_mask_credentials()`'dan geçer: kimlik bilgisi
+alanları sabit `[redacted]` yer tutucusuyla değiştirilir, isteğin geri kalanı
+olduğu gibi kalır. `cloudflare.php` 32 karakterlik hex olmayan kayıt
+kimliğini API'ye gitmeden reddeder ve izin hatalarını form hatası olarak
+gösterir. `update_exchange_rates.php` bulgusu ERP kur geçmişi çalışmasında
+(`ce6ab59`, `fn/currency_rates.php`) zaten kapanmıştı; `test_secure_mode.php`
+kalemi tasarım kararı bekliyor (sayfa bilerek `init.php` yüklemez, kapı
+eklemek bu tasarımı değiştirir).
+
+**Yayınlanmış sürüme etkisi.** Sertifika deposu eski ya da bozuk bir
+sunucuda ödeme, lisans ve kargo çağrıları "unable to get local issuer
+certificate" ile başarısız olur; daha önce sessizce geçiyordu. Çare
+`CURL_CA_BUNDLE`'ı `data/cacert.pem`'e göstermek (Sistem Durumu ekranındaki
+CA paketi güncelleme aracı dosyayı günceller). First Data Global Gateway
+(`secure.linkpt.net:1129`) ve Givex (`:50042`) için sunucu adı doğrulaması da
+ilk kez açıldığından, sertifikası ada uymayan bir uç nokta reddedilir.
+
+---
+
+## 2026.4.4 — Ayar arama eş anlamlıları tr.json'a taşındı, zaman damgası yardım anahtarı İngilizceleştirildi (2026-09-18)
+
+**Belirti.** `includes/settings/registry.php` içindeki ayar arama eş anlamlı
+dizileri Türkçe kelimeleri kaynak koda gömüyordu; `includes/settings/features.php`
+içindeki bir `lang()` anahtarı Türkçe hukuk terimi ("nitelikli zaman damgası")
+taşıyordu (#110; kural #73, tarama #107).
+
+**Çözüm.** Her bölümün arama terimleri kodda İngilizce ve virgülle ayrılmış tek
+bir `lang()` anahtarı; Türkçe kelimeler o anahtarın `tr.json` değerinde durur.
+Değer İngilizce terimleri de taşır ("ssl", "waf" her dilde yazılır). Yeni
+`pg_settings_keywords()` çevrilen listeyi diziye çevirir; tüketiciler
+(`api.php` komut paleti) değişmedi. Türkçe panelde davranış aynı kalır (eski
+liste yeni listenin alt kümesidir); İngilizce panelde Türkçe kelimeler artık
+eşleşmez, karşılığı olan İngilizce terimler eklendi. Zaman damgası yardım
+metninin anahtarı "qualified time stamp" oldu, Türkçe metin değişmedi.
+`submit_order.php` ve `includes/fn/auth.php` içinde dört Türkçe yorum
+İngilizceye çevrildi.
 
 ## 2026.4.4 — Vade takibi, yaşlandırma raporu ve ERP gösterge paneli (2026-09-18)
 
@@ -180,6 +800,102 @@ tahsilat ve iade düşülmedi, sonra kesilenler yok), USD 250 @41.25 − 100 @42
 → `open_base 6112.50`, kırpma örneği 0, cari `balance` kayıt toplamlarıyla
 eşit, kasa toplamı yalnız TRY, CSV 8 sütun + toplam. Ekran akışı (rapor,
 liste rozetleri + Gecikmiş süzgeci, pano) Playwright ile PR açıklamasında.
+
+---
+
+## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
+
+**Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`
+ve `english_default/sql.sql`) `config` satırında `debug = 1` taşıyordu.
+`init.php` bu değeri `DEBUG` sabitine bağlar ve `output_error()` sabit
+açıkken başarısız sorgunun metnini `mysqli_error` çıktısıyla birlikte
+ziyaretçiye basar. Kurulum sihirbazı bu alana dokunmadığı için taze kurulan
+her site, ayarlar ekranında "Ayrıntılı Veritabanı Hataları" kapatılana
+kadar her sorgu hatasında SQL parçalarını ve veritabanı adını dışarı
+sızdırıyordu (#88, FUNC-6). Aynı kararda (#88, F21) özel form yönetici
+bildirim e-postasının varsayılan biçiminin `plain_text` olması istendi:
+`html` biçimi bir e-posta sayfası seçilmeden kaydedilirse gövde boş kalır ve
+PHPMailer "Message body empty" ile gönderimi düşürür.
+
+**Çözüm.** İki başlangıç dökümünde `config` satırındaki `debug` değeri
+`1` → `0` yapıldı; dosyalarda başka hiçbir bayt değişmedi. `data/backups/`
+klasörüne dokunulmaz kuralının tek istisnasıdır ve yalnız bu değer için
+verilmiştir. Bildirim biçimi için kod değişikliği gerekmedi:
+`add_page.php` şablonunda `plain_text` radyosu ilk commit'ten beri
+`checked`, `custom_form_pages.administrator_email_format` sütununun
+şema varsayılanı da `'plain_text'`. Karar, mevcut durumun kayda geçirilmesi
+oldu; `html` + boş sayfa ile kaydedilmiş mevcut kayıtlar bilinçli olarak
+değiştirilmedi (veri taşıma yok).
+
+Rol matrisi maddeleri (#88 D1, D2, D3) bilinçli model olarak onaylandı ve
+değişmedi: `'manager'` kapısı Designer (1) ve Manager (2) için site
+yönetiminin tamamını açar, yalnız `config.php` düzeyindeki ayarlar ve
+gelişmiş tasarım alanları rol 0 / rol 1'e ayrılmıştır; Görsel Sayfa Editörü
+rol 2 ve 3'e içerik modunda açık kalır; tema önizlemesi Manager'a açık
+kalır.
+
+### Doğrulama
+
+Çalışma kopyası ikinci bir veritabanına sihirbazla (turkish_default) taze
+kuruldu: kurulum sonrası `SELECT debug, version FROM config` → `0 |
+2026.4.4`; ziyaretçi ana sayfası, `view_pages.php` ve
+`settings_general.php` 200 döndü, PHP hata günlüğüne satır düşmedi.
+`add_page.php` GET (ca5196c sandbox'ı ve bu dal) her ikisinde `plain_text`
+radyosu `checked`; varsayılanlarla oluşturulan özel form sayfasında
+`administrator_email_format = 'plain_text'` kaydedildi. `php tools/lint.php`
+ve `php tools/check_lang.php` temiz.
+
+**Açık kalan:** `english_default` ile kurulum koşturulmadı (aynı tek değer
+değişti, döküm ayrıştırılarak doğrulandı). Mevcut sitelerde `html` biçimli
+ve e-posta sayfasız kayıtlar hâlâ boş gövde üretir; #88 F21 seçeneği (b)
+(otomatik özet gövdesi) ayrı bir karar konusudur.
+
+## 2026.4.4 — Cari vade günü ve genel vade varsayılanı (2026-09-18)
+
+**Belirti.** Her otomatik yol `due_date = issue_date` yazıyordu: siparişten
+kesilen fatura, taslak/elle fatura başlığı boş bırakılınca, Paraşüt yolu.
+Elle bir tarih yazılmadıkça hiçbir belge gecikmiyor, yaşlandırma raporu ve
+rozetler boş kalıyordu. 45 gün vadeyle çalışan müşteriye her faturada aynı
+tarih elle giriliyordu.
+
+**Çözüm.** Migration alt adımı **4.53** `upgrade_2026_4_4_erp_payment_terms()`:
+`config.erp_default_due_days SMALLINT UNSIGNED DEFAULT 0` ve
+`erp_accounts.payment_days SMALLINT UNSIGNED DEFAULT 0`; tekrar koşulabilir
+(`install_add_column`). Sabit `ERP_DEFAULT_DUE_DAYS` (init.php, diğer ERP
+sabitleriyle aynı kalıp). Tek yardımcı `erp_account_due_date($account_id,
+$issue_date)` (`includes/erp/accounts.php`): **cari > mağaza > fatura tarihi**
+önceliğiyle `issue_date + gün` (`DateTime::modify`, PHP 7.1). Uygulandığı yerler:
+`order_bridge.php` (siparişten fatura), `invoice_manual.php`
+`erp_manual_header_build()` (taslak/elle fatura, `due_date` verilmediğinde),
+`invoice_form.php` (yeni formda vade kutusu artık **boş** açılır, boş
+kaydedilince yardımcı; yazılan tarih hiçbir zaman ezilmez). İade belgesi
+fatura tarihini korur (değişmedi); `parasut.php` legacy yolu ayrı bir işlev,
+dokunulmadı.
+
+- **Ayar:** pgset-erp kartında "Varsayılan vade (gün)" (`commerce.php`,
+  `prep.php`, `commerce.save.php` — `waf_table_has_column` kapısıyla, göç
+  almamış kurulumda kaydetme kırılmaz), 0–3650 sunucuda kırpılır.
+- **Cari formu:** "Vade (gün)" alanı (`account_form.php`; ekle/düzenle
+  ekranlarında tam sayı 0–3650 doğrulaması), `erp_account_save()` yazar,
+  `erp_account()` `SELECT *` ile döndürür. 0 = mağaza varsayılanı.
+- **CSV:** içe aktarma alanı `payment_days` (eş anlamlılar: vade, vade günü,
+  ödeme vadesi, payment days, payment term, terms…), 0–3650 doğrulaması,
+  şablonda örnek 30; dışa aktarma `csv_accounts` profiline aynı etiketle
+  ("Vade (Gün)") **Notlar'dan sonra, Bakiye'den önce** sütun — dosya gidip
+  gelir. Paraşüt cari profili değişmedi.
+
+**Kararlar.** Vade günü carinin özelliğidir, mağaza yalnız yedeği söyler;
+`aging.php` yalnız `due_date` okur, bu yüzden sonradan değişen vade kesilmiş
+belgeleri oynatmaz. Global 0 = fatura tarihinde vadeli: ayar yapılmadıkça
+davranış öncekiyle aynı. Registry arama sözcüklerine `vade` eklendi.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. Sandbox: 4.53 kurulum
+sihirbazının yükseltme adımıyla iki kez koşuldu (ikincisi "zaten var"),
+genel vade 30, cari A 0 / cari B 45 ile elle faturalar +30 / +45 gün vadeli;
+form üzerinden yazılan tarih korunur; CSV içe aktarma → dışa aktarma
+`payment_days` gidip geldi. Ayrıntı PR açıklamasında.
 
 ---
 
@@ -449,6 +1165,19 @@ akışları yalnız kod okunarak doğrulandı.
 mevcut ödeme yöntemi satırları onarılmadı (veri migration'ı gerekir, bu turda
 şema/migration kapalı). `lang('Cheque')` anahtarı artık bu dosyada
 kullanılmıyor, `tr.json`'da bırakıldı.
+
+**Devamı (2026-09-18, ürün sahibi kararı):** çek `Diğer`'e katlanmaz;
+`erp_cash_transactions.payment_method` ENUM'una `cheque` eklendi (alt adım
+4.54, `upgrade_2026_4_4_erp_cash_payment_method()`, önce `install_column_info`
+ile bakar, yeniden koşturulabilir) ve `Çek` seçeneği makbuz formuna geri
+geldi. `''` kalan satırlar körlemesine onarılmaz: satır çek mi kart mı
+söylemez. Beyaz liste formdan yazma yoluna taşındı — `erp_post_receipt()`
+değeri `erp_cash_payment_methods()` listesine karşı denetler ve liste dışı
+değeri `cash`'e düşürmek yerine hata döner; `erp_cash_post()` denetlemez,
+çünkü makbuz iptali eski satırın yöntemini (boş üye dahil) ters kayda
+kopyalar ve o yol kapanmamalı. Sandbox'ta adım iki kez koşturuldu (ikincisi
+atlandı), `cheque`/`card` makbuzları o değerle yazıldı, `foo` ve boş değer
+satır üretmeden reddedildi, boş yöntemli eski bir makbuz iptal edilebildi.
 
 ## 2026.4.4 — PHP 8 altında tanımsız sabit ve null okuma düzeltmeleri (2026-09-18)
 

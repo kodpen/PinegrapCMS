@@ -25,8 +25,14 @@ $liveform = new liveform('edit_page');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// The folder check below decides who may edit or delete the page, so it has
+// to run on the id the handler further down reads: $_POST for a submit, $_GET
+// for the form. $_REQUEST can also be fed by a cookie of the same name, which
+// would let the check pass on one page while the handler changes another.
+$requested_page_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
+
 // get page's folder in order to validate folder access
-$result = mysqli_query(db::$con, "SELECT page_id, page_folder FROM page WHERE page_id = '" . escape($_REQUEST['id']) . "'") or output_error('Query failed.');
+$result = mysqli_query(db::$con, "SELECT page_id, page_folder FROM page WHERE page_id = '" . escape($requested_page_id) . "'") or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 if (!$row['page_id']) {
@@ -1609,29 +1615,29 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_featured_items_row" style="' . $catalog_number_of_featured_items_row_style . '">
                     <label for="catalog_number_of_featured_items" class="form-label">' . lang('Number of Featured Items') . '</label>
-                    <input value="' . ($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                    <input value="' . h($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_new_items_row" style="' . $catalog_number_of_new_items_row_style . '">
                     <label for="catalog_number_of_new_items" class="form-label">' . lang('Number of New Items') . '</label>
-                    <input value="' . ($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                    <input value="' . h($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_columns_row" style="' . $catalog_number_of_columns_row_style . '">
                     <label for="catalog_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
-                    <input value="' . $catalog_number_of_columns . '" type="text" name="catalog_number_of_columns" id="catalog_number_of_columns" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                    <input value="' . h($catalog_number_of_columns) . '" type="text" name="catalog_number_of_columns" id="catalog_number_of_columns" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                 </div>
                 <div class="col-12">
                     <div class="row">
                         <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_image_width_row" style="' . $catalog_image_width_row_style . '">
                             <label for="catalog_image_width" class="form-label">' . lang('Image Width') . '</label>
                             <div class="input-group my-2">
-                                <input value="' . $catalog_image_width . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                                <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                                 <label class="input-group-text" for="catalog_image_width">' . lang('pixels') . '</label>
                             </div>
                         </div>
                         <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_image_height_row" style="' . $catalog_image_height_row_style . '">
                             <label for="catalog_image_height" class="form-label">' . lang('Image Height') . '</label>
                             <div class="input-group my-2">
-                                <input value="' . $catalog_image_height . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                                <input value="' . h($catalog_image_height) . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                                 <label class="input-group-text" for="catalog_image_height">' . lang('pixels') . '</label>
                             </div>
                         </div>
@@ -1639,7 +1645,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_back_button_label_row" style="' . $catalog_back_button_label_row_style . '">
                     <label for="catalog_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
-                    <input value="' . ($catalog_properties['back_button_label'] ?? '') . '" type="text" name="catalog_back_button_label" id="catalog_back_button_label" maxlength="50" class="form-control" />
+                    <input value="' . h($catalog_properties['back_button_label'] ?? '') . '" type="text" name="catalog_back_button_label" id="catalog_back_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_catalog_detail_page_id_row" style="' . $catalog_catalog_detail_page_id_row_style . '">
                     <label for="catalog_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
@@ -1656,7 +1662,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-md-12 my-1">
                                     <label for="catalog_detail_add_button_label" class="form-label">' . lang('Add Button Label') . '</label>
-                                    <input value="' . ($catalog_detail_properties['add_button_label'] ?? '') . '" type="text" name="catalog_detail_add_button_label" id="catalog_detail_add_button_label" maxlength="50" class="form-control" />
+                                    <input value="' . h($catalog_detail_properties['add_button_label'] ?? '') . '" type="text" name="catalog_detail_add_button_label" id="catalog_detail_add_button_label" maxlength="50" class="form-control" />
                                 </div>
                                 <div class="col-12 col-md-12 my-1">
                                     <label for="catalog_detail_next_page_id" class="form-label">' . lang('Next Page') . '</label>
@@ -1668,15 +1674,15 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_detail_back_button_label_row" style="' . $catalog_detail_back_button_label_row_style . '">
                     <label for="catalog_detail_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
-                    <input value="' . ($catalog_detail_properties['back_button_label'] ?? '') . '" type="text" name="catalog_detail_back_button_label" id="catalog_detail_back_button_label" maxlength="50" class="form-control" />
+                    <input value="' . h($catalog_detail_properties['back_button_label'] ?? '') . '" type="text" name="catalog_detail_back_button_label" id="catalog_detail_back_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_shopping_cart_label_row" style="' . $express_order_shopping_cart_label_row_style . '">
                     <label for="express_order_shopping_cart_label" class="form-label">' . lang('Shopping Cart Label') . '</label>
-                    <input value="' . ($express_order_properties['shopping_cart_label'] ?? '') . '" type="text" name="express_order_shopping_cart_label" id="express_order_shopping_cart_label" maxlength="50" class="form-control" />
+                    <input value="' . h($express_order_properties['shopping_cart_label'] ?? '') . '" type="text" name="express_order_shopping_cart_label" id="express_order_shopping_cart_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_label_row" style="' . $express_order_quick_add_label_row_style . '">
                     <label for="express_order_quick_add_label" class="form-label">' . lang('Quick Add Label') . '</label>
-                    <input value="' . ($express_order_properties['quick_add_label'] ?? '') . '" type="text" name="express_order_quick_add_label" id="express_order_quick_add_label" maxlength="255" class="form-control" />
+                    <input value="' . h($express_order_properties['quick_add_label'] ?? '') . '" type="text" name="express_order_quick_add_label" id="express_order_quick_add_label" maxlength="255" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_product_group_id_row" style="' . $express_order_quick_add_product_group_id_row_style . '">
                     <label for="express_order_quick_add_product_group_id" class="form-label">' . lang('Quick Add Product Group') . '</label>
@@ -1710,16 +1716,16 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_special_offer_code_label_row" style="' . $express_order_special_offer_code_label_row_style . '">
                     <label for="express_order_special_offer_code_label" class="form-label">' . lang('Special Offer Code Label') . '</label>
-                    <input value="' . ($express_order_properties['special_offer_code_label'] ?? '') . '" type="text" name="express_order_special_offer_code_label" id="express_order_special_offer_code_label" maxlength="50" class="form-control" />
+                    <input value="' . h($express_order_properties['special_offer_code_label'] ?? '') . '" type="text" name="express_order_special_offer_code_label" id="express_order_special_offer_code_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 col-lg-8 my-2" id="express_order_special_offer_code_message_row" style="' . $express_order_special_offer_code_message_row_style . '">
                     <label for="express_order_special_offer_code_message" class="form-label">' . lang('Special Offer Code Message') . '</label>
-                    <input value="' . ($express_order_properties['special_offer_code_message'] ?? '') . '" type="text" name="express_order_special_offer_code_message" id="express_order_special_offer_code_message" maxlength="255" class="form-control" />
+                    <input value="' . h($express_order_properties['special_offer_code_message'] ?? '') . '" type="text" name="express_order_special_offer_code_message" id="express_order_special_offer_code_message" maxlength="255" class="form-control" />
                 </div>
                 <div class="col-12 col-sm-6 my-2" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="express_order_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
-                        <input value="' . ($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
+                        <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="express_order_custom_field_1_required" id="express_order_custom_field_1_required" value="1"' . $express_order_custom_field_1_required_checked . ' />
                             <label class="form-check-label" for="express_order_custom_field_1_required">' . lang('Required') . '</label>
@@ -1729,7 +1735,7 @@ if (!$_POST) {
                 <div class="col-12 col-sm-6 my-2" id="express_order_custom_field_2_label_row" style="' . $express_order_custom_field_2_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="express_order_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
-                        <input value="' . ($express_order_properties['custom_field_2_label'] ?? '') . '" type="text" name="express_order_custom_field_2_label" id="express_order_custom_field_2_label" maxlength="255" class="form-control" />
+                        <input value="' . h($express_order_properties['custom_field_2_label'] ?? '') . '" type="text" name="express_order_custom_field_2_label" id="express_order_custom_field_2_label" maxlength="255" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="express_order_custom_field_2_required" id="express_order_custom_field_2_required" value="1"' . $express_order_custom_field_2_required_checked . ' />
                             <label class="form-check-label" for="express_order_custom_field_2_required">' . lang('Required') . '</label>
@@ -1791,11 +1797,11 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_update_button_label_row" style="' . $express_order_update_button_label_row_style . '">
                     <label class="form-label" for="express_order_update_button_label">'. lang('Update Button Label') . '</label>
-                    <input value="' . ($express_order_properties['update_button_label'] ?? '') . '" type="text" id="express_order_update_button_label" name="express_order_update_button_label" class="form-control" maxlength="50" >
+                    <input value="' . h($express_order_properties['update_button_label'] ?? '') . '" type="text" id="express_order_update_button_label" name="express_order_update_button_label" class="form-control" maxlength="50" >
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_purchase_now_button_label_row" style="' . $express_order_purchase_now_button_label_row_style . '">
                     <label class="form-label" for="express_order_purchase_now_button_label">'. lang('Purchase Now Button Label') . '</label>
-                    <input value="' . ($express_order_properties['purchase_now_button_label'] ?? '') . '" type="text" id="express_order_purchase_now_button_label" name="express_order_purchase_now_button_label" class="form-control" maxlength="50" >
+                    <input value="' . h($express_order_properties['purchase_now_button_label'] ?? '') . '" type="text" id="express_order_purchase_now_button_label" name="express_order_purchase_now_button_label" class="form-control" maxlength="50" >
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook rows for PHP code.
@@ -1895,7 +1901,7 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_add_button_label">' . lang('Add Button Label') . '</label>
-                            <input value="' . ($order_form_properties['add_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_add_button_label" name="order_form_add_button_label" maxlength="50"/>
+                            <input value="' . h($order_form_properties['add_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_add_button_label" name="order_form_add_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_add_button_next_page_id">' . lang('Next Page') . '</label>
@@ -1907,7 +1913,7 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_skip_button_label">' . lang('Skip Button Label') . '</label>
-                            <input value="' . ($order_form_properties['skip_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_skip_button_label" name="order_form_skip_button_label" maxlength="50"/>
+                            <input value="' . h($order_form_properties['skip_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_skip_button_label" name="order_form_skip_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="order_form_skip_button_next_page_id">' . lang('Next Page') . '</label>
@@ -1917,11 +1923,11 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_shopping_cart_label_row" style="' . $shopping_cart_shopping_cart_label_row_style . '">
                     <label class="form-label" for="shopping_cart_shopping_cart_label">' . lang('Shopping Cart Label') . '</label>
-                    <input value="' . ($shopping_cart_properties['shopping_cart_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_shopping_cart_label" name="shopping_cart_shopping_cart_label" maxlength="50"/>
+                    <input value="' . h($shopping_cart_properties['shopping_cart_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_shopping_cart_label" name="shopping_cart_shopping_cart_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_label_row" style="' . $shopping_cart_quick_add_label_row_style . '">
                     <label class="form-label" for="shopping_cart_quick_add_label">' . lang('Quick Add Label') . '</label>
-                    <input value="' . ($shopping_cart_properties['quick_add_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_quick_add_label" name="shopping_cart_quick_add_label" maxlength="255"/>
+                    <input value="' . h($shopping_cart_properties['quick_add_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_quick_add_label" name="shopping_cart_quick_add_label" maxlength="255"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_product_group_id_row" style="' . $shopping_cart_quick_add_product_group_id_row_style . '">
                     <label class="form-label" for="shopping_cart_quick_add_product_group_id">' . lang('Quick Add Product Group') . '</label>
@@ -1940,19 +1946,19 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_special_offer_code_label_row" style="' . $shopping_cart_special_offer_code_label_row_style . '">
                     <label class="form-label" for="shopping_cart_special_offer_code_label">' . lang('Special Offer Code Label') . '</label>
-                    <input value="' . ($shopping_cart_properties['special_offer_code_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_label" name="shopping_cart_special_offer_code_label" maxlength="50"/>
+                    <input value="' . h($shopping_cart_properties['special_offer_code_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_label" name="shopping_cart_special_offer_code_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-8 my-2" id="shopping_cart_special_offer_code_message_row" style="' . $shopping_cart_special_offer_code_message_row_style . '">
                     <label class="form-label" for="shopping_cart_special_offer_code_message">' . lang('Special Offer Code Message') . '</label>
-                    <input value="' . ($shopping_cart_properties['special_offer_code_message'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_message" name="shopping_cart_special_offer_code_message" maxlength="255"/>
+                    <input value="' . h($shopping_cart_properties['special_offer_code_message'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_message" name="shopping_cart_special_offer_code_message" maxlength="255"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_update_button_label_row" style="' . $shopping_cart_update_button_label_row_style . '">
                     <label class="form-label" for="shopping_cart_update_button_label">' . lang('Update Button Label') . '</label>
-                    <input value="' . ($shopping_cart_properties['update_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_update_button_label" name="shopping_cart_update_button_label" maxlength="50"/>
+                    <input value="' . h($shopping_cart_properties['update_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_update_button_label" name="shopping_cart_update_button_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_checkout_button_label_row" style="' . $shopping_cart_checkout_button_label_row_style . '">
                     <label class="form-label" for="shopping_cart_checkout_button_label">' . lang('Checkout Button Label') . '</label>
-                    <input value="' . ($shopping_cart_properties['checkout_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_checkout_button_label" name="shopping_cart_checkout_button_label" maxlength="50"/>
+                    <input value="' . h($shopping_cart_properties['checkout_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_checkout_button_label" name="shopping_cart_checkout_button_label" maxlength="50"/>
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook row for PHP code.
@@ -2025,7 +2031,7 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_address_and_arrival_submit_button_label">' . lang('Submit Button Label') . '</label>
-                            <input value="' . ($shipping_address_and_arrival_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_address_and_arrival_submit_button_label" name="shipping_address_and_arrival_submit_button_label" maxlength="50"/>
+                            <input value="' . h($shipping_address_and_arrival_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_address_and_arrival_submit_button_label" name="shipping_address_and_arrival_submit_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_address_and_arrival_next_page_id">' . lang('Next Page') . '</label>
@@ -2048,7 +2054,7 @@ if (!$_POST) {
                     <div class="row p-1 border border-1 rounded bg-light">
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_method_submit_button_label">' . lang('Submit Button Label') . '</label>
-                            <input value="' . ($shipping_method_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_method_submit_button_label" name="shipping_method_submit_button_label" maxlength="50"/>
+                            <input value="' . h($shipping_method_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_method_submit_button_label" name="shipping_method_submit_button_label" maxlength="50"/>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4 my-2">
                             <label class="form-label" for="shipping_method_next_page_id">' . lang('Next Page') . '</label>
@@ -2059,7 +2065,7 @@ if (!$_POST) {
                 <div class="col-12 col-sm-6 my-2" id="billing_information_custom_field_1_label_row" style="' . $billing_information_custom_field_1_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="billing_information_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
-                        <input value="' . ($billing_information_properties['custom_field_1_label'] ?? '') . '" type="text" name="billing_information_custom_field_1_label" id="billing_information_custom_field_1_label" maxlength="255" class="form-control" />
+                        <input value="' . h($billing_information_properties['custom_field_1_label'] ?? '') . '" type="text" name="billing_information_custom_field_1_label" id="billing_information_custom_field_1_label" maxlength="255" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="billing_information_custom_field_1_required" id="billing_information_custom_field_1_required" value="1"' . $billing_information_custom_field_1_required_checked . ' />
                             <label class="form-check-label" for="billing_information_custom_field_1_required">' . lang('Required') . '</label>
@@ -2069,7 +2075,7 @@ if (!$_POST) {
                 <div class="col-12 col-sm-6 my-2" id="billing_information_custom_field_2_label_row" style="' . $billing_information_custom_field_2_label_row_style . '">
                     <div class="border-1 border p-2 my-2 rounded">
                         <label for="billing_information_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
-                        <input value="' . ($billing_information_properties['custom_field_2_label'] ?? '') . '" type="text" name="billing_information_custom_field_2_label" id="billing_information_custom_field_2_label" maxlength="255" class="form-control" />
+                        <input value="' . h($billing_information_properties['custom_field_2_label'] ?? '') . '" type="text" name="billing_information_custom_field_2_label" id="billing_information_custom_field_2_label" maxlength="255" class="form-control" />
                         <div class="form-check form-switch ms-1 mt-2">
                             <input class="form-check-input" type="checkbox" name="billing_information_custom_field_2_required" id="billing_information_custom_field_2_required" value="1"' . $billing_information_custom_field_2_required_checked . ' />
                             <label class="form-check-label" for="billing_information_custom_field_2_required">' . lang('Required') . '</label>
@@ -2115,7 +2121,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="billing_information_submit_button_label_row" style="' . $billing_information_submit_button_label_row_style . '">
                     <label class="form-label" for="billing_information_submit_button_label">' . lang('Submit Button Label') . '</label>
-                    <input value="' . ($billing_information_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="billing_information_submit_button_label" name="billing_information_submit_button_label" maxlength="50"/>
+                    <input value="' . h($billing_information_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="billing_information_submit_button_label" name="billing_information_submit_button_label" maxlength="50"/>
                 </div>
                 <div class="col-12 col-lg-6 col-xl-4 my-2" id="billing_information_next_page_id_row" style="' . $billing_information_next_page_id_row_style . '">
                     <label class="form-label" for="billing_information_next_page_id">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
@@ -2150,7 +2156,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_submit_button_label_row" style="' . $order_preview_submit_button_label_row_style . '">
                     <label class="form-label" for="order_preview_submit_button_label">'. lang('Update Button Label') . '</label>
-                    <input value="' . ($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
+                    <input value="' . h($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
                 </div>';
 
             // If hooks are enabled and the user is a designer or administrator then output hook rows for PHP code.
@@ -2401,7 +2407,7 @@ if (!$_POST) {
                                 <div class="col-12 col-md-12 my-1">
                                     <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                     <div class="input-group">
-                                        <input value="' . ($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
+                                        <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
                                         <label class="input-group-text" for="custom_form_quiz_pass_percentage">%</label>
                                     </div>
                                 </div>
@@ -2431,7 +2437,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_submit_button_label_row" style="' . $custom_form_submit_button_label_row_style . '">
                     <label for="custom_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                    <input value="' . ($custom_form_properties['submit_button_label'] ?? '') . '" type="text" name="custom_form_submit_button_label" id="custom_form_submit_button_label" maxlength="50" class="form-control" />
+                    <input value="' . h($custom_form_properties['submit_button_label'] ?? '') . '" type="text" name="custom_form_submit_button_label" id="custom_form_submit_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_watcher_page_id_row" style="' . $custom_form_watcher_page_id_row_style . '">
                     <label for="custom_form_watcher_page_id" class="form-label">' . lang('Enable Watcher Option') . '</label>
@@ -2495,7 +2501,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-sm-6 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_submitter_email_from_email_address">' . lang('From E-mail Address') . '</label>
-                                    <input value="' . ($custom_form_properties['submitter_email_from_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_submitter_email_from_email_address" name="custom_form_submitter_email_from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                    <input value="' . h($custom_form_properties['submitter_email_from_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_submitter_email_from_email_address" name="custom_form_submitter_email_from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                 </div>
                                 <div class="col-12 col-sm-6 col-xl-8 my-1">
                                     <label class="form-label" for="custom_form_submitter_email_subject">' . lang('Subject') . '</label>
@@ -2551,11 +2557,11 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12 col-sm-6 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_administrator_email_to_email_address">' . lang('To E-mail Address') . '</label>
-                                    <input value="' . ($custom_form_properties['administrator_email_to_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_to_email_address" name="custom_form_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                    <input value="' . h($custom_form_properties['administrator_email_to_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_to_email_address" name="custom_form_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                 </div>
                                 <div class="col-12 col-sm-6 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_administrator_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
-                                    <input value="' . ($custom_form_properties['administrator_email_bcc_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_bcc_email_address" name="custom_form_administrator_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                    <input value="' . h($custom_form_properties['administrator_email_bcc_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_bcc_email_address" name="custom_form_administrator_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                 </div>
                                 <div class="col-12 col-sm-12 col-xl-4 my-1">
                                     <label class="form-label" for="custom_form_administrator_email_subject">' . lang('Subject') . '</label>
@@ -2813,7 +2819,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_confirmation_continue_button_label_row" style="' . $custom_form_confirmation_continue_button_label_row_style . '">
                     <label for="custom_form_confirmation_continue_button_label" class="form-label">' . lang('Continue Button Label') . '</label>
-                    <input value="' . ($custom_form_confirmation_properties['continue_button_label'] ?? '') . '" type="text" name="custom_form_confirmation_continue_button_label" id="custom_form_confirmation_continue_button_label" maxlength="50" class="form-control" />
+                    <input value="' . h($custom_form_confirmation_properties['continue_button_label'] ?? '') . '" type="text" name="custom_form_confirmation_continue_button_label" id="custom_form_confirmation_continue_button_label" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_confirmation_next_page_id_row" style="' . $custom_form_confirmation_next_page_id_row_style . '">
                     <label class="form-label" for="custom_form_confirmation_next_page_id">' . lang('Next Page') . '</label>
@@ -3051,7 +3057,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_event_view_back_button_label_row" style="' . $calendar_event_view_back_button_label_row_style . '">
                     <label for="calendar_event_view_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
-                    <input value="' . ($calendar_event_view_properties['back_button_label'] ?? '') . '" name="calendar_event_view_back_button_label" id="calendar_event_view_back_button_label" type="text" maxlength="50" class="form-control" />
+                    <input value="' . h($calendar_event_view_properties['back_button_label'] ?? '') . '" name="calendar_event_view_back_button_label" id="calendar_event_view_back_button_label" type="text" maxlength="50" class="form-control" />
                 </div>
                 <div class="col-12 my-2" id="calendar_event_view_notes_row" style="' . $calendar_event_view_notes_row_style . '">
                     <div class="form-check form-switch">
@@ -3069,7 +3075,7 @@ if (!$_POST) {
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_submit_button_label_row" style="' . $affiliate_sign_up_form_submit_button_label_row_style . '">
                     <label for="affiliate_sign_up_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                    <input value="' . ($affiliate_sign_up_form_properties['submit_button_label'] ?? '') . '" type="text" name="affiliate_sign_up_form_submit_button_label" id="affiliate_sign_up_form_submit_button_label" placeholder="' . lang('Sign Up') . '"  class="form-control" maxlength="50"/>
+                    <input value="' . h($affiliate_sign_up_form_properties['submit_button_label'] ?? '') . '" type="text" name="affiliate_sign_up_form_submit_button_label" id="affiliate_sign_up_form_submit_button_label" placeholder="' . lang('Sign Up') . '"  class="form-control" maxlength="50"/>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_next_page_id_row" style="' . $affiliate_sign_up_form_next_page_id_row_style . '">
                     <label class="form-label" for="affiliate_sign_up_form_next_page_id">' . lang('Next Page') . '</label>
@@ -3121,7 +3127,7 @@ if (!$_POST) {
                             </div>
                             <div class="col-12 col-md-6 col-lg-4 my-2" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">
                                 <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                                <input value="' . ($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
+                                <input value="' . h($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
                             </div>
                             <div class="col-12 col-md-6 col-lg-4 my-2" id="email_a_friend_next_page_id_row" style="' . $email_a_friend_next_page_id_row_style . '">
                                 <label for="email_a_friend_next_page_id" class="form-label">' . lang('Next Page') . '</label>
@@ -3933,6 +3939,54 @@ if (!$_POST) {
             exit();
         }
         
+        // The gate at the top of the file covers the folder the page is in
+        // now; moving the page needs edit rights to the destination as well,
+        // the same check add_page.php makes for a new page.
+        if (
+            ((int) $current_page_folder != (int) ($_POST['folder'] ?? 0))
+            && (check_edit_access($_POST['folder'] ?? '') == false)
+        ) {
+            log_activity(lang('access denied because user does not have access to modify folder'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // Whether this user may set a page to the given type: roles above
+        // basic user may set any type, a basic user needs the matching flag.
+        // add_page.php applies the same list to a new page.
+        $user_can_set_page_type = function ($page_type) use ($user) {
+            return (
+                ($user['role'] < 3)
+                || ($page_type == 'standard')
+                || (($page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
+                || (($page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
+                || (($page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
+                || (($page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
+                || (($page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
+                || (($page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
+                || (($page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
+                || (($page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
+                || (($page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
+                || (($page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
+                || (($page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
+                || (($page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
+                || (($page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
+                || (($page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
+                || (($page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
+                || (($page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
+                || (($page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
+                || (($page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
+                || (($page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
+                || (($page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
+            );
+        };
+
+        // A type the software does not know would not fit the page_type
+        // column, so the page keeps its current type instead. The value is
+        // read from $_POST in every step below, so it is corrected there.
+        if (get_page_type_name((string) ($_POST['type'] ?? '')) === null) {
+            $_POST['type'] = $current_page_type;
+        }
+
         // if the page type is catalog or catalog detail then check the name for slashes
         if (($_POST['type'] == 'catalog') || ($_POST['type'] == 'catalog detail')) {
             // if there is a slash in the page name, then output an error
@@ -3984,30 +4038,13 @@ if (!$_POST) {
             $pretty_urls_old = check_if_pretty_urls_are_enabled($_POST['id']);
         }
         
-        // if user is above a user role or current page type is accessible by this user, then prepare to save page type
+        // If the user may set the current page type, and the type the page is
+        // being changed to as well, then prepare to save page type. The second
+        // test is what keeps a basic user from turning a standard page into a
+        // type they were never given.
         if (
-            ($user['role'] < 3)
-            || ($current_page_type == 'standard')
-            || (($current_page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-            || (($current_page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-            || (($current_page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-            || (($current_page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-            || (($current_page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-            || (($current_page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-            || (($current_page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-            || (($current_page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-            || (($current_page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-            || (($current_page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-            || (($current_page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-            || (($current_page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-            || (($current_page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-            || (($current_page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-            || (($current_page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-            || (($current_page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-            || (($current_page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-            || (($current_page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-            || (($current_page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-            || (($current_page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
+            $user_can_set_page_type($current_page_type)
+            && (($_POST['type'] == $current_page_type) || $user_can_set_page_type($_POST['type']))
         ) {
             // assume that we can update the page type until we find out otherwise
             $update_page_type = true;

@@ -92,6 +92,9 @@ function erp_import_fields()
             'durum', 'durumu', 'status', 'active')),
         'notes' => array('label' => lang('Notes'), 'length' => 65535, 'synonyms' => array(
             'not', 'notlar', 'açıklama', 'aciklama', 'notes', 'note', 'description', 'comments')),
+        'payment_days' => array('label' => lang('Payment Term (days)'), 'length' => 4, 'synonyms' => array(
+            'vade', 'vade günü', 'vade gunu', 'vade gün', 'vade gun', 'ödeme vadesi', 'odeme vadesi', 'payment days',
+            'payment term', 'payment terms', 'terms', 'due days')),
         'overdue_notify_days' => array('label' => lang('Reminder threshold (days)'), 'length' => 4, 'synonyms' => array(
             'hatırlatma eşiği', 'hatirlatma esigi', 'hatırlatma günü', 'hatirlatma gunu', 'gecikme eşiği', 'gecikme esigi',
             'reminder days', 'reminder threshold', 'overdue days', 'overdue reminder')),
@@ -450,7 +453,8 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
     $account = array(
         'title' => '', 'kind' => $defaults['kind'], 'is_person' => null, 'tax_number' => '', 'tax_office' => '',
         'email' => '', 'phone' => '', 'address' => '', 'district' => '', 'city' => '', 'postcode' => '',
-        'country_code' => '', 'currency' => '', 'status' => 'active', 'notes' => '', 'overdue_notify_days' => '',
+        'country_code' => '', 'currency' => '', 'status' => 'active', 'notes' => '', 'payment_days' => '',
+        'overdue_notify_days' => '',
     );
     $mapped = array();
     $unparsed = array();
@@ -566,6 +570,12 @@ function erp_import_validate_row($account)
         if (!erp_fx_enabled() || !erp_fx_currency_allowed($account['currency'])) {
             $errors[] = lang('Currency not enabled.');
         }
+    }
+
+    // A term is whole days; ten years is more than any trade allows.
+    if (((string) ($account['payment_days'] ?? '') !== '')
+        && ((preg_match('/^[0-9]{1,4}$/', (string) $account['payment_days']) !== 1) || ((int) $account['payment_days'] > 3650))) {
+        $errors[] = lang('Payment term must be a whole number of days, 0 to 3650.');
     }
 
     // A threshold is whole days; ten years is more than any reminder needs.
@@ -720,6 +730,7 @@ function erp_import_merge($existing, $account)
         'contact_id' => (int) $existing['contact_id'],
         'status' => $existing['status'],
         'notes' => (string) $existing['notes'],
+        'payment_days' => (int) ($existing['payment_days'] ?? 0),
         'overdue_notify_days' => (int) ($existing['overdue_notify_days'] ?? 0),
     );
 
@@ -953,7 +964,7 @@ function erp_import_template_csv()
     $example = array(
         lang('Example Ltd.'), lang('Customer'), lang('Company'), '1234567890', lang('Central'), 'info@example.com',
         '+90 212 000 00 00', lang('Example Street 1'), '', '', '', erp_default_country_code(), erp_base_currency(),
-        lang('Active'), '', '',
+        lang('Active'), '', '30', '',
     );
 
     $handle = fopen('php://temp', 'r+');

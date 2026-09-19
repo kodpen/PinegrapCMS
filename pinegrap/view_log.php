@@ -818,8 +818,9 @@ if (!$_POST) {
         }
     }
     
-    // Delete error_log files (allowed regardless of MASS_DELETION)
-    if (isset($_POST['delete_all_error_logs'])) {
+    // Delete error_log files (allowed regardless of MASS_DELETION). Administrators
+    // only, the same condition that renders the button.
+    if (isset($_POST['delete_all_error_logs']) && defined('USER_ROLE') && (USER_ROLE < 1)) {
     
         $deleted = 0;
     

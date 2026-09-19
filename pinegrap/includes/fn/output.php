@@ -39,21 +39,29 @@ function output_control_panel_header_includes($include_assistant = true)
     }
 
     if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
-        define(
-            'CONTROL_PANEL_STYLESHEET_URL',
-            PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' .
-            @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css')
-        );
+        define('CONTROL_PANEL_STYLESHEET_URL', pg_default_control_panel_stylesheet_url());
     }
     if (!defined('CUSTOM_CSS')) {
         define('CUSTOM_CSS', '');
     }
 
-    // Session-less pages (the public API console) are served under a strict Content Security
-    // Policy and to anonymous readers, so the panel's AI assistant snippet is skipped there.
+    // The AI chat's UI module is a third-party script. The chat launcher
+    // (chat_backend.src.js) loads it on demand when a staff member opens the
+    // AI conversation, so nothing in the panel depends on it being in <head>.
+    // Fetching it from every panel page would hand the vendor a request per
+    // page view and run remote code on every screen, so the preload is off
+    // unless config.php defines CHAT_AI_PRELOAD as true; the URL then follows
+    // the same CHAT_AI_SCRIPT_URL override the launcher uses.
+    //
+    // Session-less pages (the public API console) are served under a strict
+    // Content Security Policy and to anonymous readers, so the preload is
+    // skipped there in every case.
     $assistant_snippet = '';
-    if ($include_assistant) {
-        $assistant_snippet = '<script type="module" src="https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js"></script>';
+    if ($include_assistant && defined('CHAT_AI_PRELOAD') && CHAT_AI_PRELOAD) {
+        $assistant_script_url = defined('CHAT_AI_SCRIPT_URL')
+            ? CHAT_AI_SCRIPT_URL
+            : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js';
+        $assistant_snippet = '<script type="module" src="' . h($assistant_script_url) . '"></script>';
     }
 
     // Strings the panel scripts (backend.src.js, via lang() / pgLang()) ask
@@ -736,6 +744,15 @@ function pg_widget_empty($icon, $message, $tone = '', $action_label = '', $actio
     return $output . '</div>';
 }
 
+
+// The stylesheet the control panel loads when config.php does not name one.
+// init.php defines CONTROL_PANEL_STYLESHEET_URL from this, and private_label.php
+// compares against it to tell a private-label stylesheet from the default.
+function pg_default_control_panel_stylesheet_url()
+{
+    return PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' .
+        @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+}
 
 function output_header_secure($properties = false)
 {
@@ -1602,7 +1619,7 @@ function output_header($properties = false)
                             </li>
                             ' . $output_private_label_list . '
                             <li class="pg-um-logout">
-                                <a class="logout_link_url dropdown-item text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php"' . $output_parent_target . '><i class="bi bi-box-arrow-right"></i><span>' . lang('Logout') . '</span></a>
+                                <a class="logout_link_url dropdown-item text-danger" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php?token=' . urlencode($_SESSION['software']['token'] ?? '') . '"' . $output_parent_target . '><i class="bi bi-box-arrow-right"></i><span>' . lang('Logout') . '</span></a>
                             </li>
                             <li class="pg-um-meta">
                                 <span class="pg-um-metaitem" title="' . lang('Version') . '">' . VERSION . '</span>
@@ -2722,8 +2739,7 @@ function license_check($properties = false)
                 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                pg_curl_tls($ch);
                 // send JSON POST
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
@@ -2745,6 +2761,15 @@ function license_check($properties = false)
                 curl_close($ch);
             } else {
                 // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
+                // The certificate is verified here as well, against the same CA bundle
+                // pg_curl_tls() uses when one is configured.
+                $ssl_options = array(
+                    'verify_peer' => true,
+                    'verify_peer_name' => true
+                );
+                if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
+                    $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                }
                 $context = stream_context_create(array(
                     'http' => array(
                         'method' => 'POST',
@@ -2753,10 +2778,7 @@ function license_check($properties = false)
                         'content' => $data,
                         'timeout' => 10
                     ),
-                    'ssl' => array(
-                        'verify_peer' => false,
-                        'verify_peer_name' => false
-                    )
+                    'ssl' => $ssl_options
                 ));
                 $response = @file_get_contents($api_url, false, $context);
             }

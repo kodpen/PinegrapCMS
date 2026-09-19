@@ -29,7 +29,7 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
-$menu_id = $_REQUEST['menu_id'];
+$menu_id = (int)($_REQUEST['menu_id'] ?? 0);
 $menu_name = $row['name'];
 
 // if user has a user role and if they do not have access to this menu, then user does not have access to edit region, so output error

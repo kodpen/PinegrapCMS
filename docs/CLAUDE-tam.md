@@ -1031,6 +1031,15 @@ kez sayar — bakiye tam da tahsil edilen tutar kadar kasadan ayrışır.
   sorgusunu yazmaz. Vade günü ayarı yoktur (ayrı PR); rapor yalnız
   `due_date` okur.
 
+- **Vade günü (4.53):** `erp_accounts.payment_days` ve
+  `config.erp_default_due_days` / `ERP_DEFAULT_DUE_DAYS`. Tek yardımcı
+  `erp_account_due_date($account_id, $issue_date)` (`accounts.php`): cari >
+  mağaza > fatura tarihi. Belge yazılırken bir kez okunur (`order_bridge`,
+  `erp_manual_header_build()`, fatura başlık formunda boş bırakılan vade);
+  yazılan tarih ezilmez, iade fatura tarihini korur, `aging.php` yalnız
+  `due_date` okur. CSV cari içe/dışa aktarımı alanı "Vade (Gün)" etiketiyle
+  taşır (Notlar'dan sonra).
+
 ### İndirimli siparişin KDV'si
 
 `submit_order.php:851` indirimi **toplamı hesaplamadan önce** KDV'den düşer
@@ -1128,7 +1137,14 @@ Belge katmanı `includes/erp/document.php`:
   kaçışlı, `{{{alan}}}` ham, `{{#bölüm}}…{{/bölüm}}` döngü / koşul,
   `{{^bölüm}}…{{/bölüm}}` tersi, noktalı anahtar (`satici.vkn`).
 - `erp_invoice_document_data($invoice_id)` — şablonun gördüğü veri:
-  `seller` / `account` / `invoice` / `lines` / `totals` / `generated_at`.
+  `seller` / `account` / `invoice` / `lines` / `totals` / `label` /
+  `language` / `generated_at`.
+- `erp_invoice_document_labels()` — `label.*` yer tutucuları: belgenin bastığı
+  her başlık/sütun adı/dipnot etiketi, `lang()` ile site dilinde. Ana para
+  birimini adlandıran iki etiket (`label.exchange_rate`,
+  `label.grand_total_base`) burada `{var:1}` ile çözülür; şablon yer tutucusu
+  argüman almaz. Aynı dizi `erp_settings.php`'deki yer tutucu başvurusunun
+  *Etiketler* grubunu besler.
 - `erp_invoice_template()` — `config.erp_invoice_template` doluysa o, yoksa
   `includes/erp/templates/invoice_default.html`.
 - `erp_invoice_html($invoice_id)` ve `erp_invoice_pdf($invoice_id)` — ikincisi
@@ -1150,8 +1166,14 @@ olan demektir.
 (savunmacı okunur — eski kurulumda tanımsız olabilir). Ünvan ve adres
 `ORGANIZATION_NAME` / `merchant_*`'tan gelir.
 
-**Şablon metni yöneticiye dönük Türkçedir**, `lang()`'den geçmez — belgeyi
-operatör düzenler, yazılım dili onu değiştirmez. Şablon CSS'inde
+**Yerleşik şablonun kendi sözcüğü yoktur** (issue #109): her etiket
+`{{label.*}}` ile `tr.json`'dan gelir, `<html lang="{{language}}">`
+`SOFTWARE_LANGUAGE`'ı basar; dosyada Türkçe literal ya da Türkçe yorum
+bulunmaz. Kaydedilmiş özel şablon operatörün yazdığı gibi kalır — yer tutucular
+eklemelidir, düz metin de çalışır. Türkçeye özgü terimlerin anahtarları:
+`VKN / TCKN` (satıcı/alıcı), `Tax ID` → "VKN" (taşıyıcı), `VAT` → "KDV",
+`Discount` → "İndirim" (eski şablondaki "İskonto" yerine; ürün genelindeki
+çeviriyle aynı). Şablon CSS'inde
 `text-transform: uppercase` **kullanılmaz**: dompdf noktasız/noktalı I'yı
 karıştırır (`i` → `I`). Büyük harf gerekiyorsa metin büyük harfle yazılır.
 
@@ -2032,6 +2054,8 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.55) | `_erp_overdue_notify`: `config.erp_overdue_notify_days SMALLINT UNSIGNED (0)`, `erp_overdue_notify_panel` / `_email` / `_push TINYINT(1) (1)`, `erp_overdue_notify_recipients TEXT DEFAULT NULL` (VARCHAR değil: `config` satırı 65535 baytlık InnoDB satır sınırına dayandı, VARCHAR(500) 1118 verdi), `erp_overdue_notify_frequency ENUM('daily','weekly') ('daily')`, `erp_overdue_notify_hour TINYINT UNSIGNED (9)`, `erp_overdue_notify_checked` / `_sent_at INT UNSIGNED (0)`; `erp_accounts.overdue_notify_days SMALLINT UNSIGNED (0)`; `erp_invoices.overdue_notified_at INT UNSIGNED (0)`. Hepsi `install_add_column` ile, yeniden koşturulabilir. Dağıtıcıda 4.53 ve 4.54'ün ardından çağrılır |
+| `2026.4.4` (4.54) | `_erp_cash_payment_method`: `erp_cash_transactions.payment_method` ENUM'una `cheque` eklendi (`ENUM('cash','transfer','card','cheque','other') NOT NULL DEFAULT 'cash'`); önce `install_column_info` ile bakılır, `cheque` zaten varsa atlanır — yeniden koşturulabilir. Makbuz formu çek gönderiyordu, strict olmayan bağlantı değeri boş üyeye çeviriyordu; `''` kalan satırlara dokunulmaz (çek mi kart mı bilinmiyor). Yazma yolu `erp_post_receipt()` değeri `erp_cash_payment_methods()` listesine karşı denetler, liste dışı değer hata döner |
 | `2026.4.4` (4.51) | `_erp_account_snapshot`: `erp_invoices.account_title VARCHAR(255)`, `account_tax_number VARCHAR(32)`, `account_tax_office VARCHAR(100)`, `account_address VARCHAR(255)`, `account_city VARCHAR(100)`, `account_country_code CHAR(2)`, `account_email VARCHAR(255)` (hepsi `NOT NULL DEFAULT ''`) — cari kartın kesim anındaki kopyası; kesilmiş eski faturalar canlı karttan geri doldurulur (`WHERE account_title = '' AND status <> 'draft'`), yeniden koşturulabilir |
 | `2026.4.4` (4.50) | `_erp_return_line_link`: `erp_invoice_items.parent_line_id INT UNSIGNED NOT NULL DEFAULT 0` + `idx_parent_line` (iade satırı → ana fatura satırı; iade iptali doğru satırı geri açar); tekil ürün eşleşmesi olan eski satırlar geri doldurulur, çoklu olanlar 0 kalır — yeniden koşturulabilir |
 | `2026.4.4` (4.49) | `_erp_foreign_currency`: `amount_try → amount_base` (`erp_account_transactions`, `erp_cash_transactions`, `erp_settlements`), `grand_total_try → grand_total_base` (`erp_invoices`) — yeni ad varsa atlanır, tip/null/default `install_column_info`'dan —, `currency_rates` tablosu (`UNIQUE (rate_date, base_code, currency_code)`, `rate DECIMAL(18,8)` = ana / 1 birim döviz), `config.erp_fx_enabled TINYINT(1) DEFAULT 0` / `erp_fx_currencies VARCHAR(64) DEFAULT 'USD,EUR,GBP'` / `erp_fx_auto_diff TINYINT(1) DEFAULT 1`, `erp_invoices.exchange_rate_source` ve `erp_cash_transactions.exchange_rate_source VARCHAR(32)` |

@@ -1459,7 +1459,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
                         
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                     
@@ -1470,7 +1470,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
                         
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -1522,7 +1522,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
 
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -1816,9 +1816,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -1842,7 +1841,7 @@ function submit_order($type) {
                         array_unshift($response, '');
 
                         // If transaction failed, prepare error.
-                        // We had to güncelleme the test below to change "trim($response[1]) != 1",
+                        // We had to update the test below to change "trim($response[1]) != 1",
                         // "to trim($response[1]) !== '1'", because Authorize.Net started returning
                         // "1.0" for the response code when there was an error.  That is strange,
                         // because "1" means success, which was causing our previous PHP comparison to match.
@@ -1868,7 +1867,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -1943,9 +1942,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, 'CLRCMRC_XML=' . urlencode($transaction_xml));
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -2000,7 +1998,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -2071,9 +2069,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
                         // Setup an SSL connection using the supplied .pem file from First Data Global Gateway
                         curl_setopt($ch, CURLOPT_SSLCERT, FILE_DIRECTORY_PATH . '/' . ECOMMERCE_FIRST_DATA_GLOBAL_GATEWAY_PEM_FILE_NAME);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $transaction_xml);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  0);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -2128,7 +2125,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -2207,9 +2204,8 @@ function submit_order($type) {
                                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                pg_curl_tls($ch);
                                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                 curl_setopt($ch, CURLOPT_POST, 1);
                                 
@@ -2294,7 +2290,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
-                            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
                         
@@ -2444,8 +2440,7 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  false);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
@@ -2600,9 +2595,8 @@ function submit_order($type) {
                         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                        pg_curl_tls($ch);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                         curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                         curl_setopt($ch, CURLOPT_POST, 1);
                         
@@ -2746,7 +2740,7 @@ function submit_order($type) {
                         // Buyer IP
                         $ip = h($_SERVER['REMOTE_ADDR']);
                     
-                        // Identity number (TC kimlik no). Not: gerçek validasyon önerilir.
+                        // Identity number (Turkish national ID). Note: real validation is recommended.
                         if ($custom_field_1 && is_numeric($custom_field_1)) {
                             $identitynumber = substr($custom_field_1, 0, 11);
                         } else {
@@ -2965,7 +2959,7 @@ function submit_order($type) {
                             $lineCents = $priceCents * $qty;
                         
                             $item = new \Iyzipay\Model\BasketItem();
-                            // benzersiz ID tercih (DB id varsa onu kullan)
+                            // prefer a unique ID (use the DB id when there is one)
                             $item->setId((string)(isset($product['id']) ? $product['id'] : $product['product_name']));
                             $item->setName(($qty > 1 ? $qty . ' Qty/Adet - ' : '') . $product['short_description']);
                             $item->setPrice(sprintf("%01.2lf", $lineCents / 100));
@@ -3359,8 +3353,8 @@ function submit_order($type) {
                 
                 // if mode is not paypal_express_checkout_return, then prepare to send SetExpressCheckout request to PayPal
                 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
-                    $paypal_express_checkout_returnurl = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
-                    $paypal_express_checkout_cancelurl = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id);
+                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
+                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id);
                     
                     $post_data =
                         'METHOD=SetExpressCheckout&' .
@@ -3406,9 +3400,8 @@ function submit_order($type) {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                pg_curl_tls($ch);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                 curl_setopt($ch, CURLOPT_POST, 1);
                 
@@ -3449,7 +3442,7 @@ function submit_order($type) {
                     $liveform->mark_error('paypal_express_checkout', h($paypal_express_checkout_error_message));
 
                     // send user back to previous screen
-                    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id));
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                     exit();
                 }
                 
@@ -3980,8 +3973,7 @@ function submit_order($type) {
             // main account.
             if (!$ghost) {
 
-                $_SESSION['sessionuserid']  = db_value("SELECT user_id FROM user WHERE user_username = '" . escape($username) . "'");
-                $_SESSION['sessionusername'] = $username;
+                pg_session_sign_in($user_id, $username);
 
                 // Bind this fresh session to a device token while the device
                 // limit is on, so it counts toward the limit and can be signed
@@ -4600,10 +4592,9 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $transaction_xml);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     
                     // if there is a proxy address, then send cURL request through proxy
                     if (PROXY_ADDRESS != '') {
@@ -4724,9 +4715,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, 'CLRCMRC_XML=' . urlencode($transaction_xml));
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -4837,9 +4827,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
                     // Setup an SSL connection using the supplied .pem file from First Data Global Gateway
                     curl_setopt($ch, CURLOPT_SSLCERT, FILE_DIRECTORY_PATH . '/' . ECOMMERCE_FIRST_DATA_GLOBAL_GATEWAY_PEM_FILE_NAME);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $transaction_xml);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  0);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -4953,9 +4942,8 @@ function submit_order($type) {
                             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                             curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                            pg_curl_tls($ch);
                             curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                             curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                             curl_setopt($ch, CURLOPT_POST, 1);
                             
@@ -5094,9 +5082,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -5221,9 +5208,8 @@ function submit_order($type) {
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    pg_curl_tls($ch);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     
@@ -5289,9 +5275,8 @@ function submit_order($type) {
                             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                             curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                            pg_curl_tls($ch);
                             curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                             curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                             curl_setopt($ch, CURLOPT_POST, 1);
                             
@@ -5392,9 +5377,8 @@ function submit_order($type) {
                                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                    pg_curl_tls($ch);
                                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                     curl_setopt($ch, CURLOPT_POST, 1);
                                     
@@ -5486,9 +5470,8 @@ function submit_order($type) {
                                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                     curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                    pg_curl_tls($ch);
                                     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                     curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                     curl_setopt($ch, CURLOPT_POST, 1);
                                     
@@ -5592,9 +5575,8 @@ function submit_order($type) {
                                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                                 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                                pg_curl_tls($ch);
                                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
                                 curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
                                 curl_setopt($ch, CURLOPT_POST, 1);
                                 
@@ -7022,7 +7004,7 @@ function submit_order($type) {
                             }
                         }
 
-                        // If pretty URLs are enabled, then güncelleme address name.
+                        // If pretty URLs are enabled, then update the address name.
                         if ($pretty_urls == true) {
                             update_submitted_form_address_name($submitted_form_id);
                         }
@@ -7843,7 +7825,7 @@ function submit_order($type) {
     $liveform->remove_form($type_value);
 
     // send user to next page (with ?order_id=N for the order_view widget)
-    $next_page_url = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($next_page_id);
+    $next_page_url = URL_SCHEME . HOSTNAME . PATH . get_page_name($next_page_id);
     if ($completed_order_id > 0) {
         $next_page_url .= (strpos($next_page_url, '?') === false ? '?' : '&')
                        . 'order_id=' . $completed_order_id;
