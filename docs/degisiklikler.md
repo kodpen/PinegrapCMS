@@ -41,6 +41,44 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Kaçışsız sorgu parçaları ve ORDER BY yönü, ikinci tur (2026-09-18)
+
+**Belirti.** İkinci tur güvenlik incelemesi (issue #63) SQL'e kaçışsız giren
+13 parça saydı. Üçü değer konumunda kaçış eksikliği: form alanı tetikleyicisinin
+hedef seçenekleri (`add_field.php`, `edit_field.php`), "yalnız ofis kullanımı"
+alanının varsayılan değeri (`includes/fn/content.php`,
+`get_custom_form_screen_content.php`) ve sistem stili baş içeriği kaydında stil
+numarası (`view_system_style_source.php`). İkisi anahtar sözcük konumu:
+`device_type` çerezi doğrudan oturuma, oradan `activated_<tip>_theme` sütun
+adına giriyordu; `preview_style.php` ham `$_GET['style_id']` değerini oturuma
+yazıyor, `theme_designer.php` onu üç sorguya kaçışsız gömüyordu (ikinci
+dereceden enjeksiyon). Kalan sekizi, 2026.4.2'de sayfa/ürün listelerinde ve
+c5b382a'da 15 ekranda kapatılan ORDER BY yönü açığının henüz elden geçmemiş
+ekranları: `view_currencies`, `view_verified_shipping_addresses`,
+`view_product_attributes`, `view_short_links` (yön `escape()` ile sarılıydı —
+anahtar sözcük konumunda işe yaramaz) ve `view_design_files`, `view_styles`,
+`view_themes`, `view_regions` (beş alan; yön oturumdan ham geliyordu).
+
+**Çözüm.** Değer konumları `e()` / `escape()` ile kaçışlanır, stil numarası
+`(int)`'e çevrilir (yönlendirme adresinde de). Çerez yalnız `desktop` ya da
+`mobile` ise oturuma alınır; başka her değer "çerez yok" sayılır ve cihaz türü
+yeniden saptanıp çerez doğru değerle yazılır. `update_device_type.php` zaten
+beyaz liste uyguluyordu, oturuma başka giriş yolu yoktur. `preview_style.php`
+stil numarasını `(int)` olarak saklar (seçici yalnız tam sayı ya da "varsayılan"
+için boş gönderir; boş → 0, tüm okuma yerleri doğruluk denetimi yaptığı için
+davranış değişmez), `theme_designer.php` üç kullanım noktasında `escape()`
+uygular. ORDER BY ekranlarında c5b382a kalıbı birebir izlenir:
+`sql_order_direction()` istekten okunurken (`''` varsayılanıyla, ekranın kendi
+"yön seçilmedi" mantığı korunur), oturumdan sorguya inerken ve `$_REQUEST`
+döngüsüyle oturumu dolduran ekranlarda döngünün hemen ardından uygulanır, böylece
+daha önce zehirlenmiş oturumlar da temizlenir. Varsayılan sıralama yönleri ve
+sorgu anlamı değişmez. Şema değişikliği yok.
+
+**Doğrulanamayan.** Çalışan örnek kurulmadı; `php tools/lint.php` ve
+`php tools/check_lang.php` temiz. Ekranların sıralama bağlantıları
+(`get_column_heading()`) yalnız `asc` / `desc` gönderir, beyaz liste bunları
+kabul eder.
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`

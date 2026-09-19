@@ -135,7 +135,7 @@ if (!$_POST) {
             style_head = '" . escape($liveform->get_field_value('head')) . "',
             style_user = '" . $user['id'] . "',
             style_timestamp = UNIX_TIMESTAMP()
-        WHERE style_id = '" . $liveform->get_field_value('id') . "'";
+        WHERE style_id = '" . (int) $liveform->get_field_value('id') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     log_activity(lang(array('string' => 'additional head content for style ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
@@ -146,7 +146,7 @@ if (!$_POST) {
     if ($liveform->get_field_value('submit_save') == 'Save') {
         $liveform->add_notice($notice);
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_system_style_source.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_system_style_source.php?id=' . (int) $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
     // else return to edit system style screen
     } else {

@@ -31,6 +31,11 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
+// The order value is interpolated into ORDER BY below, so only asc/desc may stay in the session.
+if (isset($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'])) {
+    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] = sql_order_direction($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'], '');
+}
+
 // if state is not set yet, set default to [All]
 if (isset($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id']) == false) {
     $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] = '[All]';
@@ -151,7 +156,7 @@ $verified_shipping_addresses = db_items(
     LEFT JOIN user AS created_user ON verified_shipping_addresses.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON verified_shipping_addresses.last_modified_user_id = last_modified_user.user_id
     $where
-    ORDER BY $sort_column " . escape(($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? '')));
+    ORDER BY $sort_column " . sql_order_direction($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['order'] ?? ''));
 
 $output_rows = '';
 

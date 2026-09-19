@@ -26,7 +26,7 @@ validate_token_field();
 switch (($_GET['mode'] ?? '')) {
     // If user has selected a style from the pick list, then update current style.
     case 'preview':
-        $_SESSION['software']['preview_style']['theme_' . $_SESSION['software']['preview_theme_id'] . '_page_' . $_GET['page_id'] . '_' . $_SESSION['software']['device_type']] = $_GET['style_id'];
+        $_SESSION['software']['preview_style']['theme_' . $_SESSION['software']['preview_theme_id'] . '_page_' . $_GET['page_id'] . '_' . $_SESSION['software']['device_type']] = (int) ($_GET['style_id'] ?? 0);
 
         break;
     
