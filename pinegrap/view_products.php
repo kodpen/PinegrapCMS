@@ -1555,7 +1555,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             </td>
             ' . $output_image_column . '
             <td class="align-middle chart_label ' . $output_name_and_short_description_color_class . '">' . $name . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . (int) $row['id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($row) . '</a></td>
-            <td class=" align-middle ' . $output_name_and_short_description_color_class . '">' . $short_description . '</td>
+            <td class=" align-middle ' . $output_name_and_short_description_color_class . '">' . h($short_description) . '</td>
             <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
             <td class="align-middle text-end">' . prepare_amount($price) . '</td>
             ' . $output_inventory_columns . '
