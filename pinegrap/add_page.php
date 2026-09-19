@@ -1937,7 +1937,7 @@ if (!$_POST) {
     if (check_name_availability(array('name' => $name)) == false) {
         $liveform_add_page->mark_error('name', lang('The page name that you entered is already in use. Please enter a different page name.'));
         
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
         exit();
     }
     

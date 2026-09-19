@@ -41,6 +41,44 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Açık yönlendirme ve Host başlığından üretilen adresler (2026-09-18)
+
+**Belirti.** Güvenlik incelemesi (issue #64) `send_to` parametresini
+doğrulamadan `Location` başlığına ya da bir `href`'e koyan ve adresleri
+`HOSTNAME` yerine doğrudan `$_SERVER['HTTP_HOST']`'tan kuran on iki yer
+buldu. `remove_item_from_cart.php`, `waf_ranges_job.php` ve
+`update_exchange_rates.php` `send_to` değerini ham hâliyle ana makinenin
+arkasına ekliyordu: `//evil.example` biçimindeki bir değer ziyaretçiyi
+yabancı bir siteye götürüyordu. Şifremi unuttum, şifre belirleme ve form
+öğesi görünümü ekranları aynı değeri `escape_url()` ile süzüyordu; bu
+yardımcı mutlak ve protokol-göreli adresleri kabul ettiği için tıklamayla
+yabancı siteye giden bir bağlantı basılıyordu. `add_user.php` yeni hesabın
+e-postasındaki giriş bağlantısını isteğin Host başlığından üretiyordu;
+`edit_files.php` `from` alanını süzgeçsiz liveform adı ve yönlendirme yolu
+olarak kullanıyordu; `import_design.php` komut satırını Host başlığının
+yokluğundan anlıyor, başlığı olmayan bir web isteği `validate_user()`'ı
+atlıyordu. Yayınlanmış 2026.4.3'ü de etkiler.
+
+**Çözüm.** Yönlendirmeler `pg_safe_redirect_path()`'ten geçer: yalnız tek
+`/` ile başlayan yol kabul edilir, gerisi (sorgu dizesi, köşeli parantez,
+UTF-8) olduğu gibi korunur; yabancı ya da protokol-göreli hedef site köküne,
+döviz kurlarında `view_currencies.php`'ye düşer. Şifre ekranları ve form
+öğesi görünümündeki geri düğmesi `escape_url()` yerine aynı yardımcıyı
+kullanır; `escape_url()` kendisi değişmedi, `href` içinde dış adresin doğru
+olduğu yerlerde kullanılmaya devam eder. Ana makine adı, isteğe dönen
+yönlendirmelerde `HOSTNAME` (`add_page`, `add_product_group`, `add_folder`,
+`delete_submitted_forms`, `remove_item_from_cart`, `submit_order`'ın ödeme
+dönüş adresleri dahil), isteği terk eden e-posta bağlantısında
+`HOSTNAME_SETTING` (`add_user.php`; `init.php`'deki kuralla aynı, spoof
+edilmiş Host başlığı alıcının gideceği yeri belirleyemez). `edit_files.php`
+`from`'u `view_files` / `view_design_files` beyaz listesine bağlar, bilinmeyen
+değer `view_files`'a düşer; `import_design.php` komut satırını
+`PHP_SAPI === 'cli'` ile anlar (`api_sync_job.php` ile aynı kalıp).
+`add_folder.php` hata dönüşünde `send_to`'yu `urlencode()` ile taşır. Şema
+değişikliği yok, yeni çeviri anahtarı yok.
+
+---
+
 ## 2026.4.4 — Yeni kurulum debug kapalı gelir, sayfa bildirim e-postası varsayılanı düz metin (2026-09-18)
 
 **Belirti.** Her iki başlangıç sitesi (`data/backups/turkish_default/sql.sql`

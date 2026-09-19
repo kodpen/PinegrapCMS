@@ -101,13 +101,13 @@ if (mysqli_num_rows($result) == 0) {
             $row = mysqli_fetch_assoc($result);
             $next_ship_to_id = $row['id'];
 
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id']) . '?ship_to_id=' . $next_ship_to_id);
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id']) . '?ship_to_id=' . $next_ship_to_id);
             exit();
         // else there is not another recipient, so find out where we should send the user
         } else {
             // if user came from an express order page, then forward user to express order page
             if ($_SESSION['ecommerce']['express_order_page_id']) {
-                header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_SESSION['ecommerce']['express_order_page_id']));
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_SESSION['ecommerce']['express_order_page_id']));
                 exit();
                 
             // else user did not come from an express order page, so figure out where user should be forwarded
@@ -126,18 +126,18 @@ if (mysqli_num_rows($result) == 0) {
                     
                     // if billing information is not complete, send user to billing information screen
                     if ($billing_complete == 0) {
-                        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_SESSION['ecommerce']['billing_information_page_id']));
+                        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_SESSION['ecommerce']['billing_information_page_id']));
                         exit();
                         
                     // else billing information is complete, so send user to order preview screen
                     } else {
-                        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_SESSION['ecommerce']['order_preview_page_id']));
+                        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_SESSION['ecommerce']['order_preview_page_id']));
                         exit();
                     }
                 
                 // else there is not at least one item in the cart, so send user to shopping cart
                 } else {
-                    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_SESSION['ecommerce']['shopping_cart_page_id']));
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_SESSION['ecommerce']['shopping_cart_page_id']));
                     exit();
                 }
             }
@@ -161,5 +161,7 @@ if (mysqli_num_rows($result) == 0) {
     }
 }
 
-// send user back to where he/she came from
-header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . ($_GET['send_to'] ?? ''));
+// Send the visitor back to the screen the remove link was on. The value
+// arrives in the query string, so only a same-site path is accepted; anything
+// else falls back to the site root.
+header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? ''));

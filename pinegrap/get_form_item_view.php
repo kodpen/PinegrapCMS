@@ -1356,7 +1356,7 @@ function get_form_item_view($properties) {
                     
                     // if there is a send to, then output the back button.
                     if ((isset($_GET['send_to']) == TRUE) && (($_GET['send_to'] ?? '') != '')) {
-                        $output_back_button = '<a href="' . h(escape_url(($_GET['send_to'] ?? ''))) . '" class="software_button_primary back_button">' . lang('Back') . '</a>&nbsp;&nbsp;&nbsp;';
+                        $output_back_button = '<a href="' . h(pg_safe_redirect_path($_GET['send_to'] ?? '')) . '" class="software_button_primary back_button">' . lang('Back') . '</a>&nbsp;&nbsp;&nbsp;';
                     }
                     
                     // if visitor has access to edit submitted form, then output edit button
@@ -1396,7 +1396,7 @@ function get_form_item_view($properties) {
                     
                     // If there is a send to, then output the back button.
                     if (($_GET['send_to'] ?? '')) {
-                        $back_button_url = escape_url(($_GET['send_to'] ?? ''));
+                        $back_button_url = pg_safe_redirect_path($_GET['send_to'] ?? '');
                     }
                     
                     // If visitor has access to edit submitted form, then output edit button.

@@ -143,9 +143,10 @@ $form->remove();
 
 $form->set('screen', 'confirm');
 
-// if there is a send to, then forward user to send to
+// if there is a send to, then forward user to send to. It arrived in the
+// query string of the set password link, so only a same-site path is used.
 if ($send_to != '') {
-    $continue_url = $send_to;
+    $continue_url = pg_safe_redirect_path($send_to, PATH);
     
 // else if user has a home page, then forward user to that page
 } elseif ($home_page_name != '') {
@@ -175,6 +176,6 @@ if ($send_to != '') {
     $continue_url = PATH;
 }
 
-$form->add_notice(lang(array('string' => 'We have set your password, and you are now logged in. <a href="{var:1}">Continue</a>', 'vars' => array(h(escape_url($continue_url))))));
+$form->add_notice(lang(array('string' => 'We have set your password, and you are now logged in. <a href="{var:1}">Continue</a>', 'vars' => array(h($continue_url)))));
 
 go(get_page_type_url('set password'));
