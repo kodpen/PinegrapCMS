@@ -20,6 +20,12 @@
 // is only useful while the caller might still retry, and a day is far longer
 // than any retry policy.
 
+if (!defined('PG_INIT_LOADED')) {
+
+	exit;
+
+}
+
 function api_maintenance_purge() {
 
 	// A site whose files are new but whose database has not been upgraded yet
