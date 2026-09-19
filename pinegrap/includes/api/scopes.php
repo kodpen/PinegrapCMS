@@ -198,7 +198,7 @@ function api_owner_scopes($owner) {
 
 	// Pages are the site itself: a contributor may hold edit rights on
 	// individual pages, but delegating page writes to a machine is a
-	// designer-and-above decision.
+	// manager-and-above decision: roles 0 to 2, the panel's 'manager' gate.
 	if ($role <= 2) {
 
 		$scopes[] = 'pages:read';

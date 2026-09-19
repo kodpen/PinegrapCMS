@@ -737,7 +737,7 @@ function mp_n11_package($entry) {
 			'first_name' => ($space === false) ? $name : trim(substr($name, 0, $space)),
 			'last_name'  => ($space === false) ? ''    : trim(substr($name, $space + 1)),
 			'email'      => isset($entry['customerEmail']) ? (string)$entry['customerEmail'] : '',
-			'phone'      => mp_n11_address_field($entry, 'shippingAddress', 'gsm'),
+			'phone'      => mp_n11_address_field($entry, 'shippingAddress', 'phone'),
 			'company'    => ''
 		),
 		'billing'          => mp_n11_address($entry, 'billingAddress'),
@@ -796,11 +796,13 @@ function mp_n11_address($entry, $key) {
 
 }
 
+// One field of one of their addresses, named by the importer's key (the shape
+// mp_n11_address() answers with), not by theirs.
 function mp_n11_address_field($entry, $key, $field) {
 
 	$address = mp_n11_address($entry, $key);
 
-	return isset($address['phone']) ? $address['phone'] : '';
+	return isset($address[$field]) ? $address[$field] : '';
 
 }
 
