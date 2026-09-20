@@ -122,6 +122,14 @@ function erp_account_save($data)
         $columns['overdue_notify_days'] = min(3650, max(0, (int) ($data['overdue_notify_days'] ?? 0)));
     }
 
+    // Whether the customer is written to when their invoices pass the
+    // threshold; left out of $data (a caller that predates the field, the
+    // CSV import) keeps the account's current choice.
+    if (array_key_exists('overdue_notify_customer', $data)
+        && function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'overdue_notify_customer')) {
+        $columns['overdue_notify_customer'] = !empty($data['overdue_notify_customer']) ? 1 : 0;
+    }
+
     $pairs = array();
     foreach ($columns as $column => $value) {
         $pairs[] = $column . " = '" . escape($value) . "'";

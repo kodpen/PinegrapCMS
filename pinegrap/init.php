@@ -675,6 +675,8 @@ define('ERP_OVERDUE_NOTIFY_PUSH', isset($row['erp_overdue_notify_push']) ? (int)
 define('ERP_OVERDUE_NOTIFY_RECIPIENTS', $row['erp_overdue_notify_recipients'] ?? '');
 define('ERP_OVERDUE_NOTIFY_FREQUENCY', (($row['erp_overdue_notify_frequency'] ?? 'daily') === 'weekly') ? 'weekly' : 'daily');
 define('ERP_OVERDUE_NOTIFY_HOUR', isset($row['erp_overdue_notify_hour']) ? (int) $row['erp_overdue_notify_hour'] : 9);
+// The reminder e-mail to the customer is outbound mail, so it starts off.
+define('ERP_OVERDUE_NOTIFY_CUSTOMER', isset($row['erp_overdue_notify_customer']) ? (int) $row['erp_overdue_notify_customer'] : 0);
 define('PARASUT_COMPANY_ID', $row['parasut_company_id'] ?? '');
 define('PARASUT_DEFAULT_PRODUCT_ID', $row['parasut_default_product_id'] ?? '');
 define('PARASUT_DEFAULT_WAREHOUSE_ID', $row['parasut_default_warehouse_id'] ?? '');

@@ -41,6 +41,117 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Gecikmiş alacak hatırlatmaları, 2. tur: ikinci uyarı, erteleme, menü rozeti, müşteriye e-posta (2026-09-20)
+
+**Belirti.** İlk tur (4.55) bir belgeyi bir kez duyurup bırakıyordu: bir ay
+sonra hâlâ açık olan fatura yalnız "hâlâ açık" toplamında bir rakamdı. Müşteriyle
+konuşulmuş, ödemesi beklenen bir belgeyi özetin dışında tutmanın yolu yoktu.
+Panelde gecikme sayısını görmek için ERP panosuna gitmek gerekiyordu. Ve
+hatırlatma yalnız içe dönüktü; asıl borçluya kimse yazmıyordu. Dördü de ilk
+turun PR açıklamasında "v2" diye ertelenen maddelerdi.
+
+**Çözüm.** Hepsi `includes/erp/notify.php` üzerinde; teslimat kanalları yine
+mevcut olanlar (`create_notification`, `pg_push_enqueue_notification`,
+`email`).
+
+- **İkinci ve son uyarı (X+30).** Adaylar artık dört listeye ayrılır: `new`
+  (hiç duyurulmamış), `second` (duyurulmuş, ikinci damgası yok ve gecikme ≥
+  eşik + 30 gün), `known` (söylenecek bir şey kalmamış, yalnız toplamda),
+  `snoozed`. `second` listesi damgası `erp_invoices.overdue_second_notified_at`.
+  Eşiğe göre değil, eşik + 30'a göre: "geç" tanımını mağaza eşikle verir,
+  bir ay sonrası her tahsilat rutininin ikinci dürtmesidir; ayar yapılmadı,
+  `erp_overdue_second_notice_days()` sabit 30 döner. İlk duyurulduğu anda
+  zaten eşik + 30'u geçmiş belge iki damgayı birden alır; yoksa sıradaki özet
+  onu ikinci kez listelerdi. Özet artık `new` ya da `second` boş değilse
+  gider; zil satırı ikinci sayıyı `form_id`'de taşır (bu eylemde başka işi
+  olmayan sütun), cümle üç biçimde `pg_notification_display()`'de kurulur
+  ve posta başlığı aynı fonksiyondan alınır (`erp_overdue_notify_headline()`
+  → `pg_notification_display()`); metin tek yerdedir.
+- **Erteleme, fatura başına.** `erp_invoices.overdue_snoozed_until` (INT,
+  gece yarısı damgası). `erp_overdue_snooze($id, 'Y-m-d')`: yalnız açık satış
+  faturası, tarih bugünden sonra ve en çok bir yıl — erteleme bir duraklamadır,
+  belgeyi hatırlatmalardan kalıcı düşürmenin yolu değil. Ertelenen belge
+  özetlerde hiç yer almaz (toplamda da sayılmaz); tarih geçince kaldığı
+  yerden sürer. Fatura ekranında (`edit_erp_invoice.php`) yeni "Gecikme
+  hatırlatmaları" kartı: belgenin evresi (`erp_overdue_invoice_state()`:
+  not_due / below / pending / pending_second / snoozed / announced), tarihli
+  damgalar, ertele formu (site tarih biçiminde, `datepicker`; liveform `date`
+  tipini çizmediği için `text` + `validate_date` +
+  `prepare_form_data_for_input`) ve "sürsün" düğmesi. Kart yalnız hatırlatma
+  açıkken ya da belge bir kez duyurulmuşken görünür: eşik koymamış mağazaya
+  her faturada anlatılmaz. Liste ekranında gecikme rozetinin yanında
+  `bi-bell-slash` ve tarih ipucu.
+- **Menü rozeti.** `pg_erp_overdue_badge_count()` (`includes/fn/ecommerce.php`):
+  `status IN (issued, partially_paid)` ve vade < bugün olan satış faturası
+  sayısı — pano kartındaki "N belgenin vadesi geçmiş" rakamının kendisi, tek
+  `COUNT(*)`, toplam yok, istek başına bir kez. Eşiğe göre değil: menüdeki
+  rakam panoda gördüğü rakamla aynı olmalı. `output_menu()` genel bir
+  `badge`/`badge_title` seçeneği kazandı (`.pg-menu-badge`, 99+ kırpması,
+  sıfır çizilmez); CSS açık kenar çubuğunda satırın sağ kenarına, daraltılmış
+  rayda ikonun köşesine oturtur, mobil çekmecede yine kenara döner.
+- **Müşteriye hatırlatma e-postası.** Mağaza anahtarı
+  `config.erp_overdue_notify_customer` **kapalı gelir** (dışa dönük posta
+  opt-in'dir); cari anahtarı `erp_accounts.overdue_notify_customer` **açık
+  gelir** ki mağaza anahtarını açmak tek adım olsun, yazılmak istemeyen tek
+  müşteri kartından kapatılır (`account_form.php`; `erp_account_save()`
+  anahtarı yalnız `$data`'da varsa yazar — CSV içe aktarma cariyi güncellerken
+  seçimi ezmez). Özetle aynı anda, `new` + `second` satırları cariye göre
+  gruplanır; adresi geçerli ve anahtarı açık her cariye **tek** posta
+  (`erp_overdue_customer_mail_html()`: hitap, belge tablosu kendi para
+  biriminde, tek para birimi ise toplam, ikinci hatırlatma notu, "yanıtlayın"
+  satırı; panele bağlantı yok — panel onun değil). Gönderen ve yanıt adresi
+  `ECOMMERCE_EMAIL_ADDRESS` → `EMAIL_ADDRESS`. Giden posta belgeyi
+  `customer_notified_at` ile damgalar; fatura ekranı "müşteriye {tarih}
+  gönderildi" der. Müşteri postası panelin kendi özetinden **önce** gönderilir
+  ki özet kaç müşteriye yazıldığını söyleyebilsin. Başarısız posta damga
+  bırakmaz; ama belgenin kendi duyuru damgası atıldığı için o belge için bir
+  daha denenmez (ikinci uyarıya kadar) — bilinçli: her sabah aynı müşteriye
+  yeniden denemek yanlış adrese sürekli posta demektir.
+
+**Şema (4.56)** `upgrade_2026_4_4_erp_overdue_followups()`:
+`erp_invoices.overdue_second_notified_at`, `overdue_snoozed_until`,
+`customer_notified_at` (INT UNSIGNED 0); `config.erp_overdue_notify_customer`
+TINYINT(1) 0; `erp_accounts.overdue_notify_customer` TINYINT(1) 1. Hepsi
+`install_add_column`. Kod sütunlar gelmeden de çalışır
+(`erp_overdue_notify_followups_ready()`): 4.55 koşmuş, 4.56 koşmamış kurulumda
+özet eski davranışıyla (tek duyuru) sürer, ayar kaydı yeni sütuna dokunmaz
+(`commerce.save.php` `waf_table_has_column` kapısı).
+
+**Kararlar.** Sütun varlığı `erp_overdue_column_exists()` üzerinden
+(`waf_table_has_column` varsa o, yoksa `SHOW COLUMNS ... WHERE Field =`;
+`LIKE` değil). Rozet eşiğe bakmaz (yukarıda). İkinci uyarı için ayar
+açılmadı. Cari CSV'sine `overdue_notify_customer` sütunu eklenmedi — boolean
+bir tercih, dosyayla gidip gelmesi gerekmez; istenirse bir satırlık iş.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. **Dev sitede
+(dev.pinegrap.com, yerleşik tarayıcı):** 4.56 runner yardımcılarıyla iki kez
+koşuldu (5 eklendi / 5 "zaten var"; not: `ALTER TABLE erp_invoices` strict
+`sql_mode`'da `supplier_invoice_date` varsayılanına 1067 verir — installer'ın
+`SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'` satırı bunun için,
+yardımcı da aynısını yaptı). Menü rozeti "2" (`2 belgenin vadesi geçmiş`),
+daraltılmış rayda ikon köşesinde. Fatura #3 (50 gün, eşik 15): kart
+"20/9/2026 duyuruldu, bir ay geçti, sıradaki özette ikinci kez" → ertele
+(+14 gün, datepicker) → kart "Ertelendi: 4/10/2026" + listede zil-çizik;
+dönem sıfırlanıp iş koşuldu: **hiçbir şey gitmedi** (#3 ertelenmiş, #1 bilinen);
+"sürsün" → iş koşuldu: zilde "1 alacak hatırlatma eşiğini bir ay geçmiş ve
+hâlâ açık, toplam ₺1,721.74" (title 0 / form_id 1), #3 ikinci damga aldı,
+okunmuş önceki özet tarihçe olarak kaldı. Müşteri postası: cari 2'ye
+`example.com` adresi ve eşik 3, mağaza anahtarı açık → iş koşuldu → `email()`
+çağrısı doğru alıcı/gönderen/yanıt adresi ve "Çam Ev & Yaşam - ödeme
+hatırlatması" konusuyla `log`'a düştü; dev makinada `mail()` yok
+("Could not instantiate mail function"), damga doğru olarak 0 kaldı; gövde
+yardımcıyla render edilip okundu. Cari formu anahtarı kapat/aç gidiş-dönüşü,
+ayar kartı anahtarı gidiş-dönüşü. Test sonrası: cari 2 eşik 20, adres boş,
+mağaza anahtarı kapalı bırakıldı.
+
+**Doğrulanamayan:** gerçek posta teslimi (dev'de taşıyıcı yok); cihaz
+bildirimi (dev'de abone yok, kuyruk boş); haftalık dönemde ikinci uyarının
+gerçek zamanda bir ay sonra düşmesi (yalnız sayıyla).
+
+---
+
 ## 2026.4.4 — Gecikmiş alacak bildirimleri: panel, e-posta ve cihaz bildirimi (2026-09-18)
 
 **Belirti.** Yaşlandırma raporu kimin geciktiğini gösteriyor, ama kimseye

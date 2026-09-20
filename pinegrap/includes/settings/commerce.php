@@ -527,7 +527,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="col-12">
                         <div class="form-label">' . lang('Overdue receivable reminders') . '</div>
-                        <div class="form-text mb-2">' . lang('Sales invoices that pass this many days overdue are announced once: in the panel bell, by e-mail and on a subscribed device. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
+                        <div class="form-text mb-2">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
                         <div class="row gy-3">
                             <div class="col-12 col-md-4">
                                 <label class="form-label" for="erp_overdue_notify_days">' . lang('Reminder threshold (days)') . '</label>
@@ -557,6 +557,13 @@ $pg_settings_cards[] = '
                                     <input value="1"' . $erp_overdue_notify_push_checked . ' class="form-check-input" type="checkbox" id="erp_overdue_notify_push" name="erp_overdue_notify_push" />
                                     <label class="form-check-label" for="erp_overdue_notify_push">' . lang('Device notification') . '</label>
                                 </div>' . $output_erp_overdue_push_hint . '
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . $erp_overdue_notify_customer_checked . ' class="form-check-input" type="checkbox" id="erp_overdue_notify_customer" name="erp_overdue_notify_customer" />
+                                    <label class="form-check-label" for="erp_overdue_notify_customer">' . lang('Reminder e-mail to the customer') . '</label>
+                                </div>
+                                <div class="form-text">' . lang('When a customer\'s invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.') . '</div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label" for="erp_overdue_notify_recipients">' . lang('Recipients') . '</label>

@@ -58,6 +58,8 @@ if (!$_POST) {
         $liveform->assign_field_value('notes', $account['notes']);
         $liveform->assign_field_value('payment_days', (string) (int) ($account['payment_days'] ?? 0));
         $liveform->assign_field_value('overdue_notify_days', (string) (int) ($account['overdue_notify_days'] ?? 0));
+        // On until the column arrives, which is also what the upgrade writes.
+        $liveform->assign_field_value('overdue_notify_customer', ((int) ($account['overdue_notify_customer'] ?? 1) === 1) ? '1' : '');
         $liveform->assign_field_value('currency', strtoupper(trim((string) $account['currency'])));
     }
 
@@ -263,6 +265,7 @@ if (!$_POST) {
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
         'overdue_notify_days' => (int) $overdue_notify_days,
+        'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
         'created_by' => (int) $user['id'],
     ));
 

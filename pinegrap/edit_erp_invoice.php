@@ -68,6 +68,38 @@ if ($_POST) {
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
     }
 
+    // Putting the overdue reminders off, or letting them resume. The date
+    // itself is checked in the module; the screen only carries the answer.
+    if (($_POST['erp_action'] ?? '') === 'snooze') {
+
+        // The field is typed in the site's date format; the module wants Y-m-d.
+        $snooze_until = trim((string) ($_POST['snooze_until'] ?? ''));
+        $result = (($snooze_until !== '') && validate_date($snooze_until))
+            ? erp_overdue_snooze($invoice_id, prepare_form_data_for_input($snooze_until, 'date'))
+            : array('success' => false, 'error' => lang('Please enter a valid date.'), 'until' => 0);
+
+        if ($result['success']) {
+            log_activity(lang(array('string' => 'erp overdue reminders for ({var:1}) were put off until {var:2}', 'vars' => array($invoice['full_number'], date('Y-m-d', $result['until'])))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => 'The reminders for this invoice are put off until {var:1}.', 'vars' => prepare_form_data_for_output(date('Y-m-d', $result['until']), 'date'))));
+        } else {
+            $liveform->mark_error('snooze_until', $result['error']);
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+    }
+
+    if (($_POST['erp_action'] ?? '') === 'unsnooze') {
+
+        if (erp_overdue_unsnooze($invoice_id)) {
+            log_activity(lang(array('string' => 'erp overdue reminders for ({var:1}) were resumed', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang('The reminders for this invoice will resume.'));
+        } else {
+            $liveform->mark_error('_error', lang('The change could not be saved.'));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+    }
+
     // Taking an allocation off moves money about on paper, so it takes the
     // cash right, like recording the receipt did.
     if (($_POST['erp_action'] ?? '') === 'unsettle') {
@@ -334,6 +366,135 @@ if ((int) ($invoice['is_internet_sale'] ?? 0) === 1) {
                     </div>';
 }
 
+// The overdue reminders, for a claim that can be late. The card appears once
+// the store has switched reminders on, or once this document has been in a
+// digest; a store that never set a threshold is not told about it on every
+// invoice.
+$output_reminders = '';
+$reminder = erp_overdue_invoice_state($invoice);
+
+if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($reminder['snoozed_until'] > 0)) {
+
+    $date_stamp = function ($stamp) {
+        return h(prepare_form_data_for_output(date('Y-m-d', (int) $stamp), 'date'));
+    };
+
+    $lines = array();
+
+    switch ($reminder['phase']) {
+        case 'not_due':
+            $lines[] = lang('Not yet due.');
+            break;
+        case 'below':
+            $lines[] = lang(array('string' => '{var:1} day(s) overdue; the reminder threshold for this account is {var:2} days. It will be announced once it passes.', 'vars' => array($reminder['days'], $reminder['threshold'])));
+            break;
+        case 'pending':
+            $lines[] = lang(array('string' => '{var:1} day(s) overdue, past the {var:2}-day threshold. It will be announced in the next digest.', 'vars' => array($reminder['days'], $reminder['threshold'])));
+            break;
+        case 'pending_second':
+            $lines[] = lang(array('string' => 'Announced on {var:1}. A month past the threshold and still open: the next digest lists it a second and last time.', 'vars' => $date_stamp($reminder['notified_at'])));
+            break;
+        case 'snoozed':
+            $lines[] = lang(array('string' => 'Put off: left out of the digests until {var:1}.', 'vars' => $date_stamp($reminder['snoozed_until'])));
+            if ($reminder['notified_at'] > 0) {
+                $lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
+            }
+            break;
+        case 'announced':
+            $lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
+            if ($reminder['second_notified_at'] > 0) {
+                $lines[] = lang(array('string' => 'Announced a second and last time on {var:1}. From now on it only counts in the total.', 'vars' => $date_stamp($reminder['second_notified_at'])));
+            }
+            break;
+        default:
+            // Nothing ahead: reminders are off, or the document is no longer
+            // a claim that can be late (paid, cancelled). What was said about
+            // it is still worth reading.
+            if (!erp_overdue_notify_enabled()) {
+                $lines[] = lang('Reminders are switched off on the ERP settings card.');
+            }
+            if ($reminder['notified_at'] > 0) {
+                $lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
+            }
+            if ($reminder['second_notified_at'] > 0) {
+                $lines[] = lang(array('string' => 'Announced a second and last time on {var:1}. From now on it only counts in the total.', 'vars' => $date_stamp($reminder['second_notified_at'])));
+            }
+    }
+
+    if ($reminder['customer_notified_at'] > 0) {
+        $lines[] = lang(array('string' => 'The customer was e-mailed on {var:1}.', 'vars' => $date_stamp($reminder['customer_notified_at'])));
+    } elseif (defined('ERP_OVERDUE_NOTIFY_CUSTOMER') && ERP_OVERDUE_NOTIFY_CUSTOMER && ($reminder['phase'] !== 'off')) {
+        if (!$reminder['customer_wanted']) {
+            $lines[] = lang('This account does not receive reminder e-mails.');
+        } elseif ($reminder['customer_address'] === '') {
+            $lines[] = lang('The account has no e-mail address, so the customer cannot be written to.');
+        }
+    }
+
+    $output_lines = '';
+    foreach ($lines as $line) {
+        $output_lines .= '<div>' . h($line) . '</div>';
+    }
+
+    // A snooze is offered while the reminders have anything left to say: up
+    // to and including the second announcement.
+    $can_snooze = ($reminder['phase'] !== 'off') && (($reminder['second_notified_at'] === 0) || ($reminder['phase'] === 'snoozed'));
+
+    $output_snooze = '';
+
+    if ($can_snooze) {
+        $default_until = ($reminder['snoozed_until'] > time()) ? date('Y-m-d', $reminder['snoozed_until']) : date('Y-m-d', strtotime('+14 days'));
+
+        if (!$liveform->field_in_session('snooze_until')) {
+            $liveform->assign_field_value('snooze_until', prepare_form_data_for_output($default_until, 'date'));
+        }
+
+        $output_snooze = '
+                        <form name="snooze_form" action="edit_erp_invoice.php" method="post" class="row g-2 align-items-end">
+                            ' . get_token_field() . '
+                            <input type="hidden" name="id" value="' . $invoice_id . '" />
+                            <input type="hidden" name="erp_action" value="snooze" />
+                            <div class="col-12 col-sm-7">
+                                <label for="snooze_until" class="form-label">' . lang('Put the reminders off until') . '</label>
+                                ' . $liveform->output_field(array(
+                                    'type' => 'text', 'id' => 'snooze_until', 'name' => 'snooze_until',
+                                    'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
+                                    'autocomplete' => 'off')) . '
+                                ' . get_date_picker_format() . '
+                                <script>$("#snooze_until").datepicker(datetimepicker_options);</script>
+                            </div>
+                            <div class="col-12 col-sm-5">
+                                <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline-secondary w-100" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-bell-slash me-2"></span><span class="btn-text">' . lang('Put off') . '</span></button>
+                            </div>
+                        </form>'
+            . (($reminder['phase'] === 'snoozed')
+                ? '
+                        <form name="unsnooze_form" action="edit_erp_invoice.php" method="post" class="mt-2">
+                            ' . get_token_field() . '
+                            <input type="hidden" name="id" value="' . $invoice_id . '" />
+                            <input type="hidden" name="erp_action" value="unsnooze" />
+                            <button type="submit" name="submit_unsnooze" value="Resume" class="btn btn-link link-body-emphasis text-decoration-none p-0" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-bell me-2"></span><span class="btn-text">' . lang('Let the reminders resume') . '</span></button>
+                        </form>'
+                : '');
+    }
+
+    $output_reminders = '
+            <div class="card my-4">
+                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    ' . lang('Overdue reminders') . '
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 col-lg-7 my-2">' . $output_lines . '
+                            <div class="form-text">' . lang('The digest goes to the panel bell, by e-mail and to subscribed devices as set on the ERP settings card. A document is announced when it passes the threshold and once more a month later; putting it off keeps it out of the digests until the date you choose.') . '</div>
+                        </div>
+                        <div class="col-12 col-lg-5 my-2">' . $output_snooze . '
+                        </div>
+                    </div>
+                </div>
+            </div>';
+}
+
 echo
 pg_page_shell([
         'title' => $is_return ? lang('Return') : lang('Invoice'),
@@ -424,6 +585,7 @@ pg_page_shell([
                     ' . $output_internet_sale . '
                 </div>
             </div>
+            ' . $output_reminders . '
 
             <div class="card my-4">
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">

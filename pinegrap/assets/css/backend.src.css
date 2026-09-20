@@ -1125,6 +1125,32 @@ body:not(.toolbar) .software-content {
 #menu:not(.expanded) .list-group .list-group-item .list-group-text {
   visibility: hidden;
 }
+
+/* A count on a menu entry (the ERP's overdue receivables). Expanded, it sits
+   at the row's right edge over the label, which the item already clips with
+   an ellipsis; collapsed to the rail, where the label is hidden, it shrinks
+   onto the icon's corner so the rail still says how many. */
+#menu .list-group .list-group-item {
+  position: relative;
+}
+#menu .list-group .list-group-item .pg-menu-badge {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.3em 0.55em;
+  pointer-events: none;
+}
+#menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
+  right: 2px;
+  top: 2px;
+  transform: none;
+  font-size: 0.6rem;
+  padding: 0.25em 0.4em;
+}
 @media only screen and (max-width: 991px) {
   #menu.expanded {
     box-shadow: 3px 3px 3px #00000040;
@@ -1238,6 +1264,14 @@ body:not(.toolbar) .software-content {
      regardless of the saved desktop rail state. */
   #menu:not(.expanded) .list-group .list-group-item .list-group-text {
     visibility: visible;
+  }
+  /* And a count goes back to the row's edge with them. */
+  #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    padding: 0.3em 0.55em;
   }
 
   /* Labels are nowrap by default and only get ellipsis in the expanded rail state;

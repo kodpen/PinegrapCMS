@@ -6690,3 +6690,35 @@ function iyzipay_cancel_payment($options, $payment_id, $conversation_id, $reason
 
     return false;
 }
+
+/**
+ * How many sales invoices are open and past due, for the badge on the ERP
+ * menu entry.
+ *
+ * The dashboard card's own number, so the badge and the card agree. Asked on
+ * every panel page, so it is the cheapest possible question: status says
+ * whether money is owed (the settlement code keeps it current) and the due
+ * date says whether it is late; no sums. Counted once per request.
+ *
+ * @return int  0 when the ERP is off or the table is not there
+ */
+function pg_erp_overdue_badge_count()
+{
+    static $count = null;
+
+    if ($count !== null) {
+        return $count;
+    }
+
+    $count = 0;
+
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
+        return $count;
+    }
+
+    $count = (int) db_value("SELECT COUNT(*) FROM erp_invoices
+        WHERE doc_type = 'invoice' AND direction = 'sales' AND status IN ('issued', 'partially_paid')
+          AND IF(due_date = '0000-00-00', issue_date, due_date) < '" . escape(date('Y-m-d')) . "'");
+
+    return $count;
+}

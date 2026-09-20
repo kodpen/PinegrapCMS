@@ -44,7 +44,9 @@ if (function_exists('pg_cron_ran')) {
 }
 
 if (php_sapi_name() === 'cli') {
-    print 'overdue reminders: ' . ($result['ran'] ? ('sent, ' . count($result['new']) . ' new') : ('skipped (' . $result['reason'] . ')')) . "\n";
+    print 'overdue reminders: ' . ($result['ran']
+        ? ('sent, ' . count($result['new']) . ' new, ' . count($result['second'] ?? array()) . ' second, ' . (int) ($result['customers']['sent'] ?? 0) . ' customer(s) e-mailed')
+        : ('skipped (' . $result['reason'] . ')')) . "\n";
 } elseif (!pg_cron_is_background_run()) {
     // Started by hand from the panel: back to the dashboard, which shows the
     // standing overdue total whether or not a digest went out.

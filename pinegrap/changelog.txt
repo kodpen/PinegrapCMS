@@ -938,6 +938,28 @@
          Zamanlanmış görev tanımlı olmasa da özet gider: hatırlatma
          saatinden sonraki ilk panel ziyaretinde ERP panosu kontrolü yapar.
 
+         Bir ay sonra hâlâ açık duran belge bir kez daha, ikinci ve son
+         kez duyurulur; sonrası panoya ve yaşlandırma raporuna kalır.
+         Müşteriyle konuştuğunuz bir faturayı fatura ekranındaki
+         "Gecikme hatırlatmaları" kartından bir tarihe kadar
+         erteleyebilirsiniz: o güne dek özetlerde yer almaz, tarih geçince
+         kaldığı yerden sürer. Aynı kart belgenin ne zaman duyurulduğunu
+         ve müşteriye ne zaman yazıldığını da gösterir.
+
+         Panel menüsünde ERP girişi, vadesi geçen açık satış faturası
+         sayısını rozet olarak taşır — panodaki rakamın kendisi, ayara
+         bağlı değil.
+
+  [YENİ] [ŞEMA] Müşteriye hatırlatma e-postası. ERP kartındaki "Müşteriye
+         hatırlatma e-postası" anahtarını açtığınızda, faturaları eşiği
+         geçen her müşteriye cari kartındaki adresten tek bir kısa e-posta
+         gider: belgeler, açık tutar, "ödediyseniz dikkate almayın" notu
+         ve yanıt için mağazanın adresi. Bir ay sonra hâlâ açıksa ikinci
+         hatırlatma. Anahtar kapalı gelir; açmak sizin kararınızdır.
+         Yazılmak istemeyen bir müşteri için cari kartındaki "Faturaları
+         eşiği geçince bu cariye yaz" anahtarını kapatın; diğerlerine
+         dokunmadan yalnız o cari dışarıda kalır.
+
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
 

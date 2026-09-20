@@ -275,11 +275,26 @@ function pg_notification_display($notification)
 
 	} elseif ($action == 'erp_overdue') {
 
-		// The row carries the count in title and the formatted total in
-		// order_total, the way an order row carries its number and total; the
-		// sentence around them is built here.
+		// The row carries the counts and the formatted total the way an order
+		// row carries its number and total: title is the number of documents
+		// announced for the first time, form_id the number announced for the
+		// second and last time, order_total the total of both. The sentence
+		// around them is built here, and the digest mail opens with the same
+		// one.
+		$first  = (int) $notification['title'];
+		$second = (int) ($notification['form_id'] ?? 0);
+		$total  = h($notification['order_total']);
+
+		if (($first > 0) && ($second > 0)) {
+			$sentence = lang(array('string' => '{var:1} receivable(s) passed the reminder threshold and {var:2} are still open a month past it, {var:3} in total.', 'vars' => array($first, $second, $total)));
+		} elseif ($second > 0) {
+			$sentence = lang(array('string' => '{var:1} receivable(s) are still open a month past the reminder threshold, {var:2} in total.', 'vars' => array($second, $total)));
+		} else {
+			$sentence = lang(array('string' => '{var:1} receivable(s) passed the reminder threshold, {var:2} in total.', 'vars' => array($first, $total)));
+		}
+
 		$display['title']       = lang('Overdue receivables');
-		$display['description'] = lang(array('string' => '{var:1} receivable(s) passed the reminder threshold, {var:2} in total.', 'vars' => array((int) $notification['title'], h($notification['order_total']))));
+		$display['description'] = $sentence;
 		$display['url']         = 'erp_invoices.php?filter=overdue&direction=sales';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
