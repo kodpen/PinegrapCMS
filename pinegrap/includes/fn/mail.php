@@ -228,6 +228,58 @@ function email_campaign_job_enabled()
     return ($value == true);
 }
 
+// The e-mail preferences screen can be reached without a session from the
+// "update preferences / unsubscribe" link in a campaign. The link names the
+// contact through an obfuscated id (rot13 + base64 of the address, kept for the
+// links already in circulation) and proves it was issued by this site through a
+// signature over the same address, keyed with ENCRYPTION_KEY. Without the
+// signature anyone able to spell an address could rewrite that contact's e-mail
+// and subscriptions.
+function pg_email_preferences_id($email_address)
+{
+    return base64_encode(str_rot13((string) $email_address));
+}
+
+// Empty when the site has no key: then no anonymous link verifies, which is the
+// safe answer for a site that cannot sign.
+function pg_email_preferences_signature($email_address)
+{
+    $key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+
+    if ($key === '') {
+        return '';
+    }
+
+    return substr(hash_hmac('sha256', strtolower(trim((string) $email_address)), $key), 0, 40);
+}
+
+// hash_equals because the compared value comes from the request.
+function pg_email_preferences_signature_valid($email_address, $signature)
+{
+    $expected = pg_email_preferences_signature($email_address);
+
+    if (($expected === '') || !is_string($signature) || ($signature === '')) {
+        return false;
+    }
+
+    return hash_equals($expected, $signature);
+}
+
+// Query string (without the leading "?") for a link to the screen: id and
+// signature. $separator is "&amp;" when the link is written into HTML.
+function pg_email_preferences_query($email_address, $separator = '&')
+{
+    return 'id=' . urlencode(pg_email_preferences_id($email_address)) . $separator . 'sig=' . pg_email_preferences_signature($email_address);
+}
+
+// Stored HTML campaign bodies carry the footer link as
+// "?id=<email_address_id></email_address_id>"; this is what the placeholder is
+// replaced with at send time, so the same footer yields a signed link.
+function pg_email_preferences_placeholder_value($email_address)
+{
+    return urlencode(pg_email_preferences_id($email_address)) . '&amp;sig=' . pg_email_preferences_signature($email_address);
+}
+
 function get_email_campaign_status_name($status)
 {
     switch ($status) {
