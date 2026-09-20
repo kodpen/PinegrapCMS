@@ -80,6 +80,27 @@ function api_maintenance_purge() {
 	db("DELETE FROM api_apps
 		WHERE name LIKE '\\_\\_test\\_\\_%' AND expires_at > 0 AND expires_at < " . time());
 
+	// Subscriptions whose application is no longer there.
+	//
+	// A subscription is owned by an application and is only reachable through
+	// it: the panel lists them under their application, so one whose application
+	// has gone is invisible - and it used to keep being delivered to, which is a
+	// site pushing its orders at an address nobody can see or stop. The paths
+	// that delete an application now take its subscriptions with it, and the
+	// temporary credential above is replaced rather than deleted every time the
+	// documentation screen mints one, so this sweep is the backstop rather than
+	// the fix. Ordered queue first: the rows are found through the subscription.
+	db("DELETE FROM api_webhook_queue
+		WHERE webhook_id IN (
+			SELECT api_webhooks.id FROM api_webhooks
+			LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
+			WHERE api_apps.id IS NULL
+		)");
+
+	db("DELETE api_webhooks FROM api_webhooks
+		LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
+		WHERE api_apps.id IS NULL");
+
 	db("UPDATE config SET api_log_last_purge = '" . time() . "'");
 
 	return true;

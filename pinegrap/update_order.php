@@ -103,6 +103,13 @@ function update_order($request) {
                     if (!isset($recipient['shipped'])) {
                         $recipient['shipped'] = true;
                     }
+
+                    // Kept apart from the flag above, which decides whether the
+                    // customer is mailed and can be set by the caller. A number
+                    // that was not there a moment ago is the shipment itself,
+                    // and an integration is told about it whether or not the
+                    // customer is.
+                    $recipient['new_tracking_number'] = true;
                 }
 
                 $recipient['tracking_numbers'][] = $number;
@@ -173,6 +180,35 @@ function update_order($request) {
         WHERE id = '" . e($order['id']) . "'");
 
     log_activity('Shipping info for order (' . $order['order_number'] . ') was updated.');
+
+    // The event, once per address that gained a number. Announced here rather
+    // than in the screen and the endpoint separately: order.shipped has to mean
+    // the same thing whether the shipment was entered by hand or posted by a
+    // fulfilment system.
+    //
+    // Queued, not sent: the cron delivers it, so a slow receiver cannot hold up
+    // the save.
+    foreach ($order['recipients'] as $shipped_recipient) {
+
+        if (empty($shipped_recipient['new_tracking_number'])) {
+            continue;
+        }
+
+        require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+
+        api_webhook_enqueue('order.shipped', array(
+            'id'               => (int) $order['id'],
+            'order_number'     => $order['order_number'],
+            'ship_to_id'       => (int) $shipped_recipient['id'],
+            'tracking_numbers' => isset($shipped_recipient['tracking_numbers'])
+                ? array_values($shipped_recipient['tracking_numbers'])
+                : array(),
+            'ship_date'        => (isset($shipped_recipient['ship_date'])
+                && ($shipped_recipient['ship_date'] !== '0000-00-00'))
+                ? $shipped_recipient['ship_date']
+                : null,
+        ));
+    }
 
     // If at least one recipient was just shipped, then check if email needs to be sent to customer.
     if (!empty($order['shipped'])) {

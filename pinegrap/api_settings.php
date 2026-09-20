@@ -33,6 +33,7 @@ define('PG_API_PANEL', true);
 require_once(dirname(__FILE__) . '/includes/api/keys.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 
 $liveform = new liveform('api_settings');
 
@@ -315,7 +316,11 @@ if ($_POST) {
 
 			db("DELETE FROM api_apps WHERE id = '" . $app_id . "'");
 
-			db("DELETE FROM api_webhooks WHERE app_id = '" . $app_id . "'");
+			// The subscriptions and whatever they had queued go with it. A
+			// subscription left behind is one this screen cannot show, because
+			// the list is drawn per application, and until the dispatcher
+			// learned to check it kept being delivered to.
+			api_webhooks_delete_for_app($app_id);
 
 			$liveform->add_notice(lang(array('string' => 'The application {var:1} was deleted.', 'vars' => $existing['name'])));
 
@@ -497,6 +502,14 @@ function api_settings_ago($timestamp) {
 // reason the request log is read in one pass.
 $webhook_rows = array();
 
+// The same subscriptions, flat and in one list. The drawer answers "what is
+// this application subscribed to"; the card at the foot of the screen answers
+// the other question - "what is this site telling, and how do I stop it" - and
+// that one cannot be answered per application, because a subscription whose
+// application has gone belongs to no drawer at all. Both are drawn from this
+// one read, so they cannot disagree.
+$webhook_all = array();
+
 $hooks = db_items("SELECT id, app_id, url, events, status, last_success, last_failure
 	FROM api_webhooks
 	ORDER BY app_id ASC, id ASC");
@@ -570,7 +583,7 @@ if (is_array($hooks) && !empty($hooks)) {
 			? $queue_state[(int)$hook['id']]
 			: array('waiting' => 0, 'given_up' => 0, 'error' => '');
 
-		$webhook_rows[$key][] = array(
+		$row = array(
 			'id'           => (int)$hook['id'],
 			'url'          => $hook['url'],
 			'events'       => $events,
@@ -581,6 +594,46 @@ if (is_array($hooks) && !empty($hooks)) {
 			'given_up'     => $state['given_up'],
 			'error'        => $state['error']
 		);
+
+		$webhook_rows[$key][] = $row;
+
+		$row['app_id'] = $key;
+
+		$webhook_all[] = $row;
+
+	}
+
+}
+
+// Who registered each of them. The application list above leaves out the
+// documentation screen's temporary credentials, and an application that has
+// been deleted is in no list at all, so the names are asked for by id: this
+// card has to be able to say "a credential that is gone" rather than show an
+// address with nothing beside it.
+$webhook_app_names = array();
+
+if (!empty($webhook_all)) {
+
+	$wanted = array();
+
+	foreach ($webhook_all as $row) {
+
+		$wanted[(int)$row['app_id']] = true;
+
+	}
+
+	$named = db_items("SELECT id, name, status FROM api_apps WHERE id IN (" . implode(',', array_keys($wanted)) . ")");
+
+	if (is_array($named)) {
+
+		foreach ($named as $row) {
+
+			$webhook_app_names[(int)$row['id']] = array(
+				'name'   => $row['name'],
+				'status' => $row['status']
+			);
+
+		}
 
 	}
 
@@ -747,6 +800,171 @@ $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DI
 $permission_rows = api_settings_permission_rows('scope', 'd_scope');
 
 /* ---------------------------------------------------------------------------
+   Event notifications, site wide
+   --------------------------------------------------------------------------- */
+
+// Drawn on the screen rather than in the drawer, and drawn server side.
+//
+// The drawer's Events tab answers a question about one application. This
+// answers the question the dashboard asks - the status tile says "3 active" and
+// the operator has to be able to see which three and switch one off - and that
+// list cannot live under an application, because the subscription that most
+// needs stopping is the one whose application is not there any more.
+//
+// The card is not drawn at all on a site with no subscriptions. It is not a
+// feature with nothing in it yet; it is a feature that site is not using, and
+// an empty box would be one more thing to read past on every visit.
+$webhook_card = '';
+
+if (!empty($webhook_all)) {
+
+	$hook_labels = array(
+		'active'   => lang('Active'),
+		'failing'  => lang('Failing'),
+		'disabled' => lang('Stopped')
+	);
+
+	$hook_classes = array('active' => 'on', 'failing' => 'warn', 'disabled' => 'off');
+
+	$hook_blocks = '';
+
+	foreach ($webhook_all as $hook) {
+
+		$hook_app_id = (int)$hook['app_id'];
+
+		$owner_app = isset($webhook_app_names[$hook_app_id]) ? $webhook_app_names[$hook_app_id] : null;
+
+		// Whether anything actually leaves the site for this address. The status
+		// column answers half of it: the dispatcher also skips a subscription
+		// whose application was deleted or switched off, and a row showing
+		// "Active" beside a line saying nothing is delivered is the screen
+		// arguing with itself.
+		$orphan = ($owner_app === null);
+
+		$blocked = ($orphan || $owner_app['status'] !== 'active');
+
+		if ($orphan) {
+
+			$owner = lang('The application that registered this is gone; nothing is delivered.');
+
+		} elseif (strpos($owner_app['name'], '__test__') === 0) {
+
+			// The documentation screen's credential is replaced every time that
+			// page is opened, so a subscription registered through it is about
+			// to lose its owner. Saying where it came from explains why it is
+			// here at all.
+			$owner = lang('Registered while trying a call on the documentation screen');
+
+		} else {
+
+			$owner = lang(array(
+				'string' => 'Registered by {var:1}',
+				'vars'   => $owner_app['name']
+			));
+
+			if ($blocked) {
+
+				$owner .= ' - ' . lang('that application is switched off, so nothing is delivered.');
+
+			}
+
+		}
+
+		$meta = array();
+
+		if ($hook['last_success'] !== '') {
+
+			$meta[] = lang('Last delivered') . ' ' . $hook['last_success'];
+
+		}
+
+		if ($hook['last_failure'] !== '') {
+
+			$meta[] = lang('Last failure') . ' ' . $hook['last_failure'];
+
+		}
+
+		if ($hook['waiting'] > 0) {
+
+			$meta[] = number_format($hook['waiting'], 0, ',', '.') . ' ' . lang('waiting');
+
+		}
+
+		if ($hook['given_up'] > 0) {
+
+			$meta[] = number_format($hook['given_up'], 0, ',', '.') . ' ' . lang('given up');
+
+		}
+
+		$chips = '';
+
+		foreach ($hook['events'] as $event_name) {
+
+			$chips .= '<span class="api-chip">' . h($event_name) . '</span>';
+
+		}
+
+		if ($blocked && $hook['status'] !== 'disabled') {
+
+			$status_class = 'warn';
+
+			$status_label = lang('Not delivered');
+
+		} else {
+
+			$status_class = isset($hook_classes[$hook['status']]) ? $hook_classes[$hook['status']] : 'off';
+
+			$status_label = isset($hook_labels[$hook['status']]) ? $hook_labels[$hook['status']] : $hook['status'];
+
+		}
+
+		$hook_blocks .= '
+			<div class="api-hook">
+				<div class="api-hook-top">
+					<span class="api-hook-url">' . h($hook['url']) . '</span>
+					<span class="api-status ' . $status_class . '">' . h($status_label) . '</span>
+				</div>
+				<div class="api-hook-events">' . $chips . '</div>
+				<div class="api-hook-meta' . ($blocked ? ' text-danger' : '') . '">
+					<i class="bi bi-' . ($blocked ? 'exclamation-triangle' : 'key') . ' me-1"></i>' . h($owner)
+					. ($meta ? ' &middot; ' . h(implode(' · ', $meta)) : '') . '</div>'
+				. ($hook['error'] !== ''
+					? '<div class="api-hook-error"><i class="bi bi-exclamation-triangle me-1"></i>' . h($hook['error']) . '</div>'
+					: '') . '
+				<form method="post" action="api_settings.php" class="api-hook-acts disable_shortcut">
+					' . get_token_field() . '
+					<input type="hidden" name="app_id" value="' . $hook_app_id . '">
+					<input type="hidden" name="webhook_id" value="' . (int)$hook['id'] . '">'
+					. (($hook['given_up'] > 0 || $hook['status'] === 'failing')
+						? '<button type="submit" name="api_action" value="webhook_retry"
+							class="btn btn-sm btn-outline-primary">' . lang('Send again') . '</button>'
+						: '') . '
+					<button type="submit" name="api_action" value="webhook_status"
+						class="btn btn-sm btn-outline-secondary">'
+						. (($hook['status'] === 'disabled') ? lang('Resume') : lang('Stop')) . '</button>
+					<button type="submit" name="api_action" value="webhook_delete"
+						class="btn btn-sm btn-outline-danger api-confirm"
+						data-confirm="' . h(lang('The subscription will be removed and the application will stop being told.')) . '">'
+						. lang('Remove') . '</button>
+				</form>
+			</div>';
+
+	}
+
+	$webhook_card = '
+	<div class="card mt-3" id="events">
+		<div class="card-header d-flex align-items-center">
+			<i class="bi bi-send me-2"></i><b>' . lang('Event notifications') . '</b>
+			<span class="ms-auto small opacity-75 d-none d-lg-inline">'
+				. lang('Every address this site is telling, whoever registered it.') . '</span>
+		</div>
+		<div class="card-body px-3 py-2">' . $hook_blocks . '
+		</div>
+	</div>';
+
+}
+
+/* ---------------------------------------------------------------------------
    The screen
    --------------------------------------------------------------------------- */
 
@@ -894,6 +1112,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 		</div>
 	</div>
+
+	' . $webhook_card . '
 
 	<p class="small opacity-50 mt-3">
 		<i class="bi bi-info-circle me-1"></i>'
@@ -1319,6 +1539,14 @@ echo '
 		document.getElementById("d_action").value = button.dataset.act;
 		document.getElementById("d_webhook_id").value = button.dataset.id;
 		document.getElementById("d_action").form.submit();
+	});
+
+	// The site-wide card posts its own forms rather than driving the drawer, so
+	// its irreversible button asks here instead of in the handler above.
+	document.addEventListener("click", function (e) {
+		var button = e.target.closest(".api-confirm");
+		if (!button) { return; }
+		if (!window.confirm(button.dataset.confirm)) { e.preventDefault(); }
 	});
 
 	// Copy buttons

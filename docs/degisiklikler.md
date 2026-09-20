@@ -41,6 +41,212 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Kargo: siparişin teslimat yarısı API'ye açıldı (2026-09-20)
+
+Sipariş ucu siparişin faturalandırma yarısını veriyordu: teslimat adresi, kargo
+yöntemi, tarihler ve takip numaraları dışarıdan ne okunabiliyordu ne de
+yazılabiliyordu. Entegratör siparişi alıyor, kargoyu çıkarıyor, takip numarasını
+panele elle giriyordu.
+
+### Okuma: `GET /orders/{id}` artık `shipments` taşıyor
+
+Mağaza siparişin gittiği her adres için bir `ship_tos` satırı tutuyor ve takip
+numaraları siparişin değil o satırın altında duruyor — bu yüzden fatura
+adresinin yanına birkaç alan değil, kendi bloğu: adres, alıcı, kargo yöntemi
+(`shipping_methods` ile birleşip adıyla), kargo bedeli, talep edilen varış,
+nakliye ve teslim tarihi, `complete` ve takip numaraları. Tek sipariş okurken
+geliyor; listeye konsaydı satır başına iki sorgu daha ederdi ve liste zaten
+göstermiyor.
+
+Tarihler oldukları gibi sunuluyor. `ship_date` birçok kurulumda *planlanan*
+sevk tarihi ve sipariş anında doluyor; mağazanın kendisi bir siparişin çıkıp
+çıkmadığına ondan değil takip numarasından karar veriyor
+(`_order_has_shipped`). Boş DATE sütunu `0000-00-00` değil `null` dönüyor.
+
+### Yazma: `POST /orders/{id}/shipment`
+
+Olay numaranın kendisi. Uç `tracking_numbers` alıyor (ayrıca `carrier`,
+`ship_date`, `delivery_date`, `ship_to_id`, `notify`) ve listeyi o adresin
+sahip olduğu listenin yerine koyuyor — sipariş ekranının aynı alanda yaptığı
+şey: bir parçası düşen gönderi tek numaraya dönebilmeli, her seferinde bildiğini
+gönderen çağıran da tekrar tekrar çağırıp kopya biriktirmemeli.
+
+Tabloya değil `update_order()`'a yazıyor — sipariş ekranının kendisinin post
+ettiği fonksiyon. İşin geri kalanı orada: gönderilmeyen numaraları silmek,
+siparişi "değişti" diye damgalamak, etkinlik kaydını yazmak ve — yalnız
+istenirse — mağazanın "siparişiniz kargoya verildi" e-postasını tetiklemek.
+İki tabloyu buradan yazmak, mağazanın kendi ekranlarıyla anlaşmazlığa düşebilen
+bir gönderi üretirdi.
+
+Üç kural, üçü de sessizce yanlış iş yapmamak için:
+
+- **E-posta isteğe bağlı.** Geçen ayın gönderilerini geriye dönük yükleyen bir
+  entegrasyon, kolisini haftalar önce almış bir ay dolusu müşteriye bildirim
+  göndermemeli; gönderilmiş e-posta geri alınamaz. `notify` denmedikçe
+  gönderilmiyor.
+- **Taşıyıcı yalnız boş kutuya yazılıyor.** Adresteki kargo yöntemi kodu
+  müşterinin seçip ödediği yöntem; kullandığı taşıyıcıyı bildiren bir depo
+  yazılımı onun üstüne yazmamalı.
+- **Birden çok adres varsa hangisi olduğu soruluyor.** Tek adres olağan hâli ve
+  sormak tören olurdu; birden çoğu ise tahminin numarayı yanlış koliye yazdığı
+  hâl.
+
+Her iki tarih de her çağrıda gidiyor: `update_order()` biri gönderilince çifti
+birden yazıyor, tek başına gönderilen diğerini siler. Tarihler mağazanın saat
+diliminde okunuyor, UTC'de değil — bunlar an değil takvim günü ve değer buraya
+mağazanın saat diliminde ayrıştırılmış bir unix damgası olarak geliyor:
+UTC+3'teki bir mağazadan gelen "2026-01-25" yerel gece yarısı, `gmdate()` onu
+24'ü diye yazardı. Test sırasında tam da bu çıktı. (Dolu bir tarihi uçtan
+boşaltmak mümkün değil; onu panel yapıyor.)
+
+### Olay: `order.shipped`
+
+Bir an önce orada olmayan takip numarası. `update_order()` içinden duyuruluyor
+— yani hem sipariş ekranının kaydı hem bu uç aynı olayı üretiyor — ve
+pazaryerinden gelen numara da (`mp_order_apply_tracking()`) aynı olayı
+kuyruğa alıyor: pazaryeri alıcısına kendisi haber veriyor, ama kargo dinleyen
+bir entegrasyon koliyi hangi taraf kaydetti diye ayrım yapmamalı. Müşteriye
+e-posta gönderilip gönderilmemesiyle ilgisi yok; ikisi ayrı bayrak.
+
+### Doğrulama
+
+Dev sitede, konsoldan açılan gerçek bir abonelikle: `GET /orders/813` teslimat
+bloğunu verdi; `POST .../shipment` numarayı yazdı, `UPS-5GUN` kodunu ezmedi,
+panelin sipariş ekranında "Takip Numaraları" altında göründü ve kuyruğa **tek**
+bir `order.shipped` girdi düştü — aynı çağrı tekrarlandığında ikincisi
+düşmedi. Hatalı yollar: başka siparişin adresi 422, boş gövde 422, 100
+karakterden uzun numara 422. Tarih gidiş-dönüşü: "2026-01-25" → 2026-01-25,
+"2026-01-25T22:30:00Z" → 2026-01-26 (mağazanın günü). Test verisi geri alındı;
+abonelik, kimlik tazelenince kendiliğinden silindi. `lint` ve `check_lang`
+temiz, şemada 31 uç.
+
+## 2026.4.4 — IIS: API adresi catch-all yönlendirme kuralının dışına alındı (2026-09-20)
+
+Belgeler ekranından `GET /meta` denenirken arada bir **404** dönüyor ve gövdede
+JSON yerine mağazanın 404 sayfası geliyordu (`og:url` istenen adresin kendisi,
+yanıtta `X-Request-Id` ve hız sınırı başlıkları yok — yani istek
+`integration.php`'ye hiç ulaşmamış).
+
+Sebep `web.config`'teki catch-all: "Pinegrap Rule" dosya olmayan her adresi
+`router.php`'ye yolluyor ve koşulu `{REQUEST_FILENAME}` üzerinde bir **dosya
+arama**. `integration.php/meta` adresinde IIS normalde betiği yoldan kendisi
+ayırıyor, kural tetiklenmiyor; ama bu ayrım dosya aramasına bağlı ve klasöre
+yazıldığı sırada ıskalayabiliyor — o anda kural tetikleniyor ve API çağrısına
+sitenin 404 sayfası cevap veriyor. Doğrulama: var olmayan bir betiğe yapılan
+`/pinegrap/nosuchfile.php/meta` isteği bire bir aynı yanıtı üretiyor.
+
+`pg_server_config_blocks()`'a yeni bir IIS bloğu (`api`) eklendi — catch-all'dan
+önce çalışan, `integration.php` ve altındaki her yol için `action type="None"`
+taşıyan bir kural. Böylece API adresi o dosya aramasına hiç sorulmuyor. Blok
+`recommended`: kural olmadan da site çalışır, eksikliği Sistem Durumu'nun "Web
+Sunucusu Kuralları" satırında görünür ve onarım düğmesi yazar. `web.config`'in
+depodaki kopyasına ve `pg_server_config_default('iis')` şablonuna da girdi.
+
+Apache'yi ilgilendirmiyor: `.htaccess` per-directory bağlamda çalıştığı için
+`%{REQUEST_FILENAME}` zaten betiğe çözülüyor ve `!-f` koşulu tetiklenmiyor.
+
+Dev sitede doğrulandı: `integration.php/meta` 401 JSON, `openapi.json` 200,
+panel ve ön yüz 200, `data/` ve `includes/` hâlâ 403, konsoldan `GET /meta` ve
+`GET /products` 200. Sistem Durumu "Web Sunucusu Kuralları" satırı temiz.
+
+## 2026.4.4 — OpenAPI tanımının adresi iki konsolda da yazılı (2026-09-20)
+
+Tanım `integration.php/openapi.json` adresinden veriliyordu ama adres hiçbir
+yerde yazmıyordu: paneldeki belgelerde yalnız "OpenAPI tanımı" düğmesi vardı ve
+o düğme `api_docs.php?openapi=1`'e, yani panelin kendi oturumlu kopyasına
+gidiyordu; açık konsolda ise yalnız temel adres duruyordu. Adresi bulamayan
+geliştirici tanım yok sanır.
+
+İki konsol da artık temel adresin yanında tanımın adresini yazıyor, yanında da
+o adrese nasıl erişildiğini: ayar açıksa "herkese açık", kapalıysa "anahtar ve
+gizli anahtarla, diğer çağrılar gibi" (`api_openapi_public`, açık konsolda
+`api_settings()`'ten, panelde `config` okunarak). Paneldeki düğme "Görüntüle"
+oldu ve başlığı ne yaptığını söylüyor — aynı belgeyi anahtar yerine oturumla
+açtığını.
+
+Kod, şema, migration yok; `tr.json`'a 3 anahtar. Dev sitede iki ekran da
+kontrol edildi, `GET /openapi.json` anahtarsız 200 ve 21 yol döndü.
+
+## 2026.4.4 — Olay abonelikleri: sahipsiz kalanlar, kapalı uygulamaya gönderim ve site geneli liste (2026-09-20)
+
+Sistem Durumu karosu "3 webhook etkin" diyordu, Uygulama Erişimi ekranında ise
+hiçbir abonelik görünmüyordu. İkisi de doğruydu: `api_webhooks` üç satır
+taşıyordu ve üçünün de sahibi olan uygulama silinmişti.
+
+### Abonelik uygulamasından ayrı düşebiliyordu
+
+Abonelik bir uygulamaya aittir ve panelde yalnız onun üzerinden görünür — liste
+uygulama başına çizilir. Uygulamayı silen yolların hepsi aboneliği yanında
+götürmüyordu: `api_docs.php`'nin "Dene" düğmesi her açılışta
+`__test__<kullanıcı>` kimliğini `DELETE FROM api_apps` ile tazeliyor, bakım turu
+da süresi geçmişleri aynı şekilde siliyordu. Konsoldan denenen bir
+`POST /webhooks` gerçek bir abonelik yazdığı için o abonelik on beş dakika sonra
+sahipsiz kalıyor, hiçbir ekranda görünmediği hâlde beslenmeye devam ediyordu.
+
+Yollar kapatıldı: `api_webhooks_delete_for_app()` aboneliği ve kuyruğunu
+birlikte siler, uygulama silme (`api_settings.php`) ve kimlik tazeleme
+(`api_docs.php`) yollarından çağrılır; `api_maintenance_purge()` günlük turunda
+sahipsiz kalmış satırları süpürür. Uygulama silme yolu eskiden kuyruk
+satırlarını bırakıyordu, artık onlar da gidiyor.
+
+### Kapalı uygulamaya gönderim sürüyordu
+
+`auth.php` gelen istekte `status !== 'active'` ise 401 veriyor; giden yol
+`api_apps.status`'ü hiç okumuyordu. Anahtarı iptal edilmiş bir uygulama siteyi
+sorgulayamıyor ama site ona sipariş verisi göndermeye devam ediyordu.
+`api_webhook_enqueue()` artık `api_apps` ile `INNER JOIN` ediyor,
+`api_webhook_deliver()` aynı kapıyı kuyruktaki satır için tekrar soruyor — bir
+kuyruk satırı, onu isteyen uygulamadan uzun yaşayabilir. Uygulaması olmayan
+abonelikte `app_status` NULL döner, o da `'active'` değildir.
+
+### Site geneli "Olay bildirimleri" kartı
+
+Çekmecedeki Olaylar sekmesi "bu uygulama neye abone" sorusunu cevaplıyor.
+Panonun sorduğu soru başka: karo "3 etkin" diyorsa hangi üçü olduğu görülüp biri
+durdurulabilmeli — ve durdurulması en çok gereken abonelik, tam da uygulaması
+olmayan. Liste bu yüzden uygulama listesinin altında, sunucu tarafında çizilen
+kendi kartında (`#events`): adres, olay çipleri, kimin kaydettiği, son
+iletim/son hata, bekleyen/vazgeçilen sayısı ve Durdur / Yeniden gönder / Kaldır.
+Yazma yolları mevcut `webhook_status` / `webhook_retry` / `webhook_delete`
+eylemleri; kart kendi formlarını gönderiyor (çekmecenin formu içine girseydi
+form içinde form olurdu). İki liste de tek okumadan besleniyor, bu yüzden
+ayrışamazlar.
+
+Durum rozeti kaydın kendi `status` sütununu değil gerçekten gönderilip
+gönderilmediğini söylüyor: uygulaması yoksa ya da kapalıysa "İletilmiyor".
+"Aktif" rozetinin altında "hiçbir bildirim iletilmiyor" satırı, ekranın
+kendisiyle tartışması olurdu. Abonelik yoksa kart hiç çizilmiyor — karodaki
+kuralın aynısı.
+
+### Karo neyi "etkin" sayıyor
+
+Yeşil dal `api_webhooks` satır sayısını yazıyordu, o sayı `disabled` olanları da
+içeriyordu; artık gerçekten teslim edilenleri sayıyor. Kayıtlı ama hiçbiri
+teslim edilmiyorsa yeni bir gri dal var ("{n} durmuş", puandan düşmez): sitede
+bir bozukluk yok, ama "2 etkin" okuyup kendi ucunda sessizlik gören entegratör
+günün geri kalanını yanlış yerde arar. Karo artık `api_settings.php#events`
+adresine gidiyor ve açıldığında abonelikleri satır satır gösteriyor
+(`$makeIcon`'un `detail` dizisi; sayısı tek başına işe yaramayan kontroller
+dolduruyor). Sorgu `GROUP BY` yerine satırları okuyor — tablo abonelik başına
+bir satır tutar, panel için tavan 25.
+
+### Şema
+
+`upgrade_2026_4_4_webhook_orphans()` (4.57) sahipsiz abonelikleri ve kuyruk
+satırlarını siler; veri ifadesidir, ikinci koşumda bir şey bulmaz. Yeni sütun
+yok. `tr.json`'a 9 anahtar.
+
+### Doğrulama
+
+Dev sitede yerleşik tarayıcıdan: kart üç sahipsiz aboneliği "İletilmiyor" ile
+listeledi, Durdur → "Durduruldu" + bildirim, Sürdür geri aldı. Sistem Durumu
+karosu "3 durmuş" oldu, açılan panel üç adresi "Uygulama yok" ile gösterdi, skor
+değişmedi. Migration'ın iki `DELETE`'i canlı şema üzerinde transaction içinde
+çalıştırılıp geri alındı: 3 kuyruk satırı + 3 abonelik, hata yok — dev
+veritabanındaki satırlar duruyor, yükseltme koşunca silinecekler. `php
+tools/lint.php` ve `php tools/check_lang.php` temiz. Kaldır düğmesinin sunucu
+yolu değişmedi ve denenmedi.
+
 ## 2026.4.4 — Gecikmiş alacak hatırlatmaları, 2. tur: ikinci uyarı, erteleme, menü rozeti, müşteriye e-posta (2026-09-20)
 
 **Belirti.** İlk tur (4.55) bir belgeyi bir kez duyurup bırakıyordu: bir ay

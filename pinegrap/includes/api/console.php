@@ -55,6 +55,14 @@ function api_console_page($params) {
 
 	$base_url = api_openapi_base_url();
 
+	// Whether the machine-readable description answers without credentials. The
+	// address is printed either way - a developer who cannot find it assumes
+	// there is no description - and what changes is what the line says about
+	// getting it.
+	$console_settings = api_settings();
+
+	$openapi_public = !empty($console_settings['openapi_public']);
+
 	$site_title = defined('TITLE') ? TITLE : 'Pinegrap';
 
 	// Everything the page's own script says to the reader, translated here and
@@ -113,7 +121,11 @@ function api_console_page($params) {
 		</div>
 	</div>
 
-	<div class="con-base mb-3"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code></div>
+	<div class="con-base mb-3"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code>
+		<span class="opacity-50 ms-3">' . lang('OpenAPI description') . ':</span> <code>' . h($base_url . '/openapi.json') . '</code>
+		<span class="opacity-50 ms-2">' . ($openapi_public
+			? lang('open to anyone')
+			: lang('with the key and secret, like every other call')) . '</span></div>
 
 	<div class="row g-3 mb-3">
 		<div class="col-lg-7">

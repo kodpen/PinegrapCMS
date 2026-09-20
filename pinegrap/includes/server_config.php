@@ -256,6 +256,20 @@ function pg_server_config_blocks($server = '')
             ),
 
             array(
+                'key'    => 'api',
+                'label'  => 'API address rule',
+                'why'    => 'The external API carries the resource in the path (integration.php/products), and the router rule below hands any address that is not a file to the site. IIS normally splits the script off the path itself and the rule does not fire - but the check is a file lookup, and while the folder is being written to it can miss, at which point an API call is answered with the shop\'s 404 page instead of JSON. This rule takes the API address out of that question.',
+                'level'  => 'recommended',
+                'detect' => '/<rule\s+name="Pinegrap API"/i',
+                'anchor' => 'rules-start',
+                'snippet' =>
+'                <rule name="Pinegrap API" stopProcessing="true">
+                    <match url="^(' . $dir . '/)?integration\.php(/.*)?$" ignoreCase="true" />
+                    <action type="None" />
+                </rule>',
+            ),
+
+            array(
                 'key'    => 'data',
                 'label'  => 'Block data folder',
                 'why'    => 'data/ holds config.php with the database password, the database backups and every uploaded file. IIS ignores the "deny from all" in data/.htaccess — that is Apache syntax — so without this rule the folder is readable over HTTP, and an uploaded .php file there would be executed.',
@@ -539,8 +553,9 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
             $blocks[$block['key']] = $block['snippet'];
         }
 
-        // Order matters: the two 403 rules have to be tested before the
-        // catch-all router rule, which matches everything and stops.
+        // Order matters: the two 403 rules and the API address have to be
+        // tested before the catch-all router rule, which matches everything
+        // and stops.
         return
 '<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
@@ -559,6 +574,7 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
             <rules>
 ' . $blocks['data'] . '
 ' . $blocks['includes'] . '
+' . $blocks['api'] . '
 ' . $blocks['router'] . '
             </rules>
         </rewrite>

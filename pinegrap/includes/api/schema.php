@@ -311,6 +311,25 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'orders.ship',
+			'method'  => 'POST',
+			'path'    => '/orders/{id}/shipment',
+			'scope'   => 'orders:write',
+			'handler' => 'api_orders_ship',
+			'summary' => 'Record a shipment',
+			'description' => 'The tracking numbers for one of the order\'s shipping addresses, and optionally the dates. A tracking number is what makes an order count as shipped in this store - the ship date is a planned dispatch date on many configurations, so nothing is read from it. The list replaces what that address holds, which is what the order screen does with the same field: send everything you know each time and the call can be repeated without collecting duplicates. The customer is told only when notify is true.',
+			'params'  => array(
+				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has.'),
+				array('name' => 'ship_to_id',       'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
+				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it.'),
+				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
+				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
+				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
+			)
+		),
+
 		/* ----- Customers ---------------------------------------------------- */
 
 		array(

@@ -35,8 +35,14 @@ require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/openapi.php');
 require_once(dirname(__FILE__) . '/includes/api/console_view.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 
 $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/integration.php';
+
+// Whether /openapi.json answers without credentials. The address is printed on
+// the page either way - a developer who cannot find it assumes there is no
+// description - and what changes is what the line beside it says.
+$openapi_public = ((int)db_value("SELECT api_openapi_public FROM config LIMIT 1") === 1);
 
 /* ---------------------------------------------------------------------------
    JSON endpoints used by this screen
@@ -89,6 +95,23 @@ if (isset($_POST['test_credential'])) {
 
 	$key    = api_generate_test_key();
 	$secret = api_generate_secret();
+
+	// Whatever the previous credential registered goes with it. Trying a call
+	// here runs the real endpoint, so a POST /webhooks made from this screen
+	// stores a real subscription owned by a credential that is replaced the next
+	// time somebody opens the page - and a subscription whose application is
+	// gone is one no screen lists and nobody can stop.
+	$stale = db_items("SELECT id FROM api_apps WHERE name = '" . escape($name) . "'");
+
+	if (is_array($stale)) {
+
+		foreach ($stale as $stale_app) {
+
+			api_webhooks_delete_for_app((int)$stale_app['id']);
+
+		}
+
+	}
 
 	db("DELETE FROM api_apps WHERE name = '" . escape($name) . "'");
 
@@ -181,13 +204,21 @@ echo pg_page_shell(array(
 					<label class="form-label small mb-1">' . lang('Base address') . '</label>
 					<div><code>' . h($api_base_url) . '</code></div>
 				</div>
+				<div>
+					<label class="form-label small mb-1">' . lang('OpenAPI description') . '</label>
+					<div><code>' . h($api_base_url . '/openapi.json') . '</code>
+						<span class="opacity-50 ms-1">' . ($openapi_public
+							? lang('open to anyone')
+							: lang('with the key and secret, like every other call')) . '</span></div>
+				</div>
 				<div class="ms-auto d-flex align-items-end gap-2">
 					<div>
 						<label class="form-label small mb-1">' . lang('Try as') . '</label>
 						<select class="form-select form-select-sm" id="doc_app" style="min-width:220px">' . $app_options . '</select>
 					</div>
-					<a class="btn btn-sm btn-outline-secondary" href="api_docs.php?openapi=1" target="_blank">
-						<i class="bi bi-braces me-1"></i>' . lang('OpenAPI description') . '</a>
+					<a class="btn btn-sm btn-outline-secondary" href="api_docs.php?openapi=1" target="_blank"
+						title="' . h(lang('Opens the same document through this panel, with your own session instead of a key.')) . '">
+						<i class="bi bi-braces me-1"></i>' . lang('View') . '</a>
 				</div>
 			</div>
 			<p class="small opacity-75 mb-0 mt-3">
