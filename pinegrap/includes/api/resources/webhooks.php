@@ -136,6 +136,11 @@ function api_webhooks_create($params) {
 
 	}
 
+	// Above: the address answers, every event named exists, and the
+	// application is under its ten subscriptions. Below: the row, and the one
+	// and only time its secret is readable.
+	api_dry_run_stop('created', 'webhook', array('url' => $params['url'], 'events' => $clean));
+
 	$secret = api_generate_secret();
 
 	api_exec("INSERT INTO api_webhooks (app_id, url, events, secret, status, created_timestamp)
@@ -179,10 +184,34 @@ function api_webhooks_delete($params) {
 
 	}
 
+	api_dry_run_stop('deleted', 'webhook', array('id' => $id));
+
 	api_exec("DELETE FROM api_webhooks WHERE id = '" . $id . "'");
 
 	api_exec("DELETE FROM api_webhook_queue WHERE webhook_id = '" . $id . "'");
 
 	api_send(204, array());
+
+}
+
+// What api_webhook_present() returns, declared for the OpenAPI document. The
+// secret is in the answer to the call that creates a subscription and nowhere
+// else, which is why it is optional here.
+function api_webhook_schema() {
+
+	return array(
+		'id'               => 'integer',
+		'url'              => 'string',
+		'events'           => 'string[]',
+		'status'           => 'string',
+		'last_success'     => 'string?',
+		'last_failure'     => 'string?',
+		'pending'          => 'integer',
+		'last_status_code' => 'integer?',
+		'last_error'       => 'string?',
+		'created_at'       => 'string?',
+		'secret'           => 'string',
+		'signature_header' => 'string'
+	);
 
 }

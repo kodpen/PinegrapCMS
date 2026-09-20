@@ -1804,7 +1804,22 @@ function pg_pb_delete_product($product_id)
         return;
     }
 
+    // The name, before the row that carries it is gone: an integration that
+    // keeps its own copy of the catalogue is told what disappeared, and an id
+    // alone is not enough to find it in somebody else's system.
+    $pg_deleted_name = (string) db_value("SELECT name FROM products WHERE id = '$product_id'");
+
     db("DELETE FROM products WHERE id = '$product_id'");
+
+    // Queued here rather than at the screens that call this, because every one
+    // of them - the product list, the builder, the bulk action - ends up on
+    // this line.
+    require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
+
+    api_webhook_enqueue('product.deleted', array(
+        'id'   => $product_id,
+        'name' => $pg_deleted_name
+    ));
 
     // Stored SEO structure findings. Guarded on the table existing, because
     // a product can be deleted on an installation that has not run the

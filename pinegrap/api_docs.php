@@ -205,6 +205,11 @@ echo pg_page_shell(array(
 					<div><code>' . h($api_base_url) . '</code></div>
 				</div>
 				<div>
+					<label class="form-label small mb-1">' . lang('Authentication') . '</label>
+					<div><code>HTTP Basic</code>
+						<span class="opacity-50 ms-1">' . lang('user name: application key, password: secret') . '</span></div>
+				</div>
+				<div>
 					<label class="form-label small mb-1">' . lang('OpenAPI description') . '</label>
 					<div><code>' . h($api_base_url . '/openapi.json') . '</code>
 						<span class="opacity-50 ms-1">' . ($openapi_public
@@ -223,7 +228,7 @@ echo pg_page_shell(array(
 			</div>
 			<p class="small opacity-75 mb-0 mt-3">
 				<i class="bi bi-info-circle me-1"></i>'
-				. lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null.') . '
+				. lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '
 			</p>
 			<p class="small opacity-75 mb-0 mt-2">
 				<i class="bi bi-terminal me-1"></i>'

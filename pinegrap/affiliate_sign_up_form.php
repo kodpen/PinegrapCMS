@@ -228,6 +228,9 @@ if (!isset($_POST['submit'])) {
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
+
+            // The affiliate sign-up form just created this contact.
+            pg_announce_contact_created($contact_id);
         }
         
         // check if affiliate contact group exists

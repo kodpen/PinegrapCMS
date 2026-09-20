@@ -53,7 +53,7 @@ if (!$_POST) {
 
     erp_invoice_form_prefill($liveform, $invoice);
 
-    $stored_rows = (array) db_items("SELECT l.*, p.name AS product_name
+    $stored_rows = (array) db_items("SELECT l.*, COALESCE(NULLIF(p.short_description, ''), p.name) AS product_name
         FROM erp_invoice_items l
         LEFT JOIN products p ON l.product_id = p.id
         WHERE l.invoice_id = '" . $invoice_id . "'
@@ -154,7 +154,7 @@ if (!$_POST) {
 
     if (!$saved['success']) {
         erp_tx_rollback();
-        $liveform->mark_error('_error', $saved['error']);
+        $liveform->mark_error($saved['field'] ?? '_error', $saved['error']);
         go($self_url);
     }
 

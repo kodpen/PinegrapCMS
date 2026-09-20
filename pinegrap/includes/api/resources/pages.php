@@ -537,6 +537,8 @@ function api_pages_update($params) {
 
 	}
 
+	api_dry_run_stop('updated', 'page', array('id' => $id, 'fields' => count($set)));
+
 	api_exec("UPDATE page SET " . implode(', ', $set) . ",
 			page_timestamp = UNIX_TIMESTAMP(),
 			page_user = '" . (int)$app['owner']['id'] . "'
@@ -648,6 +650,8 @@ function api_pages_delete($params) {
 
 		}
 
+		api_dry_run_stop('recycled', 'page', array('id' => $id, 'name' => $page['page_name'], 'folder_id' => $bin_id));
+
 		api_exec("UPDATE page SET
 				page_folder = '" . $bin_id . "',
 				page_timestamp = UNIX_TIMESTAMP(),
@@ -684,6 +688,11 @@ function api_pages_delete($params) {
 	// refusals inside are judged against; pages:write is only ever issued to a
 	// designer or above, which is past the role the page delete right applies
 	// to.
+	// The refusals above - the home page, a system page, the folder right -
+	// are the whole of what can be checked without deleting. What the cleanup
+	// itself would refuse is not knowable until it runs.
+	api_dry_run_stop('deleted', 'page', array('id' => $id, 'name' => $page['page_name']));
+
 	$result = pg_delete_page_record($id, array(
 		'id'           => (int)$app['owner']['id'],
 		'role'         => (int)$app['owner']['role'],
@@ -708,5 +717,30 @@ function api_pages_delete($params) {
 		'deleted'  => true,
 		'recycled' => false
 	));
+
+}
+
+// What api_page_present() returns, declared for the OpenAPI document.
+function api_page_schema() {
+
+	return array(
+		'id'               => 'integer',
+		'name'             => 'string',
+		'url'              => 'string',
+		'folder_id'        => 'integer',
+		'type'             => 'string',
+		'home'             => 'boolean',
+		'title'            => 'string',
+		'meta_description' => 'string',
+		'search'           => 'boolean',
+		'search_keywords'  => 'string[]',
+		'sitemap'          => 'boolean',
+		'noindex'          => 'boolean',
+		'nofollow'         => 'boolean',
+		'layout_type'      => 'string',
+		'updated_at'       => 'string?',
+		'updated_at_unix'  => 'integer',
+		'seo'              => 'Seo'
+	);
 
 }

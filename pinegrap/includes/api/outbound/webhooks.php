@@ -30,19 +30,46 @@ require_once(dirname(__FILE__) . '/http.php');
 // be stored, so a subscription always means something.
 function api_webhook_events() {
 
-	return array(
+	$events = array(
 		'order.created'        => 'A new order was placed',
 		'order.status_changed' => 'An order moved to another status',
 		'order.shipped'        => 'A tracking number was recorded for an order',
+		'order.delivered'      => 'A delivery date was recorded for an order',
 		'order.cancelled'      => 'An order was cancelled',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
+		'product.deleted'      => 'A product was deleted',
 		'inventory.changed'    => 'A product stock level changed',
-		'customer.created'     => 'A new customer record was made',
-		'page.updated'         => 'A page was changed',
+		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
+		// has no settings screen yet, and without a threshold there is no low to
+		// cross. The cart widget reads the same constant for its own warning.
+		'stock.low'            => 'A product fell to or below the low-stock threshold (a site that sets one)',
+		// The address book is written from eight places - the checkout, express
+		// checkout, the custom forms, the affiliate sign-up, the e-mail
+		// preferences screen, a Google sign-in, the panel's contact screen and
+		// this API - and every one of them announces the contact it made. What
+		// stays quiet is the bulk paths: a contact import or a campaign upload
+		// would put thousands of events on the queue, and a receiver learns more
+		// from one listing than from the flood. The description says so, because
+		// a subscription that silently misses a case is worse than one that is
+		// honest about its edge.
+		'customer.created'     => 'A customer record was created (not bulk imports)',
+		'customer.updated'     => 'A customer record was changed through the API',
+		'page.created'         => 'A page was created (not duplicated or imported pages)',
+		'page.updated'         => 'A page was changed through the API',
 		'product_group.updated' => 'A product group was changed',
-		'file.created'         => 'A file was uploaded'
+		// Uploads from the panel's file screen and writes through the API alike.
+		// A design or theme import brings its own files in bulk and stays quiet,
+		// for the same reason the contact import does.
+		'file.created'         => 'A file was uploaded (not design or theme imports)',
+		'form.submitted'       => 'A visitor submitted a form'
 	);
+
+	// A module announces its own events from its own file. The core list wins a
+	// name it already uses, so a module cannot quietly redefine order.created.
+	require_once(dirname(__FILE__) . '/../modules.php');
+
+	return $events + api_module_contributions('webhook_events');
 
 }
 

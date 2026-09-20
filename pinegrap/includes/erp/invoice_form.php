@@ -82,6 +82,8 @@ function erp_invoice_form_line($source, $stored = false)
             'quantity' => $trim_number($source['quantity'] ?? 0, 4),
             'unit_code' => (string) ($source['unit_code'] ?? 'C62'),
             'unit_price' => number_format(((int) ($source['unit_price'] ?? 0)) / 100, 2, '.', ''),
+            'offer_id' => (int) ($source['offer_id'] ?? 0),
+            'offer_discount_rate' => ((float) ($source['offer_discount_rate'] ?? 0) > 0) ? $trim_number($source['offer_discount_rate'], 3) : '',
             'discount_rate' => ((float) ($source['discount_rate'] ?? 0) > 0) ? $trim_number($source['discount_rate'], 3) : '',
             'tax_rate' => $trim_number($source['tax_rate'] ?? 0, 3),
         );
@@ -94,6 +96,8 @@ function erp_invoice_form_line($source, $stored = false)
         'quantity' => trim((string) ($source['quantity'] ?? '')),
         'unit_code' => trim((string) ($source['unit_code'] ?? 'C62')),
         'unit_price' => trim((string) ($source['unit_price'] ?? '')),
+        'offer_id' => (int) ($source['offer_id'] ?? 0),
+        'offer_discount_rate' => trim((string) ($source['offer_discount_rate'] ?? '')),
         'discount_rate' => trim((string) ($source['discount_rate'] ?? '')),
         'tax_rate' => trim((string) ($source['tax_rate'] ?? '')),
     );
@@ -171,6 +175,7 @@ function erp_invoice_form_line_row($liveform, $index, $line)
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
                     <div class="dropdown-menu shadow-sm w-100" data-erp-product-results></div>
+                    <div class="form-text small mt-1" data-erp-product-hint></div>
                 </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('description'), 'name' => $name('description'),
@@ -192,6 +197,14 @@ function erp_invoice_form_line_row($liveform, $index, $line)
                     'value' => h($line['unit_price']),
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Unit price'))) . '</td>
+                <td>
+                    <input type="hidden" name="' . h($name('offer_id')) . '" value="' . (int) $line['offer_id'] . '" data-erp-offer-id />
+                    ' . $liveform->output_field(array(
+                    'type' => 'text', 'id' => $id('offer_discount_rate'), 'name' => $name('offer_discount_rate'),
+                    'value' => h($line['offer_discount_rate']),
+                    'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
+                    'aria-label' => lang('Campaign %'))) . '
+                </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('discount_rate'), 'name' => $name('discount_rate'),
                     'value' => h($line['discount_rate']),
@@ -285,6 +298,15 @@ function erp_invoice_form_cards($liveform, $options = array())
          data-date-format="' . $date_format . '"
          data-max-lines="' . (int) ERP_MANUAL_MAX_LINES . '"
          data-text-no-results="' . lang('No products match.') . '"
+         data-text-stock="' . h(lang('In stock: {var:1}')) . '"
+         data-text-no-stock-tracking="' . h(lang('Stock not tracked')) . '"
+         data-text-out-of-stock="' . h(lang('Out of stock')) . '"
+         data-text-disabled="' . h(lang('not on sale')) . '"
+         data-text-campaign="' . h(lang('Campaign')) . '"
+         data-text-sku="' . h(lang('SKU')) . '"
+         data-text-zone-rate="' . h(lang('VAT from the store\'s tax zone; the product has no rate of its own.')) . '"
+         data-text-not-found="' . h(lang('No product carries that barcode or SKU.')) . '"
+         data-text-over-stock="' . h(lang('More than is in stock ({var:1}).')) . '"
          data-text-max-lines="' . lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)) . '">
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
@@ -357,7 +379,13 @@ function erp_invoice_form_cards($liveform, $options = array())
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>' . lang('Lines') . '</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-2"></i>' . lang('Add line') . '</button>
+            <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+                <div class="input-group input-group-sm" style="width: 16rem;" title="' . h(lang('Scan a barcode or type a SKU and press Enter: the product lands on a line, or its quantity goes up by one.')) . '">
+                    <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                    <input type="text" class="form-control" data-erp-barcode autocomplete="off" placeholder="' . h(lang('Scan a barcode')) . '" aria-label="' . h(lang('Barcode')) . '" />
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-2"></i>' . lang('Add line') . '</button>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -370,7 +398,8 @@ function erp_invoice_form_cards($liveform, $options = array())
                             <th class="text-end" style="width:8%">' . lang('Quantity') . '</th>
                             <th style="width:11%">' . lang('Unit') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Unit price') . '</th>
-                            <th class="text-end" style="width:7%">' . lang('Discount %') . '</th>
+                            <th class="text-end" style="width:7%" title="' . h(lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')) . '">' . lang('Campaign %') . '</th>
+                            <th class="text-end" style="width:7%" title="' . h(lang('Your discount, applied on what the campaign leaves.')) . '">' . lang('Discount %') . '</th>
                             <th class="text-end" style="width:7%">' . lang('VAT %') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Line total') . '</th>
                             <th style="width:2.5rem"></th>
@@ -561,6 +590,8 @@ function erp_invoice_form_read($liveform, $user)
                 'quantity' => erp_fx_rate_in($line['quantity'] ?? ''),
                 'unit_code' => (string) ($line['unit_code'] ?? 'C62'),
                 'unit_price' => erp_kurus($line['unit_price'] ?? ''),
+                'offer_id' => (int) ($line['offer_id'] ?? 0),
+                'offer_discount_rate' => erp_fx_rate_in($line['offer_discount_rate'] ?? ''),
                 'discount_rate' => erp_fx_rate_in($line['discount_rate'] ?? ''),
                 'tax_rate' => erp_fx_rate_in($line['tax_rate'] ?? ''),
             );

@@ -468,6 +468,15 @@ function api_product_groups_update($params) {
 
 	}
 
+	// Above: the group exists and the body is one this endpoint can carry out.
+	// Below: a write, and - if publishing changed - a write that runs down the
+	// whole tree underneath it.
+	api_dry_run_stop('updated', 'product_group', array(
+		'id'      => $id,
+		'fields'  => count($set),
+		'publish' => ($publish === null) ? null : ($publish === 1)
+	));
+
 	$app = api_current_app();
 
 	if (empty($set) && ($publish === null)) {
@@ -572,5 +581,46 @@ function api_product_groups_update($params) {
 	$out['affected'] = $affected;
 
 	api_ok($out);
+
+}
+
+// What api_product_group_present() returns, declared for the OpenAPI document.
+// The last five fields are added only by the single-group endpoint, which is
+// why they are optional in the document rather than absent from it.
+function api_product_group_schema() {
+
+	return array(
+		'id'                => 'integer',
+		'name'              => 'string',
+		'slug'              => 'string',
+		'enabled'           => 'boolean',
+		'parent_id'         => 'integer',
+		'sort_order'        => 'integer',
+		'title'             => 'string',
+		'short_description' => 'string',
+		'image'             => 'string?',
+		'display_type'      => 'string',
+		'variant_selection' => 'boolean',
+		'attributes'        => array(array(
+			'attribute_id'      => 'integer',
+			'name'              => 'string',
+			'label'             => 'string',
+			'default_option_id' => 'integer',
+			'sort_order'        => 'integer',
+			'options'           => array(array(
+				'option_id' => 'integer',
+				'label'     => 'string'
+			))
+		)),
+		'product_ids'     => 'integer[]',
+		'updated_at'      => 'string?',
+		'updated_at_unix' => 'integer',
+		'seo'             => 'Seo',
+		'description'      => 'string',
+		'meta_description' => 'string',
+		'meta_keywords'    => 'string',
+		'keywords'         => 'string',
+		'child_ids'        => 'integer[]'
+	);
 
 }

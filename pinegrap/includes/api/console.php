@@ -122,6 +122,8 @@ function api_console_page($params) {
 	</div>
 
 	<div class="con-base mb-3"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code>
+		<span class="opacity-50 ms-3">' . lang('Authentication') . ':</span> <code>HTTP Basic</code>
+		<span class="opacity-50 ms-1">' . lang('user name: application key, password: secret') . '</span>
 		<span class="opacity-50 ms-3">' . lang('OpenAPI description') . ':</span> <code>' . h($base_url . '/openapi.json') . '</code>
 		<span class="opacity-50 ms-2">' . ($openapi_public
 			? lang('open to anyone')
@@ -156,7 +158,7 @@ function api_console_page($params) {
 		<div class="col-lg-5">
 			<div class="card h-100">
 				<div class="card-body py-3 small">
-					<p class="mb-2"><i class="bi bi-info-circle me-1"></i>' . lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null.') . '</p>
+					<p class="mb-2"><i class="bi bi-info-circle me-1"></i>' . lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '</p>
 					<pre class="con-curl bg-body-tertiary rounded p-2 mb-2">' . h($curl_example) . '</pre>
 					<p class="mb-0 opacity-75">' . lang('Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.') . '</p>
 				</div>

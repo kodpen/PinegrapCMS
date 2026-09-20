@@ -31,6 +31,7 @@ require_once($pg_api_directory . '/scopes.php');
 require_once($pg_api_directory . '/auth.php');
 require_once($pg_api_directory . '/ratelimit.php');
 require_once($pg_api_directory . '/idempotency.php');
+require_once($pg_api_directory . '/dry_run.php');
 require_once($pg_api_directory . '/schema.php');
 require_once($pg_api_directory . '/router.php');
 require_once($pg_api_directory . '/openapi.php');
@@ -38,6 +39,10 @@ require_once($pg_api_directory . '/console.php');
 require_once($pg_api_directory . '/seo.php');
 
 require_once($pg_api_directory . '/resources/meta.php');
+require_once($pg_api_directory . '/resources/forms.php');
+require_once($pg_api_directory . '/resources/seo.php');
+require_once($pg_api_directory . '/resources/system.php');
+require_once($pg_api_directory . '/resources/reports.php');
 require_once($pg_api_directory . '/resources/products.php');
 require_once($pg_api_directory . '/resources/inventory.php');
 require_once($pg_api_directory . '/resources/product_groups.php');
@@ -224,12 +229,30 @@ function api_run() {
 
 	}
 
+	// A rehearsal is only offered where the handler has a line to stop on, and
+	// the offer is settled before the body is even read: a caller who asked for
+	// a dry run and was quietly given a real write would find out from the row
+	// that appeared. A read needs no rehearsal and is left alone.
+	if (in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)
+		&& api_dry_run_requested() && empty($route['dry_run'])) {
+
+		api_fail(400, 'dry_run_unsupported', lang('This endpoint cannot rehearse a call. Send it without X-Dry-Run.'));
+
+	}
+
 	$params = api_validate_input($route, $input);
 
 	// Writes may be retried by the caller, so they run under an idempotency key
 	// when one was sent: the answer to the first attempt is recorded and the
 	// retry is answered from that record instead of being applied again.
-	if (in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)) {
+	//
+	// A dry run takes no key, even when one was sent. It writes nothing, so
+	// there is nothing to protect from a retry - and recording its answer under
+	// the key would mean the real call that follows, sent with the same key as
+	// the caller intended, is answered with "nothing was written" and never
+	// runs. The header is validated here so that a malformed one is refused
+	// before the handler starts rather than at the line it happens to check.
+	if ((in_array($method, array('POST', 'PUT', 'PATCH', 'DELETE'), true)) && (!api_dry_run_requested())) {
 
 		$key = api_idempotency_key();
 

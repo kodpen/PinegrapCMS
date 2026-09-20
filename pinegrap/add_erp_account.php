@@ -40,7 +40,37 @@ if (!$_POST) {
         $liveform->assign_field_value('opening_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
         $liveform->assign_field_value('currency', erp_base_currency());
         $liveform->assign_field_value('overdue_notify_customer', '1');
+        $liveform->assign_field_value('contact_id', '0');
+
+        // Opened from a contact's screen: the form comes filled in from the
+        // card, the way the order bridge would fill it, for the operator to
+        // check before it is saved. A contact that already has an account is
+        // sent to that account instead of getting a second one.
+        $from_contact = (int) ($_GET['contact_id'] ?? 0);
+
+        if ($from_contact > 0) {
+            $existing_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $from_contact . "' ORDER BY id ASC LIMIT 1");
+
+            if ($existing_id > 0) {
+                $liveform->remove_form();
+                $liveform_edit = new liveform('edit_erp_account');
+                $liveform_edit->add_notice(lang('This contact already has an account; this is it.'));
+                go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $existing_id);
+            }
+
+            $prefill = erp_account_data_from_contact($from_contact);
+
+            if (is_array($prefill)) {
+                foreach (array('title', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city', 'postcode') as $field) {
+                    $liveform->assign_field_value($field, (string) $prefill[$field]);
+                }
+                $liveform->assign_field_value('is_person', $prefill['is_person'] ? '1' : '0');
+                $liveform->assign_field_value('contact_id', (string) $from_contact);
+            }
+        }
     }
+
+    $linked_contact = ((int) $liveform->get_field_value('contact_id') > 0) ? erp_contact_summary((int) $liveform->get_field_value('contact_id')) : null;
 
     echo
     pg_page_shell([
@@ -64,7 +94,7 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_account.php" method="post">
                 ' . get_token_field() . '
-                ' . erp_account_form_cards($liveform, true) . '
+                ' . erp_account_form_cards($liveform, true, false, $linked_contact) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
@@ -139,12 +169,27 @@ if (!$_POST) {
         }
     }
 
+    // A contact that already belongs to another account refuses the save
+    // before anything is written.
+    $contact_id = max(0, (int) $liveform->get_field_value('contact_id'));
+
+    if ($contact_id > 0) {
+        $other = db_item("SELECT id, title FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
+
+        if (is_array($other)) {
+            $liveform->mark_error('contact_id', lang(array('string' => 'This contact is already linked to the account "{var:1}". Unlink it there first.', 'vars' => $other['title'])));
+        } elseif ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $contact_id . "'") === 0) {
+            $liveform->mark_error('contact_id', lang('The contact could not be found.'));
+        }
+    }
+
     if ($liveform->check_form_errors() == true) {
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_account.php');
     }
 
     $result = erp_account_save(array(
         'id' => 0,
+        'contact_id' => $contact_id,
         'kind' => $liveform->get_field_value('kind'),
         'title' => $liveform->get_field_value('title'),
         'is_person' => ($liveform->get_field_value('is_person') === '1'),
@@ -168,6 +213,11 @@ if (!$_POST) {
     if (!$result['success']) {
         $liveform->mark_error('_error', $result['error']);
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_account.php');
+    }
+
+    // The mirror on the contact, so its screen finds the account.
+    if ($contact_id > 0) {
+        erp_account_link_contact((int) $result['id'], $contact_id);
     }
 
     if ($opening !== 0) {

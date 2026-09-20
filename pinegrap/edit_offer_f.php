@@ -1295,7 +1295,18 @@ function _pg_offer_auto_name($text)
 }
 
 // Deletes the offer and the rule / action rows that no other offer uses.
-function _pg_offer_delete($offer_id)
+//
+// $username is who the activity line is recorded against. The screen leaves it
+// out and the session answers, as it always has; the API passes the account
+// that owns the application, because that entry point has no session for
+// $_SESSION['sessionusername'] to have been filled from - and an activity line
+// with nobody's name on it is the one line nobody can follow up.
+//
+// $activity replaces the line itself. One deletion is one entry in the log:
+// the API records which application did it and with which key, which is more
+// than this function can know, so it hands the sentence in rather than leaving
+// two lines about the same offer for a reader to reconcile.
+function _pg_offer_delete($offer_id, $username = null, $activity = null)
 {
     $offer = db_item("SELECT * FROM offers WHERE id = '" . e($offer_id) . "'");
     if (!$offer) {
@@ -1316,7 +1327,11 @@ function _pg_offer_delete($offer_id)
     if (($offer['offer_rule_id'] > 0) && (_pg_offer_rule_users($offer['offer_rule_id'], $offer_id) == 0)) {
         _pg_offer_rule_delete($offer['offer_rule_id']);
     }
-    log_activity(lang(array('string' => 'offer ({var:1}) was deleted', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
+    log_activity(
+        ($activity === null)
+            ? lang(array('string' => 'offer ({var:1}) was deleted', 'vars' => $offer['code']))
+            : $activity,
+        ($username === null) ? ($_SESSION['sessionusername'] ?? '') : $username);
     return true;
 }
 

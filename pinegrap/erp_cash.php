@@ -92,6 +92,7 @@ pg_page_shell([
                         <a class="btn btn-sm btn-outline-primary m-1" href="add_erp_receipt.php?direction=payment" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-box-arrow-up me-2"></span>' . lang('Record a Payment') . '</a>
                         <a class="btn btn-sm btn-outline-primary m-1" href="add_erp_transfer.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-arrow-left-right me-2"></span>' . lang('Transfer') . '</a>
                         <a class="btn btn-sm btn-outline-secondary m-1" href="add_erp_till.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Open a Till') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary m-1" href="erp_cashflow.php" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-graph-up-arrow me-2"></span>' . lang('Cash flow') . '</a>
                     </nav>
                 </div>
             </div>

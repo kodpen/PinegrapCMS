@@ -428,54 +428,14 @@ function api_orders_update($params) {
 
 	$set = array();
 
-	// Cancelling is not a status write.
+	// Everything the body asks for is judged before anything is carried out.
 	//
-	// The store has one cancellation path, process_order_cancellation(), and it
-	// does more than set a column: it refuses an order that has already
-	// shipped, records who cancelled it and why, attempts the refund through
-	// whichever gateway took the payment, and emails the customer. An API that
-	// wrote the column itself would produce an order that is cancelled in the
-	// list and unrefunded in the ledger, with the customer never told.
-	//
-	// It is called as an administrator because an application only reaches this
-	// endpoint when its owner deliberately granted orders:write, and the
-	// pre-shipment guard exists to stop a CUSTOMER cancelling behind the
-	// operator's back - not the operator's own integration.
-	if (isset($params['status']) && $params['status'] === 'cancelled') {
-
-		if ($existing['status'] !== 'cancelled') {
-
-			$reason = isset($params['cancellation_reason'])
-				? $params['cancellation_reason']
-				: lang(array('string' => 'Cancelled through the API by {var:1}.', 'vars' => $app['name']));
-
-			$outcome = process_order_cancellation($id, $reason, true, (int)$app['owner']['id']);
-
-			if ($outcome['status'] === 'not_found') {
-
-				api_fail_not_found(lang('Order'));
-
-			}
-
-			if ($outcome['status'] === 'shipped') {
-
-				api_fail(409, 'order_already_shipped', lang('This order has already shipped and cannot be cancelled.'));
-
-			}
-
-			if ($outcome['status'] === 'error') {
-
-				api_fail_server();
-
-			}
-
-		}
-
-	} elseif (isset($params['status'])) {
-
-		$set[] = "status = '" . escape($params['status']) . "'";
-
-	}
+	// The order matters: cancelling runs the store's own cancellation path,
+	// which refunds and mails, and it must not run only for the call to be
+	// refused a few lines later over a notes column this installation does not
+	// have. It is also what lets a dry run mean something on this endpoint - the
+	// checks are above the first write, so X-Dry-Run answers after all of them.
+	$cancelling = (isset($params['status']) && ($params['status'] === 'cancelled'));
 
 	if (isset($params['notes'])) {
 
@@ -495,9 +455,62 @@ function api_orders_update($params) {
 
 	}
 
+	if (isset($params['status']) && !$cancelling) {
+
+		$set[] = "status = '" . escape($params['status']) . "'";
+
+	}
+
 	if (empty($set) && !isset($params['status'])) {
 
 		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	api_dry_run_stop('updated', 'order', array(
+		'id'        => $id,
+		'status'    => isset($params['status']) ? $params['status'] : null,
+		'cancelling' => $cancelling
+	));
+
+	// Cancelling is not a status write.
+	//
+	// The store has one cancellation path, process_order_cancellation(), and it
+	// does more than set a column: it refuses an order that has already
+	// shipped, records who cancelled it and why, attempts the refund through
+	// whichever gateway took the payment, and emails the customer. An API that
+	// wrote the column itself would produce an order that is cancelled in the
+	// list and unrefunded in the ledger, with the customer never told.
+	//
+	// It is called as an administrator because an application only reaches this
+	// endpoint when its owner deliberately granted orders:write, and the
+	// pre-shipment guard exists to stop a CUSTOMER cancelling behind the
+	// operator's back - not the operator's own integration.
+	if ($cancelling && ($existing['status'] !== 'cancelled')) {
+
+		$reason = isset($params['cancellation_reason'])
+			? $params['cancellation_reason']
+			: lang(array('string' => 'Cancelled through the API by {var:1}.', 'vars' => $app['name']));
+
+		$outcome = process_order_cancellation($id, $reason, true, (int)$app['owner']['id']);
+
+		if ($outcome['status'] === 'not_found') {
+
+			api_fail_not_found(lang('Order'));
+
+		}
+
+		if ($outcome['status'] === 'shipped') {
+
+			api_fail(409, 'order_already_shipped', lang('This order has already shipped and cannot be cancelled.'));
+
+		}
+
+		if ($outcome['status'] === 'error') {
+
+			api_fail_server();
+
+		}
 
 	}
 
@@ -688,6 +701,15 @@ function api_orders_ship($params) {
 
 	}
 
+	// Above: the order exists, it was not cancelled, the address belongs to it,
+	// every tracking number is a line of text of a sane length, and the body
+	// asks for something. Below: the first write.
+	api_dry_run_stop('updated', 'shipment', array(
+		'order_id'         => $id,
+		'ship_to_id'       => (int)$recipient['id'],
+		'tracking_numbers' => $numbers
+	));
+
 	// The carrier is written only into an empty slot. The code beside it is the
 	// shipping method the customer chose and paid for; a fulfilment system
 	// naming the carrier it happened to use must not overwrite that.
@@ -739,5 +761,89 @@ function api_orders_ship($params) {
 	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
 
 	api_ok(api_order_present($row, null, api_order_shipments($id)));
+
+}
+
+// What api_order_present() returns, declared for the OpenAPI document. items
+// and shipments are carried by the single-order endpoint only.
+function api_order_schema() {
+
+	return array(
+		'id'             => 'integer',
+		'order_number'   => 'string?',
+		'status'         => 'string',
+		'placed_at'      => 'string?',
+		'placed_at_unix' => 'integer',
+		'customer' => array(
+			'contact_id' => 'integer?',
+			'member_id'  => 'string?',
+			'first_name' => 'string?',
+			'last_name'  => 'string?',
+			'email'      => 'string?',
+			'company'    => 'string?',
+			'phone'      => 'string?'
+		),
+		'billing_address' => array(
+			'line_1'  => 'string?',
+			'line_2'  => 'string?',
+			'city'    => 'string?',
+			'state'   => 'string?',
+			'zip'     => 'string?',
+			'country' => 'string?'
+		),
+		'totals' => array(
+			'subtotal'  => 'integer',
+			'discount'  => 'integer',
+			'tax'       => 'integer',
+			'shipping'  => 'integer',
+			'surcharge' => 'integer',
+			'total'     => 'integer'
+		),
+		'payment' => array(
+			'method'         => 'string',
+			'transaction_id' => 'string?'
+		),
+		'offer_code' => 'string',
+		'items' => array(array(
+			'id'             => 'integer',
+			'product_id'     => 'integer?',
+			'name'           => 'string',
+			'catalogue_name' => 'string?',
+			'quantity'       => 'integer',
+			'price'          => 'integer',
+			'tax'            => 'integer',
+			'shipping'       => 'integer'
+		)),
+		'shipments' => array(array(
+			'id'   => 'integer',
+			'name' => 'string',
+			'recipient' => array(
+				'salutation' => 'string',
+				'first_name' => 'string',
+				'last_name'  => 'string',
+				'company'    => 'string',
+				'phone'      => 'string'
+			),
+			'address' => array(
+				'line_1'  => 'string',
+				'line_2'  => 'string',
+				'city'    => 'string',
+				'state'   => 'string',
+				'zip'     => 'string',
+				'country' => 'string'
+			),
+			'method' => array(
+				'id'   => 'integer?',
+				'name' => 'string?',
+				'code' => 'string'
+			),
+			'shipping'          => 'integer',
+			'requested_arrival' => 'string?',
+			'ship_date'         => 'string?',
+			'delivery_date'     => 'string?',
+			'complete'          => 'boolean',
+			'tracking_numbers'  => 'string[]'
+		))
+	);
 
 }

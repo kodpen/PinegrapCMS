@@ -108,13 +108,19 @@ function erp_account_save($data)
         'country_code' => strtoupper(trim((string) ($data['country_code'] ?? erp_default_country_code()))),
         'postcode' => trim((string) ($data['postcode'] ?? '')),
         'currency' => strtoupper(trim((string) ($data['currency'] ?? erp_base_currency()))),
-        'contact_id' => (int) ($data['contact_id'] ?? 0),
         'status' => (($data['status'] ?? 'active') === 'passive') ? 'passive' : 'active',
         'notes' => trim((string) ($data['notes'] ?? '')),
         // Days from the invoice date to its due date; 0 leaves it to the
         // store's default term.
         'payment_days' => min(3650, max(0, (int) ($data['payment_days'] ?? 0))),
     );
+
+    // The contact behind the account. Written only when the caller names it:
+    // a save that does not mention the contact keeps the link, rather than
+    // quietly cutting it the way every edit once did.
+    if (array_key_exists('contact_id', $data)) {
+        $columns['contact_id'] = max(0, (int) $data['contact_id']);
+    }
 
     // Days overdue before this account's invoices are announced; 0 leaves it
     // to the store's threshold. Written only once the upgrade has added it.
@@ -154,7 +160,11 @@ function erp_account_save($data)
         return array('success' => false, 'id' => 0, 'error' => erp_db_error());
     }
 
-    return array('success' => true, 'id' => (int) mysqli_insert_id(db::$con), 'error' => '');
+    $account_id = (int) mysqli_insert_id(db::$con);
+
+    erp_event_account($account_id);
+
+    return array('success' => true, 'id' => $account_id, 'error' => '');
 }
 
 /**
@@ -288,36 +298,14 @@ function erp_account_for_contact($contact_id, $created_by = 0)
         return $existing;
     }
 
-    $contact = db_item("SELECT id, first_name, last_name, company, email_address, business_phone, mobile_phone,
-            business_address_1, business_city, business_state, business_zip_code, business_country,
-            tax_number, tax_office
-        FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
+    $data = erp_account_data_from_contact($contact_id);
 
-    if (!is_array($contact)) {
+    if ($data === null) {
         return 0;
     }
 
-    $company = trim((string) $contact['company']);
-    $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
-
-    $result = erp_account_save(array(
-        'kind' => 'customer',
-        // A company name when there is one, because that is who the invoice is
-        // made out to; the person's name otherwise.
-        'title' => ($company !== '') ? $company : ($person !== '' ? $person : ('#' . $contact_id)),
-        'is_person' => ($company === ''),
-        'tax_number' => $contact['tax_number'],
-        'tax_office' => $contact['tax_office'],
-        'email' => $contact['email_address'],
-        'phone' => (trim((string) $contact['business_phone']) !== '') ? $contact['business_phone'] : $contact['mobile_phone'],
-        'address' => $contact['business_address_1'],
-        'city' => $contact['business_state'],
-        'district' => $contact['business_city'],
-        'postcode' => $contact['business_zip_code'],
-        'country_code' => (trim((string) $contact['business_country']) !== '') ? $contact['business_country'] : erp_default_country_code(),
-        'contact_id' => $contact_id,
-        'created_by' => $created_by,
-    ));
+    $data['created_by'] = $created_by;
+    $result = erp_account_save($data);
 
     if (!$result['success']) {
         return 0;
@@ -329,6 +317,202 @@ function erp_account_for_contact($contact_id, $created_by = 0)
 }
 
 /**
+ * What a contact's card says, as the fields of a new account.
+ *
+ * The same reading whether the account is opened by the order bridge or by an
+ * operator who asked for the form filled in: the company name when there is
+ * one, because that is who the invoice is made out to, the person's name
+ * otherwise; the checkout keeps the province in business_state and the
+ * district in business_city.
+ *
+ * @param int $contact_id
+ * @return array|null  Fields for erp_account_save(), or null when the contact does not exist
+ */
+function erp_account_data_from_contact($contact_id)
+{
+    $contact_id = (int) $contact_id;
+
+    $contact = db_item("SELECT id, first_name, last_name, company, email_address, business_phone, mobile_phone,
+            business_address_1, business_city, business_state, business_zip_code, business_country,
+            tax_number, tax_office
+        FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
+
+    if (!is_array($contact)) {
+        return null;
+    }
+
+    $company = trim((string) $contact['company']);
+    $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
+
+    return array(
+        'kind' => 'customer',
+        'title' => ($company !== '') ? $company : ($person !== '' ? $person : ('#' . $contact_id)),
+        'is_person' => ($company === ''),
+        'tax_number' => (string) $contact['tax_number'],
+        'tax_office' => (string) $contact['tax_office'],
+        'email' => (string) $contact['email_address'],
+        'phone' => (trim((string) $contact['business_phone']) !== '') ? (string) $contact['business_phone'] : (string) $contact['mobile_phone'],
+        'address' => (string) $contact['business_address_1'],
+        'city' => (string) $contact['business_state'],
+        'district' => (string) $contact['business_city'],
+        'postcode' => (string) $contact['business_zip_code'],
+        'country_code' => (trim((string) $contact['business_country']) !== '') ? (string) $contact['business_country'] : erp_default_country_code(),
+        'contact_id' => $contact_id,
+    );
+}
+
+/**
+ * A contact as the account screen shows it: who they are, how to reach them,
+ * the panel user behind them if any, how many orders they have placed, and
+ * which account they are linked to.
+ *
+ * @param int $contact_id
+ * @return array|null  null when the contact does not exist
+ */
+function erp_contact_summary($contact_id)
+{
+    $contact_id = (int) $contact_id;
+
+    if ($contact_id <= 0) {
+        return null;
+    }
+
+    $contact = db_item("SELECT id, first_name, last_name, company, email_address, business_phone, mobile_phone,
+            business_city, business_state, erp_account_id
+        FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
+
+    if (!is_array($contact)) {
+        return null;
+    }
+
+    $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
+    $company = trim((string) $contact['company']);
+
+    // The panel user this contact signs in as, when there is one.
+    $user = db_item("SELECT user_id, user_username FROM user WHERE user_contact = '" . $contact_id . "' LIMIT 1");
+
+    // The link is read from the account side, which is the side the ledger
+    // trusts; contacts.erp_account_id is a mirror kept for the contact screen.
+    $account_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' ORDER BY id ASC LIMIT 1");
+
+    return array(
+        'id' => $contact_id,
+        'name' => ($person !== '') ? $person : (($company !== '') ? $company : ('#' . $contact_id)),
+        'person' => $person,
+        'company' => $company,
+        'email' => trim((string) $contact['email_address']),
+        'phone' => (trim((string) $contact['business_phone']) !== '') ? trim((string) $contact['business_phone']) : trim((string) $contact['mobile_phone']),
+        'district' => trim((string) $contact['business_city']),
+        'city' => trim((string) $contact['business_state']),
+        'user_id' => is_array($user) ? (int) $user['user_id'] : 0,
+        'username' => is_array($user) ? (string) $user['user_username'] : '',
+        'orders' => (int) db_value("SELECT COUNT(*) FROM orders WHERE contact_id = '" . $contact_id . "' AND status <> 'incomplete'"),
+        'account_id' => $account_id,
+    );
+}
+
+/**
+ * Contacts matching what was typed, for the account form's search box.
+ *
+ * Name, company and e-mail address are searched; each hit says which account
+ * it is already linked to, so the form can say so before the operator picks
+ * a contact that belongs to another card.
+ *
+ * @param string $query
+ * @param int    $limit
+ * @return array  Rows: id, name, company, email, city, account_id
+ */
+function erp_contact_search($query, $limit = 15)
+{
+    $query = trim((string) $query);
+
+    if ($query === '') {
+        return array();
+    }
+
+    $like = escape(escape_like(mb_substr($query, 0, 100)));
+    $limit = max(1, min(50, (int) $limit));
+
+    $rows = (array) db_items("SELECT c.id, c.first_name, c.last_name, c.company, c.email_address, c.business_state,
+            (SELECT a.id FROM erp_accounts a WHERE a.contact_id = c.id ORDER BY a.id ASC LIMIT 1) AS account_id
+        FROM contacts c
+        WHERE c.first_name LIKE '%" . $like . "%'
+            OR c.last_name LIKE '%" . $like . "%'
+            OR CONCAT(c.first_name, ' ', c.last_name) LIKE '%" . $like . "%'
+            OR c.company LIKE '%" . $like . "%'
+            OR c.email_address LIKE '%" . $like . "%'
+        ORDER BY c.last_name ASC, c.first_name ASC, c.id ASC
+        LIMIT " . $limit);
+
+    $results = array();
+
+    foreach ($rows as $row) {
+        $person = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
+        $company = trim((string) $row['company']);
+
+        $results[] = array(
+            'id' => (int) $row['id'],
+            'name' => ($person !== '') ? $person : (($company !== '') ? $company : ('#' . (int) $row['id'])),
+            'company' => $company,
+            'email' => trim((string) $row['email_address']),
+            'city' => trim((string) $row['business_state']),
+            'account_id' => (int) $row['account_id'],
+        );
+    }
+
+    return $results;
+}
+
+/**
+ * Point an account at a contact, or at none.
+ *
+ * One contact, one account: a contact already linked to another card is
+ * refused, because two ledgers for one customer is the mistake the link
+ * exists to prevent. Both sides are written - the account's contact_id is
+ * the truth, the contact's erp_account_id is the mirror the contact screen
+ * reads - and a contact that used to point at this account is let go.
+ *
+ * @param int $account_id
+ * @param int $contact_id  0 to unlink
+ * @return array ['success' => bool, 'error' => string]
+ */
+function erp_account_link_contact($account_id, $contact_id)
+{
+    $account_id = (int) $account_id;
+    $contact_id = (int) $contact_id;
+
+    if (($account_id <= 0) || !is_array(erp_account($account_id))) {
+        return array('success' => false, 'error' => lang('The account could not be found.'));
+    }
+
+    if ($contact_id > 0) {
+        if ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $contact_id . "'") === 0) {
+            return array('success' => false, 'error' => lang('The contact could not be found.'));
+        }
+
+        $other = db_item("SELECT id, title FROM erp_accounts WHERE contact_id = '" . $contact_id . "' AND id <> '" . $account_id . "' LIMIT 1");
+
+        if (is_array($other)) {
+            return array('success' => false, 'error' => lang(array('string' => 'This contact is already linked to the account "{var:1}". Unlink it there first.', 'vars' => $other['title'])));
+        }
+    }
+
+    if (erp_query("UPDATE erp_accounts SET contact_id = '" . $contact_id . "', updated_at = '" . time() . "' WHERE id = '" . $account_id . "'") === false) {
+        return array('success' => false, 'error' => erp_db_error());
+    }
+
+    // The mirror: whoever pointed here and is not the new contact lets go;
+    // the new contact points here.
+    erp_query("UPDATE contacts SET erp_account_id = 0 WHERE erp_account_id = '" . $account_id . "' AND id <> '" . $contact_id . "'");
+
+    if ($contact_id > 0) {
+        erp_query("UPDATE contacts SET erp_account_id = '" . $account_id . "' WHERE id = '" . $contact_id . "'");
+    }
+
+    return array('success' => true, 'error' => '');
+}
+
+/**
  * Give every contact that has ordered something an account.
  *
  * A shop switching the module on has a customer list already and no appetite
@@ -336,13 +520,18 @@ function erp_account_for_contact($contact_id, $created_by = 0)
  * signup is not a ledger account, and creating one for every address in the
  * book would bury the real ones.
  *
+ * Orders whose contact row is gone are not candidates: there is no card to
+ * read. A contact that exists but names nobody (no name, no company) is
+ * counted as skipped, so the screen can say why the button still shows it.
+ *
  * @param int $created_by
- * @return array ['created' => int, 'existing' => int]
+ * @return array ['created' => int, 'skipped' => int]
  */
 function erp_accounts_sync_contacts($created_by = 0)
 {
     $rows = (array) db_items("SELECT DISTINCT orders.contact_id
         FROM orders
+        INNER JOIN contacts ON contacts.id = orders.contact_id
         LEFT JOIN erp_accounts ON erp_accounts.contact_id = orders.contact_id
         WHERE orders.contact_id > 0 AND erp_accounts.id IS NULL");
 
@@ -354,7 +543,7 @@ function erp_accounts_sync_contacts($created_by = 0)
         }
     }
 
-    return array('created' => $created, 'existing' => count($rows) - $created);
+    return array('created' => $created, 'skipped' => count($rows) - $created);
 }
 
 /**

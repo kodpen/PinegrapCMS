@@ -180,13 +180,29 @@ foreach ($lines as $line) {
     $rate = rtrim(rtrim((string) $line['tax_rate'], '0'), '.');
     $discount = (int) $line['discount_amount'];
 
+    // How the discount was made up: the store's campaign on the product and
+    // the rate typed on top of it, when either is on the line.
+    $trim_rate = function ($value) {
+        return rtrim(rtrim(number_format((float) $value, 3, '.', ''), '0'), '.');
+    };
+    $discount_parts = array();
+    if ((float) ($line['offer_discount_rate'] ?? 0) > 0) {
+        $discount_parts[] = lang('Campaign') . ' %' . $trim_rate($line['offer_discount_rate']);
+    }
+    if ((float) ($line['discount_rate'] ?? 0) > 0) {
+        $discount_parts[] = '%' . $trim_rate($line['discount_rate']);
+    }
+    $output_discount_note = (($discount > 0) && (count($discount_parts) > 0))
+        ? '<div class="small text-body-secondary text-nowrap">' . h(implode(' + ', $discount_parts)) . '</div>'
+        : '';
+
     $output_lines .= '
         <tr>
             <td class="align-middle text-body-secondary">' . (int) $line['line_no'] . '</td>
             <td class="align-middle">' . h($line['description']) . '</td>
             <td class="align-middle text-end">' . h(rtrim(rtrim(number_format((float) $line['quantity'], 4, '.', ''), '0'), '.')) . '</td>
             <td class="align-middle text-end">' . $money((int) $line['unit_price']) . '</td>
-            <td class="align-middle text-end">' . (($discount > 0) ? '&minus;' . $money($discount) : '') . '</td>
+            <td class="align-middle text-end">' . (($discount > 0) ? '&minus;' . $money($discount) : '') . $output_discount_note . '</td>
             <td class="align-middle text-end">' . $money((int) $line['line_total'] - $discount) . '</td>
             <td class="align-middle text-end text-nowrap">%' . h($rate) . '</td>
             <td class="align-middle text-end">' . $money((int) $line['tax_total']) . '</td>
@@ -379,31 +395,31 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
         return h(prepare_form_data_for_output(date('Y-m-d', (int) $stamp), 'date'));
     };
 
-    $lines = array();
+    $reminder_lines = array();
 
     switch ($reminder['phase']) {
         case 'not_due':
-            $lines[] = lang('Not yet due.');
+            $reminder_lines[] = lang('Not yet due.');
             break;
         case 'below':
-            $lines[] = lang(array('string' => '{var:1} day(s) overdue; the reminder threshold for this account is {var:2} days. It will be announced once it passes.', 'vars' => array($reminder['days'], $reminder['threshold'])));
+            $reminder_lines[] = lang(array('string' => '{var:1} day(s) overdue; the reminder threshold for this account is {var:2} days. It will be announced once it passes.', 'vars' => array($reminder['days'], $reminder['threshold'])));
             break;
         case 'pending':
-            $lines[] = lang(array('string' => '{var:1} day(s) overdue, past the {var:2}-day threshold. It will be announced in the next digest.', 'vars' => array($reminder['days'], $reminder['threshold'])));
+            $reminder_lines[] = lang(array('string' => '{var:1} day(s) overdue, past the {var:2}-day threshold. It will be announced in the next digest.', 'vars' => array($reminder['days'], $reminder['threshold'])));
             break;
         case 'pending_second':
-            $lines[] = lang(array('string' => 'Announced on {var:1}. A month past the threshold and still open: the next digest lists it a second and last time.', 'vars' => $date_stamp($reminder['notified_at'])));
+            $reminder_lines[] = lang(array('string' => 'Announced on {var:1}. A month past the threshold and still open: the next digest lists it a second and last time.', 'vars' => $date_stamp($reminder['notified_at'])));
             break;
         case 'snoozed':
-            $lines[] = lang(array('string' => 'Put off: left out of the digests until {var:1}.', 'vars' => $date_stamp($reminder['snoozed_until'])));
+            $reminder_lines[] = lang(array('string' => 'Put off: left out of the digests until {var:1}.', 'vars' => $date_stamp($reminder['snoozed_until'])));
             if ($reminder['notified_at'] > 0) {
-                $lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
+                $reminder_lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
             }
             break;
         case 'announced':
-            $lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
+            $reminder_lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
             if ($reminder['second_notified_at'] > 0) {
-                $lines[] = lang(array('string' => 'Announced a second and last time on {var:1}. From now on it only counts in the total.', 'vars' => $date_stamp($reminder['second_notified_at'])));
+                $reminder_lines[] = lang(array('string' => 'Announced a second and last time on {var:1}. From now on it only counts in the total.', 'vars' => $date_stamp($reminder['second_notified_at'])));
             }
             break;
         default:
@@ -411,29 +427,29 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
             // a claim that can be late (paid, cancelled). What was said about
             // it is still worth reading.
             if (!erp_overdue_notify_enabled()) {
-                $lines[] = lang('Reminders are switched off on the ERP settings card.');
+                $reminder_lines[] = lang('Reminders are switched off on the ERP settings card.');
             }
             if ($reminder['notified_at'] > 0) {
-                $lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
+                $reminder_lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
             }
             if ($reminder['second_notified_at'] > 0) {
-                $lines[] = lang(array('string' => 'Announced a second and last time on {var:1}. From now on it only counts in the total.', 'vars' => $date_stamp($reminder['second_notified_at'])));
+                $reminder_lines[] = lang(array('string' => 'Announced a second and last time on {var:1}. From now on it only counts in the total.', 'vars' => $date_stamp($reminder['second_notified_at'])));
             }
     }
 
     if ($reminder['customer_notified_at'] > 0) {
-        $lines[] = lang(array('string' => 'The customer was e-mailed on {var:1}.', 'vars' => $date_stamp($reminder['customer_notified_at'])));
+        $reminder_lines[] = lang(array('string' => 'The customer was e-mailed on {var:1}.', 'vars' => $date_stamp($reminder['customer_notified_at'])));
     } elseif (defined('ERP_OVERDUE_NOTIFY_CUSTOMER') && ERP_OVERDUE_NOTIFY_CUSTOMER && ($reminder['phase'] !== 'off')) {
         if (!$reminder['customer_wanted']) {
-            $lines[] = lang('This account does not receive reminder e-mails.');
+            $reminder_lines[] = lang('This account does not receive reminder e-mails.');
         } elseif ($reminder['customer_address'] === '') {
-            $lines[] = lang('The account has no e-mail address, so the customer cannot be written to.');
+            $reminder_lines[] = lang('The account has no e-mail address, so the customer cannot be written to.');
         }
     }
 
-    $output_lines = '';
-    foreach ($lines as $line) {
-        $output_lines .= '<div>' . h($line) . '</div>';
+    $output_reminder_lines = '';
+    foreach ($reminder_lines as $line) {
+        $output_reminder_lines .= '<div>' . h($line) . '</div>';
     }
 
     // A snooze is offered while the reminders have anything left to say: up
@@ -485,7 +501,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-lg-7 my-2">' . $output_lines . '
+                        <div class="col-12 col-lg-7 my-2">' . $output_reminder_lines . '
                             <div class="form-text">' . lang('The digest goes to the panel bell, by e-mail and to subscribed devices as set on the ERP settings card. A document is announced when it passes the threshold and once more a month later; putting it off keeps it out of the digests until the date you choose.') . '</div>
                         </div>
                         <div class="col-12 col-lg-5 my-2">' . $output_snooze . '
@@ -493,6 +509,24 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                     </div>
                 </div>
             </div>';
+}
+
+// The delivery note for what this invoice sold: the one written, or the way
+// to write it. The usual order is invoice first, note second, so the button
+// sits here; the note opens filled in from the invoice (its order's goods and
+// address, or its own lines) and ties itself to the invoice.
+$output_waybill_button = '';
+if (((string) $invoice['direction'] === 'sales') && !$is_return && !$is_cancelled && ((string) $invoice['status'] !== 'draft') && function_exists('erp_waybills_for_invoice')) {
+    $invoice_waybills = erp_waybills_for_invoice($invoice_id);
+    if (!$invoice_waybills && ((int) $invoice['order_id'] > 0)) {
+        $invoice_waybills = erp_waybills_for_order((int) $invoice['order_id']);
+    }
+
+    if ($invoice_waybills) {
+        $output_waybill_button = '<a class="btn btn-sm btn-outline-secondary m-1" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-2"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
+    } else {
+        $output_waybill_button = '<a class="btn btn-sm btn-outline-primary m-1" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-truck me-2"></i>' . lang('Issue the Delivery Note') . '</a>';
+    }
 }
 
 echo
@@ -520,6 +554,7 @@ pg_page_shell([
                     <nav id="button_bar" class="navigation" aria-label="Button Bar">
                         <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-2"></i>' . lang('PDF') . '</a>
                         <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-2"></i>' . lang('Download') . '</a>
+                        ' . $output_waybill_button . '
                     </nav>
                 </div>
             </div>

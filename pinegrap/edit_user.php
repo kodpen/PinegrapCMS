@@ -771,6 +771,27 @@ if (!$_POST) {
         $output_contact_header =
             '<a class="btn btn-sm btn-ghost" href="edit_contact.php?id=' . (int) $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '">' . h(lang('Open contact')) . '</a>';
 
+        // The ledger account behind the contact, for an operator the ERP lets
+        // in: user -> contact -> account is one chain, and the last link is
+        // worth a click from here. Read from the account side, the truth;
+        // contacts.erp_account_id is only a mirror.
+        if (defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']))) {
+            $erp_account = db_item("SELECT id, balance FROM erp_accounts WHERE contact_id = '" . (int) $contact_id . "' ORDER BY id ASC LIMIT 1");
+
+            if (is_array($erp_account)) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+                $erp_balance = (int) $erp_account['balance'];
+                $erp_side = ($erp_balance > 0) ? lang('owes you') : (($erp_balance < 0) ? lang('you owe') : '');
+
+                $output_contact_header .=
+                    '<a class="btn btn-sm btn-ghost" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . h(lang('Ledger account')) . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
+            } else {
+                $output_contact_header .=
+                    '<a class="btn btn-sm btn-ghost" href="add_erp_account.php?contact_id=' . (int) $contact_id . '"><i class="bi bi-journal-plus me-1"></i>' . h(lang('Open an Account')) . '</a>';
+            }
+        }
+
     } else {
 
         $output_contact_body =
@@ -784,7 +805,7 @@ if (!$_POST) {
         '<div class="card mb-3">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
                 <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Contact')) . '</span>
-                ' . $output_contact_header . '
+                <span class="d-flex flex-wrap justify-content-end gap-1">' . $output_contact_header . '</span>
             </div>
             <div class="card-body">' . $output_contact_body . '</div>
         </div>';
@@ -1115,6 +1136,9 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         $contact_id = mysqli_insert_id(db::$con);
+
+        // A user account that had no contact record now has one.
+        pg_announce_contact_created($contact_id);
         
         // connect contact to user
         $query =

@@ -33,7 +33,7 @@ require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
 
 function api_inventory_write($params) {
 
-	$result = api_inventory_apply((int)$params['id'], '', $params['op'], (int)$params['quantity']);
+	$result = api_inventory_apply((int)$params['id'], '', $params['op'], (int)$params['quantity'], true, api_dry_run_requested());
 
 	if ($result['status'] === 'not_tracked') {
 
@@ -46,6 +46,16 @@ function api_inventory_write($params) {
 		api_fail_not_found(lang('Product'));
 
 	}
+
+	// The product was found and it tracks stock, which is everything this
+	// endpoint can check without writing. The levels are not quoted back: they
+	// would be the levels before the change, and a caller reading them as the
+	// result is exactly the mistake worth not inviting.
+	api_dry_run_stop('updated', 'inventory', array(
+		'id'       => (int)$params['id'],
+		'op'       => $params['op'],
+		'quantity' => (int)$params['quantity']
+	));
 
 	api_ok($result['inventory']);
 
@@ -61,6 +71,10 @@ function api_inventory_write($params) {
 function api_inventory_bulk($params) {
 
 	$items = $params['items'];
+
+	// Checked once for the whole batch: every item below runs its own checks and
+	// stops short of the write.
+	$dry = api_dry_run_requested();
 
 	$results = array();
 
@@ -114,19 +128,29 @@ function api_inventory_bulk($params) {
 
 		}
 
-		$outcome = api_inventory_apply($id, $sku, $op, (int)$item['quantity'], false);
+		$outcome = api_inventory_apply($id, $sku, $op, (int)$item['quantity'], false, $dry);
 
 		if ($outcome['status'] === 'ok') {
 
 			$applied++;
 
-			$results[] = array(
+			$entry = array(
 				'index'     => $index,
-				'id'        => $outcome['inventory']['id'],
+				'id'        => ($outcome['inventory'] === null) ? $id : $outcome['inventory']['id'],
 				'sku'       => $sku,
-				'status'    => 'ok',
-				'inventory' => $outcome['inventory']
+				'status'    => 'ok'
 			);
+
+			// Absent on a dry run rather than filled with the levels as they
+			// stand: a caller that read those as the outcome would be reading the
+			// state its own call did not produce.
+			if ($outcome['inventory'] !== null) {
+
+				$entry['inventory'] = $outcome['inventory'];
+
+			}
+
+			$results[] = $entry;
 
 		} else {
 
@@ -143,6 +167,13 @@ function api_inventory_bulk($params) {
 		}
 
 	}
+
+	// Every item has been resolved and judged, and nothing has been written.
+	api_dry_run_stop('updated', 'inventory', array(
+		'applied' => $applied,
+		'total'   => count($items),
+		'items'   => $results
+	));
 
 	$app = api_current_app();
 
@@ -164,7 +195,7 @@ function api_inventory_bulk($params) {
 // One product, one change. Answers status 'ok' with the new stock, 'not_found',
 // or 'not_tracked' when an adjust was aimed at a product that does not track
 // stock.
-function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true) {
+function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry = false) {
 
 	if ($id <= 0 && $sku !== '') {
 
@@ -179,7 +210,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true) {
 
 	}
 
-	$product = api_row("SELECT id, name, inventory FROM products WHERE id = '" . $id . "' LIMIT 1");
+	$product = api_row("SELECT id, name, inventory, inventory_quantity FROM products WHERE id = '" . $id . "' LIMIT 1");
 
 	if ($product === null) {
 
@@ -229,6 +260,17 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true) {
 	// above.
 	$tracking_sql = ($op === 'set') ? "inventory = '1'," : '';
 
+	// A dry run stops on this line. Everything above it is a check - the product
+	// exists, and it tracks stock unless this is a set - and everything below it
+	// writes. The caller is told the item would have been applied and is given
+	// no levels, because the only levels this function could offer are the ones
+	// from before the change it did not make.
+	if ($dry) {
+
+		return array('status' => 'ok', 'inventory' => null);
+
+	}
+
 	api_exec("UPDATE products
 		SET out_of_stock = IF((" . $quantity_sql . ") <= 0, '1', '0'),
 		    inventory_quantity = " . $quantity_sql . ",
@@ -260,6 +302,31 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true) {
 		'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 	));
 
+	// Crossing the low-stock line, announced once.
+	//
+	// On the crossing rather than on every write: a product sitting at two with
+	// a threshold of five would otherwise produce an event on every sale, and a
+	// reorder notice that arrives four times a day stops being read. The store
+	// has to be running a threshold at all, and the product has to track stock -
+	// a gift card that was deliberately sold without a stock limit has no low
+	// to cross.
+	$threshold = (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int)ECOMMERCE_LOW_STOCK_THRESHOLD > 0))
+		? (int)ECOMMERCE_LOW_STOCK_THRESHOLD
+		: 0;
+
+	if (($threshold > 0) && ((int)$row['inventory'] === 1)
+		&& ((int)$row['inventory_quantity'] <= $threshold)
+		&& ((int)$product['inventory_quantity'] > $threshold)) {
+
+		api_webhook_enqueue('stock.low', array(
+			'product_id' => (int)$row['id'],
+			'name'       => $product['name'],
+			'quantity'   => (int)$row['inventory_quantity'],
+			'threshold'  => $threshold
+		));
+
+	}
+
 	// The same fact, going the other way. A shop whose stock is driven by one
 	// marketplace's API has to have the others told about it, and this is the
 	// point where that is known.
@@ -278,6 +345,38 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true) {
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1),
 			'updated_at'   => api_time($row['timestamp'])
 		)
+	);
+
+}
+
+// What the two stock endpoints answer with, declared for the OpenAPI document.
+// One product returns the block itself; the batch returns a count and one
+// outcome per item, because a partial failure is data here and not an error.
+function api_inventory_schema() {
+
+	return array(
+		'id'           => 'integer',
+		'tracked'      => 'boolean',
+		'quantity'     => 'integer',
+		'out_of_stock' => 'boolean',
+		'updated_at'   => 'string?'
+	);
+
+}
+
+function api_inventory_batch_schema() {
+
+	return array(
+		'applied' => 'integer',
+		'total'   => 'integer',
+		'items'   => array(array(
+			'index'     => 'integer',
+			'id'        => 'integer',
+			'sku'       => 'string',
+			'status'    => 'string',
+			'message'   => 'string',
+			'inventory' => 'Inventory'
+		))
 	);
 
 }

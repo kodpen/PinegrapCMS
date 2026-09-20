@@ -434,7 +434,7 @@ if (is_array($recent)) {
 
 // Short Turkish-friendly labels for the resource rows, and the sentence under
 // each one saying what it actually reaches.
-function api_settings_group_text($key) {
+function api_settings_group_text($key, $group = array()) {
 
 	$text = array(
 		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing name, price and description'), 'bi-box-seam'),
@@ -442,13 +442,30 @@ function api_settings_group_text($key) {
 		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines; writing status and notes'), 'bi-cart3'),
 		'customers' => array(lang('Customers'),  lang('The people who buy (address book records)'), 'bi-person-lines-fill'),
 		'pages'     => array(lang('Pages'),      lang('Page title and meta fields'), 'bi-file-earmark'),
-		'offers'    => array(lang('Offers'),     lang('Offer records'), 'bi-file-earmark-text'),
+		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means removing one, not creating it'), 'bi-file-earmark-text'),
 		'files'     => array(lang('Files'),      lang('Reading the file list; uploading new files to one folder'), 'bi-folder'),
+		'forms'     => array(lang('Forms'),      lang('Which forms the site has, and what visitors filled in on them'), 'bi-ui-checks'),
+		'seo'       => array(lang('SEO'),        lang('What the analysis found across the site, as a list to work through'), 'bi-graph-up-arrow'),
 		'webhooks'  => array(lang('Webhooks'),   lang('Registering an address for event notifications'), 'bi-megaphone'),
-		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle')
+		'meta'      => array(lang('Site info'),  lang('Currency, tax and order statuses - read only'), 'bi-info-circle'),
+		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring'), 'bi-activity')
 	);
 
-	return isset($text[$key]) ? $text[$key] : array(ucfirst($key), '', 'bi-key');
+	if (isset($text[$key])) {
+
+		return $text[$key];
+
+	}
+
+	// A group a module contributed (see includes/api/modules.php). It carries
+	// its own wording, because this screen cannot know what an ERP permission
+	// covers - and "Erp" with an empty line under it is what the operator would
+	// otherwise be asked to grant.
+	return array(
+		isset($group['label']) && ($group['label'] !== '') ? $group['label'] : ucfirst($key),
+		isset($group['description']) ? $group['description'] : '',
+		isset($group['icon']) && ($group['icon'] !== '') ? $group['icon'] : 'bi-key'
+	);
 
 }
 
@@ -661,7 +678,7 @@ foreach ($apps as $app) {
 
 		if ($choice === '') { continue; }
 
-		$label = api_settings_group_text($group_key);
+		$label = api_settings_group_text($group_key, $group);
 
 		$chips .= '<span class="api-chip' . ($choice === 'write' ? ' w' : '') . '">' . h($label[0]) . '</span>';
 
@@ -757,7 +774,7 @@ function api_settings_permission_rows($prefix, $id_prefix = '') {
 
 	foreach (api_scope_groups() as $group_key => $group) {
 
-		$text = api_settings_group_text($group_key);
+		$text = api_settings_group_text($group_key, $group);
 
 		$name = $prefix . '[' . $group_key . ']';
 
@@ -1171,6 +1188,14 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
+				<div class="mb-3">
+					<label class="form-label small">' . lang('Authentication') . '</label>
+					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
+						. h($api_base_url) . '/meta"</code>
+						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_curl">' . lang('Copy') . '</button></div>
+					<div class="form-text">'
+						. lang('HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.') . '</div>
+				</div>
 				<div class="form-check form-switch">
 					<input class="form-check-input" type="checkbox" name="status" value="active" id="d_status">
 					<label class="form-check-label small" for="d_status">' . lang('Active') . '</label>
@@ -1345,6 +1370,8 @@ echo '
 
 	var APPS = ' . json_encode($app_data, JSON_UNESCAPED_UNICODE) . ';
 
+	var API_BASE = ' . json_encode($api_base_url, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+
 	var drawerElement = document.getElementById("api_drawer");
 
 	var drawer = new bootstrap.Offcanvas(drawerElement);
@@ -1453,6 +1480,11 @@ echo '
 		document.getElementById("d_name").value = app.name;
 		document.getElementById("d_description").value = app.description || "";
 		document.getElementById("d_key").textContent = app.key;
+		// The example carries the real key of the application being looked at,
+		// so only the secret is left to fill in. A line with two placeholders
+		// invites pasting the secret into the wrong one.
+		document.getElementById("d_curl").textContent =
+			"curl -u " + app.key + ":SECRET_KEY \"" + API_BASE + "/meta\"";
 		document.getElementById("d_hint").textContent = app.hint
 			? ("•••••••• " + app.hint)
 			: ' . json_encode(lang('No secret issued yet'), JSON_UNESCAPED_UNICODE) . ';

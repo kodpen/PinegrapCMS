@@ -35,6 +35,416 @@ function pg_widget_month_name($month)
     return lang(date('F', mktime(0, 0, 0, $month, 1, 2000)));
 }
 
+// ============================================================================
+// Standard (system) fields of a submitted form
+//
+// The classic form list and form item view screens resolve ^^token^^ against
+// get_standard_fields_for_view() — reference_code, submitted_date_and_time,
+// newest_comment and the rest. The system widgets resolve the same registry,
+// so an identifier means the same thing on both sides and a site builder can
+// carry what they already know into the designer.
+//
+// Three entries have no row in that registry: the link to the detail page (the
+// classic screens carry it as their own ^^form_item_view^^ token) and the two
+// ids. Those have an empty `sql`; the renderer supplies their value.
+//
+// `join` names the query joins a field's SQL depends on. A template that never
+// mentions the field keeps them out of the query, so a listing that prints
+// nothing but its own fields stays a single-table read.
+// ============================================================================
+function pg_sw_standard_fields()
+{
+    static $fields = null;
+    if ($fields !== null) return $fields;
+
+    $joins = array(
+        'submitter'                     => array('submitter'),
+        'last_modifier'                 => array('last_modifier'),
+        'number_of_views'               => array('submitted_form_info'),
+        'number_of_comments'            => array('submitted_form_info'),
+        'comment_attachments'           => array('submitted_form_info'),
+        'newest_comment_name'           => array('submitted_form_info', 'newest_comment', 'newest_comment_submitter'),
+        'newest_comment'                => array('submitted_form_info', 'newest_comment'),
+        'newest_comment_date_and_time'  => array('submitted_form_info', 'newest_comment'),
+        'newest_comment_id'             => array('submitted_form_info', 'newest_comment'),
+        'newest_activity_date_and_time' => array('submitted_form_info', 'newest_comment'),
+    );
+
+    $fields = array();
+    foreach (get_standard_fields_for_view() as $standard_field) {
+        $name = (string)$standard_field['value'];
+        $fields[$name] = array(
+            'label' => (string)$standard_field['name'],
+            'sql'   => (string)$standard_field['sql_name'],
+            'type'  => (string)$standard_field['type'],
+            'join'  => isset($joins[$name]) ? $joins[$name] : array(),
+        );
+    }
+
+    $fields['form_item_view'] = array(
+        'label' => lang('Form Item View URL'),
+        'sql'   => '',
+        'type'  => '',
+        'join'  => array(),
+    );
+    $fields['submitted_form_id'] = array(
+        'label' => lang('Submitted Form ID'),
+        'sql'   => '',
+        'type'  => '',
+        'join'  => array(),
+    );
+    $fields['submitter_user_id'] = array(
+        'label' => lang('Submitter User ID'),
+        'sql'   => '',
+        'type'  => '',
+        'join'  => array(),
+    );
+
+    return $fields;
+}
+
+// Every identifier a widget template names, as a lookup set. The optional
+// %%…%% format suffix is not part of the identifier, so it stays out of the key.
+function pg_sw_template_tokens($template)
+{
+    $tokens = array();
+    if (!is_string($template) || $template === '') return $tokens;
+    if (preg_match_all('/\^\^(.*?)\^\^/', $template, $matches)) {
+        foreach ($matches[1] as $name) {
+            $name = mb_strtolower(trim($name), 'UTF-8');
+            if ($name !== '') $tokens[$name] = true;
+        }
+    }
+    return $tokens;
+}
+
+// SELECT columns and JOINs for the standard fields a template actually names.
+//
+// $skip lists identifiers the caller already selects for itself (the listing
+// query carries reference_code), so no column is aliased twice.
+//
+// submitted_form_info rows are kept per form item view page, so the view and
+// comment counters are the ones recorded against the widget's configured detail
+// page. With no detail page configured there is no row to join and the counters
+// come back empty, which is the truth: nothing has been read through a page
+// that does not exist.
+function pg_sw_standard_sql($tokens, $detail_page_id, $skip = array())
+{
+    $fields = pg_sw_standard_fields();
+    $select = array();
+    $needed = array();
+
+    foreach ($fields as $name => $field) {
+        if ($field['sql'] === '')            continue;
+        if (!isset($tokens[$name]))          continue;
+        if (in_array($name, $skip, true))    continue;
+        $select[] = $field['sql'] . " AS `" . $name . "`";
+        foreach ($field['join'] as $join_name) $needed[$join_name] = true;
+    }
+
+    // The badge columns ride along with the three fields that print a person's
+    // name. They are not values of their own: the renderer appends the badge
+    // after the name has been prepared.
+    if (isset($tokens['submitter'])) {
+        $select[] = "submitter.user_badge AS submitter_badge";
+        $select[] = "submitter.user_badge_label AS submitter_badge_label";
+        $needed['submitter'] = true;
+    }
+    if (isset($tokens['last_modifier'])) {
+        $select[] = "last_modifier.user_badge AS last_modifier_badge";
+        $select[] = "last_modifier.user_badge_label AS last_modifier_badge_label";
+        $needed['last_modifier'] = true;
+    }
+    if (isset($tokens['newest_comment_name'])) {
+        $select[] = "newest_comment_submitter.user_badge AS newest_comment_submitter_badge";
+        $select[] = "newest_comment_submitter.user_badge_label AS newest_comment_submitter_badge_label";
+        // A commenter who left no name is shown as anonymous, but only when
+        // there is a comment at all — an empty name and no comment are two
+        // different things and the id is what tells them apart.
+        if (!isset($tokens['newest_comment_id'])) {
+            $select[] = "newest_comment.id AS `newest_comment_id`";
+        }
+    }
+
+    $join = '';
+    if (isset($needed['submitter'])) {
+        $join .= " LEFT JOIN user AS submitter ON forms.user_id = submitter.user_id";
+    }
+    if (isset($needed['last_modifier'])) {
+        $join .= " LEFT JOIN user AS last_modifier ON forms.last_modified_user_id = last_modifier.user_id";
+    }
+    if (isset($needed['submitted_form_info'])) {
+        $join .= " LEFT JOIN submitted_form_info"
+               . " ON ((forms.id = submitted_form_info.submitted_form_id)"
+               . " AND (submitted_form_info.page_id = '" . (int)$detail_page_id . "'))";
+    }
+    if (isset($needed['newest_comment'])) {
+        $join .= " LEFT JOIN comments AS newest_comment ON submitted_form_info.newest_comment_id = newest_comment.id";
+    }
+    if (isset($needed['newest_comment_submitter'])) {
+        $join .= " LEFT JOIN user AS newest_comment_submitter ON newest_comment.created_user_id = newest_comment_submitter.user_id";
+    }
+
+    return array(
+        'select' => $select ? ",\n" . implode(",\n", $select) : '',
+        'join'   => $join,
+    );
+}
+
+// The badge the classic form list view appends after a person's name.
+// Returns '' when the user carries no badge or the site has no label for one.
+function _pg_sw_badge_html($row, $badge_column, $label_column)
+{
+    $on = isset($row[$badge_column]) ? $row[$badge_column] : 0;
+    if ($on != 1) return '';
+
+    $label = isset($row[$label_column]) ? (string)$row[$label_column] : '';
+    if ($label === '') $label = defined('BADGE_LABEL') ? BADGE_LABEL : '';
+    if ($label === '') return '';
+
+    return ' <span class="software_badge ' . h(get_class_name($label)) . '">' . h($label) . '</span>';
+}
+
+// Replace every ^^token^^ — with its optional %%format%% — in one template.
+//
+// Resolution order follows the classic screens: a standard field wins over a
+// form field of the same name. Values go through prepare_form_data_for_output()
+// so a date obeys the format the designer wrote, a signature prints as the
+// drawing, and everything else is escaped the way the classic screens escape it.
+//
+// Each token is replaced once per match rather than globally, because the same
+// identifier may appear twice with two different formats and a global replace
+// would overwrite the second with the first one's output.
+//
+// $row           forms row, carrying whatever pg_sw_standard_sql() selected
+// $custom        identifier => array('data' => raw value, 'type' => …, 'wysiwyg' => …)
+// $extra         identifier => finished string (ids, the detail URL, widget state)
+// $extra_fields  identifier => array('type' => …) for a widget that carries a
+//                typed value of its own, so it reads a format suffix the same
+//                way a standard field does
+function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array(), $extra_fields = array())
+{
+    if (!is_string($template) || $template === '') return $template;
+    if (!preg_match_all('/\^\^(.*?)\^\^(%%(.*?)%%)?/', $template, $variables, PREG_SET_ORDER)) {
+        return $template;
+    }
+
+    $standard = pg_sw_standard_fields();
+    if (is_array($extra_fields) && $extra_fields) $standard = array_merge($standard, $extra_fields);
+    if (!is_array($row))    $row    = array();
+    if (!is_array($custom)) $custom = array();
+    if (!is_array($extra))  $extra  = array();
+
+    foreach ($variables as $variable) {
+        $whole_string = $variable[0];
+        $name         = mb_strtolower($variable[1], 'UTF-8');
+
+        // A format typed into the rich-text editor may carry HTML entities, and
+        // date() would read those as format characters.
+        $date_format = isset($variable[3]) ? unhtmlspecialchars($variable[3]) : '';
+
+        // Values the renderer already finished — ids, URLs, widget state.
+        if (array_key_exists($name, $extra)) {
+            $template = preg_replace(
+                '/' . preg_quote($whole_string, '/') . '/',
+                addcslashes((string)$extra[$name], '\\$'),
+                $template,
+                1
+            );
+            continue;
+        }
+
+        $is_standard      = false;
+        $prepare_for_html = true;
+        $type             = '';
+        $data             = '';
+
+        if (isset($standard[$name]) && array_key_exists($name, $row)) {
+            $is_standard = true;
+            $type        = $standard[$name]['type'];
+            $data        = (string)$row[$name];
+        } elseif (isset($custom[$name])) {
+            $type = (string)$custom[$name]['type'];
+            $data = (string)$custom[$name]['data'];
+            // Markup from a WYSIWYG area was typed by the submitter, so it is
+            // filtered rather than escaped.
+            if (!empty($custom[$name]['wysiwyg'])) {
+                $prepare_for_html = false;
+                $data = pg_sanitize_rich_text($data);
+            }
+        } else {
+            // Not a field of this form. Left in place here and swept by the
+            // caller, so one unknown identifier never eats the markup after it.
+            continue;
+        }
+
+        if ($is_standard) {
+            // Two standard fields are rewritten before they are escaped.
+            // Trimming or splitting the escaped string would slice an entity in
+            // half and print "&am".
+            if ($name === 'newest_comment' && mb_strlen($data) > 100) {
+                $data = mb_substr($data, 0, 100) . '...';
+            }
+            if ($name === 'comment_attachments') {
+                $links = array();
+                foreach (array_filter(explode('||', $data)) as $attachment) {
+                    $links[] = '<a href="' . h((defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($attachment))
+                             . '" target="_blank">' . h($attachment) . '</a>';
+                }
+                $template = preg_replace(
+                    '/' . preg_quote($whole_string, '/') . '/',
+                    addcslashes(implode(', ', $links), '\\$'),
+                    $template,
+                    1
+                );
+                continue;
+            }
+        }
+
+        $data = prepare_form_data_for_output($data, $type, $prepare_for_html, $date_format);
+
+        if ($is_standard) {
+            switch ($name) {
+                // A counter reads as a number, not as an empty cell.
+                case 'number_of_views':
+                case 'number_of_comments':
+                    $data = ($data === '') ? '0' : number_format((float)$data);
+                    break;
+
+                case 'newest_comment_name':
+                    if ($data === '' && !empty($row['newest_comment_id'])) {
+                        $data = h(lang('Anonymous'));
+                    }
+                    $data .= _pg_sw_badge_html($row, 'newest_comment_submitter_badge', 'newest_comment_submitter_badge_label');
+                    break;
+
+                case 'submitter':
+                    $data .= _pg_sw_badge_html($row, 'submitter_badge', 'submitter_badge_label');
+                    break;
+
+                case 'last_modifier':
+                    $data .= _pg_sw_badge_html($row, 'last_modifier_badge', 'last_modifier_badge_label');
+                    break;
+            }
+        }
+
+        $template = preg_replace(
+            '/' . preg_quote($whole_string, '/') . '/',
+            addcslashes($data, '\\$'),
+            $template,
+            1
+        );
+    }
+
+    return $template;
+}
+
+// Drop the identifiers nothing answered, with their format suffix, so a raw
+// ^^token^^ never reaches the browser.
+function pg_sw_sweep_tokens($html)
+{
+    if (!is_string($html) || $html === '') return $html;
+    return preg_replace('/\^\^[^\^]*\^\^(%%.*?%%)?/', '', $html);
+}
+
+// The form's own fields, indexed by every identifier a designer might write for
+// them: the field name, the denormalized copy on the data row, and the label in
+// its written, lowercased and slugified spellings.
+//
+// Values stay raw here — pg_sw_apply_tokens() escapes them, and escaping twice
+// is how "&" becomes "&amp;amp;". A field that holds several values (a
+// multi-select, a check box group) has them joined the way the classic screens
+// join them.
+function pg_sw_index_form_data($data_rows)
+{
+    $index = array();
+    if (!is_array($data_rows)) return $index;
+
+    foreach ($data_rows as $data_row) {
+        $form_id = isset($data_row['form_id']) ? (int)$data_row['form_id'] : 0;
+        $type    = isset($data_row['field_type']) ? (string)$data_row['field_type'] : '';
+        $value   = isset($data_row['data']) ? (string)$data_row['data'] : '';
+
+        // A file upload keeps its file name in `files`, not in form_data.data,
+        // and what a reader wants from it is an address they can open.
+        if ($type === 'file upload' && !empty($data_row['file_name'])) {
+            $value = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $data_row['file_name'];
+            $type  = '';
+        }
+
+        $keys = array();
+        if (!empty($data_row['field_name']))  $keys[] = (string)$data_row['field_name'];
+        if (!empty($data_row['data_name']))   $keys[] = (string)$data_row['data_name'];
+        if (!empty($data_row['field_label'])) {
+            $label  = (string)$data_row['field_label'];
+            $keys[] = $label;
+            $slug   = pg_sw_slugify($label);
+            if ($slug !== '') $keys[] = $slug;
+        }
+
+        foreach ($keys as $key) {
+            $key = mb_strtolower(trim($key), 'UTF-8');
+            if ($key === '') continue;
+            if (isset($index[$form_id][$key]) && $index[$form_id][$key]['data'] !== '') {
+                $index[$form_id][$key]['data'] .= ', ' . $value;
+            } else {
+                $index[$form_id][$key] = array(
+                    'data'    => $value,
+                    'type'    => $type,
+                    'wysiwyg' => (!empty($data_row['field_wysiwyg']) && $type === 'text area') ? 1 : 0,
+                );
+            }
+        }
+    }
+
+    return $index;
+}
+
+// "Açıklama Alanı" → "aciklama_alani". Turkish letters and the common accents
+// are folded first so a label written in the site's own language still yields
+// an identifier a designer can type.
+function pg_sw_slugify($string)
+{
+    $string = trim((string)$string);
+    if ($string === '') return '';
+    $string = mb_strtolower($string, 'UTF-8');
+    $string = strtr($string, array(
+        'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g',
+        'ü' => 'u', 'Ü' => 'u', 'ş' => 's', 'Ş' => 's',
+        'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c',
+        'â' => 'a', 'î' => 'i', 'û' => 'u',
+    ));
+    $string = preg_replace('/[^a-z0-9_]+/', '_', $string);
+    return trim($string, '_');
+}
+
+// The page this request resolved to, as a page.page_id.
+//
+// submitted_form_info keeps its counters per form item view page, so a widget
+// that prints a view or comment count has to say whose counters it means — and
+// for the detail widget that is the page it is rendering on. The router leaves
+// the resolved slug in $_GET['page']; any segments after it address the record,
+// not the page.
+function _pg_sw_current_page_id()
+{
+    static $page_id = null;
+    if ($page_id !== null) return $page_id;
+
+    $page_id = 0;
+    $slug = isset($_GET['page']) ? (string)$_GET['page'] : '';
+    if ($slug !== '') {
+        $first_slash = mb_strpos($slug, '/');
+        if ($first_slash !== false) $slug = mb_substr($slug, 0, $first_slash);
+        if ($slug !== '') {
+            $page_id = (int)db_value(
+                "SELECT page_id FROM page WHERE page_name = '" . e($slug) . "' LIMIT 1"
+            );
+        }
+    }
+
+    return $page_id;
+}
+
 // Render a system widget's form_list_view. Loop-area aware:
 //
 //   1. _split_widget_tree pulls the loop_area out of the tree (replaced by a marker).
@@ -50,18 +460,22 @@ function pg_widget_month_name($month)
 // Tokens supported (per record):
 //   ^^{form_field.name}^^   — value from form_data.data for the field with that name
 //   ^^{form_field.label}^^  — also matched (case-insensitive + slugified variants)
-//   ^^__id^^                — forms.id (raw integer)
-//   ^^__reference^^         — forms.reference_code
-//   ^^__timestamp^^         — formatted submitted_timestamp
-//   ^^__detail_url^^        — currently empty (form_item_view widget will populate)
-//   ^^__user^^              — forms.user_id (raw integer)
+//   ^^{standard_field}^^    — every field pg_sw_standard_fields() carries, i.e. the
+//                             same registry the classic form list view resolves
+//                             against: reference_code, submitted_date_and_time,
+//                             submitter, number_of_comments, newest_comment …,
+//                             plus form_item_view (the detail link),
+//                             submitted_form_id and submitter_user_id
+//
+// A date or date-and-time field takes an optional format suffix, as on the
+// classic screens: ^^submitted_date_and_time^^%%d.m.Y%% or %%relative%%.
 //
 // Config (`system_region_config`) keys used here:
 //   items_per_page      int (default 10, max 500)
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
 //   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
-//   order_by_field      string  __timestamp | __id | form_fields.name
+//   order_by_field      string  submitted_date_and_time | submitted_form_id | form_fields.name
 //   order_by_direction  ASC | DESC (default DESC)
 //
 // URL parameters (shared across the page — if multiple system widgets render on
@@ -116,7 +530,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                         ? $cfg['empty_message']
                         : lang('No records found.');
 
-    $order_by_field    = isset($cfg['order_by_field']) ? (string)$cfg['order_by_field'] : '__timestamp';
+    $order_by_field    = isset($cfg['order_by_field']) ? (string)$cfg['order_by_field'] : 'submitted_date_and_time';
     $order_by_direction = (isset($cfg['order_by_direction']) && strtoupper($cfg['order_by_direction']) === 'ASC') ? 'ASC' : 'DESC';
 
     // viewer_filter family. Sub-toggles default to true once the parent is on,
@@ -169,10 +583,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // sort-data join. Returns null for "no contribution" (empty/invalid input).
     $_resolve_order = function ($field, $direction, $alias) use ($custom_form_page_id) {
         if ($field === '' || $field === null) return null;
-        if ($field === '__id') {
+        if ($field === 'submitted_form_id') {
             return array('sql' => "forms.id $direction", 'join' => '');
         }
-        if ($field === '__timestamp') {
+        if ($field === 'submitted_date_and_time') {
             return array('sql' => "forms.submitted_timestamp $direction", 'join' => '');
         }
         $fid = (int)db_value(
@@ -400,34 +814,6 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($remaining < $page_limit) $page_limit = max(0, $remaining);
     }
 
-    // 1. Pull submitted form rows (the `forms` table) for this custom form,
-    //    applying ordering + search + pagination.
-    //    Only `complete=1` rows are shown — incomplete sessions are drafts.
-    $forms = db_items(
-        "SELECT forms.id, forms.page_id, forms.user_id, forms.reference_code, forms.submitted_timestamp
-         FROM forms
-         $order_join
-         WHERE forms.page_id = '$custom_form_page_id'
-           AND forms.complete = 1
-           $search_where
-           $sql_viewer_filter
-         ORDER BY $order_by_sql
-         LIMIT $page_limit OFFSET $offset"
-    );
-    if (!$forms) {
-        $body = $search_html . $empty_html;
-        if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, $static_html);
-    }
-
-    // 2. Bulk-fetch form_data rows for all those submissions in one query.
-    //    Pull BOTH form_fields.name AND form_fields.label (plus form_data.name denormalized
-    //    copy) so the token can match whichever identifier the designer used — written
-    //    tokens are free text ("^^description^^" etc.) and may correspond to any of them.
-    $form_ids = array();
-    foreach ($forms as $f) { $form_ids[] = (int)$f['id']; }
-    $form_ids_str = implode(',', $form_ids);
-
     // Resolve the detail page (if configured) into a URL prefix once. Each row
     // appends its own reference_code, matching the legacy form_list_view pattern:
     //   PATH . encode_url_path(page_name) . '?r=' . forms.reference_code
@@ -470,6 +856,42 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         }
     }
 
+    // Which standard fields this design actually prints decides what the
+    // listing query reads: a template that never mentions a commenter never
+    // joins the comments table.
+    $template_tokens = pg_sw_template_tokens($loop_template);
+    $standard_sql    = pg_sw_standard_sql($template_tokens, $detail_page_id, array('reference_code'));
+
+    // 1. Pull submitted form rows (the `forms` table) for this custom form,
+    //    applying ordering + search + pagination.
+    //    Only `complete=1` rows are shown — incomplete sessions are drafts.
+    $forms = db_items(
+        "SELECT forms.id, forms.page_id, forms.user_id, forms.reference_code
+                {$standard_sql['select']}
+         FROM forms
+         $order_join
+         {$standard_sql['join']}
+         WHERE forms.page_id = '$custom_form_page_id'
+           AND forms.complete = 1
+           $search_where
+           $sql_viewer_filter
+         ORDER BY $order_by_sql
+         LIMIT $page_limit OFFSET $offset"
+    );
+    if (!$forms) {
+        $body = $search_html . $empty_html;
+        if ($static_html === '') return $body;
+        return str_replace('<!--pg-loop-slot-->', $body, $static_html);
+    }
+
+    // 2. Bulk-fetch form_data rows for all those submissions in one query.
+    //    Pull BOTH form_fields.name AND form_fields.label (plus form_data.name denormalized
+    //    copy) so the token can match whichever identifier the designer used — written
+    //    tokens are free text ("^^description^^" etc.) and may correspond to any of them.
+    $form_ids = array();
+    foreach ($forms as $f) { $form_ids[] = (int)$f['id']; }
+    $form_ids_str = implode(',', $form_ids);
+
     // JOIN files so file-upload fields resolve to a usable URL instead of an empty string.
     // form_data.data is empty for file-upload rows; the actual filename lives on
     // form_data.file_id → files.id → files.name. Pinegrap serves uploaded files at
@@ -491,93 +913,17 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
          WHERE form_data.form_id IN ($form_ids_str)"
     );
 
-    // Build an index that maps MANY possible token strings to the same value.
-    // For each form_data row we generate candidate keys from:
-    //   - form_fields.name        (canonical programmatic name)
-    //   - form_data.name          (denormalized copy, identical to form_fields.name)
-    //   - form_fields.label       (what the user usually sees in the admin form editor)
-    //   - lowercase(label)
-    //   - slugified(label)        ("Short Description" → "short_description")
-    // Longer index but O(1) lookup at replace time; memory is negligible for <= 20 rows.
-    $by_form = array();
-    $_slugify = function ($s) {
-        $s = trim((string)$s);
-        if ($s === '') return '';
-        $s = mb_strtolower($s, 'UTF-8');
-        // Map Turkish + common accents to ASCII so "Açıklama" → "aciklama"
-        $s = strtr($s, array(
-            'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g',
-            'ü' => 'u', 'Ü' => 'u', 'ş' => 's', 'Ş' => 's',
-            'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c',
-        ));
-        $s = preg_replace('/[^a-z0-9_]+/', '_', $s);
-        return trim($s, '_');
-    };
-
-    if (is_array($data_rows)) {
-        foreach ($data_rows as $r) {
-            $fid = (int)$r['form_id'];
-            if (!isset($by_form[$fid])) $by_form[$fid] = array();
-
-            // Resolve the value for this field. File-upload fields don't have plain text
-            // in form_data.data — instead the upload lives in `files` (joined above).
-            // Build the public URL from OUTPUT_PATH (Pinegrap's file-serve convention).
-            $value = isset($r['data']) ? (string)$r['data'] : '';
-            $field_type = isset($r['field_type']) ? (string)$r['field_type'] : '';
-            if ($field_type === 'file upload' && !empty($r['file_name'])) {
-                $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-                $value = $output_base . $r['file_name'];
-            }
-            // The value is spliced into the rendered markup as-is, and it was typed
-            // by the submitter. Only a WYSIWYG text area may carry markup, and that
-            // goes through the allow-list filter; everything else is escaped.
-            if ($field_type === 'text area' && !empty($r['field_wysiwyg'])) {
-                $value = pg_sanitize_rich_text($value);
-            } else {
-                $value = h($value);
-            }
-
-            // Collect every identifier string we might want to match against
-            $keys = array();
-            if (!empty($r['field_name']))  $keys[] = (string)$r['field_name'];
-            if (!empty($r['data_name']))   $keys[] = (string)$r['data_name'];
-            if (!empty($r['field_label'])) {
-                $lbl = (string)$r['field_label'];
-                $keys[] = $lbl;
-                $keys[] = mb_strtolower($lbl, 'UTF-8');
-                $slug = $_slugify($lbl);
-                if ($slug !== '') $keys[] = $slug;
-            }
-            // Deduplicate + drop empties
-            $keys = array_values(array_unique(array_filter($keys, function ($k) { return $k !== ''; })));
-            if (!$keys) continue;
-
-            // Multi-value fields: if the same key already exists (e.g. a select-multiple),
-            // concatenate with comma separator — matches Pinegrap's display convention.
-            // File uploads are atomic per row so they go through the same path safely.
-            foreach ($keys as $k) {
-                if (isset($by_form[$fid][$k]) && $by_form[$fid][$k] !== '') {
-                    $by_form[$fid][$k] .= ', ' . $value;
-                } else {
-                    $by_form[$fid][$k] = $value;
-                }
-            }
-        }
-    }
+    // Index the form's own fields under every identifier a designer might
+    // write for them. Values stay raw — escaping happens once, at replace time.
+    $by_form = pg_sw_index_form_data($data_rows);
 
     // 3. Render each submission by cloning the LOOP template and replacing tokens.
-    //    Unknown tokens (no matching form field or built-in) are wiped so the raw
-    //    "^^something^^" doesn't leak into the page — use a final regex sweep at the end.
+    //    An identifier this form does not answer is swept after the pass, so a
+    //    raw "^^something^^" never leaks into the page.
     $loop_output = '';
     foreach ($forms as $f) {
-        $fid    = (int)$f['id'];
-        $values = isset($by_form[$fid]) ? $by_form[$fid] : array();
+        $fid = (int)$f['id'];
 
-        // Built-in tokens (always available regardless of form definition)
-        $values['__id']         = (string)$fid;
-        $values['__reference']  = isset($f['reference_code'])      ? (string)$f['reference_code']      : '';
-        $values['__timestamp']  = isset($f['submitted_timestamp']) ? date('Y-m-d H:i', (int)$f['submitted_timestamp']) : '';
-        $values['__user']       = isset($f['user_id']) ? (string)$f['user_id'] : '';
         // Detail link → configured form_item_view page + reference_code.
         //
         // Fallback to `#` (not '') when no detail page is configured. An empty
@@ -587,21 +933,21 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // like `?page=deneme&page_number=1` instead of pointing nowhere, and
         // tripped users into thinking the URL builder was leaking those
         // params. `#` makes the inert state explicit.
-        $values['__detail_url'] = ($detail_url_prefix !== '' && !empty($f['reference_code']))
-            ? $detail_url_prefix . urlencode((string)$f['reference_code'])
-            : '#';
+        $extra = array(
+            'form_item_view'    => ($detail_url_prefix !== '' && !empty($f['reference_code']))
+                                       ? $detail_url_prefix . urlencode((string)$f['reference_code'])
+                                       : '#',
+            'submitted_form_id' => (string)$fid,
+            'submitter_user_id' => isset($f['user_id']) ? (string)$f['user_id'] : '',
+        );
 
-        $rendered = $loop_template;
-        // Replace longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^'.
-        $keys = array_keys($values);
-        usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($keys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', (string)$values[$k], $rendered);
-        }
-
-        // Clean up any remaining unresolved placeholders so raw "^^foo^^" never
-        // leaks to the browser. Sanitizer: token chars are [A-Za-z0-9_].
-        $rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        $rendered = pg_sw_apply_tokens(
+            $loop_template,
+            $f,
+            isset($by_form[$fid]) ? $by_form[$fid] : array(),
+            $extra
+        );
+        $rendered = pg_sw_sweep_tokens($rendered);
 
         // Uniquify Bootstrap component IDs per loop iteration so tabs, collapses
         // and dropdowns in different rows don't share the same id/target.
@@ -692,27 +1038,28 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 //   3. Access control is per-record audience (public / submitter_only /
 //      logged_in), not per-list-row audience like form_list_view's viewer_filter.
 //
-// Tokens (loop_area template + static portion):
-//   ^^__id^^                — forms.id (raw integer)
-//   ^^__reference^^         — forms.reference_code
-//   ^^__submitted_at^^      — formatted submitted_timestamp
-//   ^^__submitted_by^^      — submitter username (or empty when anonymous)
-//   ^^__user^^              — forms.user_id (raw integer)
-//   ^^__detail_url^^        — current page URL with ?r= preserved (canonical self)
-//   ^^__address_name^^      — forms.address_name (slug)
-//   ^^__tracking_code^^     — forms.tracking_code
-//   ^^__not_found^^         — empty when record is shown; configured message
-//                             when ?r= missing or unauthorized (designer can
-//                             wrap a hide/show region around it)
+// Tokens (loop_area template + static portion) — the same registry
+// form_list_view resolves, so a design moves between the two widgets intact:
+//   ^^{standard_field}^^    — everything pg_sw_standard_fields() carries
+//                             (reference_code, submitted_date_and_time,
+//                             submitter, tracking_code, address_name,
+//                             number_of_comments, newest_comment …), with the
+//                             optional %%format%% suffix on date fields
+//   ^^form_item_view^^      — this page's URL with ?r= preserved (canonical self)
+//   ^^submitted_form_id^^   — forms.id
+//   ^^submitter_user_id^^   — forms.user_id
+//   ^^not_found^^           — empty when the record is shown; the configured
+//                             message when ?r= is missing or the visitor may
+//                             not see it (wrap a hide/show region around it)
 //   ^^{form_field.name}^^   — value from form_data
 //   ^^{form_field.name}__label^^  — when show_field_labels is on, the field's
 //                                   label as a separate token
 //
 // Config:
 //   custom_form_page_id   — bound custom form (page.page_id of page_type=custom_form)
-//   not_found_message     — string shown via ^^__not_found^^ token when miss
+//   not_found_message     — string shown via ^^not_found^^ token when miss
 //   access_control        — 'public' | 'submitter_only' | 'logged_in'
-//   show_field_labels     — bool: emit __label tokens in addition to value tokens
+//   show_field_labels     — bool: emit {field}__label tokens beside the values
 //
 // URL params:
 //   r — reference_code (matches Pinegrap's classic form item view convention)
@@ -762,15 +1109,24 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // Empty ?r= is treated as "no record" (not an error) — designer might
     // place this widget on a page hit without a reference, and we want the
     // not_found template to render gracefully.
+    // Which standard fields this design prints decides what the record query
+    // reads — the same rule the listing follows. `?r=` identifies the record,
+    // and the detail page whose view counters apply is this page itself.
+    $template_tokens = pg_sw_template_tokens($loop_template . $static_html);
+    $standard_sql    = pg_sw_standard_sql($template_tokens, _pg_sw_current_page_id(), array('reference_code', 'address_name'));
+
     $reference_code = isset($_GET['r']) ? trim((string)$_GET['r']) : '';
     $form_row = null;
     if ($reference_code !== '' && strlen($reference_code) <= 100) {
         $form_row = db_item(
-            "SELECT id, page_id, user_id, form_editor_user_id, reference_code,
-                    submitted_timestamp, address_name, tracking_code, complete
+            "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
+                    forms.reference_code, forms.submitted_timestamp, forms.address_name,
+                    forms.tracking_code, forms.complete
+                    {$standard_sql['select']}
              FROM forms
-             WHERE page_id   = '" . (int)$custom_form_page_id . "'
-               AND reference_code = '" . e($reference_code) . "'
+             {$standard_sql['join']}
+             WHERE forms.page_id   = '" . (int)$custom_form_page_id . "'
+               AND forms.reference_code = '" . e($reference_code) . "'
              LIMIT 1"
         );
 
@@ -806,7 +1162,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     }
     $found_and_allowed = ($form_row && $allowed);
 
-    // Helper: build current page URL with `?r=<code>` for ^^__detail_url^^ token.
+    // Helper: build current page URL with `?r=<code>` for the ^^form_item_view^^ token.
     // Mirrors form_list_view's detail-link convention so the same token name
     // works in both widget kinds (designer can paste the same link patterns).
     $self_url = '';
@@ -825,22 +1181,17 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     }
 
     // ── Build the token map ──────────────────────────────────────────────
+    $custom = array();
     if (!$found_and_allowed) {
-        // Render the template with a "not found" token map. Form-field tokens
-        // are intentionally absent so unresolved tokens get cleaned up by the
-        // final regex sweep (designer's "not_found" region renders, others go
-        // empty). The configured message is exposed as ^^__not_found^^ so the
-        // designer can wrap it in a styled element.
-        $values = array(
-            '__id'             => '',
-            '__reference'      => '',
-            '__submitted_at'   => '',
-            '__submitted_by'   => '',
-            '__user'           => '',
-            '__detail_url'     => '#',
-            '__address_name'   => '',
-            '__tracking_code'  => '',
-            '__not_found'      => $not_found_message,
+        // No record, or one this visitor may not see. Only the widget's own
+        // state answers; every field identifier is left unanswered and swept,
+        // so the designer's not_found region renders and nothing else does.
+        $form_row = array();
+        $extra    = array(
+            'form_item_view'    => '#',
+            'submitted_form_id' => '',
+            'submitter_user_id' => '',
+            'not_found'         => $not_found_message,
         );
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
@@ -848,6 +1199,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         // fields resolve to a public URL via OUTPUT_PATH + files.name.
         $data_rows = db_items(
             "SELECT
+                '" . (int)$form_row['id'] . "' AS form_id,
                 form_data.data,
                 form_data.name      AS data_name,
                 form_data.file_id   AS data_file_id,
@@ -862,98 +1214,32 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
              WHERE form_data.form_id = '" . (int)$form_row['id'] . "'"
         );
 
-        // Submitter username (best-effort; empty when anonymous submission)
-        $submitter_username = '';
-        if ((int)$form_row['user_id'] > 0) {
-            $submitter_username = (string)db_value(
-                "SELECT user_username FROM user WHERE user_id = '" . (int)$form_row['user_id'] . "' LIMIT 1"
-            );
-        }
+        $indexed = pg_sw_index_form_data($data_rows);
+        $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
 
-        $values = array(
-            '__id'             => (string)$form_row['id'],
-            '__reference'      => (string)$form_row['reference_code'],
-            '__submitted_at'   => !empty($form_row['submitted_timestamp']) ? date('Y-m-d H:i', (int)$form_row['submitted_timestamp']) : '',
-            '__submitted_by'   => h($submitter_username),
-            '__user'           => (string)$form_row['user_id'],
-            '__detail_url'     => $self_url !== '' ? $self_url : '#',
-            '__address_name'   => isset($form_row['address_name']) ? h((string)$form_row['address_name']) : '',
-            '__tracking_code'  => isset($form_row['tracking_code']) ? h((string)$form_row['tracking_code']) : '',
-            '__not_found'      => '',  // empty when found — designer's not_found region renders empty
+        $extra = array(
+            'form_item_view'    => $self_url !== '' ? $self_url : '#',
+            'submitted_form_id' => (string)$form_row['id'],
+            'submitter_user_id' => (string)$form_row['user_id'],
+            'not_found'         => '',  // empty when found — the not_found region renders empty
         );
 
-        // Slug helper for label-derived alternate keys (lowercase + Turkish-folded).
-        $_slugify = function ($s) {
-            $s = trim((string)$s);
-            if ($s === '') return '';
-            $s = mb_strtolower($s, 'UTF-8');
-            $s = strtr($s, array(
-                'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g',
-                'ü' => 'u', 'Ü' => 'u', 'ş' => 's', 'Ş' => 's',
-                'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c',
-            ));
-            $s = preg_replace('/[^a-z0-9_]+/', '_', $s);
-            return trim($s, '_');
-        };
-
-        // Form-field tokens. Same multi-key strategy as form_list_view: emit
-        // value under field_name AND label / lowercased label / slugified label
-        // so the designer can use whichever identifier they prefer in bindings.
-        if (is_array($data_rows)) {
-            foreach ($data_rows as $r) {
-                $value = isset($r['data']) ? (string)$r['data'] : '';
-                $field_type = isset($r['field_type']) ? (string)$r['field_type'] : '';
-                if ($field_type === 'file upload' && !empty($r['file_name'])) {
-                    $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-                    $value = $output_base . $r['file_name'];
-                }
-                // Same rule as form_list_view: submitter-typed values are escaped,
-                // WYSIWYG markup is filtered.
-                if ($field_type === 'text area' && !empty($r['field_wysiwyg'])) {
-                    $value = pg_sanitize_rich_text($value);
-                } else {
-                    $value = h($value);
-                }
-                $keys = array();
-                if (!empty($r['field_name']))  $keys[] = (string)$r['field_name'];
-                if (!empty($r['data_name']))   $keys[] = (string)$r['data_name'];
-                if (!empty($r['field_label'])) {
-                    $lbl = (string)$r['field_label'];
-                    $keys[] = $lbl;
-                    $keys[] = mb_strtolower($lbl, 'UTF-8');
-                    $slug = $_slugify($lbl);
-                    if ($slug !== '') $keys[] = $slug;
-                }
-                $keys = array_values(array_unique(array_filter($keys, function ($k) { return $k !== ''; })));
-                foreach ($keys as $k) {
-                    if (isset($values[$k]) && $values[$k] !== '') {
-                        // Multi-value (e.g. select-multiple) — concatenate.
-                        $values[$k] .= ', ' . $value;
-                    } else {
-                        $values[$k] = $value;
-                    }
-                }
-                // Optional label tokens: __label suffix when toggled on.
-                if ($show_field_labels && !empty($r['field_name'])) {
-                    $values[(string)$r['field_name'] . '__label'] = isset($r['field_label']) ? h((string)$r['field_label']) : '';
-                }
+        // Optional label tokens: {field}__label beside the value, when toggled on.
+        if ($show_field_labels && is_array($data_rows)) {
+            foreach ($data_rows as $data_row) {
+                if (empty($data_row['field_name'])) continue;
+                $extra[mb_strtolower((string)$data_row['field_name'], 'UTF-8') . '__label'] =
+                    isset($data_row['field_label']) ? h((string)$data_row['field_label']) : '';
             }
         }
     }
 
     // ── Apply tokens to template + static_html (single render, NO loop) ──
-    $rendered = $loop_template;
+    $rendered = pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, $form_row, $custom, $extra));
     $static   = $static_html;
-    $keys = array_keys($values);
-    usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });  // longest first
-    foreach ($keys as $k) {
-        $tok = '^^' . $k . '^^';
-        $rendered = str_replace($tok, (string)$values[$k], $rendered);
-        if ($static !== '') $static = str_replace($tok, (string)$values[$k], $static);
+    if ($static !== '') {
+        $static = pg_sw_sweep_tokens(pg_sw_apply_tokens($static, $form_row, $custom, $extra));
     }
-    // Strip any remaining unresolved tokens (matches form_list_view convention).
-    $rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
-    if ($static !== '') $static = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static);
 
     if ($static === '') return $rendered;
     return str_replace('<!--pg-loop-slot-->', $rendered, $static);
@@ -975,24 +1261,26 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 //     other tokens collapse to empty, the loop outputs nothing.
 //
 // Static tokens (always available when logged in):
-//   ^^__account_id^^      — user.user_id
-//   ^^__username^^        — user.user_username
-//   ^^__email^^           — user.user_email
-//   ^^__full_name^^       — contacts.first_name + last_name
-//   ^^__first_name^^      — contacts.first_name
-//   ^^__last_name^^       — contacts.last_name
-//   ^^__registered_date^^ — user.user_timestamp (Y-m-d)
-//   ^^__avatar_url^^      — contacts.image URL (or empty)
-//   ^^__member_id^^       — contacts.member_id
-//   ^^__member^^          — "1" if active member, "0" otherwise
-//   ^^__not_logged_in^^   — empty when logged in, cfg message when not
+//   ^^account_id^^               — user.user_id
+//   ^^username^^                 — user.user_username
+//   ^^email_address^^            — user.user_email
+//   ^^full_name^^                — contacts.first_name + last_name
+//   ^^first_name^^               — contacts.first_name
+//   ^^last_name^^                — contacts.last_name
+//   ^^registered_date_and_time^^ — user.user_timestamp, with the same optional
+//                                  %%format%% suffix the form widgets take
+//   ^^avatar_url^^               — contacts.image URL (or empty)
+//   ^^member_id^^                — contacts.member_id
+//   ^^member^^                   — "1" if active member, "0" otherwise
+//   ^^not_logged_in^^            — empty when logged in, cfg message when not
 //
-// Per-submission loop tokens (loop_area + show_submissions):
-//   ^^__form_name^^       — page.page_title of the form
-//   ^^__reference^^       — forms.reference_code
-//   ^^__submitted_at^^    — forms.submitted_timestamp (Y-m-d H:i)
-//   ^^__detail_url^^      — submissions_detail_page?r=<code> (or '#')
-//   ^^__form_id^^         — forms.id
+// Per-submission loop tokens (loop_area + show_submissions) — named as the two
+// form widgets name them, so a row design carries over:
+//   ^^form_name^^                — page.page_title of the form
+//   ^^reference_code^^           — forms.reference_code
+//   ^^submitted_date_and_time^^  — forms.submitted_timestamp (+ %%format%%)
+//   ^^form_item_view^^           — submissions_detail_page?r=<code> (or '#')
+//   ^^submitted_form_id^^        — forms.id
 //
 // Config (`system_region_config`) keys used here:
 //   not_logged_in_message      string  shown via ^^__not_logged_in^^ when not logged in
@@ -1057,29 +1345,23 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
 
         // Render with "not logged in" token map; loop_area outputs nothing.
         $values = array(
-            '__account_id'      => '',
-            '__username'        => '',
-            '__email'           => '',
-            '__full_name'       => '',
-            '__first_name'      => '',
-            '__last_name'       => '',
-            '__registered_date' => '',
-            '__avatar_url'      => '',
-            '__member_id'       => '',
-            '__member'          => '0',
-            '__not_logged_in'   => $not_logged_in_message,
+            'account_id'               => '',
+            'username'                 => '',
+            'email_address'            => '',
+            'full_name'                => '',
+            'first_name'               => '',
+            'last_name'                => '',
+            'registered_date_and_time' => '',
+            'avatar_url'               => '',
+            'member_id'                => '',
+            'member'                   => '0',
+            'not_logged_in'            => $not_logged_in_message,
         );
-        $rendered = $loop_template;
+        $rendered = pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, array(), array(), $values));
         $static   = $static_html;
-        $keys = array_keys($values);
-        usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($keys as $k) {
-            $tok = '^^' . $k . '^^';
-            $rendered = str_replace($tok, (string)$values[$k], $rendered);
-            if ($static !== '') $static = str_replace($tok, (string)$values[$k], $static);
+        if ($static !== '') {
+            $static = pg_sw_sweep_tokens(pg_sw_apply_tokens($static, array(), array(), $values));
         }
-        $rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
-        if ($static !== '') $static = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static);
         if ($static === '') return $rendered;
         return str_replace('<!--pg-loop-slot-->', $rendered, $static);
     }
@@ -1093,7 +1375,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 user.user_id,
                 user.user_username,
                 user.user_email,
-                user.user_timestamp,
+                FROM_UNIXTIME(user.user_timestamp) AS registered_date_and_time,
                 contacts.first_name,
                 contacts.last_name,
                 contacts.image    AS avatar_image,
@@ -1118,35 +1400,37 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         $avatar_url = $output_base . $user_row['avatar_image'];
     }
 
-    $registered_date = '';
-    if ($user_row && !empty($user_row['user_timestamp'])) {
-        $registered_date = date('Y-m-d', (int)$user_row['user_timestamp']);
-    }
+    // The registration date keeps its MySQL shape so the format suffix can work
+    // on it; it is declared below as a typed field rather than pre-formatted here.
+    $account_row = array(
+        'registered_date_and_time' => ($user_row && isset($user_row['registered_date_and_time']))
+                                          ? (string)$user_row['registered_date_and_time'] : '',
+    );
+    $account_fields = array(
+        'registered_date_and_time' => array('label' => lang('Registration Date & Time'), 'sql' => '', 'type' => 'date and time', 'join' => array()),
+    );
 
-    // Base token map shared by both the static portion and every loop row.
+    // Base token map shared by the static portion and every loop row. Values
+    // are escaped here because they go in as finished strings — a contact's
+    // own first name is not markup.
     $values = array(
-        '__account_id'      => $user_row ? (string)$user_row['user_id']      : (string)$uid,
-        '__username'        => $user_row ? (string)$user_row['user_username'] : (string)(defined('USER_USERNAME')      ? USER_USERNAME      : ''),
-        '__email'           => $user_row ? (string)$user_row['user_email']    : (string)(defined('USER_EMAIL_ADDRESS') ? USER_EMAIL_ADDRESS : ''),
-        '__full_name'       => $full_name,
-        '__first_name'      => $fn,
-        '__last_name'       => $ln,
-        '__registered_date' => $registered_date,
-        '__avatar_url'      => $avatar_url,
-        '__member_id'       => ($user_row && !empty($user_row['member_id'])) ? (string)$user_row['member_id'] : '',
-        '__member'          => (defined('USER_MEMBER') && USER_MEMBER === true) ? '1' : '0',
-        '__not_logged_in'   => '',
+        'account_id'    => $user_row ? (string)$user_row['user_id']       : (string)$uid,
+        'username'      => h($user_row ? (string)$user_row['user_username'] : (string)(defined('USER_USERNAME')      ? USER_USERNAME      : '')),
+        'email_address' => h($user_row ? (string)$user_row['user_email']    : (string)(defined('USER_EMAIL_ADDRESS') ? USER_EMAIL_ADDRESS : '')),
+        'full_name'     => h($full_name),
+        'first_name'    => h($fn),
+        'last_name'     => h($ln),
+        'avatar_url'    => h($avatar_url),
+        'member_id'     => h(($user_row && !empty($user_row['member_id'])) ? (string)$user_row['member_id'] : ''),
+        'member'        => (defined('USER_MEMBER') && USER_MEMBER === true) ? '1' : '0',
+        'not_logged_in' => '',
     );
 
     // ── No loop_area — render entire tree once with account tokens ─────────
     if ($split['loop_children'] === null) {
-        $rendered = $loop_template;
-        $keys = array_keys($values);
-        usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($keys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', (string)$values[$k], $rendered);
-        }
-        return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        return pg_sw_sweep_tokens(
+            pg_sw_apply_tokens($loop_template, $account_row, array(), $values, $account_fields)
+        );
     }
 
     // ── Loop_area present — build submission rows ─────────────────────────
@@ -1179,7 +1463,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
             "SELECT
                 forms.id,
                 forms.reference_code,
-                forms.submitted_timestamp,
+                FROM_UNIXTIME(forms.submitted_timestamp) AS submitted_date_and_time,
                 page.page_title AS form_name
              FROM forms
              LEFT JOIN page ON forms.page_id = page.page_id
@@ -1192,29 +1476,26 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
 
         if (is_array($submission_rows)) {
             foreach ($submission_rows as $sr) {
-                // Build detail link — mirrors form_list_view's ^^__detail_url^^ convention.
+                // Build detail link — the same ^^form_item_view^^ the two form
+                // widgets carry, so a row design moves between them.
                 $detail_url = '#';
                 if ($detail_page_name !== '') {
                     $detail_url = $output_base . encode_url_path($detail_page_name)
                                   . '?r=' . urlencode((string)$sr['reference_code']);
                 }
 
-                // Per-row tokens extend the base account map.
-                $row_values = array_merge($values, array(
-                    '__form_name'    => isset($sr['form_name']) ? (string)$sr['form_name'] : '',
-                    '__reference'    => (string)$sr['reference_code'],
-                    '__submitted_at' => !empty($sr['submitted_timestamp']) ? date('Y-m-d H:i', (int)$sr['submitted_timestamp']) : '',
-                    '__detail_url'   => $detail_url,
-                    '__form_id'      => (string)$sr['id'],
+                // Per-row tokens extend the base account map. The row itself
+                // answers the two typed standard fields (reference_code and the
+                // submission date), so a format suffix works here as well.
+                $row_extra = array_merge($values, array(
+                    'form_name'         => h(isset($sr['form_name']) ? (string)$sr['form_name'] : ''),
+                    'form_item_view'    => $detail_url,
+                    'submitted_form_id' => (string)$sr['id'],
                 ));
 
-                $row_html = $loop_template;
-                $rkeys = array_keys($row_values);
-                usort($rkeys, function ($a, $b) { return strlen($b) - strlen($a); });
-                foreach ($rkeys as $k) {
-                    $row_html = str_replace('^^' . $k . '^^', (string)$row_values[$k], $row_html);
-                }
-                $row_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $row_html);
+                $row_html = pg_sw_sweep_tokens(
+                    pg_sw_apply_tokens($loop_template, array_merge($account_row, $sr), array(), $row_extra, $account_fields)
+                );
 
                 // Uniquify Bootstrap component IDs per loop iteration so tabs, collapses
                 // and dropdowns in different rows don't share the same id/target.
@@ -1234,13 +1515,11 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
 
     // ── Apply account tokens to static portion + assemble output ──────────
     $static = $static_html;
-    $keys = array_keys($values);
-    usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($keys as $k) {
-        $tok = '^^' . $k . '^^';
-        if ($static !== '') $static = str_replace($tok, (string)$values[$k], $static);
+    if ($static !== '') {
+        $static = pg_sw_sweep_tokens(
+            pg_sw_apply_tokens($static, $account_row, array(), $values, $account_fields)
+        );
     }
-    if ($static !== '') $static = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static);
 
     if ($static === '') return $loop_rendered;
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static);
@@ -2086,7 +2365,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         'captcha'        => $captcha,
         'password_rules' => $rules_html,
         'google_signup'  => $google_html,
-        'login_link'     => '<a href="' . h($login_url) . '" class="pg-member-link pg-login-link">' . h(lang('Already a member? Sign in')) . '</a>',
+        'login_link'     => '<a href="' . h($login_url) . '" class="pg-member-link pg-login-link">' . h(lang('Already have an account? Sign in')) . '</a>',
     ));
     _pg_member_drop_empty_links($tree, array(
         '__login_url'         => $login_url,
@@ -2163,14 +2442,18 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
 //     __shipping_country, __shipping_full_address, __shipping_address_html,
 //     __shipping_method, __arrival_date, __has_shipping (1/0)
 //
-//   Tracking (carrier deep-link templates):
-//     __tracking_code          raw tracking number (orders.tracking_code)
-//     __tracking_link          carrier deep-link URL (empty when no provider)
-//     __tracking_company_name  carrier label ("Yurtiçi Kargo" etc.)
-//     visibility flag: has_tracking_link (true when both code + provider resolve)
-//     Provider key from orders.tracking_company (optional column, probed).
-//     Fallback when column missing/empty: ECOMMERCE_DEFAULT_TRACKING_PROVIDER define.
-//     Supported keys: yurtici | aras | mng | ptt | surat
+//   Tracking (parcel numbers, from shipping_tracking_numbers):
+//     __tracking_code          first parcel's number (raw)
+//     __tracking_codes         every parcel: number, carrier, linked when known
+//     __tracking_link          first parcel's carrier page (empty when unknown)
+//     __tracking_company_name  first parcel's carrier ("Yurtiçi Kargo" etc.)
+//     visibility flags: has_tracking_code, has_tracking_link
+//     Carrier from ship_tos.shipping_method_code, or the number's own shape
+//     (pg_shipping_carrier); a shop whose codes say nothing can name one for
+//     the whole site with the ECOMMERCE_DEFAULT_TRACKING_PROVIDER define.
+//     Known: yurtici | surat | aras | mng | ptt | ups | fedex | usps
+//     NOT orders.tracking_code - that is the campaign code the visitor
+//     arrived with, and was shown here as a parcel number until 2026.4.4.
 //
 //   Timeline (order lifecycle event list):
 //     __timeline               pre-built <ul.pg-ov-timeline> HTML (Bootstrap + BI)
@@ -2615,27 +2898,68 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             : date($date_format, $ad_ts);
     }
 
-    // ── Tracking carrier resolution ───────────────────────────────────
-    // orders.tracking_company is an OPTIONAL column (not in the legacy
-    // schema). Probe once via SHOW COLUMNS; when absent we fall back to
-    // the site-wide default define ECOMMERCE_DEFAULT_TRACKING_PROVIDER.
-    // Provider keys: yurtici | aras | mng | ptt | surat. Empty string
-    // means "no tracking link" — only the raw __tracking_code surfaces.
-    static $_order_view_has_tracking_company_col = null;
-    if ($_order_view_has_tracking_company_col === null) {
-        $_probe_tc = db_value("SHOW COLUMNS FROM orders LIKE 'tracking_company'");
-        $_order_view_has_tracking_company_col = ($_probe_tc !== '' && $_probe_tc !== null);
+    // ── Tracking numbers ──────────────────────────────────────────────
+    // The parcel numbers, from shipping_tracking_numbers - the table the
+    // order screen, the printed order and the account screen all read, one
+    // row per parcel, hanging off the ship_to. An order can go to several
+    // addresses and an address can take several parcels, so this is a list.
+    //
+    // It used to be orders.tracking_code, which is the campaign code the
+    // visitor arrived with (the ?t= parameter, stored beside the utm_*
+    // fields) and never a carrier's number. The customer was shown their
+    // campaign code as a parcel number, under a link to a courier that had
+    // never heard of it.
+    //
+    // The carrier comes from the shipping method the customer chose, and
+    // failing that from the number's own shape (pg_shipping_carrier). A shop
+    // whose method codes say nothing about the carrier can still name one for
+    // the whole site with ECOMMERCE_DEFAULT_TRACKING_PROVIDER.
+    $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
+            ship_tos.shipping_method_code
+        FROM shipping_tracking_numbers
+        LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
+        WHERE (shipping_tracking_numbers.order_id = '$oid_esc')
+            AND (TRIM(shipping_tracking_numbers.number) != '')
+        ORDER BY shipping_tracking_numbers.id ASC");
+
+    if (!is_array($tracking_rows)) {
+        $tracking_rows = array();
     }
-    $tracking_provider = '';
-    if ($_order_view_has_tracking_company_col) {
-        $tracking_provider = (string)db_value("SELECT tracking_company FROM orders WHERE id = '$oid_esc' LIMIT 1");
+
+    $tracking_parcels = array();
+
+    foreach ($tracking_rows as $tracking_row) {
+        $parcel_number = trim((string)$tracking_row['number']);
+        $parcel_method = trim((string)($tracking_row['shipping_method_code'] ?? ''));
+        if (($parcel_method === '') && defined('ECOMMERCE_DEFAULT_TRACKING_PROVIDER')) {
+            $parcel_method = (string)ECOMMERCE_DEFAULT_TRACKING_PROVIDER;
+        }
+        $tracking_parcels[] = array(
+            'number'  => $parcel_number,
+            'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),
+            'carrier' => get_shipping_carrier_name($parcel_number, $parcel_method),
+        );
     }
-    if ($tracking_provider === '' && defined('ECOMMERCE_DEFAULT_TRACKING_PROVIDER')) {
-        $tracking_provider = (string)ECOMMERCE_DEFAULT_TRACKING_PROVIDER;
+
+    // The first parcel answers the singular tokens, which is what a one-parcel
+    // order - nearly all of them - needs; __tracking_codes carries the rest.
+    $tracking_code_str      = isset($tracking_parcels[0]) ? $tracking_parcels[0]['number'] : '';
+    $tracking_link          = isset($tracking_parcels[0]) ? $tracking_parcels[0]['url'] : '';
+    $tracking_company_label = isset($tracking_parcels[0]) ? $tracking_parcels[0]['carrier'] : '';
+
+    // Every parcel as one block: the number, linked when the carrier is known.
+    $tracking_codes_html = '';
+
+    foreach ($tracking_parcels as $parcel) {
+        $shown = h($parcel['number']);
+        if ($parcel['carrier'] !== '') {
+            $shown .= ' <span class="text-muted">(' . h($parcel['carrier']) . ')</span>';
+        }
+        if ($parcel['url'] !== '') {
+            $shown = '<a href="' . h($parcel['url']) . '" target="_blank" rel="noopener">' . $shown . '</a>';
+        }
+        $tracking_codes_html .= ($tracking_codes_html === '' ? '' : '<br>') . $shown;
     }
-    $tracking_code_str = trim((string)$order['tracking_code']);
-    $tracking_link = _eo_tracking_provider_url($tracking_provider, $tracking_code_str);
-    $tracking_company_label = _eo_tracking_provider_label($tracking_provider);
 
     // ── Timeline events ───────────────────────────────────────────────
     // Aggregate ship_to ship_date / delivery_date across all rows; the
@@ -2810,7 +3134,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_special_offer_code'   => trim((string)$order['special_offer_code']) !== '',
         'has_shipping_method'      => isset($ship_to['shipping_method']) && (string)$ship_to['shipping_method'] !== '',
         'has_arrival_date'         => $arrival_date_str !== '',
-        'has_tracking_code'        => trim((string)$order['tracking_code']) !== '',
+        'has_tracking_code'        => $tracking_code_str !== '',
         // Installment-related flags — true when the Iyzipay 3DS flow stored
         // a plan > 1 month (1 = paid up front / single payment, suppress row).
         'has_installment'          => (int)$order['payment_installment'] > 1,
@@ -2827,8 +3151,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'cancel_flash_success'     => $_ov_cancel_flash === '1',
         'cancel_flash_already'     => $_ov_cancel_flash === 'already',
         'cancel_flash_shipped'     => $_ov_cancel_flash === 'shipped',
-        // Tracking carrier link surfaces only when BOTH a tracking_code
-        // AND a recognised provider resolved to a real URL.
+        // The carrier link surfaces only when a parcel number is recorded AND
+        // its carrier could be identified.
         'has_tracking_link'        => $tracking_link !== '',
         // Timeline card hides on orders with no events (impossible in
         // practice — order_date is always set — but kept for symmetry).
@@ -2986,7 +3310,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__transaction_id'        => h((string)$order['transaction_id']),
         '__special_offer_code'    => h((string)$order['special_offer_code']),
         '__reference_code'        => h((string)$order['reference_code']),
-        '__tracking_code'         => h((string)$order['tracking_code']),
+        '__tracking_code'         => h($tracking_code_str),
+        '__tracking_codes'        => $tracking_codes_html,
         // Installment info (Iyzipay 3DS only; PayPal/Offline always = 1).
         '__installment_count'     => (string)(int)$order['payment_installment'],
         '__installment_charges'   => $fmt_money((int)$order['installment_charges']),
@@ -3034,11 +3359,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__arrival_date'        => h($arrival_date_str),
         '__has_shipping'        => $has_shipping ? '1' : '0',
 
-        // ── Tracking (carrier link templates) ──────────────────────────
-        // Real carrier deep-link when orders.tracking_company resolves to
-        // a known provider, OR the site-wide default define matches.
-        // Empty otherwise — designers should wire the surrounding card
-        // under eo_visible_if='has_tracking_link'.
+        // ── Tracking (carrier link) ────────────────────────────────────
+        // The first parcel's carrier page, when the carrier could be worked
+        // out from the shipping method or the number's shape. Empty otherwise
+        // — designers should wire the surrounding card under
+        // eo_visible_if='has_tracking_link'.
         '__tracking_link'           => h($tracking_link),
         '__tracking_company_name'   => h($tracking_company_label),
 

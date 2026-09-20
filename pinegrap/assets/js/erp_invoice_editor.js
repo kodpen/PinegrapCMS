@@ -47,6 +47,18 @@
     var maxLines = parseInt(root.getAttribute('data-max-lines'), 10) || 200;
     var textNoResults = root.getAttribute('data-text-no-results') || '';
     var textMaxLines = root.getAttribute('data-text-max-lines') || '';
+    var texts = {
+        stock: root.getAttribute('data-text-stock') || 'In stock: {var:1}',
+        noStockTracking: root.getAttribute('data-text-no-stock-tracking') || '',
+        outOfStock: root.getAttribute('data-text-out-of-stock') || '',
+        disabled: root.getAttribute('data-text-disabled') || '',
+        campaign: root.getAttribute('data-text-campaign') || '',
+        sku: root.getAttribute('data-text-sku') || 'SKU',
+        zoneRate: root.getAttribute('data-text-zone-rate') || '',
+        notFound: root.getAttribute('data-text-not-found') || '',
+        overStock: root.getAttribute('data-text-over-stock') || ''
+    };
+    var barcodeInput = root.querySelector('[data-erp-barcode]');
 
     /* ------------------------------------------------------------ parsing */
 
@@ -218,10 +230,15 @@
         var quantity = parseDecimal(field(row, 'quantity') ? field(row, 'quantity').value : '');
         var unitPrice = parseKurus(field(row, 'unit_price') ? field(row, 'unit_price').value : '');
         var discountRate = parseDecimal(field(row, 'discount_rate') ? field(row, 'discount_rate').value : '');
+        var offerRate = parseDecimal(field(row, 'offer_discount_rate') ? field(row, 'offer_discount_rate').value : '');
         var taxRate = parseDecimal(field(row, 'tax_rate') ? field(row, 'tax_rate').value : '');
 
+        // The campaign first, the typed discount on what it leaves; the same
+        // order erp_manual_lines_build() uses.
         var total = lineTotal(unitPrice, quantity);
-        var discount = discountRate > 0 ? applyRate(total, discountRate) : 0;
+        var offer = offerRate > 0 ? applyRate(total, offerRate) : 0;
+        var typed = discountRate > 0 ? applyRate(total - offer, discountRate) : 0;
+        var discount = offer + typed;
         var tax = applyRate(total - discount, taxRate);
 
         return {
@@ -294,6 +311,66 @@
         return text.replace(/0+$/, '').replace(/\.$/, '');
     }
 
+    function isPurchase() {
+        return !!(directionSelect && directionSelect.value === 'purchase');
+    }
+
+    function fill(text, value) {
+        return String(text).replace('{var:1}', String(value));
+    }
+
+    // What the line says about its product under the search box: the SKU,
+    // the stock, the campaign, and a warning when the quantity typed is more
+    // than the shelf holds.
+    function updateHint(row) {
+        var hint = row.querySelector('[data-erp-product-hint]');
+        if (!hint) {
+            return;
+        }
+        var idInput = row.querySelector('[data-erp-product-id]');
+        if (!idInput || parseInt(idInput.value, 10) <= 0 || !row.dataset.erpSku) {
+            hint.textContent = '';
+            hint.className = 'form-text small mt-1';
+            return;
+        }
+
+        var parts = [];
+        parts.push(texts.sku + ': ' + row.dataset.erpSku);
+
+        var warning = false;
+        if (row.dataset.erpStock !== undefined && row.dataset.erpStock !== '') {
+            var stock = parseInt(row.dataset.erpStock, 10);
+            var quantity = parseDecimal(field(row, 'quantity') ? field(row, 'quantity').value : '');
+            if (stock <= 0) {
+                parts.push(texts.outOfStock);
+                warning = true;
+            } else if (quantity > stock) {
+                parts.push(fill(texts.overStock, stock));
+                warning = true;
+            } else {
+                parts.push(fill(texts.stock, stock));
+            }
+        } else if (texts.noStockTracking) {
+            parts.push(texts.noStockTracking);
+        }
+        if (row.dataset.erpDisabled === '1' && texts.disabled) {
+            parts.push(texts.disabled);
+            warning = true;
+        }
+        if (row.dataset.erpOffer) {
+            parts.push(texts.campaign + ' ' + row.dataset.erpOffer);
+        }
+
+        // Where the VAT rate came from is said on the box, not in the line.
+        var taxRate = field(row, 'tax_rate');
+        if (taxRate) {
+            taxRate.title = (row.dataset.erpZoneRate === '1' && texts.zoneRate) ? texts.zoneRate : '';
+        }
+
+        hint.textContent = parts.join(' \u00b7 ');
+        hint.className = 'form-text small mt-1' + (warning ? ' text-warning-emphasis' : '');
+    }
+
     function fillFromProduct(row, product) {
         var idInput = row.querySelector('[data-erp-product-id]');
         var nameInput = field(row, 'product_name');
@@ -301,6 +378,8 @@
         var unitPrice = field(row, 'unit_price');
         var taxRate = field(row, 'tax_rate');
         var quantity = field(row, 'quantity');
+        var offerId = row.querySelector('[data-erp-offer-id]');
+        var offerRate = field(row, 'offer_discount_rate');
 
         if (idInput) {
             idInput.value = String(product.id);
@@ -309,22 +388,43 @@
             nameInput.value = product.name;
         }
         if (description) {
-            description.value = product.short_description || product.name;
+            description.value = product.name;
         }
         if (unitPrice) {
             unitPrice.value = formatPrice(product.price);
         }
-        if (taxRate) {
-            // NULL on the product means the zone rate applies; the operator
-            // decides which, so the box is left as it is.
-            if (product.tax_rate !== null && product.tax_rate !== undefined) {
-                taxRate.value = trimNumber(Number(product.tax_rate).toFixed(3));
-            }
+        if (taxRate && product.tax_rate !== null && product.tax_rate !== undefined) {
+            taxRate.value = trimNumber(Number(product.tax_rate).toFixed(3));
         }
         if (quantity && quantity.value.trim() === '') {
             quantity.value = '1';
         }
+
+        // The store's campaign is a discount on a sale; a purchase bill has
+        // none. The delivery note form has neither box, hence the checks.
+        var offer = (!isPurchase() && product.offer) ? product.offer : null;
+        if (offerId) {
+            offerId.value = offer ? String(offer.id) : '0';
+        }
+        if (offerRate) {
+            offerRate.value = offer ? trimNumber(Number(offer.rate).toFixed(3)) : '';
+        }
+
+        row.dataset.erpSku = product.sku || '';
+        row.dataset.erpStock = (product.stock === null || product.stock === undefined) ? '' : String(product.stock);
+        row.dataset.erpDisabled = (product.enabled === false) ? '1' : '0';
+        row.dataset.erpOffer = offer ? ('\u2212' + trimNumber(Number(offer.rate).toFixed(3)) + '%') : '';
+        row.dataset.erpZoneRate = (product.tax_rate_source === 'zone') ? '1' : '0';
+
+        updateHint(row);
         recalc();
+    }
+
+    function badge(text, className) {
+        var span = document.createElement('span');
+        span.className = 'badge ' + className + ' ms-1';
+        span.textContent = text;
+        return span;
     }
 
     function renderResults(row, menu, products) {
@@ -341,12 +441,34 @@
             var item = document.createElement('button');
             item.type = 'button';
             item.className = 'dropdown-item text-truncate no-submit';
-            item.textContent = product.name;
+
+            var name = document.createElement('span');
+            name.textContent = product.name;
+            item.appendChild(name);
+
+            if (product.sku && product.sku !== product.name) {
+                var sku = document.createElement('span');
+                sku.className = 'text-body-secondary small ms-2';
+                sku.textContent = product.sku;
+                item.appendChild(sku);
+            }
 
             var price = document.createElement('span');
             price.className = 'text-body-secondary small ms-2';
             price.textContent = formatPrice(product.price);
             item.appendChild(price);
+
+            if (product.stock !== null && product.stock !== undefined) {
+                item.appendChild(product.stock > 0
+                    ? badge(fill(texts.stock, product.stock), 'text-bg-light border')
+                    : badge(texts.outOfStock, 'text-bg-warning'));
+            }
+            if (product.enabled === false && texts.disabled) {
+                item.appendChild(badge(texts.disabled, 'text-bg-secondary'));
+            }
+            if (product.offer && !isPurchase()) {
+                item.appendChild(badge('\u2212' + trimNumber(Number(product.offer.rate).toFixed(3)) + '%', 'text-bg-success'));
+            }
 
             item.addEventListener('click', function () {
                 fillFromProduct(row, product);
@@ -358,6 +480,83 @@
         menu.classList.add('show');
     }
 
+    /* ------------------------------------------------------------- barcode */
+
+    // A blank row is one nothing has been typed into: no product, no text,
+    // no quantity.
+    function rowIsBlank(row) {
+        var idInput = row.querySelector('[data-erp-product-id]');
+        if (idInput && parseInt(idInput.value, 10) > 0) {
+            return false;
+        }
+        return ['product_name', 'description', 'quantity', 'unit_price'].every(function (name) {
+            var input = field(row, name);
+            return !input || input.value.trim() === '';
+        });
+    }
+
+    function rowForProduct(productId) {
+        return rows().filter(function (row) {
+            var idInput = row.querySelector('[data-erp-product-id]');
+            return idInput && parseInt(idInput.value, 10) === productId;
+        })[0] || null;
+    }
+
+    // A scan lands the product on the line that already carries it (one more
+    // of the same), on the first blank line, or on a new one.
+    function placeProduct(product) {
+        var existing = rowForProduct(product.id);
+        if (existing) {
+            var quantity = field(existing, 'quantity');
+            if (quantity) {
+                quantity.value = trimNumber((parseDecimal(quantity.value) + 1).toFixed(4));
+            }
+            updateHint(existing);
+            recalc();
+            existing.classList.add('table-active');
+            window.setTimeout(function () { existing.classList.remove('table-active'); }, 600);
+            return existing;
+        }
+
+        var target = rows().filter(rowIsBlank)[0] || addLine();
+        if (!target) {
+            return null;
+        }
+        fillFromProduct(target, product);
+        target.classList.add('table-active');
+        window.setTimeout(function () { target.classList.remove('table-active'); }, 600);
+        return target;
+    }
+
+    function scan(code) {
+        code = String(code || '').trim();
+        if (!code || !productsUrl) {
+            return;
+        }
+        barcodeInput.disabled = true;
+        fetch(productsUrl + '?barcode=' + encodeURIComponent(code), { credentials: 'same-origin' })
+            .then(function (response) {
+                return response.ok ? response.json() : { product: null };
+            })
+            .then(function (data) {
+                barcodeInput.disabled = false;
+                if (data && data.product) {
+                    barcodeInput.classList.remove('is-invalid');
+                    barcodeInput.value = '';
+                    placeProduct(data.product);
+                } else {
+                    barcodeInput.classList.add('is-invalid');
+                    barcodeInput.title = texts.notFound;
+                    barcodeInput.select();
+                }
+                barcodeInput.focus();
+            })
+            .catch(function () {
+                barcodeInput.disabled = false;
+                barcodeInput.focus();
+            });
+    }
+
     function lookup(row, input) {
         var menu = row.querySelector('[data-erp-product-results]');
         var query = input.value.trim();
@@ -367,6 +566,7 @@
         if (idInput) {
             idInput.value = '0';
         }
+        row.dataset.erpSku = '';
 
         if (!menu || !productsUrl) {
             return;
@@ -511,10 +711,36 @@
         }
         if (target.classList.contains('erp-product-search')) {
             lookup(row, target);
+            updateHint(row);
             return;
         }
+        updateHint(row);
         recalc();
     });
+
+    if (barcodeInput) {
+        // A scanner types the code and sends Enter; a person does the same.
+        barcodeInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                scan(barcodeInput.value);
+            }
+        });
+        barcodeInput.addEventListener('input', function () {
+            barcodeInput.classList.remove('is-invalid');
+        });
+    }
+
+    // A save that came back refused marked the field; take the operator there.
+    (function () {
+        var invalid = document.querySelector('form .is-invalid');
+        if (invalid) {
+            invalid.scrollIntoView({ block: 'center' });
+            if (typeof invalid.focus === 'function') {
+                invalid.focus();
+            }
+        }
+    }());
 
     tbody.addEventListener('change', recalc);
 

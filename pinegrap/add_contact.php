@@ -581,6 +581,11 @@ if (!$_POST) {
     
     $contact_id = mysqli_insert_id(db::$con);
 
+    // A contact that did not exist a moment ago. The panel's own screen is as
+    // much a source of new customers as the checkout is, so an integration
+    // watching the address book hears about this one too.
+    pg_announce_contact_created($contact_id);
+
     // If this contact has an email address, then update opt-in status for other contacts
     // with this same email address, so the opt-in status is the same for all.
     if ($_POST['email_address']) {

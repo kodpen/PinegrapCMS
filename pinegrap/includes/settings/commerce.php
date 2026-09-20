@@ -499,6 +499,11 @@ $pg_settings_cards[] = '
                         <input type="number" class="form-control" id="erp_default_due_days" name="erp_default_due_days" value="' . (int) $erp_default_due_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
                         <div class="form-text">' . lang('A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.') . '</div>
                     </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_walkin_account_id">' . lang('Walk-in sales account') . '</label>
+                        <select class="form-select" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
+                        <div class="form-text">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
+                    </div>
                     <div class="col-12">
                         <div class="form-check form-switch">
                             <input value="1"' . $erp_fx_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" />

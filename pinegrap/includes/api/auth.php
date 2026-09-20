@@ -325,7 +325,7 @@ function api_load_owner($user_id) {
 
 	}
 
-	return array(
+	$owner = array(
 		'id'               => (int)$row['user_id'],
 		'username'         => $row['user_username'],
 		'role'             => (int)$row['user_role'],
@@ -333,5 +333,56 @@ function api_load_owner($user_id) {
 		'manage_contacts'  => $row['user_manage_contacts'],
 		'manage_forms'     => $row['user_manage_forms']
 	);
+
+	// Every other right on the account, whoever defined it.
+	//
+	// A module caps its own scopes at what the owner holds (see
+	// includes/api/modules.php), and the right it looks at is one this file has
+	// never heard of - manage_erp, manage_erp_cash, whatever comes next. Read
+	// by shape rather than by name so the API does not have to learn a column
+	// every time a module ships one, and probed rather than assumed because
+	// those columns arrive with the upgrade that adds them.
+	foreach (api_owner_permission_columns() as $column) {
+
+		$value = api_value("SELECT " . $column . " FROM user WHERE user_id = '" . (int)$user_id . "' LIMIT 1");
+
+		$owner[preg_replace('/^user_/', '', $column)] = $value;
+
+	}
+
+	return $owner;
+
+}
+
+// The account's permission columns, asked of the table once per request.
+function api_owner_permission_columns() {
+
+	static $columns = null;
+
+	if ($columns !== null) {
+
+		return $columns;
+
+	}
+
+	$columns = array();
+
+	$known = array('user_manage_ecommerce', 'user_manage_contacts', 'user_manage_forms');
+
+	foreach (api_rows("SHOW COLUMNS FROM user LIKE '%manage\\_%'") as $row) {
+
+		$name = isset($row['Field']) ? (string)$row['Field'] : '';
+
+		if (($name === '') || in_array($name, $known, true)) {
+
+			continue;
+
+		}
+
+		$columns[] = $name;
+
+	}
+
+	return $columns;
 
 }

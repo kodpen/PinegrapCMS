@@ -273,6 +273,37 @@ define('ALLOW_INSECURE_UPDATE_TLS', false);
 define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 
 
+// ── Default shipping carrier ────────────────────────────────────────────────
+//
+// Which courier a parcel belongs to is normally read from the shipping method
+// the customer chose (ship_tos.shipping_method_code): a method code spelled
+// "Aras Kargo", "tr-mng" or just "ptt" names its carrier, and the order view
+// then prints the carrier's name and links the tracking number to its tracking
+// page.
+//
+// A shop whose method codes say nothing about the courier - "Standart
+// Teslimat", "Ücretsiz Kargo" - can name one here for the whole site. It is
+// used only as a fallback: a parcel whose method code does name a carrier
+// keeps that one.
+//
+// Accepted values, and nothing else:
+//
+//   yurtici   Yurtiçi Kargo        ups     UPS
+//   surat     Sürat Kargo          fedex   FedEx
+//   aras      Aras Kargo           usps    USPS
+//   mng       MNG Kargo
+//   ptt       PTT Kargo
+//
+// The list lives in pg_shipping_carriers() (includes/fn/ecommerce.php) with
+// each carrier's name and tracking address beside it. A value outside it does
+// nothing at all - the customer sees a bare number - so the System Status card
+// reports one it does not recognise rather than leaving it to be noticed by a
+// customer who could not follow their parcel.
+//
+// Leave empty to keep reading the carrier from the method code alone.
+define('ECOMMERCE_DEFAULT_TRACKING_PROVIDER', '');
+
+
 // ── Database availability guard ─────────────────────────────────────────────
 //
 // A bot flooding a form that sends mail can fill max_user_connections, because

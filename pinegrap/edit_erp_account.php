@@ -61,7 +61,12 @@ if (!$_POST) {
         // On until the column arrives, which is also what the upgrade writes.
         $liveform->assign_field_value('overdue_notify_customer', ((int) ($account['overdue_notify_customer'] ?? 1) === 1) ? '1' : '');
         $liveform->assign_field_value('currency', strtoupper(trim((string) $account['currency'])));
+        $liveform->assign_field_value('contact_id', (string) (int) $account['contact_id']);
     }
+
+    // The contact the form is carrying: the linked one on a fresh visit, the
+    // one just picked when a save came back refused.
+    $linked_contact = ((int) $liveform->get_field_value('contact_id') > 0) ? erp_contact_summary((int) $liveform->get_field_value('contact_id')) : null;
 
     $account_currency = strtoupper(trim((string) $account['currency']));
     $has_movements = ((int) db_value("SELECT COUNT(*) FROM erp_account_transactions WHERE account_id = '" . $account_id . "'") > 0);
@@ -141,6 +146,14 @@ if (!$_POST) {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
+            <div class="row mb-2 flex-wrap">
+                <div class="col-12 text-center text-md-start">
+                    <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                        <a class="btn btn-sm btn-outline-secondary m-1" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-2"></i>' . lang('Reconciliation Letter') . '</a>
+                    </nav>
+                </div>
+            </div>
+
             <div class="card my-4">
                 <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
                     <span class="text-uppercase text-body-secondary">' . lang('Balance') . '</span>
@@ -153,7 +166,7 @@ if (!$_POST) {
             <form name="form" action="edit_erp_account.php" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . erp_account_form_cards($liveform, false, $has_movements) . '
+                ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
@@ -206,7 +219,9 @@ if (!$_POST) {
 
     // This screen only edits. Without an existing account behind the id the
     // save would fall through to an insert and create a record nobody asked for.
-    if (($account_id <= 0) || (erp_account($account_id) === null)) {
+    $account = ($account_id > 0) ? erp_account($account_id) : null;
+
+    if (($account_id <= 0) || ($account === null)) {
         $liveform->remove_form();
         $liveform_list = new liveform('erp_accounts');
         $liveform_list->mark_error('_error', lang('The account could not be found.'));
@@ -243,12 +258,26 @@ if (!$_POST) {
         }
     }
 
+    // The contact link is checked before anything is written: a contact that
+    // belongs to another card refuses the whole save, with the reason on the
+    // field, rather than saving the card and dropping the link quietly.
+    $contact_id = max(0, (int) $liveform->get_field_value('contact_id'));
+
+    if (($contact_id !== (int) $account['contact_id']) && ($liveform->check_form_errors() == false)) {
+        $linked = erp_account_link_contact($account_id, $contact_id);
+
+        if (!$linked['success']) {
+            $liveform->mark_error('contact_id', $linked['error']);
+        }
+    }
+
     if ($liveform->check_form_errors() == true) {
         go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id);
     }
 
     $result = erp_account_save(array(
         'id' => $account_id,
+        'contact_id' => $contact_id,
         'kind' => $liveform->get_field_value('kind'),
         'title' => $liveform->get_field_value('title'),
         'is_person' => ($liveform->get_field_value('is_person') === '1'),

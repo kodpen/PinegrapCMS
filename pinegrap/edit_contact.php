@@ -29,12 +29,40 @@ if (validate_contact_access($user, $_REQUEST['id']) == false) {
 }
 
 if (!$_POST) {
+    $output_orders_button = '';
+    $output_bar_links = '';
+
     // if ecommerce is on, then output orders button to show orders for contact
     if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
+        $output_bar_links .= '
+                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
+    }
+
+    // The ledger account behind this contact, for a user the ERP module lets
+    // in: its balance and a way to it, or a button to open one filled in from
+    // this card. Read from the account side; contacts.erp_account_id is only
+    // a mirror.
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']))) {
+        $erp_account = db_item("SELECT id, balance FROM erp_accounts WHERE contact_id = '" . (int) $_REQUEST['id'] . "' ORDER BY id ASC LIMIT 1");
+
+        if (is_array($erp_account)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+            $erp_balance = (int) $erp_account['balance'];
+            $erp_side = ($erp_balance > 0) ? lang('owes you') : (($erp_balance < 0) ? lang('you owe') : '');
+
+            $output_bar_links .= '
+                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
+        } else {
+            $output_bar_links .= '
+                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
+        }
+    }
+
+    if ($output_bar_links !== '') {
         $output_orders_button = '
             <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                <div class=" btn-group btn-group-sm flex-wrap">
-                    <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>
+                <div class=" btn-group btn-group-sm flex-wrap">' . $output_bar_links . '
                 </div>
             </nav>';
     }

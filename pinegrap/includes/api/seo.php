@@ -258,3 +258,37 @@ function api_seo_block($type, $id, $row, $with_issues = false) {
 	return $block;
 
 }
+
+/**
+ * What api_seo_block() returns, for the OpenAPI document.
+ *
+ * Declared beside the function that builds it so the two are read together;
+ * tools/check_api_schema.php compares the two key lists.
+ *
+ * @return array
+ */
+function api_seo_schema()
+{
+    return array(
+        'score'  => 'integer?',
+        'scores' => array(
+            'meta'      => 'integer?',
+            'structure' => 'integer?',
+            'links'     => 'integer?',
+            'speed'     => 'integer?'
+        ),
+        'scored_at'   => 'string?',
+        'analyzed_at' => 'string?',
+        'stale' => array(
+            'meta'      => 'boolean',
+            'structure' => 'boolean'
+        ),
+        'flags'  => 'string[]',
+        'depth'  => 'integer?',
+        'issues' => array(array(
+            'code'     => 'string',
+            'severity' => 'string',
+            'message'  => 'string'
+        ))
+    );
+}

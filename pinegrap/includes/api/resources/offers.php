@@ -603,3 +603,111 @@ function api_offers_get($params) {
 	api_ok(api_offer_present($row, $state, true));
 
 }
+
+// Taking an offer off the shop.
+//
+// The only write this resource has, and it is a removal rather than an edit.
+// An offer is a rule tree - conditions the cart has to meet, results the cart
+// then gets - and building one belongs with the editor that knows those rules.
+// Removing one needs none of that knowledge, and it is the thing an
+// integration that manages campaigns actually needs: a season that is over
+// should not have to be cleared by hand.
+//
+// There is no recycle bin for offers, in the panel or here, so the deletion is
+// final. The same cleanup the offers screen performs is reused rather than
+// copied: the offer row, its condition rows, and the rule and result rows that
+// no other offer is still pointing at.
+//
+// An offer that is running today is refused unless the caller says force. The
+// panel has no such refusal, and that is the difference between an operator
+// and an application: an operator deleting a live campaign is a decision made
+// while looking at the shop, and an integration doing it is a discount that
+// vanished from the checkout with nobody having decided anything.
+function api_offers_delete($params) {
+
+	api_offer_library();
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$row = api_row("SELECT id, code, status, start_date, end_date FROM offers WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Offer'));
+
+	}
+
+	$status = _pg_offer_status($row);
+
+	if (($status === 'active') && empty($params['force'])) {
+
+		api_fail(409, 'offer_active', lang(array(
+			'string' => 'The offer {var:1} is running today. Send force=true to remove it anyway.',
+			'vars'   => (string)$row['code']
+		)));
+
+	}
+
+	api_dry_run_stop('deleted', 'offer', array(
+		'id'           => $id,
+		'code'         => (string)$row['code'],
+		'offer_status' => $status
+	));
+
+	$deleted = _pg_offer_delete($id, $app['owner']['username'], lang(array(
+		'string' => 'Offer ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['code'], $app['name'], $app['api_key'])
+	)));
+
+	if (!$deleted) {
+
+		api_fail_not_found(lang('Offer'));
+
+	}
+
+	api_ok(array(
+		'id'           => $id,
+		'code'         => (string)$row['code'],
+		'deleted'      => true,
+		'offer_status' => $status
+	));
+
+}
+
+// What api_offer_present() returns, declared for the OpenAPI document.
+function api_offer_schema() {
+
+	return array(
+		'id'                    => 'integer',
+		'code'                  => 'string',
+		'description'           => 'string',
+		'enabled'               => 'boolean',
+		'offer_status'          => 'string',
+		'incomplete'            => 'boolean',
+		'require_code'          => 'boolean',
+		'start_date'            => 'string',
+		'end_date'              => 'string?',
+		'scope'                 => 'string',
+		'multiple_recipients'   => 'boolean',
+		'only_apply_best_offer' => 'boolean',
+		'upsell' => array(
+			'enabled'          => 'boolean',
+			'message'          => 'string',
+			'trigger_subtotal' => 'integer',
+			'trigger_quantity' => 'integer',
+			'button_label'     => 'string'
+		),
+		'updated_at'      => 'string?',
+		'updated_at_unix' => 'integer',
+		// The single-offer endpoint adds these two. Each entry carries a type
+		// and the fields that type needs - a subtotal condition has an amount,
+		// a products condition has a quantity and a product list - so they are
+		// declared as objects rather than as one shape they do not share. The
+		// endpoint description lists the types.
+		'conditions' => 'object[]',
+		'actions'    => 'object[]'
+	);
+
+}

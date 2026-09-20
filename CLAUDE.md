@@ -150,6 +150,13 @@ konusuna göre ilgili modüle yazılır, `functions.php`'ye değil.
 - `use PHPMailer\...` yalnız `mail.php`'de geçerlidir.
 - Eski notlardaki `functions.php:NNNNN` satır referansları bölünmeden öncesine
   aittir; fonksiyon adıyla ara.
+- **Olay duyurmak için `pg_announce()`** (`includes/fn/events.php`). Yeni bir
+  kayıt oluşturan bir ekran ya da form, API'nin kuyruğunu doğrudan çağırmaz:
+  `pg_announce('page.created', array('id' => $id, 'name' => $name));` yeter —
+  API kurulu değilse sessizce döner. Kişi için `pg_announce_contact_created($id)`
+  (e-postayı kendisi okur). Olay adı `api_webhook_events()` kataloğunda tanımlı
+  olmalı ve **toplu içe aktarma yollarından çağrılmaz** (bkz.
+  `docs/degisiklikler.md`, 2026-09-20).
 
 ### 7. Veritabanı sözleşmesi
 
@@ -336,6 +343,7 @@ Depoda iki katkı rehberi bulunur ve bunlar sandbox'ta okunabilir:
 |---|---|
 | Palette component yazımı (zorunlu okuma) | `docs/component-development-guide.md` |
 | `lang()` sözdizimi ve kullanımı | `docs/LANG_USAGE.md` |
+| API ile ERP aynı depoda çalışırken: dikiş yeri ve ortak dosya kuralları | `dev/_handoff/API-ERP-koordinasyon.md` |
 
 Tam bağlam dosyası ve değişiklik günlüğü (`docs/CLAUDE-tam.md`,
 `docs/degisiklikler.md`) **depoda takip edilir** ve güncel tutulur: önemli

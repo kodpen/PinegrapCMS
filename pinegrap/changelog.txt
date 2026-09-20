@@ -681,6 +681,26 @@
          işaretleniyor ki sessizce kaybolmasın.
          Zamanlanmış görevlerden "Webhook gönderimi"ni açmayı unutmayın.
 
+  [YENİ] Olaylar artık her yerden duyuruluyor. Yeni bir müşteri kaydı ödeme
+         adımında, formlarda, üyelik ekranında ya da panelde oluşsun,
+         customer.created aynı şekilde gider; sayfa ve dosya oluşturma da
+         eklendi. Toplu içe aktarmalar kasten sessiz: beş bin satırlık bir
+         aktarım, alıcıya tek listede okuyabileceğinden fazlasını söylemez.
+         Hangi olayın neyi kapsadığı belgelerde tek tek yazıyor.
+
+  [YENİ] Kampanyalar API'den silinebiliyor. Okuma zaten vardı; artık süresi
+         geçmiş bir kampanyayı dışarıdaki bir sistem kaldırabilir. Kampanya
+         oluşturmak ve düzenlemek API'de yok: bir kampanya koşul ve sonuç
+         ağacıdır, onu kuran yer editördür. Bugün yürürlükte olan bir kampanya
+         force=true denmedikçe silinmez — canlı bir indirimin kimse karar
+         vermeden kasadan kaybolmaması için.
+
+  [YENİ] Bir yazma işleminin provası yapılabiliyor. İsteğe X-Dry-Run: true
+         başlığını eklerseniz uç nokta bütün denetimlerini yapar ve hiçbir şey
+         yazmadan ne yapacağını söyler. Toplu fiyat ya da stok gönderirken
+         hangi satırın neden reddedileceğini mağazayı değiştirmeden
+         görürsünüz. Red gerçek reddir: aynı hata kodu, aynı alan.
+
   VERGİ HESABI
   --------------------------------------------------------
 
@@ -704,6 +724,28 @@
   [DÜZELTME] PayPal Express'e satır bazlı vergi gönderilmiyor. O alan birim
          vergi istiyor, satır tutarı ise her zaman tam birimlere bölünemiyor;
          siparişin vergisi zaten ödeme düzeyinde gönderiliyor.
+
+  KARGO TAKİBİ
+  --------------------------------------------------------
+
+  [DÜZELTME] Sipariş görünümündeki takip numarası gerçekten kargo numarası.
+         Bir yer, kampanya kodunu (siteye ?t= ile gelen kod) kargo numarası
+         sanıyordu: müşteri kendi kampanya kodunu, o kodu hiç duymamış bir
+         kargo firmasının takip bağlantısının altında görüyordu. Numaralar
+         artık koli kaydından okunuyor ve bir siparişin birden fazla kolisi
+         olabiliyor — hepsi ayrı ayrı listeleniyor.
+
+  [YENİ] Kargo firması, kargo yönteminin adından da tanınıyor. "UPS-5GUN",
+         "MNG Ertesi Gün", "tr-aras-standart" gibi hizmet adları artık firmayı
+         veriyor; önceden yalnız tam eşleşen kodlar tanınıyordu ve bu
+         numaralar bağlantısız kalıyordu. Yalnız tam kelime eşleşir, yani
+         "Standart Teslimat" hâlâ hiçbir firma demek değil.
+
+         Firma adını hiç taşımayan kodlar için site geneli bir firma
+         belirtebilirsiniz (data/config.php, ECOMMERCE_DEFAULT_TRACKING_
+         PROVIDER). Geçerli değerler artık o dosyada tek tek yazıyor ve
+         tanınmayan bir değer Sistem Durumu kartında bildiriliyor — eskiden
+         yanlış yazılan bir değer sessizce hiçbir şey yapıyordu.
 
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
@@ -959,6 +1001,164 @@
          Yazılmak istemeyen bir müşteri için cari kartındaki "Faturaları
          eşiği geçince bu cariye yaz" anahtarını kapatın; diğerlerine
          dokunmadan yalnız o cari dışarıda kalır.
+
+  [YENİ] İrsaliyeler. ERP → İrsaliyeler'de sevk ettiğiniz mal için dahili
+         irsaliye kesersiniz: ne gitti, kime, hangi adrese, ne zaman, hangi
+         araçla. Fiyat yoktur; fiyat faturanın işidir. Belge kaydedildiği
+         anda kendi serisinden (fatura serisi + S, örn. PGFS2026000000001)
+         numara alır; açılıp bırakılan form seriden bir şey harcamaz.
+
+         Tamamlanmış bir siparişi seçerseniz form siparişin kalemleri,
+         alıcının adresi ve sipariş ekranına yazdığınız taşıyıcı ve sevk
+         tarihiyle dolu gelir; bir siparişin bir açık irsaliyesi olur,
+         ikincisini kesmeye kalkınca var olana gidersiniz. Elle de
+         kesebilirsiniz: cariyi seçin, kalemleri ürün arayarak ya da
+         yazarak girin; teslim yeri boş kalırsa carinin adresi alınır.
+
+         "İrsaliyeyi Faturala": siparişe bağlı irsaliye siparişin
+         faturasına bağlanır, fatura yoksa sipariş ekranındaki düğmenin
+         kestiği faturayı keser. Elle kesilmiş irsaliye katalog fiyatı ve
+         KDV oranı dolu bir fatura taslağı açar; taslakta fiyatları
+         düzeltip kesersiniz. Faturalanmış irsaliye iptal edilmez —
+         satışı söyleyen belge fatura, tersine çevrilecek olan da o. İptal
+         edilen irsaliye numarasını korur, PDF'inde "İPTAL" yazar.
+
+         PDF faturayla aynı yoldan üretilir: satıcı, müşteri ve teslim
+         yeri, kalemler (miktar ve birim), taşıma bilgileri, notlar ve
+         teslim eden / teslim alan imza satırları. Bu belge dahili
+         irsaliyedir; e-İrsaliye gönderimi Paraşüt bağlantısı
+         tamamlanınca gelecek.
+
+  [YENİ] Cari mutabakat mektubu. Cari ekranındaki "Mutabakat Mektubu"
+         düğmesi, seçtiğiniz tarih itibarıyla carinin bakiyesini ve o
+         döneme kadarki hareketlerini bir mektup olarak hazırlar: "…
+         tarihi itibarıyla cari hesabınız lehimize / lehinize … bakiyesi
+         vermektedir", açılış-hareketler-kapanış tablosu, "mutabıkız /
+         mutabık değiliz" kutuları ve kaşe-imza satırları. Bakiye tarihi,
+         hareketlerin başlangıcı ve yanıt süresi sizin seçiminiz; yanıt
+         süresi yazılırsa mektup son tarihi ve "yanıt gelmezse mutabık
+         sayılır" cümlesini de taşır.
+
+         Mektup ekranda önizlenir, PDF olarak açılır ya da indirilir,
+         ya da carinin adresine PDF ekiyle e-posta olarak gönderilir;
+         yanıtlar mağazanın adresine gelir. Defterlere hiçbir şey
+         yazılmaz — mektup, defterin o tarihteki okumasıdır; sonradan
+         girilen hareketler eski tarihli bir mektubu değiştirmez.
+
+  [YENİ] Kasa akışı raporu. ERP → Kasa akışı (Kasa ve Banka'daki düğmeden
+         de): seçtiğiniz dönemde kasalara ne girdi, ne çıktı, günlük /
+         haftalık / aylık dilimlerle ve yürüyen bakiyeyle; aynı dönem
+         kasa kasa (açılış, giriş, çıkış, kapanış) ve ödeme yöntemine göre
+         (nakit, havale/EFT, kart, çek). Bu ay, geçen ay, son 90 gün, bu
+         yıl tek tıkla; tarih aralığı ve tek kasa seçilebilir; tablo CSV
+         olarak alınır. Kendi kasalarınız arasındaki virmanlar tüm
+         kasalar görünümünde sayılmaz — para mağazaya girmedi, çekmece
+         değiştirdi; tek kasaya bakarken sayılır. Dönem sonu kapanışı
+         Kasa ve Banka ekranındaki toplamla birebir aynıdır.
+
+  [YENİ] Cari ↔ kişi bağı. Cari formunda "Bağlı Kişi" kartı: mağazadaki
+         kişiyi adı, firması ya da e-postasıyla arayıp seçersiniz; kart
+         kişinin adresini, sipariş sayısını ve varsa yönetim kullanıcısını
+         gösterir, kişi kartına ve siparişlerine tek tıkla gidersiniz. Bir
+         kişi bir cariye bağlanır; başka cariye bağlı kişi listede gri
+         gelir ve seçilemez. Kişi ekranındaki araç çubuğunda carisi varsa
+         "Cari Hesap: … size borçlu" bağlantısı, yoksa "Cari Hesap Aç" —
+         form kişinin kartından dolu açılır, siz bakıp kaydedersiniz.
+         Cari listesinde "Kişi" sütunu ve "Siparişi olan N kişiye cari aç"
+         düğmesi: siparişi olup carisi olmayan kişilere toplu cari açar.
+         Bu bağ artık cariyi düzenleyince kopmaz.
+
+  [YENİ] Fatura ve irsaliye editöründe ürün seçimi. Kalem satırına ürün
+         adını ya da stok kodunu yazınca mağazanın kataloğundan seçersiniz;
+         seçim ürün adını, birim fiyatı ve KDV oranını doldurur (ürünün
+         kendi oranı yoksa mağazanızın vergi bölgesinin oranı). Satırın
+         altında stok kodu, stok durumu (miktar / "Tükendi" / miktar stoku
+         aşıyorsa "Stoktan fazla") ve varsa kampanya görünür. Ürünün
+         üzerinde kod istemeyen, sepet ya da müşteri koşuluna bağlı olmayan
+         bir kampanya varsa yeni "Kampanya %" sütunu onunla dolu gelir;
+         siz isterseniz silersiniz ya da üstüne kendi iskontonuzu
+         yazarsınız — iskonto kampanyanın bıraktığı tutar üzerinden
+         hesaplanır, belgede iki iskonto birlikte ve sırasıyla yazar
+         ("Kampanya %10 + %5"). Alış faturasında kampanya uygulanmaz.
+
+         Kalemler kartındaki barkod kutusuna okutun: ürün satırdaysa
+         miktarı bir artar, değilse boş satıra ya da yeni satıra iner;
+         bulunamayan kod kutuyu kırmızı bırakır. Kaydederken bir alan
+         eksik ya da hatalıysa hata artık o kutunun altında çıkar ve
+         sayfa oraya kayar; hangi satırın hangi kutusu olduğunu aramazsınız.
+
+  [YENİ] Yerel satış ekranı büyüdü. Sol paneldeki "Müşteri" kartından
+         kişiyi ya da cariyi arayıp seçersiniz; satış onun adına kapanır ve
+         cari bağlantısı faturaya taşınır. Müşteri seçmezseniz sıcak
+         satıştır: dükkana gelen, bilgisini almadığınız alıcı — satış
+         kimsenin adına yazılmaz (eskiden işlemi yapan yöneticinin adına
+         geçiyordu). Sıcak satışları faturalayabilmek için Ayarlar →
+         E-Ticaret → ERP kartında "Sıcak satış carisi" seçin (örn.
+         "Perakende Müşteri"); seçilmemişse ekran söyler.
+
+         Satış artık KDV ile kapanır: her satırın vergisi ürünün oranından
+         (yoksa mağazanızın vergi bölgesinden) hesaplanır, sepetin altında
+         Ara toplam / KDV / Toplam görünür, sipariş toplamı fatura
+         toplamıyla birebir aynıdır. Arama ve sepet ürünü adıyla gösterir,
+         stok kodu altındadır; stok takipli ürünlerde stok görünür.
+         Tamamlanan satış sipariş ekranına gider; orada ve "Son Yerel
+         Satışlar" tablosunda "Faturayı Kes" düğmesi vardır, kesildikten
+         sonra faturanın numarası görünür.
+
+  [YENİ] Faturadan irsaliyeye tek adım. Kesilmiş satış faturasının ve
+         siparişin araç çubuğunda "İrsaliyeyi Kes": form faturanın
+         (ya da siparişin) kalemleri, alıcısı ve bilinen taşıyıcı / sevk
+         bilgisiyle dolu açılır, siz eksikleri — taşıyıcı, plaka, sevk
+         tarihi — tamamlarsınız. Alıcının adresi yoksa (sıcak satış)
+         carinin kartı alıcı olur. İrsaliye kaydedilince faturaya bağlanır
+         ve yazdığınız sevk tarihi tarihi olmayan sipariş alıcılarına,
+         sevk tarihi ve taşıyıcı bunları taşımayan faturaya işlenir; ekran
+         neyi yazdığını söyler. Siparişte ya da faturada zaten yazılı bir
+         bilgi ezilmez. İrsaliye kesildikten sonra her iki ekranda da
+         numarası görünür.
+
+  [YENİ] ERP dış API'de. Bir muhasebe programı, banka entegrasyonu ya da
+         kendi yazılımınız artık integration.php üzerinden carileri (bakiye
+         ve ekstre), faturaları (kalemler, toplamlar, ödenen ve açık tutar,
+         PDF), tahsilat ve ödemeleri, kasaları ve irsaliyeleri okuyabilir;
+         cari açabilir ve tahsilat ya da ödeme kaydedebilir (istenirse bir
+         faturayı kapatarak). Uygulama Erişimi ekranında iki yeni izin
+         satırı vardır: "ERP" (cari, fatura, irsaliye) ve "ERP kasa"
+         (tahsilat, ödeme, kasalar) — panelde kasa ayrı bir hak olduğu için
+         anahtarda da ayrıdır. Uçlar API belgesinde ve konsolda diğerleriyle
+         birlikte listelenir; ERP modülü kapalıyken görünmez.
+
+         ERP olayları da webhook olarak duyurulur: fatura kesildi, ödendi,
+         iptal edildi; tahsilat/ödeme kaydedildi, iptal edildi; cari
+         açıldı; irsaliye kesildi. Olay, işi hangi ekran yapmış olsa da
+         (panel, tezgâh satışı, siparişten fatura, API) aynı yerden çıkar.
+
+  [YENİ] Tezgâh satışı tek adımda. Yerel satış ekranında "Siparişi
+         Tamamla" düğmesinin yanında "Faturayı kes" kutusu, ödeme yöntemi
+         (nakit, kart, havale, çek, diğer ya da "sonra tahsil et") ve kasa
+         seçimi vardır. Tamamladığınızda sipariş kapanır, fatura kesilir ve
+         para seçtiğiniz kasaya tahsilat olarak yazılıp faturayı kapatır;
+         sipariş ekranı ne yapıldığını bildirir. Son seçtiğiniz ödeme yolu ve
+         kasa bir sonraki satışta hazır gelir. Kasa yetkisi olmayan operatör
+         yalnız faturayı keser.
+
+  [YENİ] Belge şablonları. ERP Ayarları'nda artık üç şablon düzenlenir:
+         fatura, irsaliye ve mutabakat mektubu. Her biri için kaydet,
+         önizle, yer tutucu listesi ve "yerleşiğe dön" vardır. İrsaliye ve
+         mutabakat için yer tutucular son belgenizden, değerleriyle birlikte
+         listelenir; hangi adın ne bastığını görmek için kılavuz aramazsınız.
+
+  [YENİ] ERP API ekleri. Cari kartı güncellenir (yalnız gönderilen alanlar
+         değişir), tahsilat ya da ödeme nedeniyle iptal edilir (kayıt
+         silinmez, ters çevrilir; kapattığı faturalar yeniden açılır),
+         irsaliye ve mutabakat mektubu PDF olarak alınır. ERP izinleri artık
+         uygulama sahibinin yetkisiyle sınırlanır: kasa hakkı olmayan bir
+         hesabın anahtarı kasa uçlarına erişemez.
+
+  [YENİ] Kullanıcı ekranındaki Kişi kartında cari hesap bağlantısı; cari
+         CSV dışa/içe aktarımında "Müşteriye hatırlat" sütunu. "Siparişi
+         olan kişilere cari aç" düğmesi silinmiş kişileri saymaz ve
+         açılamayanları (adsız kart) söyler.
 
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------

@@ -53,21 +53,28 @@ if (!defined('ERP_MANUAL_MAX_LINES')) {
  * before anything is saved and the same call is made again when a draft is
  * issued. Rows with nothing typed in them are skipped rather than refused.
  *
- * Per line the discount is a rate on the line total; the VAT is worked out on
- * what is left after the discount. The document totals follow the contract
+ * Per line two discounts may apply, in this order: the store's campaign on
+ * the product (offer_discount_rate, a rate on the line total) and the
+ * discount the operator typed (discount_rate, a rate on what the campaign
+ * left). discount_amount is their sum, so every reader of the amount - the
+ * document, the return, the export - sees one discount. The VAT is worked
+ * out on what is left after both. The document totals follow the contract
  * the order bridge writes: subtotal is the sum of the line totals before any
  * discount, discount_total the sum of the discounts, tax_total the sum of the
  * VAT, and grand_total = subtotal - discount_total + tax_total.
  *
+ * A refused line says which field on which row is wrong ('field', in the
+ * lines[n][name] shape the form posts), so the screen can mark it.
+ *
  * @param array $lines_in  Each: description, quantity, unit_price (kurus),
  *                         tax_rate, and optionally product_id, unit_code,
- *                         discount_rate
- * @return array ['lines' => array, 'totals' => array, 'error' => string]
+ *                         discount_rate, offer_id, offer_discount_rate
+ * @return array ['lines' => array, 'totals' => array, 'error' => string, 'field' => string]
  */
 function erp_manual_lines_build($lines_in)
 {
-    $fail = function ($message) {
-        return array('lines' => array(), 'totals' => array(), 'error' => $message);
+    $fail = function ($message, $field = '_error') {
+        return array('lines' => array(), 'totals' => array(), 'error' => $message, 'field' => $field);
     };
 
     $lines_in = array_values((array) $lines_in);
@@ -82,14 +89,21 @@ function erp_manual_lines_build($lines_in)
     $tax_total = 0;
     $row_no = 0;
 
-    foreach ($lines_in as $line) {
+    foreach ($lines_in as $index => $line) {
         $row_no++;
+
+        // The posted name of a field on this row, for the screen to mark.
+        $field = function ($name) use ($index) {
+            return 'lines[' . $index . '][' . $name . ']';
+        };
 
         $description = mb_substr(trim((string) ($line['description'] ?? '')), 0, 255);
         $quantity = (float) ($line['quantity'] ?? 0);
         $unit_price = (int) ($line['unit_price'] ?? 0);
         $tax_rate = (float) ($line['tax_rate'] ?? 0);
         $discount_rate = (float) ($line['discount_rate'] ?? 0);
+        $offer_rate = (float) ($line['offer_discount_rate'] ?? 0);
+        $offer_id = (int) ($line['offer_id'] ?? 0);
         $product_id = (int) ($line['product_id'] ?? 0);
 
         $unit_code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($line['unit_code'] ?? '')));
@@ -101,17 +115,34 @@ function erp_manual_lines_build($lines_in)
         }
 
         if ($description === '') {
-            return $fail(lang(array('string' => 'Line {var:1} needs a description.', 'vars' => $row_no)));
+            return $fail(lang(array('string' => 'Line {var:1} needs a description.', 'vars' => $row_no)), $field('description'));
         }
         if ($quantity <= 0) {
-            return $fail(lang(array('string' => 'Line {var:1} needs a quantity greater than zero.', 'vars' => $row_no)));
+            return $fail(lang(array('string' => 'Line {var:1} needs a quantity greater than zero.', 'vars' => $row_no)), $field('quantity'));
         }
-        if (($unit_price < 0) || ($tax_rate < 0) || ($tax_rate > 100) || ($discount_rate < 0) || ($discount_rate > 100)) {
-            return $fail(lang(array('string' => 'Check the unit price, the discount and the VAT rate on line {var:1}.', 'vars' => $row_no)));
+        if ($unit_price < 0) {
+            return $fail(lang(array('string' => 'Line {var:1}: the unit price cannot be negative.', 'vars' => $row_no)), $field('unit_price'));
+        }
+        if (($tax_rate < 0) || ($tax_rate > 100)) {
+            return $fail(lang(array('string' => 'Line {var:1}: the VAT rate must be between 0 and 100.', 'vars' => $row_no)), $field('tax_rate'));
+        }
+        if (($discount_rate < 0) || ($discount_rate > 100)) {
+            return $fail(lang(array('string' => 'Line {var:1}: the discount must be between 0 and 100.', 'vars' => $row_no)), $field('discount_rate'));
+        }
+        if (($offer_rate < 0) || ($offer_rate > 100)) {
+            return $fail(lang(array('string' => 'Line {var:1}: the campaign discount must be between 0 and 100.', 'vars' => $row_no)), $field('offer_discount_rate'));
+        }
+
+        // A campaign rate without a campaign is a typed discount in the wrong
+        // box; a campaign without a rate is nothing.
+        if ($offer_rate <= 0) {
+            $offer_id = 0;
         }
 
         $line_total = erp_line_total($unit_price, $quantity);
-        $discount_amount = ($discount_rate > 0) ? erp_apply_rate($line_total, $discount_rate) : 0;
+        $offer_amount = ($offer_rate > 0) ? erp_apply_rate($line_total, $offer_rate) : 0;
+        $typed_amount = ($discount_rate > 0) ? erp_apply_rate($line_total - $offer_amount, $discount_rate) : 0;
+        $discount_amount = $offer_amount + $typed_amount;
         $line_tax = erp_apply_rate($line_total - $discount_amount, $tax_rate);
 
         $lines[] = array(
@@ -120,6 +151,9 @@ function erp_manual_lines_build($lines_in)
             'quantity' => $quantity,
             'unit_code' => $unit_code,
             'unit_price' => $unit_price,
+            'offer_id' => max(0, $offer_id),
+            'offer_discount_rate' => $offer_rate,
+            'offer_discount_amount' => $offer_amount,
             'discount_rate' => $discount_rate,
             'discount_amount' => $discount_amount,
             'tax_rate' => $tax_rate,
@@ -141,7 +175,24 @@ function erp_manual_lines_build($lines_in)
             'grand_total' => $subtotal - $discount_total + $tax_total,
         ),
         'error' => '',
+        'field' => '',
     );
+}
+
+/**
+ * Whether the line table carries the campaign columns (4.58).
+ *
+ * @return bool
+ */
+function erp_invoice_lines_have_offers()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $has = function_exists('waf_table_has_column') && waf_table_has_column('erp_invoice_items', 'offer_discount_rate');
+    }
+
+    return $has;
 }
 
 /**
@@ -155,28 +206,28 @@ function erp_manual_lines_build($lines_in)
  */
 function erp_manual_header_build($data)
 {
-    $fail = function ($message) {
-        return array('header' => array(), 'error' => $message);
+    $fail = function ($message, $field = '_error') {
+        return array('header' => array(), 'error' => $message, 'field' => $field);
     };
 
     $direction = (($data['direction'] ?? 'sales') === 'purchase') ? 'purchase' : 'sales';
     $account_id = (int) ($data['account_id'] ?? 0);
 
     if (($account_id <= 0) || !is_array(erp_account($account_id))) {
-        return $fail(lang('Choose an account.'));
+        return $fail(lang('Choose an account.'), 'account_id');
     }
 
     $base = erp_base_currency();
     $currency = strtoupper(trim((string) ($data['currency'] ?? $base)));
 
     if (!erp_fx_currency_allowed($currency)) {
-        return $fail(lang('That currency is not enabled for the ERP.'));
+        return $fail(lang('That currency is not enabled for the ERP.'), 'currency');
     }
 
     $exchange_rate = ($currency === $base) ? 1.0 : (float) ($data['exchange_rate'] ?? 0);
 
     if ($exchange_rate < 0) {
-        return $fail(lang('Enter an exchange rate greater than zero.'));
+        return $fail(lang('Enter an exchange rate greater than zero.'), 'exchange_rate');
     }
 
     $today = date('Y-m-d');
@@ -216,6 +267,7 @@ function erp_manual_header_build($data)
             'created_by' => (int) ($data['created_by'] ?? 0),
         ),
         'error' => '',
+        'field' => '',
     );
 }
 
@@ -241,24 +293,24 @@ function erp_manual_header_build($data)
  */
 function erp_invoice_draft_save($data, $invoice_id = 0)
 {
-    $fail = function ($message) {
-        return array('success' => false, 'invoice_id' => 0, 'error' => $message);
+    $fail = function ($message, $field = '_error') {
+        return array('success' => false, 'invoice_id' => 0, 'error' => $message, 'field' => $field);
     };
 
     $invoice_id = (int) $invoice_id;
 
     $built_header = erp_manual_header_build($data);
     if ($built_header['error'] !== '') {
-        return $fail($built_header['error']);
+        return $fail($built_header['error'], $built_header['field']);
     }
     $header = $built_header['header'];
 
     $built = erp_manual_lines_build($data['lines'] ?? array());
     if ($built['error'] !== '') {
-        return $fail($built['error']);
+        return $fail($built['error'], $built['field']);
     }
     if (empty($built['lines'])) {
-        return $fail(lang('Enter at least one line.'));
+        return $fail(lang('Enter at least one line.'), 'lines[0][description]');
     }
 
     $totals = $built['totals'];
@@ -360,7 +412,10 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
                 description = '" . escape($line['description']) . "',
                 quantity = '" . number_format($line['quantity'], 4, '.', '') . "',
                 unit_code = '" . escape($line['unit_code']) . "',
-                unit_price = '" . (int) $line['unit_price'] . "',
+                unit_price = '" . (int) $line['unit_price'] . "',"
+                . (erp_invoice_lines_have_offers() ? "
+                offer_id = '" . (int) $line['offer_id'] . "',
+                offer_discount_rate = '" . escape(number_format($line['offer_discount_rate'], 3, '.', '')) . "'," : "") . "
                 discount_rate = '" . escape(number_format($line['discount_rate'], 3, '.', '')) . "',
                 discount_amount = '" . (int) $line['discount_amount'] . "',
                 tax_rate = '" . escape(number_format($line['tax_rate'], 3, '.', '')) . "',
@@ -582,6 +637,8 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
         return $fail($error);
     }
 
+    erp_event_invoice($invoice_id, 'erp.invoice.created');
+
     return array('success' => true, 'invoice_id' => $invoice_id, 'full_number' => $numbered['full'], 'error' => '');
 }
 
@@ -631,6 +688,11 @@ function erp_invoice_draft_delete($invoice_id)
         return $fail($error);
     }
 
+    // A delivery note that was waiting on this draft is waiting again.
+    if (function_exists('erp_waybill_unlink_invoice')) {
+        erp_waybill_unlink_invoice($invoice_id);
+    }
+
     return array('success' => true, 'error' => '');
 }
 
@@ -647,15 +709,15 @@ function erp_invoice_draft_delete($invoice_id)
  */
 function erp_invoice_create_manual($data)
 {
-    $fail = function ($message) {
-        return array('success' => false, 'invoice_id' => 0, 'full_number' => '', 'error' => $message);
+    $fail = function ($message, $field = '_error') {
+        return array('success' => false, 'invoice_id' => 0, 'full_number' => '', 'error' => $message, 'field' => $field);
     };
 
     $base = erp_base_currency();
     $currency = strtoupper(trim((string) ($data['currency'] ?? $base)));
 
     if (($currency !== $base) && ((float) ($data['exchange_rate'] ?? 0) <= 0)) {
-        return $fail(lang('Enter an exchange rate greater than zero.'));
+        return $fail(lang('Enter an exchange rate greater than zero.'), 'exchange_rate');
     }
 
     if (!erp_tx_begin()) {
@@ -666,7 +728,7 @@ function erp_invoice_create_manual($data)
 
     if (!$saved['success']) {
         erp_tx_rollback();
-        return $fail($saved['error']);
+        return $fail($saved['error'], $saved['field'] ?? '_error');
     }
 
     $issued = erp_invoice_issue($saved['invoice_id'], (int) ($data['created_by'] ?? 0));

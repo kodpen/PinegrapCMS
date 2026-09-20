@@ -2312,6 +2312,7 @@ function output_menu($properties = false)
         if (USER_MANAGE_ERP_CASH) {
             $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cash-stack bi-me-2\'>' . lang('Cash and Bank') . '</a>';
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cashflow.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('Cash flow') . '</a>';
         }
 
         if (USER_MANAGE_ERP_SETTINGS) {
@@ -2438,6 +2439,10 @@ function output_menu($properties = false)
         case 'erp_receipt.php':
         case 'add_erp_transfer.php':
         case 'erp_waybills.php':
+        case 'add_erp_waybill.php':
+        case 'edit_erp_waybill.php':
+        case 'erp_reconciliation.php':
+        case 'erp_cashflow.php':
         case 'erp_export.php':
         case 'erp_settings.php':
             $active_menu = 22;

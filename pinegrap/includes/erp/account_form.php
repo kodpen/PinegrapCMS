@@ -30,9 +30,11 @@ if (!defined('PG_ERP_ENTRY')) {
  *                                currency is shown but cannot be changed: the
  *                                own-currency balance is summed over movements
  *                                in that currency.
+ * @param array|null $contact  The linked contact as erp_contact_summary()
+ *                                reads it, or null for none
  * @return string  HTML
  */
-function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false)
+function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false, $contact = null)
 {
     $kind_options = array();
     $kind_options[lang('Customer')] = 'customer';
@@ -218,6 +220,8 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     </div>';
     }
 
+    $output .= erp_account_form_contact_card($liveform, $contact);
+
     $output .= '
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
@@ -235,6 +239,183 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     </div>';
 
     return $output;
+}
+
+/**
+ * The contact behind the account, as one line of the summary column.
+ *
+ * @param array $contact  erp_contact_summary()
+ * @return string  HTML
+ */
+function erp_account_form_contact_summary($contact)
+{
+    $lines = array();
+
+    if ($contact['company'] !== '' && $contact['person'] !== '') {
+        $lines[] = h($contact['company']);
+    }
+    if ($contact['email'] !== '') {
+        $lines[] = '<a href="mailto:' . h($contact['email']) . '" class="link-body-emphasis">' . h($contact['email']) . '</a>';
+    }
+    if ($contact['phone'] !== '') {
+        $lines[] = h($contact['phone']);
+    }
+    if (trim($contact['district'] . ' ' . $contact['city']) !== '') {
+        $lines[] = h(trim($contact['district'] . ' ' . $contact['city']));
+    }
+
+    $links = array();
+    $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+
+    if (defined('ECOMMERCE') && ECOMMERCE) {
+        $links[] = '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders']))) . '</a>';
+    }
+
+    if ($contact['user_id'] > 0) {
+        $links[] = '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username']))) . '</a>';
+    }
+
+    return '
+                    <div class="fw-bold">' . h($contact['name']) . '</div>
+                    ' . (($lines !== array()) ? '<div class="small text-body-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
+                    <div class="d-flex flex-wrap gap-2 mt-2">' . implode('', $links) . '</div>';
+}
+
+/**
+ * The card that ties the account to a contact.
+ *
+ * The hidden contact_id is what is saved; the search box fills it, the
+ * unlink button empties it. The summary column shows the contact that is
+ * linked now, and on a pick the script draws what it knows from the search
+ * result - the user behind the contact and the order count appear after the
+ * save, when the row is read again.
+ *
+ * @param liveform   $liveform
+ * @param array|null $contact  erp_contact_summary() of the linked contact
+ * @return string  HTML
+ */
+function erp_account_form_contact_card($liveform, $contact)
+{
+    $contact_id = (int) $liveform->get_field_value('contact_id');
+    $is_linked = is_array($contact) && ((int) $contact['id'] === $contact_id) && ($contact_id > 0);
+
+    $output_summary = $is_linked
+        ? erp_account_form_contact_summary($contact)
+        : '<div class="text-body-secondary">' . lang('No contact is linked to this account.') . '</div>';
+
+    return '
+    <div class="card my-4" data-erp-contact-card data-erp-contacts-url="get_erp_contacts.php" data-erp-own-account="' . (int) $liveform->get_field_value('id') . '">
+        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            ' . lang('Linked Contact') . '
+        </div>
+        <div class="card-body">
+            ' . $liveform->output_field(array('type' => 'hidden', 'id' => 'contact_id', 'name' => 'contact_id')) . '
+            <div class="row">
+                <div class="col-12 col-lg-6 my-2 position-relative">
+                    <label for="contact_search" class="form-label">' . lang('Find a contact') . '</label>
+                    <input type="text" id="contact_search" class="form-control" maxlength="100" autocomplete="off" placeholder="' . h(lang('Name, company or e-mail address')) . '" data-erp-contact-search />
+                    <div class="dropdown-menu shadow-sm w-100" data-erp-contact-results></div>
+                    <div class="form-text">' . lang('Orders placed by the linked contact are billed to this account, and the contact screen shows the balance. One contact links to one account.') . '</div>
+                </div>
+                <div class="col-12 col-lg-6 my-2">
+                    <div class="form-label d-flex align-items-center">
+                        <span>' . lang('Contact') . '</span>
+                        <button type="button" class="btn btn-sm btn-link link-danger ms-auto no-submit' . ($is_linked ? '' : ' d-none') . '" data-erp-contact-unlink><i class="bi bi-x-circle me-1"></i>' . lang('Unlink') . '</button>
+                    </div>
+                    <div data-erp-contact-summary>' . $output_summary . '</div>
+                </div>
+            </div>
+        </div>
+        <script>
+        (function () {
+            var card = document.querySelector("[data-erp-contact-card]");
+            if (!card) { return; }
+            var url = card.getAttribute("data-erp-contacts-url");
+            var hidden = card.querySelector("#contact_id");
+            var input = card.querySelector("[data-erp-contact-search]");
+            var menu = card.querySelector("[data-erp-contact-results]");
+            var summary = card.querySelector("[data-erp-contact-summary]");
+            var unlink = card.querySelector("[data-erp-contact-unlink]");
+            var texts = ' . json_encode(array(
+                'none' => lang('No contact is linked to this account.'),
+                'noResults' => lang('No contacts found.'),
+                'pending' => lang('Linked when the account is saved.'),
+                'unlinkPending' => lang('The link is removed when the account is saved.'),
+                'taken' => lang('already linked to another account'),
+            ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+            var timer = 0, request = 0;
+
+            function escapeHtml(text) {
+                return String(text).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]; });
+            }
+            function close() { menu.classList.remove("show"); menu.innerHTML = ""; }
+            function pick(contact) {
+                hidden.value = String(contact.id);
+                input.value = "";
+                var lines = [];
+                if (contact.company && contact.company !== contact.name) { lines.push(escapeHtml(contact.company)); }
+                if (contact.email) { lines.push(escapeHtml(contact.email)); }
+                if (contact.city) { lines.push(escapeHtml(contact.city)); }
+                summary.innerHTML = "<div class=\"fw-bold\">" + escapeHtml(contact.name) + "</div>"
+                    + (lines.length ? "<div class=\"small text-body-secondary\">" + lines.join("<br>") + "</div>" : "")
+                    + "<div class=\"small text-warning-emphasis mt-2\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.pending) + "</div>";
+                unlink.classList.remove("d-none");
+                close();
+            }
+            function render(results) {
+                menu.innerHTML = "";
+                if (!results.length) {
+                    var empty = document.createElement("span");
+                    empty.className = "dropdown-item-text text-body-secondary small";
+                    empty.textContent = texts.noResults;
+                    menu.appendChild(empty);
+                }
+                results.forEach(function (contact) {
+                    var item = document.createElement("button");
+                    item.type = "button";
+                    item.className = "dropdown-item text-truncate no-submit";
+                    var taken = contact.account_id > 0 && String(contact.account_id) !== card.getAttribute("data-erp-own-account");
+                    item.innerHTML = escapeHtml(contact.name)
+                        + (contact.company && contact.company !== contact.name ? " <span class=\"text-body-secondary small\">" + escapeHtml(contact.company) + "</span>" : "")
+                        + (contact.email ? " <span class=\"text-body-secondary small\">" + escapeHtml(contact.email) + "</span>" : "")
+                        + (taken ? " <span class=\"badge text-bg-warning ms-1\">" + escapeHtml(texts.taken) + "</span>" : "");
+                    if (taken) { item.disabled = true; }
+                    item.addEventListener("click", function () { pick(contact); });
+                    menu.appendChild(item);
+                });
+                menu.classList.add("show");
+            }
+            input.addEventListener("input", function () {
+                var query = input.value.trim();
+                if (query.length < 2) { close(); return; }
+                var current = ++request;
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    fetch(url + "?q=" + encodeURIComponent(query), { credentials: "same-origin" })
+                        .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+                        .then(function (data) {
+                            if (current !== request || document.activeElement !== input) { return; }
+                            render((data && data.results) ? data.results : []);
+                        })
+                        .catch(close);
+                }, 250);
+            });
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") { event.preventDefault(); var first = menu.querySelector("button:not([disabled])"); if (first) { first.click(); } }
+                if (event.key === "Escape") { close(); }
+            });
+            document.addEventListener("click", function (event) {
+                if (!card.contains(event.target)) { close(); }
+            });
+            unlink.addEventListener("click", function () {
+                hidden.value = "0";
+                summary.innerHTML = "<div class=\"text-body-secondary\">" + escapeHtml(texts.none) + "</div>"
+                    + "<div class=\"small text-warning-emphasis mt-2\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.unlinkPending) + "</div>";
+                unlink.classList.add("d-none");
+            });
+        })();
+        </script>
+    </div>';
 }
 
 /**

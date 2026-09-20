@@ -337,6 +337,8 @@ function erp_post_receipt($data)
         return $fail(lang('The receipt was not saved.') . ' ' . $error);
     }
 
+    erp_event_receipt($cash_id, 'erp.receipt.created', $invoice_id);
+
     return array('success' => true, 'cash_id' => $cash_id, 'account_id' => $ledger_id,
         'settled' => $allocated, 'error' => '');
 }
@@ -623,6 +625,8 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
         erp_tx_rollback();
         return $fail($error);
     }
+
+    erp_event_receipt($cash_id, 'erp.receipt.cancelled');
 
     return array('success' => true, 'reversal_id' => (int) $reversal_id, 'reopened' => array_values($reopened), 'error' => '');
 }

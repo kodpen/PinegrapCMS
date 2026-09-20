@@ -253,3 +253,73 @@ function api_currency_minor_units($code) {
 	return 2;
 
 }
+
+// What this endpoint returns, declared for the OpenAPI document. It is the one
+// object with no presenter of its own - the handler builds it inline - so this
+// is written against that handler and the four helpers it calls.
+function api_meta_schema() {
+
+	return array(
+		'api_version' => 'integer',
+		'software'    => 'string',
+		'site' => array(
+			'title'    => 'string',
+			'hostname' => 'string'
+		),
+		'ecommerce' => array(
+			'enabled'          => 'boolean',
+			'taxable'          => 'boolean',
+			'default_tax_rate' => 'number',
+			'currency' => array(
+				'code'         => 'string',
+				'symbol'       => 'string',
+				'minor_units'  => 'integer',
+				'money_format' => 'string'
+			)
+		),
+		'order_statuses' => 'string[]',
+		'version' => array(
+			'number'           => 'string',
+			'channel'          => 'string',
+			'update_available' => 'boolean'
+		),
+		'features' => array(
+			'forms'               => 'boolean',
+			'calendars'           => 'boolean',
+			'ads'                 => 'boolean',
+			'affiliate_program'   => 'boolean',
+			'visitor_tracking'    => 'boolean',
+			'chat'                => 'boolean',
+			'barcode'             => 'boolean',
+			'erp'                 => 'boolean',
+			'mobile'              => 'boolean',
+			'captcha'             => 'boolean',
+			'performance_monitor' => 'boolean'
+		),
+		'security' => array(
+			'firewall'          => 'string',
+			'security_headers'  => 'boolean',
+			'api_requires_https' => 'boolean'
+		),
+		'jobs' => array(array(
+			'name'        => 'string',
+			'label'       => 'string',
+			'enabled'     => 'boolean?',
+			'last_run_at' => 'string?',
+			'stale'       => 'boolean'
+		)),
+		'uploads' => array(
+			'max_file_bytes'    => 'integer',
+			'max_request_bytes' => 'integer',
+			'max_json_bytes'    => 'integer',
+			'image' => array(
+				'product_max_dimension' => 'integer',
+				'file_max_dimension'    => 'integer',
+				'quality'               => 'integer'
+			)
+		),
+		'scopes'      => 'string[]',
+		'server_time' => 'string'
+	);
+
+}

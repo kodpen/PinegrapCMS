@@ -1368,6 +1368,17 @@ function email($properties)
             $mail->addReplyTo($reply_to);
         }
 
+        // Attachments: each an array with name and content (the bytes, not a
+        // path) and optionally type. Anything shaped differently is skipped.
+        if (!empty($properties['attachments']) && is_array($properties['attachments'])) {
+            foreach ($properties['attachments'] as $attachment) {
+                if (!is_array($attachment) || !isset($attachment['name'], $attachment['content'])) {
+                    continue;
+                }
+                $mail->addStringAttachment((string) $attachment['content'], (string) $attachment['name'], PHPMailer::ENCODING_BASE64, isset($attachment['type']) ? (string) $attachment['type'] : '');
+            }
+        }
+
         // Subject & body
         $mail->Subject = $subject;
         if ($format === 'html') {

@@ -2335,8 +2335,51 @@ const StyleDesigner = (function () {
     // walk finds the first matching id in the wrong tree and returns its parent
     // — corrupting drag/drop. Callers always hand us real node references, so
     // reference equality is the correct semantic. Same fix as `_nodeInTree`.
+    // ── Drag-time parent index ──────────────────────────────────────────
+    //
+    // While a drag is in flight the tree does not change, so "who is this
+    // node's parent" has one answer for the whole gesture. Without an index
+    // the dragover handler pays a full tree walk for it several times per
+    // event, and lockedAncestorOf() pays one more per ancestor level on top.
+    // At a few hundred nodes that is tens of thousands of node visits per
+    // mouse move — which is what made dropping a component onto a page feel
+    // late, and why the cost grew with the page rather than with the drop.
+    //
+    // Keyed by the root it was built from: findParent() is also asked about
+    // a shared component's own tree, where "not in this tree" is a real
+    // answer rather than a miss. The index belongs to one dragData object,
+    // so a new drag builds a new one and the end of a drag drops it;
+    // saveState() drops it as well, since every mutation passes through
+    // there and a mutated tree must not be answered from a stale index.
+    var _parentIndex = null;   // { owner: dragData, maps: Map<root, Map<node, parent>> }
+    var _lockedIndex = null;   // { owner: dragData, map:  Map<node, lockedAncestorOrNull> }
+
+    function _dragIndexDrop() { _parentIndex = null; _lockedIndex = null; }
+
+    function _parentIndexFor(root) {
+        if (!dragData) { _parentIndex = null; return null; }
+        if (!_parentIndex || _parentIndex.owner !== dragData) {
+            _parentIndex = { owner: dragData, maps: new Map() };
+        }
+        var map = _parentIndex.maps.get(root);
+        if (!map) {
+            map = new Map();
+            (function walk(n) {
+                if (!n || !n.children) return;
+                for (var i = 0; i < n.children.length; i++) {
+                    map.set(n.children[i], n);
+                    walk(n.children[i]);
+                }
+            })(root);
+            _parentIndex.maps.set(root, map);
+        }
+        return map;
+    }
+
     function findParent(node, root) {
         if (!root || !root.children) return null;
+        var index = _parentIndexFor(root);
+        if (index) return index.get(node) || null;
         for (var i = 0; i < root.children.length; i++) {
             if (root.children[i] === node) return root;
             var f = findParent(node, root.children[i]);
@@ -3258,7 +3301,43 @@ const StyleDesigner = (function () {
                 esc(_sdT(' is editing this page. You can still leave a note.')), 'warning', 3500);
     }
 
-    function saveState() {
+    // One continuous edit, one undo step.
+    //
+    // A snapshot records the state BEFORE a change, so a run of changes to the
+    // same control — dragging a colour picker, typing into a field — only ever
+    // needs the one taken before the run started. Passing a key says "still the
+    // same edit": while the key matches and the gap stays short, no further
+    // snapshot is taken. Undo then steps back over the whole drag or the whole
+    // word, which is what a person means by "undo that".
+    //
+    // It is also what the snapshot costs that makes this worth doing:
+    // JSON.stringify of the entire tree, on every `input` event a range slider
+    // fires. A call with no key, or with a different one, ends the run and
+    // snapshots as before — so every existing caller keeps its behaviour.
+    var _saveStateRun    = { key: null, at: 0 };
+    var SAVE_STATE_RUN_MS = 700;
+
+    function saveState(coalesceKey) {
+        var key = (typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null;
+        var now = Date.now();
+
+        // The tree is about to change; anything indexed by its shape is stale.
+        // Before the coalescing check, because a coalesced call still mutates —
+        // it only skips the history entry.
+        _dragIndexDrop();
+
+        if (key !== null && key === _saveStateRun.key && (now - _saveStateRun.at) < SAVE_STATE_RUN_MS) {
+            // Still the same edit. The tree did change, so the editable-area
+            // cache and the autosave timer still need it; the history does not.
+            _saveStateRun.at = now;
+            _sdEditableInvalidate();
+            scheduleAutosave();
+            return;
+        }
+
+        _saveStateRun.key = key;
+        _saveStateRun.at  = now;
+
         // Every mutation is preceded by a saveState(), so this is the other
         // half of keeping the editable-area set honest between paints.
         _sdEditableInvalidate();
@@ -3271,6 +3350,14 @@ const StyleDesigner = (function () {
         if (undoStack.length > 50) undoStack.shift();
         updateUndoRedoState();
         scheduleAutosave();
+    }
+
+    // Identifies "the control being edited right now" for saveState()'s run
+    // key. Keyed by the selected node and the control rather than the DOM
+    // element, so a panel repaint mid-edit does not split one drag into two
+    // undo steps.
+    function _sdEditRun(what) {
+        return 'run:' + ((selectedNode && selectedNode._id) ? selectedNode._id : 'none') + ':' + what;
     }
 
     function undo() {
@@ -9242,6 +9329,58 @@ const StyleDesigner = (function () {
         '__can_cancel': 1, '__has_timeline': 1, '__has_notes': 1,
         '__has_tracking_link': 1
     };
+    // A date the way the server prints one when no format suffix is given:
+    // day/month/year and a 12-hour clock. Today's date, so the canvas never
+    // shows a sample that looks stale.
+    function _sdDatePlaceholder() {
+        var now  = new Date();
+        var hour = now.getHours();
+        var ampm = hour < 12 ? 'AM' : 'PM';
+        if (hour === 0) hour = 12; else if (hour > 12) hour -= 12;
+        return now.getDate() + '/' + (now.getMonth() + 1) + '/' + now.getFullYear() +
+               ' ' + hour + ':' + ('0' + now.getMinutes()).slice(-2) + ' ' + ampm;
+    }
+
+    // Preview values for the system fields of a submitted form and for the
+    // account fields beside them. Without these a reference code would fall
+    // through to lorem ipsum and a card would preview nothing like the page it
+    // becomes. A function entry is called; everything else is used as written.
+    var _SD_STANDARD_FIELD_PREVIEWS = {
+        reference_code:                'ABC123XYZ',
+        complete:                      _sdT('Complete'),
+        address_name:                  'sample-record',
+        tracking_code:                 'TRK-000123',
+        affiliate_code:                'AFF-0042',
+        referring_url:                 'https://example.com/',
+        submitter:                     _sdT('Alex Morgan'),
+        last_modifier:                 _sdT('Alex Morgan'),
+        submitted_date_and_time:       _sdDatePlaceholder,
+        last_modified_date_and_time:   _sdDatePlaceholder,
+        newest_comment_date_and_time:  _sdDatePlaceholder,
+        newest_activity_date_and_time: _sdDatePlaceholder,
+        registered_date_and_time:      _sdDatePlaceholder,
+        number_of_views:               '128',
+        number_of_comments:            '4',
+        newest_comment_name:           _sdT('Alex Morgan'),
+        newest_comment:                _sdT('Thanks — this is exactly what I needed.'),
+        newest_comment_id:             '57',
+        comment_attachments:           'attachment.pdf',
+        submitted_form_id:             '12',
+        submitter_user_id:             '3',
+        not_found:                     _sdT('No records found.'),
+        // my_account
+        account_id:                    '3',
+        username:                      'alex',
+        email_address:                 _sdT('sample@example.com'),
+        full_name:                     _sdT('Alex Morgan'),
+        first_name:                    _sdT('First Name'),
+        last_name:                     _sdT('Last Name'),
+        member_id:                     'M-1042',
+        member:                        '1',
+        not_logged_in:                 _sdT('You must be logged in to view this page.'),
+        form_name:                     _sdT('Contact Form')
+    };
+
     function _sdGetCurrencyPlaceholder() {
         // Try to read the site currency symbol from the page's data layer
         // when present; otherwise fall back to ₺ (Turkish locale default).
@@ -9278,6 +9417,13 @@ const StyleDesigner = (function () {
             // Type-aware placeholder dispatch — order matters: currency
             // FIRST so __cart_total_formatted doesn't fall through to the
             // short-label map by accident.
+            // System fields of a submitted form come first: several of them
+            // (reference_code, newest_comment) would otherwise fall through to
+            // lorem, and a couple would be misread by the heuristics below.
+            if (fieldName && Object.prototype.hasOwnProperty.call(_SD_STANDARD_FIELD_PREVIEWS, fieldName)) {
+                var preview = _SD_STANDARD_FIELD_PREVIEWS[fieldName];
+                return (typeof preview === 'function') ? preview() : preview;
+            }
             if (fieldName && _SD_CURRENCY_TOKENS[fieldName]) {
                 return _sdGetCurrencyPlaceholder();
             }
@@ -9941,8 +10087,20 @@ const StyleDesigner = (function () {
             // unless the user hovers over the container's tiny bare-edge padding.
             e.preventDefault();
             if (!dragData) return;
-            _clearInsertMarks();
+            var _dragT0 = performance.now();
+
+            // Geometry is read before any class is written. The insert marks
+            // are box-shadows and do not move anything, so clearing them first
+            // changed no measurement — it only forced the browser to lay the
+            // page out again before every single read.
             var zone = _getZone(e);
+            _clearInsertMarks();
+
+            // One lookup for the whole handler. It used to be asked three
+            // separate times, each a full walk of the tree before the drag
+            // index existed.
+            var _par = findParent(node, tree);
+
             var dropOk;
             if (zone === 'inside') {
                 dropOk = canDrop(dragData, node);
@@ -9952,7 +10110,7 @@ const StyleDesigner = (function () {
                 // _findParentInShared() so "drop as sibling" works for inner elements too
                 // (otherwise dragging a card's child above the card would fall through to
                 // "inside" and re-add the same child to the same card = no-op).
-                var par = findParent(node, tree);
+                var par = _par;
                 if (!par) {
                     var _sp = _findParentInShared(node);
                     if (_sp) par = _sp.parent;
@@ -9979,6 +10137,7 @@ const StyleDesigner = (function () {
                 // We also reset dropEffect so the browser shows "not-allowed" if nothing
                 // up the tree accepts it either. An accepting ancestor will override.
                 e.dataTransfer.dropEffect = 'none';
+                _sdPerfMark('dragover', _dragT0);
                 return;
             }
             // Accepted — claim this drop target and stop bubbling so ancestors don't
@@ -9986,13 +10145,14 @@ const StyleDesigner = (function () {
             e.stopPropagation();
             e.dataTransfer.dropEffect = (dragData.source === 'palette' || e.altKey) ? 'copy' : 'move';
             // Use horizontal bars for inline-sibling zones (detected by parent interactive node)
-            var _parInline = (function(){ var _p = findParent(node, tree); return _p && _isInteractiveNode(_p); })();
+            var _parInline = !!(_par && _isInteractiveNode(_par));
             if (zone === 'before')            { el.classList.add(_parInline ? 'sd-insert-before-x' : 'sd-insert-before'); }
             else if (zone === 'after')        { el.classList.add(_parInline ? 'sd-insert-after-x' : 'sd-insert-after'); }
             else if (zone === 'inside-start') { el.classList.add('sd-insert-before-x'); }
             else if (zone === 'inside-end')   { el.classList.add('sd-insert-after-x'); }
             else                              { el.classList.add('sd-drop-hl'); _showAlignGuide(e.clientY); }
             el._sdDropZone = zone;
+            _sdPerfMark('dragover', _dragT0);
         });
         el.addEventListener('dragleave', function () { _clearInsertMarks(); el._sdDropZone = null; });
         el.addEventListener('drop', function (e) {
@@ -20361,7 +20521,7 @@ const StyleDesigner = (function () {
                 // Default empty message + default order-by field both depend on region.
                 var _emptyDefault = _isCatalogListing ? _sdT('Product not found.') : _sdT('No records found.');
                 var _emptyMsg   = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _emptyDefault;
-                var _orderDefault = _isCatalogListing ? 'sort_order' : '__timestamp';
+                var _orderDefault = _isCatalogListing ? 'sort_order' : 'submitted_date_and_time';
                 var _orderField = (typeof _cfg.order_by_field === 'string' && _cfg.order_by_field !== '') ? _cfg.order_by_field : _orderDefault;
                 var _orderDir   = (_cfg.order_by_direction === 'ASC') ? 'ASC' : 'DESC';
                 // Secondary ordering — empty value means "no second criterion".
@@ -20437,8 +20597,8 @@ const StyleDesigner = (function () {
                         html += '<option value="created_at"' + (selected === 'created_at' ? ' selected' : '') + '>' + esc(_sdT('Date added')) + '</option>';
                         html += '<option value="id"'         + (selected === 'id'         ? ' selected' : '') + '>' + esc(_sdT('Product ID')) + '</option>';
                     } else {
-                        html += '<option value="__timestamp"' + (selected === '__timestamp' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
-                        html += '<option value="__id"'        + (selected === '__id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
+                        html += '<option value="submitted_date_and_time"' + (selected === 'submitted_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
+                        html += '<option value="submitted_form_id"'        + (selected === 'submitted_form_id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
                         if (_ff.length) {
                             html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
                             _ff.forEach(function (ff) {
@@ -21087,7 +21247,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the "Already a member?" link goes. Token: ^^__login_url^^')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the "Already have an account?" link goes. Token: ^^__login_url^^')) + '</div>'
                     ) +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
@@ -22293,7 +22453,7 @@ const StyleDesigner = (function () {
             obfEl.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
-                var v = this.value || '__timestamp';
+                var v = this.value || 'submitted_date_and_time';
                 _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; });
             });
         }
@@ -23587,29 +23747,78 @@ const StyleDesigner = (function () {
     //   link content / semantic <a>    → href
     //   semantic with text             → text
 
-    // Built-in (non-custom-field) tokens that always exist on a submitted_forms row.
-    // These ride alongside the form's user-defined fields in the binding dropdown.
-    var SW_BUILTIN_FIELD_OPTIONS = [
-        ['__id',           _sdT('Submitted Form ID')],
-        ['__reference',    _sdT('Reference Code')],
-        ['__timestamp',    _sdT('Submission Date')],
-        ['__detail_url',   _sdT('Detail URL')],
-        ['__user',         _sdT('Submitting User')]
+    // The system fields of a submitted form. These are the identifiers the
+    // classic form list and form item views resolve — get_standard_fields_for_view()
+    // in PHP is the registry, pg_sw_standard_fields() is the widget's copy of it —
+    // so a name means the same thing in a widget and on a classic screen. They ride
+    // alongside the form's own fields in the binding dropdown.
+    //
+    // The third entry of a row marks a date field: those take the format suffix
+    // offered under the dropdown (see _sdBindingDateFormatRow).
+    var SW_STANDARD_FIELD_OPTIONS = [
+        ['reference_code',                _sdT('Reference Code')],
+        ['submitted_date_and_time',       _sdT('Submitted Date & Time'), 'date'],
+        ['submitter',                     _sdT('Submitter')],
+        ['complete',                      _sdT('Complete')],
+        ['address_name',                  _sdT('Address Name')],
+        ['tracking_code',                 _sdT('Tracking Code')],
+        ['affiliate_code',                _sdT('Affiliate Code')],
+        ['referring_url',                 _sdT('Referring URL')],
+        ['last_modifier',                 _sdT('Last Modifier')],
+        ['last_modified_date_and_time',   _sdT('Last Modified Date & Time'), 'date'],
+        ['number_of_views',               _sdT('Number of Views')],
+        ['number_of_comments',            _sdT('Number of Comments')],
+        ['newest_comment_name',           _sdT('Newest Comment Name')],
+        ['newest_comment',                _sdT('Newest Comment')],
+        ['newest_comment_date_and_time',  _sdT('Newest Comment Date & Time'), 'date'],
+        ['newest_comment_id',             _sdT('Newest Comment ID')],
+        ['newest_activity_date_and_time', _sdT('Newest Activity Date & Time'), 'date'],
+        ['comment_attachments',           _sdT('Comment Attachments')],
+        ['form_item_view',                _sdT('Form Item View URL')],
+        ['submitted_form_id',             _sdT('Submitted Form ID')],
+        ['submitter_user_id',             _sdT('Submitter User ID')]
     ];
 
-    // Built-in tokens for form_item_view (single record). Token names match
-    // _render_system_widget_form_item_view's $values map exactly.
-    var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = [
-        ['__id',             _sdT('Submitted Form ID')],
-        ['__reference',      _sdT('Reference Code')],
-        ['__submitted_at',   _sdT('Submission Date')],
-        ['__submitted_by',   _sdT('Submitting User Name')],
-        ['__user',           _sdT('Submitting User ID')],
-        ['__detail_url',     _sdT('This page\'s URL (with ?r=)')],
-        ['__address_name',   'Form address_name (slug)'],
-        ['__tracking_code',  _sdT('Tracking Code')],
-        ['__not_found',      _sdT('Not-found message (filled when there is no record)')]
-    ];
+    // The list view offers exactly the shared set.
+    var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS;
+
+    // The detail view offers the same set plus its own not-found state, which is
+    // a property of the widget rather than of a record.
+    var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
+        ['not_found', _sdT('Not-found message (filled when there is no record)')]
+    ]);
+
+    // The format a date binding prints in, as the classic screens take it:
+    // ^^submitted_date_and_time^^%%d.m.Y%%. The value lives on the node under
+    // props._bindFormats so the identifier itself stays a plain name, and the
+    // server appends the suffix when it turns the binding into a token.
+    //
+    // Empty means the site's own date format. `relative` prints "3 days ago".
+    function _sdBindFormatRow(prop, fieldName, node) {
+        if (!fieldName || !SW_DATE_FIELD_TOKENS[fieldName]) return '';
+        var formats = (node && node.props && node.props._bindFormats) || {};
+        var current = (formats[prop] != null) ? String(formats[prop]) : '';
+        return '<div class="sd-sw-bindfmt-wrap">' +
+                 '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bindfmt"' +
+                   ' data-bind-prop="' + esc(prop) + '"' +
+                   ' placeholder="' + esc(_sdT('Date format — empty for the site default, or relative')) + '"' +
+                   ' value="' + esc(current) + '">' +
+                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                   _sdT('PHP date() letters, e.g. <code>d.m.Y</code> or <code>j F Y H:i</code>. Write <code>relative</code> for "3 days ago".') +
+                 '</div>' +
+               '</div>';
+    }
+
+    // Identifiers whose value is a date, so the panel knows when to offer a
+    // format. Kept as a lookup rather than re-scanning the list on every render.
+    var SW_DATE_FIELD_TOKENS = (function () {
+        var out = {};
+        SW_STANDARD_FIELD_OPTIONS.forEach(function (option) {
+            if (option[2] === 'date') out[option[0]] = true;
+        });
+        out.registered_date_and_time = true;   // my_account
+        return out;
+    })();
 
     // Catalog token palette (regionType='catalog_listing'). Grouped by purpose
     // so the binding dropdown stays scannable even with 30+ tokens. Token names
@@ -23713,26 +23922,28 @@ const StyleDesigner = (function () {
 
     // my_account token palette — grouped by purpose. Token names mirror
     // the keys produced by _render_system_widget_my_account in PHP.
+    // The loop group carries the same identifiers the two form widgets carry,
+    // so a submission row designed in one place works in the other.
     var SW_MY_ACCOUNT_TOKEN_GROUPS = [
         { label: _sdT('Account Details'), tokens: [
-            ['__account_id',      _sdT('User ID')],
-            ['__username',        _sdT('User name')],
-            ['__email',           _sdT('Email')],
-            ['__full_name',       _sdT('Full name (first + last)')],
-            ['__first_name',      _sdT('First Name')],
-            ['__last_name',       _sdT('Last Name')],
-            ['__registered_date', _sdT('Registration date (Y-m-d)')],
-            ['__avatar_url',      _sdT('Profile photo URL')],
-            ['__member_id',       _sdT('Membership ID')],
-            ['__member',          _sdT('Active member (1/0)')],
-            ['__not_logged_in',   _sdT('Signed-out message')]
+            ['account_id',               _sdT('User ID')],
+            ['username',                 _sdT('User name')],
+            ['email_address',            _sdT('Email')],
+            ['full_name',                _sdT('Full name (first + last)')],
+            ['first_name',               _sdT('First Name')],
+            ['last_name',                _sdT('Last Name')],
+            ['registered_date_and_time', _sdT('Registration Date & Time'), 'date'],
+            ['avatar_url',               _sdT('Profile photo URL')],
+            ['member_id',                _sdT('Membership ID')],
+            ['member',                   _sdT('Active member (1/0)')],
+            ['not_logged_in',            _sdT('Signed-out message')]
         ]},
         { label: _sdT('Form Submissions (loop_area)'), tokens: [
-            ['__form_name',    _sdT('Form name')],
-            ['__reference',    _sdT('Reference code')],
-            ['__submitted_at', _sdT('Submission date (Y-m-d H:i)')],
-            ['__detail_url',   _sdT('Detail URL')],
-            ['__form_id',      _sdT('Submission ID')]
+            ['form_name',               _sdT('Form name')],
+            ['reference_code',          _sdT('Reference Code')],
+            ['submitted_date_and_time', _sdT('Submitted Date & Time'), 'date'],
+            ['form_item_view',          _sdT('Form Item View URL')],
+            ['submitted_form_id',       _sdT('Submitted Form ID')]
         ]}
     ];
 
@@ -24788,7 +24999,7 @@ const StyleDesigner = (function () {
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
                     ' value="' + esc(built.isCustom ? current : '') + '"' +
                     (built.isCustom ? '' : ' style="display:none"') + '>';
-                rowsHtmlMA += row(b.label, sel + customInp);
+                rowsHtmlMA += row(b.label, sel + customInp + _sdBindFormatRow(b.prop, current, node));
             });
             return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
                 '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
@@ -25340,7 +25551,7 @@ const StyleDesigner = (function () {
                 ' placeholder="' + esc(_sdT('custom_field_name')) + '"' +
                 ' value="' + esc(built.isCustom ? current : '') + '"' +
                 (built.isCustom ? '' : ' style="display:none"') + '>';
-            rowsHtml += row(b.label, sel + customInp);
+            rowsHtml += row(b.label, sel + customInp + _sdBindFormatRow(b.prop, current, node));
         });
 
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
@@ -25362,7 +25573,8 @@ const StyleDesigner = (function () {
 
         function _setBinding(propName, value) {
             if (!selectedNode) return;
-            saveState();
+            // The custom-token field calls this on every keystroke.
+            saveState(_sdEditRun('bind:' + propName));
             if (!selectedNode.props._bindings) selectedNode.props._bindings = {};
             if (value) {
                 selectedNode.props._bindings[propName] = value;
@@ -25383,6 +25595,15 @@ const StyleDesigner = (function () {
                     delete selectedNode.props._bindings;
                 }
             }
+            // A format belongs to the date field it was written for. Once the
+            // prop points somewhere else, the format is not the designer's
+            // intent any more, so it does not linger in the saved tree.
+            if (selectedNode.props._bindFormats && !(value && SW_DATE_FIELD_TOKENS[value])) {
+                delete selectedNode.props._bindFormats[propName];
+                if (Object.keys(selectedNode.props._bindFormats).length === 0) {
+                    delete selectedNode.props._bindFormats;
+                }
+            }
             // Mark the containing shared component as dirty so the edit is flushed
             var _swSid = _isInsideSystemWidget(selectedNode);
             if (_swSid) _sharedDirty[_swSid] = true;
@@ -25393,6 +25614,8 @@ const StyleDesigner = (function () {
             sel.addEventListener('change', function () {
                 var prop = this.dataset.bindProp;
                 if (!prop) return;
+                var _wasDateField = !!(selectedNode && selectedNode.props && selectedNode.props._bindings
+                                       && SW_DATE_FIELD_TOKENS[selectedNode.props._bindings[prop]]);
                 var customInp = document.querySelector('.sd-sw-bind-custom[data-bind-prop="' + prop + '"]');
                 // Show the caption pair only while "View / Expand" is the
                 // chosen token; seed the defaults the first time so the button
@@ -25420,6 +25643,12 @@ const StyleDesigner = (function () {
                     if (prop === 'href' && typeof renderProperties === 'function') {
                         renderProperties();
                     }
+                    // The format box belongs to date fields only, so moving on
+                    // or off one changes what the row shows.
+                    else if (!!SW_DATE_FIELD_TOKENS[this.value] !== _wasDateField
+                             && typeof renderProperties === 'function') {
+                        renderProperties();
+                    }
                 }
             });
         });
@@ -25444,6 +25673,30 @@ const StyleDesigner = (function () {
                 if (!prop) return;
                 var v = this.value.trim().replace(/[^a-z0-9_]/gi, '');
                 _setBinding(prop, v);
+            });
+        });
+
+        // Date format — kept beside the binding rather than inside it, so the
+        // identifier stays a plain field name. Only the characters date() reads
+        // survive; anything else would end up inside the token the server writes.
+        document.querySelectorAll('.sd-sw-bindfmt').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                if (!selectedNode) return;
+                var prop = this.dataset.bindProp;
+                if (!prop) return;
+                var value = this.value.replace(/[^A-Za-z0-9 \/.:,\-\\]/g, '');
+                if (!selectedNode.props._bindFormats) selectedNode.props._bindFormats = {};
+                if (value) {
+                    selectedNode.props._bindFormats[prop] = value;
+                } else {
+                    delete selectedNode.props._bindFormats[prop];
+                    if (Object.keys(selectedNode.props._bindFormats).length === 0) {
+                        delete selectedNode.props._bindFormats;
+                    }
+                }
+                var sid = _isInsideSystemWidget(selectedNode);
+                if (sid) _sharedDirty[sid] = true;
+                renderCanvas();
             });
         });
 
@@ -29244,9 +29497,14 @@ const StyleDesigner = (function () {
                 if (!el) return;
                 el.addEventListener('input', function() {
                     if (!selectedNode) return;
+                    // Snapshot BEFORE the change, as every other mutation site
+                    // does: history holds the state to come back to, not the
+                    // one just set. One step per drag, not per colour the
+                    // picker reports on its way there.
+                    saveState(_sdEditRun('grad:' + id));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g[id === 'sd-bcp-lin-c1' ? 'c1' : 'c2'] = this.value;
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             });
             var linMid = document.getElementById('sd-bcp-lin-mid');
@@ -29254,10 +29512,11 @@ const StyleDesigner = (function () {
             if (linMid) {
                 linMid.addEventListener('input', function() {
                     if (!selectedNode) return;
+                    saveState(_sdEditRun('grad:lin-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g.mid = Number(this.value);
                     if (linMidVal) linMidVal.textContent = this.value + '%';
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             }
             // Angle presets
@@ -29293,9 +29552,14 @@ const StyleDesigner = (function () {
                 if (!el) return;
                 el.addEventListener('input', function() {
                     if (!selectedNode) return;
+                    // Snapshot BEFORE the change, as every other mutation site
+                    // does: history holds the state to come back to, not the
+                    // one just set. One step per drag, not per colour the
+                    // picker reports on its way there.
+                    saveState(_sdEditRun('grad:' + id));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g[id === 'sd-bcp-rad-c1' ? 'c1' : 'c2'] = this.value;
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             });
             var radMid = document.getElementById('sd-bcp-rad-mid');
@@ -29303,10 +29567,11 @@ const StyleDesigner = (function () {
             if (radMid) {
                 radMid.addEventListener('input', function() {
                     if (!selectedNode) return;
+                    saveState(_sdEditRun('grad:rad-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g.mid = Number(this.value);
                     if (radMidVal) radMidVal.textContent = this.value + '%';
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             }
             popup.querySelectorAll('[data-bcp-radial-shape]').forEach(function(btn) {
@@ -29958,7 +30223,8 @@ const StyleDesigner = (function () {
                 var key = this.getAttribute('data-popover-prop');
                 var attr = attrMap[key];
                 if (!attr) return;
-                saveState();
+                // One undo step per field, not per letter.
+                saveState(_sdEditRun('attr:' + key));
                 if (this.value && this.value.trim()) {
                     setNodeAttr(selectedNode, attr, this.value);
                 } else {
@@ -34620,7 +34886,7 @@ const StyleDesigner = (function () {
     function _swTypeDefaults(cfg, newType) {
         cfg.regionType = newType;
         if (newType === 'catalog_listing') {
-            if (cfg.order_by_field === '__timestamp' || cfg.order_by_field === '__id' || cfg.order_by_field === undefined) {
+            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined) {
                 cfg.order_by_field = 'sort_order';
             }
             // 'Kayıt bulunamadı.' is the pre-i18n default; widgets saved before the
@@ -34655,7 +34921,7 @@ const StyleDesigner = (function () {
         } else if (newType === 'form_list_view') {
             if (cfg.order_by_field === 'sort_order' || cfg.order_by_field === 'name' ||
                 cfg.order_by_field === 'price' || cfg.order_by_field === 'created_at') {
-                cfg.order_by_field = '__timestamp';
+                cfg.order_by_field = 'submitted_date_and_time';
             }
             if (cfg.empty_message === _sdT('Product not found.') || cfg.empty_message === 'Ürün bulunamadı.') cfg.empty_message = _sdT('No records found.');
         }
@@ -35643,16 +35909,21 @@ const StyleDesigner = (function () {
                                            offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'card', customName: _sdT('Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Card Body') }, [
+                                    // Reference code and submission date are the two
+                                    // system fields every submitted form has, whatever
+                                    // the form asks for. The card's real title is
+                                    // usually one of the form's own fields, and the
+                                    // designer picks it from the same dropdown.
                                     createNode('content', { contentType: 'heading', tag: 'h5',
-                                        text: _sdT('Subject'), cssClass: 'card-title',
-                                        _bindings: { text: '__subject' } }),
+                                        text: _sdT('Reference Code'), cssClass: 'card-title',
+                                        _bindings: { text: 'reference_code' } }),
                                     createNode('content', { contentType: 'paragraph',
                                         text: _sdT('Date'), cssClass: 'card-text text-muted small',
-                                        _bindings: { text: '__submitted_at' } }),
+                                        _bindings: { text: 'submitted_date_and_time' } }),
                                     createNode('content', { contentType: 'link',
                                         text: _sdT('See the Details'), href: '#',
                                         cssClass: 'btn btn-sm btn-primary mt-2',
-                                        _bindings: { href: '__detail_url' } })
+                                        _bindings: { href: 'form_item_view' } })
                                 ])
                             ])
                         ])
@@ -35807,15 +36078,15 @@ const StyleDesigner = (function () {
 
             case 'form_item_view': {
                 // loop_area renders ONCE for the single record (not iterated).
-                // Universal meta tokens: __reference, __submitted_at.
-                // Custom form-field values bind via their field name (e.g. ^^ad^^, ^^email^^).
+                // The system fields every submission carries; the form's own
+                // values bind by their field name (e.g. ^^ad^^, ^^email^^).
                 var loopArea = createNode('loop_area', {}, [
                     createNode('content', { contentType: 'heading', tag: 'h5',
-                        text: _sdT('Reference'), cssClass: 'card-title mb-1',
-                        _bindings: { text: '__reference' } }),
+                        text: _sdT('Reference Code'), cssClass: 'card-title mb-1',
+                        _bindings: { text: 'reference_code' } }),
                     createNode('content', { contentType: 'paragraph',
                         text: _sdT('Date'), cssClass: 'text-muted small mb-4',
-                        _bindings: { text: '__submitted_at' } })
+                        _bindings: { text: 'submitted_date_and_time' } })
                 ]);
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-3' }, [
@@ -36077,14 +36348,14 @@ const StyleDesigner = (function () {
                         customName: _sdT('Entry Row') }, [
                         createNode('content', { contentType: 'heading', tag: 'span',
                             text: _sdT('Form name'), cssClass: 'fw-semibold flex-grow-1',
-                            _bindings: { text: '__form_name' } }),
+                            _bindings: { text: 'form_name' } }),
                         createNode('content', { contentType: 'paragraph',
                             text: _sdT('Date'), cssClass: 'text-muted small mb-0',
-                            _bindings: { text: '__submitted_at' } }),
+                            _bindings: { text: 'submitted_date_and_time' } }),
                         createNode('content', { contentType: 'link',
                             text: _sdT('View'), href: '#',
                             cssClass: 'btn btn-sm btn-outline-primary',
-                            _bindings: { href: '__detail_url' } })
+                            _bindings: { href: 'form_item_view' } })
                     ])
                 ]);
                 return createNode('root', {}, [
@@ -36093,10 +36364,10 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Card Body') }, [
                                 createNode('content', { contentType: 'heading', tag: 'h5',
                                     text: _sdT('User name'), cssClass: 'card-title mb-1',
-                                    _bindings: { text: '__username' } }),
+                                    _bindings: { text: 'username' } }),
                                 createNode('content', { contentType: 'paragraph',
                                     text: _sdT('email@example.com'), cssClass: 'text-muted mb-0',
-                                    _bindings: { text: '__email' } })
+                                    _bindings: { text: 'email_address' } })
                             ])
                         ]),
                         loopArea
@@ -36269,8 +36540,12 @@ const StyleDesigner = (function () {
                                                offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: _sdT('Registration Card') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
+                                        // Registration opens an account; it is not the
+                                        // membership entrance, which activates a membership
+                                        // the site already knows about. The two widgets keep
+                                        // their own words so neither screen reads as the other.
                                         createNode('content', { contentType: 'heading', tag: 'h4',
-                                            text: _sdT('Become a Member'), cssClass: 'card-title mb-1 text-center' }),
+                                            text: _sdT('Create Your Account'), cssClass: 'card-title mb-1 text-center' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Site name'), cssClass: 'text-muted text-center small mb-4',
                                             _bindings: { text: '__site_name' } }),
@@ -36307,12 +36582,12 @@ const StyleDesigner = (function () {
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('CAPTCHA'),
                                             _bindings: { section: 'captcha' } }),
-                                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary w-100', text: _sdT('Become a Member'),
+                                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary w-100', text: _sdT('Sign Up'),
                                             customName: _sdT('Registration Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
                                         createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign Up with Google'),
                                             _bindings: { section: 'google_signup' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
-                                            createNode('content', { contentType: 'link', text: _sdT('Already a member? Sign in'), href: '#', cssClass: '',
+                                            createNode('content', { contentType: 'link', text: _sdT('Already have an account? Sign in'), href: '#', cssClass: '',
                                                 _bindings: { href: '__login_url' } })
                                         ])
                                     ])
@@ -42256,12 +42531,24 @@ const StyleDesigner = (function () {
 
     // Returns the nearest locked ancestor of `node` (not including node itself), or null.
     function lockedAncestorOf(node) {
+        var memo = null;
+        if (dragData) {
+            if (!_lockedIndex || _lockedIndex.owner !== dragData) {
+                _lockedIndex = { owner: dragData, map: new Map() };
+            }
+            memo = _lockedIndex.map;
+            if (memo.has(node)) return memo.get(node);
+        }
+
+        var found = null;
         var p = node ? findParent(node, tree) : null;
         while (p) {
-            if (p.props && p.props._locked) return p;
+            if (p.props && p.props._locked) { found = p; break; }
             p = findParent(p, tree);
         }
-        return null;
+
+        if (memo) memo.set(node, found);
+        return found;
     }
 
     // Returns true if any ancestor of `node` is locked.
@@ -42599,6 +42886,153 @@ const StyleDesigner = (function () {
         }
     };
 
+    // ── Paint instrumentation ───────────────────────────────────────────
+    //
+    // The editor repaints whole surfaces rather than the part that changed,
+    // and render() repaints eight of them in a row, so "it feels slow" needs
+    // numbers before anything is rebuilt around it. Wrapping costs two
+    // performance.now() calls per paint, which does not register beside a
+    // full DOM rebuild.
+    //
+    // From the console:
+    //   StyleDesigner.perf()        table of paints: count, total, worst
+    //   StyleDesigner.perf('watch') log every burst as it happens
+    //   StyleDesigner.perf('reset') start counting again
+    //   StyleDesigner.perf('off')   stop measuring entirely
+    //
+    // A "burst" is every paint that happens before the browser gets a turn —
+    // i.e. what one click or one keystroke actually costs. Nested paints
+    // (render() calling renderCanvas()) are counted once in a burst's total,
+    // so the number is wall time rather than a sum of overlapping timers.
+    var _sdPerf = { on: true, depth: 0, surfaces: {}, burst: null, bursts: [], watch: false };
+
+    function _sdPerfCloseBurst() {
+        var burst = _sdPerf.burst;
+        _sdPerf.burst = null;
+        if (!burst) return;
+        _sdPerf.bursts.push(burst);
+        if (_sdPerf.bursts.length > 200) _sdPerf.bursts.shift();
+        if (_sdPerf.watch && window.console && console.log) {
+            console.log('[sd-perf] ' + burst.paints.length + ' paints, ' +
+                        burst.ms.toFixed(1) + 'ms — ' + burst.paints.join(' → '));
+        }
+    }
+
+    // Record a stretch of work that is not one of the wrapped surfaces.
+    // Takes the performance.now() reading from before the work started.
+    function _sdPerfMark(name, startedAt) {
+        if (!_sdPerf.on) return;
+        var ms      = performance.now() - startedAt;
+        var surface = _sdPerf.surfaces[name] ||
+                      (_sdPerf.surfaces[name] = { calls: 0, ms: 0, worst: 0 });
+        surface.calls++;
+        surface.ms += ms;
+        if (ms > surface.worst) surface.worst = ms;
+    }
+
+    function _sdPerfWrap(name, fn) {
+        if (typeof fn !== 'function') return fn;
+        return function () {
+            if (!_sdPerf.on) return fn.apply(this, arguments);
+            var outermost = (_sdPerf.depth === 0);
+            var started   = performance.now();
+            _sdPerf.depth++;
+            try {
+                return fn.apply(this, arguments);
+            } finally {
+                _sdPerf.depth--;
+                var ms      = performance.now() - started;
+                var surface = _sdPerf.surfaces[name] ||
+                              (_sdPerf.surfaces[name] = { calls: 0, ms: 0, worst: 0 });
+                surface.calls++;
+                surface.ms += ms;
+                if (ms > surface.worst) surface.worst = ms;
+
+                if (!_sdPerf.burst) {
+                    _sdPerf.burst = { paints: [], ms: 0 };
+                    Promise.resolve().then(_sdPerfCloseBurst);
+                }
+                _sdPerf.burst.paints.push(name);
+                // Only the outermost paint contributes to the burst total —
+                // a nested one is already inside its caller's elapsed time.
+                if (outermost) _sdPerf.burst.ms += ms;
+            }
+        };
+    }
+
+    // How many nodes the active tree carries, so a measurement can be read
+    // against the size of the page that produced it.
+    function _sdPerfTreeSize() {
+        var count = 0;
+        (function walk(node) {
+            if (!node || typeof node !== 'object') return;
+            count++;
+            if (Array.isArray(node.children)) node.children.forEach(walk);
+        })(activeTree());
+        return count;
+    }
+
+    function _sdPerfReport(command) {
+        if (command === 'reset') {
+            _sdPerf.surfaces = {}; _sdPerf.bursts = [];
+            return 'sd-perf: counting again';
+        }
+        if (command === 'watch') {
+            _sdPerf.watch = !_sdPerf.watch;
+            return 'sd-perf: watch ' + (_sdPerf.watch ? 'on' : 'off');
+        }
+        if (command === 'off' || command === 'on') {
+            _sdPerf.on = (command === 'on');
+            return 'sd-perf: ' + command;
+        }
+
+        var rows = [];
+        for (var name in _sdPerf.surfaces) {
+            if (!_sdPerf.surfaces.hasOwnProperty(name)) continue;
+            var s = _sdPerf.surfaces[name];
+            rows.push({
+                surface:    name,
+                calls:      s.calls,
+                'total ms': Math.round(s.ms),
+                'avg ms':   +(s.ms / s.calls).toFixed(1),
+                'worst ms': +s.worst.toFixed(1)
+            });
+        }
+        rows.sort(function (a, b) { return b['total ms'] - a['total ms']; });
+
+        var bursts = _sdPerf.bursts;
+        var slowest = null, paintTotal = 0, msTotal = 0;
+        bursts.forEach(function (b) {
+            paintTotal += b.paints.length;
+            msTotal    += b.ms;
+            if (!slowest || b.ms > slowest.ms) slowest = b;
+        });
+
+        if (window.console && console.table) console.table(rows);
+        var summary = {
+            'tree nodes':          _sdPerfTreeSize(),
+            'user actions seen':   bursts.length,
+            'paints per action':   bursts.length ? +(paintTotal / bursts.length).toFixed(1) : 0,
+            'ms per action':       bursts.length ? +(msTotal / bursts.length).toFixed(1) : 0,
+            'slowest action (ms)': slowest ? +slowest.ms.toFixed(1) : 0,
+            'slowest action':      slowest ? slowest.paints.join(' → ') : ''
+        };
+        if (window.console && console.table) console.table([summary]);
+        return summary;
+    }
+
+    render            = _sdPerfWrap('render',            render);
+    renderCanvas      = _sdPerfWrap('renderCanvas',      renderCanvas);
+    renderTree        = _sdPerfWrap('renderTree',        renderTree);
+    renderProperties  = _sdPerfWrap('renderProperties',  renderProperties);
+    renderHtmlTree    = _sdPerfWrap('renderHtmlTree',    renderHtmlTree);
+    renderAttrsPanel  = _sdPerfWrap('renderAttrsPanel',  renderAttrsPanel);
+    renderStatusBar   = _sdPerfWrap('renderStatusBar',   renderStatusBar);
+    updateCtxBar      = _sdPerfWrap('updateCtxBar',      updateCtxBar);
+    applyIssueBadges  = _sdPerfWrap('applyIssueBadges',  applyIssueBadges);
+    saveState         = _sdPerfWrap('saveState',         saveState);
+
+
     return {
         init: function (cfg) {
             // Before anything is built: the curtain is already in the markup,
@@ -42667,6 +43101,7 @@ const StyleDesigner = (function () {
         },
         undo: undo,
         redo: redo,
-        saveAjax: saveAjax
+        saveAjax: saveAjax,
+        perf: _sdPerfReport
     };
 })();

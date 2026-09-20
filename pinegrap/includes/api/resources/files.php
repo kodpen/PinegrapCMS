@@ -533,6 +533,21 @@ function api_files_create($params) {
 
 	}
 
+	// Above: the bytes arrived, they are within the size this site accepts, and
+	// their content matches the type the name claims - which is every refusal
+	// this endpoint can produce without putting a file in the site's directory.
+	if (api_dry_run_requested()) {
+
+		@unlink($temporary);
+
+	}
+
+	api_dry_run_stop('created', 'file', array(
+		'name'  => $name,
+		'type'  => $extension,
+		'bytes' => strlen($bytes)
+	));
+
 	// Same name rules as an upload through the panel: the reserved names, the
 	// neutralised extension, the ASCII fold, and a [1] suffix when the name is
 	// already taken by a file or a page.
@@ -700,6 +715,8 @@ function api_files_delete($params) {
 
 	}
 
+	api_dry_run_stop('recycled', 'file', array('id' => $id, 'name' => $file['name'], 'folder_id' => $bin_id));
+
 	$original_folder = (int)$file['folder'];
 
 	api_exec("UPDATE files SET folder = '" . $bin_id . "' WHERE id = '" . $id . "' LIMIT 1");
@@ -724,5 +741,25 @@ function api_files_delete($params) {
 		'recycled'  => true,
 		'folder_id' => $bin_id
 	));
+
+}
+
+// What api_file_present() returns, declared for the OpenAPI document.
+function api_file_schema() {
+
+	return array(
+		'id'          => 'integer',
+		'name'        => 'string',
+		'url'         => 'string',
+		'folder_id'   => 'integer',
+		'type'        => 'string',
+		'size'        => 'integer',
+		'description' => 'string',
+		'width'       => 'integer?',
+		'height'      => 'integer?',
+		'design'      => 'boolean',
+		'uploaded_at'      => 'string?',
+		'uploaded_at_unix' => 'integer'
+	);
 
 }

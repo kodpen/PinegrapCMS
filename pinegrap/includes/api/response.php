@@ -254,6 +254,17 @@ function api_fail($status_code, $code, $message, $field = null) {
 
 	}
 
+	// Where to read about it, on the failures that are about how the call was
+	// made rather than about the record it asked for. A 404 for product 91 is
+	// answered by the catalogue, not by the documentation, and a link on it
+	// would be noise on the one error integrations see most.
+	if (in_array($status_code, array(400, 401, 403, 405, 422, 429), true)
+		&& function_exists('api_openapi_base_url')) {
+
+		$error['docs'] = api_openapi_base_url() . '/docs';
+
+	}
+
 	api_send($status_code, array('error' => $error), $code);
 
 }

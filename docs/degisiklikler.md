@@ -41,6 +41,1628 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Tezgâh satışı tek adımda: tamamla + fatura + tahsilat; ERP API ekleri; belge şablonları ayarlarda (2026-09-20)
+
+**Belirti.** Yerel satış tamamlanınca fatura ve tahsilat iki ayrı ekranda iki
+ayrı işti (sipariş → "Faturayı Kes" → fatura → tahsilat fişi); tezgâhta para
+o anda alınır, üç tıklama fazla. ERP API'de cari güncelleme ve tahsilat iptali
+yoktu; irsaliye ve mutabakat PDF'i de yoktu. İrsaliye ve mutabakat mektubu
+yalnız yerleşik şablondan basılıyordu (fatura şablonu 4.43'ten beri
+düzenlenebilirdi). Kullanıcı ekranında cari bağlantısı yoktu. Cari CSV'si
+"müşteriye hatırlat" seçimini taşımıyordu. Toplu cari açma düğmesi silinmiş
+kişilerin siparişlerini de sayıyordu (dev'de "400 kişi" → 380 açıldı, 20
+hiç açılamaz kaldı).
+
+**Çözüm.**
+
+- **Tamamla + fatura + tahsilat** (`add_order.php`). Tamamlama düğmesinin
+  yanında ERP açık ve yetkili operatöre: "Faturayı kes" kutusu; kasa hakkı
+  olana ayrıca ödeme yöntemi (Nakit / Kart / Havale / Çek / Diğer / **Sonra
+  tahsil et**) ve kasa seçimi (aktif kasalar; varsayılan
+  `ERP_DEFAULT_CASH_ACCOUNT_ID`). Ödeme seçilmişse fatura zorunlu (JS kutuyu
+  işaretleyip kilitler; sunucu da öyle sayar). `complete_order`: sipariş
+  kapanır → `erp_invoice_from_order()` → `erp_post_receipt()` (tahsilat,
+  `invoice_id` ile faturayı kapatır, açıklama "Tezgâh satışı #N") → sipariş
+  ekranına yönlendirir, `view_order` liveform'una bildirimler ("PGF… fatura
+  oluşturuldu", "… tahsilat … kasasına kaydedildi; fatura ödendi") ya da
+  hatalar (fatura kesilemedi / kasa hakkı yok / kasa seçilmedi). **Seçim
+  hatırlanır** (`$_SESSION['ecommerce']['local_sale_payment']`): kasa ve
+  ödeme yolu iki müşteri arasında değişmez. Sıcak satış carisi tanımsız ve
+  müşteri seçilmemişse kontroller çıkmaz (faturalanamaz). Bir sıcak satış
+  artık tek düğmeyle sipariş + fatura + tahsilat + (varsa) `erp.invoice.created`,
+  `erp.receipt.created`, `erp.invoice.paid` olaylarıdır.
+- **ERP API ekleri** (`includes/erp/api.php`, `api_resources.php`; 13 → **17
+  uç**): `POST|PATCH /erp/accounts/{id}` (kısmi güncelleme — gönderilmeyen
+  alan olduğu gibi kalır, `erp_api_account_save_data()` mevcut satırı taban
+  alır çünkü `erp_account_save()` bilmediği alanı varsayılana düşürür; para
+  birimi değişmez; `contact_id` null/0 bağı çözer, başka cariye bağlı kişi 422;
+  VKN çakışması 422), `POST /erp/receipts/{id}/cancel` (`reason` zorunlu;
+  `erp_receipt_cancel()` — ters kayıt, kapattığı faturalar yeniden açılır,
+  `cancelled: true`), `GET /erp/waybills/{id}/document` (PDF), `GET
+  /erp/accounts/{id}/reconciliation` (mutabakat mektubu PDF; `as_of`, `from`,
+  `reply_days`; hiçbir şey yazmaz). PATCH IIS'te WebDAV yüzünden 405 verir —
+  API'nin bilinen kuralı: `POST` + `X-HTTP-Method-Override: PATCH`.
+- **API tavan kancası geldi.** API ajanı `api_owner_scopes()`'a
+  `<prefix>owner_scopes($owner)` kancasını ve `api_load_owner()`'a bütün
+  `manage_*` sütunlarını (şekle göre) ekledi; ERP'nin `erp_owner_scopes()`'ı
+  artık yürürlükte: yönetici için tavan `erp:read/write, erp_cash:read/write`;
+  rol 3 + yalnız `manage_erp` → yalnız `erp:*`; hiçbiri → boş. **Gerçek
+  anahtarla HTTP testi yapılmadı** — anahtar üretmek kimlik bilgisi
+  oluşturmaktır, bu ajan yapmaz; Uygulama Erişimi'nden ERP + ERP kasa izinli
+  bir anahtar açıp `integration.php/erp/invoices` çağrısı Erdal'ın bir dakikası.
+- **Belge şablonları ayarlardan** (`erp_settings.php`; **migration 4.60**
+  `config.erp_waybill_template`, `erp_reconciliation_template` MEDIUMTEXT NULL —
+  faturanınki gibi satır dışı). Ekranda üç sekme (Fatura / İrsaliye / Mutabakat
+  Mektubu Şablonu), aynı kaydet / önizle / yer tutucu / sıfırla düğmeleri;
+  boş ya da yerleşikle aynı kayıt NULL'a döner (yerleşik dosya güncellenince
+  herkese ulaşır). `erp_waybill_template()` / `erp_reconciliation_template()`
+  kayıtlıyı, yoksa `*_default_template()` dosyayı verir; `erp_waybill_html()`
+  ve `erp_reconciliation_html()` isteğe bağlı `$template` alır;
+  `get_erp_waybill_pdf.php` ve `get_erp_reconciliation_pdf.php` ayar kapısı
+  arkasında `POST template` ile önizler (son irsaliye / son hareket gören cari).
+  **Yer tutucu listesi veriden**: `erp_settings_placeholders_from_data()` son
+  belgenin `document_data` dizisini noktalı adlara açar, açıklama olarak o
+  belgedeki değeri gösterir ("{{account.city}} → İzmir"); liste bloğu ve iç
+  alanları ayrıca. Eskimez, elle yazılmaz.
+- **Kullanıcı ekranı** (`edit_user.php`): Kişi kartı başlığında "Kişiyi aç"
+  yanına "Cari Hesap: ₺x size borçlu" ya da "Cari Hesap Aç" (kişi ekranıyla
+  aynı okuma, cari tarafından).
+- **Cari CSV**: dışa aktarımda "Müşteriye hatırlat" sütunu (Evet/Hayır),
+  içe aktarımda aynı alan (`erp_import_parse_yes_no()`; eşanlamlılar
+  "müşteriye hatırlat", "notify customer"…). Sütun dosyada yoksa kartın
+  seçimi korunur — anahtar yalnız eşleşince `$account`'a girer,
+  `erp_account_save()` anahtar yoksa yazmaz; yeni kartta varsayılan (1) kalır.
+- **Toplu cari açma**: aday sayımı ve `erp_accounts_sync_contacts()` artık
+  `INNER JOIN contacts` — silinmiş kişinin siparişi aday değil; açılamayan
+  (adsız kart) sayısı `skipped` olarak dönüp ekranda söylenir.
+- `tr.json` +24.
+
+**Kararlar.** Tahsilat tutarı faturanın toplamıdır (kısmi ödeme tezgâhta
+istisna; gerekirse fişten düzenlenir). Ödeme yöntemi varsayılanı nakit, kasa
+varsayılanı ERP ayarındaki kasa; ikisi de son seçimle ezilir. Tahsilat
+iptali API'de `DELETE` değil `POST …/cancel`: gövde (neden) taşıyor ve
+kayıt silinmiyor, ters çevriliyor. Şablon yer tutucuları için fatura listesi
+elle yazılmış hâliyle kaldı (açıklamaları daha iyi), yeni iki belge veriden
+üretiliyor. `orders.payment_method` yerel satışta yazılmıyor (sipariş
+ödeme yöntemi sözlüğü site ödeme yöntemleri; fişteki yöntem yeter).
+
+### Doğrulama
+
+Dev'de: 20O okutuldu → tamamla (kart, Test Banka) → `view_order.php?id=826`,
+bildirimler "PGF…013 oluşturuldu" + "#16 353,94 Test Banka'ya kaydedildi;
+fatura ödendi"; sonraki açılışta kart + Test Banka hatırlanmış. "Sonra
+tahsil et" + fatura → #828 yalnız PGF…014; kutu kapalı + ödeme yok → #827
+faturasız (araç çubuğunda "Faturayı Kes"). Kontroller sıcak satış carisi
+tanımlı olduğu için görünüyor. API (oturumlu probe): `POST /erp/accounts/14`
+boş gövde → 422 "Yazılabilir bir alan gönderilmedi."; VKN 1234567890 → 422
+"(#1)"; unvan/telefon/vade/not → 200, `tax_office`/`email`/`city` korunmuş;
+PATCH doğrudan → **IIS 405** (WebDAV), `X-HTTP-Method-Override` → 200;
+`status=passive` → passive; kişi 184 → 422 "#2'ye bağlı"; kişi 999999 → 422
+"bulunamadı"; `active`'e döndürüldü. `POST /erp/receipts/12/cancel` neden
+yok → 422 `reason`; nedenle → 200 `cancelled: true`, fatura 13 tekrar
+`issued` (paid 0), cari #13 bakiyesi 588,76 (araya başka ajanın PGF…011'i
+girmiş, tutarlı); tekrar → 422 "zaten iptal". `GET /erp/waybills/5/document`
+→ `PGFS2026000000005.pdf` 27.264 b; `/erp/accounts/2/reconciliation?as_of=2026-09-20&reply_days=10`
+→ `MUT-20260920-2.pdf` 29.445 b; iptal irsaliye 3 → PDF. Tavan probe'u:
+yönetici tavanında dört ERP kapsamı; `[erp:read, erp_cash:write]` etkin →
+`erp:read, erp_cash:read, erp_cash:write`. 4.60 iki kez koştu (eklendi /
+zaten var). Ayarlar: üç sekme; irsaliye yer tutucu 74, mutabakat 78 ad
+değerleriyle; irsaliye şablonuna işaret eklenip kaydedildi → `get_erp_waybill_pdf.php?id=5&html=1`
+işareti taşıyor, sıfırla → taşımıyor; önizleme POST (irsaliye son not,
+mutabakat "Perakende Müşteri"). `edit_user.php?id=118` Kişi kartı "Kişiyi aç
+· Cari Hesap Aç". Elle fatura PGF…007 → `add_erp_waybill.php?invoice_id=11`
+kalemler (Yeşil ×1, Mocha ×2) ve Ece Aydın / Gebze / Kocaeli dolu. Tutar tipli
+kampanya: teklif #5 eylemi geçici olarak 30,00 TL'ye çevrildi → `?q=yeşil`
+`rate 10.002` → geri alındı (`rate 10`). Toplu cari açma: "400 kişi" → 380
+açıldı, 20'si silinmiş kişi; düzeltmeden sonra düğme gizli, ikinci koşum
+"herkesin carisi var" (cari sayısı 394). `check_lang` (bize ait), `check_api_schema`
+temiz.
+
+**Doğrulanamayan:** gerçek API anahtarıyla HTTP; kasa hakkı olmayan
+operatörle tezgâh ekranı (dev'de tek kullanıcı, kodla: kontroller yalnız
+kutu). **Dev'de kalan test verisi:** siparişler #1536–#1538 (826–828), PGF…013
+(ödendi, tahsilat #16 Test Banka), PGF…014; tahsilat #12 iptal; cari #14
+"API Tedarikçi A.Ş." (telefon, vade 45); 380 yeni cari (siparişi olan
+kişilerden).
+
+---
+
+## 2026.4.4 — Kampanya silme ucu ve tek taşıyıcı kaydı: `pg_shipping_carriers()` (2026-09-20)
+
+Faz listesinde açık kalan iki kalem kapandı. Kullanıcının kararı: **kampanya
+yazma uçları yapılmayacak** ("teklif yazma zor bir görev olurdu çünkü çok fazla
+kuralı var … çekilsin/silinsin yeter"), ve taşıyıcı tarafında yapılacak küçük
+bir şey varsa yapılabilir — kargo yöntemlerini doğrulayan asıl sistem ileriye
+kalıyor.
+
+### Kampanya silme: `DELETE /offers/{id}`
+
+**Neden yalnız silme.** Bir kampanya, koşul ağacı (sepetin sağlaması gerekenler)
+ve sonuç kümesidir; onu kuran kurallar editörün kendisinde yaşıyor ve bir API
+ucu bunları ikinci kez ifade etmek zorunda kalırdı — iki yerde duran aynı
+kural, ayrışmayı bekleyen kuraldır. Silmek bu bilginin hiçbirini gerektirmiyor
+ve kampanya yöneten bir entegrasyonun gerçekten ihtiyaç duyduğu şey: sezonu
+biten kampanyanın elle temizlenmesi gerekmesin.
+
+- `offers:write` kapsamı açıldı ve **"silebilir" demek**; izin ekranındaki
+  açıklaması da bunu yazıyor ("yazma, kampanya oluşturmak değil silmek
+  demektir"). Tavan `api_owner_scopes()` içinde `manage_ecommerce` ile aynı
+  yerde: panelde kampanyaya `validate_ecommerce_access()` bakıyor, anahtar
+  sahibinin tutmadığı bir hakkı uygulama tutamaz.
+- Temizlik **kopyalanmadı, yeniden kullanıldı**: `_pg_offer_delete()` kampanya
+  satırını, koşullarını ve **başka kampanyanın kullanmadığı** kural/sonuç
+  satırlarını siliyor. Fonksiyona iki isteğe bağlı argüman eklendi —
+  `$username` (API'nin oturumu yok; adı olmayan bir etkinlik satırı takip
+  edilemeyen tek satırdır) ve `$activity` (bir silme = bir log satırı: API
+  hangi uygulamanın hangi anahtarla sildiğini yazıyor, ki bu fonksiyonun
+  bilemeyeceği bir şey). Ekran her ikisini de vermiyor ve davranışı aynı.
+- **Geri alınamaz.** Kampanyanın geri dönüşüm kutusu ne panelde var ne burada;
+  uç bunu açıkça yazıyor.
+- **Bugün yürürlükte olan kampanya reddediliyor** (`409 offer_active`),
+  `force=true` denmedikçe. Panelde böyle bir engel yok ve olmamalı: operatör
+  canlı bir kampanyayı silerken mağazaya bakıyordur, uygulama bakmıyor. Bu,
+  `pages.delete`'in ana sayfa ve sistem sayfası engelleriyle aynı gerekçe.
+- İki adres: `DELETE /offers/{id}` ve `POST /offers/{id}/delete`. İkincisi
+  ayrı bir adres, fiil takma adı değil — ileride bir `POST /offers/{id}`
+  eklenirse takma ad onu silmeye çevirirdi.
+- Prova (`X-Dry-Run`) açık: kampanyanın durumunu ve kodunu söyleyip hiçbir şey
+  silmiyor.
+
+Kapsam listesindeki "teklif yazma uçları" ve `/key-codes` kalemleri bununla
+**kapandı**, yapılmayacak olarak.
+
+### Taşıyıcı kaydı: üç liste yerine bir
+
+`pg_shipping_carrier()`, `get_shipping_carrier_name()` ve
+`get_shipping_tracking_url()` aynı anahtarlara göre üç ayrı liste taşıyordu —
+yazımlar, ad, takip adresi. Bir taşıyıcının ikisine eklenip üçüncüsünde
+unutulmasını bekleyen şekil. Hepsi `pg_shipping_carriers()` içinde tek girdide
+toplandı: `name`, `aliases`, `url`, `patterns`. Sıra alfabetik değil ve
+korunuyor — FedEx SmartPost numarası USPS kalıplarına da uyar ve FedEx'te daha
+iyi takip edilir, bu yüzden FedEx önce soruluyor.
+
+Yanında `pg_shipping_carrier_exists()`: kaydın anahtarları aynı zamanda
+`ECOMMERCE_DEFAULT_TRACKING_PROVIDER`'ın kabul ettiği değerler, yani artık
+sayılabilir.
+
+**İki davranış değişikliği, ikisi de düzeltme:**
+
+1. **`ups`, `fedex`, `usps` artık kargo yöntemi kodundan tanınıyor.** Eski
+   yazım tablosu yalnız beş Türk taşıyıcıyı kapsıyordu; fonksiyonun kendi
+   belgesi "ya da doğrudan taşıyıcı anahtarı" dese de `ups` yazan bir kod
+   eşleşmiyor, numara şekline düşüyor ve bazen **yanlış** taşıyıcı (fedex,
+   usps) çıkıyordu. 180 kombinasyonluk eski/yeni karşılaştırmada tek fark bu
+   12 durum; hepsi eskiden yanlış ya da boştu.
+
+2. **Kod kelime kelime de okunuyor.** Bir mağazanın kargo yöntemi genellikle
+   hizmetin adıdır, taşıyıcının değil: `UPS-5GUN`, `MNG Ertesi Gün`,
+   `tr-aras-standart`. Tam eşleşme başarısız olursa kod harf/rakam dışında
+   bölünüyor ve **tam kelime** olarak taşıyıcı adı aranıyor. Yalnız tek
+   kelimelik adlar ve yalnız tam kelime: `upsala kargo` UPS değil, `ARASINDA`
+   Aras değil, `Standart Teslimat` hâlâ hiçbir şey. Dev mağazada bu tek
+   değişiklik, `UPS-5GUN` yöntemiyle gönderilmiş **14 kolinin** takip
+   bağlantısını hiç yokken çalışır hâle getirdi.
+
+Sıra: tam kod → kelime → numaranın şekli.
+
+### `ECOMMERCE_DEFAULT_TRACKING_PROVIDER` görünür oldu
+
+Kargo yöntemi kodu taşıyıcıyı hiç söylemeyen mağazalar (`Standart Teslimat`,
+`Ücretsiz Kargo`) site geneli bir taşıyıcı adlandırabiliyordu — ama bu, ayar
+ekranı olmayan, `config(default).php`'de bile geçmeyen bir define'dı. Geçerli
+değerleri yalnız `widgets.php`'yi okuyan biri öğrenebilirdi ve **yanlış bir
+değer hiçbir şey yapmıyordu**: müşteri bağlantısız bir numara görür, bu da
+mağazanın numarayı hiç girmemiş olması gibi görünür.
+
+- `data/config(default).php`'ye taşıyıcı tablosuyla birlikte belgelendi
+  (yeni kurulumlar boş değerle görür; boş = eskisi gibi yalnız yöntem kodu).
+- **Sistem Durumu** kartına bir okuma eklendi: define boşsa/yoksa hiç kutucuk
+  çıkmaz (adlandırılmamış bir taşıyıcı hakkında doğru ya da yanlış olacak bir
+  şey yok), tanınan bir değer yeşil, tanınmayan bir değer sarı ve kabul edilen
+  değerleri sayıyor. `Database Size` gibi **puanlanmıyor** — `$check_weights`
+  içinde yok; yapılandırma bildirimi, sağlık arızası değil.
+- API'nin `POST /orders/{id}/shipment` ucundaki `carrier` parametresinin
+  açıklaması artık hangi değerlerin takip bağlantısı ürettiğini yazıyor.
+  Parametre yine serbest metin: o alan müşterinin seçtiği kargo yöntemi
+  kodudur ve mağazanın kendi kodu olmaya devam edebilir.
+
+`ECOMMERCE_LOW_STOCK_THRESHOLD` aynı durumda (ayar ekranı yok, `stock.low`
+olayı ona bağlı) ama kullanıcı bu turda yalnız taşıyıcıyı istedi; açık kalem.
+
+### Doğrulama
+
+`lint`, `check_lang`, `check_api_schema` temiz (62 yol, 26 nesne, 26 hata kodu,
+20 provalanabilir yazma). Dev sitede: pasif kampanyanın provası silmiyor, canlı
+kampanya `409 offer_active` veriyor, `force=true` ile prova geçiyor, olmayan
+kampanya 404. Gerçek silme için kampanya 10'un bir kopyası üretildi (aynı sonuç
+satırlarını paylaşan bir kopya, çünkü asıl sınanacak şey bu): kopya ve xref
+satırları gitti, kampanya 10'un hâlâ kullandığı kural 8 ve sonuç 3 yerinde
+kaldı. Taşıyıcı tarafında 180 kombinasyonluk eski/yeni karşılaştırma, 15
+kelime-eşleşme vakası ve mağazanın gerçek 15 koli kaydı.
+
+---
+
+## 2026.4.4 — Olayların gerçek kapsamı ve yazma provası: `pg_announce()`, `X-Dry-Run` (2026-09-20)
+
+**Belirti — 1: kataloğun söylediği ile yaptığı.** `customer.created`,
+`page.updated` ve `file.created` olayları yalnız API'nin kendi yazmalarından
+duyuruluyordu; katalog metni de bunu "API üzerinden oluşturuldu" diye yazarak
+dürüst davranıyordu ama abonelik böyle bir olayı işe yaramaz yapıyor. Adres
+defteri bu yazılımda **sekiz yerden** doluyor (ödeme adımı, hızlı ödeme,
+özel formlar, iş ortağı kaydı, e-posta tercihleri ekranı, Google ile giriş,
+panelin kişi ekranı ve API) ve bunların yedisi sessizdi. Bir entegrasyon
+"yeni müşteri" olayına abone olup mağazanın müşterilerinin çoğunu hiç
+görmüyordu.
+
+**Belirti — 2: denemenin bedeli.** Bir entegrasyonu yazan kişi gövdesinin
+doğru şekilde olup olmadığını ancak gerçekten göndererek öğrenebiliyordu.
+Canlı katalogda bu, sonradan silinecek bir deneme ürünü, bir an için mağazaya
+yazılmış bir fiyat, hiç verilmemiş bir sipariş demek. Geri alınamayanlar da
+tam olarak önce denenmesi gereken çağrılar.
+
+### Olaylar: `includes/fn/events.php`
+
+Olay kataloğu ve kuyruk API'nin yanında duruyor (`includes/api/outbound/
+webhooks.php`), çünkü gönderen o. Ama duyurulmaya değer şeyler yazılımın her
+yerinde oluyor. Çağıran dosyaların API'nin kuyruğunun nerede olduğunu bilmesi
+gerekmesin diye tek satırlık bir kapı açıldı:
+
+```php
+pg_announce('page.created', array('id' => $page_id, 'name' => $name));
+pg_announce_contact_created($contact_id);
+```
+
+- `functions.php` bu dosyayı diğer `includes/fn/*` dosyaları gibi yüklüyor, yani
+  panel ve mağaza tarafında her yerde var.
+- API kurulu değilse ya da dosyası yoksa **sessizce döner**. Kuyruğa
+  yazılamayan bir olay, bir üyelik formunun başarısız olmasının gerekçesi
+  olamaz.
+- Kuyruğa yazar, göndermez; gönderim zamanlanmış görevin işi — yavaş bir alıcı
+  ziyaretçinin ödemesini bekletmez.
+- `pg_announce_contact_created()` e-postayı **kendisi okur**. Sekiz yerin üçü
+  (ödeme adımı, hızlı ödeme, özel form) önce boş bir satır açıp birkaç satır
+  sonra dolduruyor; her çağıranın e-postayı taşımasını istemek yerine, kayıt
+  tamamlandıktan sonraki noktada tek indeksli okuma yapılıyor — ve yalnız
+  gerçekten bir kişi oluştuğunda.
+
+Eklenen çağrı yerleri: `add_contact.php`, `affiliate_sign_up_form.php`,
+`billing_information.php`, `custom_form.php`, `email_preferences.php`,
+`express_order.php`, `google_auth.php`, `edit_user.php` (customer.created);
+`add_page.php` (**yeni `page.created`**); `add_file.php` (file.created, panel
+yüklemesi).
+
+**Kasten dışarıda:** toplu yollar. `import_contacts.php`, kampanya listesi
+yüklemesi, tasarım/zip içe aktarmaları ve sayfa çoğaltma. Beş bin satırlık bir
+aktarım beş bin kuyruk satırı demek ve alıcı bundan, tek listelemeyle
+öğrenebileceğinden fazlasını öğrenmez. Katalog metinleri artık bunu **açıkça
+yazıyor** ("toplu içe aktarmalar hariç", "çoğaltılan ya da içe aktarılan
+sayfalar hariç"): kapsamını sessizce kaçıran bir abonelik, sınırını söyleyenden
+kötüdür.
+
+### Belgede olay listesi
+
+Olay adları yalnız kaynakta ve panelin abonelik formunda okunabiliyordu; bir
+entegratör `api_docs.php` / `integration.php/docs` sayfalarını baştan sona
+okuyup neye abone olabileceğini öğrenemiyordu. Hata kodları bloğunun yanına
+ikinci bir blok kondu (`api_console_events_html()`): gövde örneği, imza
+başlığı ve **her olayın gerçek kapsamıyla** listesi. İki sayfa da aynı bloğu
+basıyor.
+
+### Yazma provası: `X-Dry-Run`
+
+`includes/api/dry_run.php`. İstek `X-Dry-Run: true` taşıyorsa uç nokta
+kimlik doğrulamadan, izinden, gövde şeklinden, uç noktanın kendi
+denetimlerinden ve ilgili kaydın varlığından geçer — sonra **ilk yazmanın
+olduğu satırda durur** ve yazmak yerine yanıt verir:
+
+```json
+{"dry_run": true, "would": "created", "resource": "product", "detail": {"name": "..."}}
+```
+
+Red, gerçek reddir: aynı 422, aynı `field`, aynı kodu üreten aynı satır.
+Söyleyemediği tek şey, yalnız yazmanın ortaya çıkaracağı şey — bu arada
+başkasının aldığı bir benzersiz ad gibi.
+
+Tasarım kararları:
+
+- **Başlık, gövde alanı değil.** Her yazma için doğru, ve bir gövde alanı her
+  uca eklenmek, her `INSERT`'ten çıkarılmak ve bir sonraki ucu yazan
+  tarafından hatırlanmak zorunda kalırdı.
+- **Katı değer.** `1/true/yes/on` ve `0/false/no/off` dışındaki bir değer
+  `invalid_dry_run` ile reddediliyor. `X-Dry-Run: maybe`, yazma isteğinden çok
+  çağıranın hatasıdır ve sessiz kabul, çağıranın bunu ancak oluşan kayıttan
+  öğrenmesi demektir.
+- **Idempotency anahtarı alınmıyor.** Prova hiçbir şey yazmaz, yani
+  tekrardan korunacak bir şey yoktur; yanıtı anahtarın altına kaydetmek,
+  çağıranın hemen ardından aynı anahtarla gönderdiği **gerçek** çağrının
+  "hiçbir şey yazılmadı" ile yanıtlanıp hiç çalışmaması demekti.
+- **Uç başına bildirim.** Yol tablosunda `'dry_run' => true`. Modüller
+  (ERP) kendi uçlarını dikiş yerinden ekliyor; bayrağı koymayan bir ucun
+  provası **400 `dry_run_unsupported`** ile reddediliyor. Provayı kabul edip
+  yine de yazan bir uç, reddedenden kötüdür: çağıran tam da hiçbir şey olmasın
+  diye sordu. Kapı, gövde okunmadan önce kapanıyor.
+- **OpenAPI yalnız bildiren uçlarda** `X-Dry-Run` başlığını gösteriyor.
+- **`tools/check_api_schema.php` ikisini birbirine karşı denetliyor:**
+  `'dry_run' => true` diyen bir yolun işleyicisi `api_dry_run_stop()` ya da
+  `api_dry_run_requested()` içermiyorsa hata. Bayrak ile duruş satırı ayrı
+  dosyalarda — tam da sürüklenen çift.
+
+Provaya açılan 18 yazma ucu: ürün ekle/güncelle, stok (tekil ve toplu), toplu
+fiyat, ürün grubu, sipariş güncelle, sevkiyat kaydı, müşteri ekle/güncelle,
+webhook aç/sil, sayfa güncelle/sil (iki adres), dosya yükle/sil (iki adres).
+
+**Toplu uçlarda en çok işe yarıyor.** İki yüz fiyat ya da stok satırı tek
+çağrıda geliyor; prova her satırı çözüp yargılıyor ve hangisinin neden
+reddedileceğini satır satır döndürüyor — mağazada tek kuruş değişmeden.
+Prova modunda satırın `inventory` alanı **yok**, doldurulmuyor: oradaki
+seviyeler değişiklikten *önceki* seviyeler olurdu ve çağıranın onları sonuç
+sanması davet edilmeyecek bir hata.
+
+`api_orders_update()` bu yüzden yeniden sıralandı: iptal, mağazanın kendi
+iptal yolunu (iade + e-posta) çalıştırıyor ve bu, birkaç satır sonra bu
+kurulumda olmayan bir `notes` sütunu yüzünden reddedilecek bir çağrı için
+çalışmamalı. Artık bütün denetimler ilk yazmanın üstünde.
+
+### Yan düzeltme: OpenAPI'de ikinci fiil
+
+Bir yol ikinci bir fiile de yanıt veriyorsa (`also_accepts`) belge artık onu
+da listeliyor. Varsayılan bir IIS kurulumu `DELETE`'i PHP'ye ulaşmadan kendi
+yanıtlıyor (dev sitede doğrulandı: `DELETE /webhooks/9` → IIS 404, `POST
+/webhooks/9` → 204); API bu yüzden `POST`'u da kabul ediyor, ama belgeden
+üretilen bir istemci ya da test takımı yalnız burada yazanı okur. Yalnız
+`DELETE` yazan bir belge, çağıranı varmayan yola sokuyordu.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php`, `php tools/check_api_schema.php`
+temiz (60 yol, 26 nesne, 26 hata kodu, 18 provalanabilir yazma). Dev sitede:
+prova ürün oluşturmuyor (65 ürün, öncesi/sonrası aynı), toplu fiyat provası
+üç satırın ikisini gerekçesiyle reddediyor ve 125 numaralı ürünün fiyatı
+değişmiyor, prova + idempotency anahtarı sonraki gerçek çağrıyı bozmuyor,
+ERP ucuna prova `dry_run_unsupported` veriyor, `pg_announce()` üç olayı
+kuyruğa yazıyor ve e-postayı kendisi buluyor.
+
+---
+
+## 2026.4.4 — ERP dış API ve webhook olayları: `includes/erp/api.php` dikişi (2026-09-20)
+
+**Belirti.** Faz 5'in iki kalemi açıktı: dış API'de ERP kaynağı yoktu (bir
+muhasebe programı ya da banka entegrasyonu cariyi, faturayı, tahsilatı
+okuyamıyor, tahsilat yazamıyordu) ve ERP hiçbir olayını duyurmuyordu (fatura
+kesildi, ödendi, tahsilat girildi…). API ajanı bunun için aynı gün bir dikiş
+yeri açtı (`includes/api/modules.php`): modül kendi klasöründe tek dosyayla
+uç, olay, nesne ve izin ekler, `includes/api/**` dosyalarına dokunmaz.
+
+**Çözüm.**
+
+- **`includes/erp/api.php`** (dikiş dosyası; artık boş değil) dört fonksiyonu
+  tanımlar. `erp_scope_groups()`: **iki izin grubu** — `erp` (`erp:read` /
+  `erp:write`: cari, fatura, irsaliye) ve `erp_cash` (`erp_cash:read` /
+  `erp_cash:write`: tahsilat, ödeme, kasalar) — panelde kasa ayrı bir hak
+  (`manage_erp_cash`), anahtar sahibinden fazlasını tutamamalı; etiket ve
+  açıklamalar `lang()` ile (izin ekranı çekirdek satırları öyle basar).
+  `erp_webhook_events()`: 7 olay. `erp_openapi_objects()`: 7 nesne
+  (`ErpAccount`, `ErpAccountTransaction`, `ErpInvoice`, `ErpReceipt`,
+  `ErpCashAccount`, `ErpWaybill`, `ErpDocument`). `erp_api_routes()`: **13 uç**,
+  `schema.php` satır şekliyle, hepsi `returns` bildiriyor:
+  - `GET /erp/accounts` (search, kind, status, tax_number, contact_id,
+    with_balance, updated_since; imleç `updated_at,id`), `GET /erp/accounts/{id}`,
+    `GET /erp/accounts/{id}/transactions` (ekstre satırları; from/to/kind; imleç
+    `doc_date,id`), **`POST /erp/accounts`** (cari aç; aynı vergi numarası
+    aktif bir caride varsa 422 + mevcut id; `contact_id` başka cariye bağlıysa
+    422; `opening_balance` aynı çağrıda açılış kaydı, artı = cari borçlu).
+  - `GET /erp/invoices` (account_id, order_id, number, direction, doc_type,
+    status, open, issued_from/to, updated_since; **taslaklar telde yok**),
+    `GET /erp/invoices/{id}` (kalemlerle: sku, kampanya oranı dahil),
+    `GET /erp/invoices/{id}/document` (PDF base64 — `ErpDocument`).
+  - `GET /erp/receipts` (account_id, cash_account_id, direction,
+    payment_method, from/to, created_since; iptal edilen `cancelled: true` ile
+    listede, ters kayıt tahsilat değil), `GET /erp/receipts/{id}`,
+    **`POST /erp/receipts`** (`erp_post_receipt()` ile tek transaction; `invoice_id`
+    verilirse o fatura kapanır, fazlası caride kalır; sahip kasa hakkı yoksa
+    403 `forbidden`; Idempotency-Key API katmanında).
+  - `GET /erp/cash-accounts` (kasalar, bakiyeleriyle).
+  - `GET /erp/waybills`, `GET /erp/waybills/{id}` (sürücü TCKN telde yok).
+- **`includes/erp/api_resources.php`**: sunucular + `*_present()` /
+  `*_schema()` çiftleri (alan başına bir satır). Ortak sayfalayıcı
+  `erp_api_page()` (`_sort` sütunu + id imleci, `api_cursor_encode` ile).
+  Yazımlar ekranların çağırdığı fonksiyonlardan geçer (`erp_account_save`,
+  `erp_account_link_contact`, `erp_account_open`, `erp_post_receipt`);
+  `log_activity` satırı uygulama adı ve anahtarıyla.
+- **`includes/erp/events.php`** (`bootstrap.php`'ye eklendi): `erp_event()` →
+  `api_webhook_enqueue()` (dosya yoksa/olay tanımsızsa sessiz);
+  `erp_event_invoice/receipt/account/waybill()` kaydı yeniden okuyup standart
+  yük üretir. **Kancalar fonksiyonların içinde**, ekranda değil — panel, tezgâh,
+  köprü ve API aynı yerden duyurur: `erp_invoice_from_order()`,
+  `erp_invoice_issue()`, `erp_invoice_return()` → `erp.invoice.created`;
+  `erp_invoice_refresh_paid()` durum **paid'e geçtiğinde** (her yenilemede
+  değil) → `erp.invoice.paid`; `erp_invoice_cancel()` → `erp.invoice.cancelled`;
+  `erp_post_receipt()` → `erp.receipt.created` (invoice_id ile);
+  `erp_receipt_cancel()` → `erp.receipt.cancelled`; `erp_account_save()` yeni
+  kayıtta → `erp.account.created`; `erp_waybill_create()` → `erp.waybill.created`.
+  Transaction içinden kuyruğa yazılan satır aynı bağlantıda olduğu için
+  fişle birlikte geri alınır.
+- `tr.json` +14 (hata metinleri, izin satırları).
+
+**Eksik kanca — API tarafına istek (`dev/_handoff/ERP-API-istek.md`).**
+`api_effective_scopes()` uygulamanın kapsamlarını `api_owner_scopes($owner)` ile
+kesiyor ve o liste modülleri bilmiyor: izin ekranında verilen `erp:read`
+çağrıda `insufficient_scope` alır. Modülden çözülemez. İstenen: `api_load_owner()`
+`manage_erp` / `manage_erp_cash` okusun, `api_owner_scopes()` sonunda
+`<prefix>owner_scopes($owner)` kancası. ERP tarafı **`erp_owner_scopes($owner)`**'ı
+şimdiden tanımladı (kanca gelince çalışır); `POST /erp/receipts` kasa hakkını
+kendisi de okuyor. **Kanca gelene kadar ERP uçları gerçek anahtarla
+kullanılamaz** — kod, belge ve izin ekranı hazır, tavan eksik.
+
+**Kararlar.** Fatura/irsaliye yazma ucu yok (fatura kesimi seri numarası
+tüketir ve VUK belgesi üretir; dış sistemin "fatura kes" demesi için önce
+Paraşüt/e-belge yolu netleşmeli). `erp.invoice.edoc_status_changed` olayı
+tanımlanmadı (Faz 3'e bağlı; tanımlanan her olay bir yerden ateşlenmeli).
+Ekstre ucunda yürüyen bakiye yok (imleçle sayfalanan listede toplam
+istemcinin işi; açılış bakiyesi cari nesnesinde). PDF JSON içinde base64 (API
+tek şekil JSON konuşuyor; e-posta/DMS entegrasyonu için yeter).
+`tools/check_api_schema.php` modül dosyalarını taramıyor — aynı üç sözleşmeye
+göre yazıldı, tarama eklenmesi notta istendi.
+
+### Doğrulama
+
+Dev'de gerçek anahtar yolu tavan yüzünden kapalı; **oturumlu probe**
+(`_probe_erp_api.php`: `PG_API_ENTRY` + `init.php` + `validate_erp_access` +
+API bootstrap, sahte uygulama tüm kapsamlarla, `api_route_match` →
+`api_validate_input` → handler) ile 13 uç çağrıldı: cari listesi 3'lü sayfa +
+imleç ikinci sayfa, `total: 13`; cari #2 bakiye 1.084,22 (200,40 + PGF…008
+883,82 ✓); ekstre 4 satır; 404 `Hesap bulunamadı.`; `kind=supplier` → #6 (both);
+`order_id=822` → PGF…010 kalem/sevk/taşıyıcı dolu; `open=1` toplam 11;
+`status=cancelled` → PGFI…001; `doc_type=return` iki iade ebeveynleriyle;
+`/invoices/13/document` → `PGF2026000000009.pdf` 27.577 bayt `%PDF-1`;
+`number=PGF…007` → kalemde `offer_id 5 / offer_discount_rate 10 / discount_rate 5`;
+kasalar 2; tahsilatlar 5 (ödeme #11 Test Banka); irsaliyeler 5 (PGFS…005
+fatura 14, Aras Kargo, plaka). Yazma: `POST /erp/receipts` — amount yok →
+422 `amount`; `353.94` → 422 ondalık; kasa 99 → 422 `cash_account_id`;
+`bitcoin` → 422 enum; 10,00 TL fatura 13'e → 201 `settlements` dolu;
+**353,94 fatura 14'e → 201, fatura 14 `paid`, `payment_date` bugün**; aynı
+faturaya tekrar → 422 "Bu fatura zaten kapalı." `POST /erp/accounts` — aynı
+VKN → 422 "(#1)"; `12AB` → 422; kişi 184 → 422 "#2'ye bağlı"; tedarikçi
+"API Tedarikçi Ltd." açılış −1.500 → 201, `balance −150000`, #14. **Olaylar:**
+API ajanının test aboneliği (#8) geçici olarak ERP olaylarına açıldı →
+kuyrukta `erp.receipt.created` ×2, `erp.invoice.paid` (yük: fatura 14, paid,
+35394/35394), `erp.account.created` (#14); sonra abonelik eski hâline
+döndürüldü, ERP kuyruk satırları silindi. `api_settings.php` izin ekranında
+"ERP" ve "ERP kasa" satırları Türkçe açıklamalarıyla. `api_webhook_events()`
+7 ERP olayı, `api_scopes_all()` 4 ERP kapsamı, `api_openapi_objects()` 7 nesne,
+`api_schema()` 13 ERP yolu. `lint`, `check_api_schema` temiz; `check_lang`'daki
+kalan eksikler `assets/js/style_designer.js`'de (başka ajanın o anki işi).
+
+**Doğrulanamayan:** gerçek anahtar + kapsam yolu (tavan kancası bekliyor);
+döviz kasasına tahsilat (dev'de döviz kapalı); OpenAPI belgesinin
+`/openapi.json` çıktısında ERP şemalarının görünümü (belge üretimi API'nin;
+kayıt deseni aynı). **Dev'de kalan test verisi:** tahsilat #12 (10,00, fatura
+13'e) ve #13 (353,94, fatura 14'e → ödendi), cari #14 "API Tedarikçi Ltd."
+(tedarikçi, açılış −1.500).
+
+---
+
+## 2026.4.4 — Sistem widget tokenları: gönderilen formun sistem alanları (2026-09-20)
+
+**Belirti.** Form Liste Görünümü widget'ının varsayılan şablonu kart
+başlığını `^^__subject^^`, tarihini `^^__submitted_at^^` tokenına
+bağlıyordu. Tasarımcıda Veri Bağla → Metin kutusu ikisini de tanımadığı
+için **Özel…** kipine düşüyor, token elle yazılmış gibi görünüyordu. Ön
+yüzde ikisi de boş çıkıp son süpürmede siliniyordu.
+
+**Kök neden.** `__subject`'i hiçbir renderer üretmiyor — hiçbir yerde yok.
+`__submitted_at` gerçek bir token ama form_item_view ile my_account'a ait;
+form_list `__timestamp` üretiyordu. Asıl kopukluk bunların altında: sistem
+widget'ı gönderilen formun sistem alanları için kendi `__xxx` isim uzayını
+uydurmuştu. Oysa bu alanlar zaten tanımlı —
+`get_standard_fields_for_view()` (`includes/fn/forms.php`), klasik Form
+Liste Görünümü ve Form Öğesi Görünümü ekranlarının `^^reference_code^^`,
+`^^submitted_date_and_time^^`, `^^number_of_comments^^`,
+`^^newest_comment^^` … tokenlarını çözdüğü kayıt. İki isim uzayı yan yana
+durunca hangisinin geçerli olduğu tasarımcıdan okunamıyordu ve varsayılan
+şablon yanlış olanı seçmişti.
+
+**Çözüm.** Sistem widget'ı artık aynı kaydı çözüyor; `__xxx` isim uzayı üç
+form/hesap widget'ından kaldırıldı.
+
+- **`pg_sw_standard_fields()`** (`includes/fn/widgets.php`)
+  `get_standard_fields_for_view()`'ı sarmalayıp her alana bağlı olduğu
+  JOIN'i ekliyor. Kayıtta karşılığı olmayan üç giriş burada tanımlı:
+  `form_item_view` (klasik ekranların detay bağlantısı için kullandığı
+  kendi tokenı), `submitted_form_id`, `submitter_user_id`.
+- **`pg_sw_standard_sql()`** yalnız şablonun gerçekten yazdığı alanların
+  sütununu ve JOIN'ini üretiyor: yorumcu basmayan bir liste `comments`
+  tablosuna hiç uğramıyor, kendi alanlarından başkasını basmayan bir liste
+  tek tablo okumasında kalıyor. `submitted_form_info` sayaçları form öğesi
+  görünümü sayfası başına tutulduğu için listede widget'ın ayarlı detay
+  sayfasının, detay görünümünde ise sayfanın kendisinin sayaçları okunuyor.
+- **`pg_sw_apply_tokens()`** değiştirmeyi klasik ekranların sırasına
+  oturtuyor: standart alan aynı adlı form alanını yener, değer
+  `prepare_form_data_for_output()`'tan geçer, aynı token iki kez geçtiğinde
+  her geçiş kendi biçimiyle değişir (genel değiştirme ikincisini
+  birincinin çıktısıyla eziyordu). Sayaçlar boşken 0 okunuyor, isimsiz
+  yorumcu "Anonim" oluyor, gönderen/son düzenleyen/yorumcu rozetini
+  taşıyor, yorum önizlemesi ve yorum ekleri **escape'ten önce** kırpılıp
+  bağlantıya çevriliyor — klasik ekran bunları escape'lenmiş metin üzerinde
+  yapıyor ve `&amp;`'i ortadan bölebiliyordu.
+- **Tarih biçimi eki** uyarlandı: `^^submitted_date_and_time^^%%d.m.Y%%` ve
+  `%%relative%%`. Biçim, tokenın içine değil düğümün `_bindFormats`
+  alanına yazılıyor; `_apply_bindings()` tokenı üretirken sonuna ekliyor ve
+  yalnız `date()`'in okuduğu karakterler geçiyor. Tasarımcıda tarih alanı
+  seçilince Veri Bağla satırının altında biçim kutusu açılıyor.
+- **my_account** da aynı adlara taşındı; gönderim döngüsü artık iki form
+  widget'ıyla aynı `reference_code` / `submitted_date_and_time` /
+  `form_item_view` / `submitted_form_id` adlarını taşıyor, böylece bir satır
+  tasarımı üç widget arasında geçiyor. Hesap alanları bu arada escape
+  edilmeye başlandı: kişi kaydından gelen ad ham olarak basılıyordu.
+- **Sıralama ayarı** `__timestamp` / `__id` yerine
+  `submitted_date_and_time` / `submitted_form_id` değerlerini saklıyor.
+
+Kayıtlı widget ağaçları çevrilmedi (karar): eski bağlamalar boş çıkar,
+tasarımcıda **Varsayılan Düzeni Yükle** ile yenilenirler.
+
+## 2026.4.4 — Kayıt formu "Üye Ol" demiyor (2026-09-20)
+
+**Belirti.** Kayıt Girişi (registration) widget'ının varsayılan şablonunda
+başlık ve gönder düğmesi `Become a Member` — tr.json'da "Üye Ol" — metnini
+taşıyordu. Kayıt hesap açar; üyelik ise sitenin zaten tanıdığı bir üyeliği
+aktive eder (Üyelik Girişi widget'ı, `membership_entrance.php`). Aynı
+cümleyi iki ayrı iş için kullanmak ekranların hangisi olduğunu
+belirsizleştiriyordu.
+
+**Çözüm.** registration tarafında başlık `Create Your Account`, düğme
+`Sign Up`, alt bağlantı `Already have an account? Sign in` (PHP'deki
+`login_link` yedeği dahil) ve ayar panelindeki yardım metni buna göre.
+Üyelik widget'ı `Membership Entrance` / `Activate the Membership` /
+`Already a member? Sign in` metinlerini korudu. tr.json'da `registration`
+anahtarının slug değeri `uye-kaydi` → `kayit`; yeni widget'ların otomatik
+adını etkiler, mevcut adlar değişmez.
+
+---
+
+## 2026.4.4 — Faturadan irsaliye: fatura ve sipariş ekranında "İrsaliyeyi Kes", dolu form, siparişe ve faturaya geri yazım (2026-09-20)
+
+**Belirti.** Fatura kesildikten sonra sevk irsaliyesi kesmek sık yol; ama
+fatura ekranında ve sipariş ekranında irsaliyeye giden düğme yoktu — yalnız
+ERP → İrsaliyeler → siparişten irsaliye seçicisi. Yerel satışta siparişte
+kargo bilgisi olmadığından seçici de boş form açıyor, operatör taşıyıcı ve
+sevk tarihini yazıyor, yazdığı bilgi **belgede kalıyor**, siparişe ve faturaya
+işlemiyordu (faturanın VUK 509 alanları `shipment_date` / `carrier_title` /
+`carrier_vkn` boş kalıyor). Tezgâh satışında alıcının adresi yok ("kendime"),
+irsaliye alıcısı adressiz çıkıyordu.
+
+**Çözüm.**
+
+- **Zincir düğmeleri.** `edit_erp_invoice.php` araç çubuğu (`$output_waybill_button`):
+  satış, iade olmayan, iptal olmayan, kesilmiş faturada — bağlı irsaliye
+  varsa numarası (bağlantı; `erp_waybills_for_invoice()`, yoksa siparişin
+  irsaliyeleri `erp_waybills_for_order()`), yoksa **"İrsaliyeyi Kes"** →
+  `add_erp_waybill.php?invoice_id=`. `view_order.php` (`$output_erp_waybill`,
+  fatura düğmesinin yanında): siparişin irsaliyesi varsa numarası, yoksa
+  "İrsaliyeyi Kes" → `add_erp_waybill.php?order_id=`. Sıra ekranda okunur:
+  Faturayı Kes → (numara) → İrsaliyeyi Kes → (numara).
+- **Faturadan dolu form** — `erp_waybill_data_from_invoice($invoice_id)`:
+  siparişten yazılmış fatura → siparişin okuması (`erp_waybill_data_from_order()`)
+  + faturanın taşıyıcı/sevk tarihi (siparişte yoksa); elle fatura → faturanın
+  kalemleri (`erp_invoice_items`) ve carinin adresi. `add_erp_waybill.php?invoice_id=N`:
+  irsaliyesi olan ya da olmayan faturayı ayırır (varsa ona yönlendirir),
+  formu bu veriyle açar, üstte "PGF… faturası için… eksikleri tamamlayın"
+  uyarısı; gizli `invoice_id` gönderilir, okuma ekranı "Not, PGF… faturasına
+  bağlıdır." der. Alıcının adresi yoksa (sıcak satış "kendime") **carinin
+  kartı** (unvan + adres) alıcı olur — irsaliye bir yere gider.
+- **Bağ ve geri yazım** — `erp_waybill_create()`: `invoice_id` başlıkta;
+  verilmemişse siparişin faturası (`erp_invoice_for_order()`), iptal edilmiş
+  ya da yok ise 0; `erp_waybills.invoice_id` yazılır. Ardından
+  **`erp_waybill_write_back($waybill_id)`**: sevk tarihi, tarihi olmayan
+  sipariş alıcılarına (`ship_tos.ship_date` yalnız `NULL`/`0000-00-00` ise);
+  faturaya (iptal değilse) `shipment_date` boşsa sevk tarihi, `carrier_title`
+  boşsa taşıyıcı unvan + VKN. **Dolu alan ezilmez** — operatörün siparişte ya
+  da faturada yazdığı kalır, irsaliye yalnız boşluğu doldurur. Dönen
+  `written_back` (`order_ship_date`, `invoice_shipment_date`, `invoice_carrier`)
+  ekranda bildirim olur: "Sevk tarihi, tarihi olmayan sipariş alıcılarına
+  yazıldı." / "Sevk tarihi ve taşıyıcı, bunları taşımayan faturaya yazıldı."
+  Şema değişikliği yok (sütunlar Faz 4'ten). `tr.json` +8.
+
+**Kararlar.** `orders` tablosuna taşıyıcı sütunu açılmadı (API serileştirici
+ve `check_api_schema` sözleşmesi; siparişte sevk bilgisi `ship_tos.ship_date`,
+taşıyıcı faturada). Faturanın VUK bloğu ekranda yalnız `is_internet_sale = 1`
+için görünür (VUK 509 kuralı) — yazılan taşıyıcı sıradan satışta ekranda değil
+kayıtta ve belgede durur. İptal edilen irsaliyenin yazdığı geri alınmaz
+(tarih ve taşıyıcı bilgi olarak doğru kalır; yeni irsaliye boş alan bulmazsa
+yazmaz).
+
+### Doğrulama
+
+Dev'de: sipariş #1535 (id 822, sıcak satış) → "Faturayı Kes" → PGF…010
+(id 14) → fatura ekranında "İrsaliyeyi Kes" → `add_erp_waybill.php?invoice_id=14`
+formu sipariş kaleminden dolu, alıcı carinin kartı (Perakende Müşteri), uyarı
+üstte; taşıyıcı "Aras Kargo" / VKN 1234567890 / plaka yazıldı → PGFS…005
+(id 5) `invoice_id = 14`, iki geri yazım bildirimi; fatura ve sipariş araç
+çubukları artık numarayı gösteriyor. Veritabanı: `erp_invoices` 14
+`shipment_date 2026-09-20`, `carrier_title Aras Kargo`, `carrier_vkn
+1234567890`; `ship_tos` 761 `ship_date 2026-09-20`; sipariş ekranındaki sevk
+tarihi kutusu 20/9/2026. `lint`, `check_lang`, `check_api_schema` temiz.
+
+**Doğrulanamayan:** elle faturadan irsaliye (kalem + cari adresi yolu, yalnız
+kodla); `is_internet_sale = 1` faturada taşıyıcının ekranda görünmesi.
+
+---
+
+## 2026.4.4 — Yerel satış: müşteri/cari seçimi, sıcak satış carisi, KDV ve siparişten tek tıkla fatura (2026-09-20)
+
+**Belirti.** `add_order.php` barkodla hızlı satış için yazılmıştı ve orada
+kalmıştı: sipariş KDV'siz kapanıyor (`orders.tax = 0`, `total = subtotal`),
+`initialize_order()` her sepet değişiminde `orders.contact_id`'yi işlem yapan
+yöneticinin kişisine yazdığı için satış **yöneticinin adına** kayda geçiyor,
+ERP köprüsü de bu siparişi faturalarken cariyi bu kişiden açıyordu. Ürün
+aramada ve sepette kalın yazılan `products.name` aslında stok kodudur; ürün
+adı `short_description`'dır. Sipariş ekranında ERP faturası kesmenin bir yolu
+yoktu (yalnız ERP → Faturalar → siparişten fatura seçicisi) — Erdal yerel
+satışı geçip faturalayamadı.
+
+**Çözüm.**
+
+- **Müşteri seçimi** (`add_order.php`): sol panelde "Müşteri" kartı; kişi
+  (ad, firma, e-posta) ve — ERP açıksa — kişisi olmayan cariler aranır
+  (`?request=search_customers`), seçim `$_SESSION['ecommerce']['local_sale_customer']`'da
+  tutulur (siparişe değil: `initialize_order()` `contact_id`'yi her seferinde
+  ezer), satış **tamamlanırken** `orders.contact_id` ve `orders.erp_account_id`
+  yazılır. Kişi seçilirse cari, kişinin bağlı carisidir (yoksa köprü
+  faturalarken kart üzerinden açar); cari seçilirse kişisi varsa o.
+- **Sıcak satış.** Müşteri seçilmezse `contact_id = 0` yazılır — satış artık
+  yöneticinin adına geçmez (`view_order.php` LEFT JOIN + boş kişi bloğu ile
+  bunu zaten kaldırıyor). Faturalanabilmesi için **`config.erp_walkin_account_id`**
+  (migration **4.59**, INT; sabit `ERP_WALKIN_ACCOUNT_ID`): Ayarlar →
+  E-Ticaret → ERP kartında "Sıcak satış carisi" seçimi (aktif müşteri
+  carileri). Tanımlıysa sıcak satışın `erp_account_id`'si bu olur ve köprü onu
+  kullanır; tanımlı değilse ekran bunu söyler ve satış müşterisiz
+  faturalanamaz.
+- **KDV.** Tamamlanırken her satır için `local_sale_line_tax()`: ürün
+  `taxable` ise `get_effective_tax_rate(products.tax_rate, get_default_tax_rate())`
+  — mağazanın kendi ülkesinin vergi bölgesi, checkout'un tezgâhtaki alıcıya
+  uygulayacağı oran — satır toplamı üzerinden `order_items.tax_total`
+  (`tax = 0`, `update_order_item_taxes()` sözleşmesi); `orders.tax` toplamı,
+  `total = subtotal + tax`. Sepet altbilgisi Ara toplam / KDV / Toplam
+  gösterir. Köprünün "fatura toplamı = sipariş toplamı" denetimi geçiyor.
+- **Ürün adı.** Arama sonuçları ve sepet satırları `short_description`'ı
+  kalın, stok kodunu (`name`) altta gösterir; arama iki sütunda, sıralama
+  ürün adına göre; stok takipli ürünlerde "Stok: N".
+- **Siparişten fatura.** `view_order.php` araç çubuğunda ERP açık ve yetkili
+  kullanıcı için: fatura varsa numarası (bağlantı), yoksa tamamlanmış ve bir
+  kişiye ya da cariye bağlı siparişte **"Faturayı Kes"** (POST →
+  `add_erp_invoice.php`, `from_order_screen=1` ile ret sipariş ekranına
+  döner); ikisi de yoksa neden söylenir. `add_order.php` "Son Yerel Satışlar"
+  tablosuna aynı sütun. `add_erp_invoice.php` sipariş seçicisi artık
+  `contact_id > 0 OR erp_account_id > 0` (sıcak satışlar da listelenir),
+  etiketi faturalama adı boşsa kişi/cari adından, yerel satışlar "(yerel
+  satış)" ile.
+- Tamamlanan satış artık siparişin ekranına gider (listeye değil): orada
+  fatura düğmesi var.
+
+**Kararlar.** Sıcak satış carisi ayarı için config'e INT sütun açıldı (4 bayt;
+satır sınırı için VARCHAR'dan kaçınıldı). Kargo/indirim yerel satışta yok
+(tezgâh satışı). Ödeme yöntemi ve tahsilat fişi otomatik kesilmiyor —
+sonraki adım: "tamamla + tahsilat gir" (kasa seçimiyle) tek hareket olabilir.
+
+### Doğrulama
+
+`php tools/lint.php`, `check_lang.php`, `check_api_schema.php` temiz. **Dev'de
+(dev.pinegrap.com):** 4.59 koştu (`config.erp_walkin_account_id` eklendi). Kişi
+arama "ece" → 4 kişi (bağlı cari kimlikleriyle), "kodrop" → firma eşleşmesi;
+Ece Doğan seçildi → kart kişi + cari bağlantıları; Pirinç Duvar Apliği
+okutuldu → tamamlandı: sipariş #1531 ara toplam 749, **vergi 134,82**, toplam
+883,82, kişi Ece Doğan; ERP seçicisinde "#1531 - Ece Doğan (yerel satış)" →
+PGF…008, cari Ece Doğan, KDV 134,82 (köprü toplam denetimi geçti). Sıcak
+satış: "Perakende Müşteri" carisi açıldı, ayar kartından seçildi (form POST ile
+kaydedildi, `now=13`); müşterisiz satış #1533 → müşteri bloğu boş, vergi
+53,99 → ERP seçicisinden PGF…009 **Perakende Müşteri**'ye kesildi. #1535 sipariş
+ekranındaki "Faturayı Kes" ile PGF…010 kesildi; ekran sonra fatura
+bağlantısını gösteriyor. Son satışlar tablosu #1532 ve #1534 için "Faturayı
+Kes", #1531/#1533 için numara gösteriyor. Sepet altbilgisi 299,95 / 53,99 /
+353,94.
+
+**Doğrulanamayan:** gerçek barkod cihazı; vergi bölgesi tanımsız mağaza
+(`get_default_tax_rate()` false → KDV 0, kodla).
+
+---
+
+## 2026.4.4 — Fatura editörü: ürün adıyla arama, stok, KDV, kampanya iskontosu + ek iskonto, barkod, alan bazlı hata (2026-09-20)
+
+**Belirti.** Elle fatura ve irsaliye editöründe ürün arama `products.name`
+üzerinden çalışıyordu — o sütun **stok kodudur**, ürün adı
+`short_description`'dır; sonuçlar ve seçilen ürün stok koduyla görünüyordu.
+Seçim stok göstermiyor, `tax_rate` NULL üründe KDV kutusunu boş bırakıyor,
+mağazanın üründeki kampanyasını hiç bilmiyordu. Doğrulama hataları hep
+`_error`'a düşüyordu: "2. satır için açıklama gerekli" yazısı var, hangi kutu
+olduğu yok — Erdal hatanın nerede olduğunu bulmakla vakit kaybetti. Barkod
+cihazıyla satır eklemenin yolu yoktu (add_order.php'de vardı).
+
+**Çözüm.**
+
+- **`includes/erp/products.php`** (yeni): `erp_product_search($q)` ad
+  (`short_description`), stok kodu (`name`) ve barkodda arar (tam barkod
+  eşleşmesi başa gelir; pasif ürünler de listelenir, işaretli);
+  `erp_product_by_barcode()` (`BARCODE_ENABLED` ise `product_barcodes`, yoksa
+  stok kodu — `add_order.php` ile aynı okuma); `erp_product_for_line()` editör
+  şekli: `name` (ürün adı), `sku`, `price` (kuruş), `tax_rate` (ürünün kendi
+  oranı, yoksa **mağazanın kendi ülkesinin vergi bölgesi** —
+  `erp_default_tax_rate()` → `get_tax_rate_for_address(varsayılan ülke, '')`;
+  `tax_rate_source` product/zone), `stock` (takipli değilse null),
+  `out_of_stock`, `enabled`, `offer`. `get_erp_products.php`: `?q=` → sonuç
+  listesi, `?barcode=` → tek ürün ya da null.
+- **Kampanya iskontosu** — `erp_product_offer($product_id, $price)`: yalnız
+  üründen bilinebilecek teklif sayılır: etkin, tarih aralığında, kod
+  istemeyen (`require_code = 0`), upsell olmayan, **sepet kuralı olmayan**
+  (`offer_rule_id = 0`) ve **müşteri koşulu olmayan** (`offer_conditions` boş)
+  bir teklifin bu ürünü ya da ürünün grubunu hedefleyen `discount product`
+  eylemi (`pg_offer_action_targets_product()` — mağazanın kendi eşlemesi;
+  `cheapest` hedefi ürüne cevap veremediği için atlanır). En büyük indirim
+  kazanır (sepetin "en iyi teklif" kuralı). Tutar indirimi 3 ondalıklı orana
+  çevrilir (1.000 TL altı fiyatta bir kuruşun altında sapma). Sepetin geri
+  kalanına ya da alıcıya bağlı teklifler checkout'un işidir, elle faturanın
+  değil — bilinçli sınır.
+- **İki iskonto, sırayla** (`erp_manual_lines_build()`): önce kampanya
+  (`offer_discount_rate`, satır toplamı üzerinden), sonra yazılan iskonto
+  (`discount_rate`, **kampanyanın bıraktığı tutar** üzerinden);
+  `discount_amount` ikisinin toplamı — belge, iade, dışa aktarım tek iskonto
+  görür, hiçbiri değişmez; KDV kalan üzerinden. **Migration 4.58**
+  `erp_invoice_items.offer_id INT`, `offer_discount_rate DECIMAL(6,3)` —
+  oran kopyalanır, teklif sonradan düzenlenir, belge söylediğini söylemeli.
+  Kolonlar yoksa yazılmaz (`erp_invoice_lines_have_offers()`); kesim
+  (`erp_invoice_issue`) satırları yeniden `erp_manual_lines_build` ile kurduğu
+  için kampanya kesimde de korunur. Fatura ekranı iskonto sütununda "Kampanya
+  %10 + %5" notu. Alış faturasında kampanya uygulanmaz.
+- **Editör** (`invoice_form.php`, `erp_invoice_editor.js`): yeni "Kampanya %"
+  sütunu (dolu gelir, silinebilir), ürün kutusunun altında ipucu satırı
+  ("Stok Kodu: 20G · Tükendi · Kampanya −10%"; miktar stoku aşınca "Stoktan
+  fazla (31)"; pasif ürün "satışta değil"; KDV bölgeden geliyorsa KDV kutusunun
+  `title`'ında), sonuç listesinde ad + stok kodu + fiyat + stok/tükendi/
+  kampanya rozetleri; seçimde açıklama = ürün adı, KDV her zaman dolar.
+  JS hesabı sunucuyla aynı sırada (kampanya → iskonto → KDV).
+- **Barkod:** Kalemler kartı başlığında barkod kutusu; Enter (cihazın
+  gönderdiği) → `?barcode=` → ürün satırdaysa **miktar +1**, değilse ilk boş
+  satıra ya da yeni satıra iner; bulunamazsa kutu `is-invalid` + başlık
+  ipucu. İrsaliye editörü aynı betiği kullanır: barkod kutusu ve kampanya
+  yok (kartlar yok, betik denetliyor), ipucu ve etiketler var.
+- **Alan bazlı hata:** `erp_manual_lines_build()` ve `erp_manual_header_build()`
+  artık `field` döner (`lines[n][description]`, `account_id`, …);
+  `erp_invoice_draft_save()` / `erp_invoice_create_manual()` iletir; ekranlar
+  `mark_error($field)` → liveform kutuya `is-invalid` verir; betik yükte ilk
+  `.is-invalid`'e kaydırıp odaklar. Hata metinleri de kutuya göre ayrıldı
+  (birim fiyat / KDV / iskonto / kampanya ayrı cümleler).
+- Taslak editörü (`edit_erp_invoice_draft.php`) saklı satırlarda ürün kutusuna
+  stok kodu değil ürün adını getirir (`COALESCE(NULLIF(short_description,''), name)`).
+
+**Yol boyunca düzelen 4.56 hatası:** `edit_erp_invoice.php`'deki "Gecikme
+hatırlatmaları" kartı `$lines` / `$output_lines` değişkenlerini yeniden
+kullanıyordu ve **fatura satırları tablosunu boşaltıyordu** (kart görünen her
+faturada satırlar boş çıkıyordu). `$reminder_lines` / `$output_reminder_lines`
+olarak ayrıldı.
+
+### Doğrulama
+
+Dev'de 4.58 iki kez koştu (2 eklendi / 2 "zaten var"). `?q=sandalye` üç ürün:
+Yeşil Ofis Sandalyesi teklif 5 (%10, dev örnek kampanyası), stok 0, tükendi;
+`?barcode=` stok koduyla ürün, `NOPE-123` null. Editör: "yeşil" → seçildi →
+açıklama ürün adı, fiyat 299,95, KDV 18 (bölgeden), kampanya 10, ipucu; ek
+iskonto 5 → satır 302,61: 299,95 − 30,00 (kampanya) − 13,50 (%5 × 269,95) =
+256,45 + KDV 46,16 ✓. Barkod "20M" iki kez → Mocha satırı miktar 2; "YOK-999" →
+kutu kırmızı. Cari seçilmeden taslak → hata `account_id` kutusunda ve odak
+orada; miktar boş → `line_quantity_1` işaretli ve odaklı, satırlar korunmuş.
+Kesim → PGF…007: ara toplam 899,85, indirim 43,50, KDV 154,14, toplam 1.010,49;
+satır tablosunda `offer_id=5, offer_discount_rate=10.000, discount_rate=5.000,
+discount_amount=4350`. Fatura ekranı "−₺43.50 Kampanya %10 + %5". İrsaliye
+editörü aynı betikle arama/seçim çalıştı, konsol hatasız.
+
+**Doğrulanamayan:** tutar tipli kampanya (dev'de yalnız yüzdeli var);
+`product_barcodes` ile gerçek barkod (dev'de barkod özelliği kapalı, stok kodu
+yolu denendi).
+
+---
+
+## 2026.4.4 — Cari ↔ kişi/kullanıcı bağı: cari formunda kişi ara-seç, kişi ekranında cari, kayıt hatası (2026-09-20)
+
+**Belirti.** `erp_accounts.contact_id` ve `contacts.erp_account_id` sütunları
+Faz 0'dan beri vardı ama hiçbir ekranda yoktu: cari formunda kişi
+seçilemiyor, kişi ekranında cari görünmüyor, cari listesi kimin kişiye bağlı
+olduğunu söylemiyordu. Daha kötüsü: **`edit_erp_account.php` her kayıtta
+`contact_id`'yi sıfırlıyordu** — `erp_account_save()` anahtar yoksa 0
+yazıyordu, düzenleme formu anahtarı göndermiyordu; köprünün kurduğu bağ ilk
+düzenlemede kopuyordu (dev'de cari #2'nin bağı bu yüzden yoktu).
+`erp_accounts_sync_contacts()` yazılmış ama hiçbir yerden çağrılmıyordu.
+
+**Çözüm.**
+
+- **`erp_account_save()`** `contact_id`'yi yalnız `$data`'da anahtar varsa
+  yazar (`overdue_notify_customer` ile aynı kural). Köprü ve CSV içe aktarma
+  zaten gönderiyor; düzenleme formu artık gönderiyor.
+- **`includes/erp/accounts.php`:** `erp_account_data_from_contact()` (köprünün
+  kart okuması tek yerde; `erp_account_for_contact()` bunu kullanır),
+  `erp_contact_summary()` (ad, firma, e-posta, telefon, il/ilçe, **panel
+  kullanıcısı** `user.user_contact` üzerinden, sipariş sayısı, bağlı cari —
+  bağ **cari tarafından** okunur, `contacts.erp_account_id` yalnız aynadır),
+  `erp_contact_search()` (ad/firma/e-posta), `erp_account_link_contact()`:
+  bir kişi bir cariye — başka cariye bağlı kişi reddedilir; iki taraf
+  yazılır, eski kişi bırakılır.
+- **Cari formu** (`account_form.php` → `erp_account_form_contact_card()`):
+  "Bağlı Kişi" kartı — kişi arama kutusu (`get_erp_contacts.php`, yeni uç,
+  ERP kapısı), seçilen kişinin özeti (kişi kartına, siparişlerine ve varsa
+  kullanıcısına düğmeler), "Bağı kaldır". Başka cariye bağlı kişi listede
+  gri ve "başka bir cariye bağlı" rozetli. Kayıt: `edit_erp_account.php`
+  bağı **kayıttan önce** `erp_account_link_contact()` ile dener, ret alanda
+  (`contact_id`) kalır ve hiçbir şey yazılmaz. `add_erp_account.php?contact_id=N`
+  formu kişinin kartından **dolu** açar (köprünün açacağı gibi, operatör
+  görür, kaydeder); kişinin zaten carisi varsa ona yönlendirir.
+- **Kişi ekranı** (`edit_contact.php` araç çubuğu): ERP açık ve yetkili
+  kullanıcıya cari varsa "Cari Hesap: ₺200.40 size borçlu" bağlantısı, yoksa
+  "Cari Hesap Aç" (→ dolu form).
+- **Cari listesi:** "Kişi" sütunu (bağlı kişiye ikon bağlantı) ve araç
+  çubuğunda "Siparişi olan N kişiye cari aç" (`erp_accounts_sync_contacts()`,
+  onaylı POST; N = siparişi olup carisi olmayan kişi sayısı, 0 ise düğme yok).
+
+**Kararlar.** Kullanıcı ekranına (`edit_user.php`) ERP düğmesi konmadı; zincir
+kullanıcı → kişi → cari, kişi ekranından görülüyor. Toplu cari açma dev'de
+**koşturulmadı** (401 kişi üretirdi); tek kişi yolu denendi.
+
+### Doğrulama
+
+Cari #2'ye arama "Ece Do" → Ece Doğan (184) seçildi → kaydet → kart
+"Ece Doğan · Buca İzmir · Kişi · 1 sipariş", `contact_id = 184`; kişi 184
+ekranı "Cari Hesap: ₺200.40 size borçlu → edit_erp_account.php?id=2"; liste
+sütununda ikon; düğme "Siparişi olan 401 kişiye cari aç" görünüyor.
+`add_erp_account.php?contact_id=313` → form Ece Aydın / Gebze / Kocaeli dolu
+→ oluşturuldu (#12), kişi ekranı "Cari Hesap: ₺0.00"; aynı adres ikinci kez →
+"Bu kişinin zaten bir cari hesabı var; işte bu." ile #12'ye yönlendirdi.
+Cari #10'a kişi 184 bağlanmaya çalışıldı → 'Bu kişi zaten "Ece Doğan"
+carisine bağlı' hatası, #2'nin bağı yerinde.
+
+---
+
+## 2026.4.4 — Kasa akışı raporu: dönem, dilim, kasa; virmanlar akış değil (2026-09-20)
+
+**Belirti.** Faz 5'in "kasa akışı" kalemi açıktı. Kasa ve Banka ekranı
+kasaların *bugünkü* bakiyesini, kasa ekranı tek kasanın defterini
+gösteriyor; "bu ay ne girdi, ne çıktı, hangi yoldan" sorusunun tek cevabı
+defteri elle toplamaktı. Pano da yalnız anlık toplamı veriyor.
+
+**Çözüm.** Yeni `includes/erp/cashflow.php` ve `erp_cashflow.php` (kapı
+`validate_erp_access($user, 'cash')`). Giriş: ERP menüsü (kasa hakkı olan
+kullanıcıya "Kasa akışı") ve Kasa ve Banka araç çubuğu. Şema değişikliği
+yok; **defter yazılmaz**, `erp_cash_transactions` okunur — `erp_cash_accounts.balance`
+önbelleği bugünün durumudur, rapor bir döneme bakar.
+
+- **Seçenekler adreste** (`erp_cashflow_options()`): `from`/`to` (Y-m-d;
+  bitiş en geç bugün — kasa akışı olmuş olandır, tahmin değil; varsayılan
+  ay başı–bugün), `group` günlük / haftalık / aylık (seçilmemişse dönemin
+  uzunluğundan: ≤ 62 gün → gün, ≤ 400 → hafta, ötesi ay; rapor bunu
+  söyler), `till` (0 = tüm kasalar). Dönem `ERP_CASHFLOW_MAX_DAYS` (1100
+  gün) ile kırpılır. Bozuk girdi varsayılana düşer, hata vermez.
+- **Virman akış değil.** Tüm kasalar görünümünde `doc_type = 'transfer'`
+  satırları giriş/çıkış/net'e **girmez**: para bir çekmeceden öbürüne
+  geçmiştir, mağazaya girmiş ya da çıkmış değildir; dipnot bunu söyler.
+  Tek kasa görünümünde ve kasaya göre tabloda virmanlar sayılır — o kasa
+  için gerçek harekettir. Bu yüzden kasa tablosundaki kapanışların toplamı
+  ile dönem tablosunun kapanışı aynıdır (virman iki kasada ± aynı tutar).
+- **Açılış** (`erp_cashflow_opening()`): kasaların `opening_balance`
+  sütunu (kasa açılış rakamı bir hareket değil, kasanın özelliğidir —
+  `erp_cash_refresh_balance()` ile aynı okuma) + dönem öncesi hareketlerin
+  `amount_base` toplamı. Ana para birimi dışındaki kasanın açılış rakamı
+  kendi para birimindedir, toplama katılmaz (Kasa ve Banka toplamının
+  kuralı); hareketleri kayıt kurundaki ana para karşılığıyla sayılır ve
+  dipnot düşer.
+- **Dilimler boş satırlarıyla** (`erp_cashflow_report()`): SQL tarafı
+  `GROUP BY` ile toplar (gün `doc_date`, hafta `YEARWEEK(doc_date, 3)` =
+  ISO hafta, ay `DATE_FORMAT '%Y-%m'`), PHP tarafı dönemi gün gün yürüyüp
+  her dilimi üretir (`date('oW')` / `date('Y-m')` aynı anahtarı verir);
+  sessiz bir hafta da satırını alır — akıştaki boşluk bilgidir. Hafta
+  etiketi döneme kırpılır (1/8–2/8 gibi), ay etiketi `AA/YYYY` (yerel ay
+  adı yok, çeviri sorunu yok). Yürüyen bakiye açılıştan başlar.
+- **Kasaya göre** (`erp_cashflow_by_till()`): her kasa için açılış, giriş,
+  çıkış, net, kapanış, hareket sayısı; pasif ve dönemde hareketsiz kasa
+  listelenmez; ad kasa ekranına bağlantı. **Ödeme yöntemine göre**
+  (`erp_cashflow_by_method()`): nakit / havale-EFT / kart / çek / diğer —
+  etiketler tahsilat ekranınınkiler, yalnız hareket görenler.
+- **CSV** (`erp_cashflow_csv()`): dönem tablosu, açılış ve toplam satırıyla,
+  tutarlar `erp_export_amount` biçiminde (`csv_invoices` profili), `;`
+  ayraçlı BOM'lu — yaşlandırma raporuyla aynı yol.
+- Ekran: `erp_aging.php` deseni (`.pg-toolbar`: dilim ve hızlı dönem
+  düğmeleri — bu ay / geçen ay / son 90 gün / bu yıl —, tarih + kasa
+  formu, CSV, Kasa ve Banka bağlantısı); özet kartı açılış / giriş / çıkış /
+  net / kapanış; dönem tablosu **DataTable değil** (ekstre gibi tarih
+  sırasıyla okunur, yürüyen bakiye sıralanamaz). `tr.json` +25 anahtar;
+  mevcut `From`/`To`/`Net` çevirileri ("Şundan", "Şuna", "KDV Hariç")
+  uymadığından `Start` / `End` / `Net change` kullanıldı.
+
+**Kararlar.** Tahmin (vadesi gelecek alacak/borç) rapora katılmadı — kasa
+akışı gerçekleşmiş paradır; ileriye bakış yaşlandırma raporunun "yedi gün
+içinde vadesi gelen" sütunlarında. İptal ters kayıtları (`doc_type =
+'cancel'`) normal hareket olarak sayılır: para gerçekten geri çıktı ya da
+kayıt ters çevrildi, ikisi de o günün akışıdır. Cari bazında kırılım yok
+(tahsilatların kimden geldiği carinin ekstresinde). Grafik çizilmedi —
+tablo yeter, istenirse `chart_display` deseniyle bir satır.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. **Dev sitede
+(dev.pinegrap.com, yerleşik tarayıcı):** tek kasa ile (Merkez Kasa,
+açılış 1.000, 16/9'da 4 tahsilat 1.350,75) günlük / haftalık / aylık
+görünümler; haftalık ilk dilim döneme kırpıldı ("1/8/2026 – 2/8/2026"),
+aylık 628 günlük dönemde kendini seçti ve dipnot düştü; kapanış 2.350,75 =
+Kasa ve Banka toplamı; CSV başlık/açılış/toplam satırları doğru. Sonra
+ikinci kasa açıldı ("Test Banka (kasa akışı)", banka, açılış 500), 18/9
+Merkez → Banka **300 virman**, 19/9 bankadan cari #2'ye **120,50 ödeme**
+(havale). Tüm kasalar: açılış 1.500, giriş 1.350,75, çıkış **120,50**
+(virman yok), net 1.230,25, kapanış **2.730,25** = Kasa ve Banka toplamı;
+kasaya göre Merkez 1.000 + 1.350,75 − 300 = 2.050,75, Banka 500 + 300 −
+120,50 = 679,50, toplam 2.730,25 ✓; yönteme göre Nakit 1.350,75 giriş,
+Havale/EFT 120,50 çıkış. Tek kasa (`till=4`): açılış 500, giriş 300
+(virman sayıldı), çıkış 120,50, kapanış 679,50; yönteme göre Havale/EFT
+300 / 120,50. Araç çubuğu formu satır içi (ilk sürümde `flex-wrap` +
+`form-control` genişliği alanları alt alta dizmişti; `w-auto` ile
+düzeltildi). Menü ve Kasa ve Banka bağlantıları yerinde.
+
+**Doğrulanamayan:** döviz kasası (dev'de döviz kapalı); 1100 günden uzun
+dönem kırpması ve iptal ters kaydı (yalnız kodla). **Dev'de kalan test
+verisi:** kasa #4 "Test Banka (kasa akışı)", 300 virman, cari #2'ye 120,50
+ödeme (cari #2 bakiyesi bu yüzden 79,90'dan 200,40'a çıktı).
+
+---
+
+## 2026.4.4 — Cari mutabakat mektubu: tarih itibarıyla bakiye, dönem ekstresi, PDF ve e-posta (2026-09-20)
+
+**Belirti.** Faz 5'in "cari mutabakat mektubu (PDF)" kalemi (`docs/_plan_erp.md`
+§10) açıktı. Cari ekranı bugünkü bakiyeyi ve tüm ekstreyi gösteriyor, ama
+karşı tarafa "şu tarih itibarıyla defterimiz bunu diyor, mutabık mısınız"
+diye gönderilecek bir belge yoktu; operatör ekstreyi elle kopyalıyordu.
+Dönem sonu mutabakatı tarih itibarıyla okunmak zorunda — mektup
+yazılırken defter ilerlemiş olabilir.
+
+**Çözüm.** Yeni `includes/erp/reconciliation.php` (mantık),
+`includes/erp/templates/reconciliation_default.html` (A4 şablon), ekranlar
+`erp_reconciliation.php?id=<cari>` ve `get_erp_reconciliation_pdf.php`.
+Cari ekranına (`edit_erp_account.php`) "Mutabakat Mektubu" araç çubuğu
+düğmesi. Şema değişikliği yok; **defter yazılmaz**, mektup defterin bir
+tarihteki okumasıdır.
+
+- **Tarih itibarıyla, önbellekten değil.** `erp_reconciliation_balance()`
+  bakiyeyi `erp_account_transactions` üzerinden `doc_date <= as_of` ile
+  toplar (`erp_accounts.balance` önbelleği hiç kullanılmaz); cari kendi para
+  biriminde tutuluyorsa aynı tarihe kadar o para birimindeki hareketlerin
+  toplamı da verilir (`erp_account_refresh_balance()` ile aynı tanım).
+  Hareketler `erp_account_statement($id, $from, $as_of)` — mevcut ekstre
+  fonksiyonu; `from` öncesi tek açılış bakiyesi. Bakiye tarihi bugünden
+  ileri olamaz (yarının bakiyesi tahmindir), dönem başı bakiye tarihinden
+  sonra olamaz; bozuk girdi hataya değil varsayılana düşer
+  (`erp_reconciliation_options()`: bugün / yılbaşı / 7 gün) — mektup her
+  koşulda üretilir.
+- **Cümle defterin işaretinden kurulur.** Pozitif = borç bakiyesi ("lehimize
+  … borç bakiyesi vermektedir"), negatif = alacak ("lehinize … alacak
+  bakiyesi"), sıfır ayrı cümle. Tutar mutlak değerle basılır; yön cümlede
+  ve bakiye kutusunun altındaki Borç/Alacak etiketinde. Tablo sütunları
+  defterin bakışıyla Borç / Alacak, cari ekranındaki ekstreyle aynı.
+- **Yanıt süresi.** `reply_days` (0–90, varsayılan 7): "… gün içinde, en geç
+  {tarih} … yanıt alınmazsa bakiye mutabık sayılacaktır" cümlesi. Son tarih
+  bakiye tarihinden sayılır; geçmişte kalıyorsa bugünden — geçmiş bir son
+  tarih hiçbir şey istemez. 0 cümleyi tamamen kaldırır.
+- **Referans, numara değil.** `MUT-{Ymd}-{cari id}`: aynı cari ve tarih için
+  her zaman aynı, yanıt alıntılayabilir; hiçbir seriden numara harcamaz.
+  PDF dosya adı da bu.
+- **Uzun dönem.** `ERP_RECONCILIATION_MAX_ROWS` (400) aşılırsa en eski
+  satırlar açılış bakiyesine katlanır ve mektup kaç hareketin katlandığını
+  söyler; kapanış rakamı değişmez — karşı tarafın mutabık kalması istenen
+  rakam o.
+- **Ekran.** Sol: mektup seçenekleri (GET formu → sayfa aynı seçeneklerle
+  yenilenir, önizleme buna bağlı) ve e-posta gönderim formu (POST, token,
+  alıcı adresi carinin adresinden dolu gelir, `data-confirm-content`).
+  Sağ: mektubun HTML önizlemesi (`&html=1`, iframe). Araç çubuğunda PDF /
+  İndir. Bakiye kartı seçilen tarihin bakiyesini ve dönemdeki hareket
+  sayısını gösterir.
+- **E-posta, PDF ekli.** `erp_reconciliation_send()`: kısa kapak yazısı
+  (hitap, referans, bakiye cümlesi, rica, yanıt süresi, "yanıtlayın"), PDF
+  `MUT-….pdf` olarak ekli. Gönderen/yanıt adresi `ECOMMERCE_EMAIL_ADDRESS →
+  EMAIL_ADDRESS` (gecikme hatırlatmalarıyla aynı); adres yoksa düğme
+  kapalı ve neden yazılı. Bunun için **`email()` ek dosya kazandı**
+  (`includes/fn/mail.php`): `attachments` özelliği, her biri `name` +
+  `content` (bayt, yol değil) + isteğe bağlı `type`; `addStringAttachment`.
+  Geri uyumlu — özellik yoksa hiçbir şey değişmez. Gönderim yalnız etkinlik
+  günlüğüne yazılır; cari üzerinde damga yok (aşağıda).
+- Menü etkin-durum listesine `erp_reconciliation.php`; `bootstrap.php` yeni
+  dosyayı `waybills.php`'den sonra yükler. `tr.json` +46 anahtar. Mektup
+  etiketi "To" için mevcut `Şuna` çevirisi uymadığından ayrı anahtarlar
+  (`Addressed to` → Muhatap, `Recipient e-mail`).
+
+**Kararlar.** Cariye "son mutabakat tarihi" damgası **konmadı**: mutabakat
+karşı tarafın cevabıyla tamamlanır, gönderim tarihi tek başına bir şey
+söylemez; istenirse `erp_accounts`'a bir sütun ve ekranda bir satır.
+Şablon yalnız yerleşik (irsaliyeyle aynı gerekçe). Açık belgelerin listesi
+(fatura bazlı) değil hareket listesi basılır: fatura durumları
+(`paid_total`) bugünkü değerdir, tarih itibarıyla yeniden kurulamaz;
+ekstre ise tarihe göre tam olarak kesilebilir. Toplu gönderim (tüm carilere
+dönem sonu mektubu) yapılmadı — istenen ilk şey tek cariye tek mektuptu;
+toplu iş için `erp_reconciliation_send()` döngüde çağrılabilir.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. **Dev sitede
+(dev.pinegrap.com, yerleşik tarayıcı):** cari #2 → ekran, bakiye ₺79.90
+"size borçlu", 2 hareket; önizleme mektubu doğru kurdu (borç cümlesi,
+kutu, 7 gün → 27/9/2026, tablo açılış 0 → 978.70 → 79.90). `as_of=2026-09-01,
+from=2026-08-01, reply_days=0` → bakiye ₺978.70, tek satır, yanıt cümlesi
+yok, referans `MUT-20260901-2`, PDF `%PDF-1.7` / `attachment;
+filename="MUT-20260901-2.pdf"`. Bozuk girdi (`as_of=2030…`, `from` sonra,
+`reply_days=500`) → varsayılanlar. Var olmayan cari → hata sayfası. PDF
+sayfası görüntüye çevrilip okundu (başlık, muhatap, bakiye kutusu, tablo,
+MUTABIKIZ / MUTABIK DEĞİLİZ kutuları, imza satırları, altbilgi). E-posta:
+geçersiz adres tarayıcı doğrulamasında kalır; `example.com` adresine
+gönderim `email()`'e ulaştı, doğru konu / alıcı / yanıt adresiyle günlüğe
+düştü, dev makinada `mail()` yok ("Could not instantiate mail function") →
+ekranda "E-posta gönderilemedi" hatası alanda. Cari ekranındaki düğme
+`erp_reconciliation.php?id=2`'ye gidiyor.
+
+**Doğrulanamayan:** gerçek posta teslimi ve ekin alıcıda açılması (dev'de
+taşıyıcı yok; PHPMailer eki kabul etti); dövizli cari satırı (dev'de döviz
+kapalı); 400+ hareketle katlama (yalnız kodla).
+
+---
+
+## 2026.4.4 — Dahili irsaliye: sevk belgesi, sipariş ve faturayla bağı, PDF (2026-09-20)
+
+**Belirti.** `erp_waybills` ve `erp_waybill_items` tabloları Faz 0'dan beri
+duruyordu, menüde "İrsaliyeler" girişi vardı, ama `erp_waybills.php` bir
+kabuktu: sevk edilen mal için mağazanın verebileceği tek kâğıt siparişin
+yazdırma ekranıydı. Faz 4'ün planı (`docs/_plan_erp.md` §7.6) e-İrsaliye
+değil dahili irsaliye diyor: Paraşüt API'sinde `shipment_documents` oluşturup
+okumak var, bunu e-İrsaliyeye çeviren uç yok; uç doğrulanmadan gönderim
+kolonları da açılmadı.
+
+**Çözüm.** Yeni `includes/erp/waybills.php` (mantık), `includes/erp/waybill_form.php`
+(form kartları ve okuma), `includes/erp/templates/waybill_default.html`
+(A4 şablon); ekranlar `erp_waybills.php` (kabuk yerine liste),
+`add_erp_waybill.php`, `edit_erp_waybill.php`, `get_erp_waybill_pdf.php`.
+Şema değişikliği yok.
+
+- **Numara ve seri.** Seri `ERP_WAYBILL_SERIES` sabiti tanımlıysa o, yoksa
+  fatura serisi + `S` (`PGF` → `PGFS`). Yeni bir `config` sütunu **açılmadı**:
+  `config` satırı InnoDB 65535 bayt sınırına yakın, ayrı seri isteyen
+  kurulum sabiti `config.php`'ye yazar. Numara `erp_next_number($series,
+  'waybill', $year)` ile kayıt anında, işlem içinde alınır; belge doğrudan
+  `issued` doğar — taslak evresi yok, açılıp bırakılan form seriden bir
+  şey harcamaz (fatura taslaklarındaki kuralın aynısı).
+- **Siparişten.** Liste araç çubuğundaki seçici, kişiye bağlı ve iptal
+  edilmemiş irsaliyesi olmayan tamamlanmış siparişleri sunar;
+  `add_erp_waybill.php?order_id=` formu siparişin kalemleri (`order_items`,
+  `saved_for_later = 0`), ilk `ship_tos` satırı ve sipariş ekranının
+  kaydettiği taşıyıcı/sevk tarihiyle (`erp_order_shipment()`) dolu açar.
+  `ship_tos` ilçeyi `city`, ili `state` sütununda tutar — eşleme
+  `erp_account_for_contact()` ile aynı. Cari `orders.erp_account_id`, yoksa
+  `erp_account_for_contact()`. **Sipariş başına bir açık irsaliye:** var olan
+  bir tane bulunursa form açılmaz, o belgeye yönlendirilir ve "#{sipariş no}
+  siparişinin irsaliyesi zaten var" denir. Birden çok alıcılı sipariş tek
+  sevk sayılır; diğer adresler elle yazılır.
+- **Elle.** Cari seçilir, teslim yeri boş bırakılırsa carinin kendi unvanı
+  ve adresi alınır. Başlık doğrulaması `erp_waybill_header_build()`: tarihler,
+  saat HH:MM, taşıyıcı VKN 10/11 hane, sürücü TCKN 11 hane, ülke kodu
+  `countries` tablosundan. Kalemler fatura editörünün `data-erp-*`
+  işaretlemesini kullanır (`assets/js/erp_invoice_editor.js` olduğu gibi:
+  ürün arama, açıklama, miktar, birim); fiyat sütunu yok — "fiyat sonra,
+  faturada". En çok 200 kalem.
+- **Faturalama.** Durum ayrı bir sütunda tutulmaz, `erp_invoices` üzerine
+  LEFT JOIN ile türetilir (`erp_waybill_invoice_state()`: yok/iptal → `none`,
+  taslak → `draft`, aksi → `invoiced`); silinen taslak bağı
+  `erp_invoice_draft_delete()` içinden `erp_waybill_unlink_invoice()` ile
+  düşer. "İrsaliyeyi Faturala": siparişe bağlı belge, siparişin faturası
+  varsa ona bağlanır, yoksa `erp_invoice_from_order()` ile sipariş
+  ekranındaki düğmenin ürettiği faturayı üretir; elle yazılmış belge
+  `erp_invoice_draft_save()` ile katalog fiyatı ve KDV oranı dolu bir
+  **taslak** açar ("İrsaliye PGFS…" notuyla), operatör taslak editöründe
+  bitirir. Düğme taslağa ya da faturaya gider.
+- **İptal.** Faturalanmış belge iptal edilmez — satışı söyleyen belge fatura,
+  tersine çevrilecek olan da o. İptal edilen satır numarasıyla kalır, seri
+  yeniden açılmaz; PDF'te "İPTAL" damgası, listede İptal filtresi.
+- **PDF.** Faturayla aynı motor ve kütüphane (`erp_template_render`,
+  `erp_invoice_pdf`), yerleşik şablon; `?html=1` HTML'i verir, dosya adı
+  belge numarası. Satıcı, müşteri ve teslim yeri blokları, kalemler (#,
+  açıklama, miktar, birim — birim kodu değil adı: `C62` → "adet"), taşıma
+  kutusu, notlar, iki imza satırı.
+- Menü etkin-durum listesine `add_erp_waybill.php` / `edit_erp_waybill.php`;
+  `bootstrap.php` yeni dosyayı `document.php`'den sonra yükler. `tr.json`
+  +51 anahtar.
+
+**Kararlar.** Şablon ERP ayarlarından düzenlenmez (fatura şablonunun aksine);
+tek yerleşik şablon, ilk gerçek istek geldiğinde `erp_templates` tablosuna
+`doc_type = 'waybill'` satırı açılabilir. Sipariş ekranına düğme konmadı;
+giriş yolu liste araç çubuğu — sipariş ekranı yeterince kalabalık, seçici
+zaten "irsaliyesi olmayan tamamlanmış sipariş" filtresini uyguluyor.
+e-İrsaliye gönderimi Faz 3'e bağlı ve API anahtarı gelmeden yapılamaz.
+
+### Doğrulama
+
+`php tools/lint.php`, `php tools/check_lang.php` temiz. **Dev sitede
+(dev.pinegrap.com, yerleşik tarayıcı):** Sipariş #1212 seçildi → form
+kalemler, alıcı adresi (ilçe/il doğru sırada) ve sevk tarihiyle dolu geldi
+→ PGFS2026000000001 kesildi → "Faturala" siparişin var olan faturasına
+(PGF2026000000001) bağlandı; aynı siparişe ikinci kez girilince var olan
+belgeye yönlendirdi. Elle belge (Kodrop) → PGFS2026000000002 → "Faturala"
+taslak #9 açtı (katalog fiyatı ve KDV dolu) → taslak kesildi
+(PGF2026000000005), irsaliye "Faturalandı", liste `?filter=invoiced`.
+PGFS2026000000003 → iptal (düğme `data-confirm-content` ile yerel
+`confirm()` sorar) → "İptal Edildi", `?filter=cancelled`, HTML ve PDF'te
+İPTAL damgası, PDF başlığı `%PDF-1.7`, dosya adı numara. Doğrulama
+hataları tek tek görüldü: boş kalem listesi, açıklamasız satır, sıfır miktar,
+hatalı VKN, hatalı TCKN, hatalı saat (her biri kendi cümlesiyle). Ürün
+arama ve birim seçimi editör betiğiyle çalıştı.
+
+**Doğrulanamayan:** çok alıcılı sipariş (dev'de yok); `ERP_WAYBILL_SERIES`
+sabiti tanımlı kurulum (yalnız kodla).
+
+---
+
+## 2026.4.4 — Modül dikişi tamamlandı: izin tavanı ve denetim (2026-09-20)
+
+ERP modülü dikişi kullanıp kendi uçlarını, olaylarını, nesnelerini ve izin
+satırlarını yazdı. Bir parçası eksikti ve karşı taraf onu kendi dosyasında
+hazır bırakmıştı: `erp_owner_scopes($owner)` — modülün kapsamlarının tavanı.
+
+Tavan olmadan uç çalışmıyor: `api_effective_scopes()` her uygulamayı sahibinin
+bugün tuttuğu hakla sınırlıyor, tanımadığı kapsam da o süzgeçten geçemiyor.
+(Formlar ucunu yazarken aynı duvara çarpmıştım: izin verilmiş ama tavana
+eklenmemiş kapsam 403 döndürüyor.)
+
+İki ekleme:
+
+- `api_module_contributions()` artık bir argüman taşıyabiliyor ve
+  `api_owner_scopes()` modüllere "bu hesaba neyi devredebilir" diye soruyor.
+- Sahibin satırı hesabın **bütün `manage_*` sütunlarını** taşıyor. Ada göre
+  değil şekle göre okunuyor (`SHOW COLUMNS ... LIKE '%manage\_%'`): modülün
+  baktığı hak API'nin hiç duymadığı bir sütun — `manage_erp`, `manage_erp_cash`,
+  sırada ne varsa — ve bunun için API'ye her seferinde bir sütun adı öğretmek
+  gerekmemeli. Sütunlar yükseltmeyle geldiği için varlığı soruluyor, varsayılmıyor.
+
+**Denetleyici de iki tarafı birden tutuyor.** `tools/check_api_schema.php` artık
+modül dosyalarını da okuyor (`includes/*/api.php` bildirimleri,
+`includes/*/api_*.php` arkasındaki kod): 43 çekirdek yol + 13 ERP yolu = 56 yol,
+26 nesne bildirimi, hepsi `returns` bildiriyor ve her nesne adı çözülüyor.
+
+### Doğrulama
+
+Dev sitede: izin ekranında ERP ve ERP kasa satırları çıktı, uygulamaya `erp:read`
+verildi, `/meta` etkin kapsamlar arasında `erp:read` döndürdü ve
+`GET /erp/accounts` gerçek cari kayıtlarını verdi — iki taraf da diğerinin
+dosyasına dokunmadan. Üç denetleyici temiz.
+
+## 2026.4.4 — SEO bulguları, sağlık raporu, satış raporu ve dört olay (2026-09-20)
+
+### `GET /seo/issues`
+
+Bulgular zaten her kaydın üzerinde geliyordu — sayfa, ürün ve grup kendi `seo`
+bloğunu taşıyor. Eksik olan ters yönüydü: "nesi bozuk, hepsini göster". Dört yüz
+sayfalık bir site tek tek GET'le denetlenmez. Site genelindeki bulgular imleçle
+sayfalı tek listede, her birinin hangi kayıt hakkında olduğu (ad ve adres) ile
+birlikte; `entity_type`, `entity_id`, `severity` ve `code` süzgeçleriyle —
+sonuncusu, tek bir sorunu site genelinde toplu halletmenin yolu.
+
+`occurrences`, aynı bulgunun o kayıttaki tekrarı: alt metni olmayan on bir
+görsel, on bir bulgu değil, on biri olan bir bulgudur. Yazma yok; bulgu,
+neyle ilgiliyse o düzeltilip bir sonraki analiz turunda kapanır. Yeni kapsam:
+`seo:read`, tavanı sayfalarla aynı (rol ≤ 2).
+
+### `GET /system/status`
+
+Panonun göstergesinin arkasındaki veri: yüz üzerinden skor ve her kontrol
+durumuyla. Amaç, operatörün **kendi** izlemesini buraya bağlayabilmesi — bir
+işin üç gündür durduğunu öğrenmek için paneli açmak zorunda kalmasın. `key`
+kontrolün İngilizce adı (izleme aracının dallanacağı şey), `title`/`value`/
+`message` insan için ve sitenin dilinde.
+
+Yanıt **önbellekli olanı** veriyor, panelin okuduğu on dakikalık kopya, ve
+`checked_at` cevabın yaşını söylüyor: arkasındaki kontroller dosya bütünlüğü,
+sertifika ve disk taraması yapıyor; dakikada bir yeniden hesaplamaya hiçbir site
+dayanmaz. Depolama rakamları da geliyor.
+
+Kapsam `system:read`, tavanı rol ≤ 1: rapor güvenlik duvarının durumunu,
+duran işleri, disk kullanımını ve bütünlük kontrolünden kalan dosyaları
+söylüyor — bunu bir makineye devretmek, olayları devretmekle aynı ağırlıkta bir
+karar. **Hiçbir şey dışarı gönderilmiyor**: bu bir okuma ucu, kodda adres yok.
+
+### `GET /reports/sales`
+
+Gün ya da ay kırılımında sipariş sayısı ve para. Buradaki her rakam
+`/orders`'tan çıkarılabilir — sorun da bu: kırk bin siparişlik bir mağaza tek
+bir grafik için hepsini sayfalayamaz, veritabanı ise tek ifadeyle topluyor.
+
+Satış sayılan: `complete` ve `exported`. Tamamlanmamış sipariş terk edilmiş
+sepettir, iptal edilmiş para geri gitmiştir; ikisi de `status` ile
+istenebiliyor, çünkü terk oranını ölçen mağaza gerçek bir soru soruyor. Tutarlar
+alt birim, varsayılan pencere son otuz gün, en çok 400 dönem.
+
+### Dört olay
+
+- **`order.delivered`** — teslim tarihi bir an önce yokken belirdiğinde,
+  `update_order()` içinden (kargo numarasının kuralının aynısı, aynı yerde).
+- **`product.deleted`** — `pg_pb_delete_product()` içinden, yani ürün listesi,
+  builder ve toplu işlem hepsi bu satırdan geçtiği için tek yerden. Ad, taşıyan
+  satır silinmeden önce okunuyor: kendi katalog kopyasını tutan entegrasyona
+  neyin kaybolduğunu söylemek gerek, id tek başına karşı sistemde bir şey ifade
+  etmiyor.
+- **`stock.low`** — stok eşiğin altına **düştüğü anda**, her yazmada değil: beşlik
+  eşikte ikide duran ürün yoksa her satışta olay üretirdi ve günde dört kez gelen
+  ikmal uyarısı okunmaz olur. Yalnız `ECOMMERCE_LOW_STOCK_THRESHOLD` tanımlı
+  sitelerde çalışıyor; katalog açıklaması bunu söylüyor (ayar ekranı yok, sepet
+  bileşeni de aynı sabiti okuyor — ayrı bir iş).
+- **`customer.created` / `customer.updated`** — önceki maddede geldi.
+
+### Doğrulama
+
+Dev sitede: `/seo/issues` 526 bulguyu sayfalı verdi, kayıt adı ve adresiyle;
+`code=thin_content` 30 kayıt, tek sayfanın sekiz bulgusu, geçersiz
+`entity_type` 422. `/system/status` 86 skor, 18 kontrol, düşen üç kontrol
+(`Directory File Integrity`, `Last Backup`, `Scheduled Tasks`) ve depolama
+rakamları. `/reports/sales` 23 günlük ve 15 aylık dönem, toplamlarıyla;
+`from > to` 422. Olaylar: gerçek bir ürün API'den oluşturulup silindi →
+`product.deleted` kuyruğa düştü (`{id, name}`), teslim tarihi yazıldı →
+`order.delivered` düştü (`{id, order_number, ship_to_id, delivery_date}`), test
+verisi geri alındı. `stock.low` bu sitede eşik tanımlı olmadığı için
+üretilmedi — beklenen davranış, canlı doğrulanamadı.
+
+`check_api_schema` 43 yol / 19 nesne, `lint` ve `check_lang` temiz.
+
+## 2026.4.4 — Toplu fiyat ucu (2026-09-20)
+
+`POST /products/prices` — stok ucunun ikizi ve aynı sebeple var: geceleyin yüz
+ürünü yeniden fiyatlayan bir pazaryeri yüz çağrı yapmamalı, fiyat listesi
+dışarıdan sürülen mağaza da o gidiş gelişleri kaldıramaz.
+
+Batch 200 dönüyor, kalem başına sonuç veriyor (`ok`, `not_found`, `invalid`) ve
+`applied` kaçının indiğini söylüyor: karşı tarafın henüz silindiğini fark
+etmediği ürün, taşıma hatası değil veridir. Fiyat tam sayı alt birim; ondalık
+**reddediliyor, yuvarlanmıyor** — birinin fiyatını sessizce yuvarlamak, biçimin
+yanlış olduğunu söylemekten kötüdür ve bu, kimse fark etmeden yüz kez olabilecek
+tek uçtur. Yalnız fiyat yazılıyor; ürünün geri kalanı tek tek
+`POST /products/{id}`'den geçiyor, çünkü kaydın kalanı bir makinenin bakmadan
+yüzer yüzer değiştireceği şey değil.
+
+Fiyatı gerçekten değişen ürün için `product.updated` kuyruğa giriyor ve
+pazaryeri eşitlemesi haberdar ediliyor; aynı fiyat tekrar gönderilirse kayıt da
+olay da yazılmıyor — tekrar çağrı güvenli.
+
+### Doğrulama
+
+Dev sitede yedi kalemlik tek çağrı: fiyat değişti (59900 → 60400, `previous`
+ile birlikte), aynı fiyat tekrar gönderilince `ok` ama yazma yok, olmayan ürün
+`not_found`, ondalık ve negatif fiyat `invalid`, kimliksiz kalem ve nesne
+olmayan kalem `invalid`. Fiyatlar testten sonra eski değerlerine döndürüldü.
+`check_api_schema` 40 yol / 16 nesne görüyor, `lint` ve `check_lang` temiz.
+
+## 2026.4.4 — Müşteri yazma uçları (2026-09-20)
+
+`customers:write` kapsamı izin ekranında ayrılmıştı ama arkasında uç yoktu:
+pazaryerinden ya da bir CRM'den gelen alıcı, panele elle giriliyordu. İki uç
+geldi: `POST /customers` ve `POST /customers/{id}`.
+
+Yazılan, adres defteri kaydının **düz alanları**: ad, soyad, unvan, firma,
+e-posta, telefon (mobil sütununa — kurye de pazaryeri de onu ister), iş adresi
+alanları, not ve `opt_in`. Yazılmayanlar ve nedenleri kodun başındaki nottan:
+
+- **Kişi grupları ve opt-in satırları** — rıza meselesi. Panelin ekranı bir
+  kişiye bakıp karar veren operatör için grup işaretliyor; pazaryerinin alıcı
+  listesini içeri alan bir uç adına devredeceği bir karar yok.
+- **`member_id` ve `expiration_date`** — üyelik kimliği, üyelik sistemi
+  tarafından veriliyor; makinenin birine anahtar yazması olurdu.
+- **Ortaklık (affiliate) alanları** — komisyon oranı ve benzersiz olması gereken
+  kod taşıyor, onayı insan verir.
+- **ERP sütunları** — sahibi olan modülün.
+
+Tekilleştirme de yok: `contacts` tablosu, panel ve gerçek hayat aynı adreste iki
+kişiye izin veriyor. Upsert isteyen önce `GET /customers?email=` ile bakar; uç
+bunu açıklamasında söylüyor.
+
+Kayıt, panelin kendi ekranının bıraktığı damgayı bırakıyor (`user`,
+`timestamp`) ve etkinlik kaydına uygulama adıyla yazılıyor. En az bir tanımlayıcı
+alan şart: adı, firması ya da e-postası olmayan satır müşteri değil, sonradan
+birinin temizleyeceği boş satırdır.
+
+**Olaylar.** `customer.updated` eklendi, `customer.created` zaten kataloğaydı
+ama **hiçbir yerden üretilmiyordu** — abone olunabilen, hiç gelmeyen bir olay.
+Şimdi ikisini de bu uçlar üretiyor. Katalogdaki açıklamaları bunu olduğu gibi
+söylüyor ("API üzerinden"), çünkü adres defteri bu yazılımda altı ayrı yerden
+yazılıyor (checkout, kayıt formları, kampanya ekranı, kişi ekranı, formlar ve bu
+API) ve yalnız sonuncusu şimdilik haber veriyor. Kapsadığından fazlasını vaat
+eden bir abonelik, dürüst olandan kötüdür.
+
+**İzin.** `customers:write` artık gerçek: kapsam grubunun yazma yarısı açıldı ve
+tavan `customers:read` ile aynı yere bağlandı (rol < 3 ya da "kişileri yönet") —
+panelde kişiyi açabilen, bir makineye eklettirebilir de.
+
+### Doğrulama
+
+Dev sitede: oluşturma 201 ve kayıt geri döndü, kısmi güncelleme yalnız
+gönderilen alanları değiştirdi, geçersiz e-posta 422 (`field: email`), boş
+oluşturma 422, olmayan kayıt 404, alansız güncelleme 422. `check_api_schema`
+39 yol görüyor, `lint` ve `check_lang` temiz.
+
+**Bir ara gözlem:** test sırasında bir yanıt Türkçe yerine İngilizce döndü;
+sebebi kodda değil, `tr.json`'un o anda yeniden yazılıyor olmasıydı — yarım
+okunan dosyada hiçbir anahtar çözülmüyor. İki oturum aynı depoda çalışırken
+gerçek bir tehlike, koordinasyon notuna "dil dosyası atomik yazılır (geçici
+dosya + rename)" kuralı eklendi.
+
+## 2026.4.4 — Formlar ve gelen cevaplar API'de (2026-09-20)
+
+`forms` ve `form_data` dışarı hiç açılmamıştı: siteye gelen her başvuru,
+teklif isteği, destek kaydı ve üyelik formu panelde kalıyordu. CRM'e ya da
+e-posta aracına bağlanmanın yolu ekrandan kopyalamaktı.
+
+Üç uç, üçü de okuma (`forms:read`):
+
+- `GET /forms` — form taşıyan sayfalar, alan ve gönderim sayısıyla.
+- `GET /forms/{id}` — alanların tanımı: ad, etiket, tip, zorunluluk, seçim
+  listesinin şıkları, hangi kişi alanını beslediği. `office_use_only`,
+  ziyaretçinin görmediği, operatörün sonradan doldurduğu alanı işaretliyor.
+- `GET /forms/{id}/submissions` — gelenler, imleçle sayfalı, eskiden yeniye.
+
+Adlandırma bir kez söylenmeye değer, çünkü tablolar içeriden adlandırılmış:
+**form = alanları olan sayfa** (`form_fields.page_id`), **`forms` tablosu bir
+gönderimdir**, değerler `form_data`'da alan başına bir satır. Bu yüzden bir
+formun id'si sayfa id'sidir ve aynı id `/pages`'ten sayfayı da okur.
+
+Kararlar:
+
+- **Yazma yok.** Form, sayfa tasarımcısında çizilen bir şey: kendi
+  doğrulaması, yükleme klasörü, sınav cevapları ve kişi eşlemesiyle. Onu API'den
+  yazmak o ekranı yeniden üretmek olurdu. Entegrasyonun istediği diğer yarı —
+  ne geldiği — burada.
+- **Gönderilmemiş taslaklar varsayılan olarak gelmiyor.** Form, ziyaretçinin
+  kaydedip sonra dönmesine izin verecek şekilde kurulabiliyor; yarım bir satır
+  başvuru değildir. `complete=false` isteyen onları alır.
+- **Yüklenen dosya yalnız `file_id`.** Adresi vermek, `forms:read` tutan ama
+  `files:read` tutmayan bir uygulamaya dosyayı teslim etmek olurdu — ve bir
+  başvurunun ekindeki dosya çoğu zaman sitedeki en özel şeydir.
+- **Değer dışarı çıkarken `{path}` açılıyor.** Zengin metin alanı bağlantılarını
+  sitenin kendi kısayoluyla saklıyor; olduğu gibi verilse karşı sistemde kırık
+  bir bağlantı olurdu, sayfanın yaptığı gibi açılıyor — mutlak adrese, çünkü
+  okuyan bu sitede değil.
+- **Alan silinse de gönderim anlamını koruyor:** değer, `form_data`'nın tuttuğu
+  alan adını taşıyor; etiket ve tip alan hâlâ duruyorsa geliyor, yoksa null.
+
+**İzin.** Yeni `forms:read` kapsamı. Tavan panelin kuralıyla aynı
+(`validate_forms_access`): rol < 3 ya da "formları yönet" hakkı — bir makineye
+devredilen, kişinin kendi açabildiğinden geniş olmuyor.
+
+**Olay.** `form.submitted`, gönderim tamamlandığında `custom_form.php`'den
+kuyruğa giriyor (kaydet-sonra-dön yolu erken dönüyor, oradan olay çıkmıyor).
+Yük, değerleri taşımıyor — bir formda operatörün çizdiği her şey olabilir,
+insanların üçüncü bir adrese gitmesini en az isteyeceği alanlar dâhil — kimlikler
+gidiyor, abone kaydı izniyle uçtan okuyor.
+
+### Doğrulama
+
+Dev sitede uçtan uca: `/coming-soon` formu tarayıcıdan gerçekten dolduruldu →
+gönderim 769 yazıldı, kuyruğa tek bir `form.submitted` düştü
+(`{id, form_id, form_name, reference_code, contact_id}`), aynı gönderim
+`/forms/1059/submissions`'tan değeri ve etiketiyle geri okundu. 18 form
+listelendi, alan tanımları ve seçim listeleri geldi, `complete=false`,
+`submitted_since` ve `reference_code` süzgeçleri çalıştı, olmayan formda 404
+`not_found`. `{path}` taşıyan bir değer mutlak adrese açılmış olarak döndü.
+`lint`, `check_lang` ve `check_api_schema` temiz (37 yol, 15 nesne).
+
+## 2026.4.4 — Hata kodları belgede, hatanın içinde belgenin adresi (2026-09-20)
+
+Bir kodun ne demek olduğunu öğrenmenin yolu onu üretmekti: kodlar yalnız
+yanıtta görünüyordu, hiçbir yerde listelenmiyordu. Aynı şekilde 401 alan bir
+geliştiricinin elinde belgeye giden bir iz yoktu.
+
+**Katalog.** `api_error_catalogue()` (schema.php) her kodu, HTTP durumunu ve bir
+satırlık anlamını taşıyor; belgeler sayfası ve açık konsol bunu uçların altında
+kendi bloğunda basıyor — zarfın şekli, `request_id`'nin ne işe yaradığı ve hız
+sınırı başlıklarıyla birlikte. Mesaj çevrilebilir ya da yeniden yazılabilir,
+**kod değişmez**; bir istemcinin dallandığı şey odur.
+
+409'lar kataloğa girmiyor, kasten: `order_already_shipped` sayfalarla ilgili bir
+sayfada hiçbir şey ifade etmez, onlar üretebilen ucun açıklamasında duruyor.
+
+**Hatanın içinde adres.** Çağrının *nasıl yapıldığıyla* ilgili hatalar (400,
+401, 403, 405, 422, 429) gövdede `docs` alanı taşıyor: konsolun adresi. Kayıt
+bulunamadı hatası taşımıyor — 91 numaralı ürünün yokluğunu belge değil katalog
+cevaplar ve entegrasyonların en çok gördüğü hataya gürültü eklemenin anlamı
+yok.
+
+**Denetim.** `tools/check_api_schema.php` artık kodları da tutuyor:
+`api_fail()` ile verilen (409 dışı) her kod katalogda açıklanmış olmalı, ve
+artık kullanılmayan bir açıklama uyarı veriyor. Gerileme sınandı — uydurma bir
+`teapot_mode` kodu eklenince `FAIL ... does not explain` diyor. Şu an 24 kod,
+hepsi açıklı.
+
+`tr.json`'a 6 anahtar. Doğrulama: belgeler sayfası ve konsol hatasız, anahtarsız
+`GET /products` yanıtı `docs` alanıyla dönüyor.
+
+## 2026.4.4 — Modüller API'ye kendi klasöründen ekleniyor (2026-09-20)
+
+ERP modülü kendi uçlarını, kendi olaylarını ve kendi nesnelerini isteyince yol
+şuradan geçiyordu: `schema.php`, `outbound/webhooks.php`, `scopes.php` ve
+`openapi.php` — yani API'nin kendi dört dosyası. Aynı anda iki el aynı dört
+dosyada çalışınca her yayın bir birleştirmeyle başlıyor.
+
+`includes/api/modules.php` bu dikişi açıyor. Modül kendi klasöründe tek dosya
+yazıyor (`includes/erp/api.php`) ve dört bildirimden istediğini tanımlıyor:
+`erp_api_routes()`, `erp_webhook_events()`, `erp_openapi_objects()`,
+`erp_scope_groups()`. API bunları kendi listelerinin sonuna ekliyor; ad
+çakışırsa API'nin girdisi kalır, yani bir modül `order.created`'ı sessizce
+değiştiremez.
+
+Yükleme kuralı modülün anahtarına bağlı: `ERP_ENABLED` kapalıyken dosya hiç
+yüklenmiyor, uçlar belgede görünmüyor, olaylara abone olunamıyor ve izin
+ekranında satır çıkmıyor — kapalı bir modülün izni bir anahtarda duramasın
+diye. Dosya henüz yoksa sessizce atlanıyor, böylece dikiş karşı taraf yazmadan
+önce kurulabiliyor. `includes/erp/api.php` boş bir iskelet olarak kondu:
+başlığında ne tanımlanacağı yazılı, içinde hiçbir tanım yok.
+
+Değişen dört yer de tek satırlık: her biri kendi listesini kurup
+`api_module_contributions()` ile birleştiriyor. İzin ekranı da modülün
+satırındaki `label`, `description` ve `icon` alanlarını kullanıyor — operatöre
+onaylattığı izni anlatmayan "Erp" başlıklı boş bir satır kalmasın diye.
+
+### Doğrulama
+
+Dev sitede modülsüz hâl (dosya yok): `/openapi.json` 200 ve 22 yol, belgeler
+sayfası 31 uç, Uygulama Erişimi ekranı hatasız, `/meta` anahtarsız 401,
+konsol 200. `tools/check_api_schema.php` 34 yolu görüyor,
+`lint` ve `check_lang` temiz. Kurulum notu iki tarafın ortak dosya kuralıyla
+birlikte `dev/_handoff/API-ERP-koordinasyon.md`'ye yazıldı, CLAUDE.md'den
+işaret edildi.
+
+## 2026.4.4 — OpenAPI belgesi artık yanıtın şeklini de söylüyor (2026-09-20)
+
+Postman koleksiyonu belgeden üretilip çalıştırıldığında testler kırmızı
+dönüyordu: "expected { data: [ …(50) ] } to have property 'api_version'".
+Sebep uçta değil belgedeydi — her yolun `200` yanıtı yalnız
+`description: Success` taşıyordu, gövdesini tarif eden bir şema yoktu. Belgeden
+istemci üreten ya da test yazan bir araç, adresi bilip cevabı bilmiyor; kalanını
+uyduruyor.
+
+### Her uç ne döndürdüğünü söylüyor
+
+Şema satırlarına `returns` eklendi: `'returns' => 'Product'`,
+`array('list' => 'Product')` (sayfalı liste zarfı) ya da tek seferlik şekiller
+için satır içi alan haritası. `components.schemas` bu bildirimlerden
+üretiliyor; `Meta`, `Product`, `ProductGroup`, `Order`, `Customer`, `Page`,
+`File`, `Offer`, `Webhook`, `Inventory`, `InventoryBatch`, `Seo`, `Paging` ve
+`Error`.
+
+Bildirim, şekli üreten fonksiyonun yanında duruyor — `api_product_schema()`,
+`api_product_present()`'in hemen altında — ve alan başına bir satır:
+
+    'barcode'   => 'string?',
+    'group_ids' => 'integer[]',
+    'seo'       => 'Seo',
+
+Küçük harfli sözcük JSON tipi, büyük harfle başlayan başka bir bildirim
+(`$ref`), `[]` liste, `?` null olabilir. Sonuncusu göründüğünden önemli: null
+gelebilen bir alanı zorunlu diye eşleyen üretilmiş istemci, telefonu olmayan ilk
+siparişte patlar.
+
+### Bir daha eksik kalmaması için: `tools/check_api_schema.php`
+
+Yeni denetleyici üç sözleşmeyi koruyor: her yol `returns` bildiriyor (belge
+döndüren üç yol ve 204 dönen silme dışında); adı geçen her nesne
+`api_openapi_objects()`'te kayıtlı ve arkasındaki fonksiyon var; ve **sunucunun
+ürettiği her alan bildirilmiş**. Üçüncüsü çürüyen sözleşme:
+`api_product_present()`'e eklenen ve `api_product_schema()`'ya eklenmeyen bir
+alan, hiçbir istemcinin göremediği bir alandır.
+
+Denetleyici siteyi çalıştırmıyor, dosyaları okuyor — veritabanı, anahtar ya da
+kurulum istemiyor. Anahtar listesini `token_get_all()` ile çıkarıyor, çünkü
+içinde kesme işareti olan bir yorum satırı ("the shop's own copy") daha basit
+bir tarayıcıda dize başlangıcı gibi okunur ve sonrasındaki her şey sessizce
+yanlış çıkar — bir denetleyicinin yapmaması gereken tam da budur. Gerileme
+sınandı: şemadan `sku` satırı çıkarıldığında `FAIL ... answers with sku` diyor.
+
+### Doğrulama
+
+Dev sitede canlı uygunluk taraması: yedi liste zarfı, yedi liste öğesi, altı tek
+kayıt ucu, `/meta` ve `/webhooks` — hepsinin gerçek yanıtı bildirdiği şemayla
+birebir. Tarama iki gerçek eksik buldu ve ikisi de kapatıldı: tek teklif ucunun
+`conditions` ve `actions` alanları belgede yoktu. `php tools/check_api_schema.php`
+temiz (34 yol, 12 nesne bildirimi; kalan iki uyarı, sunucunun değil uçların
+eklediği alanlar: abonelik `secret`'ı ve tek grup ucunun `child_ids`'i).
+`lint` ve `check_lang` temiz, belgeler sayfası ve açık konsol 31 uçla hatasız.
+
+## 2026.4.4 — "Hangi kimlik doğrulama?" sorusu artık her uçta cevaplı (2026-09-20)
+
+Bilgi sayfada vardı — gri bir paragrafın içinde, temel adresin altında. Bir
+entegratörün ilk sorduğu soru bu ve bir referans sayfasının en geç cevapladığı
+soru da bu: anahtar elde, hangi başlıkla gönderileceğini bulmak dakikalar
+alıyordu.
+
+Üç yere yazıldı:
+
+- **Başlık alanı.** Panel belgelerinde ve açık konsolda, temel adresin yanında
+  kendi alanı: `HTTP Basic` — kullanıcı adı uygulama anahtarı, parola gizli
+  anahtar. Paragrafın içinden çıkıp taranabilir bir satır oldu.
+- **Her uç.** Parametre tablosunun altında yapıştırılabilir tek satır:
+  `curl -u APPLICATION_KEY:SECRET_KEY "…/products"`. Gövde alan uçlarda `-X`,
+  `Content-Type` ve `-d '{...}'` de var. Tek bir uca bakan biri, oturum açmayı
+  öğrenmek için sayfanın başına dönmek zorunda değil.
+- **Uygulama çekmecesi.** Anahtarın hemen altında, o uygulamanın **gerçek
+  anahtarını** taşıyan örnek satır ve "Kopyala" — geriye yalnız gizli anahtarı
+  yerleştirmek kalıyor. İki yer tutucu taşıyan bir satır, gizli anahtarın
+  yanlışına yapıştırılmasını davet ederdi.
+
+OpenAPI tanımı zaten doğruydu (`securitySchemes: http/basic`, belgeye genel
+olarak uygulanmış), yani Postman/Insomnia gibi araçlar içe aktarınca doğru
+soruyordu; eksik olan insan tarafıydı. `tr.json`'a 2 anahtar; şema, uç ya da
+davranış değişmedi.
+
+## 2026.4.4 — Kampanya kodu kargo takip numarası sanılıyordu (2026-09-20)
+
+`orders.tracking_code` mağazanın kampanya/kaynak kodudur: ziyaretçi `?t=` ile
+geldiğinde `get_tracking_code()` oturuma/çereze yazıyor, checkout da siparişe
+kopyalıyor; `print_order.php` onu `http_referer`, `referral_source_code`,
+`utm_*` ve `affiliate_code` ile aynı blokta basıyor. Kargo numarası ise
+`shipping_tracking_numbers` tablosunda, alıcı satırının (`ship_tos`) altında ve
+koli başına bir satır — sipariş ekranı, yazdırma, hesabım ekranı ve panel
+listesi hep oradan okuyor. İki yer bu ikisini karıştırıyordu.
+
+### Kargolanmadığı hâlde iptal edilemeyen siparişler
+
+`_order_has_shipped()` ilk maddesinde `orders.tracking_code` dolu ise "bu
+sipariş çıktı" diyordu. Sonuç: kampanya linkinden gelen her sipariş
+konulduğu saniyede kargolanmış sayılıyor, müşteri kendi iptal yolunda
+"Sipariş zaten kargolandı" duvarına çarpıyor, `order_view` bileşenindeki iptal
+düğmesi de aynı yardımcıyı okuduğu için DOM'dan siliniyordu. Geliştirme
+veritabanında 480 siparişin 34'ünde sütun doluydu (`reminder`, `JB9C` gibi
+kampanya kodları), 33'ünde gerçek koli numarası yoktu.
+
+Madde kaldırıldı; fonksiyon yalnız `shipping_tracking_numbers` okuyor.
+`ship_date` zaten kasten okunmuyordu (birçok kurulumda planlanan sevk
+tarihidir), o not korundu.
+
+### Müşteriye kampanya kodunu kargo numarası diye göstermek
+
+`order_view` bileşeni `orders.tracking_company` + `orders.tracking_code` ile
+müşteriye kargo takip bağlantısı kuruyordu: müşteri kendi sipariş sayfasında
+kampanya kodunu görüyor, üstündeki bağlantı onu hiç duymamış bir kargo
+firmasının sorgu sayfasına götürüyordu. Üstelik `orders.tracking_company`
+CLAUDE.md'de ERP için ayrılmış sütun.
+
+Bileşen artık numaraları `shipping_tracking_numbers`'tan okuyor (alıcının
+`shipping_method_code`'uyla birlikte) ve bağlantıyı ürünün kendi
+`get_shipping_tracking_url()`'üyle kuruyor. Belirteçler: `__tracking_code` ilk
+kolinin numarası (mevcut şablonlar çalışmaya devam ediyor), yeni
+`__tracking_codes` kolilerin hepsini taşıyor — numara, taşıyıcı adı ve
+tanınıyorsa bağlantı. `has_tracking_code` / `has_tracking_link` bayrakları
+aynı yerden besleniyor. `orders.tracking_company` probu ve
+`ECOMMERCE_DEFAULT_TRACKING_PROVIDER` geri çekilmedi: ikincisi artık kargo
+yöntemi kodu bir şey söylemediğinde site genelinde taşıyıcıyı adlandırıyor.
+
+Müşterinin fatura çıktısı (`order_invoice_print.php`) da "Takip Kodu" diye
+kampanya kodunu basıyordu; artık koli numaralarını basıyor.
+
+### Tek taşıyıcı tablosu
+
+İki ayrı taşıyıcı listesi vardı: `get_shipping_tracking_url()` (panel, yazdırma,
+hesabım) ve bileşenin kendi `_eo_tracking_provider_url()`/`_label()` ikizi.
+Tek yere toplandı: `pg_shipping_carrier()` numarayı ve kargo yöntemi kodunu
+alıp taşıyıcı anahtarı döndürüyor, `get_shipping_tracking_url()` ile yeni
+`get_shipping_carrier_name()` onun üstünde duruyor. Kazanç: MNG ve PTT artık
+panel tarafında da tanınıyor, yöntem kodu eşleşmesi büyük/küçük harf ve
+Türkçe yazımlardan bağımsız, numara URL'e `rawurlencode()` ile giriyor (önce
+Türk kargolarında hiç kodlanmıyordu) ve Aras bağlantısı `https`. İkiz
+fonksiyonlar silindi.
+
+### Doğrulama
+
+Dev sitede: kampanya kodu taşıyan üç sipariş artık "kargolanmadı", gerçek koli
+numarası olan ikisi "kargolandı", ikisi de olmayan "kargolanmadı". Taşıyıcı
+çözümü sekiz durumda beklendiği gibi (Yurtiçi/Sürat/Aras/MNG/PTT yazımları,
+numara şeklinden UPS/FedEx/USPS, tanınmayan kodda bağlantı yok). `order_view`
+bileşeni gerçek tree ile çalıştırıldı: koli numarası olmayan siparişte kargo
+bloğu düşüyor, UPS numarası yazılan siparişte numara, taşıyıcı adı ve UPS
+bağlantısı çıkıyor. Test numarası geri alındı. `lint` ve `check_lang` temiz.
+
+**ERP tarafı temiz:** `includes/erp/` hiçbir yerde takip alanlarına dokunmuyor;
+`erp_order_shipment()` sevk tarihini `ship_tos.ship_date`'ten, taşıyıcıyı
+`shipping_methods.carrier_title`/`carrier_vkn`'den alıyor.
+
 ## 2026.4.4 — Kargo: siparişin teslimat yarısı API'ye açıldı (2026-09-20)
 
 Sipariş ucu siparişin faturalandırma yarısını veriyordu: teslimat adresi, kargo

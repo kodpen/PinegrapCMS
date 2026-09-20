@@ -59,6 +59,16 @@ function update_order($request) {
         // If there is a ship date or delivery date in the request, then update recipient.
         if (isset($recipient_request['ship_date']) or isset($recipient_request['delivery_date'])) {
 
+            // A delivery date that was not there a moment ago is the parcel
+            // arriving, and it is announced once - the same rule the tracking
+            // number follows. Read before the write, because afterwards the two
+            // are indistinguishable.
+            $recipient['just_delivered'] = (($recipient['delivery_date'] === '' )
+                    || ($recipient['delivery_date'] === '0000-00-00'))
+                && isset($recipient_request['delivery_date'])
+                && ($recipient_request['delivery_date'] !== '')
+                && ($recipient_request['delivery_date'] !== '0000-00-00');
+
             db(
                 "UPDATE ship_tos SET
                     ship_date = '" . e($recipient_request['ship_date']) . "',
@@ -189,6 +199,19 @@ function update_order($request) {
     // Queued, not sent: the cron delivers it, so a slow receiver cannot hold up
     // the save.
     foreach ($order['recipients'] as $shipped_recipient) {
+
+        if (!empty($shipped_recipient['just_delivered'])) {
+
+            require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+
+            api_webhook_enqueue('order.delivered', array(
+                'id'            => (int) $order['id'],
+                'order_number'  => $order['order_number'],
+                'ship_to_id'    => (int) $shipped_recipient['id'],
+                'delivery_date' => (string) $shipped_recipient['delivery_date'],
+            ));
+
+        }
 
         if (empty($shipped_recipient['new_tracking_number'])) {
             continue;

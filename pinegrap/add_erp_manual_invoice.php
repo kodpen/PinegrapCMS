@@ -104,7 +104,7 @@ if (!$_POST) {
         $result = erp_invoice_create_manual($data);
 
         if (!$result['success']) {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error($result['field'] ?? '_error', $result['error']);
             go($self_url);
         }
 
@@ -122,7 +122,7 @@ if (!$_POST) {
     $result = erp_invoice_draft_save($data, 0);
 
     if (!$result['success']) {
-        $liveform->mark_error('_error', $result['error']);
+        $liveform->mark_error($result['field'] ?? '_error', $result['error']);
         go($self_url);
     }
 

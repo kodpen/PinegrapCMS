@@ -2957,13 +2957,24 @@ function _apply_bindings($props)
     // backend WIRING marker — it doesn't put a value into the DOM, so
     // including it in data-pg-bind would just confuse the JS updater.
     static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1);
+    $formats = (isset($props['_bindFormats']) && is_array($props['_bindFormats'])) ? $props['_bindFormats'] : array();
     $bind_pairs = array();
     foreach ($props['_bindings'] as $prop_name => $field_name) {
         if (!$field_name) continue;
         // Sanitize: field tokens must be [a-z0-9_] only
         $safe = preg_replace('/[^a-z0-9_]/i', '', (string)$field_name);
         if ($safe === '') continue;
-        $props[$prop_name] = '^^' . $safe . '^^';
+
+        // A date field may carry the format the classic screens read:
+        // ^^submitted_date_and_time^^%%d.m.Y%%. Only the characters date()
+        // understands survive, so the suffix cannot break out of the token.
+        $suffix = '';
+        if (isset($formats[$prop_name]) && $formats[$prop_name] !== '') {
+            $format = preg_replace('/[^A-Za-z0-9 \/.:,\\-]/', '', (string)$formats[$prop_name]);
+            if ($format !== '') $suffix = '%%' . $format . '%%';
+        }
+
+        $props[$prop_name] = '^^' . $safe . '^^' . $suffix;
         // Skip non-renderable bindings (action, section) — these are wiring
         // markers handled by per-widget binding pre-processes, not values
         // the variant chooser JS should swap into the DOM.

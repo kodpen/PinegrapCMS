@@ -2,12 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * ERP - product lookup for the invoice line editor.
+ * ERP - products for the line editors, as JSON.
  *
- * Answers a typed fragment with up to twenty matching products, as JSON, for
- * the editor to fill a line from. Read only, and only for a logged-in user
- * with ERP access: the catalogue's own storefront endpoints know nothing of
- * kurus prices and tax rates, and this one is not for the storefront.
+ * ?q= is what was typed into a line: the name (short_description), the SKU
+ * (name) and the barcode are searched, results in the shape the editor fills
+ * a line from (see erp_product_for_line()). ?barcode= is one scanned code and
+ * answers with that one product, or null.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,38 +21,19 @@ if (!validate_erp_access($user)) {
     exit();
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
 header('Content-Type: application/json; charset=utf-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 
-$query = trim((string) ($_GET['q'] ?? ''));
+$flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE;
 
-if (mb_strlen($query) > 100) {
-    $query = mb_substr($query, 0, 100);
+if (isset($_GET['barcode'])) {
+    $row = erp_product_by_barcode((string) $_GET['barcode']);
+
+    echo json_encode(array('product' => is_array($row) ? erp_product_for_line($row) : null), $flags);
+    exit();
 }
 
-$results = array();
-
-if ($query !== '') {
-    $like = escape(escape_like($query));
-
-    $rows = (array) db_items("SELECT id, name, price, tax_rate, short_description
-        FROM products
-        WHERE name LIKE '%" . $like . "%'
-        ORDER BY name ASC, id ASC
-        LIMIT 20");
-
-    foreach ($rows as $row) {
-        $results[] = array(
-            'id' => (int) $row['id'],
-            'name' => (string) $row['name'],
-            // Kurus, the way the editor works with money; the screen formats it.
-            'price' => (int) $row['price'],
-            // NULL means the product takes the zone rate, which is the operator's call here.
-            'tax_rate' => ($row['tax_rate'] === null) ? null : (float) $row['tax_rate'],
-            'short_description' => (string) ($row['short_description'] ?? ''),
-        );
-    }
-}
-
-echo json_encode(array('results' => $results), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+echo json_encode(array('results' => erp_product_search((string) ($_GET['q'] ?? ''), 20)), $flags);
