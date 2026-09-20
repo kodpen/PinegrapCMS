@@ -720,10 +720,11 @@
          hareket olarak yazılır, bakiyeye sessizce eklenmez.
 
   [YENİ] Kasa ve banka. Kasa, banka hesabı ve POS cihazı açabilir; tahsilat,
-         ödeme ve virman girebilirsiniz. Tahsilat tek bir işlemdir: kasa
-         artarken müşterinin borcu aynı anda azalır. Biri olup diğeri olmazsa
-         hiçbiri olmaz — yarım kalmış bir tahsilat, kendi defteriyle çelişen
-         bir bakiye demektir.
+         ödeme ve virman girebilirsiniz; ödeme yöntemi nakit, havale, kart,
+         çek ya da diğer. Tahsilat tek bir işlemdir: kasa artarken
+         müşterinin borcu aynı anda azalır. Biri olup diğeri olmazsa hiçbiri
+         olmaz — yarım kalmış bir tahsilat, kendi defteriyle çelişen bir
+         bakiye demektir.
 
          İçinde hareket olan bir kasa silinemez; pasife alınır. Bakiyesi o
          hareketlerden oluşuyor ve başka kayıtlar onlara bakıyor.
@@ -853,6 +854,89 @@
          dairesini ve adresini kesildiği anki hâliyle üzerinde taşır. Cari
          kartı sonradan değişse de belge kesildiği gün ne dediyse onu der.
          Daha önce kesilmiş faturalar bugünkü karttan doldurulur.
+
+  [YENİ] Cari hesapları CSV'den toplu alma. Cari Hesaplar → CSV İçe aktar
+         ile eski programınızdan ya da Excel'den aldığınız listeyi üç
+         adımda alırsınız: dosya yüklenir, sütunlar alanlara eşlenir ve ilk
+         20 satırda her satıra ne yapılacağı görünür (oluşturulacak, zaten
+         var, dosyada tekrar, hata); onayladığınızda dosyanın tamamı yazılır
+         ve satır satır sonuç listelenir. Onaydan önce veritabanına hiçbir
+         şey yazılmaz.
+
+         Türkçe Excel'in noktalı virgülle ve Windows-1254 ile yazdığı dosya
+         olduğu gibi okunur; ayırıcı ve karakter kümesi kendiliğinden
+         algılanır. Var olan cari önce vergi numarasıyla, sonra e-postayla
+         eşleştirilir; ad yalnız ikisi de yokken denenir, çünkü aynı adı iki
+         gerçek kişi taşıyabilir. Eşleşen cariyi güncellemeyi ya da atlamayı
+         siz seçersiniz; güncelleme yalnız dosyanın verdiği sütunları yazar,
+         bakiyeye hiç dokunmaz. Yeni carinin ülkesi, Ülkeler ekranında
+         seçili varsayılan ülkedir.
+
+  [YENİ] [ŞEMA] Dışa aktarım. ERP → Dışa Aktar ile carileri, faturaları ve
+         tahsilat/ödemeleri dosya olarak alırsınız: genel CSV (içe aktarma
+         ekranının geri okuduğu biçim) ya da Paraşüt'ün kendi içe aktarma
+         şablonları (Müşteri ve Tedarikçiler, Satış Faturaları). Paraşüt
+         dosyası Paraşüt'ün şablonunun üzerine yazılır: başlıklar ve yardım
+         metni onun istediği gibi kalır, siz yalnız yükleyip içeri
+         alırsınız. Paraşüt API anahtarı gerekmez; bu bir dosya aktarımıdır.
+
+         Hangi kaydın hangi çalıştırmada aktarıldığı tutulur; "yalnız henüz
+         aktarılmamışlar" süzgeci ve son çalıştırmalar tablosu buradan
+         okur. İptal edilmiş fatura hiç aktarılmaz, taslaklar yalnız siz
+         isterseniz.
+
+  [YENİ] Tahsilat iptali, tahsisi kaldırma ve yeniden tahsis. Kasa ve
+         Banka'daki bir tahsilata ya da ödemeye tıklayınca hareketin
+         kendisi, kapattığı faturalar ve tahsis edilmemiş kalanı görünür;
+         üç düzeltme buradadır. İptal silmez, ters kayıt atar: kasaya ve
+         cariye aynı tutarla ters yönde birer hareket, açıklamasında
+         orijinal numara ve sebep. Tahsisi kaldırmak parayı yerinde bırakır
+         — cari hesapta tahsis edilmemiş alacak olur — ve faturayı yeniden
+         açar. Yeniden tahsis en eski faturadan başlayan bir öneriyle
+         gelir; düzenler, kaydedersiniz, kaydetmeden hiçbir şey yazılmaz.
+
+         Dövizli faturayı kapatan tahsilat iptal edilince kapanışta atılan
+         kur farkı da ters kayıtla çevrilir; fatura yeniden kapandığında
+         yeni fark yazılır.
+
+  [YENİ] Vade takibi, yaşlandırma raporu ve ERP panosu. Fatura listesinde
+         Vade Tarihi sütunu var: gecikmiş belge kaç gün geciktiğini kırmızı,
+         yedi gün içinde vadesi gelen sarı rozetle taşır; araç çubuğunda
+         Tümü / Gecikmiş / Bu hafta geçişleri. ERP → Yaşlandırma raporu
+         alacakları ya da borçları cari × yaş kovası (vadesi gelmemiş, 1-30,
+         31-60, 61-90, 90+ gün) tablosunda gösterir; her hücre ilgili
+         faturalara götürür, tablo CSV olarak alınır, "tarih itibarıyla"
+         geçmiş bir günün durumunu verir. ERP panosunda alacaklar, borçlar,
+         vadesi geçen, yedi gün içinde vadesi gelen, kasa ve banka toplamı,
+         yaşlandırma çubuğu ve en çok geciken beş cari.
+
+         Rapor, pano ve liste aynı hesabı okur; üç ekranın rakamı birbirini
+         tutar. Dövizli belge kayıt kurundan sayılır, yeni bir çarpım
+         yapılmaz, cari bakiyesiyle mutabık kalır.
+
+  [YENİ] [ŞEMA] Vade günü. Ayarlar → E-Ticaret → ERP kartında "Varsayılan
+         vade (gün)", cari kartında "Vade (gün)". Yeni faturanın vadesi
+         fatura tarihinden bu kadar gün sonrasıdır: cari kendi vadesini
+         taşıyorsa onunki, yoksa mağazanın varsayılanı; ikisi de 0 ise
+         fatura tarihinde vadeli. Elle yazdığınız vade tarihi hiçbir zaman
+         ezilmez. Cari CSV'sinde aynı adlı sütun gidip gelir.
+
+  [YENİ] [ŞEMA] Gecikmiş alacak hatırlatmaları. Ayarlar → E-Ticaret → ERP
+         kartındaki yeni grupta bir eşik (gün) girdiğinizde vadesi bu kadar
+         gün geçen satış faturaları duyurulur: panel zilinde, e-posta ile ve
+         ana ekrana eklenmiş bir cihazda bildirim olarak — üç anahtar ayrı
+         ayrı kapatılabilir. Günlük ya da haftalık, seçtiğiniz saatte tek
+         bir özet gider; alıcı listesi boşsa mağazanın e-posta adresine.
+
+         Her belge bir kez duyurulur. Özette yalnız eşiği ilk kez geçenler
+         listelenir; öncekiler "hâlâ açık" toplamında sayılır. Yeni belge
+         yoksa özet gitmez: her sabah aynı listeyi yineleyen bir hatırlatma
+         bir kez okunur, sonra görmezden gelinir; duran toplam zaten
+         panoda. Bir cari kendi eşiğini taşıyabilir (cari kartında
+         "Hatırlatma eşiği (gün)"); 0 mağaza eşiğini kullanır.
+
+         Zamanlanmış görev tanımlı olmasa da özet gider: hatırlatma
+         saatinden sonraki ilk panel ziyaretinde ERP panosu kontrolü yapar.
 
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
@@ -1720,8 +1804,9 @@
 
   [ŞEMA] Bu sürüm veritabanınıza dokunur. Yükseltme sırasında
          kurulum ekranı her adımı tek tek gösterir ve isterseniz
-         önce yedek alır. Eklenenler: pazaryeri, dış API, bildirim
-         ve görsel editör tabloları; imza kayıtları tablosu;
+         önce yedek alır. Eklenenler: pazaryeri, dış API, bildirim,
+         görsel editör ve ön muhasebe (ERP) tabloları; imza
+         kayıtları tablosu;
          ayarlara görsel işleme,
          sosyal paylaşım, Google, güncelleme kanalı ve API
          alanları; güvenlik başlıkları, içerik güvenliği
