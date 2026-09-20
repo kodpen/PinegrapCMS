@@ -39,6 +39,7 @@ if (!$_POST) {
         $liveform->assign_field_value('opening_amount', '0');
         $liveform->assign_field_value('opening_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
         $liveform->assign_field_value('currency', erp_base_currency());
+        $liveform->assign_field_value('overdue_notify_customer', '1');
     }
 
     echo
@@ -160,6 +161,7 @@ if (!$_POST) {
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
         'overdue_notify_days' => (int) $overdue_notify_days,
+        'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
         'created_by' => (int) $user['id'],
     ));
 

@@ -398,6 +398,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_overdue_notify_panel_checked = ((int) ($row['erp_overdue_notify_panel'] ?? 1) === 1) ? ' checked="checked"' : '';
     $erp_overdue_notify_email_checked = ((int) ($row['erp_overdue_notify_email'] ?? 1) === 1) ? ' checked="checked"' : '';
     $erp_overdue_notify_push_checked = ((int) ($row['erp_overdue_notify_push'] ?? 1) === 1) ? ' checked="checked"' : '';
+    // Outbound mail to customers starts off, and reads as off until its column arrives.
+    $erp_overdue_notify_customer_checked = ((int) ($row['erp_overdue_notify_customer'] ?? 0) === 1) ? ' checked="checked"' : '';
     $erp_overdue_notify_recipients = (string) ($row['erp_overdue_notify_recipients'] ?? '');
     $erp_overdue_notify_frequency = (($row['erp_overdue_notify_frequency'] ?? 'daily') === 'weekly') ? 'weekly' : 'daily';
     $erp_overdue_notify_hour = min(23, max(0, (int) ($row['erp_overdue_notify_hour'] ?? 9)));

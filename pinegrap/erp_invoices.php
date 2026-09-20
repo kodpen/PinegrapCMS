@@ -99,6 +99,7 @@ $invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order
     LIMIT 500");
 
 $today = date('Y-m-d');
+$now = time();
 
 $status_labels = array(
     'draft' => lang('Draft'),
@@ -161,7 +162,12 @@ foreach ($invoices as $invoice) {
             $days = erp_aging_days($effective_due, $today);
 
             if ($days > 0) {
-                $output_due .= '<div><span class="badge text-bg-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span></div>';
+                // Reminders put off: the bell is crossed out until the date.
+                $snoozed_until = (int) ($invoice['overdue_snoozed_until'] ?? 0);
+                $output_snoozed = ($snoozed_until > $now)
+                    ? ' <i class="bi bi-bell-slash text-body-secondary" title="' . h(lang(array('string' => 'Reminders put off until {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d', $snoozed_until), 'date')))) . '"></i>'
+                    : '';
+                $output_due .= '<div><span class="badge text-bg-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span>' . $output_snoozed . '</div>';
             } elseif ($days === 0) {
                 $output_due .= '<div><span class="badge text-bg-warning">' . lang('Due today') . '</span></div>';
             } elseif (-$days <= 7) {

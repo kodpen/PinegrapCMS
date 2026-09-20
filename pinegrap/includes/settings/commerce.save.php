@@ -214,6 +214,12 @@ function pg_parasut_credentials_for_save()
             erp_overdue_notify_recipients = '" . escape(substr(implode(', ', $erp_overdue_recipients), 0, 500)) . "',
             erp_overdue_notify_frequency = '" . ((post_value('erp_overdue_notify_frequency') === 'weekly') ? 'weekly' : 'daily') . "',
             erp_overdue_notify_hour = '" . min(23, max(0, (int) post_value('erp_overdue_notify_hour'))) . "',";
+
+        // The follow-up step (4.56) may not have run where 4.55 has.
+        if (waf_table_has_column('config', 'erp_overdue_notify_customer')) {
+            $sql_erp_overdue .= "
+            erp_overdue_notify_customer = '" . ((post_value('erp_overdue_notify_customer') == 1) ? 1 : 0) . "',";
+        }
     }
 
     // Only what the cards on this screen edit.

@@ -1685,6 +1685,31 @@ başına tek özet, yalnız eşiği **ilk kez** geçen belgeler; duyurulan belge
   bayt kaldı. `erp_overdue_notify_recipients VARCHAR(500)` yükseltmede 1118
   (Row size too large) verdi, `TEXT DEFAULT NULL` yapıldı (`waf_exclusions`
   deseni). Kısa sabit alanlar (TINYINT/INT/ENUM) sorun değil.
+- **2. tur (2026-09-20, migration 4.56):** adaylar `new / second / known /
+  snoozed`. İkinci ve son duyuru gecikme ≥ eşik + 30 günde
+  (`erp_overdue_second_notice_days()` sabit 30, ayar yok), damgası
+  `erp_invoices.overdue_second_notified_at`; ilk duyuruda zaten eşik + 30'u
+  geçmiş belge iki damgayı birden alır. Zil satırında `title` = yeni sayı,
+  `form_id` = ikinci sayı; üç cümle `pg_notification_display()`'de, özet
+  postası başlığı da oradan (`erp_overdue_notify_headline()`). Erteleme
+  `overdue_snoozed_until` (gece yarısı INT; `erp_overdue_snooze()` yalnız açık
+  satış faturası, bugünden sonra, ≤ 365 gün), ertelenen belge özette hiç yer
+  almaz. Fatura ekranı kartı `erp_overdue_invoice_state()` evresinden okur.
+  Menü rozeti `pg_erp_overdue_badge_count()` (`fn/ecommerce.php`): status +
+  vade ile tek COUNT, pano kartıyla aynı rakam, eşiğe bakmaz;
+  `output_menu()` genel `badge` seçeneği, CSS `.pg-menu-badge`. Müşteri
+  postası: mağaza anahtarı `erp_overdue_notify_customer` **kapalı gelir**,
+  cari anahtarı `erp_accounts.overdue_notify_customer` **açık gelir**;
+  gönderen/yanıt `ECOMMERCE_EMAIL_ADDRESS → EMAIL_ADDRESS`; giden posta
+  `customer_notified_at` damgalar, başarısız posta damgalamaz ve bir daha
+  denenmez. Sütun varlığı `erp_overdue_column_exists()` (LIKE değil,
+  `WHERE Field =`). Kod 4.56 koşmamış kurulumda tek-duyuru davranışına döner
+  (`erp_overdue_notify_followups_ready()`).
+- **Dev'de tek alt adımı koşturma:** `install_add_column` strict `sql_mode`'da
+  `erp_invoices` üzerinde 1067 (`supplier_invoice_date` '0000-00-00'
+  varsayılanı) verir; installer oturumu `SET SESSION sql_mode =
+  'NO_ENGINE_SUBSTITUTION'` ile açar, runner'ı elle bootstrap eden bir
+  yardımcı da aynısını yapmalı.
 
 ## Dosya Yapısı (Önemli Dosyalar)
 
@@ -2054,6 +2079,7 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.56) | `_erp_overdue_followups`: `erp_invoices.overdue_second_notified_at` / `overdue_snoozed_until` / `customer_notified_at INT UNSIGNED (0)`, `config.erp_overdue_notify_customer TINYINT(1) (0)`, `erp_accounts.overdue_notify_customer TINYINT(1) (1)`. Hepsi `install_add_column`, yeniden koşturulabilir; 4.55'in ardından |
 | `2026.4.4` (4.55) | `_erp_overdue_notify`: `config.erp_overdue_notify_days SMALLINT UNSIGNED (0)`, `erp_overdue_notify_panel` / `_email` / `_push TINYINT(1) (1)`, `erp_overdue_notify_recipients TEXT DEFAULT NULL` (VARCHAR değil: `config` satırı 65535 baytlık InnoDB satır sınırına dayandı, VARCHAR(500) 1118 verdi), `erp_overdue_notify_frequency ENUM('daily','weekly') ('daily')`, `erp_overdue_notify_hour TINYINT UNSIGNED (9)`, `erp_overdue_notify_checked` / `_sent_at INT UNSIGNED (0)`; `erp_accounts.overdue_notify_days SMALLINT UNSIGNED (0)`; `erp_invoices.overdue_notified_at INT UNSIGNED (0)`. Hepsi `install_add_column` ile, yeniden koşturulabilir. Dağıtıcıda 4.53 ve 4.54'ün ardından çağrılır |
 | `2026.4.4` (4.54) | `_erp_cash_payment_method`: `erp_cash_transactions.payment_method` ENUM'una `cheque` eklendi (`ENUM('cash','transfer','card','cheque','other') NOT NULL DEFAULT 'cash'`); önce `install_column_info` ile bakılır, `cheque` zaten varsa atlanır — yeniden koşturulabilir. Makbuz formu çek gönderiyordu, strict olmayan bağlantı değeri boş üyeye çeviriyordu; `''` kalan satırlara dokunulmaz (çek mi kart mı bilinmiyor). Yazma yolu `erp_post_receipt()` değeri `erp_cash_payment_methods()` listesine karşı denetler, liste dışı değer hata döner |
 | `2026.4.4` (4.51) | `_erp_account_snapshot`: `erp_invoices.account_title VARCHAR(255)`, `account_tax_number VARCHAR(32)`, `account_tax_office VARCHAR(100)`, `account_address VARCHAR(255)`, `account_city VARCHAR(100)`, `account_country_code CHAR(2)`, `account_email VARCHAR(255)` (hepsi `NOT NULL DEFAULT ''`) — cari kartın kesim anındaki kopyası; kesilmiş eski faturalar canlı karttan geri doldurulur (`WHERE account_title = '' AND status <> 'draft'`), yeniden koşturulabilir |

@@ -2298,6 +2298,9 @@ function output_menu($properties = false)
         $menu_items[22]['color_class'] = 'erp-color';
         $menu_items[22]['title'] = 'ERP';
         $menu_items[22]['context'] = true;
+        // Open sales invoices past due; the dashboard card's number.
+        $menu_items[22]['badge'] = pg_erp_overdue_badge_count();
+        $menu_items[22]['badge_title'] = lang(array('string' => '{var:1} document(s) past due', 'vars' => $menu_items[22]['badge']));
         $menu_items[22]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_dashboard.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('ERP Dashboard') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Accounts') . '</a>';
@@ -2620,7 +2623,15 @@ function output_menu($properties = false)
 
         }
 
-        $output_all_menu_items .= '<a id="menu_item_' . $options['id'] . '" ' . $context_enabled . $context_content . ' class="list-group-item list-group-item-action border-0' . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span></a>';
+        // A count worth acting on, pinned to the row's right edge; collapsed
+        // to the rail it sits on the icon's corner (backend.src.css). Zero
+        // draws nothing: an empty pill would read as "something".
+        $output_menu_item_badge = '';
+        if (isset($options['badge']) && ((int) $options['badge'] > 0)) {
+            $output_menu_item_badge = '<span class="pg-menu-badge badge rounded-pill text-bg-danger"' . (isset($options['badge_title']) ? ' title="' . h($options['badge_title']) . '"' : '') . '>' . (((int) $options['badge'] > 99) ? '99+' : (int) $options['badge']) . '</span>';
+        }
+
+        $output_all_menu_items .= '<a id="menu_item_' . $options['id'] . '" ' . $context_enabled . $context_content . ' class="list-group-item list-group-item-action border-0' . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . '</a>';
 
 
     }

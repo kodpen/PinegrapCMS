@@ -92,6 +92,16 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . h(lang(array('string' => 'Days overdue before this account\'s invoices are announced. 0 uses the store threshold, currently {var:1} days.', 'vars' => (defined('ERP_OVERDUE_NOTIFY_DAYS') ? (int) ERP_OVERDUE_NOTIFY_DAYS : 0)))) . '</div>
                 </div>
+                <div class="col-12 col-lg-6 my-2">
+                    <div class="form-label">' . lang('Reminder e-mail to the customer') . '</div>
+                    <div class="form-check form-switch">
+                        ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'overdue_notify_customer', 'name' => 'overdue_notify_customer', 'value' => '1', 'class' => 'form-check-input')) . '
+                        <label class="form-check-label" for="overdue_notify_customer">' . lang('Write to this account when its invoices pass the threshold') . '</label>
+                    </div>
+                    <div class="form-text">' . h((defined('ERP_OVERDUE_NOTIFY_CUSTOMER') && ERP_OVERDUE_NOTIFY_CUSTOMER)
+                        ? lang('Goes to the e-mail address above. Switch it off for a customer who asked not to be written to.')
+                        : lang('Reminder e-mails to customers are switched off on the ERP settings card; this choice takes effect once they are on.')) . '</div>
+                </div>
             </div>
         </div>
     </div>

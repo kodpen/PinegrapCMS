@@ -134,6 +134,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_cash_payment_method(); // 4.54
 
 	upgrade_2026_4_4_erp_overdue_notify();     // 4.55
+
+	upgrade_2026_4_4_erp_overdue_followups();  // 4.56
 }
 
 
@@ -2899,5 +2901,32 @@ function upgrade_2026_4_4_erp_overdue_notify() {
 	install_add_column('erp_invoices', 'overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('The ERP can remind you of receivables that pass a number of days overdue: in the panel bell, by e-mail and on a subscribed device, once per document, with a threshold of its own on any account.');
+
+}
+
+
+// ERP: overdue reminder follow-ups (2026.4.4, 4.56).
+//
+// The first digest (4.55) announces a document once. These columns carry what
+// happens after that: a second and last announcement a month past the
+// threshold, a snooze that keeps a document out of the digests until a date
+// the operator picked, and the reminder e-mail to the customer - switched on
+// per store and refusable per account, with the moment the customer was
+// written to kept on the invoice so the screen can say so.
+//
+// Outbound mail is opt-in: the store switch starts off. The account switch
+// starts on so that turning the store switch on is the only step for the
+// common case, and one customer who asked not to be written to is the
+// exception recorded on their card.
+function upgrade_2026_4_4_erp_overdue_followups() {
+
+	install_add_column('erp_invoices', 'overdue_second_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('erp_invoices', 'overdue_snoozed_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('erp_invoices', 'customer_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'erp_overdue_notify_customer', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('erp_accounts', 'overdue_notify_customer', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	install_note('Overdue reminders can be followed up: a second announcement a month past the threshold, a snooze per invoice, and an optional reminder e-mail to the customer that any account can refuse.');
 
 }
