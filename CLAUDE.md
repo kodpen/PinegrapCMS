@@ -68,6 +68,12 @@ referansı, oturum/konuşma referansı. Karar tarihçesinin yeri değişiklik g�
 yaptığını ve teknik olarak neden öyle yapıldığını anlatır (kilitler, yarışlar,
 geriye dönük uyumluluk, güvenlik kapıları).
 
+Aynı yasak commit mesajları ve PR açıklamaları için de geçerlidir:
+`Co-Authored-By: Claude…`, `Claude-Session:`, `🤖 Generated with Claude Code`
+ya da `claude.ai/code/session…` bağlantısı gibi hiçbir AI/oturum izi eklenmez.
+Depo geneli commit yazarı `Erdal Güral <erdaltyy@gmail.com>`; mesaj yalnızca
+değişikliği ve teknik gerekçesini anlatır.
+
 ### 3. Kullanıcıya görünen her metin çeviriden geçer
 
 - PHP ve panel: `lang('English text')`.
