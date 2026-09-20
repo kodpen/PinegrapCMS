@@ -48,6 +48,7 @@ if (!defined('PG_INIT_LOADED')) {
 }
 
 require_once(dirname(__FILE__) . '/connectors/base.php');
+require_once(dirname(__FILE__) . '/webhooks.php');
 
 // Import one package. Answers array('ok', 'order_id', 'error', 'skipped').
 //
@@ -235,6 +236,19 @@ function mp_order_apply_tracking($order_id, $package) {
 
 	db("INSERT INTO shipping_tracking_numbers (order_id, ship_to_id, number)
 		VALUES ('" . e((int)$order_id) . "', '" . e($ship_to_id) . "', '" . e(mb_substr($number, 0, 100)) . "')");
+
+	// The same event the order screen and the API produce. Nothing is mailed
+	// from here - the marketplace tells its own buyer - but an integration
+	// listening for shipments has to hear about a parcel whichever side
+	// recorded it. The guard above means this runs once per number, not once
+	// per poll.
+	api_webhook_enqueue('order.shipped', array(
+		'id'               => (int)$order_id,
+		'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "' LIMIT 1"),
+		'ship_to_id'       => (int)$ship_to_id,
+		'tracking_numbers' => array(mb_substr($number, 0, 100)),
+		'ship_date'        => null
+	));
 
 	$carrier = isset($tracking['carrier']) ? trim((string)$tracking['carrier']) : '';
 

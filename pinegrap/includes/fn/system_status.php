@@ -1243,10 +1243,10 @@ function get_system_status_checks()
             // Reading or job: which column of the System Status widget this
             // belongs in. See $job_titles above.
             'job' => in_array($title, $job_titles),
-            // Rows the tile can expand to. Only the scheduled-task check fills
-            // this: per-job run times exist nowhere else in the panel, so the
-            // tile has to be able to show them rather than point at a screen
-            // that does not have the answer.
+            // Rows the tile can expand to. Filled by the checks whose count is
+            // useless on its own: per-job run times exist nowhere else in the
+            // panel, and "3 active" event subscriptions is a number the
+            // operator has to be able to turn into three addresses.
             'detail'  => $detail,
         );
 
@@ -2207,30 +2207,76 @@ function get_system_status_checks()
     // dashboard down on a site whose 2026.4.4 step had not created the API
     // tables. The rule for anything that touches a table a migration adds is
     // to probe first (see the upgrade bridge near pg_code_version()).
-    $webhook_counts = false;
+    $webhook_list = false;
 
     if (defined('DB_CONNECTED') && DB_CONNECTED) {
         try {
             $webhook_table = @mysqli_query(db::$con, "SHOW TABLES LIKE 'api\\_webhooks'");
 
             if ($webhook_table && mysqli_num_rows($webhook_table) > 0) {
-                $webhook_counts = @mysqli_query(db::$con, "SELECT status, COUNT(*) AS total FROM api_webhooks GROUP BY status");
+
+                // The rows themselves rather than a GROUP BY, because the tile
+                // opens into a list and the question after "3 active" is which
+                // three. The table holds one row per subscription and a busy
+                // shop has a handful; twenty-five is a ceiling for the panel,
+                // not a limit anyone is expected to meet.
+                //
+                // The application is joined in because it decides whether the
+                // subscription is delivered to at all: the dispatcher skips one
+                // whose application was deleted or switched off, and something
+                // nothing is sent to must not be counted as active.
+                $webhook_list = @mysqli_query(db::$con,
+                    "SELECT api_webhooks.url, api_webhooks.status, api_apps.status AS app_status
+                        FROM api_webhooks
+                        LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
+                        ORDER BY api_webhooks.id ASC
+                        LIMIT 25");
             }
         } catch (\Throwable $e) {
-            $webhook_counts = false;
+            $webhook_list = false;
         }
     }
 
-    if ($webhook_counts !== false) {
+    if ($webhook_list !== false) {
 
         $webhook_total = 0;
+        $webhook_active = 0;
         $webhook_failing = 0;
+        $webhook_detail = array();
 
-        while ($webhook_row = mysqli_fetch_assoc($webhook_counts)) {
-            $webhook_total += (int) $webhook_row['total'];
+        while ($webhook_row = mysqli_fetch_assoc($webhook_list)) {
+
+            $webhook_total++;
+
             if ($webhook_row['status'] === 'failing') {
-                $webhook_failing += (int) $webhook_row['total'];
+
+                $webhook_failing++;
+                $webhook_state = 'fail';
+                $webhook_when = lang('Failing');
+
+            } elseif ($webhook_row['status'] === 'disabled') {
+
+                $webhook_state = 'info';
+                $webhook_when = lang('Stopped');
+
+            } elseif ($webhook_row['app_status'] !== 'active') {
+
+                $webhook_state = 'fail';
+                $webhook_when = lang('No application');
+
+            } else {
+
+                $webhook_active++;
+                $webhook_state = 'ok';
+                $webhook_when = lang('Active');
+
             }
+
+            $webhook_detail[] = array(
+                'label' => $webhook_row['url'],
+                'state' => $webhook_state,
+                'when'  => $webhook_when,
+            );
         }
 
         if ($webhook_total > 0) {
@@ -2248,6 +2294,11 @@ function get_system_status_checks()
                 $webhook_stuck = is_array($webhook_queue_row) ? (int) $webhook_queue_row['total'] : 0;
             }
 
+            // The tile opens the list rather than the top of the application
+            // screen: the subscriptions are at the foot of it, and one of them
+            // may belong to no application at all.
+            $webhook_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api_settings.php#events';
+
             if ($webhook_failing > 0) {
 
                 $output .= $makeIcon(
@@ -2259,7 +2310,8 @@ function get_system_status_checks()
                         'string' => '{var:1} not delivering',
                         'vars' => number_format($webhook_failing),
                     )),
-                    OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api_settings.php'
+                    $webhook_href,
+                    $webhook_detail
                 );
 
                 $score -= $weights['webhooks'];
@@ -2275,12 +2327,13 @@ function get_system_status_checks()
                         'string' => '{var:1} undelivered',
                         'vars' => number_format($webhook_stuck),
                     )),
-                    OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api_settings.php'
+                    $webhook_href,
+                    $webhook_detail
                 );
 
                 $score -= ($weights['webhooks'] / 2);
 
-            } else {
+            } elseif ($webhook_active > 0) {
 
                 $output .= $makeIcon(
                     'bi-send-fill',
@@ -2289,9 +2342,31 @@ function get_system_status_checks()
                     'Event notifications are being delivered.',
                     lang(array(
                         'string' => '{var:1} active',
+                        'vars' => number_format($webhook_active),
+                    )),
+                    $webhook_href,
+                    $webhook_detail
+                );
+
+            } else {
+
+                // Registered and not being sent to: every subscription is
+                // switched off, or the application behind it is gone. Nothing
+                // is wrong with the site, so nothing comes off the score - but
+                // the green tile used to count these as active, and an
+                // integrator reading "2 active" while their endpoint hears
+                // nothing looks in the wrong place for the rest of the day.
+                $output .= $makeIcon(
+                    'bi-send',
+                    'text-secondary',
+                    'Webhooks',
+                    'Every event subscription is switched off, or the application that registered it is gone. Nothing is being delivered.',
+                    lang(array(
+                        'string' => '{var:1} stopped',
                         'vars' => number_format($webhook_total),
                     )),
-                    OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api_settings.php'
+                    $webhook_href,
+                    $webhook_detail
                 );
 
             }

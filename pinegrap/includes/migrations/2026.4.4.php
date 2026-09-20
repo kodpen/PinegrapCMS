@@ -136,6 +136,8 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_overdue_notify();     // 4.55
 
 	upgrade_2026_4_4_erp_overdue_followups();  // 4.56
+
+	upgrade_2026_4_4_webhook_orphans();        // 4.57
 }
 
 
@@ -2928,5 +2930,45 @@ function upgrade_2026_4_4_erp_overdue_followups() {
 	install_add_column('erp_accounts', 'overdue_notify_customer', "TINYINT(1) NOT NULL DEFAULT 1");
 
 	install_note('Overdue reminders can be followed up: a second announcement a month past the threshold, a snooze per invoice, and an optional reminder e-mail to the customer that any account can refuse.');
+
+}
+
+
+// Event subscriptions left without an application (2026.4.4, 4.57).
+//
+// A subscription belongs to an application and is only reachable through it:
+// the panel draws the list per application. Deleting an application took its
+// subscriptions with it on one path and not on the others - the documentation
+// screen replaces its temporary credential every time it is opened, and the
+// housekeeping job removes the expired ones - so a site could be left with
+// rows nothing lists, still being delivered to, with no way to stop them.
+//
+// The code paths were closed and the dispatcher now refuses a subscription
+// whose application is missing or switched off. This removes what the open
+// paths already left behind. Data only, and a second run finds nothing.
+function upgrade_2026_4_4_webhook_orphans() {
+
+	if (!install_table_exists('api_webhooks') || !install_table_exists('api_apps')) {
+
+		return;
+
+	}
+
+	if (install_table_exists('api_webhook_queue')) {
+
+		db("DELETE FROM api_webhook_queue
+			WHERE webhook_id IN (
+				SELECT api_webhooks.id FROM api_webhooks
+				LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
+				WHERE api_apps.id IS NULL
+			)");
+
+	}
+
+	db("DELETE api_webhooks FROM api_webhooks
+		LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
+		WHERE api_apps.id IS NULL");
+
+	install_note('Event subscriptions whose application no longer exists were removed: they could not be seen or stopped from the panel, and the site kept sending to them.');
 
 }

@@ -33,6 +33,7 @@ function api_webhook_events() {
 	return array(
 		'order.created'        => 'A new order was placed',
 		'order.status_changed' => 'An order moved to another status',
+		'order.shipped'        => 'A tracking number was recorded for an order',
 		'order.cancelled'      => 'An order was cancelled',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
@@ -68,7 +69,18 @@ function api_webhook_enqueue($event, $payload) {
 
 	// A site with no webhooks is the normal case, and it should cost one indexed
 	// read and nothing else.
-	$hooks = db_items("SELECT id, events FROM api_webhooks WHERE status = 'active'");
+	//
+	// The application is joined in rather than assumed. A subscription belongs to
+	// one, and it has to answer two questions before anything is queued for it:
+	// is that application still here, and is it still allowed in. Without the
+	// join a deleted application leaves rows that no screen lists - the panel
+	// shows subscriptions under their application - while this keeps delivering
+	// them, and switching an application off stops it asking without stopping the
+	// site from telling it.
+	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.events
+		FROM api_webhooks
+		INNER JOIN api_apps ON api_apps.id = api_webhooks.app_id
+		WHERE api_webhooks.status = 'active' AND api_apps.status = 'active'");
 
 	if (!is_array($hooks) || empty($hooks)) {
 
@@ -110,6 +122,47 @@ function api_webhook_enqueue($event, $payload) {
 	}
 
 	return $queued;
+
+}
+
+// Everything an application's subscriptions own, removed with it.
+//
+// Deleting the application row on its own is what leaves a subscription behind
+// with nothing pointing at it: the panel lists subscriptions under their
+// application, so a row whose application is gone cannot be seen or stopped
+// there, and until the dispatcher learned to check, the address kept being
+// delivered to. Called from every path that removes an application.
+function api_webhooks_delete_for_app($app_id) {
+
+	$app_id = (int)$app_id;
+
+	if ($app_id < 1) {
+
+		return 0;
+
+	}
+
+	$ids = db_items("SELECT id FROM api_webhooks WHERE app_id = '" . $app_id . "'");
+
+	if (!is_array($ids) || empty($ids)) {
+
+		return 0;
+
+	}
+
+	$list = array();
+
+	foreach ($ids as $row) {
+
+		$list[] = (int)$row['id'];
+
+	}
+
+	db("DELETE FROM api_webhook_queue WHERE webhook_id IN (" . implode(',', $list) . ")");
+
+	db("DELETE FROM api_webhooks WHERE app_id = '" . $app_id . "'");
+
+	return count($list);
 
 }
 
@@ -156,13 +209,20 @@ function api_webhook_max_attempts() {
 // up on - and false when it is waiting for another attempt.
 function api_webhook_deliver($row) {
 
-	$hook = db_item("SELECT id, app_id, url, secret, status FROM api_webhooks
-		WHERE id = '" . (int)$row['webhook_id'] . "' LIMIT 1");
+	$hook = db_item("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.url,
+			api_webhooks.secret, api_webhooks.status, api_apps.status AS app_status
+		FROM api_webhooks
+		LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
+		WHERE api_webhooks.id = '" . (int)$row['webhook_id'] . "' LIMIT 1");
 
-	if (!$hook || $hook['status'] === 'disabled') {
+	if (!$hook || $hook['status'] === 'disabled' || $hook['app_status'] !== 'active') {
 
-		// The subscription is gone or switched off; the queued event has nowhere
-		// to go and is dropped rather than retried forever.
+		// The subscription is gone or switched off, or the application behind it
+		// is; the queued event has nowhere to go and is dropped rather than
+		// retried forever. The application is checked here as well as at queue
+		// time because a row queued a minute ago outlives the application that
+		// asked for it. A missing application leaves app_status null, which is
+		// not 'active' either.
 		db("DELETE FROM api_webhook_queue WHERE id = '" . (int)$row['id'] . "'");
 
 		return true;
