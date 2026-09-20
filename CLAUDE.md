@@ -46,6 +46,13 @@ runner'ından çıkar, hazır bir SQL dökümü yoktur. **Bu kurulum pahalıdır
 gerekmedikçe yapma**; görevlerin çoğu kod okuma ve statik denetimle çözülür.
 Betik hata verirse sebebini yaz, etrafından dolaşma.
 
+### Git ve GitHub işleri
+
+Depoya dokunan her işlem tek elden yürür: dal açma, commit, push, PR ve issue.
+Bunları git ve GitHub erişimi olan oturum yapar; gereken pull/PR'ı o hazırlar.
+Kod üzerinde çalışan ajan değişikliğini çalışma ağacında bırakır ve
+`dev/_handoff/` benzeri bundle ya da devir dosyası **üretmez**.
+
 ---
 
 ## Değişmez kurallar
