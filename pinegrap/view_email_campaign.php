@@ -205,7 +205,7 @@ if ($_GET['r']) {
     $body = str_replace('<reference_code></reference_code>', h($_GET['r']), $body);
     
     // replace email_address_id with encoded email address string
-    $body = preg_replace('/<email_address_id><\/email_address_id>/', urlencode(base64_encode(str_rot13($email_address))), $body);
+    $body = preg_replace('/<email_address_id><\/email_address_id>/', pg_email_preferences_placeholder_value($email_address), $body);
 }
 
 // output e-mail campaign body

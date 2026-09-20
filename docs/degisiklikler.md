@@ -152,6 +152,94 @@ gerçek zamanda bir ay sonra düşmesi (yalnız sayıyla).
 
 ---
 
+## 2026.4.4 — 2. tur inceleme: bekleyen kararlar ve kalan üç düzeltme (2026-09-20)
+
+Güvenlik incelemesinin ikinci turundan açık kalan altı issue'nun (#59, #62,
+#67, #68, #70, #71) düzeltme paketleri 18 Eylül'de main'e girmişti; issue'lar
+yalnız "ürün sahibinin kararını bekliyor" bırakılan maddeler yüzünden açıktı.
+Kararlar 20 Eylül'de alındı — ilk dördü (#67 sipariş bağlama, #68 imzalı
+jeton, #68 barcode.php, #62 yedek kapısı) ürün sahibinin doğrudan yanıtı,
+geri kalanı "iş sende" yetkisiyle mevcut davranış korunarak. Üçü kod
+değişikliği getirdi, geri kalanı "olduğu gibi kalır" olarak burada ve
+`CLAUDE.md` kural 12 tablosunda kayda geçti.
+
+### Değişen kod
+
+- **E-posta tercihleri bağlantısı imzalı (#68).** `email_preferences.php`
+  oturumsuz yolu kişiyi yalnız `?id=` (rot13 + base64 e-posta) ile
+  tanıyordu; adresi bilen herkes o kişinin e-postasını ve aboneliklerini
+  değiştirebiliyordu. Bağlantı artık `&sig=` taşır:
+  `pg_email_preferences_signature()` (`includes/fn/mail.php`) adresin
+  `strtolower(trim())` hâli üzerinden `ENCRYPTION_KEY` ile HMAC-SHA256 (ilk
+  40 hex). Üretim tek noktadan: `pg_email_preferences_query()` metin
+  bağlantılar için, `pg_email_preferences_placeholder_value()` kayıtlı HTML
+  gövdelerdeki `?id=<email_address_id></email_address_id>` yer tutucusu için
+  (`&amp;sig=` ile). Çağıranlar: `email_campaign_job.php`,
+  `send_email_campaign.php`, `view_email_campaign.php` (önizleme).
+  Doğrulama `get_email_preferences.php` (ekran) ve `email_preferences.php`
+  (POST) — `hash_equals`; adres değişince yönlendirme adresi yeni adres için
+  yeniden imzalanır. `id` var `sig` yok (eski e-postalardaki bağlantılar) →
+  id'siz durumla aynı: giriş ekranına yönlendirme, oturum açan kişi imzasız
+  yoldan devam eder. `sig` var ama uymuyor → `lang('The email preferences
+  link is not valid.')`. Anahtar tanımsızsa imza boş, hiçbir anonim bağlantı
+  doğrulanmaz. Salt-okunur anonim yol (yalnız opt-in) seçilmedi: e-posta
+  değişikliği de kampanya bağlantısından yapılabilmeli.
+- **`barcode.php` kaldırıldı (#68).** Web kökünde duran, hiçbir yerden
+  çağrılmayan üçüncü taraf tek dosya barkod üretici; oturumsuz çağrılıyor
+  ve istenen boyutta görüntü üretiyordu. Panelde barkodlar JsBarcode ile
+  istemci tarafında çiziliyor. `clean_up.php` listesine eklendi ki
+  yükseltilen kurulumlardan da silinsin. Depodan `git rm`; dev makinada
+  kopya `dev/_to_delete/barcode.php`.
+- **API kapsamları (#71 madde 4).** `customers:write` ve `offers:write`
+  izin ekranından kaldırıldı (`api_scope_groups()` `'write' => ''`,
+  `api_owner_scopes()` iki satır düştü): `schema.php`'de bu kapsamı isteyen
+  yol yok, ekranda duran anahtar tutulmayan bir sözdü. Kayıtlı uygulamalarda
+  duran değer `api_scopes_normalise()` ile bir sonraki kayıtta düşer; uçlar
+  gelince iki satır geri eklenir (yorumda yazılı). Webhook eşiği `<= 1`
+  kaldı, yorum koda uyduruldu: yönetici + tasarımcı (designer kapısı)
+  devredebilir; manager `api_settings.php` Olaylar sekmesinden mevcut
+  abonelikleri durdurur/sürdürür ama hakkı bir uygulamaya veremez.
+
+### Kararlar — olduğu gibi kalır
+
+Her biri kural 12 tablosuna işlendi; bir sonraki denetimde bulgu değildir.
+
+- `submit_order.php` misafir siparişini fatura e-postası eşleşen mevcut
+  hesaba bağlar (#67 madde 8): sipariş geçmişi özelliğinin parçası, ürün
+  sahibi korudu.
+- `backups.php` ve `software_backup` API eylemi manager (rol ≤ 2) kapısında
+  kalır (#62 madde 3): yazılı "manager ve üstü" politikası.
+- `includes/settings/prep.php` Google Client Secret'ı forma geri render eder
+  (#62 madde 13): koddaki yorum operatör tercihini kaydediyor; kural 10'un
+  "sırrı geri render etme" maddesinin yazılı istisnası.
+- `data/backups/turkish_default/sql.sql` içindeki UPS/USPS kimlik bilgileri
+  (#62 madde 4): `data/backups/` kural 12 gereği dokunulmaz. Depo herkese
+  açık olduğu için değerler zaten görünür — gerçek hesapsa döndürülmesi ürün
+  sahibine bırakıldı.
+- `edit_calendar.php` / `edit_contact_group.php` rol 3'ün kendisine atanan
+  takvim/grubu yeniden adlandırıp (boşsa) silmesine izin verir (#59 madde 3):
+  atanmış nesnenin yönetimi; oluşturma yasağı ayrı karar.
+- `pg_write_permission_repair()` 0777/0666 (#59 madde 7): `docs/CLAUDE-tam.md`
+  "Onarım" satırında gerekçesiyle yazılı.
+- `test_secure_mode.php` `init.php`'siz ve kapısız kalır (#70 madde 8):
+  sayfa tam da site kilitliyken cevap vermek için böyle; anahtar isteyen bir
+  kapı o anda ulaşılamayan panelden alınacak bir bağlantıya bağlardı.
+- `pg_curl_tls()` içindeki `ALLOW_INSECURE_UPDATE_TLS` bayrağı ödeme, lisans
+  ve kargo çağrılarını da kapsar (#70 not): operatörün config.php'de açıkça
+  verdiği tek son çare; ayrı yardımcı yazılmadı.
+- `pi.php`, `si.php` herkese açık (#68 madde 5–6) ve `UNSPLASH_ACCESS_KEY`
+  istemcide (#62 madde 11, tasarım gereği client_id): önceki paketlerde
+  zaten kayda geçmişti.
+
+### Doğrulama
+
+`php tools/lint.php` temiz. `php tools/check_lang.php`: bu paketin tek yeni
+anahtarı `tr.json`'da; aynı anda çalışan ERP dalının henüz eklenmemiş
+anahtarları raporda ayrı görünür. Dev sitede yerleşik tarayıcıdan: imzalı
+bağlantı ekranı açar ve kaydeder, `sig`'siz bağlantı giriş ekranına
+yönlenir, bozuk `sig` hata verir; API izin ekranında Customers/Offers
+yalnız okuma sütunu gösterir.
+
 ## 2026.4.4 — Gecikmiş alacak bildirimleri: panel, e-posta ve cihaz bildirimi (2026-09-18)
 
 **Belirti.** Yaşlandırma raporu kimin geciktiğini gösteriyor, ama kimseye

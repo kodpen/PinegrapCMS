@@ -68,6 +68,12 @@ referansı, oturum/konuşma referansı. Karar tarihçesinin yeri değişiklik g�
 yaptığını ve teknik olarak neden öyle yapıldığını anlatır (kilitler, yarışlar,
 geriye dönük uyumluluk, güvenlik kapıları).
 
+Aynı yasak commit mesajları ve PR açıklamaları için de geçerlidir:
+`Co-Authored-By: Claude…`, `Claude-Session:`, `🤖 Generated with Claude Code`
+ya da `claude.ai/code/session…` bağlantısı gibi hiçbir AI/oturum izi eklenmez.
+Depo geneli commit yazarı `Erdal Güral <erdaltyy@gmail.com>`; mesaj yalnızca
+değişikliği ve teknik gerekçesini anlatır.
+
 ### 3. Kullanıcıya görünen her metin çeviriden geçer
 
 - PHP ve panel: `lang('English text')`.
@@ -226,6 +232,14 @@ uygulamadan **önce** sorun; sessizce değiştirmek bu kuralın ihlalidir.
 | `barcode_decrease_inventory.php` — "evet" dönüşü | Özelliktir, hata değildir. |
 | `orders.notes`, `orders.tracking_company` | Kullanılmıyor görünür; ERP için duran alanlardır, devamı gelecek. |
 | `pi.php`, `si.php` | Herkese açık kalır. Oturum ya da rol kapısı eklenmez; bir denetimde "kimlik doğrulamasız açık" diye bulunmaları beklenen durumdur. |
+| `submit_order.php` — misafir siparişinin, fatura e-postası eşleşen mevcut hesaba doğrulamasız bağlanması | Özelliktir (sipariş geçmişi). Giriş ya da e-posta doğrulama şartı eklenmez (#67). |
+| `backups.php` ve `api.php` `software_backup` — manager (rol ≤ 2) kapısı | Kalır; politika "manager ve üstü" (#62). |
+| `includes/settings/prep.php` — Google Client Secret'ın Güvenlik formuna geri render edilmesi | Operatör tercihi; kural 10'un "sırrı geri render etme" maddesinin yazılı istisnası (#62). |
+| `edit_calendar.php`, `edit_contact_group.php` — rol 3'ün kendisine atanan takvim/grubu yeniden adlandırması ve (boşsa) silmesi | Kalır; oluşturma yasağı ayrı karardır (#59). |
+| `pg_write_permission_repair()` — klasör 0777 / dosya 0666 | Kalır; gerekçe `docs/CLAUDE-tam.md` "Onarım" satırında (#59). |
+| `test_secure_mode.php` — `init.php` yüklemez, oturum/anahtar kapısı yok | Kalır; sayfa tam da site kilitliyken cevap vermek için böyle tasarlandı (#70). |
+| `pg_curl_tls()` — `ALLOW_INSECURE_UPDATE_TLS` bayrağı ödeme, lisans ve kargo çağrılarını da kapsar | Kalır; operatörün config.php'de açıkça verdiği tek son çare (#70). |
+| `editor_select_image.php` — `UNSPLASH_ACCESS_KEY` istemciye basılır | Tasarım gereği: Access Key istemci tarafı client_id'dir, gizli olan Secret Key'dir (#62). |
 | `software_update.php` — `VERSION === '2026'` bloğu | Kaldırılmaz. Noktasız `2026` gerçek bir ara duraktır: eski sürümden (örn. 2025.2) gelen kurulum yükseltmeye başlamadan önce burada durur, `config.php` ve diğer veri yollarını `data/` altına taşır, sonra güncelleme kanalı değişir. "Hiçbir noktalı sürüm bunu sağlamıyor" diye ölü kod sanılmıştır. |
 | `myself_upsell.php` | Şimdilik kalır. Dikkatli inceleme sonucu netleşirse `clean_up`'a eklenebilir, kendi başınıza silmeyin. |
 

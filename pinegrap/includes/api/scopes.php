@@ -25,6 +25,10 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 // Resource groups, in the order the permission screen shows them. 'read' or
 // 'write' set to '' means the resource does not offer that half at all:
 // inventory is write-only (stock is read through products), meta is read-only.
+// Customers and offers are read-only for now: no route in schema.php takes a
+// write on either, so a write half here would be a promise the API does not
+// keep. Fill in 'customers:write' / 'offers:write' (and the owner ceiling in
+// api_owner_scopes()) when those routes exist.
 function api_scope_groups() {
 
 	return array(
@@ -35,11 +39,11 @@ function api_scope_groups() {
 
 		'orders'    => array('label' => 'Orders',     'read' => 'orders:read',    'write' => 'orders:write'),
 
-		'customers' => array('label' => 'Customers',  'read' => 'customers:read', 'write' => 'customers:write'),
+		'customers' => array('label' => 'Customers',  'read' => 'customers:read', 'write' => ''),
 
 		'pages'     => array('label' => 'Pages',      'read' => 'pages:read',     'write' => 'pages:write'),
 
-		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => 'offers:write'),
+		'offers'    => array('label' => 'Offers',     'read' => 'offers:read',    'write' => ''),
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
@@ -185,14 +189,12 @@ function api_owner_scopes($owner) {
 		$scopes[] = 'orders:read';
 		$scopes[] = 'orders:write';
 		$scopes[] = 'offers:read';
-		$scopes[] = 'offers:write';
 
 	}
 
 	if ($manages_contacts) {
 
 		$scopes[] = 'customers:read';
-		$scopes[] = 'customers:write';
 
 	}
 
@@ -212,8 +214,10 @@ function api_owner_scopes($owner) {
 
 	}
 
-	// Webhooks hand site events to a third-party address. Only a manager or an
-	// administrator may set that up.
+	// Webhooks hand site events to a third-party address. Only an administrator
+	// or a designer (roles 0 to 1, the panel's 'designer' gate) may delegate that;
+	// a manager can pause, retry and remove existing subscriptions on the Events
+	// tab of api_settings.php but cannot hand the right to an app.
 	if ($role <= 1) {
 
 		$scopes[] = 'webhooks:manage';

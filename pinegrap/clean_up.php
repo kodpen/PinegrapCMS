@@ -111,6 +111,12 @@ $file_list = array(
     // The XML endpoint of the old product-group tree widget. No screen or
     // script requests it any more.
     'get_product_group_tree.php',
+    // A third-party single-file barcode generator that sat at the web root
+    // with its own request handler, callable by anyone without a session and
+    // rendering an image of whatever size the request asked for. Nothing in
+    // the software requested it: barcodes are drawn in the browser by
+    // JsBarcode. Removed from the package with 2026.4.4.
+    'barcode.php',
 
 
     // The pre-lib/ asset tree, superseded in 2026.4.4 and dropped from the

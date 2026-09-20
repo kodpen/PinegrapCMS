@@ -48,9 +48,9 @@ if (!$_POST) {
         $email_preferences_path = PATH . SOFTWARE_DIRECTORY . '/email_preferences.php';
     }
     
-    // if an id was submitted, set id for query string in case we need to forward user back to e-mail preferences screen
+    // if an id was submitted, set id (and its signature) for query string in case we need to forward user back to e-mail preferences screen
     if (!empty($_POST['id'])) {
-        $url_id = '?id=' . $_POST['id'];
+        $url_id = '?id=' . urlencode($_POST['id']) . '&sig=' . urlencode((string) ($_POST['sig'] ?? ''));
     } else {
         $url_id = '';
     }
@@ -173,7 +173,13 @@ if (!$_POST) {
     
     // else user is not logged in
     } else {
-        $current_email_address = str_rot13(base64_decode($_POST['id']));
+        $current_email_address = str_rot13(base64_decode((string) ($_POST['id'] ?? '')));
+        
+        // Only a link this site signed for the address may change the contact behind it;
+        // the id alone is an obfuscated e-mail address anyone could produce.
+        if (pg_email_preferences_signature_valid($current_email_address, (string) ($_POST['sig'] ?? '')) == false) {
+            output_error(lang('The email preferences link is not valid.'));
+        }
         
         // get contact information
         $query =
@@ -211,8 +217,8 @@ if (!$_POST) {
                 exit();
             }
             
-            // set id for query string with new e-mail address
-            $url_id = '?id=' . base64_encode(str_rot13($liveform->get_field_value('email_address')));;
+            // set id and signature for query string with new e-mail address
+            $url_id = '?' . pg_email_preferences_query($liveform->get_field_value('email_address'));
         }
     }
     
@@ -286,6 +292,15 @@ if (!$_POST) {
         $contacts[] = array('id' => $contact_id);
     }
     
+    // The contact's link to its user account is written only from the signed-in
+    // path; a visitor arriving from a campaign link has no user to record, and
+    // writing 0 here would cut the account loose from its own contact.
+    if ($user_id > 0) {
+        $sql_update_user = "user = '" . (int) $user_id . "',";
+    } else {
+        $sql_update_user = '';
+    }
+    
     // loop through all contacts in order to update them
     foreach ($contacts as $contact) {
         // update contact
@@ -294,7 +309,7 @@ if (!$_POST) {
             SET
                 email_address = '" . escape($liveform->get_field_value('email_address')) . "',
                 opt_in = '" . escape($liveform->get_field_value('opt_in')) . "',
-                user = '$user_id',
+                $sql_update_user
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . $contact['id'] . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
