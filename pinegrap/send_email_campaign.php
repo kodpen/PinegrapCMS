@@ -344,7 +344,7 @@ if (mysqli_num_rows($result) > 0) {
                 "\n" .
                 '' . lang('Update email preferences or unsubscribe') . ':' . "\n" .
                 "\n" .
-                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?id=' . urlencode(base64_encode(str_rot13($email_recipient['email_address'])));
+                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?' . pg_email_preferences_query($email_recipient['email_address']);
 
 			}
 
@@ -352,7 +352,7 @@ if (mysqli_num_rows($result) > 0) {
         } else {
 
             $body = preg_replace('/<reference_code><\/reference_code>/', $email_recipient['reference_code'], $body);
-            $body = preg_replace('/<email_address_id><\/email_address_id>/', urlencode(base64_encode(str_rot13($email_recipient['email_address']))), $body);
+            $body = preg_replace('/<email_address_id><\/email_address_id>/', pg_email_preferences_placeholder_value($email_recipient['email_address']), $body);
 
         }
         

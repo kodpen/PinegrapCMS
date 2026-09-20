@@ -1431,6 +1431,27 @@
          yanlışlıkla kilitlememeniz için giriş engeli yalnız
          üyelere uygulanır.
 
+  [GÜVENLİK] E-posta kampanyalarındaki "tercihleri güncelle /
+         abonelikten çık" bağlantısı artık siteye özel bir imza
+         taşıyor. Eskiden bağlantı yalnız kodlanmış e-posta
+         adresini taşıyordu; adresi bilen herkes o kişinin
+         e-postasını ve abonelik seçimlerini değiştirebiliyordu.
+         İmzasız ya da imzası uymayan bir bağlantı artık hiçbir
+         şeyi değiştiremez.
+
+  Not    Bu güncellemeden ÖNCE gönderilen e-postalardaki eski
+         bağlantılar giriş ekranına yönlendirir; kişi oturum
+         açınca tercihlerini oradan değiştirir. Bundan sonra
+         gönderilen her kampanya imzalı bağlantıyla çıkar.
+
+  [GÜVENLİK] Yazılımla birlikte gelen ama hiçbir yerden
+         kullanılmayan barcode.php (üçüncü taraf barkod üretici)
+         paketten çıkarıldı. Dosya oturumsuz çağrılabiliyor ve
+         istenen boyutta görüntü üreterek sunucuyu meşgul
+         edebiliyordu; barkodlar panelde tarayıcı tarafında
+         çiziliyor. Mevcut kurulumlardaki kopyayı Temizlik aracı
+         siler.
+
   [GÜVENLİK] Şifre sıfırlama formu artık hesabın var olup
          olmadığını açık etmiyor. Eskiden "bu adrese ait
          hesap bulunamadı" diyordu; bu, siteye kayıtlı
