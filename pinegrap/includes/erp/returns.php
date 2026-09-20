@@ -399,6 +399,8 @@ function erp_invoice_return($data)
         return $fail($error);
     }
 
+    erp_event_invoice($return_id, 'erp.invoice.created');
+
     return array('success' => true, 'invoice_id' => $return_id, 'full_number' => $numbered['full'], 'error' => '');
 }
 
@@ -552,6 +554,8 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         erp_tx_rollback();
         return $fail($error);
     }
+
+    erp_event_invoice($invoice_id, 'erp.invoice.cancelled');
 
     return array('success' => true, 'error' => '');
 }

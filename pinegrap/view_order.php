@@ -2417,6 +2417,52 @@ if (!$_POST) {
         </div>';
     }
 
+    // The ERP's own invoice for this order, for a user the module lets in: the
+    // document when one exists, a button to issue it otherwise. A counter sale
+    // with no customer is billed to the account named on the settings card, so
+    // it qualifies through erp_account_id rather than a contact.
+    $output_erp_buttons = '';
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id')) {
+        $erp_order = db_item("SELECT status, contact_id, erp_invoice_id, erp_account_id FROM orders WHERE id = '" . (int) $_GET['id'] . "' LIMIT 1");
+        $erp_invoice = ($erp_order && ((int) $erp_order['erp_invoice_id'] > 0))
+            ? db_item("SELECT id, full_number, status FROM erp_invoices WHERE id = '" . (int) $erp_order['erp_invoice_id'] . "' LIMIT 1")
+            : null;
+
+        // The delivery note for the shipment, when the module's tables are
+        // there: the one written, or the way to write it from the order.
+        $output_erp_waybill = '';
+        if ($erp_order && ((string) $erp_order['status'] === 'complete') && waf_table_has_column('erp_waybills', 'order_id')) {
+            $erp_waybill = db_item("SELECT id, full_number FROM erp_waybills WHERE order_id = '" . (int) $_GET['id'] . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
+            if ($erp_waybill) {
+                $output_erp_waybill = '
+                <a class="btn btn-link link-success py-0 mb-2" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . h($erp_waybill['full_number']) . '</a>';
+            } elseif (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
+                $output_erp_waybill = '
+                <a class="btn btn-link link-secondary py-0 mb-2" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . lang('Issue the Delivery Note') . '</a>';
+            }
+        }
+
+        if ($erp_invoice) {
+            $output_erp_buttons = '
+            <div class="btn-group btn-group-sm flex-wrap">
+                <a class="btn btn-link link-success py-0 mb-2" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-1"></i>' . h($erp_invoice['full_number']) . '</a>' . $output_erp_waybill . '
+            </div>';
+        } elseif ($erp_order && ((string) $erp_order['status'] === 'complete')) {
+            if (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
+                $output_erp_buttons = '
+            <form method="post" action="add_erp_invoice.php" class="d-inline">
+                ' . get_token_field() . '
+                <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
+                <input type="hidden" name="from_order_screen" value="1" />
+                <button type="submit" name="submit_create" value="Create" class="btn btn-link link-secondary py-0 mb-2" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
+            </form>' . $output_erp_waybill;
+            } else {
+                $output_erp_buttons = '
+            <span class="btn btn-link link-secondary py-0 mb-2 disabled" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</span>';
+            }
+        }
+    }
+
     echo
 
     pg_page_shell(
@@ -2447,6 +2493,7 @@ if (!$_POST) {
                             ' . $output_gateway_buttons . '
                             ' . $output_cancel_button . '
                             ' . $output_parasut_buttons . '
+                            ' . $output_erp_buttons . '
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <button type="button" class="btn btn-link link-secondary py-0 mb-2 position-relative" title="' . lang('Print Order') . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;""><span class="material-icons me-1">print</span>' . lang('Print') . '</a>
 

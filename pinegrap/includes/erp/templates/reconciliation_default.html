@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!--
+  Pinegrap ERP - the built-in account reconciliation letter template.
+
+  Rendered by the same engine as the invoice template: a placeholder is a name
+  between double braces and prints HTML-escaped, a block opened with # and
+  closed with / is shown when the value is set (repeated for a list), a block
+  opened with ^ is shown when the value is empty. Every caption is a label.*
+  value resolved in the site language.
+
+  seller     .title .address_1 .address_2 .city .state .zip_code .country
+             .vkn .tax_office .web_address .email .logo_url .logo_data_uri
+  account    .title .tax_number .tax_office .address .district .city .country
+             .postcode .email
+  letter     .title .reference .letter_date .as_of .from .period .balance
+             .balance_fc .balance_signed .side .is_debit .is_credit .is_zero
+             .sentence .reply_days .reply_by .reply_sentence .opening_balance
+             .closing_balance .folded .folded_sentence .has_movements
+  movements  (list) .date .description .debit .credit .balance
+  label      .title .reference .letter_date .as_of .tax_id .tax_office .to
+             .dear .intro .movements .date .description .debit .credit
+             .balance .opening_balance .closing_balance .no_movements .agree
+             .disagree .our_balance .stamp .name_date .regards .questions
+             .generated_at
+  language, generated_at
+-->
+<html lang="{{language}}">
+<head>
+<meta charset="utf-8">
+<title>{{letter.title}} {{letter.reference}}</title>
+<style>
+    @page { size: A4 portrait; margin: 14mm 14mm 18mm 14mm; }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 9.5pt; color: #222; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { vertical-align: top; }
+    .head td { padding: 0; }
+    .logo { max-height: 60px; max-width: 200px; margin-bottom: 6px; }
+    .seller { font-size: 9pt; line-height: 1.35; }
+    .seller .name { font-size: 12pt; font-weight: bold; margin-bottom: 3px; }
+    .doc { text-align: right; }
+    .doc .title { font-size: 15pt; font-weight: bold; letter-spacing: 1px; color: #333; }
+    .doc table { width: auto; margin-left: auto; margin-top: 6px; }
+    .doc td { padding: 2px 0 2px 12px; font-size: 9pt; white-space: nowrap; }
+    .doc td.k { color: #666; }
+    .doc td.v { font-weight: bold; text-align: right; }
+    .rule { border-top: 2px solid #333; margin: 12px 0; }
+    .party { font-size: 9.5pt; line-height: 1.4; }
+    .party .label { font-size: 8pt; color: #666; letter-spacing: 1px; margin-bottom: 3px; }
+    .party .name { font-weight: bold; font-size: 11pt; }
+    .body { margin-top: 18px; font-size: 10pt; line-height: 1.5; }
+    .body p { margin: 0 0 8px 0; }
+    .balance { border: 1px solid #bbb; background: #f7f7f7; padding: 10px 12px; margin: 12px 0; }
+    .balance .k { font-size: 8pt; color: #666; letter-spacing: 1px; }
+    .balance .v { font-size: 15pt; font-weight: bold; margin-top: 2px; }
+    .balance .fc { font-size: 9pt; color: #555; margin-top: 2px; }
+    .balance .side { font-size: 9pt; color: #555; margin-top: 2px; }
+    .lines { margin-top: 14px; }
+    .lines caption { text-align: left; font-size: 8.5pt; color: #666; letter-spacing: 1px; padding: 0 0 4px 0; }
+    .lines th { background: #efefef; border-bottom: 1px solid #999; padding: 6px 5px; font-size: 8.5pt; text-align: left; }
+    .lines td { border-bottom: 1px solid #ddd; padding: 4px 5px; font-size: 8.5pt; }
+    .lines .n { text-align: right; white-space: nowrap; }
+    .lines .c { text-align: center; }
+    .lines tr.sum td { font-weight: bold; background: #f7f7f7; border-bottom: 1px solid #999; }
+    .folded { font-size: 8pt; color: #666; margin-top: 4px; }
+    .reply { border: 1px solid #999; padding: 10px 12px; margin-top: 22px; font-size: 9pt; page-break-inside: avoid; }
+    .reply .box { display: inline-block; width: 9pt; height: 9pt; border: 1px solid #333; vertical-align: middle; margin-right: 6px; }
+    .reply td { padding: 4px 12px 4px 0; }
+    .reply .line { border-bottom: 1px solid #999; display: inline-block; min-width: 150px; }
+    .sign { margin-top: 22px; }
+    .sign td { width: 50%; padding: 0 12px 0 0; font-size: 8.5pt; color: #666; }
+    .sign .line { border-top: 1px solid #999; margin-top: 36px; padding-top: 4px; }
+    .foot { position: fixed; bottom: -8mm; left: 0; right: 0; font-size: 7.5pt; color: #777; border-top: 1px solid #ccc; padding-top: 4px; }
+    .foot td { padding: 0; }
+    .foot td.r { text-align: right; }
+</style>
+</head>
+<body>
+
+<table class="head">
+    <tr>
+        <td style="width:58%">
+            <div class="seller">
+                {{#seller.logo_data_uri}}<img class="logo" src="{{seller.logo_data_uri}}" alt=""><br>{{/seller.logo_data_uri}}
+                <div class="name">{{seller.title}}</div>
+                {{#seller.address_1}}{{seller.address_1}}<br>{{/seller.address_1}}
+                {{#seller.address_2}}{{seller.address_2}}<br>{{/seller.address_2}}
+                {{seller.zip_code}} {{seller.city}} {{seller.state}} {{seller.country}}<br>
+                {{#seller.vkn}}{{label.tax_id}}: <b>{{seller.vkn}}</b>{{/seller.vkn}}
+                {{#seller.tax_office}} &nbsp;{{label.tax_office}}: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
+                {{#seller.web_address}}{{seller.web_address}}{{/seller.web_address}}
+                {{#seller.email}} &nbsp;{{seller.email}}{{/seller.email}}
+            </div>
+        </td>
+        <td class="doc">
+            <div class="title">{{letter.title}}</div>
+            <table>
+                <tr><td class="k">{{label.reference}}</td><td class="v">{{letter.reference}}</td></tr>
+                <tr><td class="k">{{label.letter_date}}</td><td class="v">{{letter.letter_date}}</td></tr>
+                <tr><td class="k">{{label.as_of}}</td><td class="v">{{letter.as_of}}</td></tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div class="rule"></div>
+
+<div class="party">
+    <div class="label">{{label.to}}</div>
+    <div class="name">{{account.title}}</div>
+    {{#account.address}}{{account.address}}<br>{{/account.address}}
+    {{account.postcode}} {{account.district}} {{account.city}} {{account.country}}<br>
+    {{#account.tax_number}}{{label.tax_id}}: <b>{{account.tax_number}}</b>{{/account.tax_number}}
+    {{#account.tax_office}} &nbsp;{{label.tax_office}}: <b>{{account.tax_office}}</b>{{/account.tax_office}}
+</div>
+
+<div class="body">
+    <p>{{label.dear}}</p>
+    <p>{{letter.sentence}}</p>
+    <div class="balance">
+        <div class="k">{{label.as_of}} {{letter.as_of}}</div>
+        <div class="v">{{letter.balance}}</div>
+        {{#letter.balance_fc}}<div class="fc">{{letter.balance_fc}}</div>{{/letter.balance_fc}}
+        {{#letter.is_debit}}<div class="side">{{label.debit}}</div>{{/letter.is_debit}}
+        {{#letter.is_credit}}<div class="side">{{label.credit}}</div>{{/letter.is_credit}}
+    </div>
+    <p>{{label.intro}}</p>
+    {{#letter.reply_sentence}}<p>{{letter.reply_sentence}}</p>{{/letter.reply_sentence}}
+</div>
+
+<table class="lines">
+    <caption>{{letter.period}}</caption>
+    <thead>
+        <tr>
+            <th style="width:13%">{{label.date}}</th>
+            <th>{{label.description}}</th>
+            <th class="n" style="width:15%">{{label.debit}}</th>
+            <th class="n" style="width:15%">{{label.credit}}</th>
+            <th class="n" style="width:16%">{{label.balance}}</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr class="sum">
+            <td></td>
+            <td colspan="3">{{label.opening_balance}}</td>
+            <td class="n">{{letter.opening_balance}}</td>
+        </tr>
+        {{#movements}}
+        <tr>
+            <td>{{date}}</td>
+            <td>{{description}}</td>
+            <td class="n">{{debit}}</td>
+            <td class="n">{{credit}}</td>
+            <td class="n">{{balance}}</td>
+        </tr>
+        {{/movements}}
+        {{^letter.has_movements}}
+        <tr><td colspan="5" class="c">{{label.no_movements}}</td></tr>
+        {{/letter.has_movements}}
+        <tr class="sum">
+            <td></td>
+            <td colspan="3">{{label.closing_balance}}</td>
+            <td class="n">{{letter.closing_balance}}</td>
+        </tr>
+    </tbody>
+</table>
+{{#letter.folded_sentence}}<div class="folded">{{letter.folded_sentence}}</div>{{/letter.folded_sentence}}
+
+<div class="reply">
+    <table>
+        <tr>
+            <td style="width:34%"><span class="box"></span> {{label.agree}}</td>
+            <td style="width:34%"><span class="box"></span> {{label.disagree}}</td>
+            <td>{{label.our_balance}}: <span class="line">&nbsp;</span></td>
+        </tr>
+    </table>
+    <table class="sign">
+        <tr>
+            <td><div class="line">{{label.name_date}}</div></td>
+            <td><div class="line">{{label.stamp}}</div></td>
+        </tr>
+    </table>
+</div>
+
+<div class="body">
+    <p>{{label.regards}}<br><b>{{seller.title}}</b></p>
+    {{#seller.email}}<p style="font-size:8.5pt;color:#666;">{{label.questions}}: {{seller.email}}</p>{{/seller.email}}
+</div>
+
+<div class="foot">
+    <table>
+        <tr>
+            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{letter.title}} {{letter.reference}}</td>
+            <td class="r">{{label.generated_at}}: {{generated_at}}</td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

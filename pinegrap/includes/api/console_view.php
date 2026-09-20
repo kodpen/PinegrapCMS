@@ -55,6 +55,10 @@ function api_console_endpoints_html($try_hint = '') {
 		'customers'      => lang('Customers'),
 		'pages'          => lang('Pages'),
 		'files'          => lang('Files'),
+		'forms'          => lang('Forms'),
+		'seo'            => lang('SEO'),
+		'system'         => lang('System'),
+		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),
 		'webhooks'       => lang('Webhooks')
 	);
@@ -159,6 +163,28 @@ function api_console_endpoints_html($try_hint = '') {
 
 			}
 
+			// The call as one line to paste, on every endpoint rather than in a
+			// paragraph at the top of the page. The -u flag is the whole
+			// authentication story: somebody reading one endpoint should not
+			// have to go looking for how to sign in, and "which method?" is the
+			// first question an integrator asks and the last one a reference
+			// page tends to answer.
+			$curl = 'curl -u APPLICATION_KEY:SECRET_KEY';
+
+			if ($route['method'] !== 'GET') {
+
+				$curl .= ' -X ' . $route['method'];
+
+			}
+
+			if ($body_params !== '') {
+
+				$curl .= ' -H "Content-Type: application/json" -d \'{...}\'';
+
+			}
+
+			$curl .= ' "' . api_openapi_base_url() . $route['path'] . '"';
+
 			$hint = ($try_hint === '') ? '' : '<span class="doc-try-hint small opacity-50">' . h($try_hint) . '</span>';
 
 			$panels .= '
@@ -173,6 +199,7 @@ function api_console_endpoints_html($try_hint = '') {
 					<p class="doc-summary">' . h($route['summary']) . $accepts . '</p>
 					' . (isset($route['description']) ? '<p class="doc-desc">' . h($route['description']) . '</p>' : '') . '
 					' . $tables . '
+					<div class="doc-curl"><code>' . h($curl) . '</code></div>
 					<div class="doc-try">
 						<button type="button" class="btn btn-sm btn-outline-primary doc-try-btn">
 							<i class="bi bi-play-fill me-1"></i>' . lang('Try it') . '</button>
@@ -186,7 +213,99 @@ function api_console_endpoints_html($try_hint = '') {
 
 	}
 
+	// What the site can tell an application about, with its own place in the
+	// list on the left. Until now the catalogue lived in the source and in the
+	// panel's subscription form, so an integrator reading these pages could not
+	// find out what there was to subscribe to.
+	$nav .= '<div class="doc-nav-group">' . h(lang('Events')) . '</div>
+		<a class="doc-nav-item" href="#ep_events">
+			<span class="doc-m post">~</span>
+			<span>' . h(lang('What this site can tell you')) . '</span></a>';
+
+	$panels .= '<div class="doc-group-h">' . h(lang('Events')) . '</div>' . api_console_events_html();
+
+	// The failures, last, with their own place in the list on the left. Neither
+	// block is counted as an endpoint - neither is one - so "31 endpoints"
+	// keeps meaning what it says.
+	$nav .= '<div class="doc-nav-group">' . h(lang('Errors')) . '</div>
+		<a class="doc-nav-item" href="#ep_errors">
+			<span class="doc-m del">!</span>
+			<span>' . h(lang('Codes and the answer shape')) . '</span></a>';
+
+	$panels .= '<div class="doc-group-h">' . h(lang('Errors')) . '</div>' . api_console_errors_html();
+
 	return array('nav' => $nav, 'panels' => $panels, 'count' => $count, 'groups' => count($groups));
+
+}
+
+// The event catalogue, as one block both pages print under the endpoint list.
+//
+// A webhook is only worth registering if you know what can arrive at it, and
+// the names were readable nowhere but the source and the panel's own form. Each
+// line says what the event really covers, including where it does not fire: a
+// bulk import writes thousands of contacts and stays quiet on purpose, and an
+// integrator needs to read that here rather than discover it in production.
+function api_console_events_html() {
+
+	require_once(dirname(__FILE__) . '/outbound/webhooks.php');
+
+	$rows = '';
+
+	foreach (api_webhook_events() as $event => $description) {
+
+		$rows .= '<tr>
+			<td><code>' . h($event) . '</code></td>
+			<td class="doc-note">' . h($description) . '</td></tr>';
+
+	}
+
+	return '<div class="doc-ep" id="ep_events">
+		<div class="doc-ep-head">
+			<span class="doc-m post">' . h(lang('Events')) . '</span>
+			<code class="doc-path">' . h(lang('Registered with POST /webhooks')) . '</code>
+		</div>
+		<div class="doc-ep-body">
+			<p class="doc-desc">' . h(lang('Rather than ask this API on a timer, an application can register an address and be told. The site posts a JSON body carrying the event name, created_at as a UTC instant, and the few fields in data that identify the thing, and signs it with the subscription secret in the X-Pinegrap-Signature header. Delivery is queued and sent by the scheduled task, so nothing an outside server does can slow down a checkout. Fetch the object itself when you need more than the identifiers.')) . '</p>
+			<div class="doc-curl"><code>{"event": "order.created", "created_at": "2026-01-25T09:14:03Z", "data": {"id": 1042}}</code></div>
+			<div class="doc-params mt-3"><span class="doc-params-h">' . h(lang('Events')) . '</span>
+				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
+		</div>
+	</div>';
+
+}
+
+// The failures, as one block both pages print under the endpoint list.
+//
+// An integrator meets these before they meet half the endpoints, and until now
+// the only way to learn what a code meant was to cause it. The envelope is
+// printed too: every failure has the same four fields, and the request_id is
+// what the operator needs to find the call in the site\'s API log.
+function api_console_errors_html() {
+
+	$rows = '';
+
+	foreach (api_error_catalogue() as $code => $entry) {
+
+		$rows .= '<tr>
+			<td><code>' . h($code) . '</code></td>
+			<td><span class="doc-type">' . (int)$entry[0] . '</span></td>
+			<td class="doc-note">' . h($entry[1]) . '</td></tr>';
+
+	}
+
+	return '<div class="doc-ep" id="ep_errors">
+		<div class="doc-ep-head">
+			<span class="doc-m del">' . h(lang('Errors')) . '</span>
+			<code class="doc-path">' . h(lang('Every failure answers with the same shape')) . '</code>
+		</div>
+		<div class="doc-ep-body">
+			<p class="doc-desc">' . h(lang('A failure carries the code to branch on, a message written for a person, the request_id that identifies the call in this site\'s API log, and - when the failure is about how the call was made - the address of this page. The message may be reworded or translated; the code will not be.')) . '</p>
+			<div class="doc-curl"><code>{"error": {"code": "validation_failed", "message": "...", "field": "limit", "request_id": "8f2c...", "docs": "..."}}</code></div>
+			<div class="doc-params mt-3"><span class="doc-params-h">' . h(lang('Codes')) . '</span>
+				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
+			<p class="doc-desc mt-3">' . h(lang('Rate limit: every answer carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset, and a refused call carries Retry-After. A 409 is reported by the endpoint that can produce it and is named in that endpoint\'s description.')) . '</p>
+		</div>
+	</div>';
 
 }
 
@@ -245,6 +364,12 @@ function api_console_css() {
 .doc-params table td:nth-child(2) { width: 90px; }
 .doc-type { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--bs-border-color); opacity: .8; }
 .doc-note { font-size: 11.5px; opacity: .75; }
+/* The paste-me line. Quiet enough not to compete with the parameter table,
+   wide enough to select in one drag, and it wraps rather than scrolls: a
+   command that is cut off at the right edge is copied cut off too. */
+.doc-curl { margin-top: 12px; background: var(--bs-tertiary-bg); border-radius: 6px;
+	padding: 7px 10px; overflow-wrap: anywhere; }
+.doc-curl code { font-size: 11.5px; color: var(--bs-body-color); opacity: .75; }
 .doc-try { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .doc-try-panel { margin-top: 12px; }
 .doc-try-panel pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 12px;

@@ -1029,6 +1029,7 @@ if ($liveform->check_form_errors() == false) {
                         UNIX_TIMESTAMP())";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $contact_id = mysqli_insert_id(db::$con);
+            $new_contact_id = $contact_id;
 
             // If there is a user for this submitted form,
             // and it is not an existing user that was found via auto-registation
@@ -1051,6 +1052,12 @@ if ($liveform->check_form_errors() == false) {
                     timestamp = UNIX_TIMESTAMP()
                  WHERE id = '$contact_id'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    }
+
+    // Announced only now: the row above was created empty and has just been
+    // filled in from the submitted form.
+    if (!empty($new_contact_id)) {
+        pg_announce_contact_created($new_contact_id);
     }
     
     // if there is a contact, then add contact to contact groups and connect contact to submitted form
@@ -1566,6 +1573,23 @@ if ($liveform->check_form_errors() == false) {
         'action' => 'custom_form_submitted',
         'action_item_id' => $_POST['page_id'],
         'contact_id' => $contact_id));
+
+    // Tell whoever is listening, from the same place the site tells itself.
+    // Queued rather than sent: the visitor is waiting for a confirmation page
+    // and a slow receiver must not hold it up. The values are not in the
+    // payload - a form carries whatever the operator drew on it, including the
+    // fields people are least willing to see posted to a third party - so the
+    // event carries the identifiers and the subscriber reads the submission
+    // from /forms/{id}/submissions with the permission that takes.
+    require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+
+    api_webhook_enqueue('form.submitted', array(
+        'id'             => (int) $form_id,
+        'form_id'        => (int) $_POST['page_id'],
+        'form_name'      => $form_name,
+        'reference_code' => $reference_code,
+        'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
+    ));
     
     // if this is a quiz custom form, then verify that user has passed quiz
     if ($quiz == 1) {

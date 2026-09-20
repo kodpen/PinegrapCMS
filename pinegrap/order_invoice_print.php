@@ -57,7 +57,7 @@ $order = db_item(
             subtotal, discount, tax, shipping, surcharge, total,
             payment_method, transaction_id, special_offer_code,
             payment_installment, installment_charges,
-            reference_code, tracking_code,
+            reference_code,
             user_id, contact_id
      FROM orders
      WHERE id = '" . e($order_id) . "'
@@ -66,6 +66,23 @@ $order = db_item(
 
 if (!$order) {
     output_error('Order not found.');
+}
+
+// The parcel numbers, for the customer's own copy. They live in
+// shipping_tracking_numbers, one row per parcel: this used to print
+// orders.tracking_code, which is the campaign code the visitor arrived with
+// (?t=, stored beside the utm_* fields) and reads on an invoice as the number
+// the customer is supposed to hand to the courier.
+$tracking_numbers = array();
+
+$tracking_rows = db_items("SELECT number FROM shipping_tracking_numbers
+    WHERE (order_id = '" . e($order_id) . "') AND (TRIM(number) != '')
+    ORDER BY id ASC");
+
+if (is_array($tracking_rows)) {
+    foreach ($tracking_rows as $tracking_row) {
+        $tracking_numbers[] = trim((string)$tracking_row['number']);
+    }
 }
 
 // Ownership — same rule as cancel_order.php. Customer can print own; admin can print any.
@@ -282,8 +299,8 @@ header('Content-Type: text/html; charset=utf-8');
         <?php if (!empty($order['transaction_id'])): ?>
             <div><?= h(lang('Transaction ID')) ?>: <?= h((string)$order['transaction_id']) ?></div>
         <?php endif; ?>
-        <?php if (!empty($order['tracking_code'])): ?>
-            <div><?= h(lang('Tracking Code')) ?>: <?= h((string)$order['tracking_code']) ?></div>
+        <?php if (!empty($tracking_numbers)): ?>
+            <div><?= h(lang('Tracking Numbers')) ?>: <?= h(implode(', ', $tracking_numbers)) ?></div>
         <?php endif; ?>
         <?php if (!empty($order['special_offer_code'])): ?>
             <div><?= h(lang('Special Offer Code')) ?>: <?= h((string)$order['special_offer_code']) ?></div>

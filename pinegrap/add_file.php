@@ -518,10 +518,16 @@ if (!$_POST) {
                 '" . USER_ID . "',
                 UNIX_TIMESTAMP())");
 
+        $new_file_id = (int) mysqli_insert_id(db::$con);
+
         log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$file_name )), $_SESSION['sessionusername']);
 
+        // A file uploaded from the panel is as new to an integration as one
+        // posted to the API, so it is announced the same way.
+        pg_announce('file.created', array('id' => $new_file_id, 'name' => $file_name));
+
         $uploaded_files[] = array(
-            'id'        => mysqli_insert_id(db::$con),
+            'id'        => $new_file_id,
             'name'      => $file_name,
             'type'      => $file_extension,
             'size'      => $file_size,

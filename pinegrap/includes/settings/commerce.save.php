@@ -171,6 +171,16 @@ function pg_parasut_credentials_for_save()
         $sql_erp_due = "erp_default_due_days = '" . min(3650, max(0, (int) post_value('erp_default_due_days'))) . "',";
     }
 
+    // The walk-in sales account (4.59): an account that exists, or none.
+    if (waf_table_has_column('config', 'erp_walkin_account_id')) {
+        $erp_walkin_account_id = (int) post_value('erp_walkin_account_id');
+        if (($erp_walkin_account_id > 0) && ((int) db_value("SELECT COUNT(*) FROM erp_accounts WHERE id = '" . $erp_walkin_account_id . "'") === 0)) {
+            $erp_walkin_account_id = 0;
+        }
+        $sql_erp_due .= "
+            erp_walkin_account_id = '" . $erp_walkin_account_id . "',";
+    }
+
     if (waf_table_has_column('config', 'erp_fx_enabled')) {
         $erp_fx_codes = array();
         $erp_fx_known = array();

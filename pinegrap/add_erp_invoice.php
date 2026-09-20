@@ -34,16 +34,22 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    // Orders that are complete, belong to somebody, and carry no invoice yet.
+    // Orders that are complete, belong to somebody - a contact, or an account
+    // named on the order the way a counter sale is - and carry no invoice yet.
     // A bank transfer order may be complete without being paid; the picker
     // says so on the option rather than hiding the order, because an invoice
     // is sometimes what the customer needs before they pay.
     $open_orders = (array) db_items("SELECT orders.id, orders.order_number, orders.total, orders.order_date,
             orders.billing_first_name, orders.billing_last_name, orders.billing_company,
-            orders.status, orders.payment_method, orders.paid_at
+            orders.status, orders.payment_method, orders.paid_at, orders.type,
+            TRIM(CONCAT(COALESCE(contacts.first_name, ''), ' ', COALESCE(contacts.last_name, ''))) AS contact_name,
+            COALESCE(contacts.company, '') AS contact_company,
+            COALESCE(erp_accounts.title, '') AS account_title
         FROM orders
+        LEFT JOIN contacts ON contacts.id = orders.contact_id
+        LEFT JOIN erp_accounts ON erp_accounts.id = orders.erp_account_id
         WHERE orders.status = 'complete'
-          AND orders.contact_id > 0
+          AND (orders.contact_id > 0 OR COALESCE(orders.erp_account_id, 0) > 0)
           AND COALESCE(orders.erp_invoice_id, 0) = 0
         ORDER BY orders.order_date DESC
         LIMIT 500");
@@ -51,9 +57,20 @@ if (!$_POST) {
     $order_options = array();
 
     foreach ($open_orders as $order) {
+        // The billing name the customer typed; a counter sale has none, so
+        // the contact's or the account's name stands in.
         $who = trim((string) $order['billing_company']);
         if ($who === '') {
             $who = trim($order['billing_first_name'] . ' ' . $order['billing_last_name']);
+        }
+        if ($who === '') {
+            $who = (trim((string) $order['contact_company']) !== '') ? trim((string) $order['contact_company']) : trim((string) $order['contact_name']);
+        }
+        if ($who === '') {
+            $who = trim((string) $order['account_title']);
+        }
+        if (($who !== '') && ((string) $order['type'] === 'local')) {
+            $who .= ' (' . lang('local sale') . ')';
         }
 
         // liveform prints option labels as-is and the billing name was typed by the customer.
@@ -146,6 +163,14 @@ if (!$_POST) {
     $result = erp_invoice_from_order($order_id, array('created_by' => (int) $user['id']));
 
     if (!$result['success']) {
+        // Asked from the order's own screen, the refusal is shown there.
+        if ((string) ($_POST['from_order_screen'] ?? '') === '1') {
+            $liveform->remove_form();
+            $liveform_order = new liveform('view_order');
+            $liveform_order->mark_error('_error', $result['error']);
+            go(PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id);
+        }
+
         $liveform->mark_error('_error', $result['error']);
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_invoice.php');
     }

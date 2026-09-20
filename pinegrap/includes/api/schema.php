@@ -48,7 +48,7 @@ function api_version() {
 //   list      array of objects, for the bulk endpoints
 function api_schema() {
 
-	return array(
+	$routes = array(
 
 		/* ----- Site information ------------------------------------------- */
 
@@ -58,6 +58,7 @@ function api_schema() {
 			'path'    => '/meta',
 			'scope'   => 'meta:read',
 			'handler' => 'api_meta_read',
+			'returns' => 'Meta',
 			'summary' => 'Site information',
 			'description' => 'Store name, currency, tax setting, the order status vocabulary and the API version, plus which modules are switched on, whether the firewall is blocking, whether the scheduled jobs are actually running, and what an upload may weigh. An integration reads this once at start-up instead of hard coding any of it - and reads the jobs list when a figure this API reports has stopped moving, because half of them are produced by a job rather than by a request.',
 			'params'  => array()
@@ -71,6 +72,7 @@ function api_schema() {
 			'path'    => '/products',
 			'scope'   => 'products:read',
 			'handler' => 'api_products_list',
+			'returns' => array('list' => 'Product'),
 			'summary' => 'List products',
 			'description' => 'Cursor paged. Pass updated_since to fetch only what changed, which is how a marketplace keeps itself in step without reading the whole catalogue every time.',
 			'params'  => array(
@@ -92,6 +94,7 @@ function api_schema() {
 			'path'    => '/products/{id}',
 			'scope'   => 'products:read',
 			'handler' => 'api_products_get',
+			'returns' => 'Product',
 			'summary' => 'One product',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
@@ -104,6 +107,8 @@ function api_schema() {
 			'path'    => '/products',
 			'scope'   => 'products:write',
 			'handler' => 'api_products_create',
+			'dry_run' => true,
+			'returns' => 'Product',
 			'summary' => 'Add a product',
 			'description' => 'Creates one product. name is the merchant SKU and has to be free: a name already in the catalogue is refused with 409 rather than quietly stored under a different one. Stock may be set here because the row does not exist yet and nothing can be racing it - afterwards it belongs to the inventory endpoint. Send an Idempotency-Key so a retried call does not leave two products behind.',
 			'params'  => array(
@@ -144,6 +149,8 @@ function api_schema() {
 			'path'    => '/products/{id}',
 			'scope'   => 'products:write',
 			'handler' => 'api_products_update',
+			'dry_run' => true,
+			'returns' => 'Product',
 			'summary' => 'Change a product',
 			'description' => 'Only the fields present in the body are written. Stock is not changed here - use the inventory endpoint, which adjusts atomically. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
@@ -182,6 +189,8 @@ function api_schema() {
 			'path'    => '/products/{id}/inventory',
 			'scope'   => 'inventory:write',
 			'handler' => 'api_inventory_write',
+			'dry_run' => true,
+			'returns' => 'Inventory',
 			'summary' => 'Set or adjust stock',
 			'description' => 'op=set writes an absolute quantity; op=adjust moves it by a signed amount and is applied by the database in one statement, so two channels selling the same item at the same moment cannot both write the same result. Send an Idempotency-Key so a retried adjustment is not applied twice.',
 			'params'  => array(
@@ -197,10 +206,27 @@ function api_schema() {
 			'path'    => '/products/inventory',
 			'scope'   => 'inventory:write',
 			'handler' => 'api_inventory_bulk',
+			'dry_run' => true,
+			'returns' => 'InventoryBatch',
 			'summary' => 'Set or adjust stock for many products',
 			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on.',
 			'params'  => array(
 				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC.')
+			)
+		),
+
+		array(
+			'id'      => 'products.prices',
+			'method'  => 'POST',
+			'path'    => '/products/prices',
+			'scope'   => 'products:write',
+			'handler' => 'api_products_prices',
+			'dry_run' => true,
+			'returns' => 'PriceBatch',
+			'summary' => 'Set prices for many products',
+			'description' => 'The twin of the batch stock endpoint: one call for a repricing run instead of one call per product. Answers 200 with an outcome per item - ok, not_found or invalid - and applied says how many landed, because a product the other side has not noticed was deleted is data rather than a failure. Prices are whole minor units; a decimal is refused rather than rounded. Only the price is written.',
+			'params'  => array(
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'required' => true, 'max_items' => 250, 'description' => 'Up to 250 objects: id, sku or barcode to say which product, and price in minor units.')
 			)
 		),
 
@@ -212,6 +238,7 @@ function api_schema() {
 			'path'    => '/product-groups',
 			'scope'   => 'products:read',
 			'handler' => 'api_product_groups_list',
+			'returns' => array('list' => 'ProductGroup'),
 			'summary' => 'List product groups',
 			'description' => 'A product group is the parent a set of variants hangs from: this catalogue has no variant table, so the products in one group are the sizes or colours of a single article. Pass variants_only to skip the shop navigation tree and get just the groups that gather variants.',
 			'params'  => array(
@@ -232,6 +259,7 @@ function api_schema() {
 			'path'    => '/product-groups/{id}',
 			'scope'   => 'products:read',
 			'handler' => 'api_product_groups_get',
+			'returns' => 'ProductGroup',
 			'summary' => 'One product group',
 			'description' => 'Adds the long description, the child groups, and every option of every attribute the group uses - which together are the variant matrix a marketplace listing is built from.',
 			'params'  => array(
@@ -246,6 +274,8 @@ function api_schema() {
 			'path'    => '/product-groups/{id}',
 			'scope'   => 'products:write',
 			'handler' => 'api_product_groups_update',
+			'dry_run' => true,
+			'returns' => 'ProductGroup',
 			'summary' => 'Change a product group',
 			'description' => 'The text a group is found by and the published switch. The tree itself - the parent and the order - is not writable here: it is the shop\'s own navigation, and moving a group from outside moves pages on a live site. Publishing is not one row either: it runs down to the child groups and the products in them, and the answer reports how many records it reached. A product that is also published in an enabled group elsewhere in the catalogue is left alone when unpublishing, exactly as on the group screen.',
 			'params'  => array(
@@ -268,6 +298,7 @@ function api_schema() {
 			'path'    => '/orders',
 			'scope'   => 'orders:read',
 			'handler' => 'api_orders_list',
+			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
 			'description' => 'Cursor paged and ordered by the order date, so updated_since walks new orders in one direction without repeating any.',
 			'params'  => array(
@@ -288,6 +319,7 @@ function api_schema() {
 			'path'    => '/orders/{id}',
 			'scope'   => 'orders:read',
 			'handler' => 'api_orders_get',
+			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
@@ -301,6 +333,8 @@ function api_schema() {
 			'path'    => '/orders/{id}',
 			'scope'   => 'orders:write',
 			'handler' => 'api_orders_update',
+			'dry_run' => true,
+			'returns' => 'Order',
 			'summary' => 'Change an order',
 			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
@@ -317,13 +351,15 @@ function api_schema() {
 			'path'    => '/orders/{id}/shipment',
 			'scope'   => 'orders:write',
 			'handler' => 'api_orders_ship',
+			'dry_run' => true,
+			'returns' => 'Order',
 			'summary' => 'Record a shipment',
 			'description' => 'The tracking numbers for one of the order\'s shipping addresses, and optionally the dates. A tracking number is what makes an order count as shipped in this store - the ship date is a planned dispatch date on many configurations, so nothing is read from it. The list replaces what that address holds, which is what the order screen does with the same field: send everything you know each time and the call can be repeated without collecting duplicates. The customer is told only when notify is true.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has.'),
 				array('name' => 'ship_to_id',       'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
-				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it.'),
+				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
 				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
 				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
@@ -338,6 +374,7 @@ function api_schema() {
 			'path'    => '/customers',
 			'scope'   => 'customers:read',
 			'handler' => 'api_customers_list',
+			'returns' => array('list' => 'Customer'),
 			'summary' => 'List customers',
 			'params'  => array(
 				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name, the email address or the member number.'),
@@ -356,6 +393,7 @@ function api_schema() {
 			'path'    => '/webhooks',
 			'scope'   => 'webhooks:manage',
 			'handler' => 'api_webhooks_list',
+			'returns' => array('data' => 'Webhook[]', 'events' => 'string[]'),
 			'summary' => 'Your event subscriptions',
 			'description' => 'Only this application\'s own subscriptions. The answer also lists every event that can be subscribed to, and reports for each subscription what is still queued and the last delivery error on file, so a receiver that stopped answering can be diagnosed without reading the server\'s tables.',
 			'params'  => array()
@@ -367,6 +405,8 @@ function api_schema() {
 			'path'    => '/webhooks',
 			'scope'   => 'webhooks:manage',
 			'handler' => 'api_webhooks_create',
+			'dry_run' => true,
+			'returns' => 'Webhook',
 			'summary' => 'Subscribe to events',
 			'description' => 'The signing secret is returned once, here. Each delivery carries X-Pinegrap-Signature: t=<unix>,v1=HMAC-SHA256(t + "." + body) - check it, and refuse a timestamp older than a few minutes.',
 			'params'  => array(
@@ -382,6 +422,7 @@ function api_schema() {
 			'path'    => '/webhooks/{id}',
 			'scope'   => 'webhooks:manage',
 			'handler' => 'api_webhooks_delete',
+			'dry_run' => true,
 			'summary' => 'Remove a subscription',
 			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
 			'params'  => array(
@@ -395,9 +436,171 @@ function api_schema() {
 			'path'    => '/customers/{id}',
 			'scope'   => 'customers:read',
 			'handler' => 'api_customers_get',
+			'returns' => 'Customer',
 			'summary' => 'One customer',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.create',
+			'method'  => 'POST',
+			'path'    => '/customers',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_create',
+			'dry_run' => true,
+			'returns' => 'Customer',
+			'summary' => 'Add a customer',
+			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, contact groups, the affiliate record and the ERP columns are not written here.',
+			'params'  => array(
+				array('name' => 'salutation',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'first_name',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'last_name',   'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'company',     'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'title',       'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'email',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'phone',       'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Stored as the mobile number, which is the one a courier and a marketplace both ask for.'),
+				array('name' => 'address_1',   'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_2',   'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'city',        'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'state',       'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'zip',         'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'country',     'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
+				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; this endpoint does not subscribe anyone to a contact group.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.update',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_update',
+			'dry_run' => true,
+			'returns' => 'Customer',
+			'summary' => 'Change a customer',
+			'description' => 'Only the fields you send are changed. The same set the create takes.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'salutation',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'first_name',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'last_name',   'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'company',     'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'title',       'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'email',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'phone',       'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Stored as the mobile number, which is the one a courier and a marketplace both ask for.'),
+				array('name' => 'address_1',   'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_2',   'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'city',        'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'state',       'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'zip',         'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'country',     'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
+				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; this endpoint does not subscribe anyone to a contact group.')
+			)
+		),
+
+		/* ----- Operations --------------------------------------------------- */
+
+		array(
+			'id'      => 'system.status',
+			'method'  => 'GET',
+			'path'    => '/system/status',
+			'scope'   => 'system:read',
+			'handler' => 'api_system_status',
+			'returns' => 'SystemStatus',
+			'summary' => 'Health score and the checks behind it',
+			'description' => 'What the dashboard gauge is built from: the score out of a hundred and every check with its state, so the operator can put their own monitoring in front of it instead of opening the panel to find out that a scheduled job stopped moving three days ago. key is the English name to branch on; title, value and message are written for a person and follow the site language. The answer is the cached one the panel also reads, at most ten minutes old, and checked_at says how old - the checks behind it scan files and certificates and no site would survive computing them once a minute.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'reports.sales',
+			'method'  => 'GET',
+			'path'    => '/reports/sales',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_sales',
+			'returns' => 'SalesReport',
+			'summary' => 'Sales by day or month',
+			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day, and at most 400 periods come back.',
+			'params'  => array(
+				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'Start of the window. Defaults to thirty days before to.'),
+				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),
+				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'month'), 'default' => 'day'),
+				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled'), 'description' => 'One status instead of the two that count as sales.')
+			)
+		),
+
+		/* ----- SEO ---------------------------------------------------------- */
+
+		array(
+			'id'      => 'seo.issues',
+			'method'  => 'GET',
+			'path'    => '/seo/issues',
+			'scope'   => 'seo:read',
+			'handler' => 'api_seo_issues_list',
+			'returns' => array('list' => 'SeoIssue'),
+			'summary' => 'What the SEO analysis found',
+			'description' => 'Every finding on the site in one cursor-paged list, with the record each one is about. The same findings ride on the record itself through /pages, /products and /product-groups; this is the other direction - "show me everything that is wrong" - which is how the work is actually done on a site with four hundred pages. occurrences counts repeats of one finding on one record: eleven images with no alt text is one finding of eleven, not eleven findings. Nothing is written here: a finding is cleared by fixing what it is about and letting the next analysis run notice.',
+			'params'  => array(
+				array('name' => 'entity_type', 'in' => 'query', 'type' => 'enum', 'values' => array('page', 'product', 'product_group'), 'description' => 'Limit to one kind of record.'),
+				array('name' => 'entity_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Limit to one record, with entity_type.'),
+				array('name' => 'severity',    'in' => 'query', 'type' => 'enum', 'values' => array('error', 'warning', 'notice')),
+				array('name' => 'code',        'in' => 'query', 'type' => 'string', 'max_length' => 48, 'description' => 'One check, by its code - the way to work through a single kind of problem across the site.'),
+				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 255)
+			)
+		),
+
+		/* ----- Forms -------------------------------------------------------- */
+
+		array(
+			'id'      => 'forms.list',
+			'method'  => 'GET',
+			'path'    => '/forms',
+			'scope'   => 'forms:read',
+			'handler' => 'api_forms_list',
+			'returns' => array('list' => 'Form'),
+			'summary' => 'List forms',
+			'description' => 'Every page that carries a form, with how many fields it has and how much has been filled in on it. A form is a page in this software, so the id here is a page id and the same id reads the page through /pages.',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.get',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}',
+			'scope'   => 'forms:read',
+			'handler' => 'api_forms_get',
+			'returns' => 'Form',
+			'summary' => 'One form, with its fields',
+			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submissions',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submissions',
+			'returns' => array('list' => 'FormSubmission'),
+			'summary' => 'What came in on a form',
+			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read.',
+			'params'  => array(
+				array('name' => 'id',              'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submitted_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only submissions sent at or after this moment.'),
+				array('name' => 'complete',        'in' => 'query', 'type' => 'bool', 'description' => 'false returns the saved-but-not-sent ones instead.'),
+				array('name' => 'reference_code',  'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The code the visitor was shown after sending.'),
+				array('name' => 'limit',           'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
+				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
 			)
 		),
 
@@ -409,6 +612,7 @@ function api_schema() {
 			'path'    => '/pages',
 			'scope'   => 'pages:read',
 			'handler' => 'api_pages_list',
+			'returns' => array('list' => 'Page'),
 			'summary' => 'List pages',
 			'description' => 'The search settings of every page and the scores already on file. Cursor paged, and max_score narrows the listing to the pages that are scoring worst, which is where work on a site starts. The page text is not returned: fetch the address in the url field. The findings are on the single page endpoint.',
 			'params'  => array(
@@ -433,6 +637,7 @@ function api_schema() {
 			'path'    => '/pages/{id}',
 			'scope'   => 'pages:read',
 			'handler' => 'api_pages_get',
+			'returns' => 'Page',
 			'summary' => 'One page, with its SEO findings',
 			'description' => 'Adds the list of what is wrong with the page: the meta checks from the score record and the structure and link findings from the nightly analysis, each with a stable code and a sentence. Nothing is rendered or recalculated to answer this - the seo block reports when each half was last examined and whether it is waiting for a recalculation.',
 			'params'  => array(
@@ -447,6 +652,8 @@ function api_schema() {
 			'path'    => '/pages/{id}',
 			'scope'   => 'pages:write',
 			'handler' => 'api_pages_update',
+			'dry_run' => true,
+			'returns' => 'Page',
 			'summary' => 'Change a page',
 			'description' => 'The title, the description, the site search settings and the indexing switches. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
 			'params'  => array(
@@ -467,6 +674,8 @@ function api_schema() {
 			'path'    => '/pages/{id}',
 			'scope'   => 'pages:write',
 			'handler' => 'api_pages_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page',
 			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way. A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
 			'params'  => array(
@@ -481,6 +690,8 @@ function api_schema() {
 			'path'    => '/pages/{id}/delete',
 			'scope'   => 'pages:write',
 			'handler' => 'api_pages_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page, addressed as a POST',
 			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request.',
 			'params'  => array(
@@ -497,6 +708,7 @@ function api_schema() {
 			'path'    => '/files',
 			'scope'   => 'files:read',
 			'handler' => 'api_files_list',
+			'returns' => array('list' => 'File'),
 			'summary' => 'List files',
 			'description' => 'The files the site serves to anyone. A folder that is guest, private, registration or membership is not listed: the panel decides those per user through the access control list, and an application is not a user.',
 			'params'  => array(
@@ -516,6 +728,7 @@ function api_schema() {
 			'path'    => '/files/{id}',
 			'scope'   => 'files:read',
 			'handler' => 'api_files_get',
+			'returns' => 'File',
 			'summary' => 'One file',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
@@ -528,6 +741,8 @@ function api_schema() {
 			'path'    => '/files',
 			'scope'   => 'files:write',
 			'handler' => 'api_files_create',
+			'dry_run' => true,
+			'returns' => 'File',
 			'summary' => 'Upload a file',
 			'description' => 'Images and PDFs only, and the bytes have to be what the name claims - the file is opened and checked rather than trusted. SVG is not accepted: it is markup, it can carry script, and the site serves it inline. The folder is the one the operator chose for applications and cannot be named in the request. Send the bytes as content_base64, or a source_url for this site to fetch - that fetch resolves the name once, pins the address it checked and refuses anything on this network.',
 			'params'  => array(
@@ -545,6 +760,8 @@ function api_schema() {
 			'path'    => '/files/{id}',
 			'scope'   => 'files:write',
 			'handler' => 'api_files_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean?', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Remove a file',
 			'description' => 'Moves the file to the recycle bin. The file stays on disk and its address keeps answering, because a page or a product refers to a file by name: an application removing the wrong one should not take part of the site down. There is no outright delete here; that stays in the file manager. A default IIS install answers DELETE itself before PHP is reached, so POST /files/{id}/delete does the same thing.',
 			'params'  => array(
@@ -558,6 +775,8 @@ function api_schema() {
 			'path'    => '/files/{id}/delete',
 			'scope'   => 'files:write',
 			'handler' => 'api_files_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean?', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Remove a file, addressed as a POST',
 			'description' => 'The same removal as DELETE /files/{id}, for clients that cannot send DELETE.',
 			'params'  => array(
@@ -573,6 +792,7 @@ function api_schema() {
 			'path'    => '/offers',
 			'scope'   => 'offers:read',
 			'handler' => 'api_offers_list',
+			'returns' => array('list' => 'Offer'),
 			'summary' => 'List offers',
 			'description' => 'An offer is a campaign rule applied to the cart at checkout - a discount, a gift product, free shipping - and not a sales quote; this resource is read only. offer_status is what the offer is doing today, derived from the enabled switch and the date range; incomplete marks a saved offer that cannot do anything at checkout yet. The conditions and the results are on the single-offer endpoint. Cursor paged.',
 			'params'  => array(
@@ -591,12 +811,109 @@ function api_schema() {
 			'path'    => '/offers/{id}',
 			'scope'   => 'offers:read',
 			'handler' => 'api_offers_get',
+			'returns' => 'Offer',
 			'summary' => 'One offer, with its conditions and results',
 			'description' => 'Adds the conditions the cart has to meet and what the offer then does, each flattened into readable objects: products and groups are named, amounts are minor units, percentages are 0-100, and an open-ended offer reports end_date null.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
+		),
+
+		array(
+			'id'      => 'offers.delete',
+			'method'  => 'DELETE',
+			'path'    => '/offers/{id}',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'code' => 'string', 'deleted' => 'boolean', 'offer_status' => 'string'),
+			'summary' => 'Delete an offer',
+			'description' => 'The only write this resource has: offers can be read and removed, not created or edited. An offer is a rule tree - the conditions the cart has to meet and the results it then gets - and building one belongs with the editor that knows those rules. Removal takes the offer, its conditions, and the rule and result rows no other offer still uses. There is no recycle bin for offers, here or in the panel, so this cannot be undone. An offer whose offer_status is active is refused with 409 offer_active unless force=true is sent: an operator removing a live campaign is looking at the shop while they do it, and an application is not. A default IIS install answers DELETE itself before PHP is reached: POST /offers/{id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',    'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'force', 'in' => 'query', 'type' => 'bool', 'description' => 'Remove the offer even though it is running today.')
+			)
+		),
+
+		array(
+			'id'      => 'offers.delete_post',
+			'method'  => 'POST',
+			'path'    => '/offers/{id}/delete',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'code' => 'string', 'deleted' => 'boolean', 'offer_status' => 'string'),
+			'summary' => 'Delete an offer, addressed as a POST',
+			'description' => 'The same removal as DELETE /offers/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, so that a verb alias could never turn some future POST /offers/{id} into a deletion.',
+			'params'  => array(
+				array('name' => 'id',    'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Remove the offer even though it is running today.')
+			)
 		)
+
+	);
+
+	// What the modules add. Their rows are written the same way and are
+	// appended, so the description, the console and the router see one list.
+	// The seam exists so that a module's own endpoints are not written into this
+	// file by a second pair of hands - see includes/api/modules.php.
+	require_once(dirname(__FILE__) . '/modules.php');
+
+	return array_merge($routes, api_module_contributions('api_routes'));
+
+}
+
+// Every code this API answers with, in one place.
+//
+// The code is the part a client branches on - the message is written for a
+// person and may be translated or reworded, the code may not. Collected here so
+// the documentation can print the list, and so that
+// tools/check_api_schema.php can fail a build that invents a code without
+// saying what it means.
+//
+// Not included: the 409s, which are named at the endpoint that can produce
+// them, because 'order_already_shipped' means nothing on a page about pages.
+function api_error_catalogue() {
+
+	return array(
+
+		'invalid_json'             => array(400, 'The body was not JSON, or was not an object.'),
+		'invalid_cursor'           => array(400, 'The cursor was not one this API issued. Start the listing again without it.'),
+		'invalid_idempotency_key'  => array(400, 'Idempotency-Key must be 8 to 255 characters.'),
+		'invalid_dry_run'          => array(400, 'X-Dry-Run must be true or false.'),
+		'dry_run_unsupported'      => array(400, 'This endpoint cannot rehearse a call. Send it without X-Dry-Run.'),
+
+		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
+		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),
+
+		'insufficient_scope'       => array(403, 'The application does not hold the permission this endpoint needs.'),
+		'application_disabled'     => array(403, 'The application was switched off in the panel.'),
+		'application_expired'      => array(403, 'The application reached the date it was set to stop working.'),
+		'owner_unavailable'        => array(403, 'The account that owns the application is gone or cannot be used.'),
+		'https_required'           => array(403, 'The site refuses API calls over plain HTTP.'),
+		'ip_not_allowed'           => array(403, 'The address the call came from is not on the application allow list.'),
+		'address_blocked'          => array(403, 'The firewall refused the address the call came from.'),
+		'forbidden'                => array(403, 'The call is not allowed for a reason the other codes do not cover.'),
+
+		'not_found'                => array(404, 'No record with that id.'),
+		'no_path'                  => array(404, 'The address carried no resource. Try /meta.'),
+		'unknown_endpoint'         => array(404, 'No endpoint answers that address.'),
+
+		'method_not_allowed'       => array(405, 'The address exists but not with that verb.'),
+
+		'idempotency_key_reused'   => array(409, 'The same Idempotency-Key was used for a different request.'),
+
+		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
+
+		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
+
+		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),
+
+		'server_error'             => array(500, 'Something failed inside the site. The request_id identifies it in the log.'),
+
+		'api_disabled'             => array(503, 'The API is switched off for this site.'),
+		'not_installed'            => array(503, 'The site is not finished installing.'),
+		'service_unavailable'      => array(503, 'The site is up but cannot answer right now.')
 
 	);
 

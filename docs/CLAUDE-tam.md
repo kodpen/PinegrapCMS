@@ -1711,6 +1711,300 @@ başına tek özet, yalnız eşiği **ilk kez** geçen belgeler; duyurulan belge
   'NO_ENGINE_SUBSTITUTION'` ile açar, runner'ı elle bootstrap eden bir
   yardımcı da aynısını yapmalı.
 
+### Dahili irsaliye (2026-09-20, ERP planı Faz 4, şema yok)
+
+`includes/erp/waybills.php` (mantık), `includes/erp/waybill_form.php` (form),
+`includes/erp/templates/waybill_default.html`; ekranlar `erp_waybills.php`,
+`add_erp_waybill.php`, `edit_erp_waybill.php`, `get_erp_waybill_pdf.php`.
+Tablolar `erp_waybills` / `erp_waybill_items` Faz 0'dan; e-İrsaliye değil
+(plan §7.6: Paraşüt API'sinde `shipment_documents`'ı e-İrsaliyeye çeviren uç
+yok, `edoc_*` kolonları uç doğrulanınca açılır).
+
+- **Seri** `erp_waybill_series()`: `ERP_WAYBILL_SERIES` sabiti, yoksa fatura
+  serisi + `S` (PGF → PGFS). `config` sütunu **açılmadı** (satır 65535 bayt
+  sınırına yakın; yeni geniş config alanı gerekiyorsa TEXT olur, VARCHAR
+  değil). Numara `erp_next_number($series, 'waybill', $year)` kayıt anında,
+  transaction içinde; belge `issued` doğar, taslak evresi yok.
+- **Sipariş başına bir açık irsaliye** (`erp_waybills_for_order()`); ikinci
+  giriş var olana yönlendirir. Siparişten dolum `erp_waybill_data_from_order()`:
+  `ship_tos` ilçeyi `city`, ili `state` sütununda tutar — eşleme
+  `erp_account_for_contact()` ile aynı, ters çevirme. Taşıyıcı/sevk tarihi
+  `erp_order_shipment()`'tan.
+- **Faturalanma durumu türetilir**, sütun yok: `erp_waybill_invoice_state()`
+  `erp_invoices` LEFT JOIN'inden okur (yok/`cancelled` → `none`, `draft` →
+  `draft`, aksi `invoiced`). `erp_invoice_draft_delete()` bağı
+  `erp_waybill_unlink_invoice()` ile düşürür (`function_exists` kapılı).
+  Siparişli belge `erp_invoice_for_order()` / `erp_invoice_from_order()`,
+  elle belge `erp_invoice_draft_save()` ile taslak (katalog fiyatı + KDV).
+- **Faturalanmış belge iptal edilmez**; iptal numarayı korur, seriyi açmaz.
+- Kalem satırları fatura editörünün `data-erp-*` işaretlemesini ve
+  `erp_invoice_editor.js`'i olduğu gibi kullanır (fiyat sütunu yok); birim
+  kodları `erp_invoice_form_unit_codes()`; belgede kod değil ad
+  (`erp_waybill_unit_label()`). Şablon yalnız yerleşik; `erp_templates`'a
+  `doc_type = 'waybill'` satırı ilk istekte açılır. `data-confirm-content`
+  yerel `confirm()`'dur (backend.src.js), modal değil — otomasyonda
+  `window.confirm` ezilir.
+
+### Cari mutabakat mektubu (2026-09-20, ERP planı Faz 5, şema yok)
+
+`includes/erp/reconciliation.php`, `includes/erp/templates/reconciliation_default.html`,
+`erp_reconciliation.php?id=<cari>`, `get_erp_reconciliation_pdf.php`; giriş
+`edit_erp_account.php` araç çubuğu.
+
+- **Tarih itibarıyla, defterden:** `erp_reconciliation_balance($id, $as_of)`
+  `erp_account_transactions` üzerinden `doc_date <= as_of` toplar;
+  `erp_accounts.balance` önbelleği burada **kullanılmaz**. Hareketler
+  `erp_account_statement($id, $from, $as_of)`. Pozitif = borç (cari size
+  borçlu), negatif = alacak — defterin işareti; mektup cümlesi buradan kurulur.
+- `erp_reconciliation_options()` bozuk girdiyi varsayılana düşürür (bugün /
+  yılbaşı / 7 gün), hata vermez; `as_of` bugünden ileri, `from` `as_of`'tan
+  sonra olamaz. Referans `MUT-{Ymd}-{cari id}` türetilir, seri harcamaz.
+  400+ satır (`ERP_RECONCILIATION_MAX_ROWS`) açılışa katlanır, kapanış
+  değişmez.
+- Fatura listesi değil hareket listesi: `paid_total` bugünkü değerdir, tarih
+  itibarıyla yeniden kurulamaz; ekstre tarihe göre tam kesilir.
+- **`email()` ek dosya alır** (`includes/fn/mail.php`): `'attachments' =>
+  [['name' => …, 'content' => <bayt>, 'type' => …], …]`,
+  `addStringAttachment`; özellik yoksa davranış eski. Mektup PDF'i böyle
+  gider; gönderim yalnız `log_activity`, caride damga yok (mutabakat karşı
+  tarafın cevabıyla biter).
+- Ekran deseni: seçenekler GET (önizleme iframe `&html=1` aynı seçeneklerle),
+  gönderim POST + token + `data-confirm-content`; PDF/İndir düz bağlantı.
+  Tarih alanları `<input type="date">` (Y-m-d), `erp_aging.php` gibi; PDF ucu
+  site biçimini de kabul eder (`validate_date` + `prepare_form_data_for_input`).
+
+### Kasa akışı raporu (2026-09-20, ERP planı Faz 5, şema yok)
+
+`includes/erp/cashflow.php`, `erp_cashflow.php` (kapı `'cash'`); giriş ERP
+menüsü (`USER_MANAGE_ERP_CASH` bloğu) ve `erp_cash.php` araç çubuğu.
+
+- **Virman akış değil:** tüm kasalar görünümünde `doc_type = 'transfer'`
+  dışarıda (`erp_cashflow_scope_sql()`); tek kasa ve kasaya göre tabloda
+  içeride. Kasa kapanışlarının toplamı = dönem kapanışı; bu eşitlik bozulursa
+  kural bir yerde ihlal edilmiştir.
+- **Açılış** = ana para birimindeki kasaların `opening_balance` sütunu +
+  dönem öncesi `amount_base` toplamı; döviz kasasının açılış sütunu toplama
+  katılmaz (`erp_aging_cash_total()` kuralı). Önbellek (`balance`) kullanılmaz.
+- Dilim anahtarları iki tarafta aynı olmalı: gün `doc_date` ↔ `Y-m-d`; hafta
+  `YEARWEEK(doc_date, 3)` ↔ `date('oW')` (ISO, Pazartesi); ay `DATE_FORMAT
+  '%Y-%m'` ↔ `date('Y-m')`. PHP dönemi gün gün yürüyüp boş dilimleri de
+  üretir. Hafta başı `strtotime('YYYYWwwD')` ile.
+- Ödeme yöntemi etiketleri `erp_receipt.php`'dekiyle aynı beş üye (cheque
+  dahil, 4.54); `erp_cash_payment_methods()` listesi değişirse ikisi de.
+- `.pg-toolbar` içine birden çok `form-control` koyarken forma `flex-wrap`
+  verilmez ve alanlara `w-auto` konur; yoksa `form-control`'ün %100
+  genişliği her alanı kendi satırına atar.
+- `tr.json` tuzağı: `From` → "Şundan", `To` → "Şuna", `Net` → "KDV Hariç",
+  `Method` → "Metod" gibi mevcut çeviriler ekran etiketi olarak uymaz;
+  `Start` / `End` / `Net change` / ayrı anahtar kullanılır. Yeni anahtar
+  yazmadan önce mevcut çeviriye bakılır.
+- **`device_commit_files` tuzağı (dev ortamı):** aynı hedef dosya aynı
+  staged yoldan ikinci kez commit edilince eski içerik gidebiliyor (outputs
+  bağlaması mtime'ı güncellemiyor); ikinci sürüm yeni bir dosya adıyla
+  (`*.v2.php`) stage'lenip commit edilir, sonra cihazda `grep` ile doğrulanır.
+
+### Cari ↔ kişi/kullanıcı bağı (2026-09-20, şema yok)
+
+Bağın **gerçeği `erp_accounts.contact_id`**, `contacts.erp_account_id` aynadır;
+okuma cari tarafından yapılır (`erp_contact_summary()`), yazma iki tarafa
+birden `erp_account_link_contact()` ile (bir kişi → bir cari; başka cariye
+bağlı kişi reddedilir; eski kişinin aynası temizlenir). Kullanıcı zinciri
+`user.user_contact → contacts.id → erp_accounts.contact_id`; `edit_user.php`'de
+ERP düğmesi yok, kişi ekranından görülür.
+
+- **`erp_account_save()` `contact_id`'yi yalnız `array_key_exists`
+  ise yazar** — düzenleme formu anahtarı göndermediğinde bağı sıfırlayan
+  hatanın dersi: bir sütunu "gelmediyse 0" diye yazmak, o sütunu göndermeyen
+  her formu sıfırlayıcı yapar. Aynı kural `overdue_notify_customer`'da.
+- Cari formu `erp_account_form_cards($liveform, $with_opening, $currency_locked,
+  $contact)` — dördüncü parametre "Bağlı Kişi" kartını açar
+  (`erp_account_form_contact_card()`); arama `get_erp_contacts.php?q=`
+  (ERP kapısı), sonuçta `data-erp-own-account` başka cariye bağlıyı gri
+  bırakır. Bağ `edit_erp_account.php`'de **kayıttan önce** denenir; ret
+  `contact_id` alanında kalır, hiçbir şey yazılmaz.
+- `add_erp_account.php?contact_id=N` formu `erp_account_data_from_contact()`
+  ile dolu açar (köprü `erp_account_for_contact()` de aynı okumayı kullanır);
+  kişinin carisi varsa ona yönlendirir.
+- `erp_accounts.php` `erp_action=sync_contacts` → `erp_accounts_sync_contacts()`
+  (onaylı POST; N siparişi olup carisi olmayan kişi). Dev'de koşturulmadı.
+
+### Fatura/irsaliye editörü: katalog, kampanya, barkod, alan hatası (2026-09-20, migration 4.58)
+
+`includes/erp/products.php` editörlerin katalog okuması: **ürün adı
+`products.short_description`, `products.name` stok kodudur** — ERP
+ekranlarında ürün gösteren her yer bu kuralı izler (`COALESCE(NULLIF(
+short_description,''), name)`). `get_erp_products.php?q=` / `?barcode=`.
+
+- `erp_product_for_line()` şekli: `name` (ad), `sku`, `price` (kuruş),
+  `tax_rate` + `tax_rate_source` (`product` | `zone` — ürünün `tax_rate`
+  NULL ise `erp_default_tax_rate()` = `get_tax_rate_for_address(varsayılan
+  ülke, '')`), `stock` (takipsizde null), `out_of_stock`, `enabled`, `offer`.
+- **`erp_product_offer()` sınırı bilinçli:** yalnız üründen bilinebilen
+  kampanya — `status='enabled'`, tarih içinde, `require_code=0`, `upsell=0`,
+  `offer_rule_id=0`, `offer_conditions` boş, `discount product` eylemi ürünü
+  ya da grubunu hedefler (`pg_offer_action_targets_product()`; `cheapest`
+  hedefi atlanır). Sepete ya da alıcıya bağlı teklif checkout'un işidir.
+  Tutar → 3 ondalıklı oran. İstek başına ürün önbelleği (static).
+- **İki iskonto sırayla** (`erp_manual_lines_build()`): `offer_amount =
+  apply_rate(line_total, offer_rate)`; `typed = apply_rate(line_total −
+  offer_amount, discount_rate)`; `discount_amount = toplam`. Belge, iade,
+  dışa aktarım tek `discount_amount` görür — hiçbiri değişmedi. Kolonlar
+  4.58 koşmamışsa yazılmaz (`erp_invoice_lines_have_offers()`). Kesim
+  satırları yeniden kurduğu için kampanya kesimde korunur. Alışta kampanya
+  uygulanmaz (`isPurchase()` JS, sunucu `direction`).
+- **Alan bazlı hata:** `erp_manual_lines_build()` / `erp_manual_header_build()`
+  `field` döner (`lines[n][description]`, `account_id`…); ekranlar
+  `mark_error($result['field'] ?? '_error', …)`. liveform `output_field`
+  özel `data-*` almaz; JS alanı `[name$="[field]"]` ile bulur. Betik yükte
+  ilk `form .is-invalid`'e kaydırır.
+- Barkod: kart başlığındaki kutu, Enter → `?barcode=` → satırdaysa miktar
+  +1, yoksa boş/yeni satır. `BARCODE_ENABLED` yoksa stok kodu barkoddur
+  (`add_order.php` ile aynı okuma). İrsaliye editörü aynı betiği
+  kullanır; kart yoksa betik o özelliği sessizce kapatır.
+- **4.56 regresyonu dersi:** `edit_erp_invoice.php` hatırlatma kartı
+  `$lines`/`$output_lines`'ı yeniden kullanıp fatura satırlarını boşaltmıştı
+  → `$reminder_lines`. Uzun ekran dosyalarına kart eklerken değişken adı
+  ekranın geri kalanıyla çakışmamalı; kartın kendi öneki olur.
+- Python heredoc ile PHP yazarken `·` gibi kaçışlar PHP tek tırnaklı
+  dizede harfiyen kalır — gerçek karakter yazılır; PHP tek tırnaklı dize
+  içine gömülü JS yorumunda `'s` dizeyi keser.
+
+### Yerel satış: müşteri, sıcak satış, KDV, fatura ve irsaliye zinciri (2026-09-20, migration 4.59)
+
+`add_order.php` tezgâh ekranı. **`initialize_order()` her sepet değişiminde
+`orders.contact_id`'yi operatörün kişisine yazar** — bu yüzden seçilen
+müşteri siparişe değil `$_SESSION['ecommerce']['local_sale_customer']`'a
+konur ve yalnız `complete_order`'da `orders.contact_id` / `erp_account_id`
+yazılır; müşteri yoksa `contact_id = 0` (satış operatörün adına geçmez).
+
+- **Sıcak satış carisi** `config.erp_walkin_account_id` (4.59, INT UNSIGNED;
+  sabit `ERP_WALKIN_ACCOUNT_ID`; Ayarlar → E-Ticaret → ERP kartı, aktif
+  müşteri/ikisi carileri). Tanımsızsa müşterisiz satış faturalanamaz ve ekran
+  söyler. `config`'e VARCHAR açılmadı (satır sınırı, bkz. 4.55 notu).
+- **KDV:** `local_sale_line_tax()` → ürün `taxable` ise
+  `get_effective_tax_rate(products.tax_rate, get_default_tax_rate())`,
+  `order_items.tax_total` satır toplamından, `tax = 0`
+  (`update_order_item_taxes()` sözleşmesi); `orders.tax` toplam,
+  `total = subtotal + tax`. Köprünün "fatura toplamı = sipariş toplamı"
+  denetimi bunun üzerinden geçer; vergisiz kapanan sipariş faturalanamaz.
+- **Siparişten fatura:** `view_order.php` `$output_erp_buttons` → POST
+  `add_erp_invoice.php` `from_order_screen=1` (ret sipariş ekranına döner).
+  `add_erp_invoice.php` seçicisi `status='complete' AND (contact_id > 0 OR
+  erp_account_id > 0) AND erp_invoice_id = 0`.
+- **Faturadan irsaliye:** `edit_erp_invoice.php` `$output_waybill_button`
+  (satış, iade değil, iptal değil, kesilmiş) ve `view_order.php`
+  `$output_erp_waybill` → `add_erp_waybill.php?invoice_id=` / `?order_id=`.
+  `erp_waybill_data_from_invoice()` siparişli faturayı sipariş yoluna
+  devreder (fatura eklenir), elle faturayı kalemleri + cari adresiyle kurar;
+  alıcının adresi yoksa **carinin kartı** alıcı olur. `erp_waybill_create()`
+  `invoice_id`'yi başlıktan, yoksa `erp_invoice_for_order()`'dan alır (iptal
+  → 0) ve **`erp_waybill_write_back()`** çağırır: `ship_tos.ship_date`
+  yalnız boşsa, `erp_invoices.shipment_date` boşsa, `carrier_title` boşsa
+  unvan + VKN — **dolu alan ezilmez**; dönen `written_back` anahtarları
+  ekranda bildirimdir. `orders`'a taşıyıcı sütunu açılmadı (API
+  serileştirici / `check_api_schema` sözleşmesi). Faturanın VUK bloğu
+  ekranda yalnız `is_internet_sale = 1`'de görünür; yazılan taşıyıcı kayıtta
+  ve belgede durur.
+- Sıradaki otomasyon adayı: "tamamla + tahsilat gir" (kasa seçimiyle) tek
+  hareket.
+
+### ERP dış API ve olayları — `includes/erp/api.php` dikişi (2026-09-20, Faz 5, şema yok)
+
+ERP'nin API'ye eklediği her şey **yalnız** `includes/erp/api.php`'den girer
+(API'nin `includes/api/modules.php` dikişi): `erp_api_routes()`,
+`erp_webhook_events()`, `erp_openapi_objects()`, `erp_scope_groups()`, ayrıca
+`erp_owner_scopes($owner)` (API tavan kancası). `includes/api/**` API ajanının;
+ERP oradaki hiçbir dosyayı düzenlemez — eksik bir kanca gerekirse
+`dev/_handoff/` ile istenir (2026-09-20: sahip tavanı kancası istendi, bkz.
+`ERP-API-istek.md`).
+
+- **Yükleme zinciri:** API entry ya da panel (`api_settings.php`) ya da
+  `api_webhook_enqueue()` → `modules.php` → `require_once includes/erp/api.php`
+  → o da `bootstrap.php` + `api_resources.php`'yi kendisi yükler. Yani
+  **`api_webhook_enqueue()` çağıran her yer (checkout dahil) ERP açıkken ERP
+  bootstrap'ını yükler** — `includes/erp/*` dosyaları yalnız fonksiyon
+  tanımlar, yükte hiçbir şey çalıştırmaz; bu kural korunmalı. Kapı üçlü:
+  `PG_API_ENTRY || PG_API_PANEL || PG_INIT_LOADED`.
+- **Sunucu / şema çifti:** `erp_api_<nesne>_present()` yanında
+  `erp_api_<nesne>_schema()`, alan başına bir satır (`'string?'` = null
+  gelebilir, `'number'` = ondalık, iç nesne dizi, liste `array(array(...))`).
+  Sunucuya alan eklenirse şemaya da eklenir. `tools/check_api_schema.php` modül
+  dosyalarını **taramıyor** (yalnız `includes/api/**`); sözleşme elle korunur.
+- **Sayfalama:** `erp_api_page($select, $where, $sort, $id, $params, $count_from)`
+  — `$select` `_sort` sütununu vermeli (`updated_at`, `UNIX_TIMESTAMP(doc_date)`
+  ya da `''` → yalnız id); imleç `api_cursor_encode(v, i)`. `$count_from`
+  yalnız ana tablo (WHERE'ler o alias'a yazılır).
+- **İki izin grubu** `erp` / `erp_cash` — kasa panelde ayrı hak; `api_load_owner()`
+  ERP sütunlarını bilmediği için `erp_api_owner()` `user.manage_erp_cash`'i
+  kendisi okur (`POST /erp/receipts`). Kanca gelince ikisi birden durur, zarar
+  yok. Etiket/açıklama `lang()` ile (`api_settings_group_text()` çekirdek
+  satırları çeviriyor, modül satırını olduğu gibi basıyor).
+- **Hata kodları katalogdan:** yalnız `validation_failed` (422, alan adıyla),
+  `not_found`, `forbidden`, `invalid_cursor`, `service_unavailable`. Yeni kod
+  = `api_error_catalogue()`'a satır = API dosyası; açılmaz.
+- **Taslak telde yok:** `status <> 'draft'` hem listede hem tekilde (404).
+  Para kuruş `api_money()`, gün `Y-m-d` (`erp_api_date()`: 0000-00-00 → null),
+  an `api_time()` ISO. `datetime` parametresi unix döner; DATE sütununa
+  `erp_api_day()` ile.
+- **Olaylar** `includes/erp/events.php`: `erp_event()` API dosyası yoksa /
+  olay tanımsızsa 0 döner, hiçbir şey kırmaz. Kanca **fonksiyonun içinde**,
+  başarı dönüşünün hemen önünde (commit sonrası); `erp.invoice.paid` yalnız
+  `erp_invoice_refresh_paid()` durumu paid'e **geçirdiğinde** (eski durum ≠
+  paid). Transaction içinde ateşlenen olay (erp_settle → refresh_paid) aynı
+  bağlantıda kuyruğa yazılır, rollback ile gider. Yeni bir olay = üç yer:
+  `erp_webhook_events()` satırı, `erp_event_*()` yükü, kanca.
+- Dev test deseni: gerçek anahtar yolu tavan yüzünden kapalıysa oturumlu
+  probe (`PG_API_ENTRY` + `init.php` + `validate_erp_access` + API bootstrap +
+  `api_modules_load()`, sahte `api_current_app()` tüm kapsamlarla,
+  `api_route_match` → `api_validate_input` → handler). `api_send()` `exit`
+  eder; `api_log_request` uygulama 0 ile log yazar (dev'de kabul).
+  Olay testi için başkasının aboneliğine olay eklenirse iş bitince **eski
+  hâline döndürülür** ve kuyruk satırları silinir.
+
+### Tezgâh satışında fatura + tahsilat, belge şablonları, API ekleri (2026-09-20, migration 4.60)
+
+- **`add_order.php` tamamlama zinciri:** sipariş kapanır → `erp_invoice_from_order()`
+  → `erp_post_receipt()` (`invoice_id` ile) → `view_order` liveform'una
+  bildirim/hata → yönlendirme. Ödeme yöntemi seçildiyse fatura zorunlu
+  (`$issue_invoice = !empty(issue_invoice) || pay_method !== ''`). Hidden
+  `issue_invoice_seen` kontrollerin ekranda olduğunu söyler; yalnız o zaman
+  seçim `$_SESSION['ecommerce']['local_sale_payment']`'a yazılır (kontrolsüz
+  ekranda boş seçim hatırlanmaz). Kasa hakkı `manage_erp_cash` (rol < 3 her
+  zaman); yoksa ödeme kontrolü hiç basılmaz, sunucu da "kasa hakkı yok" der.
+  Devre dışı (disabled) checkbox POST'a girmez — sunucu ödeme varsa faturayı
+  zaten zorunlu sayar, bu yüzden sorun değil.
+- **API kısmi güncelleme deseni:** `erp_account_save()` bilmediği her sütunu
+  varsayılana yazar; `PATCH` handler'ı önce mevcut satırdan tam `$data`
+  kurar (`erp_api_account_save_data()`), sonra gelen alanları üstüne koyar.
+  Aynı desen başka bir kısmi güncelleme ucu için de geçerli. `contact_id`
+  `nullable` + `min 0`: null/'' → 0 → bağ çözülür (`erp_account_link_contact($id, 0)`).
+- **IIS + PATCH:** WebDAV 405 verir; API'nin kuralı `also_accepts` ile POST
+  aynı yolda ve `X-HTTP-Method-Override`. Uç yazarken `'method' => 'POST',
+  'also_accepts' => array('PATCH')`; test ederken override başlığı.
+- **Anahtar üretmek bu ajanın işi değil** (kimlik bilgisi oluşturma). Gerçek
+  anahtar testini Erdal yapar; ajan kapsam tavanını `api_load_owner()` +
+  `api_owner_scopes()` + `api_effective_scopes()` ile probe'dan doğrular.
+- **Şablonlar:** `config.erp_<belge>_template` NULL = yerleşik dosya
+  (`*_default_template()`); `erp_settings.php` `$documents` haritası
+  (`label`, `column`, `default`, `current`, `preview`, `log`), sekme
+  `?doc=`; 4.60 sütunları yoksa o belge sekmede çıkmaz (`waf_table_has_column`).
+  `*_html($id, $template = null)` — `null` kayıtlı/yerleşik, string önizleme.
+  Önizleme PDF betikleri `POST template` yalnız `validate_erp_access($user,
+  'settings')` ile. Yer tutucu referansı veriden:
+  `erp_settings_placeholders_from_data()` — sıralı liste (`array_keys ===
+  range`) blok olarak, ilk elemanın alanları " › " ile; bool → Doğru/Boş;
+  değer 60 karaktere kırpılır (logo_data_uri gibi). `seller.logo_data_uri`
+  büyük — sorun değil, kırpılıyor.
+- **CSV ithalatında isteğe bağlı sütun kuralı:** `$account` varsayılanına
+  anahtar **koyma**; yalnız `case` eşleşince yaz. Böylece
+  `erp_account_save()`'in "anahtar varsa yaz" kuralı dosyada olmayan sütunu
+  korur (yeni kartta DB varsayılanı kalır). `overdue_notify_customer` böyle.
+- **Toplu cari açma:** aday sorgusu `INNER JOIN contacts` — `orders.contact_id`
+  silinmiş kişiye işaret edebilir (dev'de 20 sipariş); sayı ile açılan
+  uyuşmazsa nedeni bu. `skipped` = var ama adsız kart.
+- **Uzun `tools/lint.php`:** cihaz bağlantısı yavaş, 175 sn'de bitmeyebilir;
+  `nohup … > $HOME/lint_out.txt &` ile arka planda koşturup sonra oku.
+
 ## Dosya Yapısı (Önemli Dosyalar)
 
 | Dosya | Açıklama |
@@ -2079,6 +2373,9 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.60) | `_erp_document_templates`: `config.erp_waybill_template`, `erp_reconciliation_template` (`MEDIUMTEXT NULL`) — irsaliye ve mutabakat mektubu şablonları (NULL = yerleşik dosya, faturanınki gibi). `install_add_column`, yeniden koşturulabilir; 4.59'un ardından |
+| `2026.4.4` (4.59) | `_erp_walkin_account`: `config.erp_walkin_account_id INT UNSIGNED (0)` — sıcak satış carisi (`ERP_WALKIN_ACCOUNT_ID`). `install_add_column`, yeniden koşturulabilir; 4.58'in ardından |
+| `2026.4.4` (4.58) | `_erp_line_offers`: `erp_invoice_items.offer_id INT UNSIGNED (0)`, `offer_discount_rate DECIMAL(6,3) (0.000)` — satıra uygulanan kampanya ve oranı (oran kopyalanır; teklif sonradan değişir). `install_add_column`, yeniden koşturulabilir; 4.57'nin ardından |
 | `2026.4.4` (4.56) | `_erp_overdue_followups`: `erp_invoices.overdue_second_notified_at` / `overdue_snoozed_until` / `customer_notified_at INT UNSIGNED (0)`, `config.erp_overdue_notify_customer TINYINT(1) (0)`, `erp_accounts.overdue_notify_customer TINYINT(1) (1)`. Hepsi `install_add_column`, yeniden koşturulabilir; 4.55'in ardından |
 | `2026.4.4` (4.55) | `_erp_overdue_notify`: `config.erp_overdue_notify_days SMALLINT UNSIGNED (0)`, `erp_overdue_notify_panel` / `_email` / `_push TINYINT(1) (1)`, `erp_overdue_notify_recipients TEXT DEFAULT NULL` (VARCHAR değil: `config` satırı 65535 baytlık InnoDB satır sınırına dayandı, VARCHAR(500) 1118 verdi), `erp_overdue_notify_frequency ENUM('daily','weekly') ('daily')`, `erp_overdue_notify_hour TINYINT UNSIGNED (9)`, `erp_overdue_notify_checked` / `_sent_at INT UNSIGNED (0)`; `erp_accounts.overdue_notify_days SMALLINT UNSIGNED (0)`; `erp_invoices.overdue_notified_at INT UNSIGNED (0)`. Hepsi `install_add_column` ile, yeniden koşturulabilir. Dağıtıcıda 4.53 ve 4.54'ün ardından çağrılır |
 | `2026.4.4` (4.54) | `_erp_cash_payment_method`: `erp_cash_transactions.payment_method` ENUM'una `cheque` eklendi (`ENUM('cash','transfer','card','cheque','other') NOT NULL DEFAULT 'cash'`); önce `install_column_info` ile bakılır, `cheque` zaten varsa atlanır — yeniden koşturulabilir. Makbuz formu çek gönderiyordu, strict olmayan bağlantı değeri boş üyeye çeviriyordu; `''` kalan satırlara dokunulmaz (çek mi kart mı bilinmiyor). Yazma yolu `erp_post_receipt()` değeri `erp_cash_payment_methods()` listesine karşı denetler, liste dışı değer hata döner |
@@ -4660,6 +4957,67 @@ canvas'ta boşluk görür.
 | `apply_coupon` | shopping_cart button | Teklif kodu uygula |
 | `coupon_form` | shopping_cart form | Form action/method + CSRF |
 | `open_filters` / `clear_filters` / `submit_search` | catalog_listing | Filtre offcanvas, temizle, ara |
+
+### Gönderilen Formun Sistem Alanları — Tek Kayıt (2026.4.4)
+
+Bir gönderilen formun sistem alanları **tek yerde** tanımlıdır:
+`get_standard_fields_for_view()` (`includes/fn/forms.php`). Klasik Form
+Liste Görünümü ve Form Öğesi Görünümü ekranları `^^reference_code^^`,
+`^^submitted_date_and_time^^`, `^^submitter^^`, `^^number_of_comments^^`,
+`^^newest_comment^^` … tokenlarını o kayda karşı çözer; sistem widget'ları
+da `pg_sw_standard_fields()` ile aynı kaydı çözer. **İkinci bir isim uzayı
+açılmaz** — bu alanların `__xxx` biçimli bir kopyası bir kez uydurulmuştu
+ve varsayılan şablon var olmayan bir `__subject`'e, bir de başka widget'ın
+`__submitted_at`'ine bağlanmış halde kaldı; ikisi de ön yüzde sessizce boş
+çıkıyordu.
+
+Kayıtta karşılığı olmayan üç ad `pg_sw_standard_fields()` içinde tanımlı:
+`form_item_view` (detay bağlantısı — klasik ekranların kendi tokenı),
+`submitted_form_id`, `submitter_user_id`. Yeni bir sistem alanı gerekiyorsa
+önce `get_standard_fields_for_view()`'a bakılır; orada varsa kendiliğinden
+gelir, yoksa gerekçesiyle bu üçünün yanına yazılır.
+
+Aynı adları **my_account**'ın gönderim döngüsü de taşır, böylece bir satır
+tasarımı üç widget arasında geçer.
+
+**Yardımcılar** (`includes/fn/widgets.php`):
+
+| Fonksiyon | İş |
+|---|---|
+| `pg_sw_standard_fields()` | Kayıt + JOIN bağımlılıkları + kayıt-dışı üç ad |
+| `pg_sw_template_tokens()` | Şablonun yazdığı adlar (biçim eki anahtarın parçası değil) |
+| `pg_sw_standard_sql()` | Yalnız yazılan alanların sütunu ve JOIN'i |
+| `pg_sw_index_form_data()` | Formun kendi alanları, **ham** değerle |
+| `pg_sw_apply_tokens()` | Değiştirme; standart alan aynı adlı form alanını yener |
+| `pg_sw_sweep_tokens()` | Cevapsız kalan adları (biçim ekiyle) siler |
+
+**Kaçınılacak tuzaklar:**
+
+- Değer `pg_sw_apply_tokens()` içinde **bir kez** escape edilir
+  (`prepare_form_data_for_output()`). İndeksleme sırasında escape edersen
+  `&` `&amp;amp;` olur.
+- Değiştirme tokan başına **tek geçiştir** (`preg_replace(..., 1)`): aynı
+  ad iki farklı biçimle geçebilir, genel değiştirme ikincisini birincinin
+  çıktısıyla ezer.
+- Yorum önizlemesinin kırpılması ve yorum eklerinin bağlantıya çevrilmesi
+  escape'ten **önce** olur; escape'lenmiş metni kırpmak `&amp;`'i ortadan
+  böler (klasik ekranda böyle).
+- `submitted_form_info` sayaçları form öğesi görünümü **sayfası başına**
+  tutulur. Listede widget'ın ayarlı detay sayfası, detay görünümünde
+  sayfanın kendisi (`_pg_sw_current_page_id()`) okunur; detay sayfası
+  seçilmemişse sayaç boştur — bu doğru cevaptır.
+
+**Tarih biçimi eki.** `^^submitted_date_and_time^^%%d.m.Y%%` ve
+`%%relative%%` klasik ekranlardaki gibi çalışır. Biçim tokenın içinde
+değil, düğümün `props._bindFormats[<prop>]` alanında durur;
+`_apply_bindings()` (`includes/fn/designer.php`) tokenı üretirken sonuna
+ekler ve yalnız `date()`'in okuduğu karakterleri geçirir. Tasarımcıda
+tarih alanı seçilince Veri Bağla satırının altında biçim kutusu açılır
+(`_sdBindFormatRow()`, `SW_DATE_FIELD_TOKENS`).
+
+**Sıralama ayarı** aynı adları kullanır: `order_by_field` =
+`submitted_date_and_time` | `submitted_form_id` | form alanı adı.
+
 
 ### Fonksiyonel vs Dekoratif Class'lar
 

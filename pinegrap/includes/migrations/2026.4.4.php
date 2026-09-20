@@ -138,6 +138,12 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_overdue_followups();  // 4.56
 
 	upgrade_2026_4_4_webhook_orphans();        // 4.57
+
+	upgrade_2026_4_4_erp_line_offers();        // 4.58
+
+	upgrade_2026_4_4_erp_walkin_account();     // 4.59
+
+	upgrade_2026_4_4_erp_document_templates(); // 4.60
 }
 
 
@@ -2930,6 +2936,58 @@ function upgrade_2026_4_4_erp_overdue_followups() {
 	install_add_column('erp_accounts', 'overdue_notify_customer', "TINYINT(1) NOT NULL DEFAULT 1");
 
 	install_note('Overdue reminders can be followed up: a second announcement a month past the threshold, a snooze per invoice, and an optional reminder e-mail to the customer that any account can refuse.');
+
+}
+
+
+// The campaign on an invoice line (2026.4.4, 4.58).
+//
+// A typed invoice line can carry the store's own automatic campaign on the
+// product as a discount of its own, next to the discount the operator types:
+// the campaign rate is applied first, the typed rate on what is left, and
+// discount_amount keeps the sum, so every reader of the amount is unchanged.
+// offer_id says which campaign it was; the rate is copied because the offer
+// is edited afterwards and the document must keep saying what it said.
+function upgrade_2026_4_4_erp_line_offers() {
+
+	install_add_column('erp_invoice_items', 'offer_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('erp_invoice_items', 'offer_discount_rate', "DECIMAL(6,3) NOT NULL DEFAULT 0.000");
+
+	install_note('Invoice lines can carry the campaign discount on the product separately from the typed discount.');
+
+}
+
+
+// The account a walk-in sale is billed to (2026.4.4, 4.59).
+//
+// A sale made at the counter to someone who leaves no name has no contact and
+// so no account of its own; the invoice for it goes to one account the store
+// names for the purpose. 0 means none is named, and such a sale cannot be
+// invoiced until one is.
+function upgrade_2026_4_4_erp_walkin_account() {
+
+	install_add_column('config', 'erp_walkin_account_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Local sales made without a customer can be billed to one account named on the ERP settings card.');
+
+}
+
+
+// The delivery note and the reconciliation letter templates (2026.4.4, 4.60).
+//
+// The invoice template has been editable from the ERP settings screen since
+// 4.43 (config.erp_invoice_template); the two documents added in Faz 4 and 5
+// printed from their built-in files only. Same rule as the invoice: NULL
+// means "the built-in file", so an upgrade of the file reaches every
+// installation that never saved its own. MEDIUMTEXT, like the invoice's, lives
+// off the config row and does not touch its row-size limit.
+function upgrade_2026_4_4_erp_document_templates() {
+
+	install_add_column('config', 'erp_waybill_template', "MEDIUMTEXT NULL");
+
+	install_add_column('config', 'erp_reconciliation_template', "MEDIUMTEXT NULL");
+
+	install_note('The delivery note and the reconciliation letter can be given their own templates on the ERP settings screen.');
 
 }
 

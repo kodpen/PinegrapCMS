@@ -633,5 +633,7 @@ function erp_invoice_from_order($order_id, $options = array())
         return $fail($error);
     }
 
+    erp_event_invoice($invoice_id, 'erp.invoice.created');
+
     return array('success' => true, 'invoice_id' => $invoice_id, 'full_number' => $numbered['full'], 'error' => '');
 }

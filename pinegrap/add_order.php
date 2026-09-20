@@ -39,15 +39,92 @@ if (isset($_GET['request']) && $_GET['request'] === 'search_products') {
         echo encode_json(array('results' => array()));
         exit();
     }
+    // short_description is the product's name; name is the SKU. Both are
+    // searched, the list is ordered by the name people know.
     $rows = db_items(
-        "SELECT id, name, short_description
+        "SELECT id, name, short_description, inventory, inventory_quantity
          FROM products
          WHERE enabled = '1'
            AND (name LIKE '%" . escape($q) . "%' OR short_description LIKE '%" . escape($q) . "%')
-         ORDER BY name
+         ORDER BY short_description, name
          LIMIT 10"
     );
     echo encode_json(array('results' => $rows));
+    exit();
+}
+
+/* ---------------------------------------------------------
+   AJAX: customer search  (?request=search_customers&q=...)
+   Contacts by name, company or e-mail, each with the ERP account it is
+   linked to; and, with the ERP on, accounts that have no contact of their
+   own. The sale is billed to whichever is picked.
+   --------------------------------------------------------- */
+if (isset($_GET['request']) && $_GET['request'] === 'search_customers') {
+    include('init.php');
+    header('Content-Type: application/json');
+    if (!USER_LOGGED_IN) {
+        echo encode_json(array('status' => 'error', 'message' => lang('You are not logged in.')));
+        exit();
+    }
+    if (!USER_MANAGE_ECOMMERCE) {
+        log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+        echo encode_json(array('status' => 'error', 'message' => lang('Access denied.')));
+        exit();
+    }
+    $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+    if ($q === '') {
+        echo encode_json(array('results' => array()));
+        exit();
+    }
+    $like = escape(escape_like(mb_substr($q, 0, 100)));
+    $erp_tables = defined('ERP_ENABLED') && ERP_ENABLED && waf_table_has_column('erp_accounts', 'contact_id');
+    $results = array();
+
+    $contacts = db_items(
+        "SELECT c.id, c.first_name, c.last_name, c.company, c.email_address, c.business_state"
+        . ($erp_tables ? ", (SELECT a.id FROM erp_accounts a WHERE a.contact_id = c.id ORDER BY a.id ASC LIMIT 1) AS account_id" : ", 0 AS account_id") . "
+         FROM contacts c
+         WHERE c.first_name LIKE '%" . $like . "%'
+            OR c.last_name LIKE '%" . $like . "%'
+            OR CONCAT(c.first_name, ' ', c.last_name) LIKE '%" . $like . "%'
+            OR c.company LIKE '%" . $like . "%'
+            OR c.email_address LIKE '%" . $like . "%'
+         ORDER BY c.last_name, c.first_name
+         LIMIT 10"
+    );
+    foreach ((array) $contacts as $row) {
+        $person = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
+        $company = trim((string) $row['company']);
+        $results[] = array(
+            'kind' => 'contact',
+            'contact_id' => (int) $row['id'],
+            'account_id' => (int) $row['account_id'],
+            'label' => ($person !== '') ? $person : (($company !== '') ? $company : ('#' . (int) $row['id'])),
+            'sub' => trim(implode(' · ', array_filter(array(($person !== '') ? $company : '', trim((string) $row['email_address']), trim((string) $row['business_state']))))),
+        );
+    }
+
+    if ($erp_tables) {
+        $accounts = db_items(
+            "SELECT id, title, email, city
+             FROM erp_accounts
+             WHERE contact_id = 0 AND status = 'active' AND kind IN ('customer', 'both')
+               AND (title LIKE '%" . $like . "%' OR email LIKE '%" . $like . "%')
+             ORDER BY title
+             LIMIT 10"
+        );
+        foreach ((array) $accounts as $row) {
+            $results[] = array(
+                'kind' => 'account',
+                'contact_id' => 0,
+                'account_id' => (int) $row['id'],
+                'label' => (string) $row['title'],
+                'sub' => trim(implode(' · ', array_filter(array(lang('Account'), trim((string) $row['email']), trim((string) $row['city']))))),
+            );
+        }
+    }
+
+    echo encode_json(array('results' => $results));
     exit();
 }
 
@@ -100,6 +177,92 @@ function check_stock($product, $qty_to_add) {
         return lang('Cannot add more than available stock') . ' (' . (int)$product['inventory_quantity'] . ').';
     }
     return '';
+}
+
+/* ---------------------------------------------------------
+   Helper: who the sale is for. Kept in the session, not on the order:
+   initialize_order() rewrites orders.contact_id to the operator's own
+   contact on every cart change, so the choice is applied once, when the
+   sale is completed. Nothing chosen means a walk-in sale.
+   --------------------------------------------------------- */
+function local_sale_customer() {
+    $customer = isset($_SESSION['ecommerce']['local_sale_customer']) ? $_SESSION['ecommerce']['local_sale_customer'] : null;
+    if (!is_array($customer)) {
+        return null;
+    }
+    $customer['contact_id'] = (int) ($customer['contact_id'] ?? 0);
+    $customer['account_id'] = (int) ($customer['account_id'] ?? 0);
+    if (($customer['contact_id'] <= 0) && ($customer['account_id'] <= 0)) {
+        return null;
+    }
+    return $customer;
+}
+
+/* ---------------------------------------------------------
+   Helper: the VAT on one cart line, the way the checkout works it out for
+   a buyer standing in the store's own tax zone: the product's rate when it
+   has one, the zone's otherwise, on the whole line. 0 when the product is
+   not taxable or the store is in no tax zone.
+   $item must have keys: price, quantity, taxable, tax_rate
+   --------------------------------------------------------- */
+function local_sale_line_tax($item) {
+    static $zone_rate = null;
+    if ($zone_rate === null) {
+        $zone_rate = function_exists('get_default_tax_rate') ? get_default_tax_rate() : false;
+    }
+    if (empty($item['taxable']) || ($zone_rate === false)) {
+        return 0;
+    }
+    $rate = get_effective_tax_rate($item['tax_rate'], $zone_rate);
+    return (int) round($rate / 100 * ((int) $item['price'] * (int) $item['quantity']));
+}
+
+/* ---------------------------------------------------------
+   POST: pick the customer the sale is for, or drop the pick
+   --------------------------------------------------------- */
+if ($action === 'set_customer') {
+    $contact_id = isset($_POST['contact_id']) ? (int) $_POST['contact_id'] : 0;
+    $account_id = isset($_POST['account_id']) ? (int) $_POST['account_id'] : 0;
+    $erp_tables = defined('ERP_ENABLED') && ERP_ENABLED && waf_table_has_column('erp_accounts', 'contact_id');
+    $label = '';
+
+    if ($contact_id > 0) {
+        $contact = db_item("SELECT id, first_name, last_name, company FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
+        if ($contact) {
+            $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
+            $label = ($person !== '') ? $person : (trim((string) $contact['company']) !== '' ? trim((string) $contact['company']) : ('#' . $contact_id));
+            // The account the contact is linked to, when it has one; the ERP
+            // opens one from the card otherwise, at invoicing.
+            $account_id = $erp_tables ? (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' ORDER BY id ASC LIMIT 1") : 0;
+        } else {
+            $contact_id = 0;
+        }
+    } elseif (($account_id > 0) && $erp_tables) {
+        $account = db_item("SELECT id, title, contact_id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
+        if ($account) {
+            $label = (string) $account['title'];
+            $contact_id = (int) $account['contact_id'];
+        } else {
+            $account_id = 0;
+        }
+    } else {
+        $account_id = 0;
+    }
+
+    if (($contact_id > 0) || ($account_id > 0)) {
+        $_SESSION['ecommerce']['local_sale_customer'] = array('contact_id' => $contact_id, 'account_id' => $account_id, 'label' => $label);
+    } else {
+        $liveform->mark_error('error', lang('That customer could not be found.'));
+    }
+
+    header('Location: ' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php');
+    exit();
+}
+
+if ($action === 'clear_customer') {
+    unset($_SESSION['ecommerce']['local_sale_customer']);
+    header('Location: ' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php');
+    exit();
 }
 
 /* ---------------------------------------------------------
@@ -258,22 +421,44 @@ if ($action === 'complete_order') {
         // Fetch items with product inventory info for decrement
         $items = db_items(
             "SELECT
+                oi.id,
                 oi.product_id,
                 oi.quantity,
                 oi.price,
                 p.inventory,
-                p.inventory_quantity
+                p.inventory_quantity,
+                p.taxable,
+                p.tax_rate
              FROM order_items oi
              LEFT JOIN products p ON oi.product_id = p.id
              WHERE oi.order_id = '" . escape($order_id) . "'"
         );
 
         if (count($items) > 0) {
-            // Compute subtotal
+            // Subtotal, and the VAT the way the checkout works it out for a
+            // buyer standing in the store's own tax zone: the product's rate
+            // when it has one, the zone's otherwise, on the whole line.
+            // tax_total is the line's tax; tax stays 0 (see update_order_item_taxes()).
             $subtotal_cents = 0;
+            $tax_cents = 0;
             foreach ($items as $item) {
-                $subtotal_cents += (int)$item['price'] * (int)$item['quantity'];
+                $line_total = (int)$item['price'] * (int)$item['quantity'];
+                $subtotal_cents += $line_total;
+
+                $line_tax = local_sale_line_tax($item);
+                $tax_cents += $line_tax;
+                db("UPDATE order_items SET tax_total = '" . $line_tax . "', tax = '0' WHERE id = '" . (int)$item['id'] . "'");
             }
+
+            // Who the sale is for: the picked contact and account, or nobody
+            // (a walk-in), which the ERP bills to the account named for it.
+            $customer = local_sale_customer();
+            $sale_contact_id = $customer ? (int) $customer['contact_id'] : 0;
+            $sale_account_id = $customer ? (int) $customer['account_id'] : 0;
+            if (($sale_account_id <= 0) && ($sale_contact_id <= 0) && defined('ERP_WALKIN_ACCOUNT_ID')) {
+                $sale_account_id = (int) ERP_WALKIN_ACCOUNT_ID;
+            }
+            $sql_erp_account = waf_table_has_column('orders', 'erp_account_id') ? "erp_account_id = '" . $sale_account_id . "'," : '';
 
             // Assign order_number — same pattern as submit_order.php
             $result = mysqli_query(db::$con, "LOCK TABLES next_order_number WRITE") or output_error(lang('Query failed.'));
@@ -295,7 +480,10 @@ if ($action === 'complete_order') {
                     status                  = 'complete',
                     order_number            = '" . escape($order_number) . "',
                     subtotal                = '" . escape($subtotal_cents) . "',
-                    total                   = '" . escape($subtotal_cents) . "',
+                    tax                     = '" . escape($tax_cents) . "',
+                    total                   = '" . escape($subtotal_cents + $tax_cents) . "',
+                    contact_id              = '" . $sale_contact_id . "',
+                    " . $sql_erp_account . "
                     user_id                 = '" . escape($user['id']) . "',
                     last_modified_timestamp = '" . escape($now) . "',
                     ip_address              = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
@@ -321,8 +509,74 @@ if ($action === 'complete_order') {
             }
 
             unset($_SESSION['ecommerce']['order_id']);
+            unset($_SESSION['ecommerce']['local_sale_customer']);
 
-            header('Location: ' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?type=local');
+            // The counter's second half: the invoice and the money, in the same
+            // step as the sale when the operator asked for them. What the
+            // operator picked is remembered for the next sale - the till and
+            // the way people pay rarely change between two customers.
+            $erp_ready = defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))
+                && waf_table_has_column('orders', 'erp_invoice_id');
+            $pay_method = isset($_POST['pay_method']) ? trim((string) $_POST['pay_method']) : '';
+            $pay_till = isset($_POST['pay_till']) ? (int) $_POST['pay_till'] : 0;
+            $issue_invoice = !empty($_POST['issue_invoice']) || ($pay_method !== '');
+
+            if ($erp_ready && isset($_POST['issue_invoice_seen'])) {
+                $_SESSION['ecommerce']['local_sale_payment'] = array(
+                    'method' => $pay_method,
+                    'till' => $pay_till,
+                    'invoice' => $issue_invoice ? 1 : 0,
+                );
+            }
+
+            if ($erp_ready && $issue_invoice) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+                $liveform_order = new liveform('view_order');
+                $invoiced = erp_invoice_from_order($order_id, array('created_by' => (int) $user['id']));
+
+                if (empty($invoiced['success'])) {
+                    $liveform_order->mark_error('_error', lang('The invoice was not issued.') . ' ' . (string) $invoiced['error']);
+                } else {
+                    $liveform_order->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $invoiced['full_number'])));
+
+                    $can_take_money = ((int) $user['role'] < 3) || !empty($user['manage_erp_cash']);
+
+                    if (($pay_method !== '') && !$can_take_money) {
+                        $liveform_order->mark_error('_error', lang('The receipt was not recorded: you do not hold the ERP cash right.'));
+                    } elseif ($pay_method !== '') {
+                        $invoice = db_item("SELECT id, account_id, grand_total, currency FROM erp_invoices WHERE id = '" . (int) $invoiced['invoice_id'] . "' LIMIT 1");
+                        $till = ($pay_till > 0) ? db_item("SELECT id, name FROM erp_cash_accounts WHERE id = '" . $pay_till . "' AND is_active = 1 LIMIT 1") : null;
+
+                        if (!is_array($till)) {
+                            $liveform_order->mark_error('_error', lang('The receipt was not recorded: choose a till or bank account.'));
+                        } elseif (is_array($invoice) && ((int) $invoice['grand_total'] > 0)) {
+                            $posted = erp_post_receipt(array(
+                                'direction' => 'collection',
+                                'account_id' => (int) $invoice['account_id'],
+                                'cash_account_id' => (int) $till['id'],
+                                'amount' => (int) $invoice['grand_total'],
+                                'doc_date' => date('Y-m-d'),
+                                'currency' => (string) $invoice['currency'],
+                                'payment_method' => $pay_method,
+                                'description' => lang(array('string' => 'Counter sale #{var:1}', 'vars' => $order_number)),
+                                'invoice_id' => (int) $invoice['id'],
+                                'created_by' => (int) $user['id'],
+                            ));
+
+                            if (empty($posted['success'])) {
+                                $liveform_order->mark_error('_error', lang('The receipt was not recorded.') . ' ' . (string) $posted['error']);
+                            } else {
+                                $liveform_order->add_notice(lang(array(
+                                    'string' => 'Receipt #{var:1} for {var:2} was recorded to {var:3}; the invoice is paid.',
+                                    'vars' => array((int) $posted['cash_id'], erp_money_out((int) $invoice['grand_total']), $till['name']),
+                                )));
+                            }
+                        }
+                    }
+                }
+            }
+
+            header('Location: ' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order_id);
             exit();
         }
     }
@@ -340,6 +594,7 @@ if ($action === 'complete_order') {
 $order_id         = 0;
 $cart_items       = array();
 $cart_total_cents = 0;
+$cart_tax_cents   = 0;
 
 if (isset($_SESSION['ecommerce']['order_id']) && ($_SESSION['ecommerce']['order_id'] ?? '') != '') {
     $order_id = (int)($_SESSION['ecommerce']['order_id'] ?? '');
@@ -361,7 +616,9 @@ if ($order_id > 0) {
             p.image_name,
             p.short_description,
             p.inventory,
-            p.inventory_quantity
+            p.inventory_quantity,
+            p.taxable,
+            p.tax_rate
          FROM order_items oi
          LEFT JOIN products p ON oi.product_id = p.id
          WHERE oi.order_id = '" . escape($order_id) . "'
@@ -369,19 +626,32 @@ if ($order_id > 0) {
     );
     foreach ($cart_items as $item) {
         $cart_total_cents += (int)$item['price'] * (int)$item['quantity'];
+        $cart_tax_cents += local_sale_line_tax($item);
     }
 }
 
 // --- Last 5 local orders ---
+// With the ERP on, each carries the invoice issued for it, or the means to
+// issue one: a sale at the counter is invoiced from here, without a trip
+// through the ERP's own picker.
+$erp_invoicing = defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id');
 $recent_local_orders = db_items(
     "SELECT
         orders.id,
         orders.reference_code,
+        orders.order_number,
         orders.order_date,
         orders.total,
-        COUNT(order_items.id) AS item_count
+        orders.contact_id,
+        COUNT(order_items.id) AS item_count"
+        . ($erp_invoicing ? ",
+        orders.erp_invoice_id,
+        orders.erp_account_id,
+        erp_invoices.full_number AS erp_invoice_number" : "") . "
      FROM orders
-     LEFT JOIN order_items ON order_items.order_id = orders.id
+     LEFT JOIN order_items ON order_items.order_id = orders.id"
+     . ($erp_invoicing ? "
+     LEFT JOIN erp_invoices ON erp_invoices.id = orders.erp_invoice_id" : "") . "
      WHERE orders.type = 'local'
        AND orders.status = 'complete'
      GROUP BY orders.id
@@ -396,12 +666,31 @@ if (count($recent_local_orders) > 0) {
         $ro_total    = prepare_amount($ro['total'] / 100);
         $ro_date     = get_relative_time(array('timestamp' => $ro['order_date']));
         $ro_url      = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int)$ro['id'];
+
+        $output_ro_invoice = '';
+        if ($erp_invoicing) {
+            if ((int) $ro['erp_invoice_id'] > 0) {
+                $output_ro_invoice = '<a href="edit_erp_invoice.php?id=' . (int) $ro['erp_invoice_id'] . '" class="link-success small text-nowrap"><i class="bi bi-receipt me-1"></i>' . h((string) $ro['erp_invoice_number']) . '</a>';
+            } elseif (((int) $ro['contact_id'] > 0) || ((int) $ro['erp_account_id'] > 0)) {
+                $output_ro_invoice =
+                    '<form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="order_id" value="' . (int) $ro['id'] . '" />
+                        <input type="hidden" name="from_order_screen" value="1" />
+                        <button type="submit" name="submit_create" value="Create" class="btn btn-sm btn-outline-success border-0 text-nowrap" data-confirm-content="' . h(lang(array('string' => 'Issue the ERP invoice for order #{var:1}?', 'vars' => $ro['order_number']))) . '" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
+                    </form>';
+            } else {
+                $output_ro_invoice = '<span class="text-secondary small" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '">&mdash;</span>';
+            }
+        }
+
         $output_recent_rows .=
             '<tr>
-                <td class="align-middle">' . h($ro['reference_code']) . '</td>
+                <td class="align-middle">' . h($ro['reference_code']) . '<div class="small text-secondary">#' . h($ro['order_number']) . '</div></td>
                 <td class="align-middle">' . $ro_date . '</td>
                 <td class="align-middle text-center">' . (int)$ro['item_count'] . '</td>
-                <td class="align-middle text-end fw-bold">' . $ro_total . '</td>
+                <td class="align-middle text-end fw-bold">' . $ro_total . '</td>'
+                . ($erp_invoicing ? '<td class="align-middle text-center">' . $output_ro_invoice . '</td>' : '') . '
                 <td class="align-middle text-center">
                     <a href="' . $ro_url . '" class="btn btn-sm btn-outline-secondary border-0"
                         title="' . lang('View') . '"><i class="bi bi-eye"></i></a>
@@ -410,7 +699,7 @@ if (count($recent_local_orders) > 0) {
     }
 } else {
     $output_recent_rows =
-        '<tr><td colspan="5" class="text-center text-secondary py-3">' . lang('No local orders yet.') . '</td></tr>';
+        '<tr><td colspan="' . ($erp_invoicing ? 6 : 5) . '" class="text-center text-secondary py-3">' . lang('No local orders yet.') . '</td></tr>';
 }
 
 // --- Cart rows ---
@@ -442,8 +731,8 @@ if (count($cart_items) > 0) {
         $output_cart_rows .=
             '<tr>
                 <td class="align-middle">' . $output_image . '</td>
-                <td class="align-middle">' . h($item['name']) . '<br>
-                    <small class="text-secondary">' . h($item['short_description']) . '</small></td>
+                <td class="align-middle">' . h((trim((string) $item['short_description']) !== '') ? $item['short_description'] : $item['name']) . '<br>
+                    <small class="text-secondary">' . h($item['name']) . '</small></td>
                 <td class="align-middle text-center" style="white-space:nowrap;">
                     <form method="post" action="' . $page_url . '" class="d-inline disable_shortcut">
                         ' . get_token_field() . '
@@ -480,7 +769,100 @@ if (count($cart_items) > 0) {
 }
 
 $cart_total_formatted     = prepare_amount($cart_total_cents / 100);
+$cart_tax_formatted       = prepare_amount($cart_tax_cents / 100);
+$cart_grand_formatted     = prepare_amount(($cart_total_cents + $cart_tax_cents) / 100);
 $complete_button_disabled = count($cart_items) === 0 ? ' disabled' : '';
+
+// --- Who the sale is for ---
+$customer = local_sale_customer();
+$erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+$erp_access = $erp_on && ((int) $user['role'] < 3 || !empty($user['manage_erp']));
+$walkin_account = null;
+if ($erp_on && defined('ERP_WALKIN_ACCOUNT_ID') && (ERP_WALKIN_ACCOUNT_ID > 0) && waf_table_has_column('erp_accounts', 'title')) {
+    $walkin_account = db_item("SELECT id, title FROM erp_accounts WHERE id = '" . (int) ERP_WALKIN_ACCOUNT_ID . "' LIMIT 1");
+}
+
+if ($customer) {
+    $customer_links = array();
+    if ($customer['contact_id'] > 0) {
+        $customer_links[] = '<a href="edit_contact.php?id=' . (int) $customer['contact_id'] . '" class="link-secondary small"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+    }
+    if ($erp_access && ($customer['account_id'] > 0)) {
+        $customer_links[] = '<a href="edit_erp_account.php?id=' . (int) $customer['account_id'] . '" class="link-secondary small"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . '</a>';
+    }
+    $output_customer =
+        '<div class="d-flex align-items-start gap-2">
+            <div class="flex-grow-1">
+                <div class="fw-bold">' . h($customer['label']) . '</div>
+                <div class="d-flex flex-wrap gap-3 mt-1">' . implode('', $customer_links) . '</div>
+            </div>
+            <form method="post" action="' . $page_url . '" class="disable_shortcut">
+                ' . get_token_field() . '
+                <input type="hidden" name="action" value="clear_customer">
+                <button type="submit" class="btn btn-sm btn-outline-secondary border-0" title="' . lang('Remove the customer') . '"><i class="bi bi-x-lg"></i></button>
+            </form>
+        </div>';
+    $output_customer_summary = h($customer['label']);
+} else {
+    $output_customer =
+        '<div class="text-secondary"><i class="bi bi-shop me-1"></i>' . lang('Walk-in sale: no customer is recorded on the order.') . '</div>';
+    if ($erp_on) {
+        $output_customer .= '<div class="form-text mt-1">' . ($walkin_account
+            ? h(lang(array('string' => 'When invoiced, the sale is billed to "{var:1}".', 'vars' => $walkin_account['title'])))
+            : lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '</div>';
+    }
+    $output_customer_summary = lang('Walk-in sale');
+}
+
+// --- Invoice and payment in the same step ---
+//
+// Offered when the ERP is on and this operator may issue invoices; the till
+// half only to an operator who holds the cash right. A walk-in sale with no
+// walk-in account cannot be invoiced, so nothing is offered for it. The last
+// choice is remembered for the next sale.
+$output_pay_controls = '';
+$can_invoice_here = $erp_access && (($customer && (($customer['account_id'] > 0) || ($customer['contact_id'] > 0))) || ($walkin_account !== null));
+
+if ($can_invoice_here) {
+    $remembered = isset($_SESSION['ecommerce']['local_sale_payment']) && is_array($_SESSION['ecommerce']['local_sale_payment'])
+        ? $_SESSION['ecommerce']['local_sale_payment']
+        : array('method' => 'cash', 'till' => 0, 'invoice' => 1);
+    $can_take_money = ((int) $user['role'] < 3) || !empty($user['manage_erp_cash']);
+    $tills = $can_take_money ? (array) db_items("SELECT id, name FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, id ASC") : array();
+
+    $default_till = (int) ($remembered['till'] ?? 0);
+    if (($default_till <= 0) && defined('ERP_DEFAULT_CASH_ACCOUNT_ID')) {
+        $default_till = (int) ERP_DEFAULT_CASH_ACCOUNT_ID;
+    }
+
+    $method_labels = array(
+        'cash' => lang('Cash'),
+        'card' => lang('Card'),
+        'transfer' => lang('Bank transfer'),
+        'cheque' => lang('Cheque'),
+        'other' => lang('Other'),
+    );
+
+    $output_pay_controls = '<input type="hidden" name="issue_invoice_seen" value="1">
+                            <div class="form-check form-check-inline align-middle me-3">
+                                <input class="form-check-input" type="checkbox" name="issue_invoice" value="1" id="issue_invoice"' . (!empty($remembered['invoice']) ? ' checked' : '') . '>
+                                <label class="form-check-label" for="issue_invoice">' . lang('Issue the invoice') . '</label>
+                            </div>';
+
+    if ($can_take_money && !empty($tills)) {
+        $method_options = '<option value="">' . lang('Collect later') . '</option>';
+        foreach ($method_labels as $code => $label) {
+            $method_options .= '<option value="' . $code . '"' . (((string) ($remembered['method'] ?? '') === $code) ? ' selected' : '') . '>' . h($label) . '</option>';
+        }
+        $till_options = '';
+        foreach ($tills as $till) {
+            $till_options .= '<option value="' . (int) $till['id'] . '"' . (((int) $till['id'] === $default_till) ? ' selected' : '') . '>' . h($till['name']) . '</option>';
+        }
+        $output_pay_controls .= '
+                            <select name="pay_method" class="form-select form-select-sm d-inline-block w-auto align-middle me-1" title="' . lang('Payment Method') . '" id="pay_method">' . $method_options . '</select>
+                            <select name="pay_till" class="form-select form-select-sm d-inline-block w-auto align-middle me-3" title="' . lang('Till or bank account') . '" id="pay_till">' . $till_options . '</select>';
+    }
+}
 
 echo
     pg_page_shell(
@@ -509,8 +891,30 @@ echo
 
         <div class="row">
 
-            <!-- Left panel: barcode scanner + product search -->
-            <div class="col-12 col-md-auto my-2" style="min-width:300px;">
+            <!-- Left panel: customer, barcode scanner, product search -->
+            <div class="col-12 col-md-auto my-2" style="min-width:300px;max-width:420px;">
+                <div class="card border-4 border-primary mb-3">
+                    <div class="card-body">
+                        <label for="customer_search_input" class="form-label">' . lang('Customer') . '</label>
+                        <div class="position-relative">
+                            <div class="input-group my-2">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" id="customer_search_input"
+                                    placeholder="' . lang('Name, company, e-mail or account') . '"
+                                    class="form-control"
+                                    autocomplete="off">
+                            </div>
+                            <div id="customer_search_results" class="list-group mt-1" style="display:none;max-height:250px;overflow-y:auto;"></div>
+                        </div>
+                        <div id="customer_current">' . $output_customer . '</div>
+                        <form id="select_customer_form" class="disable_shortcut" method="post" action="' . $page_url . '">
+                            ' . get_token_field() . '
+                            <input type="hidden" name="action" value="set_customer">
+                            <input type="hidden" name="contact_id" id="selected_contact_id" value="0">
+                            <input type="hidden" name="account_id" id="selected_account_id" value="0">
+                        </form>
+                    </div>
+                </div>
                 <div class="card border-4 border-primary">
                     <div class="card-body">
 
@@ -578,8 +982,18 @@ echo
                                 </tbody>
                                 <tfoot>
                                     <tr>
+                                        <td colspan="4" class="text-end text-secondary">' . lang('Subtotal') . ':</td>
+                                        <td class="text-end">' . $cart_total_formatted . '</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-end text-secondary">' . lang('VAT') . ':</td>
+                                        <td class="text-end">' . $cart_tax_formatted . '</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td colspan="4" class="text-end fw-bold">' . lang('Total') . ':</td>
-                                        <td class="text-end fw-bold h5 mb-0">' . $cart_total_formatted . '</td>
+                                        <td class="text-end fw-bold h5 mb-0">' . $cart_grand_formatted . '</td>
                                         <td></td>
                                     </tr>
                                 </tfoot>
@@ -587,14 +1001,33 @@ echo
                         </div>
                     </div>
                     <div class="card-footer bg-reset border-0 text-end">
-                        <form method="post" class="disable_shortcut" action="' . $page_url . '">
+                        <span class="text-secondary small me-2"><i class="bi bi-person me-1"></i>' . $output_customer_summary . '</span>
+                        <form method="post" class="disable_shortcut d-inline" action="' . $page_url . '" id="complete_order_form">
                             ' . get_token_field() . '
                             <input type="hidden" name="action" value="complete_order">
+                            ' . $output_pay_controls . '
                             <button type="submit" class="btn btn-success"' . $complete_button_disabled . '>
                                 <span class="material-icons me-1 align-middle" style="font-size:1.1rem;">check_circle</span>
                                 ' . lang('Complete Order') . '
                             </button>
                         </form>
+                        <script>
+                        (function () {
+                            // Money taken now means an invoice to take it against.
+                            var method = document.getElementById("pay_method");
+                            var invoice = document.getElementById("issue_invoice");
+                            var till = document.getElementById("pay_till");
+                            if (!method || !invoice) { return; }
+                            var sync = function () {
+                                var paying = method.value !== "";
+                                if (paying) { invoice.checked = true; }
+                                invoice.disabled = paying;
+                                if (till) { till.disabled = !paying; }
+                            };
+                            method.addEventListener("change", sync);
+                            sync();
+                        })();
+                        </script>
                     </div>
                 </div>
             </div>
@@ -624,7 +1057,8 @@ echo
                                         <th>' . lang('Reference') . '</th>
                                         <th>' . lang('Date') . '</th>
                                         <th class="text-center">' . lang('Items') . '</th>
-                                        <th class="text-end">' . lang('Total') . '</th>
+                                        <th class="text-end">' . lang('Total') . '</th>'
+                                        . ($erp_invoicing ? '<th class="text-center">' . lang('Invoice') . '</th>' : '') . '
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -672,6 +1106,55 @@ echo
            ------------------------------------------------------- */
         var searchTimer = null;
         var noResultsText = ' . json_encode(lang('No products found.')) . ';
+        var stockText = ' . json_encode(lang('In stock: {var:1}')) . ';
+        var noCustomersText = ' . json_encode(lang('No customers found.')) . ';
+
+        /* -------------------------------------------------------
+           Customer search — contacts and accounts, debounced 300 ms
+           ------------------------------------------------------- */
+        var customerTimer = null;
+
+        $("#customer_search_input").on("input", function() {
+            clearTimeout(customerTimer);
+            var q = $(this).val().trim();
+            if (q.length < 2) {
+                $("#customer_search_results").hide().empty();
+                return;
+            }
+            customerTimer = setTimeout(function() {
+                $.getJSON(
+                    "' . $page_url . '",
+                    { request: "search_customers", q: q },
+                    function(data) {
+                        var $r = $("#customer_search_results").empty();
+                        if (data.results && data.results.length > 0) {
+                            $.each(data.results, function(i, c) {
+                                var label = $("<span>").text(c.label).prop("outerHTML");
+                                var sub = c.sub ? "<br><small class=\"text-secondary\">" + $("<span>").text(c.sub).prop("outerHTML") + "</small>" : "";
+                                var icon = c.kind === "account" ? "bi-journal-text" : "bi-person";
+                                $("<a>")
+                                    .addClass("list-group-item list-group-item-action py-2")
+                                    .attr("href", "#")
+                                    .html("<i class=\"bi " + icon + " me-2\"></i><strong>" + label + "</strong>" + sub)
+                                    .on("click", function(e) {
+                                        e.preventDefault();
+                                        $("#selected_contact_id").val(c.contact_id);
+                                        $("#selected_account_id").val(c.account_id);
+                                        $("#customer_search_results").hide().empty();
+                                        $("#select_customer_form").submit();
+                                    })
+                                    .appendTo($r);
+                            });
+                            $r.show();
+                        } else {
+                            $r.append(
+                                $("<div>").addClass("list-group-item text-secondary py-2").text(noCustomersText)
+                            ).show();
+                        }
+                    }
+                );
+            }, 300);
+        });
 
         $("#product_search_input").on("input", function() {
             clearTimeout(searchTimer);
@@ -688,9 +1171,18 @@ echo
                         var $r = $("#product_search_results").empty();
                         if (data.results && data.results.length > 0) {
                             $.each(data.results, function(i, p) {
-                                var name = $("<span>").text(p.name).prop("outerHTML");
-                                var desc = p.short_description
-                                    ? "<br><small class=\"text-secondary\">" + $("<span>").text(p.short_description).prop("outerHTML") + "</small>"
+                                // short_description is the name people know the product by; name is the SKU.
+                                var title = p.short_description ? p.short_description : p.name;
+                                var name = $("<span>").text(title).prop("outerHTML");
+                                var subParts = [];
+                                if (p.short_description && p.name !== p.short_description) {
+                                    subParts.push($("<span>").text(p.name).prop("outerHTML"));
+                                }
+                                if (String(p.inventory) === "1") {
+                                    subParts.push($("<span>").text(stockText.replace("{var:1}", p.inventory_quantity)).prop("outerHTML"));
+                                }
+                                var desc = subParts.length
+                                    ? "<br><small class=\"text-secondary\">" + subParts.join(" \u00b7 ") + "</small>"
                                     : "";
                                 $("<a>")
                                     .addClass("list-group-item list-group-item-action py-2")
@@ -720,6 +1212,9 @@ echo
         $(document).on("click", function(e) {
             if (!$(e.target).closest("#product_search_input, #product_search_results").length) {
                 $("#product_search_results").hide();
+            }
+            if (!$(e.target).closest("#customer_search_input, #customer_search_results").length) {
+                $("#customer_search_results").hide();
             }
         });
 

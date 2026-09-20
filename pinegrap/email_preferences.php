@@ -130,6 +130,10 @@ if (!$_POST) {
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
+
+            // A visitor who set their e-mail preferences without having a
+            // contact record has one now.
+            pg_announce_contact_created($contact_id);
             
             // check if registration contact group exists
             $query = "SELECT id FROM contact_groups WHERE id = '" . REGISTRATION_CONTACT_GROUP_ID  . "'";

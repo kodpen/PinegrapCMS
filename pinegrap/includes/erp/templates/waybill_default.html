@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<!--
+  Pinegrap ERP - the built-in delivery note template.
+
+  Rendered by the same engine as the invoice template: a placeholder is a name
+  between double braces and prints HTML-escaped, a block opened with # and
+  closed with / is shown when the value is set (repeated for a list), a block
+  opened with ^ is shown when the value is empty. Every caption is a label.*
+  value resolved in the site language.
+
+  seller   .title .address_1 .address_2 .city .state .zip_code .country
+           .vkn .tax_office .web_address .email .logo_url .logo_data_uri
+  account  .title .tax_number .tax_office .address .district .city .country
+           .postcode
+  ship_to  .title .address .district .city .country
+  waybill  .full_number .title .issue_date .ship_date .ship_time .order_number
+           .invoice_number .carrier_title .carrier_vkn .plate .driver_name
+           .driver_tckn .has_transport .notes .is_cancelled
+  lines    (list) .no .description .quantity .unit
+  label    .waybill_no .waybill_date .ship_date .ship_time .order_no .order
+           .invoice_no .tax_id .tax_office .bill_to .ship_to .description
+           .quantity .unit .no_lines .carrier .carrier_tax_id .plate .driver
+           .driver_id .note .received_by .delivered_by .generated_at .cancelled
+  language, generated_at
+-->
+<html lang="{{language}}">
+<head>
+<meta charset="utf-8">
+<title>{{waybill.title}} {{waybill.full_number}}</title>
+<style>
+    @page { size: A4 portrait; margin: 14mm 14mm 18mm 14mm; }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 9.5pt; color: #222; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { vertical-align: top; }
+    .head td { padding: 0; }
+    .logo { max-height: 60px; max-width: 200px; margin-bottom: 6px; }
+    .seller { font-size: 9pt; line-height: 1.35; }
+    .seller .name { font-size: 12pt; font-weight: bold; margin-bottom: 3px; }
+    .doc { text-align: right; }
+    .doc .title { font-size: 18pt; font-weight: bold; letter-spacing: 1px; color: #333; }
+    .doc .cancelled { font-size: 11pt; font-weight: bold; color: #b00020; letter-spacing: 2px; }
+    .doc table { width: auto; margin-left: auto; margin-top: 6px; }
+    .doc td { padding: 2px 0 2px 12px; font-size: 9pt; white-space: nowrap; }
+    .doc td.k { color: #666; }
+    .doc td.v { font-weight: bold; text-align: right; }
+    .rule { border-top: 2px solid #333; margin: 12px 0; }
+    .party { font-size: 9.5pt; line-height: 1.4; }
+    .party .label { font-size: 8pt; color: #666; letter-spacing: 1px; margin-bottom: 3px; }
+    .party .name { font-weight: bold; font-size: 11pt; }
+    .lines { margin-top: 14px; }
+    .lines th { background: #efefef; border-bottom: 1px solid #999; padding: 6px 5px; font-size: 8.5pt; text-align: left; }
+    .lines td { border-bottom: 1px solid #ddd; padding: 5px; font-size: 9pt; }
+    .lines .n { text-align: right; white-space: nowrap; }
+    .lines .c { text-align: center; }
+    .box { border: 1px solid #bbb; padding: 8px 10px; margin-top: 16px; font-size: 8.5pt; }
+    .box .label { font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
+    .box td { padding: 1px 12px 1px 0; }
+    .box td.k { color: #666; white-space: nowrap; }
+    .notes { margin-top: 14px; font-size: 8.5pt; }
+    .sign { margin-top: 28px; }
+    .sign td { width: 50%; padding: 0 12px 0 0; font-size: 8.5pt; color: #666; }
+    .sign .line { border-top: 1px solid #999; margin-top: 36px; padding-top: 4px; }
+    .foot { position: fixed; bottom: -8mm; left: 0; right: 0; font-size: 7.5pt; color: #777; border-top: 1px solid #ccc; padding-top: 4px; }
+    .foot td { padding: 0; }
+    .foot td.r { text-align: right; }
+</style>
+</head>
+<body>
+
+<table class="head">
+    <tr>
+        <td style="width:58%">
+            <div class="seller">
+                {{#seller.logo_data_uri}}<img class="logo" src="{{seller.logo_data_uri}}" alt=""><br>{{/seller.logo_data_uri}}
+                <div class="name">{{seller.title}}</div>
+                {{#seller.address_1}}{{seller.address_1}}<br>{{/seller.address_1}}
+                {{#seller.address_2}}{{seller.address_2}}<br>{{/seller.address_2}}
+                {{seller.zip_code}} {{seller.city}} {{seller.state}} {{seller.country}}<br>
+                {{#seller.vkn}}{{label.tax_id}}: <b>{{seller.vkn}}</b>{{/seller.vkn}}
+                {{#seller.tax_office}} &nbsp;{{label.tax_office}}: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
+                {{#seller.web_address}}{{seller.web_address}}{{/seller.web_address}}
+                {{#seller.email}} &nbsp;{{seller.email}}{{/seller.email}}
+            </div>
+        </td>
+        <td class="doc">
+            <div class="title">{{waybill.title}}</div>
+            {{#waybill.is_cancelled}}<div class="cancelled">{{label.cancelled}}</div>{{/waybill.is_cancelled}}
+            <table>
+                <tr><td class="k">{{label.waybill_no}}</td><td class="v">{{waybill.full_number}}</td></tr>
+                <tr><td class="k">{{label.waybill_date}}</td><td class="v">{{waybill.issue_date}}</td></tr>
+                <tr><td class="k">{{label.ship_date}}</td><td class="v">{{waybill.ship_date}}{{#waybill.ship_time}} {{waybill.ship_time}}{{/waybill.ship_time}}</td></tr>
+                {{#waybill.order_number}}<tr><td class="k">{{label.order_no}}</td><td class="v">{{waybill.order_number}}</td></tr>{{/waybill.order_number}}
+                {{#waybill.invoice_number}}<tr><td class="k">{{label.invoice_no}}</td><td class="v">{{waybill.invoice_number}}</td></tr>{{/waybill.invoice_number}}
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div class="rule"></div>
+
+<table>
+    <tr>
+        <td style="width:50%">
+            <div class="party">
+                <div class="label">{{label.bill_to}}</div>
+                <div class="name">{{account.title}}</div>
+                {{#account.address}}{{account.address}}<br>{{/account.address}}
+                {{account.postcode}} {{account.district}} {{account.city}} {{account.country}}<br>
+                {{#account.tax_number}}{{label.tax_id}}: <b>{{account.tax_number}}</b>{{/account.tax_number}}
+                {{#account.tax_office}} &nbsp;{{label.tax_office}}: <b>{{account.tax_office}}</b>{{/account.tax_office}}
+            </div>
+        </td>
+        <td style="width:50%">
+            <div class="party">
+                <div class="label">{{label.ship_to}}</div>
+                <div class="name">{{ship_to.title}}</div>
+                {{#ship_to.address}}{{ship_to.address}}<br>{{/ship_to.address}}
+                {{ship_to.district}} {{ship_to.city}} {{ship_to.country}}
+            </div>
+        </td>
+    </tr>
+</table>
+
+<table class="lines">
+    <thead>
+        <tr>
+            <th class="c" style="width:5%">#</th>
+            <th>{{label.description}}</th>
+            <th class="n" style="width:14%">{{label.quantity}}</th>
+            <th class="c" style="width:12%">{{label.unit}}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#lines}}
+        <tr>
+            <td class="c">{{no}}</td>
+            <td>{{description}}</td>
+            <td class="n">{{quantity}}</td>
+            <td class="c">{{unit}}</td>
+        </tr>
+        {{/lines}}
+        {{^lines}}
+        <tr><td colspan="4" class="c">{{label.no_lines}}</td></tr>
+        {{/lines}}
+    </tbody>
+</table>
+
+{{#waybill.has_transport}}
+<div class="box">
+    <div class="label">{{label.carrier}}</div>
+    <table>
+        {{#waybill.carrier_title}}<tr><td class="k">{{label.carrier}}</td><td>{{waybill.carrier_title}}{{#waybill.carrier_vkn}} &nbsp;{{label.carrier_tax_id}}: {{waybill.carrier_vkn}}{{/waybill.carrier_vkn}}</td></tr>{{/waybill.carrier_title}}
+        {{#waybill.plate}}<tr><td class="k">{{label.plate}}</td><td>{{waybill.plate}}</td></tr>{{/waybill.plate}}
+        {{#waybill.driver_name}}<tr><td class="k">{{label.driver}}</td><td>{{waybill.driver_name}}{{#waybill.driver_tckn}} &nbsp;{{label.driver_id}}: {{waybill.driver_tckn}}{{/waybill.driver_tckn}}</td></tr>{{/waybill.driver_name}}
+    </table>
+</div>
+{{/waybill.has_transport}}
+
+{{#waybill.notes}}
+<div class="notes"><b>{{label.note}}:</b> {{waybill.notes}}</div>
+{{/waybill.notes}}
+
+<table class="sign">
+    <tr>
+        <td><div class="line">{{label.delivered_by}}</div></td>
+        <td><div class="line">{{label.received_by}}</div></td>
+    </tr>
+</table>
+
+<div class="foot">
+    <table>
+        <tr>
+            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{waybill.title}} {{waybill.full_number}}{{#waybill.order_number}} &nbsp;&middot;&nbsp; {{label.order}} {{waybill.order_number}}{{/waybill.order_number}}</td>
+            <td class="r">{{label.generated_at}}: {{generated_at}}</td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

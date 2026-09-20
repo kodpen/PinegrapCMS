@@ -266,6 +266,9 @@ if (isset($_GET['code'])) {
                 UNIX_TIMESTAMP())");
         $contact_id = (int) mysqli_insert_id(db::$con);
 
+        // Signing in with Google created this contact.
+        pg_announce_contact_created($contact_id);
+
         // If the registration contact group exists, assign the contact to it
         // - same as the registration flow.
         if (db_value("SELECT id FROM contact_groups WHERE id = '" . REGISTRATION_CONTACT_GROUP_ID . "'")) {

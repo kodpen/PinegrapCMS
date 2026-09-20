@@ -2278,46 +2278,6 @@ function _eo_render_cancel_status_alert($flash)
     return '';
 }
 
-// ── Tracking provider URL templates (order_view __tracking_link token) ───
-// Provider key is the lowercase, ascii-safe identifier stored in
-// orders.tracking_company (optional column — defensively probed at the
-// call site). When the column is missing OR empty, the call site falls
-// back to the ECOMMERCE_DEFAULT_TRACKING_PROVIDER config define. When
-// that is also unset, no link surfaces (only the raw tracking code).
-//
-// Adding a new carrier: extend both arrays; the URL template MUST use the
-// literal sentinel '{code}' (NOT a real value) so the call site can do a
-// single str_replace. URLs are wrapped through h() at render time — do
-// not embed user data here.
-function _eo_tracking_provider_url($provider, $code)
-{
-    $provider = strtolower(trim((string)$provider));
-    $code = trim((string)$code);
-    if ($provider === '' || $code === '') return '';
-    $templates = array(
-        'yurtici'  => 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code={code}',
-        'aras'     => 'https://kargotakip.araskargo.com.tr/?code={code}',
-        'mng'      => 'https://service.mngkargo.com.tr/iettransport/iettransport.svc/json/GetMngShipmentStatus?Code={code}',
-        'ptt'      => 'https://gonderitakip.ptt.gov.tr/Track/summary?id={code}',
-        'surat'    => 'https://www.suratkargo.com.tr/KargoTakip/?kargotakipno={code}',
-    );
-    if (!isset($templates[$provider])) return '';
-    return str_replace('{code}', rawurlencode($code), $templates[$provider]);
-}
-
-function _eo_tracking_provider_label($provider)
-{
-    $provider = strtolower(trim((string)$provider));
-    $labels = array(
-        'yurtici' => 'Yurtiçi Kargo',
-        'aras'    => 'Aras Kargo',
-        'mng'     => 'MNG Kargo',
-        'ptt'     => 'PTT Kargo',
-        'surat'   => 'Sürat Kargo',
-    );
-    return isset($labels[$provider]) ? $labels[$provider] : '';
-}
-
 // ── Order timeline HTML (order_view __timeline token) ────────────────────
 // Renders a vertical Bootstrap 5 + Bootstrap-Icons timeline of order
 // lifecycle events. Only events with a real timestamp are rendered — empty

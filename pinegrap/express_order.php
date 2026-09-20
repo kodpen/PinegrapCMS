@@ -821,6 +821,7 @@ if ($order_submitted == false) {
                     UNIX_TIMESTAMP())";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $contact_id = mysqli_insert_id(db::$con);
+            $new_contact_id = $contact_id;
 
             // if user is logged in, connect new contact record to user record
             if ($user_id) {
@@ -927,6 +928,12 @@ if ($order_submitted == false) {
                          "timestamp = UNIX_TIMESTAMP() " .
                      "WHERE id = '" . $contact_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        }
+
+        // Announced only now: the row above was created empty and has just been
+        // filled in, so a receiver that fetches the customer gets a real one.
+        if (!empty($new_contact_id)) {
+            pg_announce_contact_created($new_contact_id);
         }
 
         // if visitor tracking is on, update geographic data for visitor, using billing information

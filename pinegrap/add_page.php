@@ -2094,6 +2094,11 @@ if (!$_POST) {
             '" . $sitemap . "')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $page_id = mysqli_insert_id(db::$con);
+
+    // A page that did not exist before this request. Announced here and
+    // not in the duplicate or import paths: those create pages in bulk and
+    // an integration learns more from one listing than from fifty events.
+    pg_announce('page.created', array('id' => (int) $page_id, 'name' => $name));
     
     // set page type properties, if necessary
     switch($type) {

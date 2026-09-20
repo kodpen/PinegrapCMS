@@ -2375,6 +2375,54 @@ function get_system_status_checks()
 
     }
 
+    // The fallback carrier, when the site names one.
+    //
+    // ECOMMERCE_DEFAULT_TRACKING_PROVIDER is what a shop sets when its shipping
+    // method codes say nothing about the courier: every parcel without one is
+    // then linked to that carrier. It is a config define with no settings
+    // screen, its accepted values are the keys of pg_shipping_carriers(), and a
+    // value outside that list does nothing at all - the customer simply sees a
+    // number with no link, which looks like a shop that has not entered the
+    // tracking number rather than a typo in a file.
+    //
+    // Reported and not scored, like Database Size: a site that names no
+    // carrier gets no tile, because there is nothing to be right or wrong
+    // about, and a site that names a real one is not healthier for it.
+    if (defined('ECOMMERCE_DEFAULT_TRACKING_PROVIDER')
+        && (trim((string) ECOMMERCE_DEFAULT_TRACKING_PROVIDER) !== '')
+        && function_exists('pg_shipping_carriers')) {
+
+        $default_carrier = trim((string) ECOMMERCE_DEFAULT_TRACKING_PROVIDER);
+
+        $known_carriers = pg_shipping_carriers();
+
+        if (isset($known_carriers[$default_carrier])) {
+
+            $output .= $makeIcon(
+                'bi-truck',
+                'text-success',
+                'Default Shipping Carrier',
+                'Parcels whose shipping method does not name a courier are linked to this one.',
+                $known_carriers[$default_carrier]['name']
+            );
+
+        } else {
+
+            $output .= $makeIcon(
+                'bi-truck',
+                'text-warning',
+                'Default Shipping Carrier',
+                lang(array(
+                    'string' => 'ECOMMERCE_DEFAULT_TRACKING_PROVIDER is set to {var:1}, which is not a carrier this software knows, so no parcel is linked through it. Accepted values: {var:2}.',
+                    'vars'   => array($default_carrier, implode(', ', array_keys($known_carriers))),
+                )),
+                $default_carrier
+            );
+
+        }
+
+    }
+
     // Database size was a check here. It is not one: it was reported and never
     // scored, so it sat among the status chips as the one entry that could not
     // be right or wrong -- and it was alone, while the two figures it belongs

@@ -27,6 +27,32 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * Cache-busting stamp for one of the editor's own asset files.
+ *
+ * The browser is meant to keep these until they actually change. A stamp that
+ * moves on its own — time() was here — costs a fresh download and a fresh
+ * compile of every asset on every load, and the editor script is megabytes of
+ * it. The file's own modification time changes exactly when the file does,
+ * which is the whole job. Same stamp the rest of the software uses for its
+ * assets (includes/erp/invoice_form.php, includes/fn/designer.php).
+ *
+ * Falls back to the software version if the file cannot be stat'd — still a
+ * value that moves on upgrade, which is the case that matters.
+ *
+ * @param  string $relative_path  path under the software directory
+ * @return string
+ */
+function pg_designer_asset_stamp($relative_path)
+{
+    $stamp = @filemtime(PG_FUNCTIONS_DIR . '/' . $relative_path);
+    if ($stamp) {
+        return (string)$stamp;
+    }
+
+    return defined('VERSION') ? (string)VERSION : '0';
+}
+
 // ── Screen ──────────────────────────────────────────────────────────────────
 
 /**
@@ -262,7 +288,7 @@ function pg_designer_screen_render($ctx)
             'head'         => '<script>window.pgPreloaderHold = true;</script>',
         )) . '
         <link rel="stylesheet" href="assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
-        <link rel="stylesheet" href="assets/css/style_designer.css?v=' . time() . '">
+        <link rel="stylesheet" href="assets/css/style_designer.css?v=' . pg_designer_asset_stamp('assets/css/style_designer.css') . '">
         <main id="content" style="padding:0; max-width:100%;">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
@@ -371,9 +397,9 @@ function pg_designer_screen_render($ctx)
                 'Code'        => lang('Code'),
             )) . ';
         </script>
-        <script src="assets/js/codemirror_modal.js?v=' . time() . '"></script>
-        <script src="assets/js/class_suggestions.js?v=' . time() . '"></script>
-        <script src="assets/js/style_designer.js?v=' . time() . '"></script>
+        <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>
+        <script src="assets/js/class_suggestions.js?v=' . pg_designer_asset_stamp('assets/js/class_suggestions.js') . '"></script>
+        <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         <script>
             $(document).ready(function() {
                 StyleDesigner.init({

@@ -5254,40 +5254,247 @@ function update_recurring_commissions()
         }
     }
 }
-function get_shipping_tracking_url($number, $method)
+/**
+ * The carriers this software can recognise, name and link to.
+ *
+ * One entry per carrier, and everything about it in that entry. It used to be
+ * three lists in three functions keyed by the same strings - the spellings a
+ * shop may have typed, the name printed beside the number, the address the
+ * customer follows - which is the shape that lets a carrier be added to two of
+ * them and go missing from the third.
+ *
+ * The keys are also the accepted values of ECOMMERCE_DEFAULT_TRACKING_PROVIDER
+ * (data/config.php), so a site naming a carrier for the whole shop can be told
+ * when it names one that does not exist. pg_system_status() checks exactly
+ * that.
+ *
+ * Order matters and is not alphabetical. The shapes are matched in this order
+ * and some of them overlap: a FedEx SmartPost number also matches the USPS
+ * patterns, and FedEx tracks it better, so FedEx is asked first.
+ *
+ * Per entry:
+ *   name      what the customer is shown
+ *   aliases   shipping_method_code spellings that mean this carrier. The key
+ *             itself is always accepted and is not repeated here.
+ *   url       tracking address, {code} replaced with the number
+ *   patterns  number shapes that identify the carrier when the method code
+ *             says nothing. Empty where a number has no recognisable shape -
+ *             the Turkish carriers all use plain digits of similar lengths, so
+ *             guessing between them would be guessing.
+ *
+ * @return array carrier key => entry
+ */
+function pg_shipping_carriers()
 {
-    //if shipping method(shipping_method_code) is 'yurticikargo' or 'Yurtici' or 'Yurtiçi' or 'Yurtici Kargo' or 'Yurtiçi Kargo' or 'YURTICI' or 'YURTICIKARGO' or 'TR-YURTICI'
-    // than output yurtiçi cargo tracking URL.
-    if (($method == 'yurticikargo') || ($method == 'Yurtici') || ($method == 'Yurtiçi') || ($method == 'Yurtici Kargo') || ($method == 'Yurtiçi Kargo') || ($method == 'YURTICI') || ($method == 'YURTICIKARGO') || ($method == 'TR-YURTICI')) {
-        return 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=' . $number;
-        //if shipping method(shipping_method_code) is 'suratkargo' or 'Surat' or 'Sürat' or 'Surat Kargo' or 'Sürat Kargo' or 'SURAT' or 'SURATKARGO' or 'TR-SURAT'
-        // than output yurtiçi cargo tracking URL.
-    } else if (($method == 'suratkargo') || ($method == 'Surat') || ($method == 'Sürat') || ($method == 'Surat Kargo') || ($method == 'Sürat Kargo') || ($method == 'SURAT') || ($method == 'SURATKARGO') || ($method == 'TR-SURAT')) {
-        return 'https://www.suratkargo.com.tr/KargoTakip/?kargotakipno=' . $number;
-        //if shipping method(shipping_method_code) is 'araskargo' or 'Aras' or 'Aras Kargo' or 'ARAS' or 'ARASKARGO' or 'TR-ARAS'
-        // than output yurtiçi cargo tracking URL.
-    } else if (($method == 'araskargo') || ($method == 'Aras') || ($method == 'Aras Kargo') || ($method == 'ARAS') || ($method == 'ARASKARGO') || ($method == 'TR-ARAS')) {
-        return 'http://kargotakip.araskargo.com.tr/mainpage.aspx?code=' . $number;
-        // if the shipping carrier is UPS, then return tracking URL for it
-    } else if (preg_match('/\b(1Z ?[0-9A-Z]{3} ?[0-9A-Z]{3} ?[0-9A-Z]{2} ?[0-9A-Z]{4} ?[0-9A-Z]{3} ?[0-9A-Z]|[\dT]\d\d\d ?\d\d\d\d ?\d\d\d)\b/', $number) == 1) {
-        return 'https://wwwapps.ups.com/WebTracking/processInputRequest?HTMLVersion=5.0&error_carried=true&tracknums_displayed=5&TypeOfInquiryNumber=T&loc=en_US&InquiryNumber1=' . urlencode($number);
-        // Otherwise if the shipping carrier is FedEx, then return tracking URL for it.
-        // We include the FedEx SmartPost support below, because if we don't then they will match USPS,
-        // and the FedEx tracking for SmartPost is much better than the USPS tracking.  For example,
-        // the USPS tracking won't contain any info until USPS gets the package from FedEx.
-    } else if (
-        (preg_match('/(\b96\d{20}\b)|(\b\d{15}\b)|(\b\d{12}\b)/', $number) == 1) || (preg_match('/\b((98\d\d\d\d\d?\d\d\d\d|98\d\d) ?\d\d\d\d ?\d\d\d\d( ?\d\d\d)?)\b/', $number) == 1) || (preg_match('/^[0-9]{15}$/', $number) == 1) || (preg_match('/^927489\d{16}$/', $number) == 1) // FedEx SmartPost
-        || (preg_match('/^926129\d{16}$/', $number) == 1) // FedEx SmartPost
-    ) {
-        return 'https://www.fedex.com/Tracking?tracknumbers=' . urlencode($number) . '&action=track';
-        // else if the shipping carrier is USPS, then return tracking URL for it
-    } else if ((preg_match('/(\b\d{30}\b)|(\b91\d+\b)|(\b\d{20}\b)/', $number) == 1) || (preg_match('/^E\D{1}\d{9}\D{2}$|^9\d{15,21}$/', $number) == 1) || (preg_match('/^91[0-9]+$/', $number) == 1) || (preg_match('/^[A-Za-z]{2}[0-9]+US$/', $number) == 1)) {
-        return 'https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=' . urlencode($number);
-        // else a shipping carrier was not found, so return empty string
-    } else {
+    return array(
+
+        'yurtici' => array(
+            'name'     => 'Yurtiçi Kargo',
+            'aliases'  => array('yurtiçi', 'yurticikargo', 'yurtici kargo', 'yurtiçi kargo', 'tr-yurtici'),
+            'url'      => 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code={code}',
+            'patterns' => array()),
+
+        'surat' => array(
+            'name'     => 'Sürat Kargo',
+            'aliases'  => array('sürat', 'suratkargo', 'surat kargo', 'sürat kargo', 'tr-surat'),
+            'url'      => 'https://www.suratkargo.com.tr/KargoTakip/?kargotakipno={code}',
+            'patterns' => array()),
+
+        'aras' => array(
+            'name'     => 'Aras Kargo',
+            'aliases'  => array('araskargo', 'aras kargo', 'tr-aras'),
+            'url'      => 'https://kargotakip.araskargo.com.tr/mainpage.aspx?code={code}',
+            'patterns' => array()),
+
+        'mng' => array(
+            'name'     => 'MNG Kargo',
+            'aliases'  => array('mngkargo', 'mng kargo', 'tr-mng'),
+            'url'      => 'https://kargotakip.mngkargo.com.tr/?takipNo={code}',
+            'patterns' => array()),
+
+        'ptt' => array(
+            'name'     => 'PTT Kargo',
+            'aliases'  => array('pttkargo', 'ptt kargo', 'tr-ptt'),
+            'url'      => 'https://gonderitakip.ptt.gov.tr/Track/summary?id={code}',
+            'patterns' => array()),
+
+        'ups' => array(
+            'name'     => 'UPS',
+            'aliases'  => array('ups kargo', 'upskargo'),
+            'url'      => 'https://wwwapps.ups.com/WebTracking/processInputRequest?HTMLVersion=5.0&error_carried=true&tracknums_displayed=5&TypeOfInquiryNumber=T&loc=en_US&InquiryNumber1={code}',
+            'patterns' => array(
+                '/\b(1Z ?[0-9A-Z]{3} ?[0-9A-Z]{3} ?[0-9A-Z]{2} ?[0-9A-Z]{4} ?[0-9A-Z]{3} ?[0-9A-Z]|[\dT]\d\d\d ?\d\d\d\d ?\d\d\d)\b/')),
+
+        'fedex' => array(
+            'name'     => 'FedEx',
+            'aliases'  => array('fedex kargo'),
+            'url'      => 'https://www.fedex.com/Tracking?tracknumbers={code}&action=track',
+            'patterns' => array(
+                '/(\b96\d{20}\b)|(\b\d{15}\b)|(\b\d{12}\b)/',
+                '/\b((98\d\d\d\d\d?\d\d\d\d|98\d\d) ?\d\d\d\d ?\d\d\d\d( ?\d\d\d)?)\b/',
+                '/^[0-9]{15}$/',
+                '/^927489\d{16}$/',
+                '/^926129\d{16}$/')),
+
+        'usps' => array(
+            'name'     => 'USPS',
+            'aliases'  => array(),
+            'url'      => 'https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1={code}',
+            'patterns' => array(
+                '/(\b\d{30}\b)|(\b91\d+\b)|(\b\d{20}\b)/',
+                '/^E\D{1}\d{9}\D{2}$|^9\d{15,21}$/',
+                '/^91[0-9]+$/',
+                '/^[A-Za-z]{2}[0-9]+US$/')),
+
+    );
+}
+
+/**
+ * Whether a string is one of the carrier keys above.
+ *
+ * @param  string $carrier
+ * @return bool
+ */
+function pg_shipping_carrier_exists($carrier)
+{
+    $carriers = pg_shipping_carriers();
+
+    return isset($carriers[trim((string) $carrier)]);
+}
+
+/**
+ * Which carrier a tracking number belongs to.
+ *
+ * One answer, two uses: the link the customer clicks and the name printed
+ * beside it. Both used to matter only on the panel's order screen, where the
+ * link was built and the carrier never named; the customer-facing order view
+ * then grew its own copy of this table with its own provider keys, which is
+ * how a second, disagreeing list of carriers appeared. This is the single one.
+ *
+ * The method is ship_tos.shipping_method_code — what the customer chose at
+ * checkout, in whatever spelling the shop set up, so it is read three ways in
+ * turn: the whole code against the carrier names, then the code a word at a
+ * time (a shop's method is usually named for the service, "UPS-5GUN", not for
+ * the courier alone), and finally, when the code says nothing at all, the
+ * number's own shape — which is how orders imported without a method code kept
+ * their links.
+ *
+ * @param  string $number tracking number
+ * @param  string $method ship_tos.shipping_method_code, or a bare carrier key
+ * @return string carrier key from pg_shipping_carriers(), or ''
+ */
+function pg_shipping_carrier($number, $method)
+{
+    $number = trim((string) $number);
+    $method = trim((string) $method);
+
+    if ($number === '') {
         return '';
     }
+
+    $carriers = pg_shipping_carriers();
+
+    // What the shop typed, first. A method code that names the carrier beats
+    // any guess made from the number.
+    $needle = mb_strtolower($method, 'UTF-8');
+
+    if ($needle !== '') {
+        foreach ($carriers as $carrier => $entry) {
+            if (($needle === $carrier) || (in_array($needle, $entry['aliases'], true))) {
+                return $carrier;
+            }
+        }
+    }
+
+    // Still the shop's own code, read a word at a time.
+    //
+    // A shipping method is usually named for the service rather than the
+    // courier - "UPS-5GUN", "MNG Ertesi Gün", "tr-aras-standart" - and the
+    // list above cannot hold every shop's spelling of every service. Splitting
+    // the code into words and matching a whole word against a carrier's name
+    // catches those without catching anything else: "5gun" is not a carrier
+    // and "Standart Teslimat" still names none.
+    //
+    // Whole words only, and only single-word names: a code that merely
+    // contains the letters of a carrier is not that carrier, and this is the
+    // difference between reading "UPS-5GUN" as UPS and reading a customer's
+    // surname as one.
+    if ($needle !== '') {
+
+        $words = preg_split('/[^\p{L}\p{N}]+/u', $needle, -1, PREG_SPLIT_NO_EMPTY);
+
+        if (is_array($words) && (count($words) > 1)) {
+
+            foreach ($carriers as $carrier => $entry) {
+
+                $names = array_merge(array($carrier), $entry['aliases']);
+
+                foreach ($names as $name) {
+                    if ((mb_strpos($name, ' ') === false) && (in_array($name, $words, true))) {
+                        return $carrier;
+                    }
+                }
+
+            }
+
+        }
+
+    }
+
+    // No method code, or one this list does not know: the number's own shape.
+    foreach ($carriers as $carrier => $entry) {
+        foreach ($entry['patterns'] as $pattern) {
+            if (preg_match($pattern, $number) == 1) {
+                return $carrier;
+            }
+        }
+    }
+
+    return '';
 }
+
+/**
+ * Where the customer follows the parcel.
+ *
+ * @param  string $number tracking number (shipping_tracking_numbers.number)
+ * @param  string $method ship_tos.shipping_method_code
+ * @return string absolute URL, or '' when the carrier cannot be identified
+ */
+function get_shipping_tracking_url($number, $method)
+{
+    $number = trim((string) $number);
+
+    $carrier = pg_shipping_carrier($number, $method);
+
+    if ($carrier === '') {
+        return '';
+    }
+
+    $carriers = pg_shipping_carriers();
+
+    return str_replace('{code}', rawurlencode($number), $carriers[$carrier]['url']);
+}
+
+/**
+ * The carrier's name, for printing beside the number.
+ *
+ * @param  string $number tracking number
+ * @param  string $method ship_tos.shipping_method_code
+ * @return string carrier name, or '' when it cannot be identified
+ */
+function get_shipping_carrier_name($number, $method)
+{
+    $carrier = pg_shipping_carrier($number, $method);
+
+    if ($carrier === '') {
+        return '';
+    }
+
+    $carriers = pg_shipping_carriers();
+
+    return $carriers[$carrier]['name'];
+}
+
 /**
  * What a barcode of a given type has to look like.
  *
@@ -6507,17 +6714,22 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
  * Has this order physically gone out?
  *
  * The operator's workflow is the source of truth here: an order counts as
- * shipped the moment a TRACKING CODE is recorded — not when a ship_date is
+ * shipped the moment a TRACKING NUMBER is recorded — not when a ship_date is
  * filled in. ship_tos.ship_date is a *planned* dispatch date that gets set at
  * order time on many configurations, so gating on it blocked cancellation of
  * orders that had not left the building yet. It is deliberately ignored.
  *
- * Two stores hold tracking data and either one counts:
- *   1. orders.tracking_code             — single code for the whole order
- *                                          (what the admin list column and the
- *                                          order_view __tracking_code token use)
- *   2. shipping_tracking_numbers.number — per-ship_to codes, used by
- *                                          multi-recipient orders
+ * The numbers live in shipping_tracking_numbers, one row per parcel, hanging
+ * off the ship_to rather than the order: an order can go to several addresses
+ * and an address can take several parcels.
+ *
+ * orders.tracking_code is NOT consulted, though it was until 2026.4.4. That
+ * column is the campaign code the visitor arrived with (get_tracking_code(),
+ * the ?t= parameter, stored beside referral_source_code and the utm_* fields)
+ * and has nothing to do with a carrier. Reading it here meant every order
+ * placed through a campaign link counted as shipped from the second it was
+ * placed, and the customer was told "already shipped" when they tried to
+ * cancel it.
  *
  * Only the CUSTOMER-facing cancel path consults this. Admins cancel regardless
  * (see process_order_cancellation()).
@@ -6530,20 +6742,14 @@ function _order_has_shipped($order_id)
     $order_id = (int) $order_id;
     if ($order_id <= 0) return false;
 
-    // Order-level code.
-    $code = (string) db_value(
-        "SELECT tracking_code FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1"
-    );
-    if (trim($code) !== '') return true;
-
-    // Per-recipient codes. Blank rows don't count as shipped.
-    $per_recipient = (int) db_value(
+    // Blank rows don't count as shipped.
+    $parcels = (int) db_value(
         "SELECT COUNT(*) FROM shipping_tracking_numbers
          WHERE order_id = '" . e($order_id) . "'
            AND TRIM(number) != ''"
     );
 
-    return $per_recipient > 0;
+    return $parcels > 0;
 }
 
 /**

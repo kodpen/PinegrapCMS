@@ -656,6 +656,8 @@ define('ERP_PARASUT_ENABLED', isset($row['erp_parasut_enabled']) ? (int) $row['e
 define('ERP_DEFAULT_SERIES', $row['erp_default_series'] ?? 'PGF');
 define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
 define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id']) ? (int) $row['erp_default_cash_account_id'] : 0);
+// The account a counter sale with no customer is billed to (4.59); 0 = none named.
+define('ERP_WALKIN_ACCOUNT_ID', isset($row['erp_walkin_account_id']) ? (int) $row['erp_walkin_account_id'] : 0);
 define('ERP_EINVOICE_SCENARIO', $row['erp_einvoice_scenario'] ?? 'basic');
 define('ERP_WEB_ADDRESS', $row['erp_web_address'] ?? '');
 define('ERP_SELLER_VKN', $row['erp_seller_vkn'] ?? '');

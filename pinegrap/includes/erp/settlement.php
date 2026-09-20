@@ -155,6 +155,12 @@ function erp_invoice_refresh_paid($invoice_id)
     // set, and it logs the activity). Runs inside the caller's transaction, so
     // it rolls back with the receipt. Only an offline order is touched: a card
     // order already carries the gateway's date.
+    // Paid is a moment worth announcing once: when the status arrives there,
+    // not on every refresh that finds it still there.
+    if ($updated && ($status === 'paid') && ((string) $invoice['status'] !== 'paid')) {
+        erp_event_invoice($invoice_id, 'erp.invoice.paid');
+    }
+
     if ($updated && ($status === 'paid') && ((int) $invoice['order_id'] > 0) && function_exists('pg_order_mark_paid')) {
         $order_id = (int) $invoice['order_id'];
         $payment_method = (string) db_value("SELECT payment_method FROM orders WHERE id = '" . $order_id . "' LIMIT 1");

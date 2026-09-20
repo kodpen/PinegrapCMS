@@ -16,9 +16,24 @@
 // integration has no use for the people who run the site; what it needs is the
 // people who buy, which is the contacts table.
 //
-// Read only in this release. Writing a customer touches membership, contact
-// groups and the affiliate record, and none of that should be worked out from
-// inside an endpoint that is only meant to answer "who placed this order".
+// Writing is deliberately narrow: the plain fields of the address book record -
+// who they are, how to reach them, where they are. What it does NOT touch, and
+// why:
+//
+//   contact groups and opt-in rows  Consent. The panel's own screen ticks a
+//     group and writes an opt_in row because an operator is looking at a person
+//     and deciding; an endpoint importing a marketplace's buyer list has no such
+//     decision to pass on.
+//   member_id and expiration_date   Membership identity, issued by the
+//     membership system and looked up by it. A machine assigning one would be
+//     writing somebody a key.
+//   affiliate fields                They carry a commission rate and a code
+//     that must stay unique; an affiliate is approved by a person.
+//   the ERP columns                 They belong to the module that owns them.
+//
+// Nothing here de-duplicates by e-mail either: the contacts table does not, the
+// panel does not, and two people at one address is a real thing. An integration
+// that wants an upsert looks first with GET /customers?email=.
 
 if (!defined('PG_API_ENTRY')) {
 	exit;
@@ -178,6 +193,188 @@ function api_customers_get($params) {
 		api_fail_not_found(lang('Customer'));
 
 	}
+
+	api_ok(api_customer_present($row));
+
+}
+
+// What api_customer_present() returns, declared for the OpenAPI document.
+function api_customer_schema() {
+
+	return array(
+		'id'         => 'integer',
+		'member_id'  => 'string?',
+		'first_name' => 'string',
+		'last_name'  => 'string',
+		'email'      => 'string',
+		'company'    => 'string',
+		'phone'      => 'string',
+		'address'    => array(
+			'line_1'  => 'string',
+			'city'    => 'string',
+			'state'   => 'string',
+			'zip'     => 'string',
+			'country' => 'string'
+		)
+	);
+
+}
+
+
+// The columns a write may set, by the name the endpoint uses for them. The read
+// side presents one phone from three columns and the business address as "the"
+// address, so the write side puts them back where they came from.
+function api_customer_writable() {
+
+	return array(
+		'salutation'  => 'salutation',
+		'first_name'  => 'first_name',
+		'last_name'   => 'last_name',
+		'company'     => 'company',
+		'title'       => 'title',
+		'email'       => 'email_address',
+		'phone'       => 'mobile_phone',
+		'address_1'   => 'business_address_1',
+		'address_2'   => 'business_address_2',
+		'city'        => 'business_city',
+		'state'       => 'business_state',
+		'zip'         => 'business_zip_code',
+		'country'     => 'business_country',
+		'description' => 'description'
+	);
+
+}
+
+// The SET list both writes are built from, plus the e-mail check.
+function api_customer_set_clauses($params) {
+
+	$set = array();
+
+	foreach (api_customer_writable() as $name => $column) {
+
+		if (!isset($params[$name])) {
+
+			continue;
+
+		}
+
+		$value = trim((string)$params[$name]);
+
+		if (($name === 'email') && ($value !== '') && !validate_email_address($value)) {
+
+			api_fail_validation(lang('That is not an e-mail address.'), 'email');
+
+		}
+
+		$set[] = $column . " = '" . escape($value) . "'";
+
+	}
+
+	// Consent, and only when the caller says so. It is stored as the person's
+	// own flag rather than as a subscription to a group, because a group is a
+	// decision an operator makes in front of the record.
+	if (isset($params['opt_in'])) {
+
+		$set[] = "opt_in = '" . ((int)$params['opt_in'] === 1 ? '1' : '0') . "'";
+
+	}
+
+	return $set;
+
+}
+
+function api_customers_create($params) {
+
+	$app = api_current_app();
+
+	$set = api_customer_set_clauses($params);
+
+	// A record with no name, no company and no address to write to is not a
+	// customer, it is an empty row somebody has to clean up later.
+	$identifies = false;
+
+	foreach (array('first_name', 'last_name', 'company', 'email') as $name) {
+
+		if (isset($params[$name]) && (trim((string)$params[$name]) !== '')) {
+
+			$identifies = true;
+
+		}
+
+	}
+
+	if (!$identifies) {
+
+		api_fail_validation(lang('A customer needs at least a name, a company or an e-mail address.'));
+
+	}
+
+	// Who made it and when, the same stamp the panel's own screen leaves.
+	$set[] = "user = '" . (int)$app['owner']['id'] . "'";
+
+	$set[] = "timestamp = '" . time() . "'";
+
+	api_dry_run_stop('created', 'customer', array('fields' => count($set)));
+
+	api_exec("INSERT INTO contacts SET " . implode(', ', $set));
+
+	$id = (int)api_insert_id();
+
+	log_activity(lang(array(
+		'string' => 'Customer ({var:1}) was created through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($id, $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	$row = api_row(api_customer_select() . " WHERE contacts.id = '" . $id . "' LIMIT 1");
+
+	api_webhook_enqueue('customer.created', array(
+		'id'    => $id,
+		'email' => isset($params['email']) ? trim((string)$params['email']) : ''
+	));
+
+	api_ok(api_customer_present($row), 201);
+
+}
+
+function api_customers_update($params) {
+
+	$id = (int)$params['id'];
+
+	$existing = api_row("SELECT id FROM contacts WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($existing === null) {
+
+		api_fail_not_found(lang('Customer'));
+
+	}
+
+	$app = api_current_app();
+
+	$set = api_customer_set_clauses($params);
+
+	if (empty($set)) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	$set[] = "timestamp = '" . time() . "'";
+
+	api_dry_run_stop('updated', 'customer', array('id' => $id, 'fields' => count($set)));
+
+	api_exec("UPDATE contacts SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+
+	log_activity(lang(array(
+		'string' => 'Customer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($id, $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	$row = api_row(api_customer_select() . " WHERE contacts.id = '" . $id . "' LIMIT 1");
+
+	api_webhook_enqueue('customer.updated', array(
+		'id'    => $id,
+		'email' => (string)$row['email_address']
+	));
 
 	api_ok(api_customer_present($row));
 

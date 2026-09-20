@@ -368,6 +368,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_seller_vkn = $row['erp_seller_vkn'] ?? '';
     $erp_seller_tax_office = $row['erp_seller_tax_office'] ?? '';
     $erp_default_due_days = (int) ($row['erp_default_due_days'] ?? 0);
+    // The account counter sales without a customer are billed to (4.59); the
+    // list is read only when the module's tables are there.
+    $erp_walkin_account_id = (int) ($row['erp_walkin_account_id'] ?? 0);
+    $erp_walkin_accounts = waf_table_has_column('erp_accounts', 'title')
+        ? (array) db_items("SELECT id, title FROM erp_accounts WHERE status = 'active' AND kind IN ('customer', 'both') ORDER BY title ASC")
+        : array();
+    $erp_walkin_options = '<option value="0"' . (($erp_walkin_account_id === 0) ? ' selected' : '') . '>' . lang('None - walk-in sales cannot be invoiced') . '</option>';
+    foreach ($erp_walkin_accounts as $erp_walkin_account) {
+        $erp_walkin_options .= '<option value="' . (int) $erp_walkin_account['id'] . '"' . (((int) $erp_walkin_account['id'] === $erp_walkin_account_id) ? ' selected' : '') . '>' . h($erp_walkin_account['title']) . '</option>';
+    }
     // Foreign currency in the ERP (2026.4.4). Read with fallbacks like the
     // rest of the ERP row, so the screen renders before the upgrade has run.
     $erp_fx_enabled = (int) ($row['erp_fx_enabled'] ?? 0);

@@ -573,6 +573,10 @@ function api_products_create($params) {
 		'submit_form' => array()
 	);
 
+	// Everything above is a check on what arrived; the next line puts a product
+	// in the catalogue.
+	api_dry_run_stop('created', 'product', array('name' => $name));
+
 	$id = (int)pg_pb_create_product($product, $relations);
 
 	if (!$id) {
@@ -820,6 +824,9 @@ function api_products_update($params) {
 	// API keep the score of the title it replaced.
 	$set[] = "seo_analysis_current = '0'";
 
+	api_dry_run_stop('updated', 'product', array('id' => $id, 'fields' => count($set)));
+
+
 	api_exec("UPDATE products SET " . implode(', ', $set) . ",
 			user = '" . (int)$app['owner']['id'] . "',
 			timestamp = UNIX_TIMESTAMP()
@@ -865,5 +872,222 @@ function api_products_update($params) {
 	}
 
 	api_ok(api_product_present($row, api_product_extras(array($id)), true));
+
+}
+
+// Prices in a batch.
+//
+// The twin of the stock endpoint, and it exists for the same reason: a
+// marketplace that repriced a hundred products overnight should not have to
+// make a hundred calls, and the shop whose price list is driven from outside
+// cannot afford the round trips either. The batch answers 200 with one outcome
+// per item - a product that has been deleted since the other side last synced
+// is data, not a transport failure - and the caller reads `applied` to know how
+// many landed.
+//
+// Only the price. Everything else about a product is written through
+// POST /products/{id}, one product at a time, because the rest of the record is
+// not something a machine changes a hundred at a time without looking.
+function api_products_prices($params) {
+
+	$app = api_current_app();
+
+	// A dry run is worth more here than anywhere else in this API: two hundred
+	// prices arrive in one call, and the answer says which of them would have
+	// been refused before a single one is written.
+	$dry = api_dry_run_requested();
+
+	$items = $params['items'];
+
+	$results = array();
+
+	$applied = 0;
+
+	foreach ($items as $index => $item) {
+
+		if (!is_array($item)) {
+
+			$results[] = array('index' => $index, 'status' => 'invalid', 'message' => lang('Each item must be an object.'));
+
+			continue;
+
+		}
+
+		// sku is the product id under another name in this catalogue, so it
+		// feeds the same field; a barcode needs a lookup.
+		$id = isset($item['id']) ? (int)$item['id'] : 0;
+
+		if (($id <= 0) && isset($item['sku']) && ctype_digit(trim((string)$item['sku']))) {
+
+			$id = (int)trim($item['sku']);
+
+		}
+
+		$barcode = isset($item['barcode']) ? trim((string)$item['barcode']) : '';
+
+		if (($id <= 0) && ($barcode === '')) {
+
+			$results[] = array('index' => $index, 'status' => 'invalid', 'message' => lang('Each item needs an id, an sku or a barcode.'));
+
+			continue;
+
+		}
+
+		// Minor units, whole. A decimal is refused rather than rounded: rounding
+		// somebody's price quietly is worse than telling them the format is
+		// wrong, and this is the endpoint where it would happen a hundred times
+		// before anyone noticed.
+		if (!isset($item['price']) || !is_numeric($item['price']) || ((string)(int)$item['price'] !== (string)$item['price'])) {
+
+			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'invalid',
+				'message' => lang('price must be a whole number of minor units.'));
+
+			continue;
+
+		}
+
+		if ((int)$item['price'] < 0) {
+
+			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'invalid',
+				'message' => lang('price cannot be negative.'));
+
+			continue;
+
+		}
+
+		if (($id <= 0) && ($barcode !== '')) {
+
+			$id = (int)api_value("SELECT product_id FROM product_barcodes
+				WHERE barcode = '" . escape($barcode) . "' LIMIT 1");
+
+		}
+
+		$product = ($id > 0)
+			? api_row("SELECT id, name, price FROM products WHERE id = '" . $id . "' LIMIT 1")
+			: null;
+
+		if ($product === null) {
+
+			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'not_found');
+
+			continue;
+
+		}
+
+		$price = (int)$item['price'];
+
+		if (((int)$product['price'] !== $price) && (!$dry)) {
+
+			api_exec("UPDATE products SET price = '" . $price . "', timestamp = '" . time() . "'
+				WHERE id = '" . (int)$product['id'] . "' LIMIT 1");
+
+			api_webhook_enqueue('product.updated', array('id' => (int)$product['id'], 'name' => $product['name']));
+
+			// The same fact, going the other way: a shop whose prices are driven
+			// by one marketplace has to have the others told.
+			if (function_exists('pg_marketplace_product_changed')) {
+
+				pg_marketplace_product_changed((int)$product['id']);
+
+			}
+
+		}
+
+		$applied++;
+
+		$results[] = array(
+			'index'    => $index,
+			'id'       => (int)$product['id'],
+			'barcode'  => $barcode,
+			'status'   => 'ok',
+			'price'    => api_money($price),
+			'previous' => api_money($product['price'])
+		);
+
+	}
+
+	// Every item has been resolved and judged by now, and nothing has been
+	// written. The per-item list goes out with the answer, so a caller learns
+	// which rows are wrong without having changed the shop to find out.
+	api_dry_run_stop('updated', 'prices', array(
+		'applied' => $applied,
+		'total'   => count($items),
+		'items'   => $results
+	));
+
+	log_activity(lang(array(
+		'string' => 'Prices for {var:1} of {var:2} products were changed through the API by the application {var:3} (key {var:4}).',
+		'vars'   => array($applied, count($items), $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array(
+		'applied' => $applied,
+		'total'   => count($items),
+		'items'   => $results
+	));
+
+}
+
+// What the batch price endpoint answers with.
+function api_price_batch_schema() {
+
+	return array(
+		'applied' => 'integer',
+		'total'   => 'integer',
+		'items'   => array(array(
+			'index'    => 'integer',
+			'id'       => 'integer',
+			'barcode'  => 'string',
+			'status'   => 'string',
+			'message'  => 'string',
+			'price'    => 'integer',
+			'previous' => 'integer'
+		))
+	);
+
+}
+
+// What api_product_present() returns, declared for the OpenAPI document.
+//
+// Beside the presenter on purpose: a field added above without a line here is
+// a field no generated client can see, and tools/check_api_schema.php compares
+// the two lists so that stays a build error rather than a support question.
+function api_product_schema() {
+
+	return array(
+		'id'                => 'integer',
+		'sku'               => 'string',
+		'name'              => 'string',
+		'barcode'           => 'string?',
+		'enabled'           => 'boolean',
+		'price'             => 'integer',
+		'title'             => 'string',
+		'short_description' => 'string',
+		'brand'             => 'string',
+		'gtin'              => 'string',
+		'mpn'               => 'string',
+		'images'            => 'string[]',
+		'attributes'        => array(array(
+			'attribute_id' => 'integer',
+			'name'         => 'string',
+			'label'        => 'string',
+			'option_id'    => 'integer',
+			'option'       => 'string'
+		)),
+		'group_ids'         => 'integer[]',
+		'taxable'           => 'boolean',
+		'tax_rate'          => 'number?',
+		'shippable'         => 'boolean',
+		'free_shipping'     => 'boolean',
+		'weight'            => 'number?',
+		'inventory'         => array(
+			'tracked'      => 'boolean',
+			'quantity'     => 'integer',
+			'out_of_stock' => 'boolean'
+		),
+		'updated_at'      => 'string?',
+		'updated_at_unix' => 'integer',
+		'seo'             => 'Seo'
+	);
 
 }

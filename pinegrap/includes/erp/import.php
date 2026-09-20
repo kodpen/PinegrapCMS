@@ -98,6 +98,9 @@ function erp_import_fields()
         'overdue_notify_days' => array('label' => lang('Reminder threshold (days)'), 'length' => 4, 'synonyms' => array(
             'hatırlatma eşiği', 'hatirlatma esigi', 'hatırlatma günü', 'hatirlatma gunu', 'gecikme eşiği', 'gecikme esigi',
             'reminder days', 'reminder threshold', 'overdue days', 'overdue reminder')),
+        'overdue_notify_customer' => array('label' => lang('Remind the customer'), 'length' => 10, 'synonyms' => array(
+            'müşteriye hatırlat', 'musteriye hatirlat', 'müşteriye yaz', 'musteriye yaz', 'müşteriye hatırlatma', 'musteriye hatirlatma',
+            'notify customer', 'remind customer', 'customer reminder', 'customer reminders')),
     );
 
     foreach ($fields as $field => $definition) {
@@ -373,6 +376,27 @@ function erp_import_parse_is_person($value)
 }
 
 /**
+ * A yes/no cell.
+ *
+ * @param string $value
+ * @return int|null  1 yes, 0 no, null when not recognised
+ */
+function erp_import_parse_yes_no($value)
+{
+    $key = erp_import_normalize_header($value);
+
+    if (in_array($key, array('evet', 'yes', '1', 'true', 'acik', 'on', 'var'), true)) {
+        return 1;
+    }
+
+    if (in_array($key, array('hayir', 'no', '0', 'false', 'kapali', 'off', 'yok'), true)) {
+        return 0;
+    }
+
+    return null;
+}
+
+/**
  * A country cell as an ISO code.
  *
  * Two letters are taken as the code. Anything longer is looked up by name in
@@ -496,6 +520,18 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
                     $unparsed['is_person'] = $value;
                 } else {
                     $account['is_person'] = $parsed;
+                }
+                break;
+
+            case 'overdue_notify_customer':
+                // Set only when the file says so: a row without the column
+                // keeps the card's own choice (the save writes the column only
+                // when the key is present).
+                $parsed = erp_import_parse_yes_no($value);
+                if ($parsed === null) {
+                    $unparsed['overdue_notify_customer'] = $value;
+                } else {
+                    $account['overdue_notify_customer'] = $parsed;
                 }
                 break;
 
