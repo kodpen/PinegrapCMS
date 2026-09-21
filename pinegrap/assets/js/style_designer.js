@@ -9057,48 +9057,38 @@ const StyleDesigner = (function () {
     // Currency-bearing tokens — when bound to one of these, the canvas
     // preview shows a money-shaped placeholder (e.g. "1.234,56 ₺") instead
     // of lorem ipsum. The exact symbol comes from the configured site
-    // currency if available; falls back to ₺. The shape mirrors the format
-    // the PHP renderer emits at request time. Includes BOTH raw and the
-    // `_formatted` aliases that EO emits so totals tokens never sprinkle
-    // lorem into the order summary table.
+    // currency if available; falls back to ₺.
+    //
+    // This list is the renderers' list, not a guess at it. It was a guess:
+    // every plausible spelling was written down — prefixed and bare, raw and
+    // `_formatted` — and 38 of the names it carried are emitted by nothing,
+    // while the express_order summary's real tokens were missing, so that
+    // widget's totals table previewed as lorem ipsum. To re-check it, collect
+    // `'__token' =>` and `'^^__token^^' =>` from widgets.php, widgets_cart.php,
+    // widgets_catalog.php and widgets_express_order.php and compare.
     var _SD_CURRENCY_TOKENS = {
-        // Catalog price
-        '__price': 1, '__price_formatted': 1,
+        // Catalog — bare name is the raw number (for math and data attrs),
+        // `_formatted` is the display string, `_block_html` the struck-through
+        // original + discounted pair.
+        '__price': 1, '__price_formatted': 1, '__price_block_html': 1,
         '__price_min': 1, '__price_max': 1, '__price_range': 1,
         '__original_price': 1, '__original_price_formatted': 1,
-        // Cart totals
-        '__cart_total': 1, '__cart_total_formatted': 1,
-        '__cart_subtotal': 1, '__cart_subtotal_formatted': 1,
-        '__cart_tax': 1, '__cart_tax_formatted': 1,
-        '__cart_shipping': 1, '__cart_shipping_formatted': 1,
-        '__cart_discount': 1, '__cart_discount_formatted': 1,
-        '__cart_surcharge': 1, '__cart_surcharge_formatted': 1,
-        // EO totals (order summary)
-        '__subtotal': 1, '__subtotal_formatted': 1,
-        '__discount': 1, '__discount_formatted': 1,
-        '__tax': 1, '__tax_formatted': 1,
-        '__shipping': 1, '__shipping_formatted': 1,
-        '__gift_card_discount': 1, '__gift_card_discount_formatted': 1,
-        '__surcharge': 1, '__surcharge_formatted': 1,
-        '__total': 1, '__total_formatted': 1,
-        '__total_with_surcharge': 1, '__total_with_surcharge_formatted': 1,
-        '__installment_fee': 1, '__installment_fee_formatted': 1,
-        '__installment_charges': 1, '__installment_charges_formatted': 1,
-        // Order view totals (mirror EO totals; legacy alias names)
-        '__order_subtotal': 1, '__order_discount': 1, '__order_tax': 1,
-        '__order_shipping': 1, '__order_surcharge': 1, '__order_total': 1,
-        '__order_gift_card_discount': 1,
-        // Per-item
-        '__item_price': 1, '__item_price_formatted': 1, '__item_price_block': 1,
-        '__item_total': 1, '__item_total_formatted': 1, '__item_total_block': 1,
-        '__item_line_total': 1, '__item_line_total_formatted': 1,
+        '__discount_amount': 1, '__discount_amount_formatted': 1,
+        // Cart totals — shared with express_order, which renders the same
+        // cart and so uses the same names.
+        '__cart_subtotal': 1, '__cart_tax': 1, '__cart_shipping': 1,
+        '__cart_discount': 1, '__cart_gift_card_discount': 1,
+        '__cart_surcharge': 1, '__cart_total': 1,
+        '__cart_total_with_surcharge': 1,
+        '__cart_today_total': 1, '__cart_recurring_total': 1,
+        // Per line item — cart, express_order and order_view.
+        '__item_price': 1, '__item_total': 1,
         '__item_original_price': 1, '__item_original_total': 1,
-        // Order receipt
-        '__order_total': 1, '__order_total_formatted': 1,
-        '__order_subtotal': 1, '__order_subtotal_formatted': 1,
-        '__order_tax': 1, '__order_tax_formatted': 1,
-        '__order_shipping': 1, '__order_shipping_formatted': 1,
-        '__order_discount': 1, '__order_discount_formatted': 1
+        '__item_price_block_html': 1, '__item_total_block_html': 1,
+        // Order view — the placed order's own totals.
+        '__order_subtotal': 1, '__order_tax': 1, '__order_shipping': 1,
+        '__order_discount': 1, '__order_surcharge': 1, '__order_total': 1,
+        '__installment_charges': 1, '__installment_per_month': 1
     };
 
     // Order-view status badge classes, per lifecycle stage. PHP twin lives in
@@ -9154,6 +9144,9 @@ const StyleDesigner = (function () {
         '__card_number_masked': '4111********1111',
         '__card_type': 'Visa',
         // Cart row / totals notices
+        // The symbol itself, not an amount — a money placeholder here would
+        // preview "1.234,56 ₺" where the page shows "₺".
+        '__currency_symbol': '\u20ba',
         '__tax_shipping_notice': _sdT('Tax and shipping will be calculated at checkout.'),
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
@@ -9514,7 +9507,7 @@ const StyleDesigner = (function () {
             if (_SD_SHORT_LABEL_TOKENS[tok])  return _SD_SHORT_LABEL_TOKENS[tok];
             if (_SD_CURRENCY_TOKENS[tok])     return _sdGetCurrencyPlaceholder();
             // Specific server-side helpers that have no _SD_ map entry
-            if (tok === 'form_id')            return 'eo_form';
+            if (tok === '__form_id')          return 'eo_form';
             if (tok === '__item_id')          return '1';
             // Heuristic — unknown tokens just collapse to empty so the
             // attribute value stays valid (vs leaking "^^foo^^" into DOM).
@@ -21146,7 +21139,7 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-file-earmark-text', _sdT('Detail View Settings'),
                     row(_sdT('Not-found message'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-fiv-not-found" data-sw-id="' + sid + '" value="' + esc(_fivNotFound) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('It reaches the template through the ^^__not_found^^ token.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('It reaches the template through the ^^__not_found_message^^ token.') + '</div>'
                     ) +
                     row(_sdT('Access control'),
                         '<select class="form-select form-select-sm" id="sd-sw-fiv-access" data-sw-id="' + sid + '">' +
@@ -21271,7 +21264,7 @@ const StyleDesigner = (function () {
                 var _srScope   = (typeof _cfg.search_scope === 'string' && ['all','pages','products'].indexOf(_cfg.search_scope) !== -1) ? _cfg.search_scope : 'all';
                 var _srPerPage = (_cfg.results_per_page != null) ? parseInt(_cfg.results_per_page, 10) : 10;
                 if (!(_srPerPage > 0)) _srPerPage = 10;
-                var _srNoResults = (typeof _cfg.no_results_message === 'string') ? _cfg.no_results_message : _sdT('No results found.');
+                var _srNoResults = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('No results found.');
 
                 systemSection += sect('bi-search', _sdT('Search Results Settings'),
                     row(_sdT('Search scope'),
@@ -21313,7 +21306,7 @@ const StyleDesigner = (function () {
                 if (!(_scNextNoShip > 0)) _scNextNoShip = 0;
                 var _scDetailPid       = parseInt(_cfg.detail_page_id || 0, 10);
                 if (!(_scDetailPid > 0)) _scDetailPid = 0;
-                var _scEmptyMsg        = (typeof _cfg.cart_empty_message === 'string') ? _cfg.cart_empty_message : _sdT('Your cart is empty.');
+                var _scEmptyMsg        = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('Your cart is empty.');
                 var _scCurrency        = (typeof _cfg.currency === 'string') ? _cfg.currency : '';
 
                 // Catalog-detail page dropdown — same source as the catalog
@@ -21391,7 +21384,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Empty cart message'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-empty-msg" data-sw-id="' + sid + '" value="' + esc(_scEmptyMsg) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__cart_empty_message^^ token.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The ^^__empty_message^^ token.') + '</div>'
                     ) +
                     row(_sdT('Currency symbol'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-currency" data-sw-id="' + sid + '" value="' + esc(_scCurrency) + '" maxlength="10" placeholder="' + esc(_sdT('₺ (from the site setting)')) + '">' +
@@ -21941,7 +21934,7 @@ const StyleDesigner = (function () {
                 var _cvEventsLimit = (_cfg.events_limit != null) ? parseInt(_cfg.events_limit, 10) : 0;
                 if (!(_cvEventsLimit > 0)) _cvEventsLimit = 0;
                 var _cvDateFormat  = (typeof _cfg.date_format === 'string' && ['d.m.Y','Y-m-d','d M Y'].indexOf(_cfg.date_format) !== -1) ? _cfg.date_format : 'd.m.Y';
-                var _cvNoEvents    = (typeof _cfg.no_events_message === 'string') ? _cfg.no_events_message : _sdT('There are no events this month.');
+                var _cvNoEvents    = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('There are no events this month.');
 
                 systemSection += sect('bi-calendar3', _sdT('Calendar View Settings'),
                     row(_sdT('Monthly event limit'),
@@ -21957,7 +21950,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('No events message'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-cv-no-events" data-sw-id="' + sid + '" value="' + esc(_cvNoEvents) + '" maxlength="255">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Used as the ^^__no_events^^ token.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Used as the ^^__empty_message^^ token.') + '</div>'
                     )
                 );
             }
@@ -23097,7 +23090,7 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = ('' + this.value).slice(0, 255);
-                _patchSysCfg(sid, function (cfg) { cfg.no_results_message = v; });
+                _patchSysCfg(sid, function (cfg) { cfg.empty_message = v; });
             });
         }
 
@@ -23222,14 +23215,14 @@ const StyleDesigner = (function () {
             });
         }
 
-        // cart_empty_message (text)
+        // empty_message (text)
         var scEmptyMsgEl = document.getElementById('sd-sw-sc-empty-msg');
         if (scEmptyMsgEl) {
             scEmptyMsgEl.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = ('' + this.value).slice(0, 255);
-                _patchSysCfg(sid, function (cfg) { cfg.cart_empty_message = v; });
+                _patchSysCfg(sid, function (cfg) { cfg.empty_message = v; });
             });
         }
 
@@ -23717,14 +23710,14 @@ const StyleDesigner = (function () {
             });
         }
 
-        // no_events_message (text)
+        // empty_message (text)
         var cvNoEventsEl = document.getElementById('sd-sw-cv-no-events');
         if (cvNoEventsEl) {
             cvNoEventsEl.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = ('' + this.value).slice(0, 255);
-                _patchSysCfg(sid, function (cfg) { cfg.no_events_message = v; });
+                _patchSysCfg(sid, function (cfg) { cfg.empty_message = v; });
             });
         }
 
@@ -23837,14 +23830,20 @@ const StyleDesigner = (function () {
             // designer's, while the server only picks which one each row gets.
             ['__link_label',        _sdT('View / Expand (whichever applies)')],
             ['__sort_order',        _sdT('Sort order (within the group)')],
-            ['__created_at',        _sdT('Date added')]
+            ['__created_at',        _sdT('Date added')],
+            // Group rows — a catalog listing runs products AND product groups
+            // through one template, and these say which kind a row is so
+            // visibility can be bound per kind.
+            ['__row_type',          _sdT('Row kind (product / group)')],
+            ['__display_type',      _sdT('Group kind (browse / select)')]
         ]},
         { label: _sdT('Price'), tokens: [
             ['__price',             _sdT('Price (number)')],
             ['__price_formatted',   _sdT('Price (with symbol)')],
             ['__price_min',         _sdT('Price — lower bound (number)')],
             ['__price_max',         _sdT('Price — upper bound (number)')],
-            ['__price_range',       _sdT('Price range (formatted)')]
+            ['__price_range',       _sdT('Price range (formatted)')],
+            ['__price_block_html',  _sdT('Price block (automatic struck-through + new, HTML)')]
         ]},
         { label: _sdT('Image'), tokens: [
             ['__image_url',         _sdT('Image URL')],
@@ -23982,14 +23981,15 @@ const StyleDesigner = (function () {
             ['__detail_url',        _sdT('Page URL (canonical)')],
             ['__sort_order',        _sdT('Sort order (within the group)')],
             ['__created_at',        _sdT('Date added')],
-            ['__not_found',         _sdT('Not-found message')]
+            ['__not_found_message',         _sdT('Not-found message')]
         ]},
         { label: _sdT('Price'), tokens: [
             ['__price',             _sdT('Price (number)')],
             ['__price_formatted',   _sdT('Price (with symbol)')],
             ['__price_min',         _sdT('Price — lower bound (number)')],
             ['__price_max',         _sdT('Price — upper bound (number)')],
-            ['__price_range',       _sdT('Price range (formatted)')]
+            ['__price_range',       _sdT('Price range (formatted)')],
+            ['__price_block_html',  _sdT('Price block (automatic struck-through + new, HTML)')]
         ]},
         { label: _sdT('Image'), tokens: [
             ['__image_url',         _sdT('Main image URL')],
@@ -24124,7 +24124,7 @@ const StyleDesigner = (function () {
         { label: _sdT('Search State (static)'), tokens: [
             ['__search_query',  _sdT('Search term')],
             ['__result_count',  _sdT('Number of results')],
-            ['__no_results',    _sdT('No results message')]
+            ['__empty_message',    _sdT('No results message')]
         ]},
         { label: _sdT('Result Item (loop_area)'), tokens: [
             ['__result_title',   _sdT('Title')],
@@ -24185,7 +24185,7 @@ const StyleDesigner = (function () {
             ['__special_offer_code_message', _sdT('Offer code description')],
             ['__update_button_label',        _sdT('Update button label')],
             ['__checkout_button_label',      _sdT('Checkout button label')],
-            ['__cart_empty_message',         _sdT('Empty cart message')],
+            ['__empty_message',         _sdT('Empty cart message')],
             ['__reference_code',             _sdT('Order reference code')]
         ]},
         { label: _sdT('Ready-made HTML (form / button)'), tokens: [
@@ -24216,8 +24216,8 @@ const StyleDesigner = (function () {
             ['__item_original_price',    _sdT('Original unit price (when discounted, to be struck through)')],
             ['__item_original_total',    _sdT('Original row total (when discounted, to be struck through)')],
             ['__item_has_discount',      _sdT('Whether there is a discount (1/0)')],
-            ['__item_price_block',       _sdT('Unit price block (automatic struck-through + new, HTML)')],
-            ['__item_total_block',       _sdT('Row total block (automatic struck-through + new, HTML)')]
+            ['__item_price_block_html',       _sdT('Unit price block (automatic struck-through + new, HTML)')],
+            ['__item_total_block_html',       _sdT('Row total block (automatic struck-through + new, HTML)')]
         ]},
         { label: _sdT('Product row — Form Data (Gift Card etc.)'), tokens: [
             ['__item_form_data_html',    _sdT('Product form data (Recipient Email, Message, Delivery Date etc.)')],
@@ -24370,7 +24370,8 @@ const StyleDesigner = (function () {
             // placed the token, so binding is only needed to control WHERE
             // they land.
             ['__item_form_data_html',    _sdT('Product form answers (read-only HTML)')],
-            ['__item_gift_card_html',    _sdT('Gift card details (read-only HTML)')]
+            ['__item_gift_card_html',    _sdT('Gift card details (read-only HTML)')],
+            ['__tracking_codes',         _sdT('Every parcel\'s tracking code (HTML)')]
         ]}
     ];
 
@@ -24411,7 +24412,8 @@ const StyleDesigner = (function () {
     // the keys produced by _render_system_widget_custom_form in PHP.
     var SW_CUSTOM_FORM_TOKEN_GROUPS = [
         { label: _sdT('Form'), tokens: [
-            ['__form_title',       _sdT('Form name')]
+            ['__form_title',       _sdT('Form name')],
+            ['__submit_label',     _sdT('Submit button caption')]
         ]},
         { label: _sdT('Notifications'), tokens: [
             ['__error_message',    _sdT('Error message')],
@@ -24433,35 +24435,61 @@ const StyleDesigner = (function () {
     // _eo_compute_item_tokens() emit in functions.php — keep in sync.
     var SW_EXPRESS_ORDER_TOKEN_GROUPS = [
         { label: _sdT('Cart summary (static)'), tokens: [
-            ['subtotal_formatted',             _sdT('Subtotal (currency)')],
-            ['discount_formatted',             _sdT('Discount (currency)')],
-            ['tax_formatted',                  _sdT('VAT (₺)')],
-            ['shipping_formatted',             _sdT('Shipping (currency)')],
-            ['gift_card_discount_formatted',   _sdT('Gift card discount (currency)')],
-            ['surcharge_formatted',            _sdT('Card surcharge (currency)')],
-            ['total_formatted',                _sdT('Total — without the surcharge (currency)')],
-            ['total_with_surcharge_formatted', _sdT('Total — with the surcharge (currency)')],
-            ['cart_count',                     _sdT('Number of cart items')],
-            ['cart_count_label',               _sdT('Number of cart items + label')],
-            ['currency_symbol',                _sdT('Currency symbol (₺ / $ / €)')],
-            ['form_id',                        _sdT('Form id (for hidden inputs)')]
+            ['__cart_subtotal',                   _sdT('Subtotal (currency)')],
+            ['__cart_discount',                   _sdT('Discount (currency)')],
+            ['__cart_tax',                        _sdT('VAT (₺)')],
+            ['__cart_shipping',                   _sdT('Shipping (currency)')],
+            ['__cart_gift_card_discount',         _sdT('Gift card discount (currency)')],
+            ['__cart_surcharge',                  _sdT('Card surcharge (currency)')],
+            ['__cart_total',                      _sdT('Total — without the surcharge (currency)')],
+            ['__cart_total_with_surcharge',       _sdT('Total — with the surcharge (currency)')],
+            ['__cart_count',                      _sdT('Number of cart items')],
+            ['__cart_count_label',                _sdT('Number of cart items + label')],
+            ['__currency_symbol',                 _sdT('Currency symbol (₺ / $ / €)')],
+            ['__form_id',                         _sdT('Form id (for hidden inputs)')],
+            // Raw integer cents — for data attributes and this widget's own
+            // JS hooks, not for display.
+            ['__cart_subtotal_cents',             _sdT('Subtotal (cents)')],
+            ['__cart_total_cents',                _sdT('Total (cents)')],
+            ['__cart_total_with_surcharge_cents', _sdT('Total with the surcharge (cents)')]
+        ]},
+        // The recipient loop had no entry here at all, so every one of its
+        // tokens had to be typed by hand through "Custom".
+        { label: _sdT('Recipient (recipient loop)'), tokens: [
+            ['__recipient_index',                 _sdT('Recipient order (1, 2, …)')],
+            ['__recipient_count',                 _sdT('Total recipients')],
+            ['__recipient_id',                    _sdT('Recipient id (ship_tos.id)')],
+            ['__recipient_name',                  _sdT('Recipient name')],
+            ['__recipient_address_first_name',    _sdT('First Name')],
+            ['__recipient_address_last_name',     _sdT('Last Name')],
+            ['__recipient_address_company',       _sdT('Company')],
+            ['__recipient_address_address_1',     _sdT('Address 1')],
+            ['__recipient_address_address_2',     _sdT('Address 2')],
+            ['__recipient_address_city',          _sdT('City')],
+            ['__recipient_address_state',         _sdT('State')],
+            ['__recipient_address_zip_code',      _sdT('Zip Code')],
+            ['__recipient_address_country',       _sdT('Country')],
+            ['__recipient_address_phone_number',  _sdT('Phone')]
         ]},
         { label: _sdT('Cart item (loop_area)'), tokens: [
-            ['__item_id',                      _sdT('Cart item id (order_items.id)')],
-            ['__item_name',                    _sdT('Product name')],
-            ['__item_qty',                     _sdT('Quantity')],
-            ['__item_price_formatted',         _sdT('Unit price (currency)')],
-            ['__item_line_total_formatted',    _sdT('Row total (currency)')],
-            ['__item_image',                   _sdT('Product image URL')],
-            ['__item_remove_url',              _sdT('Remove link (CSRF token included)')],
-            ['__item_form_html',               _sdT('Per-item ek HTML (gift card / custom form)')],
+            ['__item_id',                         _sdT('Cart item id (order_items.id)')],
+            ['__item_name',                       _sdT('Product name')],
+            ['__item_short_description',          _sdT('Short description')],
+            ['__item_description',                _sdT('Description (long)')],
+            ['__item_qty',                        _sdT('Quantity')],
+            ['__item_price',                      _sdT('Unit price (currency)')],
+            ['__item_total',                      _sdT('Row total (currency)')],
+            ['__item_image',                      _sdT('Product image URL')],
+            ['__item_url',                        _sdT('Detail URL')],
+            ['__item_remove_url',                 _sdT('Remove link (CSRF token included)')],
+            ['__item_form_html',                  _sdT('Per-item extra HTML (gift card / custom form)')],
             // Low stock warning — non-empty only when the
             // ECOMMERCE_LOW_STOCK_THRESHOLD config define is > 0; otherwise it
             // comes back empty and the visibility binding removes the whole
             // container.
-            ['__item_has_low_stock',           _sdT('Low stock flag (for visibility)')],
-            ['__item_stock_warning',           _sdT('Low stock message (e.g. "Only 3 left")')],
-            ['__item_inventory_quantity',      _sdT('Remaining stock quantity (when inventory is tracked)')]
+            ['__item_has_low_stock',              _sdT('Low stock flag (for visibility)')],
+            ['__item_stock_warning',              _sdT('Low stock message (e.g. "Only 3 left")')],
+            ['__item_inventory_quantity',         _sdT('Remaining stock quantity (when inventory is tracked)')]
         ]}
     ];
 
@@ -29432,6 +29460,9 @@ const StyleDesigner = (function () {
                     if (body) body.classList.add('active');
                     // Switching to solid → remove gradient; switching to gradient → set it
                     if (!selectedNode) return;
+                    // Snapshot before the change, not after: history holds the
+                    // state to come back to.
+                    saveState();
                     if (tab === 'solid') {
                         selectedNode.props._bgGrad = null;
                         setAttrStyleProp(selectedNode, 'background-image', '');
@@ -29448,7 +29479,6 @@ const StyleDesigner = (function () {
                         g.pos   = g.pos || 'center';
                         setAttrStyleProp(selectedNode, 'background-image', buildGradientStr(g));
                     }
-                    saveState();
                     _updateBcpTrigger();
                     renderCanvas(); renderAttrsPanel(); renderHtmlTree();
                 });
@@ -29523,6 +29553,7 @@ const StyleDesigner = (function () {
             popup.querySelectorAll('[data-bcp-angle]').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     if (!selectedNode) return;
+                    saveState();
                     var angle = Number(this.getAttribute('data-bcp-angle'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g.angle = angle;
@@ -29530,19 +29561,20 @@ const StyleDesigner = (function () {
                     this.classList.add('active');
                     var ainp = document.getElementById('sd-bcp-lin-angle');
                     if (ainp) ainp.value = angle;
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             });
             var linAngle = document.getElementById('sd-bcp-lin-angle');
             if (linAngle) {
                 linAngle.addEventListener('change', function() {
                     if (!selectedNode) return;
+                    saveState();
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g.angle = Number(this.value) || 135;
                     popup.querySelectorAll('[data-bcp-angle]').forEach(function(b){
                         b.classList.toggle('active', Number(b.getAttribute('data-bcp-angle')) === g.angle);
                     });
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             }
 
@@ -29577,20 +29609,22 @@ const StyleDesigner = (function () {
             popup.querySelectorAll('[data-bcp-radial-shape]').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     if (!selectedNode) return;
+                    saveState();
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g.shape = this.getAttribute('data-bcp-radial-shape');
                     popup.querySelectorAll('[data-bcp-radial-shape]').forEach(function(b){ b.classList.remove('active'); });
                     this.classList.add('active');
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             });
             var radPos = document.getElementById('sd-bcp-rad-pos');
             if (radPos) {
                 radPos.addEventListener('change', function() {
                     if (!selectedNode) return;
+                    saveState();
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g.pos = this.value;
-                    saveState(); applyGrad();
+                    applyGrad();
                 });
             }
 
@@ -34903,8 +34937,6 @@ const StyleDesigner = (function () {
             if (cfg.not_logged_in_message === undefined) cfg.not_logged_in_message = _sdT('You must be logged in to view this page.');
             if (cfg.redirect_to_login    === undefined) cfg.redirect_to_login    = false;
             if (cfg.show_submissions     === undefined) cfg.show_submissions     = false;
-        } else if (newType === 'shopping_cart') {
-            if (cfg.checkout_mode === undefined) cfg.checkout_mode = 'standard';
         } else if (newType === 'express_order') {
             if (cfg.cart_section_label    === undefined) cfg.cart_section_label    = _sdT('Your cart');
             if (cfg.purchase_button_label === undefined) cfg.purchase_button_label = _sdT('Complete Order');
@@ -34912,7 +34944,7 @@ const StyleDesigner = (function () {
         } else if (newType === 'order_view') {
             if (cfg.date_format === undefined) cfg.date_format = 'd.m.Y';
         } else if (newType === 'calendar_view') {
-            if (cfg.no_events_message === undefined) cfg.no_events_message = _sdT('There are no events this month.');
+            if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events this month.');
             if (cfg.date_format === undefined) cfg.date_format = 'd.m.Y';
         } else if (newType === 'login_form' || newType === 'registration' || newType === 'membership') {
             if (cfg.show_remember_me === undefined) cfg.show_remember_me = true;
@@ -35540,7 +35572,7 @@ const StyleDesigner = (function () {
                                                                 { name: 'step',  value: '1' },
                                                                 { name: 'name',  value: 'quantity[^^__item_id^^]' },
                                                                 { name: 'value', value: '^^__item_qty^^' },
-                                                                { name: 'form',  value: '^^form_id^^' }
+                                                                { name: 'form',  value: '^^__form_id^^' }
                                                             ]
                                                         }, []),
                                                         createNode('semantic', {
@@ -35731,20 +35763,20 @@ const StyleDesigner = (function () {
                                 sem('table', 'table table-sm mb-3', [
                                     sem('tbody', '', [
                                         // Subtotal — always visible
-                                        totRow(_sdT('Subtotal'),     'subtotal_formatted',           ''),
+                                        totRow(_sdT('Subtotal'),     '__cart_subtotal',           ''),
                                         // Discount — visible only when order has a discount
-                                        totRow(_sdT('Discount'),        'discount_formatted',           'has_discount'),
+                                        totRow(_sdT('Discount'),        '__cart_discount',           'has_discount'),
                                         // Tax — visible only when ECOMMERCE_TAX is on AND order has tax
-                                        totRow(_sdT('VAT'),            'tax_formatted',                'has_tax'),
+                                        totRow(_sdT('VAT'),            '__cart_tax',                'has_tax'),
                                         // Shipping — visible only when ship cost > 0
-                                        totRow(_sdT('Shipping'),          'shipping_formatted',           'has_shipping_cost'),
+                                        totRow(_sdT('Shipping'),          '__cart_shipping',           'has_shipping_cost'),
                                         // Gift card — visible only when GC redeemed
-                                        totRow(_sdT('Gift Card'),   'gift_card_discount_formatted', 'has_gift_card'),
+                                        totRow(_sdT('Gift Card'),   '__cart_gift_card_discount', 'has_gift_card'),
                                         // Card surcharge — visible only when CC + surcharge applies
-                                        totRow(_sdT('Card surcharge'),  'surcharge_formatted',          'has_surcharge', 'pg-eo-surcharge-row'),
+                                        totRow(_sdT('Card surcharge'),  '__cart_surcharge',          'has_surcharge', 'pg-eo-surcharge-row'),
                                         installmentFeeRow,
                                         // Total — always visible
-                                        totRow(_sdT('Total'),         'total_with_surcharge_formatted', '',
+                                        totRow(_sdT('Total'),         '__cart_total_with_surcharge', '',
                                                'fw-bold border-top', 'pg-eo-total-formatted')
                                     ])
                                 ]),
@@ -42904,7 +42936,7 @@ const StyleDesigner = (function () {
     // i.e. what one click or one keystroke actually costs. Nested paints
     // (render() calling renderCanvas()) are counted once in a burst's total,
     // so the number is wall time rather than a sum of overlapping timers.
-    var _sdPerf = { on: true, depth: 0, surfaces: {}, burst: null, bursts: [], watch: false };
+    var _sdPerf = { on: true, depth: 0, surfaces: {}, marked: {}, burst: null, bursts: [], watch: false };
 
     function _sdPerfCloseBurst() {
         var burst = _sdPerf.burst;
@@ -42928,6 +42960,7 @@ const StyleDesigner = (function () {
         surface.calls++;
         surface.ms += ms;
         if (ms > surface.worst) surface.worst = ms;
+        _sdPerf.marked[name] = true;
     }
 
     function _sdPerfWrap(name, fn) {
@@ -42974,7 +43007,7 @@ const StyleDesigner = (function () {
 
     function _sdPerfReport(command) {
         if (command === 'reset') {
-            _sdPerf.surfaces = {}; _sdPerf.bursts = [];
+            _sdPerf.surfaces = {}; _sdPerf.bursts = []; _sdPerf.marked = {};
             return 'sd-perf: counting again';
         }
         if (command === 'watch') {
@@ -43017,6 +43050,18 @@ const StyleDesigner = (function () {
             'slowest action (ms)': slowest ? +slowest.ms.toFixed(1) : 0,
             'slowest action':      slowest ? slowest.paints.join(' → ') : ''
         };
+
+        // Work that never passes through render() — dragover above all. It has
+        // no "action" to belong to (one drag is hundreds of events), so it gets
+        // its own lines rather than being left out of the summary entirely.
+        for (var marked in _sdPerf.marked) {
+            if (!_sdPerf.marked.hasOwnProperty(marked)) continue;
+            var m = _sdPerf.surfaces[marked];
+            if (!m || !m.calls) continue;
+            summary[marked + ' events']   = m.calls;
+            summary[marked + ' avg ms']   = +(m.ms / m.calls).toFixed(2);
+            summary[marked + ' worst ms'] = +m.worst.toFixed(1);
+        }
         if (window.console && console.table) console.table([summary]);
         return summary;
     }

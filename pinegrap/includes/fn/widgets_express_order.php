@@ -157,32 +157,40 @@ function _eo_restore_cart_from_reference_code()
 // The designer's tree contains literal element markup with `^^token^^` style
 // placeholders (the same `_apply_bindings()` mechanism the catalog widget
 // uses). We compute the variable map once per render, then str_replace it
-// into the final HTML. Static tokens (subtotal_formatted, total_formatted,
-// cart_count, …) replace once; per-item tokens replace per loop iteration.
+// into the final HTML. Static tokens replace once; per-item tokens replace
+// per loop iteration.
+//
+// Both carry the `__` prefix and the cart renderer's names, because they are
+// the cart renderer's values: this widget checks out the same cart. They used
+// to be bare (`^^subtotal_formatted^^`, `^^form_id^^`) — the only widget that
+// namespaced nothing, which is how `^^form_id^^` came to compete with a form
+// field a visitor could name. Bare names are reserved for the submitted
+// form's standard fields (`^^reference_code^^`, `^^email_address^^`), which
+// the classic screens resolve by those exact names.
 //
 // Tokens — STATIC (replaced once after final tree render):
-//   ^^subtotal_formatted^^           "₺17,64"
-//   ^^tax_formatted^^                "₺2,69"
-//   ^^shipping_formatted^^           "₺0,00"
-//   ^^discount_formatted^^           "-₺0,00"
-//   ^^gift_card_discount_formatted^^ "-₺0,00"
-//   ^^surcharge_formatted^^          "₺0,75"
-//   ^^total_formatted^^              "₺17,64"          (without surcharge)
-//   ^^total_with_surcharge_formatted^^  "₺18,39"        (with surcharge)
-//   ^^cart_count^^                   "3"
-//   ^^cart_count_label^^             "3 ürün"
-//   ^^subtotal_cents^^               "1764"   (raw int, used in JS hooks)
-//   ^^total_cents^^                  "1764"
-//   ^^total_with_surcharge_cents^^   "1839"
-//   ^^currency_symbol^^              "₺"
-//   ^^form_id^^                      "pg-eo-form-w79"  (parent form's id attr)
+//   ^^__cart_subtotal^^                     "₺17,64"
+//   ^^__cart_tax^^                          "₺2,69"
+//   ^^__cart_shipping^^                     "₺0,00"
+//   ^^__cart_discount^^                     "-₺0,00"
+//   ^^__cart_gift_card_discount^^           "-₺0,00"
+//   ^^__cart_surcharge^^                    "₺0,75"
+//   ^^__cart_total^^                        "₺17,64" (without surcharge)
+//   ^^__cart_total_with_surcharge^^        "₺18,39" (with surcharge)
+//   ^^__cart_count^^                        "3"
+//   ^^__cart_count_label^^                  "3 items"
+//   ^^__cart_subtotal_cents^^               "1764"  (raw int, used in JS hooks)
+//   ^^__cart_total_cents^^                  "1764"
+//   ^^__cart_total_with_surcharge_cents^^   "1839"
+//   ^^__currency_symbol^^                   "₺"
+//   ^^__form_id^^                          "pg-eo-form-w79" (parent form's id attr)
 //
 // Tokens — PER ITEM (replaced inside loop template for each cart item):
 //   ^^__item_id^^                    "612"            (order_items.id)
 //   ^^__item_name^^                  "Lorem ipsum…"   (short_description or name)
 //   ^^__item_qty^^                   "1"
-//   ^^__item_price_formatted^^       "₺14,95"
-//   ^^__item_line_total_formatted^^  "₺14,95"
+//   ^^__item_price^^               "₺14,95"
+//   ^^__item_total^^               "₺14,95"
 //   ^^__item_image^^                 "/files/photo.jpg" (or empty)
 //   ^^__item_remove_url^^            full /remove_item_from_cart.php?…&token=…
 //   ^^__item_form_html^^             optional extra <tr>(s) for gift card / form
@@ -215,23 +223,23 @@ function _eo_compute_static_tokens($state)
         : $fmt($ship);
 
     return array(
-        '^^subtotal_formatted^^'           => $fmt($sub),
-        '^^tax_formatted^^'                => $fmt($tax),
-        '^^shipping_formatted^^'           => $shipping_label,
-        '^^discount_formatted^^'           => '-' . $fmt($disc),
-        '^^gift_card_discount_formatted^^' => '-' . $fmt($gdsc),
-        '^^surcharge_formatted^^'          => $fmt($surc),
-        '^^total_formatted^^'              => $fmt($tot),
-        '^^total_with_surcharge_formatted^^' => $fmt($tws),
-        '^^cart_count^^'                   => (string)$cnt,
-        '^^cart_count_label^^'             => ($cnt === 1
+        '^^__cart_subtotal^^'           => $fmt($sub),
+        '^^__cart_tax^^'                => $fmt($tax),
+        '^^__cart_shipping^^'           => $shipping_label,
+        '^^__cart_discount^^'           => '-' . $fmt($disc),
+        '^^__cart_gift_card_discount^^' => '-' . $fmt($gdsc),
+        '^^__cart_surcharge^^'          => $fmt($surc),
+        '^^__cart_total^^'              => $fmt($tot),
+        '^^__cart_total_with_surcharge^^' => $fmt($tws),
+        '^^__cart_count^^'                   => (string)$cnt,
+        '^^__cart_count_label^^'             => ($cnt === 1
             ? lang(array('string' => '{var:1} item',  'vars' => array($cnt)))
             : lang(array('string' => '{var:1} items', 'vars' => array($cnt)))),
-        '^^subtotal_cents^^'               => (string)$sub,
-        '^^total_cents^^'                  => (string)$tot,
-        '^^total_with_surcharge_cents^^'   => (string)$tws,
-        '^^currency_symbol^^'              => $sym,
-        '^^form_id^^'                      => (string)($state['form_id'] ?? ''),
+        '^^__cart_subtotal_cents^^'               => (string)$sub,
+        '^^__cart_total_cents^^'                  => (string)$tot,
+        '^^__cart_total_with_surcharge_cents^^'   => (string)$tws,
+        '^^__currency_symbol^^'              => $sym,
+        '^^__form_id^^'                      => (string)($state['form_id'] ?? ''),
     );
 }
 
@@ -342,12 +350,12 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         '^^__item_id^^'                   => (string)$iid,
         '^^__item_name^^'                 => h($title),
         '^^__item_short_description^^'    => h($short_desc),
-        '^^__item_full_description^^'     => $full_desc,    // RAW HTML — full_description is rich text
+        '^^__item_description^^'     => $full_desc,    // RAW HTML — full_description is rich text
         '^^__item_qty^^'                  => (string)$qty,
-        '^^__item_price_formatted^^'      => $fmt($price),
-        '^^__item_line_total_formatted^^' => $fmt($line),
+        '^^__item_price^^'      => $fmt($price),
+        '^^__item_total^^' => $fmt($line),
         '^^__item_image^^'                => h($img_url),
-        '^^__item_detail_url^^'           => h($detail_url),
+        '^^__item_url^^'           => h($detail_url),
         '^^__item_remove_url^^'           => h($remove_url),
         '^^__item_form_html^^'            => $extra_html,
     );
@@ -1052,7 +1060,7 @@ function _eo_default_designer_tree()
                                                                     array('name' => 'step',  'value' => '1'),
                                                                     array('name' => 'name',  'value' => 'quantity[^^__item_id^^]'),
                                                                     array('name' => 'value', 'value' => '^^__item_qty^^'),
-                                                                    array('name' => 'form',  'value' => '^^form_id^^'),
+                                                                    array('name' => 'form',  'value' => '^^__form_id^^'),
                                                                 ),
                                                             ), 'children' => array()),
                                                             array('type' => 'semantic', 'props' => array(
@@ -1280,23 +1288,23 @@ function _eo_default_designer_tree()
                                         // Without it, that JS silently treated the row as 0 and
                                         // overwrote the correct total with "0.00" — see recomputeSidebarTotal's
                                         // guard comment for the full story.
-                                        $tot_row(lang('Subtotal'),       'subtotal_formatted',                '', '', 'text-end pe-0', 'pg-eo-subtotal-formatted'),
+                                        $tot_row(lang('Subtotal'),       '__cart_subtotal',                '', '', 'text-end pe-0', 'pg-eo-subtotal-formatted'),
                                         // Discount — only when an offer / coupon has produced a discount
-                                        $tot_row(lang('Discount'),       'discount_formatted',                'has_discount'),
+                                        $tot_row(lang('Discount'),       '__cart_discount',                'has_discount'),
                                         // Tax — only when ECOMMERCE_TAX is on AND the order has taxable lines.
                                         // valueSpanCss — same reason as Subtotal above.
-                                        $tot_row(lang('Tax'),            'tax_formatted',                     'has_tax', '', 'text-end pe-0', 'pg-eo-tax-formatted'),
+                                        $tot_row(lang('Tax'),            '__cart_tax',                     'has_tax', '', 'text-end pe-0', 'pg-eo-tax-formatted'),
                                         // Shipping — only when ship cost > 0 (digital orders skip).
                                         // valueSpanCss — same reason as Subtotal above.
-                                        $tot_row(lang('Shipping'),       'shipping_formatted',                'has_shipping_cost', '', 'text-end pe-0', 'pg-eo-shipping-formatted'),
+                                        $tot_row(lang('Shipping'),       '__cart_shipping',                'has_shipping_cost', '', 'text-end pe-0', 'pg-eo-shipping-formatted'),
                                         // Gift card — only when a gift card was redeemed
-                                        $tot_row(lang('Gift card'),      'gift_card_discount_formatted',      'has_gift_card'),
+                                        $tot_row(lang('Gift card'),      '__cart_gift_card_discount',      'has_gift_card'),
                                         // Card surcharge — only when CC is selected AND a surcharge applies
-                                        $tot_row(lang('Card surcharge'), 'surcharge_formatted',               'has_surcharge', 'pg-eo-surcharge-row'),
+                                        $tot_row(lang('Card surcharge'), '__cart_surcharge',               'has_surcharge', 'pg-eo-surcharge-row'),
                                         // Instalment fee — visibility-bound; the instalment JS also updates the value text on plan change.
                                         $installment_fee_row,
                                         // Total — always visible (last row, bold + border-top accent)
-                                        $tot_row(lang('Total'),          'total_with_surcharge_formatted',    '',
+                                        $tot_row(lang('Total'),          '__cart_total_with_surcharge',    '',
                                                  'fw-bold border-top', 'text-end pe-0', 'pg-eo-total-formatted'),
                                     )),
                                 )),
@@ -2161,22 +2169,23 @@ function _eo_render_address_book_select()
 }
 
 // ── Terms-of-service section: real <input type=checkbox required> +
-// label with a link that opens a Bootstrap modal. Modal body comes from
-// cfg['terms_html'] (designer-editable in property panel); falls back to
-// a translated boilerplate so visitors never see an empty modal.
-function _eo_render_terms_section($lf, $cfg)
+// label with a link that opens a Bootstrap modal.
+//
+// This is the fallback path, for a tree that carries no terms row of its
+// own; the designer's default tree has one and the operator edits its
+// wording on canvas. The wording here is therefore fixed and translated —
+// cfg['terms_intro_text'] and cfg['terms_link_text'] used to override it
+// from the property panel, but that panel section left with the modal, so
+// the two keys had a reader and no writer and always read their default.
+function _eo_render_terms_section($lf)
 {
     // Returns ONLY the inline checkbox + label + link. The modal HTML is
     // emitted SEPARATELY via _eo_render_terms_modal_html() so it can live
     // OUTSIDE the <form> (Bootstrap modal backdrop misbehaves when the
     // modal element is nested inside a form — clicking the link locked the
     // page with a black overlay that never lifted).
-    $link_text  = (isset($cfg['terms_link_text']) && (string)$cfg['terms_link_text'] !== '')
-                    ? (string)$cfg['terms_link_text']
-                    : lang('the sales agreement and the terms of use');
-    $intro      = (isset($cfg['terms_intro_text']) && (string)$cfg['terms_intro_text'] !== '')
-                    ? (string)$cfg['terms_intro_text']
-                    : lang('By completing my order I accept');
+    $link_text  = lang('the sales agreement and the terms of use');
+    $intro      = lang('By completing my order I accept');
     $checked    = ($lf && (string)$lf->get_field_value('agree_terms') === '1') ? ' checked' : '';
     $modal_id   = 'pg-eo-terms-modal';
 
@@ -3994,15 +4003,12 @@ function _eo_split_recipient_loop_area($tree)
 //   ^^__recipient_name^^               "Ayşe Yılmaz"        (ship_to_name, falls back to "Alıcı N")
 //   ^^__recipient_address_first_name^^ session/db value for shipping_<rid>_first_name
 //   ^^__recipient_address_last_name^^
-//   ^^__recipient_address_street^^     (alias of address_1)
 //   ^^__recipient_address_address_1^^
 //   ^^__recipient_address_address_2^^
 //   ^^__recipient_address_city^^
 //   ^^__recipient_address_state^^
-//   ^^__recipient_address_zip^^        (alias of zip_code)
 //   ^^__recipient_address_zip_code^^
 //   ^^__recipient_address_country^^
-//   ^^__recipient_address_phone^^      (alias of phone_number)
 //   ^^__recipient_address_phone_number^^
 //
 // The address tokens are intended for read-only display (e.g. summary card).
@@ -4048,15 +4054,12 @@ function _eo_compute_recipient_tokens($recipient, $index, $count, $lf = null)
         '^^__recipient_address_first_name^^'     => h($get('first_name')),
         '^^__recipient_address_last_name^^'      => h($get('last_name')),
         '^^__recipient_address_company^^'        => h($get('company')),
-        '^^__recipient_address_street^^'         => h($addr1),
         '^^__recipient_address_address_1^^'      => h($addr1),
         '^^__recipient_address_address_2^^'      => h($get('address_2')),
         '^^__recipient_address_city^^'           => h($get('city')),
         '^^__recipient_address_state^^'          => h($get('state')),
-        '^^__recipient_address_zip^^'            => h($zip),
         '^^__recipient_address_zip_code^^'       => h($zip),
         '^^__recipient_address_country^^'        => h($get('country')),
-        '^^__recipient_address_phone^^'          => h($phone),
         '^^__recipient_address_phone_number^^'   => h($phone),
     );
 }
@@ -4112,6 +4115,13 @@ function _eo_render_recipient_loop($template_children, $recipients, $lf)
         // Per-recipient token replacement (^^__recipient_index^^ etc.).
         $tokens = _eo_compute_recipient_tokens($r, $i, $count, $lf);
         $row_html = strtr($row_html, $tokens);
+
+        // The `name` of each control already carries the recipient
+        // (shipping_<rid>_first_name), but the `id` did not — so with two
+        // recipients on the page every <label> focused the first one's field.
+        // Ids and the attributes pointing at them move together; the names
+        // the server reads on POST are untouched.
+        $row_html = pg_sw_uniquify_row_ids($row_html, 0, $rid);
 
         $out .= $row_html;
     }

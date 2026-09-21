@@ -144,6 +144,9 @@ function upgrade_to_2026_4_4() {
 	upgrade_2026_4_4_erp_walkin_account();     // 4.59
 
 	upgrade_2026_4_4_erp_document_templates(); // 4.60
+
+	upgrade_2026_4_4_erp_edoc_providers();     // 4.61
+	upgrade_2026_4_4_erp_edoc_log();           // 4.62
 }
 
 
@@ -2992,6 +2995,68 @@ function upgrade_2026_4_4_erp_document_templates() {
 }
 
 
+// The e-document provider layer (2026.4.4, 4.61).
+//
+// Sending an invoice to the tax authority as an e-Fatura or e-Arşiv goes
+// through a provider - Paraşüt, Logo İşbaşı, a private integrator - and the
+// store chooses one on the ERP settings screen. The choice and each
+// provider's credentials get a table of their own (credentials AES-encrypted
+// the way the Paraşüt secret has been since Faz -1), and the documents get
+// two columns that say which provider carried them and under what id there:
+// the parasut_* columns from Faz 0 stay for what Paraşüt already holds, and
+// nothing new is written provider-specifically. An installation that had the
+// ERP Paraşüt switch on keeps Paraşüt as its provider.
+function upgrade_2026_4_4_erp_edoc_providers() {
+
+	install_create_table('erp_edoc_providers', "CREATE TABLE erp_edoc_providers (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		provider        VARCHAR(20) NOT NULL DEFAULT '',
+		is_active       TINYINT(1) NOT NULL DEFAULT 0,
+		credentials_enc TEXT,
+		settings        TEXT,
+		checked_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		check_status    VARCHAR(20) NOT NULL DEFAULT '',
+		check_message   VARCHAR(255) NOT NULL DEFAULT '',
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_provider (provider)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('erp_invoices', 'edoc_provider', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_invoices', 'edoc_external_id', "VARCHAR(64) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_waybills', 'edoc_provider', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_waybills', 'edoc_external_id', "VARCHAR(64) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_edoc_queue', 'provider', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_edoc_queue', 'external_job_id', "VARCHAR(64) NOT NULL DEFAULT ''");
+
+	// Data: the switch that used to be the only choice becomes a row. Only when
+	// the table is still empty, so a second run does not undo a later choice.
+	if (install_column_exists('config', 'erp_parasut_enabled')) {
+
+		$rows = (int) db_value("SELECT COUNT(*) FROM erp_edoc_providers");
+
+		if (($rows === 0) && ((int) db_value("SELECT erp_parasut_enabled FROM config LIMIT 1") === 1)) {
+
+			db("INSERT INTO erp_edoc_providers (provider, is_active, credentials_enc, settings, created_at, updated_at)
+				VALUES ('parasut', 1, '', '', UNIX_TIMESTAMP(), UNIX_TIMESTAMP())");
+
+			install_ran('erp_edoc_providers: Paraşüt carried over as the active provider');
+
+		}
+
+	}
+
+	install_note('Invoices and delivery notes can be sent to the tax authority through a chosen e-document provider (Paraşüt, Logo İşbaşı); the provider is picked on the ERP settings screen.');
+
+}
+
+
 // Event subscriptions left without an application (2026.4.4, 4.57).
 //
 // A subscription belongs to an application and is only reachable through it:
@@ -3028,5 +3093,40 @@ function upgrade_2026_4_4_webhook_orphans() {
 		WHERE api_apps.id IS NULL");
 
 	install_note('Event subscriptions whose application no longer exists were removed: they could not be seen or stopped from the panel, and the site kept sending to them.');
+
+}
+
+function upgrade_2026_4_4_erp_edoc_log() {
+
+	// erp_parasut_log was created in 4.43 for the Paraşüt calls and never
+	// written to. Its shape - method, path, code, masked excerpts, thirty-day
+	// life - is what every provider's calls need, so it becomes the e-document
+	// log with a provider column; the name stops saying whose it is. A fresh
+	// install that never had the old table gets the new one directly.
+	if (install_table_exists('erp_parasut_log') && !install_table_exists('erp_edoc_log')) {
+		install_rename_table('erp_parasut_log', 'erp_edoc_log');
+	}
+
+	install_create_table('erp_edoc_log', "CREATE TABLE erp_edoc_log (
+		id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		provider         VARCHAR(20) NOT NULL DEFAULT '',
+		doc_type         VARCHAR(20) NOT NULL DEFAULT '',
+		doc_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		method           VARCHAR(10) NOT NULL DEFAULT '',
+		path             VARCHAR(255) NOT NULL DEFAULT '',
+		http_code        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		duration_ms      INT UNSIGNED NOT NULL DEFAULT 0,
+		request_excerpt  VARCHAR(500) NOT NULL DEFAULT '',
+		response_excerpt VARCHAR(500) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_document (doc_type, doc_id),
+		KEY idx_created (created_at),
+		KEY idx_provider (provider, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// The renamed table lacks these two.
+	install_add_column('erp_edoc_log', 'provider', "VARCHAR(20) NOT NULL DEFAULT ''");
+	install_add_index('erp_edoc_log', 'idx_provider', "KEY idx_provider (provider, created_at)");
 
 }

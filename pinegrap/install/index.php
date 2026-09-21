@@ -7365,6 +7365,8 @@ function get_tables() {
 		'erp_cash_accounts',
 		'erp_cash_transactions',
 		'erp_document_series',
+		'erp_edoc_log',
+		'erp_edoc_providers',
 		'erp_edoc_queue',
 		'erp_export_log',
 		'erp_invoice_items',

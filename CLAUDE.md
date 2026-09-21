@@ -314,21 +314,26 @@ tahmin etme, legacy sayfayı aç ve karşılaştır.
 ## Bir iş ne zaman biter
 
 Birim test takımı ve CI kapısı **yoktur**; "testler geçti" denemez. Bunun yerine
-iki denetim betiği vardır ve ikisi de temiz çıkmadan iş bitmiş sayılmaz:
+üç denetim betiği vardır ve üçü de temiz çıkmadan iş bitmiş sayılmaz:
 
 ```bash
-php tools/lint.php         # tum agacta php -l
-php tools/check_lang.php   # lang() / _sdT() anahtarlari tr.json ile ortusuyor mu
+php tools/lint.php           # tum agacta php -l
+php tools/check_lang.php     # lang() / _sdT() anahtarlari tr.json ile ortusuyor mu
+php tools/check_bindings.php # tasarimci acilir listesi ile renderer tokenlari ortusuyor mu
 ```
 
 1. `php tools/lint.php` temiz.
 2. `php tools/check_lang.php` temiz — eksik anahtar ve `_sdT()` literal kuralı
    ihlali yok.
-3. Yeni dosyada başlık bloğu, include ise kapı sabiti var.
-4. Yeni ve dokunulan yorumlar İngilizce, süreç/AI izi taşımıyor.
-5. Şema değişikliği varsa migration üzerinden ve tekrar koşulabilir.
-6. `.src.js` düzenlendiyse ikizi `.min.js` de güncellendi.
-7. Değişiklik, değişiklik günlüğüne yazılacak şekilde PR açıklamasında özetlendi.
+3. `php tools/check_bindings.php` temiz — tasarımcının sunduğu her `__token`
+   bir renderer tarafından üretiliyor ve üretilen her token açılır listede
+   var. Listede olmayan token elle "Özel"den yazılmak zorunda kalır; uydurma
+   token yazımları depoya böyle girdi.
+4. Yeni dosyada başlık bloğu, include ise kapı sabiti var.
+5. Yeni ve dokunulan yorumlar İngilizce, süreç/AI izi taşımıyor.
+6. Şema değişikliği varsa migration üzerinden ve tekrar koşulabilir.
+7. `.src.js` düzenlendiyse ikizi `.min.js` de güncellendi.
+8. Değişiklik, değişiklik günlüğüne yazılacak şekilde PR açıklamasında özetlendi.
 
 PR açıklamasında ne değiştiğini, neden öyle yapıldığını ve **neyi
 doğrulayamadığını** yaz (çalışan örnek kurulmadıysa bunu açıkça belirt).

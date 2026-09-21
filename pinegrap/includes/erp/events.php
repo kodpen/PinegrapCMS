@@ -74,13 +74,14 @@ function erp_event_date($value)
  * Announce an invoice: issued, paid or cancelled.
  *
  * @param int    $invoice_id
- * @param string $event  'erp.invoice.created' | 'erp.invoice.paid' | 'erp.invoice.cancelled'
+ * @param string $event  'erp.invoice.created' | 'erp.invoice.paid' | 'erp.invoice.cancelled' | 'erp.invoice.edoc_changed'
  * @return int
  */
 function erp_event_invoice($invoice_id, $event)
 {
     $invoice = db_item("SELECT id, full_number, direction, doc_type, status, account_id, order_id,
-            parent_invoice_id, issue_date, due_date, currency, grand_total, paid_total
+            parent_invoice_id, issue_date, due_date, currency, grand_total, paid_total,
+            edoc_provider, edoc_status, gib_number, gib_uuid
         FROM erp_invoices WHERE id = '" . (int) $invoice_id . "' LIMIT 1");
 
     if (!is_array($invoice)) {
@@ -101,6 +102,12 @@ function erp_event_invoice($invoice_id, $event)
         'currency' => (string) $invoice['currency'],
         'grand_total' => (int) $invoice['grand_total'],
         'paid_total' => (int) $invoice['paid_total'],
+        'edoc' => array(
+            'provider' => (string) $invoice['edoc_provider'],
+            'status' => (string) $invoice['edoc_status'],
+            'gib_number' => (string) $invoice['gib_number'],
+            'gib_uuid' => (string) $invoice['gib_uuid'],
+        ),
     ));
 }
 

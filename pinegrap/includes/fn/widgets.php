@@ -339,6 +339,108 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
     return $template;
 }
 
+// Make one loop row's element ids its own.
+//
+// A loop template is the same markup repeated, so every row carries the same
+// id — and an accordion, tab or collapse in row two then targets row one.
+// Suffixing with the widget and the record keeps two instances of the same
+// widget on one page apart as well.
+//
+// Every attribute that points at an id moves with it, or the pairing breaks
+// rather than being preserved: `for` loses its control, `data-bs-parent`
+// leaves an accordion closing a panel in a different row, and `aria-controls`
+// leaves a screen reader describing the wrong one. The renderers used to
+// disagree about which of these they rewrote — that is the bug this exists to
+// end, not the suffix itself.
+function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
+{
+    if (!is_string($html) || $html === '') return $html;
+
+    $suffix = '_pgw' . (int)$widget_id . 'r' . (int)$row_id;
+    $moves  = array(
+        '/\bid="([^"]+)"/'                => 'id="$1',
+        '/\bfor="([^"]+)"/'               => 'for="$1',
+        '/data-bs-target="#([^"]+)"/'     => 'data-bs-target="#$1',
+        '/aria-controls="([^"]+)"/'       => 'aria-controls="$1',
+        '/aria-labelledby="([^"]+)"/'     => 'aria-labelledby="$1',
+        '/href="#([^"]+)"/'               => 'href="#$1',
+        '/data-bs-parent="#([^"]+)"/'     => 'data-bs-parent="#$1',
+    );
+    foreach ($moves as $pattern => $replacement) {
+        $html = preg_replace($pattern, $replacement . $suffix . '"', $html);
+    }
+
+    return $html;
+}
+
+// The token keys whose values are HTML on purpose: the rich-text columns an
+// operator writes in the editor, and the blocks the renderer builds itself
+// (breadcrumb, filter chips, variant picker, cross-sell, the strike-through
+// price). Everything else a token map carries is plain text, a number or a
+// URL.
+function pg_sw_raw_token_keys()
+{
+    static $keys = null;
+    if ($keys !== null) return $keys;
+
+    $keys = array_flip(array(
+        // Operator rich text.
+        '__description',
+        '__details',
+        '__out_of_stock_message',
+        // Prices that expand to strike-through markup when an offer applies.
+        '__price_formatted',
+        '__price_block_html',
+        '__price_range',
+        // Renderer-built blocks.
+        '__breadcrumb_html',
+        '__breadcrumb_inner_html',
+        '__cross_sell_html',
+        '__variant_picker',
+        '__group_tree_html',
+        '__group_tree_inner_html',
+        '__attribute_filters_html',
+        '__attribute_filters_inner_html',
+        '__active_filters_html',
+        '__active_filters_inner_html',
+        '__filter_chips',
+        '__filter_chips_inner_html',
+        '__filters_button',
+        '__filters_offcanvas',
+        '__filters_offcanvas_inner_html',
+        '__clear_filters_button',
+    ));
+
+    return $keys;
+}
+
+// Escape a token map's plain-text values once, before substitution.
+//
+// A token is substituted into the designer's markup wherever they bound it,
+// and that is as often an attribute as a text node — a product named
+// `24" Monitor` bound to an image's alt closes the attribute and everything
+// after it is markup. So the map is escaped as a whole and the raw-HTML keys
+// are named, rather than each renderer remembering which of its own values to
+// wrap: the one that forgets is the one that breaks.
+//
+// $raw_extra names further keys this particular map fills with markup.
+function pg_sw_escape_token_values($values, $raw_extra = array())
+{
+    if (!is_array($values)) return $values;
+
+    $raw = pg_sw_raw_token_keys();
+    foreach ($raw_extra as $key) {
+        $raw[$key] = true;
+    }
+
+    foreach ($values as $key => $value) {
+        if (isset($raw[$key])) continue;
+        $values[$key] = h((string)$value);
+    }
+
+    return $values;
+}
+
 // Drop the identifiers nothing answered, with their format suffix, so a raw
 // ^^token^^ never reaches the browser.
 function pg_sw_sweep_tokens($html)
@@ -780,7 +882,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // so just return the static HTML with search/empty injected at the slot.
     if ($loop_template === '') {
         if ($static_html === '') return '';
-        return str_replace('<!--pg-loop-slot-->', $search_html . $empty_html, $static_html);
+        return str_replace('<!--pg-loop-slot-->', $search_html . $empty_html, pg_sw_sweep_tokens($static_html));
     }
 
     // ── Count total matching rows (for pagination) ────────────────────────
@@ -795,7 +897,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     if ($total_records === 0) {
         $body = $search_html . $empty_html;
         if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, $static_html);
+        return str_replace('<!--pg-loop-slot-->', $body, pg_sw_sweep_tokens($static_html));
     }
 
     // Apply the outer dataset cap BEFORE pagination math so the user only ever
@@ -881,7 +983,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     if (!$forms) {
         $body = $search_html . $empty_html;
         if ($static_html === '') return $body;
-        return str_replace('<!--pg-loop-slot-->', $body, $static_html);
+        return str_replace('<!--pg-loop-slot-->', $body, pg_sw_sweep_tokens($static_html));
     }
 
     // 2. Bulk-fetch form_data rows for all those submissions in one query.
@@ -953,12 +1055,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // and dropdowns in different rows don't share the same id/target.
         // Using both widget_id and record's DB id as suffix prevents collisions
         // across multiple instances of the same widget on the same page.
-        $iter_suffix = '_pgw' . $widget_id . 'r' . $fid;
-        $rendered = preg_replace('/\bid="([^"]+)"/',             'id="$1'              . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/data-bs-target="#([^"]+)"/',  'data-bs-target="#$1' . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/aria-controls="([^"]+)"/',    'aria-controls="$1'   . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/href="#([^"]+)"/',            'href="#$1'           . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/data-bs-parent="#([^"]+)"/',  'data-bs-parent="#$1' . $iter_suffix . '"', $rendered);
+        $rendered = pg_sw_uniquify_row_ids($rendered, $widget_id, $fid);
 
         $loop_output .= $rendered;
     }
@@ -1019,6 +1116,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // Legacy (no loop_area) — output is purely the per-record loop with controls
         return $body;
     }
+    // The surround renders once, outside any record, so no record's values are
+    // applied to it — but an identifier left standing there is one the visitor
+    // would read, and form_item_view and my_account both sweep theirs.
+    $static_html = pg_sw_sweep_tokens($static_html);
     return str_replace('<!--pg-loop-slot-->', $body, $static_html);
 }
 
@@ -1501,12 +1602,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 // and dropdowns in different rows don't share the same id/target.
                 // Using both widget_id and record's DB id as suffix prevents collisions
                 // across multiple instances of the same widget on the same page.
-                $iter_suffix = '_pgw' . $widget_id . 'r' . (int)$sr['id'];
-                $row_html = preg_replace('/\bid="([^"]+)"/',             'id="$1'              . $iter_suffix . '"', $row_html);
-                $row_html = preg_replace('/data-bs-target="#([^"]+)"/',  'data-bs-target="#$1' . $iter_suffix . '"', $row_html);
-                $row_html = preg_replace('/aria-controls="([^"]+)"/',    'aria-controls="$1'   . $iter_suffix . '"', $row_html);
-                $row_html = preg_replace('/href="#([^"]+)"/',            'href="#$1'           . $iter_suffix . '"', $row_html);
-                $row_html = preg_replace('/data-bs-parent="#([^"]+)"/',  'data-bs-parent="#$1' . $iter_suffix . '"', $row_html);
+                $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, (int)$sr['id']);
 
                 $loop_rendered .= $row_html;
             }
@@ -1721,7 +1817,7 @@ function _pg_member_apply_tokens($rendered, $values)
     foreach ($keys as $k) {
         $rendered = str_replace('^^' . $k . '^^', (string)$values[$k], $rendered);
     }
-    return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+    return pg_sw_sweep_tokens($rendered);
 }
 
 // A signed-in visitor on a sign-in / sign-up page. The widget keeps its
@@ -2101,7 +2197,7 @@ function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = ar
 // Render a 'search_results' system widget. Reads $_GET['q'] as the search term,
 // searches page titles/content and (when ECOMMERCE is active) product names.
 // Loop_area iterates once per result row.
-// Static tokens: ^^__search_query^^, ^^__result_count^^, ^^__no_results^^
+// Static tokens: ^^__search_query^^, ^^__result_count^^, ^^__empty_message^^
 // Loop tokens:   ^^__result_title^^, ^^__result_url^^, ^^__result_excerpt^^, ^^__result_type^^
 function _render_system_widget_search_results($tree_json, $widget_id, $cfg = array())
 {
@@ -2111,6 +2207,12 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
+    // Per-widget messages safety net — auto-prepends a Messages content node
+    // when the designer has not placed one. Empty formName, like the other
+    // read-only widgets: this widget posts no form of its own, so it shows
+    // whatever the session is carrying. Without this the widget was simply
+    // silent — an error had nowhere to print.
+    _pg_inject_messages_node($tree_decoded, '');
 
     $split = _split_widget_tree($tree_decoded);
 
@@ -2131,7 +2233,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     // Raw search query — strip tags, trim whitespace
     $raw_q      = isset($_GET['q']) ? trim(strip_tags((string)$_GET['q'])) : '';
     $results    = array();
-    $no_results = (!empty($cfg['no_results_message']) && is_string($cfg['no_results_message'])) ? (string)$cfg['no_results_message'] : lang('No results found.');
+    $no_results = (!empty($cfg['empty_message']) && is_string($cfg['empty_message'])) ? (string)$cfg['empty_message'] : lang('No results found.');
 
     // Search scope from cfg: 'all' | 'pages' | 'products'
     $search_scope = (isset($cfg['search_scope']) && in_array($cfg['search_scope'], array('all', 'pages', 'products')))
@@ -2217,8 +2319,13 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $result_count = count($results);
 
     // Build loop output
+    // A tree with no loop_area has nowhere to put rows: the whole tree is the
+    // surround and it renders once. Building the rows anyway meant laying out
+    // the entire template per record and then discarding it — every starter
+    // tree carries a loop_area, so this only ever happened to a tree from
+    // before loop_area existed.
     $loop_rendered = '';
-    if ($loop_template !== '' && $result_count > 0) {
+    if ($loop_template !== '' && $static_html !== '' && $result_count > 0) {
         foreach ($results as $idx => $res) {
             $row_values = array(
                 '__result_title'   => h((string)$res['title']),
@@ -2232,14 +2339,10 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
             foreach ($rkeys as $k) {
                 $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
             }
-            $row_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $row_html);
+            $row_html = pg_sw_sweep_tokens($row_html);
 
             // Uniquify Bootstrap component IDs per result row
-            $iter_suffix = '_pgw' . $widget_id . 'r' . $idx;
-            $row_html = preg_replace('/\bid="([^"]+)"/',            'id="$1'              . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/data-bs-target="#([^"]+)"/', 'data-bs-target="#$1' . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/aria-controls="([^"]+)"/',   'aria-controls="$1'   . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/href="#([^"]+)"/',           'href="#$1'           . $iter_suffix . '"', $row_html);
+            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
 
             $loop_rendered .= $row_html;
         }
@@ -2249,7 +2352,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $static_values = array(
         '__search_query' => h($raw_q),
         '__result_count' => (string)$result_count,
-        '__no_results'   => ($result_count === 0 && $raw_q !== '') ? h($no_results) : '',
+        '__empty_message'   => ($result_count === 0 && $raw_q !== '') ? h($no_results) : '',
     );
 
     if ($static_html === '') {
@@ -2260,7 +2363,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         foreach ($skeys as $k) {
             $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
         }
-        return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        return pg_sw_sweep_tokens($rendered);
     }
 
     $skeys = array_keys($static_values);
@@ -2268,7 +2371,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     foreach ($skeys as $k) {
         $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
     }
-    $static_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static_html);
+    $static_html = pg_sw_sweep_tokens($static_html);
 
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }
@@ -2493,6 +2596,12 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
+    // Per-widget messages safety net — auto-prepends a Messages content node
+    // when the designer has not placed one. Empty formName, like the other
+    // read-only widgets: this widget posts no form of its own, so it shows
+    // whatever the session is carrying. Without this the widget was simply
+    // silent — an error had nowhere to print.
+    _pg_inject_messages_node($tree_decoded, '');
 
     // NOTE: split + render are DEFERRED to AFTER order data is fetched and
     // visibility bindings are applied. Otherwise nodes with
@@ -2537,8 +2646,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         } else {
             $rendered = trim(_render_tree_node($split_empty['static_tree'], 0, 0));
         }
-        $rendered = str_replace('^^__not_found^^', h($not_found_message), $rendered);
-        return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        $rendered = str_replace('^^__not_found_message^^', h($not_found_message), $rendered);
+        return pg_sw_sweep_tokens($rendered);
     }
 
     $oid_esc = e($order_id);
@@ -3180,8 +3289,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
 
     // Build loop output
+    // A tree with no loop_area has nowhere to put rows: the whole tree is the
+    // surround and it renders once. Building the rows anyway meant laying out
+    // the entire template per record and then discarding it — every starter
+    // tree carries a loop_area, so this only ever happened to a tree from
+    // before loop_area existed.
     $loop_rendered = '';
-    if ($loop_template !== '' && count($items) > 0) {
+    if ($loop_template !== '' && $static_html !== '' && count($items) > 0) {
         foreach ($items as $idx => $item) {
             $row_values = array(
                 // Existing tokens — kept for backward compatibility
@@ -3194,7 +3308,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_id'                => (string)$item['id'],
                 '__item_number'            => h($item['item_number']),
                 '__item_short_description' => h($item['short_description']),
-                '__item_description'       => h($item['full_description']),
+                // RAW HTML — rich text, same as the cart and catalog widgets.
+                '__item_description'       => (string)$item['full_description'],
                 // The image alt text follows the same precedence as cart:
                 // prefer the readable short_description, fall back to name.
                 '__item_image_alt'         => h($item['short_description'] !== '' ? $item['short_description'] : $item['name']),
@@ -3217,7 +3332,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             foreach ($rkeys as $k) {
                 $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
             }
-            $row_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $row_html);
+            $row_html = pg_sw_sweep_tokens($row_html);
 
             // Auto-append the read-only form / gift-card blocks when the row
             // HAS them and the designer hasn't placed the matching token in
@@ -3239,11 +3354,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             }
 
             // Uniquify Bootstrap component IDs per item row
-            $iter_suffix = '_pgw' . $widget_id . 'r' . $idx;
-            $row_html = preg_replace('/\bid="([^"]+)"/',            'id="$1'              . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/data-bs-target="#([^"]+)"/', 'data-bs-target="#$1' . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/aria-controls="([^"]+)"/',   'aria-controls="$1'   . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/href="#([^"]+)"/',           'href="#$1'           . $iter_suffix . '"', $row_html);
+            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
 
             $loop_rendered .= $row_html;
         }
@@ -3267,7 +3378,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__order_status'     => h((string)$order['status']),
         '__order_total'      => $fmt_money((int)$order['total']),
         '__shipping_address' => h($shipping_address),
-        '__not_found'        => '',
+        '__not_found_message'        => '',
 
         // ── Order identifiers / meta ──────────────────────────────────
         '__order_id'          => (string)(int)$order['id'],
@@ -3388,7 +3499,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         foreach ($skeys as $k) {
             $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
         }
-        return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        return pg_sw_sweep_tokens($rendered);
     }
 
     $skeys = array_keys($static_values);
@@ -3396,7 +3507,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     foreach ($skeys as $k) {
         $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
     }
-    $static_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static_html);
+    $static_html = pg_sw_sweep_tokens($static_html);
 
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }
@@ -3658,9 +3769,10 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // - custom_form.php marks the offending field and redirects to send_to. The
     // messages node is what prints them, scoped to THIS form so a second form
     // on the page does not show the first one's errors.
-    if ($form_page_id > 0 && function_exists('_pg_inject_messages_node')) {
-        _pg_inject_messages_node($tree_decoded, (string)$form_page_id);
-    }
+    // Unconditional: a widget whose form is not bound yet still has to be able
+    // to show an error, and it was the only renderer that skipped the node
+    // entirely in that case. With no form, the scope is simply the session's.
+    _pg_inject_messages_node($tree_decoded, $form_page_id > 0 ? (string)$form_page_id : '');
 
     // Section bindings. `captcha` is the site-wide block, honoured only when
     // the CAPTCHA setting is on and the visitor is not signed in — the same
@@ -3721,7 +3833,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     foreach ($keys as $k) {
         $rendered = str_replace('^^' . $k . '^^', $values[$k], $rendered);
     }
-    return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+    return pg_sw_sweep_tokens($rendered);
 }
 
 // Render a 'calendar_view' system widget. Renders a month-based event list with
@@ -3755,6 +3867,12 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
 
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
+    // Per-widget messages safety net — auto-prepends a Messages content node
+    // when the designer has not placed one. Empty formName, like the other
+    // read-only widgets: this widget posts no form of its own, so it shows
+    // whatever the session is carrying. Without this the widget was simply
+    // silent — an error had nowhere to print.
+    _pg_inject_messages_node($tree_decoded, '');
 
     $split = _split_widget_tree($tree_decoded);
 
@@ -3781,9 +3899,9 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         ? $cfg['date_format']
         : 'd.m.Y';
 
-    // no_events_message from cfg
-    $cal_no_events_message = (!empty($cfg['no_events_message']) && is_string($cfg['no_events_message']))
-        ? $cfg['no_events_message']
+    // empty_message from cfg
+    $empty_message = (!empty($cfg['empty_message']) && is_string($cfg['empty_message']))
+        ? $cfg['empty_message']
         : '';
 
     // Determine which month/year to display
@@ -3882,8 +4000,13 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     }
 
     // Build loop output
+    // A tree with no loop_area has nowhere to put rows: the whole tree is the
+    // surround and it renders once. Building the rows anyway meant laying out
+    // the entire template per record and then discarding it — every starter
+    // tree carries a loop_area, so this only ever happened to a tree from
+    // before loop_area existed.
     $loop_rendered = '';
-    if ($loop_template !== '' && count($events) > 0) {
+    if ($loop_template !== '' && $static_html !== '' && count($events) > 0) {
         foreach ($events as $idx => $evt) {
             $row_values = array(
                 '__event_title'   => h($evt['title']),
@@ -3898,14 +4021,10 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
             foreach ($rkeys as $k) {
                 $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
             }
-            $row_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $row_html);
+            $row_html = pg_sw_sweep_tokens($row_html);
 
             // Uniquify Bootstrap component IDs per event row
-            $iter_suffix = '_pgw' . $widget_id . 'r' . $idx;
-            $row_html = preg_replace('/\bid="([^"]+)"/',            'id="$1'              . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/data-bs-target="#([^"]+)"/', 'data-bs-target="#$1' . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/aria-controls="([^"]+)"/',   'aria-controls="$1'   . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/href="#([^"]+)"/',           'href="#$1'           . $iter_suffix . '"', $row_html);
+            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
 
             $loop_rendered .= $row_html;
         }
@@ -3921,7 +4040,7 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         '__year'            => h((string)$cal_year),
         '__prev_month_url'  => h($prev_url),
         '__next_month_url'  => h($next_url),
-        '__no_events'       => (count($events) === 0 && !$table_error) ? h($cal_no_events_message) : '',
+        '__empty_message'   => (count($events) === 0 && !$table_error) ? h($empty_message) : '',
     );
 
     if ($static_html === '') {
@@ -3932,7 +4051,7 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         foreach ($skeys as $k) {
             $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
         }
-        return preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        return pg_sw_sweep_tokens($rendered);
     }
 
     $skeys = array_keys($static_values);
@@ -3940,7 +4059,7 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     foreach ($skeys as $k) {
         $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
     }
-    $static_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static_html);
+    $static_html = pg_sw_sweep_tokens($static_html);
 
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }

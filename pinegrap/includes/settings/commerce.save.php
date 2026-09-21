@@ -159,6 +159,36 @@ function pg_parasut_credentials_for_save()
     if (waf_table_has_column('config', 'product_upload_folder_id')) {
         $sql_product_upload_folder = "product_upload_folder_id = '" . escape((int) post_value('product_upload_folder_id')) . "',";
     }
+    // The e-document provider (4.61): the picked provider becomes the
+    // active one and only its credentials are written - a box left empty
+    // keeps the stored secret, like the Paraşüt fields above.
+    if (waf_table_has_column('erp_edoc_providers', 'provider')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+        $erp_edoc_picked = (string) post_value('edoc_provider');
+
+        if (($erp_edoc_picked !== '') && !array_key_exists($erp_edoc_picked, erp_edoc_drivers())) {
+            $erp_edoc_picked = '';
+        }
+
+        if ($erp_edoc_picked !== '') {
+            $erp_edoc_posted = array();
+
+            foreach (erp_edoc_fields($erp_edoc_picked) as $erp_edoc_field) {
+                $erp_edoc_posted[$erp_edoc_field['name']] = (string) post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
+            }
+
+            if (!empty($erp_edoc_posted)) {
+                erp_edoc_credentials_save($erp_edoc_picked, $erp_edoc_posted);
+            }
+        }
+
+        if (erp_edoc_active() !== $erp_edoc_picked) {
+            erp_edoc_activate($erp_edoc_picked);
+            log_activity(lang(array('string' => 'erp e-document provider set to {var:1}', 'vars' => (($erp_edoc_picked === '') ? 'none' : $erp_edoc_picked))), $_SESSION['sessionusername']);
+        }
+    }
+
     // Foreign currency in the ERP (2026.4.4). The currency list is whatever
     // was ticked, kept to three-letter codes the store lists; the base is
     // never stored because it is always allowed.

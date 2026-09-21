@@ -1342,6 +1342,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             }
         }
 
+        // Plain text is escaped once, here; the HTML-by-design keys are named
+        // in pg_sw_raw_token_keys() and pass through untouched.
+        $values = pg_sw_escape_token_values($values);
+
         $rendered = $loop_template;
         // Replace longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^'.
         $keys = array_keys($values);
@@ -1349,19 +1353,16 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         foreach ($keys as $k) {
             $rendered = str_replace('^^' . $k . '^^', (string)$values[$k], $rendered);
         }
-        // Strip any unresolved tokens.
-        $rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        // Not swept here: the page-level tokens (breadcrumb, group tree, filter
+        // chips) are resolved further down, and a designer may put one inside
+        // the loop_area. Sweeping now would delete it before it was filled.
+        // The one sweep happens after that pass.
 
         // Uniquify Bootstrap component IDs per loop iteration so tabs, collapses
         // and dropdowns in different rows don't share the same id/target.
         // Using both widget_id and product's DB id as suffix prevents collisions
         // across multiple instances of the same widget on the same page.
-        $iter_suffix = '_pgw' . $widget_id . 'r' . $pid;
-        $rendered = preg_replace('/\bid="([^"]+)"/',             'id="$1'              . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/data-bs-target="#([^"]+)"/',  'data-bs-target="#$1' . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/aria-controls="([^"]+)"/',    'aria-controls="$1'   . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/href="#([^"]+)"/',            'href="#$1'           . $iter_suffix . '"', $rendered);
-        $rendered = preg_replace('/data-bs-parent="#([^"]+)"/',  'data-bs-parent="#$1' . $iter_suffix . '"', $rendered);
+        $rendered = pg_sw_uniquify_row_ids($rendered, $widget_id, $pid);
 
         // Strip Sepete Ekle button + form wrap when the row should NOT
         // accept add-to-cart actions. Two cases:
@@ -2032,7 +2033,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     '__short_description' => (string)$cg['short_description'],
                     '__description'       => '',
                     '__detail_url'        => $cg_url,
-                    '__url'               => $cg_url,
                     '__display_type'      => (string)$cg['display_type'],
                     '__sort_order'        => (string)$cg['sort_order'],
                     '__image_url'         => $cg_image_url,
@@ -2067,6 +2067,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     }
                 }
 
+                $g_values = pg_sw_escape_token_values($g_values);
+
                 $g_rendered = $loop_template;
                 // Longest keys first so '__short_description' is replaced before '__description'.
                 $g_keys = array_keys($g_values);
@@ -2074,8 +2076,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 foreach ($g_keys as $k) {
                     $g_rendered = str_replace('^^' . $k . '^^', (string)$g_values[$k], $g_rendered);
                 }
-                // Strip remaining product-only tokens (inventory, mpn, gallery, …).
-                $g_rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $g_rendered);
+                // Product-only tokens (inventory, mpn, gallery, …) have no answer
+                // on a group row, and page-level tokens are not resolved yet.
+                // Both are handled by the single sweep after the page pass.
 
                 // Strip Sepete Ekle for groups — adding a GROUP to cart
                 // doesn't make sense; the visitor must drill into a
@@ -2094,6 +2097,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     '',
                     $g_rendered
                 );
+
+                // Same treatment the product loop forty lines up already gets:
+                // without it every group card repeats the same ids, and a
+                // collapse in the second card opens the first one's panel.
+                // Runs after the add-to-cart strip so that regex still sees
+                // the id it matches on.
+                $g_rendered = pg_sw_uniquify_row_ids($g_rendered, $widget_id, (int)$cg['id']);
 
                 $g_rows .= $g_rendered;
             }
@@ -2435,13 +2445,20 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         '__active_filters_inner_html'    => $active_attr_chips_html,
         '__attribute_filters_inner_html' => $attribute_filters_html,
     );
+    $page_tokens = pg_sw_escape_token_values($page_tokens);
     foreach ($page_tokens as $k => $v) {
         $body = str_replace('^^' . $k . '^^', $v, $body);
     }
+    // Everything the loops and this pass could answer has been answered; what
+    // is left is unanswered. This is the loop halves' only sweep.
+    $body = pg_sw_sweep_tokens($body);
     if ($static_html !== '') {
         foreach ($page_tokens as $k => $v) {
             $static_html = str_replace('^^' . $k . '^^', $v, $static_html);
         }
+        // The loop halves are swept where they are built; the static surround
+        // was not, so an identifier misspelled in a header printed itself.
+        $static_html = pg_sw_sweep_tokens($static_html);
     }
 
     // No auto-prepended messages placeholder — designer drops a Messages
@@ -3961,14 +3978,14 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //
 // Tokens (loop_area template + static portion):
 //   All tokens from _render_system_widget_catalog_listing, PLUS:
-//   ^^__not_found^^        — configured message when product not found; '' when found
+//   ^^__not_found_message^^        — configured message when product not found; '' when found
 //   ^^__gallery_image_1^^  — first extra gallery image URL (products_images_xref row 1)
 //   ^^__gallery_image_2^^  — …row 2
 //   ^^__gallery_image_3^^, ^^__gallery_image_4^^, ^^__gallery_image_5^^
 //
 // Config (system_region_config) keys:
 //   product_group_id   int     0 = no group filter; >0 = restrict to this group (security)
-//   not_found_message  string  shown via ^^__not_found^^ when product missing
+//   not_found_message  string  shown via ^^__not_found_message^^ when product missing
 //
 function _render_system_widget_catalog_item_view($product_group_id, $tree_json, $widget_id, $cfg = array())
 {
@@ -4132,11 +4149,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // The loop_area renders ONCE (single product). Matches form_item_view pattern.
     $tree_decoded = json_decode($tree_json, true);
     if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content
-    // node if the designer hasn't placed one. formName left empty so
-    // every pending session message is shown until per-widget liveform
-    // names are wired up individually.
-    _pg_inject_messages_node($tree_decoded, '');
+    // Per-widget messages safety net — auto-prepends a Messages content node
+    // if the designer hasn't placed one. Same scope the pre-binding pass above
+    // sets: passing '' here left the node unscoped whenever that pass did not
+    // run, and the detail page then showed every message the session carried
+    // rather than its own.
+    _pg_inject_messages_node($tree_decoded, 'catalog_detail');
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -4600,7 +4618,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
     // ── Build token map ───────────────────────────────────────────────────
     // The same keys are produced regardless of found/not-found so the designer's
-    // template renders consistently. ^^__not_found^^ distinguishes the two states.
+    // template renders consistently. ^^__not_found_message^^ distinguishes the two states.
     if (!$p) {
         // Product not found (no URL param, bad slug, or group mismatch).
         // All product tokens collapse to empty strings so unresolved tokens in
@@ -4656,7 +4674,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__custom_field_4'       => '',
             '__reward_points'        => '0',
             '__seo_score'            => '0',
-            '__not_found'            => $not_found_message,
+            '__not_found_message'            => $not_found_message,
             // Select-group tokens — empty/zero in not-found state.
             '__is_select_group'      => '0',
             '__select_group_id'      => '0',
@@ -4934,7 +4952,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
             // not_found: empty when product is found so the designer's not-found region
             // renders blank. The token is exposed so conditional visibility can be bound.
-            '__not_found'            => '',
+            '__not_found_message'            => '',
             // Select-group state — TRUE when the URL slug matched a
             // display_type='select' product group rather than a product
             // directly. The visitor lands here from a catalog_listing
@@ -4945,7 +4963,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // (numeric id for further lookups).
             '__is_select_group'      => $is_select_group ? '1' : '0',
             '__select_group_id'      => (string)$select_group_id,
-            '__select_group_name'    => h($select_group_name),
+            '__select_group_name'    => $select_group_name,
             // Variant picker — populated by the select-group block above.
             // When the URL slug pointed at a display_type='select' group,
             // this contains <select> elements (one per shared attribute).
@@ -4997,6 +5015,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 ),
         );
     }
+
+    // Both branches escape here, so the not-found map cannot drift from the
+    // found one.
+    $values = pg_sw_escape_token_values($values);
 
     // ── Auto-inject variant picker BEFORE recipient picker section ───────
     // Smart placement: when the designer hasn't placed
@@ -5147,8 +5169,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         if ($static !== '') $static = str_replace($tok, (string)$values[$k], $static);
     }
     // Strip any remaining unresolved tokens (matches form_item_view convention).
-    $rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
-    if ($static !== '') $static = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static);
+    $rendered = pg_sw_sweep_tokens($rendered);
+    if ($static !== '') $static = pg_sw_sweep_tokens($static);
 
     $_civ_html = ($static === '') ? $rendered : str_replace('<!--pg-loop-slot-->', $rendered, $static);
 
