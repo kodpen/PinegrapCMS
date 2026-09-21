@@ -1,7 +1,7 @@
 # Contributing to Pinegrap CMS
 
-Thank you for taking the time to contribute. This page is a short map; the
-binding house rules live in [`CLAUDE.md`](CLAUDE.md) and are not repeated here.
+Thank you for taking the time to contribute. This page is the short map; the
+rules that bind a change are the ones listed below.
 
 Issues and discussions may be written in Turkish or English. Code, comments,
 commit messages and UI source strings are English; user-facing text reaches
@@ -18,8 +18,8 @@ pipeline; third-party libraries are vendored under `pinegrap/includes/`.
   `data/config.php`, runs the installer, serves on `127.0.0.1:8000`). It is
   slow, so use it only when a code read does not answer the question.
 
-The product lives under `pinegrap/`; paths in the docs are relative to that
-root unless they start with `tools/` or `docs/`.
+The product lives under `pinegrap/`; paths in this page are relative to that
+root unless they start with `tools/`.
 
 ## Workflow
 
@@ -32,14 +32,18 @@ root unless they start with `tools/` or `docs/`.
 
 ## Definition of done
 
-A change is finished when all of the following hold (see the "Bir iş ne zaman
-biter" section of `CLAUDE.md`):
+A change is finished when all of the following hold:
 
 - `php tools/lint.php` exits 0 (syntax check of the whole product tree).
 - `php tools/check_lang.php` exits 0 (every `lang()` / `_sdT()` key exists in
   `tr.json`; `_sdT()` takes a single-quoted literal only).
+- `php tools/check_bindings.php` exits 0 (every token the visual designer
+  offers is produced by a renderer, and the other way round).
+- `php tools/check_api_schema.php` exits 0 when the external API changed
+  (every route declares what it answers with).
 - New PHP/JS files start with the Pinegrap header block; new files under
-  `includes/` start with the `PG_API_ENTRY` gate constant.
+  `includes/` start with their entry-constant gate (`PG_API_ENTRY`,
+  `PG_ERP_ENTRY` or the one their siblings use).
 - Schema changes go through the migration runner
   (`includes/migrations/runner.php` helpers, new line in `versions.php`),
   never a bare `ALTER TABLE`, and the step is re-runnable.
@@ -48,12 +52,6 @@ biter" section of `CLAUDE.md`):
   it (no references to requests, phases, plans, sessions or conversations).
 - The PR description states what changed, why, and what could not be
   verified (for example when no runnable instance was set up).
-
-References:
-
-- [`docs/LANG_USAGE.md`](docs/LANG_USAGE.md) — `lang()` syntax and placeholders.
-- [`docs/component-development-guide.md`](docs/component-development-guide.md)
-  — mandatory reading before writing a designer palette component.
 
 ## Issue conventions
 
@@ -85,5 +83,5 @@ apply to them, plus these to keep parallel work from colliding:
   ranges; mention overlaps in the PR body.
 - Findings outside the task's scope are handed off as issues
   (`[handoff:<area>]`), not fixed in passing.
-- Decisions recorded in issues or `CLAUDE.md` are applied as written. If one
+- Decisions recorded in issues are applied as written. If one
   looks wrong, ask first (`[karar]`); never change it silently.
