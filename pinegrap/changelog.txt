@@ -1160,6 +1160,34 @@
          olan kişilere cari aç" düğmesi silinmiş kişileri saymaz ve
          açılamayanları (adsız kart) söyler.
 
+  [YENİ] [ŞEMA] Logo İşbaşı ile e-Fatura / e-Arşiv gönderimi. Sağlayıcı
+         olarak Logo İşbaşı seçiliyse her satış faturasının ekranında
+         "e-Belge" kartı çıkar: "Logo İşbaşı sağlayıcısına gönder" faturayı
+         İşbaşı'na kaydeder (cari yoksa İşbaşı açar; e-Fatura mı e-Arşiv mi
+         müşterinin VKN'sine göre kendiliğinden belirlenir), "Durumu Sor"
+         GİB numarasını ve ETTN'yi getirir, ardından İşbaşı'nın imzalı PDF'i
+         ve UBL dosyası tek tıkla iner. Kart, sağlayıcıyla yapılan son
+         çağrıları (saat, yol, HTTP kodu, maskeli yanıt) da gösterir; bir
+         hata olduğunda İşbaşı'nın kendi mesajı okunur. Kimlik bilgileri
+         şifreli saklanır, oturum bir gün tutulur — İşbaşı'nın aylık istek
+         kotası boşa harcanmaz. Sağlayıcı günlüğü 30 gün sonra kendini
+         temizler. Not: İnternet satışı e-Arşiv faturasında ödeme türü kodu
+         ve iade/istisna faturaları Logo'nun kod listesi gelince açılır;
+         o güne kadar ekran bunu açıkça söyler. İrsaliye İşbaşı API'sinde
+         yok, PDF olarak kalır.
+
+  [YENİ] e-Belge sağlayıcısı seçimi. Site Ayarları › E-Ticaret › E-Fatura
+         kartının üstündeki "e-Belge Sağlayıcısı (ERP)" bloğunda
+         faturalarınızı e-Fatura / e-Arşiv olarak GİB'e taşıyacak
+         sağlayıcıyı seçersiniz: Paraşüt ya da Logo İşbaşı (ya da kapalı:
+         belgeler PDF kalır). Her sağlayıcının kimlik bilgileri şifreli
+         saklanır, panonun Kaydet'iyle kaydedilir, "Bağlantıyı test et"
+         düğmesi yeni sekmede dener (hiçbir şey kaydetmez); her belge hangi
+         sağlayıcıdan geçtiğini hatırlar, seçim sonradan değiştirilebilir.
+         ERP Ayarları'ndaki Satıcı Bilgileri kartı bu karta bağlantı verir.
+         Sağlayıcı katmanı yeni sağlayıcılara açıktır; gönderimin kendisi
+         sağlayıcı bağlantıları tamamlandıkça devreye girer.
+
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
 

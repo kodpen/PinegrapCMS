@@ -141,6 +141,7 @@ function erp_settings_placeholders_from_data($data, $prefix = '')
 
 $settings_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-erp');
 $contact_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('contact');
+$edoc_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice');
 
 // The names a template may use, grouped the way the data is nested. Kept next
 // to the editor because a placeholder nobody can find is a placeholder nobody
@@ -307,8 +308,10 @@ echo pg_page_shell(array(
                 <div class="card-body">
                     <p class="mb-2">' . lang('The seller title, address and logo printed on the invoice come from the organization settings.') . '
                         <a href="' . h($contact_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Contact') . '</a></p>
-                    <p class="mb-0">' . lang('The seller tax number, tax office and the address the sale was made at are on the ERP card of the commerce settings.') . '
+                    <p class="mb-2">' . lang('The seller tax number, tax office and the address the sale was made at are on the ERP card of the commerce settings.') . '
                         <a href="' . h($settings_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('ERP') . '</a></p>
+                    <p class="mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the commerce settings.') . '
+                        <a href="' . h($edoc_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('E-Invoice') . '</a></p>
                 </div>
             </div>
 

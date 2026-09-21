@@ -370,7 +370,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
 //   ^^__shopping_cart_label^^, ^^__quick_add_label^^,
 //   ^^__special_offer_code_label^^, ^^__special_offer_code_message^^,
 //   ^^__update_button_label^^, ^^__checkout_button_label^^,
-//   ^^__cart_empty_message^^, ^^__reference_code^^, ^^__special_offer_code^^,
+//   ^^__empty_message^^, ^^__reference_code^^, ^^__special_offer_code^^,
 //   ^^__checkout_url^^
 // Static tokens — pre-built HTML (already markup):
 //   ^^__special_offer_code_form^^, ^^__update_button^^, ^^__checkout_button^^,
@@ -611,7 +611,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     $checkout_button_label  = (string)(isset($cfg['checkout_button_label'])  ? $cfg['checkout_button_label']  : lang('Checkout'));
     $next_pid_with_ship     = (int)(isset($cfg['next_page_id_with_shipping']) ? $cfg['next_page_id_with_shipping'] : 0);
     $next_pid_no_ship       = (int)(isset($cfg['next_page_id_without_shipping']) ? $cfg['next_page_id_without_shipping'] : 0);
-    $cart_empty_message     = (string)(isset($cfg['cart_empty_message'])     ? $cfg['cart_empty_message']     : lang('Your cart is empty.'));
+    $empty_message          = (string)(isset($cfg['empty_message'])          ? $cfg['empty_message']     : lang('Your cart is empty.'));
 
     // Persist next-page ids in session for legacy callers (remove_item_from_cart,
     // shopping_cart.php submit handler) that read these slots.
@@ -1306,8 +1306,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // `$form->add_notice()`. Re-added on every render so the notice
     // persists as long as the cart stays empty (Messages render consumes
     // it, but the next render re-adds it if the cart is still empty).
-    if ($cart_count === 0 && $cart_empty_message !== '' && $_pg_cart_form_lf) {
-        $_pg_cart_form_lf->add_notice($cart_empty_message);
+    if ($cart_count === 0 && $empty_message !== '' && $_pg_cart_form_lf) {
+        $_pg_cart_form_lf->add_notice($empty_message);
     }
 
     // ── Next-page redirect URL ─────────────────────────────────────────────
@@ -1403,7 +1403,12 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // Same cursor for the recurring block. Only ever flips false→true because
     // usort() puts every recurring row after every non-recurring one.
     $_pg_prev_rec = false;
-    if ($loop_template !== '' && $cart_count > 0) {
+    // A tree with no loop_area has nowhere to put rows: the whole tree is the
+    // surround and it renders once. Building the rows anyway meant laying out
+    // the entire template per record and then discarding it — every starter
+    // tree carries a loop_area, so this only ever happened to a tree from
+    // before loop_area existed.
+    if ($loop_template !== '' && $static_html !== '' && $cart_count > 0) {
         foreach ($items as $idx => $item) {
             // Qty input emitted as an input-group with attached -/+ steppers.
             // JS (see _pg_qty_stepper_inline_js below) handles the click → input
@@ -1454,7 +1459,11 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 '__item_id'                => (string)(int)$item['item_id'],   // numeric ID, safe
                 '__item_name'              => h($item['name']),                 // products.name (often SKU)
                 '__item_short_description' => h($item['short_description']),    // products.short_description (display title)
-                '__item_description'       => h($item['description']),          // products.full_description (long text)
+                // RAW HTML — products.full_description is the operator's rich
+                // text, printed raw by every classic template and by the
+                // catalog and express-order widgets. short_description above
+                // is plain text and stays escaped.
+                '__item_description'       => (string)$item['description'],
                 '__item_qty'               => (string)$item['qty'],            // numeric, safe
                 '__item_qty_input'         => $qty_input,                       // editable input (legacy token)
                 // Item price tokens — when discount is active, expand to
@@ -1475,8 +1484,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // Pre-rendered strike+new HTML — drop-in for designers
                 // who want the unified discount visual without composing
                 // their own bound spans.
-                '__item_price_block'       => isset($item['unit_price_block']) ? $item['unit_price_block'] : $item['unit_price'],
-                '__item_total_block'       => isset($item['line_total_block']) ? $item['line_total_block'] : $item['line_total'],
+                '__item_price_block_html'  => isset($item['unit_price_block']) ? $item['unit_price_block'] : $item['unit_price'],
+                '__item_total_block_html'  => isset($item['line_total_block']) ? $item['line_total_block'] : $item['line_total'],
                 // Per-item product-form data (a gift card's recipient,
                 // message, delivery date …). Empty for products without
                 // a form. Designer drops `^^__item_form_data_html^^`
@@ -1627,7 +1636,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             foreach ($rkeys as $k) {
                 $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
             }
-            $row_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $row_html);
+            $row_html = pg_sw_sweep_tokens($row_html);
 
             // Auto-append form data when the row HAS form_data_html AND the
             // designer hasn't placed `^^__item_form_data_html^^` in the
@@ -1665,12 +1674,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             // and screen readers would announce the input unlabelled).
             // `name=` is deliberately NOT rewritten: the server matches those
             // verbatim (order_item_<id>_quantity_number_<n>_…).
-            $iter_suffix = '_pgw' . $widget_id . 'r' . $idx;
-            $row_html = preg_replace('/\bid="([^"]+)"/',            'id="$1'              . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/\bfor="([^"]+)"/',           'for="$1'             . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/data-bs-target="#([^"]+)"/', 'data-bs-target="#$1' . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/aria-controls="([^"]+)"/',   'aria-controls="$1'   . $iter_suffix . '"', $row_html);
-            $row_html = preg_replace('/href="#([^"]+)"/',           'href="#$1'           . $iter_suffix . '"', $row_html);
+            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
 
             $loop_rendered .= $row_html;
         }
@@ -1708,7 +1712,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
 
         // URLs + messages
         '__checkout_url'               => h($checkout_url),
-        '__cart_empty_message'         => h($cart_empty_message),
+        '__empty_message'         => h($empty_message),
         '__reference_code'             => h($reference_code),
 
         // Pre-built form / button HTML (NOT h()'d — these ARE HTML)
@@ -1790,7 +1794,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         foreach ($skeys as $k) {
             $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
         }
-        $rendered = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $rendered);
+        $rendered = pg_sw_sweep_tokens($rendered);
         // Same applied_offers placeholder substitution as above.
         if (strpos($rendered, '<!--pg-applied-offers-placeholder-->') !== false) {
             $rendered = str_replace('<!--pg-applied-offers-placeholder-->', $applied_offers_html, $rendered);
@@ -1803,7 +1807,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     foreach ($skeys as $k) {
         $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
     }
-    $static_html = preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', '', $static_html);
+    $static_html = pg_sw_sweep_tokens($static_html);
 
     $body = str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
     // Replace the applied-offers content type marker with the live alert HTML.
@@ -2326,7 +2330,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         'payment'                => $payment_html,            // legacy full block
         'payment_methods'        => _eo_render_payment_methods_only($_eo_lf),
         'installment'            => _eo_render_installment_box($_eo_lf),
-        'terms'                  => _eo_render_terms_section($_eo_lf, $cfg),
+        'terms'                  => _eo_render_terms_section($_eo_lf),
         'totals'                 => $totals_html,
         'saved_cart_link'        => _eo_render_saved_cart_link(isset($cfg['cart_section_label']) ? (string)$cfg['cart_section_label'] : ''),
         // Address-book select — surfaces distinct billing addresses the
@@ -2586,7 +2590,13 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $loop_html = '';
             foreach ($items as $_it) {
                 $item_vars = _eo_compute_item_tokens($_it, $widget_id, $form_id, $_eo_fmt, $_eo_lf, $gift_card_data, $base_path, $sw_dir, $csrf_token, $eo_back_url);
-                $loop_html .= _eo_replace_tokens($tmpl_html, $item_vars);
+                $row_html  = _eo_replace_tokens($tmpl_html, $item_vars);
+                // Same row, repeated: without this every item card carries the
+                // same ids and a collapse in one opens another's panel. The
+                // three ids this widget's own script looks up (card_number,
+                // agree_terms, the form) all live outside the loop.
+                $row_html  = pg_sw_uniquify_row_ids($row_html, $widget_id, isset($_it['item_id']) ? (int)$_it['item_id'] : 0);
+                $loop_html .= $row_html;
             }
             $designed_body = str_replace('<!--pg-loop-slot-->', $loop_html, $designed_body);
         } else {
@@ -2607,9 +2617,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', '', $designed_body);
         }
 
-        // ── 5. Static token replacement: subtotal_formatted, total_formatted,
-        // cart_count, currency_symbol, form_id, … See _eo_compute_static_tokens
-        // for the full list. These resolve OUTSIDE the loop.
+        // ── 5. Static token replacement: __cart_subtotal, __cart_total,
+        // __cart_count, __currency_symbol, __form_id, … See
+        // _eo_compute_static_tokens for the full list. These resolve OUTSIDE
+        // the loop.
         $static_vars = _eo_compute_static_tokens(array(
             'subtotal_cents'             => $sub_cents,
             'tax_cents'                  => $tax_cents,
@@ -2629,6 +2640,13 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             'needs_shipping'             => (bool)$needs_shipping,
         ));
         $designed_body = _eo_replace_tokens($designed_body, $static_vars);
+
+        // Every substitution is done by here — the per-item loop and the
+        // recipient loop were spliced in above, the static values just now.
+        // Whatever identifier is still standing is one nothing answered, and
+        // it is the visitor who would otherwise read it: this renderer was the
+        // only one that let a raw ^^token^^ reach the browser.
+        $designed_body = pg_sw_sweep_tokens($designed_body);
 
         // ── 5b. Auto-inject upsell + applied offers when designer\'s saved
         // tree has no eo_upsell_offers / eo_applied_offers binding. Without

@@ -2005,6 +2005,140 @@ ERP oradaki hiçbir dosyayı düzenlemez — eksik bir kanca gerekirse
 - **Uzun `tools/lint.php`:** cihaz bağlantısı yavaş, 175 sn'de bitmeyebilir;
   `nohup … > $HOME/lint_out.txt &` ile arka planda koşturup sonra oku.
 
+### e-Belge sürücü katmanı (2026-09-20, migration 4.61)
+
+`includes/erp/edoc/registry.php` tek kapı; sağlayıcı dosyaları `edoc/<kod>.php`,
+fonksiyon öneki `erp_edoc_<kod>_`. **Sağlayıcı adı modülün geri kalanında
+geçmez:** gönderen kod `erp_edoc_supports('send_invoice')` sorar,
+`erp_edoc_call('send_invoice', array($invoice, $lines, $options))` çağırır.
+
+- **Yeni sağlayıcı = bir dosya + `erp_edoc_drivers()`'a bir satır.** Kod
+  (`parasut`, `isbasi`) `erp_edoc_providers.provider` ve
+  `erp_invoices.edoc_provider`'da saklanır — bir kez belge geçince değişmez.
+- Sözleşme: `info()` (label, description, docs_url, capabilities, settings_note),
+  `fields()` (name, label, type text|password, help, required), `ping($credentials)`
+  → `['success','message','details']` (`details['pending']=true` = "henüz
+  bağlanmıyor, ama kurulum tamam" — ekran bunu bilgi rengiyle basar),
+  `check_taxpayer($vkn)` → is_einvoice_user + aliases, `send_invoice`, `poll`,
+  `cancel_invoice`, `fetch_document`, `send_waybill` → hepsi
+  `['success' => bool, 'error' => string, …]`. Tanımlanmayan işlem = desteklenmiyor.
+- **Kimlikler** `erp_edoc_providers.credentials_enc` ("cipher:iv", AES-256-CBC,
+  `encrypt_string_with_iv` / `decode_ssl_keys`, `ENCRYPTION_KEY`) — Paraşüt
+  sürücüsü **alan bildirmez**, `PARASUT_*` sabitlerini ve `parasut_get_token()`'ı
+  kullanır (Faz -1 kartı kaynak). Parola tipi alan boş gönderilince kayıtlı
+  değer korunur (`erp_edoc_credentials_save`). Kimlikler `config`'e **yazılmaz**
+  (satır boyutu, 4.55 notu).
+- **Aktif sağlayıcı** `is_active=1` satırı, istek başına bir kez okunur
+  (`erp_edoc_active()`); 4.61 yoksa `ERP_PARASUT_ENABLED` geriye uyumluluk.
+  Tek aktif: iki sağlayıcı aynı belgeyi iki kez GİB'e gönderir.
+- `erp_edoc_test()` ping'i çağırır **ve** sonucu satıra yazar
+  (`checked_at/check_status/check_message`) — ayarlar kartı "Son kontrol"
+  satırını buradan basar.
+- Şema: `erp_invoices` / `erp_waybills` `edoc_provider`, `edoc_external_id`;
+  `erp_edoc_queue.provider`, `external_job_id`. `parasut_*` sütunları kalır;
+  **yeni sağlayıcıya özel sütun açılmaz**, sağlayıcı kendi ek verisini
+  `erp_edoc_providers.settings` (JSON) ya da `edoc_external_id`'de taşır.
+- Ayarlar kartı **Site Ayarları → E-Ticaret → `pgset-invoice` (E-Fatura)**,
+  kartın üst bloğu: `includes/settings/prep.php` `$output_erp_edoc_options`
+  (radyo `edoc_provider` = `''|parasut|isbasi`, `collapse-switcher` +
+  `data-bs-target="#edoc_fields_<kod>"`, alanlar `edoc_<kod>_<alan>`),
+  `commerce.php` basar, `commerce.save.php` panonun tek Kaydet'inde
+  kaydeder (yalnız seçilen sağlayıcının alanları; boş parola kayıtlıyı korur;
+  seçim değişince `erp_edoc_activate` + `log_activity`). Tablo yoksa
+  (`waf_table_has_column('erp_edoc_providers','provider')`) blok basılmaz.
+  "Bağlantıyı test et" = `get_erp_edoc_test.php` (POST, `formaction` ile aynı
+  form, yeni sekme; `validate_erp_access(...,'settings')` + token; yazılan
+  kutu kayıtlının üstüne biner, **kaydetmez**; kutulara dokunulmadıysa
+  `erp_edoc_test()` — "Son kontrol" satırı yalnız kayıtlı kimlikle yapılan
+  testi yazar). `erp_settings.php`'de kart **yok**, Satıcı Bilgileri kartında
+  `pg_settings_return_url('commerce','pgset-invoice')` bağlantılı not var.
+  Kartı `erp_settings.php`'ye geri koymayın; ERP'ye ait ayarın ticaret
+  panosunda durması Erdal'ın kararı (2026-09-20).
+- **Uç adresi tahmin edilmez.** İşbaşı sürücüsü belgeden yazıldı
+  (2026-09-21, aşağıda); Paraşüt için `apidocs.parasut.com` açık,
+  sandbox/kimlik bekleniyor.
+- Faz 3 işi artık "Paraşüt sürücüsünü doldurmak"; İşbaşı sürücüsü
+  `send_invoice`/`poll`/`fetch_document`/`check_taxpayer` bilir, fatura
+  ekranındaki "e-Belge" kartı ondan sonra kondu.
+
+### İşbaşı sürücüsü, e-Belge kartı, `erp_edoc_log` (2026-09-21, migration 4.62)
+
+Okunan belge `docs/_isbasi_api_notlari.md` — **her uç adresi ve alan adı
+oradan**; belgede olmayan bir şey gerekince orada "Doğrulanmadı" listesine
+yazılır, koda tahmin girmez.
+
+- **Registry'nin ortak parçaları** (`registry.php` sonu): `erp_edoc_settings($code)`
+  / `_save($code, $values)` (`erp_edoc_providers.settings` JSON; `null`
+  siler), `erp_edoc_session($code)` / `_save($code, $session)` (JSON AES ile
+  `settings.session_enc`'te; `expires_at` geçmişse boş döner),
+  `erp_edoc_http($method, $url, $headers, $body, $timeout)` (curl;
+  `pg_curl_tls()` → `CURL_CA_BUNDLE`; **güvensiz geri dönüş yok**; dönüş
+  `http_code, body(array|null), raw, error, duration_ms`),
+  `erp_edoc_mask($text)`, `erp_edoc_log($provider, $doc_type, $doc_id,
+  $method, $url, $result, $request)` (maskeli 500 karakterlik özetler, 30
+  gün, 1/50 süpürme; sorgu dizesi değerleri `…`), `erp_edoc_log_for($type,
+  $id, $limit)`, `erp_edoc_invoice_party($invoice)` (kopya alanları
+  `account_*`, yoksa canlı kart). **Yeni sürücü kendi curl'ünü yazmaz.**
+- **`edoc/service.php`** (bootstrap yükler) fatura satırının tek sahibi:
+  `erp_edoc_invoice_can_send($invoice)` → `ok, reason, provider`;
+  `erp_edoc_invoice_send($id, $user_id)` (önce `edoc_status='sending'`,
+  sonra sürücü; başarı → `edoc_provider`, `edoc_external_id`, `sent`,
+  `edoc_sent_at`; hata → `error` + `edoc_error`), `erp_edoc_invoice_poll($id)`
+  (`gib_number`, `gib_uuid`, durum; durum değişince olay),
+  `erp_edoc_invoice_document($id, 'pdf'|'xml')`, `erp_edoc_status_labels()`.
+  Gönderim kapısı: aktif sağlayıcı + `send_invoice`, `direction=sales`,
+  durum taslak/iptal değil, `edoc_status` ∈ none/error/rejected. **Sorular
+  `edoc_provider`'a gider**, aktif sağlayıcıya değil.
+- **İşbaşı sürücüsü sözleşmesi** (`edoc/isbasi.php`): alanlar `api_key`,
+  `username`, `password`, `entry_url` (boş = `ERP_EDOC_ISBASI_ENTRY_URL`
+  `https://isbasimw.isbasi.com`). Akış `getplatform` (apiKey başlığı,
+  `{isonedayvalidtoken:false, username, password}` → `data.baseUrl`) →
+  `integrationLogin` → belirteç `accessToken|access_token|token|Token`,
+  kiracı `tenantId|…` **esnek okunur** (`erp_edoc_isbasi_pick`, iç içe bir
+  seviye); bulunamazsa hata alan adlarını sayar. Oturum 23 saat, kimlik
+  parmak izi (`erp_edoc_isbasi_fingerprint`) değişince düşer; 401 → bir
+  yeniden giriş. Her çağrı `erp_edoc_isbasi_request($method, $path, $body,
+  $context)` ile (`context`: doc_type/doc_id günlük için, content_type /
+  accept üst yazımı — e-belge uçları `application/json-patch+json` +
+  `text/plain` ister). Başarı zarfı `erp_edoc_isbasi_ok`: 2xx + `isError`
+  false + `code` ∈ {0, 200}. Platform çağrısı 401/403 dönerse login
+  denenmez (aynı hatayı iki kez yazmamak için).
+- **`send_invoice` gövdesi** `erp_edoc_isbasi_invoice_payload`: `SimpleInv`;
+  `customer` kopyadan (`isPerson` = kart ya da 11 hane; bireyselde son
+  sözcük soyad), `invoiceDate` `Y-m-d H:i:s` (öğlen 12:00), `currency`
+  TRY → **"TL"**, `vatIncluded=false`, satır `price` = `unit_price/100`,
+  `discountRate` varsa `discountValue` 0, `productDetail.itemCode` =
+  `products.code` (SKU, 50 hane) yoksa `PG-<id>`, `itemType` 1 ürün / 2
+  hizmet, `unit` Türkçe ad (`erp_edoc_isbasi_unit_name`), tevkifat
+  `withholding {code, rateText "7/10"}`, `vatExemptionCode`. İnternet
+  satışı: `eGovernmentInvoice {invoiceTypeForEinvoice: 3,
+  eArchivePaymentDate, eArchivePaymentAgent (ödeme yöntemi etiketi),
+  website}` + `sendingDate` + `shipmentAgentItem {name=carrier_title,
+  identifier=carrier_vkn, firmType 11 hane → 0}`; taşıyıcı yoksa hata.
+  **`eArchivePaymentType` yalnız `settings.payment_type_codes[ödeme_kodu]`
+  varsa** gider. İade/proforma ve SATIS dışı `invoice_type` → açık hata
+  (kod belgede yok). Yanıt `data.invoiceId` → `external_id`.
+- **`poll`:** `GET invoices/{id}` (numara; `invoiceNumber`) + `POST
+  einvoices/GetOutgoingInvoiceDataList` (fatura tarihi −1/+40 gün, 100
+  satır, `salesInvoiceId` eşleşmesi → `uuId` ETTN, `status`, `rejectNot`);
+  durum sözcükleri: red/reject/iptal → `rejected`, hata/error/başarısız →
+  `error`, ETTN varsa `accepted`, yoksa `sent`.
+- **`fetch_document`:** pdf → `DocumentDatawithuuid?uuid=<ETTN>&fileFormat=PDF`
+  (ETTN yoksa "önce durumu sorun"), xml → `DocumentUblData?invoiceId=&type=1`;
+  `data.content` base64.
+- **Ekran:** `edit_erp_invoice.php` `$output_edoc` kartı (Satırlar'dan
+  sonra); POST `erp_action=edoc_send|edoc_poll` → `go()`;
+  `get_erp_edoc_document.php?id=&format=pdf|xml` (xml her zaman indirme).
+  Düğme metni sağlayıcı adını taşır ("Logo İşbaşı sağlayıcısına gönder").
+- **Olay** `erp.invoice.edoc_changed` (`erp_webhook_events`); `erp_event_invoice`
+  yükünde `edoc {provider, status, gib_number, gib_uuid}` her fatura olayında.
+- Şema 4.62: `erp_parasut_log` → **`erp_edoc_log`** + `provider`,
+  `idx_provider`; `install/index.php get_tables()` her iki adı ve
+  `erp_edoc_providers`'ı listeler. `erp_parasut_log` adı kodda **geçmez**.
+- Dev gerçeği (2026-09-21): yer tutucu anahtarla `getplatform` → 403
+  `"API yetkilendirilmedi"` — uç canlı, zarf doğru; gerçek anahtar Erdal'ın
+  elinde olacak, kartta kendisi girer.
+
 ## Dosya Yapısı (Önemli Dosyalar)
 
 | Dosya | Açıklama |
@@ -2373,6 +2507,8 @@ eklendi.
 | `2026.4.1` | `submitted_form_view_stats` (InnoDB, günlük kova), `config.sfv_rollup_cutover` / `_cursor` / `_done` + parçalı backfill |
 | `2026.4.2` | Birleştirme: 4.2–4.17 arası on altı çalışma numarası. Adımlar için `install/index.php` içindeki `upgrade_2026_4_2_*` fonksiyonlarına bakın |
 | `2026.4.3` | `page.noindex` / `page.nofollow` (sayfa bazında arama motoru dizini) |
+| `2026.4.4` (4.62) | `_erp_edoc_log`: `erp_parasut_log` tablosu `erp_edoc_log` olarak yeniden adlandırılır (yoksa oluşturulur) + `provider VARCHAR(20)`, `KEY idx_provider (provider, created_at)`. Yeniden koşturulabilir; 4.61'in ardından |
+| `2026.4.4` (4.61) | `_erp_edoc_providers`: yeni tablo `erp_edoc_providers` (provider UNIQUE, is_active, credentials_enc, settings, checked_at, check_status, check_message); `erp_invoices` ve `erp_waybills` `edoc_provider VARCHAR(20)`, `edoc_external_id VARCHAR(64)`; `erp_edoc_queue.provider`, `external_job_id`. Veri: `config.erp_parasut_enabled = 1` ve tablo boşsa Paraşüt aktif satır. Yeniden koşturulabilir; 4.60'ın ardından |
 | `2026.4.4` (4.60) | `_erp_document_templates`: `config.erp_waybill_template`, `erp_reconciliation_template` (`MEDIUMTEXT NULL`) — irsaliye ve mutabakat mektubu şablonları (NULL = yerleşik dosya, faturanınki gibi). `install_add_column`, yeniden koşturulabilir; 4.59'un ardından |
 | `2026.4.4` (4.59) | `_erp_walkin_account`: `config.erp_walkin_account_id INT UNSIGNED (0)` — sıcak satış carisi (`ERP_WALKIN_ACCOUNT_ID`). `install_add_column`, yeniden koşturulabilir; 4.58'in ardından |
 | `2026.4.4` (4.58) | `_erp_line_offers`: `erp_invoice_items.offer_id INT UNSIGNED (0)`, `offer_discount_rate DECIMAL(6,3) (0.000)` — satıra uygulanan kampanya ve oranı (oran kopyalanır; teklif sonradan değişir). `install_add_column`, yeniden koşturulabilir; 4.57'nin ardından |
@@ -5041,6 +5177,50 @@ tarih alanı seçilince Veri Bağla satırının altında biçim kutusu açılı
 
 ---
 
+### Token sözlüğü — iki ad alanı ve üçüncü kapı (2026.4.4)
+
+Bir token'ın adı hangi ad alanına ait olduğunu söyler ve ikisinin sınırı
+kuraldır, kaza değil:
+
+- **Çıplak ad** (`^^reference_code^^`, `^^submitted_date_and_time^^`,
+  `^^email_address^^`) → gönderilen formun **sistem alanları**. Klasik
+  ekranlar bu alanları tam o adlarla çözüyor; kayıt
+  `get_standard_fields_for_view()` (`includes/fn/forms.php`). Sistem widget'ı
+  kendi adını uydurmaz, bu kayda karşı çözer.
+- **`__` önekli ad** (`^^__cart_subtotal^^`, `^^__item_price^^`) → widget'ın
+  hesapladığı durum: fiyatlar, sayılar, adresler, renderer'ın ürettiği
+  bloklar. Önek, ziyaretçinin bir form alanına verebileceği adla yarışmayı
+  engeller — `^^form_id^^` bunu bir süre yaptı.
+
+Aynı değer iki widget'ta aynı adı taşır. Sepet, hızlı sipariş ve sipariş
+görüntüleme aynı sepeti gösterdiği için aynı sözlüğü kullanır
+(`__cart_subtotal`, `__item_price`, `__item_total`, `__item_url`,
+`__item_description`). Boş durumun iki hâli iki addır ve ayar anahtarıyla
+token aynı adı taşır: `empty_message` / `^^__empty_message^^` (liste boş),
+`not_found_message` / `^^__not_found_message^^` (istenen kayıt yok).
+
+Kaçış tek yerde: `pg_sw_escape_token_values()` haritanın tamamını kaçırır,
+**ham HTML olan anahtarlar `pg_sw_raw_token_keys()` içinde adlarıyla
+sayılır** (operatörün zengin metni, indirimde işaretlemeye açılan fiyatlar,
+renderer'ın ürettiği bloklar). Tersi — her renderer'ın kendi değerlerinden
+hangisini saracağını hatırlaması — unutanın bozduğu düzendi.
+`products.full_description` ham, `short_description` kaçışlı: klasik
+şablonların hepsi böyle basıyor.
+
+Döngü satırlarının kimlikleri `pg_sw_uniquify_row_ids()` ile tekilleşir ve
+kimlik gösteren yedi nitelik (`id`, `for`, `data-bs-target`,
+`aria-controls`, `aria-labelledby`, `href="#…"`, `data-bs-parent`) birlikte
+taşınır; biri geride kalırsa akordeon başka satırı kapatır.
+
+**`tools/check_bindings.php`** bu sözlüğün iki ucunu karşılaştırır:
+tasarımcının sunduğu her `__token` bir renderer tarafından üretiliyor mu, ve
+üretilen her token bir açılır listede var mı. İkincisi önemli — listede
+olmayan token elle "Özel"den yazılmak zorunda kalır, uydurma token yazımları
+depoya bu yoldan girdi. Muaf olan iki şekil: `*_inner_html` (bölüm bağlama
+geçişi ağaca kendisi yazar) ve `__link_label` (renderer düğüm başına
+`__link_label_N`'e açar).
+
+---
 ## Görsel Tasarımcı — Aynı Anda İki Kişi (2026.4.4)
 
 Çekirdek `includes/designer_collab.php`; uç noktalar `api.php` →

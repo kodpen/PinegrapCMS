@@ -48,3 +48,5 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/waybills.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/reconciliation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cashflow.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/export.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');

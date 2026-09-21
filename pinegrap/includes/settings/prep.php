@@ -361,6 +361,84 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         ? lang('The secret and the password are stored and are not shown. Leave these boxes empty to keep them.')
         : lang('The secret and the password are stored encrypted and are never shown again after saving.');
     $parasut_company_id = $row['parasut_company_id'] ?? '';
+
+    // The e-document provider (4.61): which one carries the ERP's invoices,
+    // and each provider's own fields. Drawn only once the provider table is
+    // there; the radio group uses the pane's collapse switcher, so picking a
+    // provider shows its block and hides the others without a script.
+    $output_erp_edoc_options = '';
+    $erp_edoc_installed = waf_table_has_column('erp_edoc_providers', 'provider');
+
+    if ($erp_edoc_installed) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+        $erp_edoc_active = erp_edoc_active();
+        $erp_edoc_capability_labels = erp_edoc_capability_labels();
+
+        $output_erp_edoc_options = '
+                                                            <div class="form-check">
+                                                                <input class="form-check-input collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
+                                                                <label class="form-check-label" for="edoc_provider_none"><b>' . lang('Off') . '</b>
+                                                                    <div class="form-text mt-0">' . lang('Invoices and delivery notes are printed as PDF and sent to the tax authority by other means.') . '</div>
+                                                                </label>
+                                                            </div>
+                                                            <div id="edoc_fields_none" style="display:none"></div>';
+
+        foreach (erp_edoc_drivers() as $erp_edoc_code => $erp_edoc_file) {
+            $erp_edoc_info = erp_edoc_info($erp_edoc_code);
+
+            if ($erp_edoc_info === null) {
+                continue;
+            }
+
+            $erp_edoc_row = erp_edoc_provider_row($erp_edoc_code);
+            $erp_edoc_stored = erp_edoc_credentials($erp_edoc_code);
+            $erp_edoc_badges = '';
+
+            foreach ($erp_edoc_info['capabilities'] as $erp_edoc_capability) {
+                if (isset($erp_edoc_capability_labels[$erp_edoc_capability])) {
+                    $erp_edoc_badges .= ' <span class="badge text-bg-light border fw-normal">' . h($erp_edoc_capability_labels[$erp_edoc_capability]) . '</span>';
+                }
+            }
+
+            $erp_edoc_status = '';
+
+            if (is_array($erp_edoc_row) && ((int) $erp_edoc_row['checked_at'] > 0)) {
+                $erp_edoc_status = '<div class="small mt-1 ' . (($erp_edoc_row['check_status'] === 'ok') ? 'text-success' : 'text-body-secondary') . '"><i class="bi ' . (($erp_edoc_row['check_status'] === 'ok') ? 'bi-check-circle' : 'bi-info-circle') . ' me-1"></i>'
+                    . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(date('d.m.Y H:i', (int) $erp_edoc_row['checked_at']), (string) $erp_edoc_row['check_message'])))) . '</div>';
+            }
+
+            $erp_edoc_fields = '';
+
+            foreach (erp_edoc_fields($erp_edoc_code) as $erp_edoc_field) {
+                $erp_edoc_name = 'edoc_' . $erp_edoc_code . '_' . $erp_edoc_field['name'];
+                $erp_edoc_has_value = (trim((string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? '')) !== '');
+                $erp_edoc_secret = ($erp_edoc_field['type'] === 'password');
+
+                $erp_edoc_fields .= '
+                                                                <div class="pg-f-md">
+                                                                    <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . (!empty($erp_edoc_field['required']) ? ' <span class="text-danger">*</span>' : '') . '</label>
+                                                                    <input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . ($erp_edoc_secret ? '' : h((string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? ''))) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '"' . (($erp_edoc_secret && $erp_edoc_has_value) ? ' placeholder="' . h(lang('Saved')) . '"' : '') . ' />'
+                    . (($erp_edoc_field['help'] !== '') ? '<div class="form-text">' . h($erp_edoc_field['help']) . '</div>' : '') . '
+                                                                </div>';
+            }
+
+            $output_erp_edoc_options .= '
+                                                            <div class="form-check">
+                                                                <input class="form-check-input collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
+                                                                <label class="form-check-label" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '
+                                                                    <div class="form-text mt-0">' . h($erp_edoc_info['description'])
+                                                                        . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '') . '</div>'
+                                                                    . $erp_edoc_status . '
+                                                                </label>
+                                                            </div>
+                                                            <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-4 mb-3" style="display:none">
+                                                                ' . (($erp_edoc_info['settings_note'] !== '') ? '<div class="form-text mb-2">' . h($erp_edoc_info['settings_note']) . '</div>' : '') . '
+                                                                <div class="row gy-3">' . $erp_edoc_fields . '
+                                                                </div>
+                                                            </div>';
+        }
+    }
     $erp_enabled = $row['erp_enabled'] ?? 0;
     $erp_enabled_checked = ($erp_enabled == 1) ? ' checked="checked"' : '';
     $erp_default_series = $row['erp_default_series'] ?? 'PGF';

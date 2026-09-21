@@ -1,0 +1,179 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Checks that the visual designer's data-binding dropdowns and the system
+ * widget renderers agree on the token vocabulary.
+ *
+ * Two contracts are enforced:
+ *   1. Every `__token` a dropdown offers is produced by a renderer. An option
+ *      nobody answers binds an element to nothing; the designer sees a
+ *      sensible label and gets an empty node.
+ *   2. Every `__token` a renderer produces is offered by a dropdown. A token
+ *      missing from the list has to be typed by hand through "Custom", which
+ *      is how invented spellings (`__subject`, `__submitted_at`) got into
+ *      saved trees in the first place.
+ *
+ * Not every token belongs in a dropdown, so two shapes are exempt:
+ *   • `*_inner_html` — the section-binding pass writes these into the tree
+ *     itself; the designer marks a wrapper, never picks the token.
+ *   • `__link_label` — a sentinel the catalog renderer expands into
+ *     `__link_label_0`, `__link_label_1`, … one per bound node.
+ *
+ * Usage:  php tools/check_bindings.php [directory]     (default: pinegrap/)
+ * Exit:   0 when both sides agree, 1 otherwise.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (PHP_SAPI !== 'cli') {
+	http_response_code(403);
+	exit('Forbidden');
+}
+
+$designer_file = 'assets/js/style_designer.js';
+
+$renderer_glob = 'includes/fn/widgets*.php';
+
+// Tokens a dropdown is not expected to carry, and why.
+$exempt_suffix = '_inner_html';   // written by the section-binding pass
+$exempt_exact  = array('__link_label');   // sentinel, expands per bound node
+
+$root = isset($argv[1]) ? rtrim($argv[1], '/\\') : dirname(__DIR__) . '/pinegrap';
+
+$root_real = realpath($root);
+
+if ($root_real === false) {
+	fwrite(STDERR, "Directory not found: $root\n");
+	exit(1);
+}
+
+// ── What the renderers produce ──────────────────────────────────────────
+// Four shapes, because the renderers build their maps four ways: a literal
+// map entry, the same with the carets baked into the key, a direct
+// str_replace, and a later conditional assignment onto the built map.
+$emitted = array();
+
+$renderer_patterns = array(
+	"/'(__[a-z0-9_]+)'\s*=>/",
+	"/'\^\^(__[a-z0-9_]+)\^\^'\s*=>/",
+	"/str_replace\('\^\^(__[a-z0-9_]+)\^\^/",
+	"/\\\$[A-Za-z_][A-Za-z0-9_]*\['(__[a-z0-9_]+)'\]\s*=[^=>]/",
+);
+
+$renderer_files = glob($root_real . '/' . $renderer_glob);
+
+if (!$renderer_files) {
+	fwrite(STDERR, "No renderer files matched: $renderer_glob\n");
+	exit(1);
+}
+
+foreach ($renderer_files as $file) {
+
+	$source = file_get_contents($file);
+	$short  = basename($file);
+
+	foreach ($renderer_patterns as $pattern) {
+
+		if (preg_match_all($pattern, $source, $matches)) {
+
+			foreach ($matches[1] as $token) {
+				$emitted[$token][$short] = true;
+			}
+
+		}
+
+	}
+
+}
+
+// ── What the designer offers ────────────────────────────────────────────
+// Each palette is a `var SW_…_TOKEN_GROUPS = [ … ];` literal; the options are
+// `['__token', label]` pairs inside it. Bracket-match to the palette's end so
+// a nested array doesn't cut the scan short.
+$offered = array();
+
+$designer_source = file_get_contents($root_real . '/' . $designer_file);
+
+if ($designer_source === false) {
+	fwrite(STDERR, "Designer file not found: $designer_file\n");
+	exit(1);
+}
+
+$palette_re = '/var (SW_[A-Z_]*TOKEN[A-Z_]*|SW_STANDARD_FIELD_OPTIONS|SW_BUILTIN_FIELD_OPTIONS'
+            . '|SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS)\s*=\s*\[/';
+
+preg_match_all($palette_re, $designer_source, $palettes, PREG_OFFSET_CAPTURE);
+
+foreach ($palettes[0] as $index => $palette) {
+
+	$name  = $palettes[1][$index][0];
+	$start = $palette[1] + strlen($palette[0]) - 1;   // the opening bracket
+	$depth = 0;
+	$at    = $start;
+	$limit = strlen($designer_source);
+
+	while ($at < $limit) {
+
+		if ($designer_source[$at] === '[') {
+			$depth++;
+		} elseif ($designer_source[$at] === ']') {
+			$depth--;
+			if ($depth === 0) break;
+		}
+
+		$at++;
+
+	}
+
+	$body = substr($designer_source, $start, $at - $start);
+
+	if (preg_match_all("/\['(__[a-z0-9_]+)'/", $body, $matches)) {
+
+		foreach ($matches[1] as $token) {
+			$offered[$token][$name] = true;
+		}
+
+	}
+
+}
+
+// ── Compare ─────────────────────────────────────────────────────────────
+$problems = 0;
+
+foreach ($offered as $token => $palettes_using) {
+
+	if (isset($emitted[$token])) continue;
+	if (in_array($token, $exempt_exact, true)) continue;
+
+	echo "OFFERED  $token\n";
+	echo "         no renderer produces it; offered by: " . implode(', ', array_keys($palettes_using)) . "\n";
+	$problems++;
+
+}
+
+foreach ($emitted as $token => $files_using) {
+
+	if (isset($offered[$token])) continue;
+	if (in_array($token, $exempt_exact, true)) continue;
+	if (substr($token, -strlen($exempt_suffix)) === $exempt_suffix) continue;
+
+	echo "EMITTED  $token\n";
+	echo "         in no dropdown, so it has to be typed by hand; produced by: "
+	   . implode(', ', array_keys($files_using)) . "\n";
+	$problems++;
+
+}
+
+echo "\nRenderers produce " . count($emitted) . " token(s); the designer offers " . count($offered) . ".\n";
+
+if ($problems > 0) {
+	echo "FAILED: $problems token(s) known to one side only.\n";
+	exit(1);
+}
+
+echo "OK: both sides carry the same tokens.\n";
+exit(0);

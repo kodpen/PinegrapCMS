@@ -402,7 +402,15 @@ $pg_settings_cards[] = '
                 ' . lang('E-Invoice') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-3">' . (($output_erp_edoc_options !== '') ? '
+                    <div class="col-12">
+                        <div class="form-label">' . lang('e-Document Provider') . ' <span class="text-body-secondary small">(' . lang('ERP') . ')</span></div>
+                        <div class="form-text mb-2">' . lang('Where the ERP\'s invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.') . '</div>
+                        ' . $output_erp_edoc_options . '
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" formaction="get_erp_edoc_test.php" formmethod="post" formtarget="_blank"><i class="bi bi-plug me-2"></i>' . lang('Test the connection') . '</button>
+                        <div class="form-text">' . lang('Tries the provider picked above with what is typed here (or, for a box left empty, what is stored). Save the settings to keep the credentials.') . '</div>
+                    </div>
+                    <div class="col-12"><hr class="my-1"></div>' : '') . '
                     <div class="col-12">
                                                             <div class="form-check form-switch">
                                                                 <input value="1"' . $enable_parasut_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="enable_parasut" name="enable_parasut" data-bs-target="#ecommerce_parasut_configration_row"/>

@@ -41,6 +41,233 @@ birleştirmesine aittir. Gerekçe kaydı olarak oldukları gibi bırakıldılar.
 
 ---
 
+## 2026.4.4 — Logo İşbaşı sürücüsü belgeden yazıldı; faturada "e-Belge" kartı; sağlayıcı günlüğü `erp_edoc_log` (migration 4.62, 2026-09-21)
+
+**Belirti.** 4.61 sürücü katmanını ve İşbaşı kartını koydu ama İşbaşı
+sürücüsü "belgeler gelince yazılır" diyordu; belgeler geldi (Erdal
+`developers.isbasi.com`'a iç tarayıcıda oturum açtı). Fatura ekranında
+"e-belge gönder" yoktu — kural, ilk sürücü `send_invoice` öğrenince
+konmasıydı. Sağlayıcı çağrılarının hiçbir izi kalmıyordu: 4.43'ün
+`erp_parasut_log` tablosu vardı ama hiçbir kod yazmıyordu ve adı tek
+sağlayıcının adıydı.
+
+**Belgeden okunanlar** `docs/_isbasi_api_notlari.md`'de (Swagger 2.0
+`host: isbasimw.isbasi.com`; elle düzenlenmiş, yol adları sorgu dizesi
+taşıyor, JSON'da `: null,` artıkları var — Redoc basıyor, `JSON.parse`
+basmıyor). Özet: tek hesaplı giriş = `POST user/getplatform` (apiKey
+başlığı; `data.baseUrl` asıl API adresi) → `POST user/integrationLogin`
+(username/password → accessToken + tenantId; **yanıt şeması belgede yok**);
+her çağrı `apiKey`, `Authorization: Bearer`, `tenantId`, `UserName`,
+`UserEmail`, `Lang`, `DeviceType`; token 1 gün; kota **3000 okuma / 7000
+yazma / ay**. Fatura `POST invoices/integrationInvoices` (`SimpleInv`;
+cari yoksa İşbaşı açar; e-Fatura/e-Arşiv ayrımı VKN'ye göre otomatik) →
+`data.invoiceId`; durum `GET invoices/{id}` + `POST
+einvoices/GetOutgoingInvoiceDataList` (`uuId` = ETTN, `status`,
+`rejectNot`, `salesInvoiceId`); PDF `GET
+einvoices/DocumentDatawithuuid?uuid=&fileFormat=PDF` (base64), UBL `GET
+einvoices/DocumentUblData?invoiceId=&type=1`; mükellef `GET
+user/gibUser?tcknVkn=` (pkList/gbList alias). **İrsaliye kaydetme ucu
+yok**, e-Arşiv **iptal ucu yok** (DELETE yalnız taslak).
+
+**Çözüm.**
+
+- **`includes/erp/edoc/isbasi.php`** yeniden yazıldı: `ping` gerçek giriş
+  (platform + login; yanıtta belirteç bilinen adlarda aranır, bulunmazsa
+  **alan adları** hatada sayılır — ilk gerçek testte şema öğrenilir),
+  `check_taxpayer` (gibUser; 404 = mükellef değil), `send_invoice`
+  (SimpleInv: cari kopyadan, satırlar kuruş → ondalık, `vatIncluded=false`,
+  `currency` TRY → "TL", tevkifat `code` + `rateText` "7/10", KDV istisna
+  kodu; internet satışında `invoiceTypeForEinvoice=3`, `website`,
+  `eArchivePaymentDate/Agent`, `sendingDate`, `shipmentAgentItem` =
+  `carrier_title/carrier_vkn`), `poll` (numara + ETTN + durum; İşbaşı'nın
+  durum sözcükleri red/hata/kabul olarak okunur), `fetch_document` (pdf |
+  xml). Dördüncü alan **"Giriş adresi"** (boş = `isbasimw.isbasi.com`).
+  Oturum şifreli (`settings.session_enc`), kimlik parmak izi değişince
+  düşer, 401'de bir kez yeniden giriş. **Tahmin edilmeyenler açık hata:**
+  `eArchivePaymentType` / `eGovernmentType` / `eInvoiceProfile` tam sayı
+  kodları belgede yok → ödeme türü kodu **gönderilmez** (Logo kodları verirse
+  `settings.payment_type_codes` JSON'una yazılır, kod değişmez); iade,
+  proforma, SATIS dışı `invoice_type` → "kod belgede yok" hatası. İrsaliye ve
+  iptal desteklenmez (`supports` hayır der).
+- **`registry.php` ortak parçalar:** `erp_edoc_settings/_save` (settings
+  JSON), `erp_edoc_session/_save` (AES), `erp_edoc_http` (curl;
+  `pg_curl_tls()` → `CURL_CA_BUNDLE`, güvensiz sessiz geri dönüş **yok**,
+  curl hatasına `pg_curl_tls_hint` eklenir — dev'de ilk deneme "unable to
+  get local issuer certificate" verdi, bundle bağlanınca geçti),
+  `erp_edoc_mask` (parola/anahtar/belirteç/VKN/e-posta/ad-adres anahtarları
+  ve 10-11 haneli sayılar `***`), `erp_edoc_log` (500 karakterlik maskeli
+  özetler, 30 gün, 1/50 süpürme), `erp_edoc_log_for`,
+  `erp_edoc_invoice_party` (fatura kopyası, yoksa canlı kart).
+- **`includes/erp/edoc/service.php`** (yeni; bootstrap yükler): fatura
+  satırının sahibi. `erp_edoc_invoice_can_send` (aktif sağlayıcı +
+  `send_invoice` desteği, satış, taslak/iptal değil, durum
+  none/error/rejected), `erp_edoc_invoice_send` (önce `sending` yazar — çift
+  tık kapıda kalır; başarıda `edoc_provider`, `edoc_external_id`, `sent`,
+  `edoc_sent_at`; hatada `error` + `edoc_error`; `log_activity`;
+  `erp.invoice.edoc_changed` olayı), `erp_edoc_invoice_poll` (gib_number,
+  gib_uuid, durum; değişince olay), `erp_edoc_invoice_document`,
+  `erp_edoc_status_labels`. Belge **taşıyan** sağlayıcıya sorulur
+  (`edoc_provider`), bugün aktif olana değil.
+- **`edit_erp_invoice.php` "e-Belge" kartı** (Satırlar kartından sonra;
+  sağlayıcı seçiliyse ya da belge geçmişse): durum rozeti, sağlayıcı, GİB
+  numarası, ETTN, sağlayıcı kimliği, gönderim zamanı, son mesaj; düğmeler
+  "<Sağlayıcı> sağlayıcısına gönder" (kapı açıksa), "Durumu Sor",
+  "<Sağlayıcı> PDF" (ETTN varsa), "UBL"; altında son 8 çağrı (zaman, yol,
+  HTTP, maskeli yanıt). POST `erp_action=edoc_send|edoc_poll`.
+- **`get_erp_edoc_document.php`** (yeni): sağlayıcının PDF/UBL'i, her
+  seferinde sağlayıcıdan, diske yazılmaz.
+- **Migration 4.62 `erp_edoc_log`:** `erp_parasut_log` → `erp_edoc_log`
+  (`install_rename_table`; tablo hiç yoksa oluşturulur) + `provider`
+  sütunu + `idx_provider`. `install/index.php` `get_tables()`'a
+  `erp_edoc_log`, `erp_edoc_providers` (eksikti) eklendi; `erp_parasut_log`
+  listede kalır (eski kurulumun artığı yeniden kurulumda silinsin).
+- Olay kataloğu: `erp.invoice.edoc_changed`; `erp_event_invoice` yükü
+  `edoc {provider, status, gib_number, gib_uuid}` taşır (eski olaylara da
+  eklendi — ek alan, kırılma yok). API fatura nesnesine `provider` /
+  `external_id` **eklenmedi** (şema değişikliği ayrı tur).
+- `tr.json` +66 (İşbaşı hataları, kart, durum etiketleri, ayar metinleri).
+
+**Kararlar.** Belgede olmayan kod listeleri uydurulmadı; eksikliğin adı
+hatada yazılır, ilk gerçek test ya Logo'nun yanıtını ya da desteğin
+kodlarını getirir. Sürücü kendi HTTP/oturum/günlük kodunu yazmaz —
+registry'nin ortak parçaları; Paraşüt sürücüsü de sıra geldiğinde bunları
+kullanır (`_parasut_request` yerine). Günlük satırı maskeli özettir, gövde
+değil: VKN, ad, adres, parola bir günlükte durmaz. `erp_parasut_log`
+yeniden adlandırıldı, kopyalanmadı: boş tablo, tek sağlayıcının adıyla
+yaşamasının anlamı yoktu. Gönderim kuyruğa (`erp_edoc_queue`) değil
+düğmeye bağlandı: kotası olan bir API'de her istek operatörün bilgisiyle
+atılmalı; kuyruk/otomatik gönderim ilk gerçek testten sonra.
+
+### Doğrulama
+
+Dev'de 4.62 iki kez koştu ("yeniden adlandırıldı / provider eklendi / indeks
+eklendi", sonra "zaten var" ×3). Test düğmesi (kayıtlı kimlikler, yer tutucu
+anahtar) → İşbaşı **gerçekten yanıt verdi**: `POST
+isbasimw.isbasi.com/api/v1.0/user/getplatform` → HTTP 403
+`{"code":403,"message":"API yetkilendirilmedi","isError":true,"data":null}`
+— yol ve zarf doğrulandı, anahtar gelince aynı kod geçer. Günlükte istek
+gövdesi `{"username":"***","password":"***"}` (maske çalışıyor). Fatura
+#14 ekranı: kart basıldı (Gönderilmedi / Logo İşbaşı (henüz gönderilmedi) /
+—), "Logo İşbaşı sağlayıcısına gönder" → hata satırı "Bir hata oluştu: API
+yetkilendirilmedi", rozet **Hata**, "Son Mesaj" dolu, kartta 1 günlük satırı
+(getplatform 403), düğme yeniden gönderime açık. `erp_invoices.php`,
+`erp_settings.php`, `get_erp_edoc_document.php` (ETTN yokken hata sayfası)
+200. `check_lang` ve `check_api_schema` temiz; son 4 saatte değişen PHP
+`php -l` temiz.
+
+**Doğrulanamayan:** giriş yanıtının alan adları, `integrationInvoices`
+kabulü, durum sözcükleri, PDF/UBL — hepsi gerçek API anahtarını bekliyor
+(Erdal başvurdu). Anahtar gelince: kartta anahtarı Erdal girer → "Bağlantıyı
+test et" → fatura #14'te gönder → durumu sor → PDF. **Dev'de kalan:** fatura
+#14 `edoc_status = error`, `edoc_error = "API yetkilendirilmedi"`;
+`erp_edoc_log`'da 6+ satır (403'ler ve iki TLS hatası).
+
+---
+
+## 2026.4.4 — e-Belge sürücü katmanı: Paraşüt ve Logo İşbaşı, ayarlardan seçim (migration 4.61, 2026-09-20)
+
+**Belirti.** Planın Faz 3'ü "Paraşüt devri" idi: e-Fatura/e-Arşiv gönderimi
+tek sağlayıcıya yazılacaktı. Erdal Logo İşbaşı'nın fiyat avantajını görüp
+ikisini birden istedi; 2026 mevzuatı da (bilanço esasında kâğıt fatura yok,
+internet satışında e-Fatura eşiği 500 bin TL) e-belgeyi çoğu mağaza için
+zorunlu kılıyor — sağlayıcıya kilitlenen bir modül müşterinin elini bağlar.
+Şemada `parasut_*` sütunları vardı, sağlayıcıdan bağımsız hiçbir şey yoktu.
+
+**Çözüm.**
+
+- **`includes/erp/edoc/registry.php`** — tek kapı. Sürücü = `erp_edoc_<kod>_`
+  önekli fonksiyon kümesi (API modül dikişiyle aynı desen; `function_exists`
+  = destekliyor): `info` (etiket, açıklama, belge adresi, yetenekler:
+  einvoice / earchive / ewaybill / inbox, ayar notu), `fields` (kimlik
+  alanları), `ping`, `check_taxpayer`, `send_invoice`, `poll`,
+  `cancel_invoice`, `fetch_document`, `send_waybill`. Registry: `erp_edoc_drivers()`
+  (kod → dosya), `erp_edoc_active()` (tabloda `is_active=1`; 4.61 yoksa eski
+  `ERP_PARASUT_ENABLED` anahtarı), `erp_edoc_supports($op)`,
+  `erp_edoc_call($op, $args)` (sağlayıcı yoksa / işlem yoksa düzgün hata),
+  `erp_edoc_credentials()` / `_credentials_save()` (AES, `encrypt_string_with_iv`
+  — Paraşüt gizli anahtarının Faz -1'den beri saklandığı yol; boş parola
+  alanı kayıtlıyı korur), `erp_edoc_activate()`, `erp_edoc_test()` (ping +
+  sonucu satıra yazar: `checked_at`, `check_status`, `check_message`).
+  Modülün geri kalanı sağlayıcı adını bilmez.
+- **`edoc/parasut.php`** — kimlikleri kendi kartından okur (alan bildirmez,
+  ayar notu oraya yönlendirir); `ping` = `parasut_get_token()` + şirket
+  kimliği; `check_taxpayer` = `parasut_check_einvoice_address()` sarmalı
+  (e-fatura mükellefi mi, takma adlar). Gönderim fonksiyonları **yok** —
+  Faz 3'ün işi; `erp_edoc_supports('send_invoice')` doğru olarak "hayır" der.
+- **`edoc/isbasi.php`** — İşbaşı'nın resmî REST API'si var (`developers.isbasi.com`,
+  İşbaşı girişi ister; anahtar Logo desteğinden). Sürücü: kart bilgisi, üç
+  kimlik alanı (API anahtarı, kullanıcı adı, parola; şifreli saklanır), `ping`
+  alanları denetler ve **açıkça** "çağrılar API belgeleri gelince yazılır"
+  der (`pending`); hiçbir uca uydurma istek atılmaz.
+- **Migration 4.61 `erp_edoc_providers`** (`provider` UNIQUE, `is_active`,
+  `credentials_enc`, `settings`, `checked_at`, `check_status`, `check_message`)
+  + `erp_invoices` / `erp_waybills` `edoc_provider VARCHAR(20)`,
+  `edoc_external_id VARCHAR(64)` + `erp_edoc_queue.provider`, `external_job_id`.
+  `parasut_*` sütunları kalır (Paraşüt'ün elindekiler); yeni hiçbir şey
+  sağlayıcıya özel yazılmaz. Veri: `config.erp_parasut_enabled = 1` olan ve
+  tablosu boş kurulumda Paraşüt aktif satır olarak taşınır (ikinci koşum
+  dokunmaz).
+- **Site Ayarları → E-Ticaret → "E-Fatura" kartı, üst blok "e-Belge
+  Sağlayıcısı (ERP)"** (Erdal'ın isteğiyle ERP Ayarları'ndan buraya taşındı;
+  `erp_settings.php`'de yalnız buraya bağlantı veren bir not kaldı): radyo —
+  Kapalı (PDF kalır) / Paraşüt / Logo İşbaşı — her sağlayıcının açıklaması,
+  yetenek rozetleri, API belge bağlantısı, son kontrol satırı; seçilenin
+  alanları panonun `collapse-switcher` radyo desteğiyle açılır (parola
+  alanları boş, "kaydedildi" ipucu). Kayıt panonun tek "Kaydet"iyle
+  (`commerce.save.php`): yalnız seçilen sağlayıcının kimlikleri yazılır, boş
+  parola kayıtlıyı korur, seçim değişince `erp_edoc_activate` + etkinlik
+  kaydı. **"Bağlantıyı test et"** düğmesi formu `get_erp_edoc_test.php`'ye
+  yeni sekmede gönderir (`formaction`/`formtarget`): yazılan kutular kayıtlı
+  değerin üstüne bindirilir, hiçbir şey kaydedilmez; kutulara dokunulmadıysa
+  `erp_edoc_test()` "Son kontrol" satırını günceller (yazılan değerle
+  yapılan test kayıtlı kimlik hakkında bir şey söylemez, satıra yazılmaz).
+  Ayarlar aramasında `e-belge, sağlayıcı, paraşüt, işbaşı, logo` anahtar
+  kelimeleri bu kartı bulur. Paraşüt'ün kendi kutuları aynı kartın alt
+  yarısında durmaya devam eder; sürücünün ayar notu oraya işaret eder.
+- `bootstrap.php` registry'yi yükler; sürücü dosyaları `erp_edoc_load()` ile
+  gerektiğinde. `tr.json` +39.
+
+**Kararlar.** Sınıf/arabirim yerine önekli fonksiyonlar: modülün geri kalanı
+ve API dikişi böyle; `function_exists` = yetenek sorgusu, ek kayıt yok.
+Kimlikler `config`'e değil kendi tablosuna: config satırı boyut sınırına
+yakın (4.55 notu) ve sağlayıcı başına üç-dört alan açmak ölçeklenmez.
+Paraşüt kimlikleri taşınmadı — çalışan kurulumu kırmamak için mevcut kart
+kaynak kaldı; sürücü nereden okuduğunu kendi bilir. İşbaşı için uç adresi
+tahmin edilmedi. Radyo tek seçim: aynı anda iki sağlayıcı bir belgeyi iki
+kez GİB'e gönderir. Fatura/irsaliye ekranlarına henüz "e-belge gönder" düğmesi
+konmadı — sürücüler göndermeyi öğrenince; boş düğme yalan olur.
+
+### Doğrulama
+
+Dev'de 4.61 iki kez koştu (tablo + 6 sütun eklendi / zaten var). Ayarlar
+kartı (ilk hâli ERP Ayarları'nda): üç radyo (Kapalı*, Paraşüt, Logo İşbaşı),
+İşbaşı alanları
+(password/text/password), Paraşüt ayar notu; İşbaşı testi eksik alanla → hata
+"Eksik: API anahtarı, İşbaşı parolası"; dolu → bilgi "kimlik bilgileri
+kaydedildi… PDF olarak basılmaya devam eder", radyo İşbaşı'da kaldı, kullanıcı
+adı dolu geldi, API anahtarı yerine "Kayıtlı" ipucu, etikette "Son kontrol
+20.09.2026 21:43"; Paraşüt testi → "şirket kimliği boş" (dev'de Paraşüt kartı
+boş, doğru); Kapalı kaydet → "e-Belge gönderimi kapalı", radyo Kapalı. ERP
+ekranları (faturalar, ayarlar, tezgâh) bootstrap değişikliğinden sonra 200.
+`check_lang` temiz.
+
+Taşınmış hâli (E-Ticaret panosu): `settings_pane.php?pane=commerce` kartı
+basıyor — radyo hedefleri `#edoc_fields_none/parasut/isbasi`, İşbaşı
+kutuları, test düğmesi, eski Paraşüt anahtarı yerinde; panonun 115 alanlı
+formu POST → "Site Ayarları kaydedildi", radyo ve kullanıcı adı korunmuş,
+API anahtarı ipucu "kaydedildi" (boş parola kayıtlıyı korudu);
+`get_erp_edoc_test.php` kutulara dokunmadan → bilgi rengi "kimlik bilgileri
+kaydedildi…" + "Son kontrol" 22:08 → 22:24; kutuya değer yazılınca satır
+değişmedi (doğru); GET → ana sayfaya düşer. `erp_settings.php` 200, iki kart,
+radyo yok, Satıcı Bilgileri kartında bağlantılı not. `check_lang` temiz
+(+9 anahtar).
+
+**Doğrulanamayan:** Paraşüt gerçek token (dev'de kimlik yok); İşbaşı API'si
+(belge okunacak, anahtar bekleniyor). **Dev'de kalan:** `erp_edoc_providers`'ta
+`isbasi` satırı aktif ve kullanıcı adı `admin` — Erdal'ın girdiği; dokunulmadı.
+
+---
+
 ## 2026.4.4 — Tezgâh satışı tek adımda: tamamla + fatura + tahsilat; ERP API ekleri; belge şablonları ayarlarda (2026-09-20)
 
 **Belirti.** Yerel satış tamamlanınca fatura ve tahsilat iki ayrı ekranda iki
@@ -539,6 +766,236 @@ döviz kasasına tahsilat (dev'de döviz kapalı); OpenAPI belgesinin
 kayıt deseni aynı). **Dev'de kalan test verisi:** tahsilat #12 (10,00, fatura
 13'e) ve #13 (353,94, fatura 14'e → ödendi), cari #14 "API Tedarikçi Ltd."
 (tedarikçi, açılış −1.500).
+
+---
+
+## 2026.4.4 — Sistem widget'larında tek token sözlüğü ve üçüncü denetim kapısı (2026-09-21)
+
+**Belirti.** Aynı değerin widget'tan widget'a farklı adı vardı, bir widget
+hiç ad alanı kullanmıyordu, ve tasarımcının sunduğu liste ile sunucunun
+ürettiği liste kimse karşılaştırmadığı için sessizce ayrışmıştı.
+
+**Hızlı sipariş ad alanı kazandı.** On beş statik token'ı `__` öneki
+taşımıyordu — ad alanı kullanmayan tek widget'tı. `^^form_id^^` bu yüzden
+ziyaretçinin `form_id` adlı bir form alanıyla yarışabiliyordu. Önek
+eklenirken adlar da sepet renderer'ınınkiyle birleştirildi
+(`^^subtotal_formatted^^` → `^^__cart_subtotal^^`), çünkü değerler zaten
+aynı: hızlı sipariş de aynı sepeti ödemeye götürüyor. Satır token'larında
+da aynısı yapıldı (`__item_price_formatted` → `__item_price`,
+`__item_line_total_formatted` → `__item_total`, `__item_detail_url` →
+`__item_url`, `__item_full_description` → `__item_description`).
+
+Çıplak adlar artık **yalnız** gönderilen formun sistem alanlarına ait
+(`^^reference_code^^`, `^^email_address^^`) — klasik ekranların tam o
+adlarla çözdüğü alanlar. İki ad alanı arasındaki sınır artık kazara değil,
+kuralla belirli.
+
+**Zengin metin.** `products.full_description` operatörün zengin metni;
+klasik şablonların hepsi (`catalog.php`, `catalog_detail.php`,
+`express_order.php`, `order_form.php`) ve katalog ile hızlı sipariş
+widget'ları ham basıyor. Sepet ve sipariş görüntüleme kaçırıyordu — biçimli
+bir açıklama ziyaretçiye kendi işaretlemesi olarak gidiyordu. Düz metin olan
+`short_description` kaçırılmaya devam ediyor.
+
+**Boş durum ayarları beşten ikiye.** `empty_message`, `not_found_message`,
+`no_results_message`, `no_events_message`, `cart_empty_message` — beş ad, iki
+durum. Artık **liste boş geldi** (`empty_message` / `^^__empty_message^^`) ve
+**istenen kayıt yok** (`not_found_message` / `^^__not_found_message^^`); ayar
+anahtarı ile token'ı aynı adı taşıyor.
+
+**Ölü ayarlar.** `cfg.checkout_mode`'u özellik paneli yazıyordu, kimse
+okumuyordu. `cfg['terms_intro_text']` ve `cfg['terms_link_text']`'i renderer
+okuyordu, kimse yazmıyordu: paneldeki şartlar bölümü modal ağaca taşınırken
+kaldırılmış, bu iki anahtar kazara geride kalmıştı — her zaman varsayılanını
+okuyorlardı. Üçü de kaldırıldı.
+
+**Tasarımcı paleti ile sunucu arasındaki açık.** Karşılaştırınca:
+
+- `_SD_CURRENCY_TOKENS` bir **tahmin listesiydi** — her olası yazım (önekli
+  ve çıplak, ham ve `_formatted`) yazılmıştı. Taşıdığı adların **38'ini
+  hiçbir renderer üretmiyordu**, buna karşılık hızlı siparişin gerçek özet
+  token'ları listede yoktu: o widget'ın toplamlar tablosu tuvalde lorem
+  ipsum önizliyordu. Liste renderer'lardan yeniden üretildi.
+- **Hızlı siparişin alıcı döngüsünün hiç açılır listesi yoktu.** On dört
+  token'ın tamamı elle "Özel"den yazılmak zorundaydı — uydurma token
+  yazımlarının depoya girdiği yol tam olarak bu. Kendi grubu eklendi.
+- Açılır listede olmayan diğerleri eklendi: `__price_block_html` (iki
+  katalog paletine de), `__row_type`, `__display_type`, `__tracking_codes`,
+  `__submit_label`, üç `_cents` token'ı.
+- Hiçbir yerde kullanılmayan üç alıcı takma adı (`__recipient_address_street`
+  / `_zip` / `_phone`) kaldırıldı; katalog grup satırının `__url` takma adı
+  da (`__detail_url` ile aynı değer) kaldırıldı.
+
+**`tools/check_bindings.php`.** Bu ayrışmanın sessiz kalmasının sebebi iki
+listeyi kimsenin karşılaştırmamasıydı, o yüzden üçüncü kapı yazıldı:
+tasarımcının sunduğu her `__token` bir renderer tarafından üretiliyor mu, ve
+üretilen her token bir açılır listede var mı. İki muafiyet var ve ikisinin de
+gerekçesi betiğin başında yazılı: `*_inner_html` (bölüm bağlama geçişi ağaca
+kendisi yazar) ve `__link_label` (renderer'ın bağlı düğüm başına
+`__link_label_0`, `__link_label_1`… diye açtığı işaretçi).
+
+### Doğrulama
+
+- `php tools/lint.php` — temiz.
+- `php tools/check_lang.php` — 3716 anahtarın hepsi çözülüyor (14 yeni
+  anahtar eklendi; İngilizce anahtarın içinde Türkçe kelime taşıyan
+  `Per-item ek HTML …` düzeltildi).
+- `php tools/check_bindings.php` — 274 üretilen, 270 sunulan token; iki taraf
+  örtüşüyor. Kapının kendisi de sınandı: sunucuya karşılıksız bir token,
+  listeye karşılıksız bir seçenek eklendiğinde ikisini de ayrı ayrı yakalıyor
+  ve 1 ile çıkıyor.
+- `node --check assets/js/style_designer.js` — temiz.
+
+---
+
+## 2026.4.4 — Sistem widget'larında satır kimliği, Messages düğümü ve katalog metinlerinin kaçışı (2026-09-20)
+
+**Belirti.** Aynı üç işi on beş renderer on beş ayrı biçimde yapıyordu:
+kimi yapıyor, kimi yarım yapıyor, kimi hiç yapmıyordu.
+
+**Satır başına kimlik tekilleştirme.** Bir döngü şablonu aynı işaretlemenin
+tekrarıdır; her satır aynı `id`'yi taşır ve ikinci satırdaki akordeon
+birincisini açar. Yedi renderer bunu elle yazılmış birer `$iter_suffix`
+bloğuyla çözüyordu ve bloklar birbirinden farklıydı — yarısı
+`data-bs-parent`'ı, bir kısmı `aria-labelledby`'ı atlıyordu; bir `for`
+kontrolünü kaybettiğinde etiket başka satırın alanını odaklıyordu. Yedisi
+de tek yardımcıya (`pg_sw_uniquify_row_ids()`) indirildi ve kimlik
+gösteren yedi niteliğin hepsi birlikte taşınıyor. Hiç tekilleştirmeyen üç
+döngüye — katalog grup kartları, hızlı sipariş alıcı satırları, hızlı
+sipariş sepet kalemleri — ilk kez eklendi. Sonek `_pgw<widget>r<kayıt>`:
+aynı widget'ın bir sayfada iki örneği de çakışmıyor. `name="qty[7]"` ve
+`/urun/7` gibi gerçek adres ve alan adları dokunulmadan geçiyor.
+
+**Messages düğümü.** Arama sonuçları, sipariş görüntüleme ve takvim
+görünümü uyarı/hata düğümünü hiç enjekte etmiyordu: bu ekranlarda bir
+işlem sonucu ziyaretçiye ulaşamıyordu. Özel form koşullu enjekte ediyordu
+(form sayfası kimliği yoksa atlıyordu) — koşulsuz oldu. Katalog ürün
+görüntüleme iki kez enjekte ediyordu; ikincisi `catalog_detail` kapsamına
+alındı. On beş widget'ın on beşi artık aynı yerden geçiyor.
+
+**Katalogda ürün metinleri.** `__name`, `__short_description`,
+`__image_alt`, `__category_name`, `__brand`, `__custom_field_*` ve
+kardeşleri kaçışsız yerleştiriliyordu; aynı dosyadaki
+`__select_group_name` ise kaçırılıyordu — yani kural biliniyordu, dört
+token haritasının üçünde uygulanmamıştı. Bir token metin düğümüne ne
+sıklıkla giriyorsa niteliğe de o sıklıkla giriyor: `24" Monitör` adlı bir
+ürün `alt`'a bağlandığında niteliği kapatıyor ve sonrasındaki her şey
+işaretleme oluyor. Artık haritanın tamamı bir kez kaçırılıyor ve
+**ham HTML olan anahtarlar adlarıyla sayılıyor**
+(`pg_sw_raw_token_keys()`): operatörün zengin metni (`__description`,
+`__details`, `__out_of_stock_message`), indirim uygulandığında
+üstü çizili işaretlemeye açılan fiyatlar ve renderer'ın kendi ürettiği
+bloklar (breadcrumb, filtre çipleri, varyant seçici, çapraz satış).
+Tersi — her renderer'ın kendi değerlerinden hangilerini saracağını
+hatırlaması — unutanın bozduğu düzendi.
+
+`h()` iki kez uygulanmıyor: `__select_group_name`'in kendi sarmalayıcısı
+kaldırıldı, "&" artık "&amp;amp;" olmuyor.
+
+### Doğrulama
+
+- `php tools/lint.php` — temiz.
+- `php tools/check_lang.php` — her anahtar çözülüyor.
+- Kaçış davranış testi: `24" Monitör & <b>Co</b>` adlı ürün `alt`'a
+  bağlandığında DOM'da tek `<img>` ve sıfır `<b>` kalıyor (nitelikten
+  çıkış yok), `__description`'ın `<strong>`'u duruyor,
+  `/urun/x?a=1&b=2` tarayıcıda `&` olarak geri okunuyor.
+- Tekilleştirme davranış testi: `id`/`for`/`data-bs-*`/`aria-*` sonek
+  alıyor, `name` ve gerçek adresler almıyor.
+
+---
+
+## 2026.4.4 — Görsel tasarımcı: açılış, geri al ve sürükleme maliyeti (2026-09-20)
+
+**Belirti.** Tasarımcı kasmaya başlamıştı; en belirgin hâli bir bileşeni
+paletten sayfaya sürüklerken gecikme.
+
+**Ölçüm.** `StyleDesigner.perf()` eklendi (konsoldan: `perf()`, `perf('watch')`,
+`perf('reset')`, `perf('off')`). İki sayfa ölçüldü:
+
+| | 24 düğüm | 157 düğüm |
+|---|---|---|
+| ms/eylem | 24.4 | 31 |
+| en kötü eylem | 92.3 ms | 114.1 ms |
+
+Düğüm sayısı 6.5 katına çıkınca maliyet yalnız %25 arttı: maliyetin ~¾'ü
+sabit tabak masrafı (~88 ms), düğüm başına ~0.16 ms. Bu, tuvalde düğüm
+başına hedefli güncellemeyi — en pahalı seçeneği — gereksiz kıldı.
+
+**Kök nedenler ve düzeltmeleri.**
+
+- **Açılışta önbellek hiç devreye girmiyordu.** `includes/designer_screen.php`
+  dört varlığı da `?v=' . time() . '` ile veriyordu; damga her saniye
+  değiştiği için 2.66 MB editör betiği + 187 KB CSS her açılışta yeniden
+  indirilip yeniden derleniyordu (URL hiç aynı olmadığından V8 derleme
+  önbelleği de devre dışıydı). Yeni `pg_designer_asset_stamp()`
+  `@filemtime()` kullanıyor — `includes/erp/invoice_form.php` ve
+  `includes/fn/designer.php`'nin zaten kullandığı damga.
+
+- **Sürükleme:** `dragover` işleyicisi `canDrop()`'u 3-4, `findParent()`'ı
+  doğrudan 3 kez çağırıyordu; `canDrop` → `hasLockedAncestor` →
+  `lockedAncestorOf` → `getAncestors`, ve `getAncestors` her seviye için
+  `findParent` çağırıyor — `findParent` ise tüm ağacı gezen O(N). Yani
+  `getAncestors` = O(N × derinlik). Reddedilen olay üst düğüme kabardığı
+  için her seviye aynı işi tekrarlıyordu: 157 düğüm / ~6 derinlikte kaba
+  hesapla olay başına ~25.000 düğüm ziyareti. Üstüne `_clearInsertMarks()`
+  (class yazar) → `getBoundingClientRect()` (layout okur) sırası her olayda
+  zorunlu senkron layout'a yol açıyordu.
+
+  Sürükleme boyunca ağaç değişmediği için `findParent` artık bir ebeveyn
+  indeksinden O(1) okuyor (`_parentIndexFor()`); indeks kök başına tutuluyor
+  (paylaşımlı bileşenin kendi ağacında "bu ağaçta yok" gerçek bir cevap) ve
+  `dragData` kimliğine bağlı. `lockedAncestorOf` ayrıca sürükleme boyunca
+  hafızalı. İşleyicideki üç `findParent` bire indi. Geometri okuması class
+  yazımından öne alındı — işaretler `box-shadow`, layout'u etkilemiyorlar,
+  yani önce temizlemek ölçümü hiç değiştirmiyordu. `saveState()`'in ilk işi
+  indeksi düşürmek; `handleDrop` mutasyondan önce `saveState()` çağırdığı
+  için bırakma anında indeks zaten geçersiz.
+
+- **Geri al anlık görüntüsü her tuşta/her kare.** `saveState()` tüm ağacı
+  `JSON.stringify` ediyor ve 176 yerden çağrılıyordu; gradyan renk seçicileri
+  ve kaydırıcılar bunu her `input` olayında, yani sürüklerken saniyede
+  onlarca kez yapıyordu. Artık isteğe bağlı bir koşu anahtarı alıyor: aynı
+  kontrol üzerinde kısa aralıklı çağrılar tek anlık görüntüye düşüyor
+  (`_sdEditRun()`). Anahtarsız çağrı — mevcut ~170 çağrı yeri — davranışını
+  aynen koruyor. Geri al bundan böyle kelime/sürükleme düzeyinde çalışıyor.
+
+- **[DÜZELTME] Gradyan panelinde `saveState()` mutasyondan sonra
+  çağrılıyordu** (dokuz çağrının beşinde), yani geri al değişiklikten önceki
+  değil sonraki hâle dönüyordu. Dokuzu da anlık görüntüyü mutasyondan önce
+  alıyor.
+
+**Doğrulama.** Kullanıcı dev makinada denedi: kasma neredeyse tamamen
+gitti. `node --check`, `lint`, `check_lang` temiz.
+
+## 2026.4.4 — Sistem widget'larında tek süpürme mekanizması (2026-09-20)
+
+**Belirti.** Aynı işi yapan iki ayrı token süpürme kalıbı vardı, biri de
+hiç yoktu.
+
+**Düzeltmeler.**
+
+- 19 yerde elle yazılmış `preg_replace('/\^\^[A-Za-z0-9_]+\^\^/', …)`
+  `pg_sw_sweep_tokens()`'a çevrildi. Elle yazılan biçim `%%format%%` ekini
+  ve ASCII olmayan tanımlayıcıları yakalamıyordu.
+- **express_order hiç süpürmüyordu** (dosyada sıfır adet): cevapsız kalan
+  her `^^token^^` ziyaretçiye düz metin olarak gidiyordu. Bütün
+  değiştirmeler bittikten sonra tek süpürme eklendi.
+- **catalog_listing'in statik yarısı** süpürülmüyordu; başlıkta yanlış
+  yazılmış bir tanımlayıcı kendini basıyordu.
+- **catalog_listing'de süpürme sırası yanlıştı:** ürün ve grup döngüleri
+  `$page_tokens` (`__breadcrumb_html`, `__group_tree_html`, `__filter_chips`
+  ve altı `*_inner_html`) çözülmeden **önce** süpürüyordu. Renderer'ın kendi
+  yorumu bu tokenların loop_area içinde de kullanılabileceğini söylüyor —
+  kullanılamıyordu, siliniyorlardı. Artık tek süpürme, her şey çözüldükten
+  sonra.
+- **form_list'in statik sarmalayıcısı** süpürülmüyordu; iki kardeşi
+  (form_item_view, my_account) süpürüyor. Dört çıkışında da süpürülüyor.
+- `loop_area` taşımayan bir ağaçta dört widget (sepet, arama sonuçları,
+  sipariş görüntüleme, takvim) satırları üretip atıyordu: sarmalayıcı yok
+  demek satırları koyacak yer yok demek, ama döngü yine de her kayıt için
+  tüm şablonu kuruyordu. Döngüler `$static_html !== ''` ile korundu; çıktı
+  değişmedi, boşa iş bitti.
 
 ---
 
