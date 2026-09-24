@@ -265,7 +265,7 @@ if (count($products) > 0) {
 
         // If the before value is not 0, then prepare to output value.
         if ($product['before'] > 0) {
-            $output_before = number_format($product['before']);
+            $output_before = pg_format_number($product['before'], 0);
         }
 
         $output_date_cells = '';
@@ -276,7 +276,7 @@ if (count($products) > 0) {
 
             // If the value is not 0, then prepare to output value.
             if ($product[$date] > 0) {
-                $output_date_value = number_format($product[$date]);
+                $output_date_value = pg_format_number($product[$date], 0);
             }
 
             $output_date_cells .= '<td style="text-align: center">' . $output_date_value . '</td>';
@@ -286,14 +286,14 @@ if (count($products) > 0) {
 
         // If the after value is not 0, then prepare to output value.
         if ($product['after'] > 0) {
-            $output_after = number_format($product['after']);
+            $output_after = pg_format_number($product['after'], 0);
         }
 
         $output_total = '';
 
         // If the total value is not 0, then prepare to output value.
         if ($product['total'] > 0) {
-            $output_total = number_format($product['total']);
+            $output_total = pg_format_number($product['total'], 0);
         }
 
         $output_product_rows .=
@@ -310,7 +310,7 @@ if (count($products) > 0) {
 
     // If the before value is not 0, then prepare to output value.
     if ($totals['before'] > 0) {
-        $output_total_before = number_format($totals['before']);
+        $output_total_before = pg_format_number($totals['before'], 0);
     }
 
     $output_total_date_cells = '';
@@ -321,7 +321,7 @@ if (count($products) > 0) {
 
         // If the value is not 0, then prepare to output value.
         if ($totals[$date] > 0) {
-            $output_total_date_value = number_format($totals[$date]);
+            $output_total_date_value = pg_format_number($totals[$date], 0);
         }
 
         $output_total_date_cells .= '<td style="font-weight:bold; text-align: center">' . $output_total_date_value . '</td>';
@@ -331,14 +331,14 @@ if (count($products) > 0) {
 
     // If the after value is not 0, then prepare to output value.
     if ($totals['after'] > 0) {
-        $output_total_after = number_format($totals['after']);
+        $output_total_after = pg_format_number($totals['after'], 0);
     }
 
     $output_grand_total = '';
 
     // If the grand total value is not 0, then prepare to output value.
     if ($totals['total'] > 0) {
-        $output_grand_total = number_format($totals['total']);
+        $output_grand_total = pg_format_number($totals['total'], 0);
     }
 
     $output_report =

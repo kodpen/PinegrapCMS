@@ -567,8 +567,8 @@ function get_form_view_directory_screen_content($properties) {
                     $output_most_recent_submitted_form_rows .=
                         '<tr class="data row_' . ($row_count % 2) . '">
                             <td style="padding: 0em 1em 0em 0em; text-align: left; vertical-align: top">' . $output_form_item_view_link_start . h($most_recent_submitted_form['subject']) . $output_form_item_view_link_end . ' <span style="font-size: 75%">(' . h($most_recent_submitted_form['form_list_view_name']) . ')</span></td>
-                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($most_recent_submitted_form['number_of_comments']) . '</td>
-                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($most_recent_submitted_form['number_of_views']) . '</td>
+                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($most_recent_submitted_form['number_of_comments'], 0) . '</td>
+                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($most_recent_submitted_form['number_of_views'], 0) . '</td>
                             <td class="mobile_left mobile_align_left" style="text-align: left; vertical-align: top; white-space: nowrap">' . get_relative_time(array('timestamp' => $most_recent_submitted_form['newest_activity_timestamp'])) . '</td>
                         </tr>';
 
@@ -739,8 +739,8 @@ function get_form_view_directory_screen_content($properties) {
                     $output_most_viewed_submitted_form_rows .=
                         '<tr class="data row_' . ($row_count % 2) . '">
                             <td style="padding: 0em 1em 0em 0em; text-align: left; vertical-align: top">' . $output_form_item_view_link_start . h($most_viewed_submitted_form['subject']) . $output_form_item_view_link_end . ' <span style="font-size: 75%">(' . h($most_viewed_submitted_form['form_list_view_name']) . ')</span></td>
-                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($most_viewed_submitted_form['number_of_comments']) . '</td>
-                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($most_viewed_submitted_form['number_of_views']) . '</td>
+                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($most_viewed_submitted_form['number_of_comments'], 0) . '</td>
+                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($most_viewed_submitted_form['number_of_views'], 0) . '</td>
                             <td class="mobile_left mobile_align_left" style="text-align: left; vertical-align: top; white-space: nowrap">' . get_relative_time(array('timestamp' => $most_viewed_submitted_form['newest_activity_timestamp'])) . '</td>
                         </tr>';
                         
@@ -878,8 +878,8 @@ function get_form_view_directory_screen_content($properties) {
                     $output_most_active_submitted_form_rows .=
                         '<tr class="data row_' . ($row_count % 2) . '">
                             <td style="padding: 0em 1em 0em 0em; text-align: left; vertical-align: top">' . $output_form_item_view_link_start . h($most_active_submitted_form['subject']) . $output_form_item_view_link_end . ' <span style="font-size: 75%">(' . h($most_active_submitted_form['form_list_view_name']) . ')</span></td>
-                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($most_active_submitted_form['number_of_comments']) . '</td>
-                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($most_active_submitted_form['number_of_views']) . '</td>
+                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($most_active_submitted_form['number_of_comments'], 0) . '</td>
+                            <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($most_active_submitted_form['number_of_views'], 0) . '</td>
                             <td class="mobile_left mobile_align_left" style="text-align: left; vertical-align: top; white-space: nowrap">' . get_relative_time(array('timestamp' => $most_active_submitted_form['newest_activity_timestamp'])) . '</td>
                         </tr>';
 
@@ -957,9 +957,9 @@ function get_form_view_directory_screen_content($properties) {
         $output_form_list_view_rows .=
             '<tr class="data row_' . ($row_count % 2) . '">
                 <td style="padding: 0em 1em 0em 0em; text-align: left; vertical-align: top"><a href="' . OUTPUT_PATH . h(encode_url_path($form_list_view['page_name'])) . '">' . h($form_list_view['name']) . '</a></td>
-                <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($info['number_of_submitted_forms']) . '</td>
-                <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($info['number_of_comments']) . '</td>
-                <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . number_format($info['number_of_views']) . '</td>
+                <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($info['number_of_submitted_forms'], 0) . '</td>
+                <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($info['number_of_comments'], 0) . '</td>
+                <td class="mobile_left" style="padding: 0em 1em 0em 0em; text-align: right; vertical-align: top; white-space: nowrap">' . pg_format_number($info['number_of_views'], 0) . '</td>
                 <td class="mobile_left mobile_align_left" style="text-align: left; vertical-align: top; white-space: nowrap">' . $output_newest_activity . '</td>
             </tr>';
         $row_count++;

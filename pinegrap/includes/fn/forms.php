@@ -1501,6 +1501,11 @@ function log_activity($description, $user = '')
 
     $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) " . "VALUES ('" . escape($description) . "', '" . escape($ip) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    // The ERP keeps its own lines past the six months this log is kept for
+    // (includes/erp/audit.php).
+    if (function_exists('erp_audit_log_line')) {
+        erp_audit_log_line($description, $user);
+    }
     // get a random number between 1 and 100 in order to determine if we should delete old log entries
     // there is a 1 in 100 chance that we will delete old log entries each time a log entry is added
     $random_number = rand(1, 100);
@@ -1539,6 +1544,12 @@ function get_number_of_contacts($contact_group, $require_email = false)
 }
 function validate_date($date)
 {
+    // An ISO date (YYYY-MM-DD) is what an <input type="date"> posts, which
+    // the designed checkout and cart screens use.
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim((string)$date), $iso) == 1) {
+        return checkdate((int)$iso[2], (int)$iso[3], (int)$iso[1]);
+    }
+
     // if format of date is valid
     if (preg_match('/(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})/', $date, $date_parts) == 1) {
         $year = $date_parts[3];
@@ -3086,6 +3097,11 @@ function prepare_form_data_for_input($data, $type)
     if ($data) {
         switch ($type) {
             case 'date':
+                // Already ISO (YYYY-MM-DD, as an <input type="date"> posts it):
+                // splitting it the site-format way read the year as the day.
+                if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim((string)$data), $iso)) {
+                    return sprintf('%04d-%02d-%02d', $iso[1], $iso[2], $iso[3]);
+                }
                 $date_parts = preg_split('/[-,\/]/', $data);
 
                 // A value that is not in a date format does not split into three parts.

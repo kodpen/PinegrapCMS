@@ -24,7 +24,7 @@ include('init.php');
 if (!pg_cron_is_background_run()) {
     $user = validate_user();
 
-    if (!validate_erp_access($user)) {
+    if (!validate_erp_access($user, 'write')) {
         exit();
     }
 }

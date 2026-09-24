@@ -782,6 +782,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $software_environment = 'var software_environment = "development";';
         }
 
+        // How money is written on this site (separators, the visitor's
+        // symbol and rate), so the scripts that redraw a price write it the
+        // way the server does.
+        if (function_exists('pg_money_format_json')) {
+            $software_environment .= ' var software_money_format = ' . pg_money_format_json() . ';';
+        }
+
         $output_kiosk_javascript = '';
 
         // If kiosk mode is enabled then output javascript variable for that.
@@ -1467,7 +1474,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $cart_region_content =
                 '<div class="software_cart_region full">
                     ' . $output_link_start . '
-						<span class="cart-number-of-items">' . number_format($number_of_items) . '</span>
+						<span class="cart-number-of-items">' . pg_format_number($number_of_items, 0) . '</span>
                         <span class="items"> ' . $item_label . '&nbsp;</span>
                         <span class="cart-subtotal-prices">' . prepare_price_for_output(get_order_subtotal(), FALSE, $discounted_price = '', 'html') . '</span>
                     ' . $output_link_end . '
@@ -3756,14 +3763,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         }
 						$output_switch ='';
                         $output_switch_url .= 'comments=all#software_comments';
-                        $output_switch = '<a href="' . $output_switch_url . '" class="show_all">' . lang('Show All') . ' (' . number_format($number_of_comments) . ')</a> &nbsp; &nbsp; ';
+                        $output_switch = '<a href="' . $output_switch_url . '" class="show_all">' . lang('Show All') . ' (' . pg_format_number($number_of_comments, 0) . ')</a> &nbsp; &nbsp; ';
 						
 
 
                     // Otherwise all comments are being outputted, so prepare values for that.
                     } else {
                         $output_title =
-                            number_format($number_of_comments) . ' ' .
+                            pg_format_number($number_of_comments, 0) . ' ' .
                             h(get_comment_label(array(
                                 'label' => $system_region_properties['comments_label'],
                                 'number' => $number_of_comments)));
@@ -3838,7 +3845,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // If the visitor has edit access to this page and edit mode is on,
                         // then output grids.
                         if (($edit_access) && ($mode == 'edit')) {
-                            $output_edit_container_start = '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment['id'] . '&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button page" title="' . lang('Comment') . ': #' . number_format($count) . '">' . $edit_label . '</a><div style="padding: 2em 0 0 0">';
+                            $output_edit_container_start = '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment['id'] . '&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button page" title="' . lang('Comment') . ': #' . pg_format_number($count, 0) . '">' . $edit_label . '</a><div style="padding: 2em 0 0 0">';
                             $output_edit_container_end = '</div></div>';
                         }
 
@@ -4634,7 +4641,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         
                     // else if the number of watchers is greater than 1, then prepare to output number of watchers
                     } else if ($number_of_watchers > 1) {
-                        $output_watcher_count = '<div class="watcher_count">' . lang(array('string'=>'{var:1} {var:2} will be notified when a {var:3} is added.','vars'=>array(number_format($number_of_watchers),lang('people'),$output_comment_label_lowercase))) . '</div>';
+                        $output_watcher_count = '<div class="watcher_count">' . lang(array('string'=>'{var:1} {var:2} will be notified when a {var:3} is added.','vars'=>array(pg_format_number($number_of_watchers, 0),lang('people'),$output_comment_label_lowercase))) . '</div>';
                     }
 
                     // Assume that the visitor does not have access to manage watchers, until we find out otherwise.
@@ -5869,6 +5876,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // that is processed by jQuery (e.g. tab content).
             $content = str_replace($email_link[0], '<script id="software_email_link_script">software.output_email_link(\'' . base64_encode(str_rot13($email_link[0])) . '\')</script><noscript>' . lang('You may enable JavaScript to see this email address.') . '</noscript>', $content);
         }
+    }
+
+    // ── Smart active state ──────────────────────────────────────────────
+    // Navigation elements with the designer's "Smart active state" switch on
+    // arrive fenced by <!--pg-active:*--> markers; mark the link to this page
+    // inside them. E-mail output only loses the markers.
+    if (strpos($content, '<!--pg-active:') !== false) {
+        $content = pg_apply_smart_active($content, $email ? null : array(
+            'page_name' => $page_name,
+            'home'      => ($page_home == 'yes'),
+        ));
     }
 
     // ── Live chat site bubble ────────────────────────────────────────────

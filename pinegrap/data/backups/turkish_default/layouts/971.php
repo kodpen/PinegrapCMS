@@ -162,13 +162,13 @@
       </div>
       <div class="col-sm-6 p0">
          <p class="mb8">Bekleyen Toplam:
-            <?=BASE_CURRENCY_SYMBOL . number_format($affiliate_pending_total, 2)?>
+            <?=pg_format_money($affiliate_pending_total, BASE_CURRENCY_SYMBOL)?>
          </p>
          <p class="mb8">Ödenecek Toplam: 
-            <?=BASE_CURRENCY_SYMBOL . number_format($affiliate_payable_total, 2)?>
+            <?=pg_format_money($affiliate_payable_total, BASE_CURRENCY_SYMBOL)?>
          </p>
          <p class="mb8">Ödenen Toplam:
-            <?=BASE_CURRENCY_SYMBOL . number_format($affiliate_paid_total, 2)?>
+            <?=pg_format_money($affiliate_paid_total, BASE_CURRENCY_SYMBOL)?>
          </p>
       </div>
    </div>
@@ -191,7 +191,7 @@
             </td>
             <td><?=h($commission['status_label'])?></td>
             <td class="text-right">
-               <?=BASE_CURRENCY_SYMBOL . number_format($commission['amount'], 2)?>
+               <?=pg_format_money($commission['amount'], BASE_CURRENCY_SYMBOL)?>
             </td>
          </tr>
          <?php endforeach ?>

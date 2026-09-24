@@ -63,12 +63,26 @@ if (!defined('ERP_MANUAL_MAX_LINES')) {
  * discount, discount_total the sum of the discounts, tax_total the sum of the
  * VAT, and grand_total = subtotal - discount_total + tax_total.
  *
+ * Where the store names a second tax (erp_tax2_name()), a line may carry it
+ * too: its own rate on the same net as the first. A line's tax_total is the
+ * sum of both and tax2_amount the second's part, so every reader of the
+ * tax - the ledger, the totals, the export - sees the whole of it; the
+ * document breaks it down. The document's tax2_total is the sum of the
+ * second taxes.
+ *
+ * A line may carry VAT withholding (includes/erp/withholding.php): a code and
+ * its share of the line's VAT - the list's share for a code it knows, the
+ * given one otherwise. The withheld amount is the share of the line's VAT; the document's
+ * withholding_total is their sum and comes off the grand total, because the
+ * buyer pays that part to the tax office and owes the rest.
+ *
  * A refused line says which field on which row is wrong ('field', in the
  * lines[n][name] shape the form posts), so the screen can mark it.
  *
  * @param array $lines_in  Each: description, quantity, unit_price (kurus),
  *                         tax_rate, and optionally product_id, unit_code,
- *                         discount_rate, offer_id, offer_discount_rate
+ *                         discount_rate, offer_id, offer_discount_rate,
+ *                         withholding_code, withholding_rate, tax2_rate
  * @return array ['lines' => array, 'totals' => array, 'error' => string, 'field' => string]
  */
 function erp_manual_lines_build($lines_in)
@@ -87,7 +101,10 @@ function erp_manual_lines_build($lines_in)
     $subtotal = 0;
     $discount_total = 0;
     $tax_total = 0;
+    $tax2_total = 0;
+    $withholding_total = 0;
     $row_no = 0;
+    $tax2_on = erp_tax2_enabled();
 
     foreach ($lines_in as $index => $line) {
         $row_no++;
@@ -101,6 +118,7 @@ function erp_manual_lines_build($lines_in)
         $quantity = (float) ($line['quantity'] ?? 0);
         $unit_price = (int) ($line['unit_price'] ?? 0);
         $tax_rate = (float) ($line['tax_rate'] ?? 0);
+        $tax2_rate = $tax2_on ? (float) ($line['tax2_rate'] ?? 0) : 0.0;
         $discount_rate = (float) ($line['discount_rate'] ?? 0);
         $offer_rate = (float) ($line['offer_discount_rate'] ?? 0);
         $offer_id = (int) ($line['offer_id'] ?? 0);
@@ -108,6 +126,15 @@ function erp_manual_lines_build($lines_in)
 
         $unit_code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($line['unit_code'] ?? '')));
         $unit_code = ($unit_code === '') ? 'C62' : substr($unit_code, 0, 10);
+
+        // A share without a code is nothing. A code the list knows carries
+        // the list's share, whatever came with it; only a code the list does
+        // not know keeps the share it was given.
+        $withholding_code = substr(preg_replace('/[^A-Za-z0-9]/', '', (string) ($line['withholding_code'] ?? '')), 0, 10);
+        $withholding_rate = ($withholding_code === '') ? 0.0 : erp_withholding_code_rate($withholding_code);
+        if (($withholding_code !== '') && ($withholding_rate <= 0)) {
+            $withholding_rate = (float) ($line['withholding_rate'] ?? 0);
+        }
 
         // A row with nothing typed in it is an empty row, not an error.
         if (($description === '') && ($quantity == 0) && ($unit_price === 0) && ($product_id === 0)) {
@@ -126,11 +153,20 @@ function erp_manual_lines_build($lines_in)
         if (($tax_rate < 0) || ($tax_rate > 100)) {
             return $fail(lang(array('string' => 'Line {var:1}: the VAT rate must be between 0 and 100.', 'vars' => $row_no)), $field('tax_rate'));
         }
+        if (($tax2_rate < 0) || ($tax2_rate > 100)) {
+            return $fail(lang(array('string' => 'Line {var:1}: the {var:2} rate must be between 0 and 100.', 'vars' => array($row_no, erp_tax2_name()))), $field('tax2_rate'));
+        }
         if (($discount_rate < 0) || ($discount_rate > 100)) {
             return $fail(lang(array('string' => 'Line {var:1}: the discount must be between 0 and 100.', 'vars' => $row_no)), $field('discount_rate'));
         }
         if (($offer_rate < 0) || ($offer_rate > 100)) {
             return $fail(lang(array('string' => 'Line {var:1}: the campaign discount must be between 0 and 100.', 'vars' => $row_no)), $field('offer_discount_rate'));
+        }
+        if (($withholding_code !== '') && (($withholding_rate <= 0) || ($withholding_rate > 100))) {
+            return $fail(lang(array('string' => 'Line {var:1}: withholding code {var:2} is not in the list; its share has to be given.', 'vars' => array($row_no, $withholding_code))), $field('withholding_code'));
+        }
+        if (($withholding_code !== '') && ($tax_rate <= 0)) {
+            return $fail(lang(array('string' => 'Line {var:1}: VAT withholding needs VAT on the line.', 'vars' => $row_no)), $field('withholding_code'));
         }
 
         // A campaign rate without a campaign is a typed discount in the wrong
@@ -144,6 +180,10 @@ function erp_manual_lines_build($lines_in)
         $typed_amount = ($discount_rate > 0) ? erp_apply_rate($line_total - $offer_amount, $discount_rate) : 0;
         $discount_amount = $offer_amount + $typed_amount;
         $line_tax = erp_apply_rate($line_total - $discount_amount, $tax_rate);
+        $line_tax2 = ($tax2_rate > 0) ? erp_apply_rate($line_total - $discount_amount, $tax2_rate) : 0;
+        // Withholding is a share of the VAT, the first tax; the second is
+        // never withheld.
+        $line_withholding = ($withholding_rate > 0) ? erp_apply_rate($line_tax, $withholding_rate) : 0;
 
         $lines[] = array(
             'product_id' => max(0, $product_id),
@@ -157,13 +197,20 @@ function erp_manual_lines_build($lines_in)
             'discount_rate' => $discount_rate,
             'discount_amount' => $discount_amount,
             'tax_rate' => $tax_rate,
-            'tax_total' => $line_tax,
+            'tax_total' => $line_tax + $line_tax2,
+            'tax2_rate' => $tax2_rate,
+            'tax2_amount' => $line_tax2,
+            'withholding_code' => $withholding_code,
+            'withholding_rate' => $withholding_rate,
+            'withholding_amount' => $line_withholding,
             'line_total' => $line_total,
         );
 
         $subtotal += $line_total;
         $discount_total += $discount_amount;
-        $tax_total += $line_tax;
+        $tax_total += $line_tax + $line_tax2;
+        $tax2_total += $line_tax2;
+        $withholding_total += $line_withholding;
     }
 
     return array(
@@ -172,7 +219,9 @@ function erp_manual_lines_build($lines_in)
             'subtotal' => $subtotal,
             'discount_total' => $discount_total,
             'tax_total' => $tax_total,
-            'grand_total' => $subtotal - $discount_total + $tax_total,
+            'tax2_total' => $tax2_total,
+            'withholding_total' => $withholding_total,
+            'grand_total' => $subtotal - $discount_total + $tax_total - $withholding_total,
         ),
         'error' => '',
         'field' => '',
@@ -339,11 +388,19 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
             shipping_total = 0,
             surcharge_total = 0,
             gift_card_total = 0,
-            tax_total = '" . (int) $totals['tax_total'] . "',
+            tax_total = '" . (int) $totals['tax_total'] . "'," . erp_tax2_total_sql($totals) . "
+            withholding_total = '" . (int) $totals['withholding_total'] . "',
             grand_total = '" . (int) $totals['grand_total'] . "',
             grand_total_base = '" . (int) $grand_total_base . "',
             notes = '" . escape($header['notes']) . "',
             updated_at = '" . time() . "'";
+
+    // A withholding makes it a TEVKIFAT document; taking the last one off
+    // makes it a sale again. Any other type (a purchase taken in from an
+    // incoming e-invoice as IADE, say) is left as it was.
+    $type_sql = ((int) $totals['withholding_total'] > 0)
+        ? "'TEVKIFAT'"
+        : "IF(invoice_type = 'TEVKIFAT', 'SATIS', invoice_type)";
 
     if ($invoice_id > 0) {
 
@@ -358,7 +415,7 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
             return $fail(lang('Only a draft can be edited. An issued invoice is corrected with a return.'));
         }
 
-        $ok = erp_query("UPDATE erp_invoices SET " . $header_sql . " WHERE id = '" . $invoice_id . "'");
+        $ok = erp_query("UPDATE erp_invoices SET invoice_type = " . $type_sql . ", " . $header_sql . " WHERE id = '" . $invoice_id . "'");
 
         if (($ok === false) || (erp_query("DELETE FROM erp_invoice_items WHERE invoice_id = '" . $invoice_id . "'") === false)) {
             $error = erp_db_error();
@@ -374,7 +431,7 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
         // never collides for longer than the two statements below.
         $ok = erp_query("INSERT INTO erp_invoices SET
             doc_type = 'invoice',
-            invoice_type = 'SATIS',
+            invoice_type = '" . (((int) $totals['withholding_total'] > 0) ? 'TEVKIFAT' : 'SATIS') . "',
             series = '" . escape(ERP_DRAFT_SERIES) . "',
             number = 0,
             issue_year = 0,
@@ -419,7 +476,12 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
                 discount_rate = '" . escape(number_format($line['discount_rate'], 3, '.', '')) . "',
                 discount_amount = '" . (int) $line['discount_amount'] . "',
                 tax_rate = '" . escape(number_format($line['tax_rate'], 3, '.', '')) . "',
-                tax_total = '" . (int) $line['tax_total'] . "',
+                tax_total = '" . (int) $line['tax_total'] . "'," . erp_tax2_line_sql($line) . "
+                vat_exemption_code = '" . escape(erp_vat_line_exemption_code($line)) . "',
+                withholding_code = '" . escape($line['withholding_code']) . "',
+                withholding_rate = '" . escape(number_format($line['withholding_rate'], 3, '.', '')) . "',"
+                . (erp_invoice_lines_have_withholding() ? "
+                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "") . "
                 line_total = '" . (int) $line['line_total'] . "'");
 
         if ($ok === false) {
@@ -499,6 +561,21 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
         return $fail(lang('That account is passive. Make it active before invoicing it.'));
     }
 
+    // A buyer the e-document provider will refuse is caught here, where
+    // nothing has happened yet, rather than at the moment of sending. The
+    // copy an invoice carries is taken a few lines below and never changes
+    // afterwards, so a card completed later would not reach a document that
+    // already exists - and the number would already be gone from the series.
+    $edoc_missing = erp_edoc_invoice_party_missing(array_merge($invoice, array('account_id' => (int) $invoice['account_id'])));
+
+    if (!empty($edoc_missing['fields'])) {
+        erp_tx_rollback();
+        return $fail(lang(array(
+            'string' => '{var:1} will not take an invoice until these are on the account card: {var:2}. Fill the card in and issue it again — no number has been used.',
+            'vars' => array($edoc_missing['label'], implode(', ', $edoc_missing['fields'])),
+        )));
+    }
+
     $rows = (array) db_items("SELECT * FROM erp_invoice_items WHERE invoice_id = '" . $invoice_id . "' ORDER BY line_no ASC, id ASC");
     $built = erp_manual_lines_build($rows);
 
@@ -513,10 +590,22 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
 
     $totals = $built['totals'];
 
+    // A Turkish e-document knows VAT and the taxes GİB lists, not a second
+    // tax of the store's naming; a sale that carries one stays on paper.
+    if (((int) ($totals['tax2_total'] ?? 0) > 0) && (erp_edoc_active() !== '')) {
+        erp_tx_rollback();
+        return $fail(lang(array('string' => 'The {var:1} on the lines cannot go on an e-document. Take it off, or switch the e-document provider off first.', 'vars' => erp_tax2_name())));
+    }
+
     $direction = ((string) $invoice['direction'] === 'purchase') ? 'purchase' : 'sales';
     $issue_date = (string) $invoice['issue_date'];
     $issue_year = (int) substr($issue_date, 0, 4);
     $series = trim((string) (defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF'));
+
+    if (($refusal = erp_lock_refusal($issue_date)) !== '') {
+        erp_tx_rollback();
+        return $fail($refusal);
+    }
 
     if (($series === '') || ($series === ERP_DRAFT_SERIES)) {
         erp_tx_rollback();
@@ -549,6 +638,14 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
 
     $grand_total_base = ($currency === $base) ? $totals['grand_total'] : erp_to_base($totals['grand_total'], $exchange_rate);
 
+    // A customer's credit limit (includes/erp/credit.php): where the store
+    // blocks, a sale past it is refused here, before it takes a number.
+    if (($direction === 'sales') && function_exists('erp_credit_refusal')
+        && (($refusal = erp_credit_refusal($account, (int) $grand_total_base)) !== '')) {
+        erp_tx_rollback();
+        return $fail($refusal);
+    }
+
     $numbered = erp_next_number($series, ($direction === 'sales') ? 'sales_invoice' : 'purchase_invoice', $issue_year);
 
     if (!$numbered['success']) {
@@ -559,14 +656,16 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
     $ok = erp_query("UPDATE erp_invoices SET
             series = '" . escape($series) . "',
             number = '" . (int) $numbered['number'] . "',
-            issue_year = '" . $issue_year . "',
+            issue_year = '" . (int) $numbered['year'] . "',
             full_number = '" . escape($numbered['full']) . "',
             exchange_rate = '" . escape(number_format($exchange_rate, 6, '.', '')) . "',
             exchange_rate_date = '" . escape($rate_date) . "',
             exchange_rate_source = '" . escape($rate_source) . "',
             subtotal = '" . (int) $totals['subtotal'] . "',
             discount_total = '" . (int) $totals['discount_total'] . "',
-            tax_total = '" . (int) $totals['tax_total'] . "',
+            tax_total = '" . (int) $totals['tax_total'] . "'," . erp_tax2_total_sql($totals) . "
+            withholding_total = '" . (int) $totals['withholding_total'] . "',
+            invoice_type = " . (((int) $totals['withholding_total'] > 0) ? "'TEVKIFAT'" : "IF(invoice_type = 'TEVKIFAT', 'SATIS', invoice_type)") . ",
             grand_total = '" . (int) $totals['grand_total'] . "',
             grand_total_base = '" . (int) $grand_total_base . "',
             status = 'issued',
@@ -594,9 +693,21 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
             continue;
         }
 
+        // A zero-rated line saved before the store named its exemption code
+        // takes it now, so the issued document says why it carries no VAT.
+        $exemption = erp_vat_line_exemption_code(array(
+            'tax_rate' => $line['tax_rate'],
+            'product_id' => $line['product_id'],
+            'vat_exemption_code' => (string) ($rows[$index]['vat_exemption_code'] ?? ''),
+        ));
+
         $ok = erp_query("UPDATE erp_invoice_items SET
                 discount_amount = '" . (int) $line['discount_amount'] . "',
-                tax_total = '" . (int) $line['tax_total'] . "',
+                tax_total = '" . (int) $line['tax_total'] . "'," . erp_tax2_line_sql($line) . "
+                vat_exemption_code = '" . escape($exemption) . "',
+                withholding_rate = '" . escape(number_format($line['withholding_rate'], 3, '.', '')) . "',"
+                . (erp_invoice_lines_have_withholding() ? "
+                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "") . "
                 line_total = '" . (int) $line['line_total'] . "'
             WHERE id = '" . (int) $rows[$index]['id'] . "'");
 
@@ -631,11 +742,21 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
         return $fail($error);
     }
 
+    // Goods in on a purchase, out on a typed sale (includes/erp/stock.php);
+    // the count itself changes once the document is committed.
+    if (!erp_stock_post_invoice($invoice_id, $created_by)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     if (!erp_tx_commit()) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);
     }
+
+    erp_stock_apply_pending();
 
     erp_event_invoice($invoice_id, 'erp.invoice.created');
 
@@ -743,6 +864,9 @@ function erp_invoice_create_manual($data)
         erp_tx_rollback();
         return $fail($error);
     }
+
+    // The issue step ran inside this transaction, so its stock waited for it.
+    erp_stock_apply_pending();
 
     return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'full_number' => $issued['full_number'], 'error' => '');
 }

@@ -37,8 +37,18 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
-    $liveform->validate_required_field('first_name', lang('First Name is required.'));
-    $liveform->validate_required_field('last_name', lang('Last Name is required.'));
+    // A designed page (the account_profile widget) names itself in
+    // return_to and lists the controls it drew in pg_controls: only those
+    // are required and written, the rest of the contact stays as it is.
+    $pg_return_to = pg_sw_return_to();
+    $pg_controls  = pg_sw_posted_controls();
+
+    if (pg_sw_posted_control($pg_controls, 'first_name')) {
+        $liveform->validate_required_field('first_name', lang('First Name is required.'));
+    }
+    if (pg_sw_posted_control($pg_controls, 'last_name')) {
+        $liveform->validate_required_field('last_name', lang('Last Name is required.'));
+    }
 
     // If this PHP version supports user timezones, and a timezone was set,
     // and timezone is not valid, then output error.
@@ -63,6 +73,9 @@ if (!$_POST) {
     } else {
         $my_account_profile_path = PATH . SOFTWARE_DIRECTORY . '/my_account_profile.php';
     }
+    if ($pg_return_to !== '') {
+        $my_account_profile_path = $pg_return_to;
+    }
     
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
@@ -79,31 +92,34 @@ if (!$_POST) {
 
         // Only update tax fields if they were submitted in the form.
         $sql_profile_tax = '';
-        if ($liveform->field_in_session('tax_number') || $liveform->field_in_session('tax_office')) {
+        if ($pg_controls !== null) {
+            foreach (array('tax_number', 'tax_office') as $pg_column) {
+                if (in_array($pg_column, $pg_controls, true)) {
+                    $sql_profile_tax .= $pg_column . " = '" . escape(trim($liveform->get_field_value($pg_column))) . "',";
+                }
+            }
+        } elseif ($liveform->field_in_session('tax_number') || $liveform->field_in_session('tax_office')) {
             $sql_profile_tax = "tax_number = '" . escape(trim($liveform->get_field_value('tax_number'))) . "',
                         tax_office = '" . escape(trim($liveform->get_field_value('tax_office'))) . "',";
+        }
+
+        // The columns this post writes: every one for the legacy screen, and
+        // for a widget only the controls it drew.
+        $sql_profile_set = '';
+        foreach (array('salutation', 'first_name', 'last_name', 'suffix', 'company', 'title',
+            'business_address_1', 'business_address_2', 'business_city', 'business_state',
+            'business_zip_code', 'business_phone', 'business_fax', 'business_country',
+            'home_phone', 'mobile_phone') as $pg_column) {
+            if (pg_sw_posted_control($pg_controls, $pg_column)) {
+                $sql_profile_set .= $pg_column . " = '" . escape($liveform->get_field_value($pg_column)) . "',\n";
+            }
         }
 
         // if a contact was found, update contact
         if (mysqli_num_rows($result) > 0) {
             $query = "UPDATE contacts
                      SET
-                        salutation = '" . escape($liveform->get_field_value('salutation')) . "',
-                        first_name = '" . escape($liveform->get_field_value('first_name')) . "',
-                        last_name = '" . escape($liveform->get_field_value('last_name')) . "',
-                        suffix = '" . escape($liveform->get_field_value('suffix')) . "',
-                        company = '" . escape($liveform->get_field_value('company')) . "',
-                        title = '" . escape($liveform->get_field_value('title')) . "',
-                        business_address_1 = '" . escape($liveform->get_field_value('business_address_1')) . "',
-                        business_address_2 = '" . escape($liveform->get_field_value('business_address_2')) . "',
-                        business_city = '" . escape($liveform->get_field_value('business_city')) . "',
-                        business_state = '" . escape($liveform->get_field_value('business_state')) . "',
-                        business_zip_code = '" . escape($liveform->get_field_value('business_zip_code')) . "',
-                        business_phone = '" . escape($liveform->get_field_value('business_phone')) . "',
-                        business_fax = '" . escape($liveform->get_field_value('business_fax')) . "',
-                        business_country = '" . escape($liveform->get_field_value('business_country')) . "',
-                        home_phone = '" . escape($liveform->get_field_value('home_phone')) . "',
-                        mobile_phone = '" . escape($liveform->get_field_value('mobile_phone')) . "',
+                        $sql_profile_set
                         $sql_profile_tax
                         user = $user_id,
                         timestamp = UNIX_TIMESTAMP()
@@ -175,7 +191,7 @@ if (!$_POST) {
         $sql_timezone = "";
 
         // If this PHP version supports user timezones, then save timezone in database.
-        if (version_compare(PHP_VERSION, '5.2.0', '>=') == true) {
+        if ((version_compare(PHP_VERSION, '5.2.0', '>=') == true) && pg_sw_posted_control($pg_controls, 'timezone')) {
             $sql_timezone = ", timezone = '" . escape($liveform->get_field_value('timezone')) . "'";
         }
 
@@ -190,10 +206,14 @@ if (!$_POST) {
 
         log_activity("user ($_SESSION[sessionusername]) updated account", $_SESSION['sessionusername']);
         
-        $my_account->add_notice(lang('Your profile has been updated.'));
-
         // remove liveform because software does not need it anymore
         $liveform->remove_form('my_account_profile');
+
+        if ($pg_return_to !== '') {
+            go(pg_sw_account_done(lang('Your profile has been updated.'), ($_POST['send_to'] ?? ''), $pg_return_to, 'my_account_profile'));
+        }
+
+        $my_account->add_notice(lang('Your profile has been updated.'));
 
         go(get_page_type_url('my account'));
 

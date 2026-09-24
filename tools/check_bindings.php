@@ -14,6 +14,10 @@
  *      is how invented spellings (`__subject`, `__submitted_at`) got into
  *      saved trees in the first place.
  *
+ * The same two contracts hold for the visibility flags ("Show only when",
+ * SW_VISIBILITY_FLAGS): every flag listed is evaluated by a renderer, and
+ * every flag a renderer evaluates is listed.
+ *
  * Not every token belongs in a dropdown, so two shapes are exempt:
  *   • `*_inner_html` — the section-binding pass writes these into the tree
  *     itself; the designer marks a wrapper, never picks the token.
@@ -170,10 +174,144 @@ foreach ($emitted as $token => $files_using) {
 
 echo "\nRenderers produce " . count($emitted) . " token(s); the designer offers " . count($offered) . ".\n";
 
+// ── Visibility flags ────────────────────────────────────────────────────
+// The "Show only when" list (SW_VISIBILITY_FLAGS) against the flags the
+// renderers evaluate. A flag the list offers that no renderer knows drops
+// its element on every page; a flag a renderer knows that the list does
+// not offer can only be written by hand into a saved tree.
+//
+// A renderer hands its flags to _eo_apply_visibility_bindings(),
+// _pg_sw_resolve_visibility() or _pg_acct_render_signed_out() - as an
+// array literal, or as a variable built from one ($flags = array(...),
+// $out['flags'] = array(...)). Each literal's top-level keys are its flags.
+
+// Top-level 'key' => entries of the array(...) literal whose "(" is at
+// $open in $source. Read with the tokenizer, so a comment or a string
+// inside the literal (an apostrophe in "wouldn't") cannot derail it.
+$array_keys_at = function ($source, $open) {
+	$tokens = token_get_all('<?php ' . substr($source, $open));
+	$keys   = array();
+	$depth  = 0;
+	$count  = count($tokens);
+	for ($i = 1; $i < $count; $i++) {
+		$t = $tokens[$i];
+		if ($t === '(' || $t === '[') { $depth++; continue; }
+		if ($t === ')' || $t === ']') { $depth--; if ($depth === 0) break; continue; }
+		if ($depth !== 1 || !is_array($t) || $t[0] !== T_CONSTANT_ENCAPSED_STRING) continue;
+		for ($j = $i + 1; $j < $count && is_array($tokens[$j]) && in_array($tokens[$j][0], array(T_WHITESPACE, T_COMMENT, T_DOC_COMMENT), true); $j++);
+		if ($j < $count && is_array($tokens[$j]) && $tokens[$j][0] === T_DOUBLE_ARROW) {
+			$word = substr($t[1], 1, -1);
+			if (preg_match('/^[a-z][a-z0-9_]*$/', $word)) $keys[] = $word;
+		}
+	}
+	return $keys;
+};
+
+$evaluated = array();
+$flag_vars = array();
+
+foreach ($renderer_files as $file) {
+
+	$source = file_get_contents($file);
+	$short  = basename($file);
+	$calls  = '/(?:_eo_apply_visibility_bindings|_pg_sw_resolve_visibility)\(\s*[^,()]+(?:\([^()]*\))?\s*,\s*'
+	        . '|_pg_acct_render_signed_out\(\s*[^,]+,\s*[^,]+,\s*/';
+
+	if (!preg_match_all($calls, $source, $found, PREG_OFFSET_CAPTURE)) continue;
+
+	foreach ($found[0] as $hit) {
+
+		$arg = substr($source, $hit[1] + strlen($hit[0]), 200);
+
+		if (preg_match('/^array\s*\(/', $arg)) {
+			$open = $hit[1] + strlen($hit[0]) + strpos($arg, '(');
+			foreach ($array_keys_at($source, $open) as $flag) $evaluated[$flag][$short] = true;
+		} elseif (preg_match('/^\$([A-Za-z_][A-Za-z0-9_]*)(?:\[\'([a-z_]+)\'\])?/', $arg, $var)) {
+			$flag_vars[] = array($var[1], isset($var[2]) ? $var[2] : '');
+		}
+
+	}
+
+}
+
+// Variables handed over: the array literals they are built from, in any
+// renderer file ($name = array(...), or 'key' => array(...) / ['key'] = array(...)).
+foreach ($flag_vars as $var) {
+
+	list($name, $key) = $var;
+	$pattern = ($key !== '')
+		? "/(?:'" . preg_quote($key, '/') . "'\s*=>|\['" . preg_quote($key, '/') . "'\]\s*=)\s*array\s*\(/"
+		: '/\$' . preg_quote($name, '/') . '\s*=\s*array\s*\(/';
+
+	foreach ($renderer_files as $file) {
+
+		$source = file_get_contents($file);
+		if (!preg_match_all($pattern, $source, $found, PREG_OFFSET_CAPTURE)) continue;
+
+		foreach ($found[0] as $hit) {
+			$open = $hit[1] + strlen($hit[0]) - 1;
+			foreach ($array_keys_at($source, $open) as $flag) $evaluated[$flag][basename($file)] = true;
+		}
+
+	}
+
+}
+
+// What the designer offers: SW_VISIBILITY_FLAGS = { type: [ ['flag', label], … ], … }.
+$listed = array();
+
+if (preg_match('/var SW_VISIBILITY_FLAGS\s*=\s*\{/', $designer_source, $m, PREG_OFFSET_CAPTURE)) {
+
+	$start = $m[0][1] + strlen($m[0][0]) - 1;
+	$depth = 0;
+	$limit = strlen($designer_source);
+	for ($at = $start; $at < $limit; $at++) {
+		if ($designer_source[$at] === '{') $depth++;
+		if ($designer_source[$at] === '}') { $depth--; if ($depth === 0) break; }
+	}
+	$body = substr($designer_source, $start, $at - $start);
+
+	if (preg_match_all('/(\w+)\s*:\s*\[(.*?)\n\s*\]/s', $body, $types, PREG_SET_ORDER)) {
+		foreach ($types as $type) {
+			if (preg_match_all("/\['([a-z][a-z0-9_]*)'\s*,/", $type[2], $flags)) {
+				foreach ($flags[1] as $flag) $listed[$flag][$type[1]] = true;
+			}
+		}
+	}
+
+} else {
+
+	echo "FLAGS    SW_VISIBILITY_FLAGS not found in $designer_file\n";
+	$problems++;
+
+}
+
+foreach ($listed as $flag => $types_using) {
+
+	if (isset($evaluated[$flag])) continue;
+
+	echo "LISTED   $flag\n";
+	echo "         no renderer evaluates it; listed for: " . implode(', ', array_keys($types_using)) . "\n";
+	$problems++;
+
+}
+
+foreach ($evaluated as $flag => $files_using) {
+
+	if (isset($listed[$flag])) continue;
+
+	echo "UNLISTED $flag\n";
+	echo "         evaluated but not in \"Show only when\"; in: " . implode(', ', array_keys($files_using)) . "\n";
+	$problems++;
+
+}
+
+echo "Renderers evaluate " . count($evaluated) . " visibility flag(s); the designer lists " . count($listed) . ".\n";
+
 if ($problems > 0) {
-	echo "FAILED: $problems token(s) known to one side only.\n";
+	echo "FAILED: $problems name(s) known to one side only.\n";
 	exit(1);
 }
 
-echo "OK: both sides carry the same tokens.\n";
+echo "OK: both sides carry the same tokens and flags.\n";
 exit(0);

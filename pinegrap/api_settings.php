@@ -717,9 +717,9 @@ foreach ($apps as $app) {
 		<div><span class="api-status ' . $status_class . '">' . h($status_label) . '</span></div>
 		<div class="api-meta">' . h(api_settings_ago($app['last_used_timestamp'])) . '
 			<small>' . ($app['last_used_ip'] !== '' ? h($app['last_used_ip']) : '&mdash;') . '</small></div>
-		<div class="api-meta">' . ($stats['requests'] > 0 ? number_format($stats['requests'], 0, ',', '.') . ' ' . lang('requests') : '&mdash;') . '
+		<div class="api-meta">' . ($stats['requests'] > 0 ? pg_format_number($stats['requests'], 0) . ' ' . lang('requests') : '&mdash;') . '
 			<small' . ($stats['failures'] > 0 ? ' class="bad"' : '') . '>'
-			. ($stats['failures'] > 0 ? number_format($stats['failures'], 0, ',', '.') . ' ' . lang('errors') : '&mdash;') . '</small></div>
+			. ($stats['failures'] > 0 ? pg_format_number($stats['failures'], 0) . ' ' . lang('errors') : '&mdash;') . '</small></div>
 		<div class="text-end"><i class="bi bi-chevron-right"></i></div>
 	</div>';
 
@@ -903,13 +903,13 @@ if (!empty($webhook_all)) {
 
 		if ($hook['waiting'] > 0) {
 
-			$meta[] = number_format($hook['waiting'], 0, ',', '.') . ' ' . lang('waiting');
+			$meta[] = pg_format_number($hook['waiting'], 0) . ' ' . lang('waiting');
 
 		}
 
 		if ($hook['given_up'] > 0) {
 
-			$meta[] = number_format($hook['given_up'], 0, ',', '.') . ' ' . lang('given up');
+			$meta[] = pg_format_number($hook['given_up'], 0) . ' ' . lang('given up');
 
 		}
 

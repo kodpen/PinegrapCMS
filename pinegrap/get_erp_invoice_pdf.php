@@ -44,7 +44,7 @@ if ($_POST && isset($_POST['template'])) {
 }
 
 $invoice = ($invoice_id > 0)
-    ? db_item("SELECT id, full_number FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")
+    ? db_item("SELECT id, full_number, status FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")
     : null;
 
 if (!is_array($invoice)) {
@@ -54,6 +54,15 @@ if (!is_array($invoice)) {
         . (($preview_template !== null) ? lang('There is no invoice to preview yet.') : lang('The invoice could not be found.'))
         . '</body></html>';
     exit();
+}
+
+// The copy kept at issue is the document; a live rendering is only for a
+// template preview or ?html=1.
+$live = (($preview_template !== null) || !empty($_GET['html']));
+$kept = $live ? null : erp_archive_file('invoice', $invoice_id);
+
+if ($kept !== null) {
+    erp_archive_send($kept, ((string) $invoice['full_number'] !== '' ? (string) $invoice['full_number'] : 'invoice_' . $invoice_id) . '.pdf', !empty($_GET['download']));
 }
 
 $html = erp_invoice_html($invoice_id, $preview_template);
@@ -75,6 +84,12 @@ $pdf = erp_invoice_pdf($html);
 if ($pdf === false) {
     output_error(lang('The PDF library is not installed.'));
     exit();
+}
+
+// An issued invoice with no kept copy is one from before copies were kept,
+// or one whose copy could not be written at issue: this rendering becomes it.
+if ((string) $invoice['status'] !== 'draft') {
+    erp_archive_store('invoice', $invoice_id, $pdf, (string) $invoice['full_number'], 'pdf', (int) $user['id']);
 }
 
 // The document number is the file name; anything that is not safe in a header

@@ -260,6 +260,55 @@ function pg_cron_jobs()
             'stale_after' => 172800,
             'dispatch'    => true,
         ),
+        // The accountant's monthly pack. Daily, and the script decides: it
+        // builds last month's pack once, on the first run of a month that
+        // finds it missing, and only when the accountant card asks for it.
+        'erp_accountant_job' => array(
+            'label'       => lang('Accountant pack'),
+            'script'      => 'erp_accountant_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        // Repeating invoices (maintenance contracts, rents): writes each one
+        // that has come due. Daily; a visit to the invoice list runs it too.
+        'erp_invoice_recurring_job' => array(
+            'label'       => lang('Repeating invoices'),
+            'script'      => 'erp_invoice_recurring_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        // Low stock notices: the products newly at or below their minimum,
+        // to the bell and the subscribed devices. Hourly, so a sale anywhere
+        // is told within the hour; with the notice off, or nothing new, a run
+        // is one or two indexed reads.
+        'erp_stock_alert_job' => array(
+            'label'       => lang('Low stock notices'),
+            'script'      => 'erp_stock_alert_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        // Repeating expenses (rent, subscriptions): writes each one that has
+        // come due. Daily; a visit to the expenses list runs it too.
+        'erp_expense_recurring_job' => array(
+            'label'       => lang('Repeating expenses'),
+            'script'      => 'erp_expense_recurring_job.php',
+            'interval'    => 86400,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
+        // Repeating workspace tasks. Hourly, so a copy due today is handed out
+        // within the first hour of the day wherever the rotation stands; a run
+        // with nothing due is one indexed read.
+        'workspace_recurring_job' => array(
+            'label'       => lang('Repeating tasks'),
+            'script'      => 'workspace_recurring_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+        ),
     );
 }
 

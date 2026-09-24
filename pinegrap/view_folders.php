@@ -45,6 +45,11 @@ if ($explorer_area == 'catalog') {
     validate_area_access($user, 'user');
 }
 
+// The ERP module's documents, for the people the module lets in: the rule of
+// validate_erp_access() without its error page. Without the right the section
+// is simply not drawn, and the listing refuses the request on its own as well.
+$explorer_erp = ($explorer_area != 'catalog') && defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']));
+
 // This screen no longer links across to the other area at all -- neither from
 // the sidebar nor from the menu at the top right -- so it no longer has to
 // work out who may go there.  The left menu carries both entries and already
@@ -133,10 +138,17 @@ if ($explorer_area == 'catalog') {
         $initial_mode = 'backups';
     } elseif (isset($_GET['view']) && ($_GET['view'] == 'short_links') && ($user['role'] <= 2)) {
         $initial_mode = 'short_links';
+    } elseif (isset($_GET['view']) && ($_GET['view'] == 'erp') && $explorer_erp) {
+        $initial_mode = 'erp';
     }
 
     $initial_filter = (isset($_GET['view']) && in_array($_GET['view'], array('images', 'pages'), true)) ? $_GET['view'] : '';
 }
+
+// ?view=erp&erp=sales_invoices opens one of the ERP folders. Only the shape of
+// the key is checked here; the listing falls back to the top for a key it does
+// not know.
+$initial_erp_folder = (($initial_mode == 'erp') && isset($_GET['erp'])) ? preg_replace('/[^a-z_]/', '', (string) $_GET['erp']) : '';
 
 // ?view=files&scope=documents narrows the Files view the way view_files.php's
 // filter select did. Only the Files view takes one.
@@ -669,6 +681,62 @@ $explorer_lang = array(
     'previous_item' => lang('Previous'),
     'next_item' => lang('Next'),
     'close' => lang('Close'),
+    // The ERP documents: read-only folders of the accounting module.
+    'erp_files' => lang('ERP Files'),
+    'erp_docs_count' => lang('{var:1} document(s)'),
+    'erp_folders_count' => lang('{var:1} folder(s)'),
+    'erp_showing' => lang('Showing {var:1} of {var:2} documents'),
+    'erp_load_more' => lang('Show more ({var:1} of {var:2})'),
+    'erp_read_only' => lang('Read-only'),
+    'erp_read_only_note' => lang('ERP documents are read-only here. They are changed, cancelled or returned on their own screens.'),
+    'erp_folder_empty' => lang('There are no documents in this folder yet.'),
+    'erp_search_placeholder' => lang('Number, GİB number, ETTN, account, tax number or order'),
+    'erp_sales_invoice' => lang('Sales invoice'),
+    'erp_return_invoice' => lang('Return invoice'),
+    'erp_purchase_invoice' => lang('Purchase invoice'),
+    'erp_draft_invoice' => lang('Draft invoice'),
+    'erp_edoc' => lang('e-Document'),
+    'erp_einvoice' => lang('e-Invoice'),
+    'erp_earchive' => lang('e-Archive'),
+    'erp_waybill' => lang('Delivery Note'),
+    'erp_ewaybill' => lang('e-Delivery Note'),
+    'erp_letter' => lang('Reconciliation Letter'),
+    'erp_expense' => lang('Expense receipt'),
+    'erp_goto_expense' => lang('Go to the expense'),
+    'erp_supplier' => lang('Supplier'),
+    'erp_category' => lang('Category'),
+    'erp_cancelled' => lang('Cancelled'),
+    'erp_sent' => lang('Sent'),
+    'erp_goto_invoice' => lang('Go to the invoice'),
+    'erp_goto_waybill' => lang('Go to the delivery note'),
+    'erp_goto_draft' => lang('Open the draft'),
+    'erp_goto_reconciliation' => lang('Go to the reconciliation'),
+    'erp_goto_account' => lang('Go to the account'),
+    'erp_goto_order' => lang('Go to the order'),
+    'erp_copy_number' => lang('Copy document number'),
+    'erp_number' => lang('Document Number'),
+    'erp_gib_number' => lang('GİB Number'),
+    'erp_ettn' => lang('ETTN'),
+    'erp_date' => lang('Date'),
+    'erp_ship_date' => lang('Ship date'),
+    'erp_account' => lang('Ledger account'),
+    'erp_recipient' => lang('Recipient'),
+    'erp_tax_number' => function_exists('erp_tax_id_label') ? erp_tax_id_label() : ((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')),
+    'erp_balance' => lang('Balance'),
+    'erp_order' => lang('Order'),
+    'erp_invoice' => lang('Invoice'),
+    'erp_carrier' => lang('Carrier'),
+    'erp_plate' => lang('Plate'),
+    'erp_sent_to' => lang('Sent to'),
+    'erp_source' => lang('Source'),
+    'erp_source_kept' => lang('Kept copy'),
+    'erp_source_generated' => lang('Created when opened, then kept'),
+    'erp_source_provider' => lang('Fetched from the provider when opened'),
+    'erp_source_draft' => lang('A draft has no document yet'),
+    'erp_source_missing' => lang('The copy that was sent is not on the disk'),
+    'erp_show_preview' => lang('Show preview'),
+    'erp_preview_generated' => lang('This document has no kept copy yet. Showing it creates the PDF and keeps it.'),
+    'erp_preview_provider' => lang('Showing it asks the e-document provider for the official copy.'),
     'watch_the_tour' => lang('Watch the tour'));
 
 // ── The guided tour ─────────────────────────────────────────────────────
@@ -1258,6 +1326,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_menu .dropdown-item .menu-check { width: 1.1rem; display: inline-block; }
 #explorer_menu .dropdown-item .submenu-arrow { float: right; margin-top: .2rem; opacity: .6; }
 .bin-badge { font-size: .66rem; }
+/* ERP documents. A folder with nothing in it stays in the branch, quieter,
+   so the set of folders does not change shape as documents are issued. A
+   cancelled document stays listed -- it keeps its number -- and reads as
+   struck through. */
+#explorer_tree_pane .erp-tree-row.is-empty .tree-label,
+#explorer_tree_pane .erp-tree-row.is-empty > .bi { opacity: .55; }
+.explorer-item.erp-cancelled .item-name,
+#explorer_list_table tr.erp-cancelled .list-name { text-decoration: line-through; opacity: .75; }
+.explorer-item .erp-amount { font-variant-numeric: tabular-nums; }
+#explorer_list_table .erp-amount { display: none; }
+.list-badge.badge-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
+#explorer_preview_pane .erp-preview-wait { border: 1px dashed var(--bs-border-color); border-radius: .6rem; padding: 1.1rem .9rem; }
+#explorer_preview_pane .erp-goto .btn { min-width: 0; }
+#explorer_preview_pane .erp-goto-detail { max-width: 55%; opacity: .7; }
+#explorer_preview_pane .erp-ettn { font-size: .72rem; word-break: break-all; }
 .explorer-item, .tree-row { -webkit-touch-callout: none; }
 @media (max-width: 991.98px) {
     #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
@@ -1378,6 +1461,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li class="area-files"><button type="button" class="dropdown-item" id="shared_menu_item"><span class="bi bi-shield-lock me-2"></span><?php echo lang('Shared Folders'); ?></button></li>
                 <li class="area-files"><button type="button" class="dropdown-item" id="backups_menu_item"><span class="bi bi-database me-2"></span><?php echo lang('Backups'); ?></button></li>
                 <?php } ?>
+                <?php if ($explorer_erp) { ?>
+                <li class="area-files"><button type="button" class="dropdown-item" id="erp_menu_item"><i class="bi bi-safe2 me-2" aria-hidden="true"></i><?php echo lang('ERP Files'); ?></button></li>
+                <?php } ?>
                 <li class="area-catalog"><button type="button" class="dropdown-item" id="all_products_menu_item"><span class="bi bi-box2-heart me-2"></span><?php echo lang('All Products'); ?></button></li>
                 <li class="area-catalog"><button type="button" class="dropdown-item" id="all_variant_sets_menu_item"><span class="bi bi-collection-fill me-2"></span><?php echo lang('All Variant Sets'); ?></button></li>
                 <?php if ($user['role'] <= 2) { ?>
@@ -1452,6 +1538,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <div class="tree-section-label area-files" id="shared_section_label"><?php echo lang('Shared Items'); ?></div>
             <div class="tree-row area-files" id="shared_quick"><span class="tree-toggle"></span><span class="bi bi-shield-lock text-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
             <div class="tree-row area-files" id="backups_quick"><span class="tree-toggle"></span><span class="bi bi-database text-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
+            <?php } ?>
+
+            <?php if ($explorer_erp) { ?>
+            <!-- The ERP module's documents, in folders that exist only here.
+                 The branch is wrapped so its list is indented like the
+                 folder tree's own; its rows carry data-erp-folder, not
+                 data-folder-id, so none of the tree's folder handlers, its
+                 menu or its drop targets take them for folders. -->
+            <div class="tree-section-label area-files" id="erp_section_label"><?php echo lang('ERP'); ?></div>
+            <div class="area-files" id="erp_tree_wrap">
+                <div class="tree-row" id="erp_quick"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle"></span><i class="bi bi-safe2 text-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
+                <ul id="erp_tree" style="display:none"></ul>
+            </div>
             <?php } ?>
 
             <!-- The sidebar carries one tree and stops there. It used to end
@@ -1893,6 +1992,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         backupCrumbs: [],
         backupZip: true,
         backupTotal: '',
+        // The ERP documents: the virtual folder that is open ('' is the top),
+        // the branch with its counts, and how many the open folder holds in
+        // all -- a folder is listed two hundred at a time. The sort order the
+        // folders had is kept aside while they are here.
+        erpAllowed: <?php echo $explorer_erp ? 'true' : 'false'; ?>,
+        erpFolder: '<?php echo h($initial_erp_folder); ?>',
+        erpFolderLabel: '',
+        erpFolderNote: '',
+        erpTree: [],
+        erpTotal: 0,
+        erpSort: null,
+        sortOutsideErp: null,
         folderId: <?php echo (int) $initial_folder_id; ?>,
         groupId: <?php echo (int) $initial_group_id; ?>,
         catalogCurrent: null,
@@ -2244,11 +2355,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     var lastListingKey = null;
 
     function listingKey(id) {
-        return [state.mode, state.allFilter, state.fileScope, state.backupPath, id].join('|');
+        return [state.mode, state.allFilter, state.fileScope, state.backupPath, state.erpFolder, id].join('|');
     }
 
     function load(folderId, done) {
         var seq = ++loadSeq;
+
+        // Leaving the ERP folders gives the folders their own order back.
+        leaveErpSort();
 
         var key = listingKey(folderId);
 
@@ -2270,6 +2384,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (state.mode === 'short_links') {
             loadShortLinks(seq, done);
+            return;
+        }
+
+        if (state.mode === 'erp') {
+            loadErp(seq, done, false);
             return;
         }
 
@@ -2389,6 +2508,459 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // destination. They ride the ordinary grid because the server dresses them
     // as files, the way a backup entry is dressed as one.
     function insideShortLinks() { return state.mode === 'short_links'; }
+
+    // ── ERP documents ───────────────────────────────────────────────────
+    //
+    // The ERP module's invoices, delivery notes, e-documents and letters, in
+    // virtual folders that exist only on this screen. The server dresses each
+    // document as a file row -- can_edit false, a negative id, the real id in
+    // erp_id -- so the grid, the list, the sort and the selection draw them
+    // with the code they already have, and every editing action stays off
+    // them by the same test that keeps a locked file locked. What is special
+    // about them is answered here: what they are called, where they open, and
+    // the screens they belong to.
+    //
+    // Nothing is rendered ahead of a click. A document with no kept copy is a
+    // PDF run when it is opened, and an e-document a call to the provider, so
+    // the preview of one waits for its button; only a copy that is already
+    // kept is shown by itself, since that is a file read like any other.
+
+    var erpSearchTimer = null;
+
+    function insideErp() { return state.mode === 'erp'; }
+
+    // Documents are read newest first. The order an operator picked for the
+    // folders is put aside while they are here and given back on the way out.
+    function enterErp(folder) {
+        if ((state.area === 'catalog') || !state.erpAllowed) { return; }
+
+        if (!insideErp()) {
+            state.sortOutsideErp = state.sort;
+            state.sort = state.erpSort || { key: 'date', dir: 'desc' };
+        }
+
+        state.mode = 'erp';
+        state.allFilter = '';
+        state.fileScope = '';
+        state.erpFolder = folder || '';
+        load(0, highlightTree);
+    }
+
+    function leaveErpSort() {
+        if (insideErp() || !state.sortOutsideErp) { return; }
+        state.erpSort = state.sort;
+        state.sort = state.sortOutsideErp;
+        state.sortOutsideErp = null;
+    }
+
+    // One listing: the folders at the top, one folder's documents, or a
+    // search. The search runs on the server, over the document number, the
+    // GİB number and ETTN, the account and its tax number, the order, the
+    // carrier and the plate -- a document's file name is its number, so a
+    // search of what is on screen would find almost nothing. At the top it
+    // runs across every folder.
+    function loadErp(seq, done, append) {
+        var payload = {
+            type: 'explorer_erp_list',
+            folder: state.erpFolder || '',
+            search: state.filter || '',
+            offset: append ? state.items.files.length : 0
+        };
+
+        if (state.viewTypeExplicit) { payload.view_type = state.viewType; }
+
+        api(payload, function (response) {
+            if (seq !== loadSeq) { return; }
+
+            if ((typeof response !== 'object') || (response === null) || (typeof response.status === 'undefined')) {
+                renderLoadError(0, done, L.load_failed);
+                return;
+            }
+
+            if (response.status !== 'success') {
+                toast(response.message || L.request_failed, false);
+                state.mode = 'browse';
+                load(0, highlightTree);
+                return;
+            }
+
+            state.erpTree = response.tree || [];
+            renderErpTree();
+
+            if (append) {
+                state.items.files = state.items.files.concat(response.files || []);
+                state.erpTotal = response.total || 0;
+                renderContent();
+                applySelectionClasses();
+                renderStatusbar();
+                if (done) { done(); }
+                return;
+            }
+
+            state.folderId = 0;
+            state.viewType = response.view_type;
+            state.current = null;
+            state.breadcrumb = [];
+
+            // This view can be opened straight from a link, so it carries the
+            // settings the renderer reads with it.
+            if (response.capabilities) { state.caps = Object.assign({}, state.caps, response.capabilities); }
+
+            state.erpFolder = response.folder || '';
+            state.erpFolderLabel = response.folder_label || '';
+            state.erpFolderNote = response.folder_note || '';
+            state.erpTotal = response.total || 0;
+            state.items = { folders: response.folders || [], pages: [], files: response.files || [] };
+            state.selection = {};
+            state.lastIndex = -1;
+            lastListingKey = listingKey(0);
+
+            window.history.replaceState(null, '', 'view_folders.php?view=erp' + (state.erpFolder ? ('&erp=' + encodeURIComponent(state.erpFolder)) : ''));
+
+            updateCreateLinks();
+            renderBreadcrumb();
+            renderContent();
+            renderPreview(null);
+            renderStatusbar();
+            syncViewButtons();
+            highlightTree();
+
+            if (done) { done(); }
+        }, function () {
+            if (seq !== loadSeq) { return; }
+            renderLoadError(0, done, L.load_failed);
+        });
+    }
+
+    // The next page of the open folder, under the rows already drawn.
+    function erpLoadMore() {
+        if (!insideErp() || (state.erpFolder === '')) { return; }
+        loadErp(++loadSeq, null, true);
+    }
+
+    // The sidebar branch. Its rows carry data-erp-folder rather than
+    // data-folder-id: the folder tree's own handlers, its menu and the drop
+    // targets all reach for that attribute, and none of them applies here.
+    function renderErpTree() {
+        var list = document.getElementById('erp_tree');
+
+        if (!list) { return; }
+
+        var html = '';
+
+        (state.erpTree || []).forEach(function (node) {
+            html += '<li><div class="tree-row erp-tree-row' + ((node.count > 0) ? '' : ' is-empty') + '" data-erp-folder="' + esc(node.key) + '" title="' + esc(node.note || node.label) + '">' +
+                '<span class="tree-toggle"></span><i class="bi ' + esc(node.icon || 'bi-folder') + ' text-primary" aria-hidden="true"></i>' +
+                '<span class="tree-label">' + esc(node.label) + '</span><span class="tree-count">' + (parseInt(node.count, 10) || 0) + '</span></div></li>';
+        });
+
+        list.innerHTML = html;
+        highlightErpTree();
+    }
+
+    function highlightErpTree() {
+        var root = document.getElementById('erp_quick');
+
+        if (!root) { return; }
+
+        root.classList.toggle('active', insideErp() && (state.erpFolder === ''));
+
+        document.querySelectorAll('#erp_tree [data-erp-folder]').forEach(function (row) {
+            row.classList.toggle('active', insideErp() && (row.getAttribute('data-erp-folder') === state.erpFolder));
+        });
+    }
+
+    function erpTreeOpen() {
+        var list = document.getElementById('erp_tree');
+        return !!(list && (list.style.display !== 'none'));
+    }
+
+    function setErpTreeOpen(open) {
+        var root = document.getElementById('erp_quick');
+        var list = document.getElementById('erp_tree');
+
+        if (!root || !list) { return; }
+
+        root.querySelector('.tree-toggle').classList.toggle('open', open);
+        list.style.display = open ? 'block' : 'none';
+        storageSet('pg_explorer_erp_open', open ? '1' : '0');
+
+        // The counts arrive with every ERP listing; opened from anywhere
+        // else, the branch asks for them once.
+        if (open && ((state.erpTree || []).length === 0) && !insideErp()) { loadErpTree(); }
+    }
+
+    function loadErpTree() {
+        api({ type: 'explorer_erp_tree' }, function (response) {
+            if (response.status !== 'success') { return; }
+            state.erpTree = response.tree || [];
+            renderErpTree();
+        }, function () { });
+    }
+
+    // What a document is, in the words of the module that issued it.
+    function erpTypeLabel(item) {
+        if (item.kind === 'folder') { return L.folder; }
+
+        switch (item.erp_kind) {
+            case 'erp_invoice':
+                if (item.source === 'draft') { return L.erp_draft_invoice; }
+                if (item.doc_class === 'return') { return L.erp_return_invoice; }
+                if (item.doc_class === 'purchase') { return L.erp_purchase_invoice; }
+                return L.erp_sales_invoice;
+            case 'erp_edoc':
+                if (item.edoc_kind === 'einvoice') { return L.erp_einvoice; }
+                if (item.edoc_kind === 'earchive') { return L.erp_earchive; }
+                return L.erp_edoc;
+            case 'erp_waybill': return L.erp_waybill;
+            case 'erp_ewaybill': return L.erp_ewaybill;
+            case 'erp_reconciliation': return L.erp_letter;
+            case 'erp_expense': return L.erp_expense;
+        }
+
+        return (item.type || '').toUpperCase();
+    }
+
+    function erpIconHtml(item, big) {
+        var sizeClass = big ? 'item-icon' : 'list-icon';
+
+        if (item.kind === 'folder') {
+            return '<span class="' + sizeClass + ' bi bi-folder-fill private">' +
+                '<span class="access-badge bi ' + esc(item.erp_icon || 'bi-safe2') + ' text-primary"></span></span>';
+        }
+
+        // The corner says the one thing about the document worth seeing
+        // from across the room: cancelled, official, still a draft.
+        var mark = 'bi-lock-fill';
+        var markClass = '';
+
+        if (item.cancelled) { mark = 'bi-x-circle-fill'; markClass = ' text-danger'; }
+        else if (item.erp_kind === 'erp_edoc') { mark = 'bi-patch-check-fill'; markClass = ' text-success'; }
+        else if (item.source === 'draft') { mark = 'bi-pencil-fill'; markClass = ' text-secondary'; }
+
+        var glyph = (item.type === 'pdf') ? 'bi-filetype-pdf' : (item.picture ? 'bi-file-earmark-image' : 'bi-file-earmark-text');
+
+        return '<span class="' + sizeClass + ' bi ' + glyph + ' private">' +
+            '<span class="access-badge bi ' + mark + markClass + '"></span></span>';
+    }
+
+    function erpFlagsHtml(item) {
+        if (item.kind === 'folder') { return ''; }
+
+        var flags = [];
+
+        if (item.cancelled) {
+            flags.push('<i class="bi bi-x-octagon text-danger" title="' + esc(item.status_label || L.erp_cancelled) + '"></i>');
+        } else if (item.status === 'paid') {
+            flags.push('<i class="bi bi-check2-circle text-success" title="' + esc(item.status_label) + '"></i>');
+        } else if (item.status === 'partially_paid') {
+            flags.push('<i class="bi bi-circle-half text-warning" title="' + esc(item.status_label) + '"></i>');
+        }
+
+        if ((item.erp_kind === 'erp_invoice') && item.gib_number && (item.edoc_status && (item.edoc_status !== 'none'))) {
+            flags.push('<i class="bi bi-send-check text-success" title="' + esc(L.erp_edoc + ': ' + (item.edoc_status_label || '')) + '"></i>');
+        }
+
+        var amount = item.total_label || item.balance_label || '';
+
+        if (amount !== '') { flags.push('<span class="erp-amount">' + esc(amount) + '</span>'); }
+
+        return flags.join(' ');
+    }
+
+    function erpStatusBadge(item) {
+        if (item.kind === 'folder') { return ''; }
+
+        if (item.erp_kind === 'erp_reconciliation') {
+            return '<span class="list-badge badge-on">' + esc(L.erp_sent) + '</span>';
+        }
+
+        if (!item.status_label) { return ''; }
+
+        var tone = '';
+
+        if (item.cancelled) { tone = ' badge-danger'; }
+        else if (item.status === 'paid') { tone = ' badge-on'; }
+        else if (item.status === 'partially_paid') { tone = ' badge-off'; }
+
+        return '<span class="list-badge' + tone + '">' + esc(item.status_label) + '</span>';
+    }
+
+    // The screen a document belongs to, named for what it is: the invoice,
+    // the delivery note, the draft in its editor, the reconciliation.
+    function erpGotoLabel(item) {
+        if (item.erp_kind === 'erp_reconciliation') { return L.erp_goto_reconciliation; }
+        if (item.erp_kind === 'erp_expense') { return L.erp_goto_expense; }
+        if ((item.erp_kind === 'erp_waybill') || (item.erp_kind === 'erp_ewaybill')) { return L.erp_goto_waybill; }
+        if (item.source === 'draft') { return L.erp_goto_draft; }
+        return L.erp_goto_invoice;
+    }
+
+    function erpGotoIcon(item) {
+        if (item.erp_kind === 'erp_reconciliation') { return 'bi-envelope-paper'; }
+        if (item.erp_kind === 'erp_expense') { return 'bi-receipt-cutoff'; }
+        if ((item.erp_kind === 'erp_waybill') || (item.erp_kind === 'erp_ewaybill')) { return 'bi-truck'; }
+        if (item.source === 'draft') { return 'bi-pencil-square'; }
+        return 'bi-receipt';
+    }
+
+    // The related screens, in the order they are wanted: the document's own,
+    // then who it was for, then where it came from.
+    function erpGotoLinks(item) {
+        var links = [];
+
+        if (item.edit_url) { links.push({ icon: erpGotoIcon(item), label: erpGotoLabel(item), url: item.edit_url, action: 'erp_goto_doc', primary: true }); }
+        if (item.invoice_url) { links.push({ icon: 'bi-receipt', label: L.erp_goto_invoice, url: item.invoice_url, action: 'erp_goto_invoice' }); }
+        if (item.account_url) { links.push({ icon: 'bi-person-vcard', label: L.erp_goto_account, url: item.account_url, action: 'erp_goto_account', detail: item.account_title || '' }); }
+        if (item.order_url) { links.push({ icon: 'bi-bag', label: L.erp_goto_order, url: item.order_url, action: 'erp_goto_order', detail: item.order_number || '' }); }
+
+        return links;
+    }
+
+    function erpDownload(item) {
+        if (!item || !item.download_url) { return; }
+
+        var link = document.createElement('a');
+        link.href = item.download_url;
+        link.download = item.name || '';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
+    function erpSourceHtml(item) {
+        switch (item.source) {
+            case 'kept': return esc(L.erp_source_kept) + (item.kept_label ? (' · ' + item.kept_label) : '');
+            case 'generated': return esc(L.erp_source_generated);
+            case 'provider': return esc(L.erp_source_provider);
+            case 'draft': return esc(L.erp_source_draft);
+            case 'missing': return esc(L.erp_source_missing);
+        }
+        return '';
+    }
+
+    function renderErpPreview(item, pane) {
+        var rows = '';
+
+        // The document sits at the top of the panel; a panel left scrolled
+        // down by the last one would open this one on its details.
+        pane.scrollTop = 0;
+
+        function row(label, value, raw) {
+            if ((value === '') || (value === null) || (value === undefined)) { return; }
+            rows += '<tr><th>' + esc(label) + '</th><td class="text-break">' + (raw ? value : esc(String(value))) + '</td></tr>';
+        }
+
+        if (item.kind === 'folder') {
+            row(L.name, item.name);
+            row(L.size, fmt(L.erp_docs_count, [item.counts.files]));
+
+            pane.innerHTML =
+                '<div class="text-center my-3">' + erpIconHtml(item, true) + '</div>' +
+                '<div class="d-grid mb-3"><button type="button" class="btn btn-sm btn-outline-primary" data-role="erp-open-folder">' +
+                    '<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' + esc(L.open_folder) + '</button></div>' +
+                (item.note ? ('<p class="small text-body-secondary">' + esc(item.note) + '</p>') : '') +
+                '<table class="table table-sm"><tbody>' + rows + '</tbody></table>';
+
+            pane.querySelector('[data-role="erp-open-folder"]').addEventListener('click', function () { enterErp(item.erp_folder); });
+            return;
+        }
+
+        var viewable = ((item.type === 'pdf') && !!item.url);
+        var media;
+
+        // An expense's receipt can be a photograph: the kept file itself,
+        // read from the disk, so it is shown straight away like a kept PDF.
+        if (item.picture && item.kept && item.url) {
+            media = '<img src="' + esc(item.url) + '" alt="" class="img-fluid rounded border" style="max-height:24rem;" />';
+        } else if (viewable && item.kept) {
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>';
+        } else if (viewable) {
+            media = '<div class="erp-preview-wait text-center">' +
+                '<span class="bi bi-filetype-pdf display-5 d-block mb-2 private"></span>' +
+                '<p class="small text-body-secondary mb-2">' + esc((item.source === 'provider') ? L.erp_preview_provider : L.erp_preview_generated) + '</p>' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary no-popover" data-role="erp-preview"><i class="bi bi-eye me-1" aria-hidden="true"></i>' + esc(L.erp_show_preview) + '</button></div>';
+        } else {
+            media = '<div class="text-center empty-note my-3"><span class="bi ' + ((item.source === 'draft') ? 'bi-pencil-square' : 'bi-file-earmark-x') + ' fs-1 d-block mb-2"></span>' +
+                esc((item.source === 'draft') ? L.erp_source_draft : L.no_preview) + '</div>';
+        }
+
+        var tools = '<div class="btn-group btn-group-sm w-100 mb-2">' +
+            (item.url ? ('<a class="btn btn-outline-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>') : '') +
+            (item.download_url ? ('<a class="btn btn-outline-secondary no-popover" href="' + esc(item.download_url) + '" download="' + esc(item.name || '') + '" title="' + esc(L.download) + '"><i class="bi bi-download" aria-hidden="true"></i></a>') : '') +
+            (quickLookable(item) ? ('<button type="button" class="btn btn-outline-secondary no-popover" data-role="erp-quick-look" title="' + esc(L.quick_look) + '"><i class="bi bi-eye" aria-hidden="true"></i></button>') : '') +
+            '<button type="button" class="btn btn-outline-secondary no-popover" data-role="erp-copy-number" title="' + esc(L.erp_copy_number) + '"' + (item.number ? '' : ' disabled') + '><i class="bi bi-123" aria-hidden="true"></i></button>' +
+            '</div>';
+
+        // Real links, so the operator can open any of them in a tab of its
+        // own; the menu and the strip below go to the same addresses.
+        var goto = '';
+
+        erpGotoLinks(item).forEach(function (link) {
+            goto += '<a class="btn btn-sm ' + (link.primary ? 'btn-outline-primary' : 'btn-outline-secondary') + ' text-start d-flex align-items-center no-popover" href="' + esc(link.url) + '">' +
+                '<i class="bi ' + link.icon + ' me-2" aria-hidden="true"></i><span class="text-truncate">' + esc(link.label) + '</span>' +
+                (link.detail ? ('<span class="ms-auto ps-2 small text-truncate erp-goto-detail">' + esc(link.detail) + '</span>') : '') + '</a>';
+        });
+
+        row(L.type, erpTypeLabel(item));
+        row(L.erp_number, item.number);
+        row(L.erp_gib_number, item.gib_number);
+        if (item.ettn) { row(L.erp_ettn, '<code class="erp-ettn">' + esc(item.ettn) + '</code>', true); }
+        row(L.erp_date, item.date_label);
+        row(L.erp_ship_date, item.ship_date_label);
+        row(L.erp_account, item.account_title);
+        row(L.erp_supplier, item.supplier);
+        row(L.erp_category, item.category_name);
+        if (item.recipient && (item.recipient !== item.account_title)) { row(L.erp_recipient, item.recipient); }
+        row(L.erp_tax_number, item.tax_number);
+        row(L.amount, item.total_label);
+        row(L.erp_balance, item.balance_label);
+        row(L.status, erpStatusBadge(item), true);
+
+        if (item.edoc_status && (item.edoc_status !== 'none') && (item.erp_kind === 'erp_invoice')) {
+            row(L.erp_edoc, item.edoc_status_label);
+        }
+
+        row(L.erp_order, item.order_number);
+        row(L.erp_invoice, item.invoice_number);
+        row(L.erp_carrier, item.carrier);
+        row(L.erp_plate, item.plate);
+        row(L.erp_sent_to, item.sent_to);
+
+        if ((state.erpFolder === '') && item.folder_name) { row(L.folder, item.folder_name); }
+
+        row(L.size, item.size_known ? item.size_label : '—');
+        row(L.erp_source, erpSourceHtml(item), true);
+
+        if (item.modified) {
+            row(L.last_modified, item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''), true);
+        }
+
+        pane.innerHTML =
+            '<div class="mb-2">' + media + '</div>' +
+            tools +
+            (goto ? ('<div class="d-grid gap-1 mb-3 erp-goto">' + goto + '</div>') : '') +
+            '<h6 class="text-uppercase text-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.details) + '</h6>' +
+            '<table class="table table-sm"><tbody>' + rows + '</tbody></table>' +
+            '<p class="small text-body-secondary mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' + esc(L.erp_read_only_note) + '</p>';
+
+        var previewButton = pane.querySelector('[data-role="erp-preview"]');
+
+        if (previewButton) {
+            previewButton.addEventListener('click', function () {
+                var wait = pane.querySelector('.erp-preview-wait');
+                if (wait) { wait.outerHTML = '<iframe src="' + esc(item.url) + '"></iframe>'; }
+            });
+        }
+
+        var lookButton = pane.querySelector('[data-role="erp-quick-look"]');
+
+        if (lookButton) { lookButton.addEventListener('click', function () { openQuickLook(item); }); }
+
+        var numberButton = pane.querySelector('[data-role="erp-copy-number"]');
+
+        if (numberButton) { numberButton.addEventListener('click', function () { if (item.number) { copyText(item.number, L.copied); } }); }
+    }
 
     // What the Recycle Bin calls this row.
     //
@@ -2644,6 +3216,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // The short description, when it says something the name does not.
     function catalogSubName(item) {
+
+        // An ERP document's name is its number; the tile says who it was for
+        // under it. The list has a column of its own for that.
+        if (item && item.erp && (item.kind === 'file')) { return String(item.account_title || item.recipient || '').trim(); }
 
         if ((!item) || ((item.kind !== 'group') && (item.kind !== 'product'))) { return ''; }
 
@@ -3205,6 +3781,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             };
         }
 
+        // The ERP folders are read-only: nothing is made or put there.
+        if (insideErp()) {
+            return { folder: false, upload: false, file: false, page: false, image: false, short_link: false };
+        }
+
         if (insideBin() || insideShared() || insideShortLinks()) {
             return { folder: false, upload: false, file: false, page: false, image: false, short_link: shortLink };
         }
@@ -3264,7 +3845,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // "access denied" is worse than no entry.
     function transferActions() {
 
-        var siteSide = (!insideCatalog() && !insideBackups() && !insideShortLinks() && !insideShared() && !insideBin());
+        var siteSide = (!insideCatalog() && !insideBackups() && !insideShortLinks() && !insideShared() && !insideBin() && !insideErp());
 
         // The catalog pair asks for nothing beyond standing in the store: the
         // screen itself is behind validate_ecommerce_access(), and so are
@@ -3531,6 +4112,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             return;
         }
 
+        if (state.mode === 'erp') {
+            var erpCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>';
+
+            if (state.erpFolder === '') {
+                erpCrumbs += '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</li>';
+            } else {
+                erpCrumbs += '<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 link-secondary text-decoration-none" data-erp-crumb="1"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</button></li>' +
+                    '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page">' + esc(state.erpFolderLabel || state.erpFolder) + '</li>';
+            }
+
+            var erpBar = document.getElementById('explorer_breadcrumb');
+            erpBar.innerHTML = '<nav><ol class="breadcrumb">' + erpCrumbs + '</ol></nav>';
+
+            var erpTop = erpBar.querySelector('[data-erp-crumb]');
+
+            if (erpTop) { erpTop.addEventListener('click', function () { enterErp(''); }); }
+
+            return;
+        }
+
         if (state.mode === 'short_links') {
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
@@ -3612,6 +4213,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
             else if (key === 'folder') { va = (a.folder_name || '').toLowerCase(); vb = (b.folder_name || '').toLowerCase(); }
+            // The ERP columns. A date is ISO, so it sorts as written; a
+            // letter carries a balance where an invoice carries a total.
+            else if (key === 'date') { va = a.date || ''; vb = b.date || ''; }
+            else if (key === 'total') { va = (typeof a.total === 'number') ? a.total : (a.balance || 0); vb = (typeof b.total === 'number') ? b.total : (b.balance || 0); }
+            else if (key === 'account') { va = (a.account_title || a.recipient || '').toLowerCase(); vb = (b.account_title || b.recipient || '').toLowerCase(); }
+            else if (key === 'status') { va = (a.status_label || '').toLowerCase(); vb = (b.status_label || '').toLowerCase(); }
             else if (key === 'access') { va = (a.access_control_type || '').toLowerCase(); vb = (b.access_control_type || '').toLowerCase(); }
             else if (key === 'enabled') { va = (a.enabled === false) ? 0 : 1; vb = (b.enabled === false) ? 0 : 1; }
             else if (key === 'quantity') { va = (a.kind === 'product') ? (a.quantity || 0) : ((a.counts && a.counts.products_deep) || 0); vb = (b.kind === 'product') ? (b.quantity || 0) : ((b.counts && b.counts.products_deep) || 0); }
@@ -3683,7 +4290,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // The backup browser lists files off the disk and the shared report lists
     // rights; neither carries the fields these tests read.
     function filtersAvailable() {
-        return (!insideBackups()) && (!insideShared());
+        return (!insideBackups()) && (!insideShared()) && (!insideErp());
     }
 
     function activeFilters() {
@@ -3793,7 +4400,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (!filterKeeps(narrowing[index], item)) { return false; }
             }
 
-            if (!filter) { return true; }
+            // The ERP folders are searched on the server, over fields a
+            // document's name does not carry; what came back already matched.
+            if ((!filter) || insideErp()) { return true; }
             return (item.name || '').toLowerCase().indexOf(filter) !== -1
                 || (item.description || '').toLowerCase().indexOf(filter) !== -1
                 || (item.short_description || '').toLowerCase().indexOf(filter) !== -1;
@@ -3961,6 +4570,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var sizeClass = big ? 'item-icon' : 'list-icon';
 
         if (item.short_link) { return shortLinkIconHtml(item, big); }
+        if (item.erp) { return erpIconHtml(item, big); }
 
         var catalogRow = ((item.kind === 'group') || (item.kind === 'product'));
         var withPicture = (big || !catalogRow || productImagesOn());
@@ -4071,6 +4681,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function itemFlagsHtml(item) {
         var flags = [];
 
+        if (item.erp) { return erpFlagsHtml(item); }
+
         if ((item.kind === 'group') || (item.kind === 'product')) {
 
             if (item.enabled === false) {
@@ -4152,6 +4764,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function itemTypeLabel(item) {
         if (item.short_link) { return shortLinkTypeLabel(item.destination_type); }
+        if (item.erp) { return erpTypeLabel(item); }
         if (item.kind === 'group') { return isVariantSet(item) ? L.variant_set : L.category; }
         if (item.kind === 'product') { return L.product; }
         if (item.kind === 'folder') { return L.folder; }
@@ -4192,6 +4805,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : (insideCatalogBin() ? 'bi-trash3' : (insideCatalog() ? 'bi-boxes' : 'bi-folder2-open'));
             var emptyText = insideShortLinks() ? L.short_links_empty
                 : (insideCatalogBin() ? L.bin_empty_note : (insideCatalog() ? L.catalog_empty : L.empty_folder));
+
+            // An empty ERP folder says why when there is a reason (no
+            // provider sends e-Delivery Notes yet); a search that found
+            // nothing says that instead.
+            if (insideErp()) {
+                emptyIcon = (state.filter !== '') ? 'bi-search' : 'bi-folder2-open';
+                emptyText = (state.filter !== '') ? L.search_nothing_matches : (state.erpFolderNote || L.erp_folder_empty);
+            }
 
             // "This folder is empty" is not true when a filter emptied it, and
             // sending somebody to look for files that are sitting right there
@@ -4283,6 +4904,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             html += '</tbody></table>';
+        }
+
+        // An ERP folder is listed a page at a time; the rest follows on request.
+        if (insideErp() && (state.erpFolder !== '') && (state.erpTotal > state.items.files.length)) {
+            html += '<div class="text-center my-3"><button type="button" class="btn btn-sm btn-outline-secondary rounded-pill no-popover" data-role="erp-more">' +
+                '<i class="bi bi-chevron-double-down me-1" aria-hidden="true"></i>' + esc(fmt(L.erp_load_more, [state.items.files.length, state.erpTotal])) + '</button></div>';
         }
 
         // A flat view spans every folder, so a drop there cannot promise "this
@@ -4391,7 +5018,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function listColumnsAll() {
 
         var catalogColumns = insideCatalog();
-        var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks();
+        var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks() && !insideErp();
         var shortLinkColumns = insideShortLinks();
         var columns = [];
 
@@ -4421,12 +5048,42 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             cell: function (item) { return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>'; }
         });
 
+        // What an operator reads a list of documents by: who, when, how much,
+        // and where it stands.
+        if (insideErp()) {
+
+            columns.push({
+                id: 'erp_account', key: 'account', label: L.erp_account, at: 'md', w: 200,
+                cell: function (item) {
+                    var who = item.account_title || item.recipient || '';
+                    return (who !== '') ? ('<span class="cell-clip" title="' + esc(who) + '">' + esc(who) + '</span>') : '';
+                }
+            });
+
+            columns.push({ id: 'erp_date', key: 'date', label: L.erp_date, at: 'md', w: 110, cls: 'text-nowrap',
+                cell: function (item) { return esc(item.date_label || ''); } });
+
+            columns.push({ id: 'erp_total', key: 'total', label: L.amount, at: 'md', w: 130, cls: 'text-end text-nowrap',
+                cell: function (item) { return esc(item.total_label || item.balance_label || ''); } });
+
+            columns.push({ id: 'erp_status', key: 'status', label: L.status, at: 'lg', w: 130,
+                cell: function (item) { return erpStatusBadge(item); } });
+        }
+
         columns.push({
             id: 'size', key: 'size', label: (catalogColumns ? L.contents : (shortLinkColumns ? L.destination : L.size)), at: 'md', w: 140,
             cell: function (item) {
 
                 if (item.short_link) { return '<span class="cell-clip" title="' + esc(item.destination || '') + '">' + esc(item.destination || '') + '</span>'; }
                 if (item.kind === 'group') { return esc(fmt(L.catalog_counts, [item.counts.groups, item.counts.products_deep])); }
+                if (item.erp && (item.kind === 'folder')) { return esc(fmt(L.erp_docs_count, [item.counts.files])); }
+
+                // A document with no kept copy has no size until it is made.
+                if (item.erp && !item.size_known) {
+                    var why = (item.source === 'provider') ? L.erp_source_provider : ((item.source === 'generated') ? L.erp_source_generated : '');
+                    return '<span class="text-body-secondary"' + (why ? (' title="' + esc(why) + '"') : '') + '>—</span>';
+                }
+
                 if (item.kind === 'file') { return esc(item.size_label || ''); }
                 if ((item.kind === 'folder') && (!item.backup)) { return esc(fmt(L.counts_label, [item.counts.folders, item.counts.pages, item.counts.files])); }
 
@@ -4434,7 +5091,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
         });
 
-        if (state.mode === 'all') {
+        // A search at the top of the ERP folders runs across all of them, so
+        // there, too, each row says where it was found.
+        if ((state.mode === 'all') || (insideErp() && (state.erpFolder === '') && (state.filter !== ''))) {
             columns.push({
                 id: 'folder', key: 'folder', label: L.folder, w: 150,
                 cell: function (item) {
@@ -4676,6 +5335,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.archived) { classes += ' archived'; }
         if (((item.kind === 'group') || (item.kind === 'product')) && (item.enabled === false)) { classes += ' catalog-off'; }
         if (item.kind === 'file' && item.design) { classes += ' design'; }
+        if (item.erp && item.cancelled) { classes += ' erp-cancelled'; }
         if (state.clipboard && state.clipboard.mode === 'cut' && state.clipboard.keys[itemKey(item)]) { classes += ' cut-ghost'; }
         return classes;
     }
@@ -4818,6 +5478,35 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             return actions;
         }
 
+        // Reading, and going to the screen a document belongs to. Everything
+        // that would change one is left off: it is read-only here.
+        if (insideErp()) {
+
+            if (first && (first.kind === 'folder')) {
+                actions.push({ icon: 'bi-box-arrow-up-right', label: L.open_folder, action: 'open', off: !single });
+                return actions;
+            }
+
+            actions.push({ icon: 'bi-box-arrow-up-right', label: L.open_in_new_tab, action: 'erp_open', off: !single || !first.url });
+            actions.push({ icon: 'bi-eye', label: L.quick_look, action: 'quick_look', off: !single || !quickLookable(first) });
+            actions.push({ icon: first ? erpGotoIcon(first) : 'bi-receipt', label: first ? erpGotoLabel(first) : L.erp_goto_invoice, action: 'erp_goto_doc', off: !single || !first.edit_url });
+            actions.push({ icon: 'bi-download', label: L.download, action: 'erp_download', off: !single || !first.download_url });
+            actions.push({ icon: 'bi-person-vcard', label: L.erp_goto_account, action: 'erp_goto_account', off: !single || !first.account_url });
+            actions.push({ icon: 'bi-bag', label: L.erp_goto_order, action: 'erp_goto_order', off: !single || !first.order_url });
+
+            if (first && first.invoice_url) {
+                actions.push({ icon: 'bi-receipt', label: L.erp_goto_invoice, action: 'erp_goto_invoice', off: !single });
+            }
+
+            if (state.erpFolder === '') {
+                actions.push({ icon: 'bi-folder2-open', label: L.open_containing_folder, action: 'erp_open_folder', off: !single });
+            }
+
+            actions.push({ icon: 'bi-clipboard', label: L.copy_name, action: 'copy_name' });
+            actions.push({ icon: 'bi-123', label: L.erp_copy_number, action: 'erp_copy_number' });
+            return actions;
+        }
+
         if (insideBackups()) {
             actions.push({ icon: 'bi-download', label: L.download, action: 'backup_download', off: !single || (first.kind === 'folder') });
             actions.push({ icon: 'bi-box-arrow-up-right', label: L.open_folder, action: 'backup_open', off: !single || (first.kind !== 'folder') });
@@ -4938,6 +5627,23 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 ((catalogSelected.length > 0) ? ('<span class="text-primary">' + esc(catalogSelected.length + ' ' + L.items + ' ' + L.selected) + '</span>') : '') +
                 progressHtml() +
                 '<span class="' + pushRightClass() + '">' + esc(fmt(L.catalog_totals, [totals.products, totals.groups])) + '</span>';
+            return;
+        }
+
+        if (insideErp()) {
+
+            var erpCount = (state.items.folders.length > 0)
+                ? fmt(L.erp_folders_count, [state.items.folders.length])
+                : fmt(L.erp_docs_count, [state.items.files.length]);
+
+            if ((state.erpFolder !== '') && (state.erpTotal > state.items.files.length)) {
+                erpCount = fmt(L.erp_showing, [state.items.files.length, state.erpTotal]);
+            }
+
+            document.getElementById('explorer_statusbar').innerHTML =
+                '<span>' + esc(erpCount) + '</span>' +
+                progressHtml() +
+                '<span class="' + pushRightClass() + '"><i class="bi bi-lock me-1" aria-hidden="true"></i>' + esc(L.erp_read_only) + '</span>';
             return;
         }
 
@@ -5093,6 +5799,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // place that can hide the narrowing button on the views it does not
         // belong to.
         syncFileScope();
+
+        // And the one place the search box can say what it searches: in the
+        // ERP folders it is the documents' numbers and parties, not names.
+        var searchInput = document.getElementById('filter_input');
+
+        if (searchInput) {
+            if (!searchInput.hasAttribute('data-default-placeholder')) { searchInput.setAttribute('data-default-placeholder', searchInput.placeholder || ''); }
+            searchInput.placeholder = insideErp() ? L.erp_search_placeholder : searchInput.getAttribute('data-default-placeholder');
+        }
     }
 
     // ── Selection ───────────────────────────────────────────────────────
@@ -5319,6 +6034,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // A short link is an address, so opening it means following it.
         if (item.short_link) { window.open(item.url, '_blank'); return; }
 
+        // An ERP folder is walked into; a document opens as itself, in a tab
+        // of its own -- a draft opens in its editor, which is its url.
+        if (item.erp) {
+            if (item.kind === 'folder') { enterErp(item.erp_folder); return; }
+            if (item.url) { window.open(item.url, '_blank'); }
+            return;
+        }
+
         if (item.backup) {
             if (item.kind === 'folder') { enterBackups(item.path); } else { window.location.href = backupDownloadUrl(item.path); }
             return;
@@ -5342,6 +6065,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.short_link) { openShortLinkWizard(item); return; }
 
         if (item.backup) { openItem(item); return; }
+        if (item.erp) { openItem(item); return; }
 
         // A group is walked into; a product opens the screen that edits it.
         // Neither gets a "view on site" here: a product group can be published
@@ -5495,6 +6219,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if ((!item) || item.backup || item.short_link) { return false; }
 
+        // Looking at an ERP document is opening it, so it is offered only on
+        // a PDF, one at a time, when asked for.
+        if (item.erp) { return ((item.kind === 'file') && ((item.type === 'pdf') || !!item.picture) && !!item.url); }
+
         return ((item.kind === 'file') || (item.kind === 'page') || (item.kind === 'product') || (item.kind === 'group'));
     }
 
@@ -5508,6 +6236,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>'; }
+        // An ERP picture has no thumbnail sizes; the kept file is shown as is.
+        if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
         if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>'; }
         if (PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) { return '<video controls autoplay preload="metadata" src="' + esc(item.url) + '"></video>'; }
@@ -5518,6 +6248,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function quickLookMeta(item) {
+
+        if (item.erp) {
+            return [erpTypeLabel(item), item.account_title || item.recipient || '', item.total_label || item.balance_label || '']
+                .filter(function (part) { return part !== ''; }).join(' · ');
+        }
 
         if (item.kind === 'product') { return moneyLabel(item.price); }
         if (item.kind === 'group') { return fmt(L.catalog_counts, [item.counts.groups, item.counts.products_deep]); }
@@ -5545,7 +6280,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // rather than a second one that drifts.
         var tools = '';
 
-        if ((item.kind === 'file') || (item.kind === 'page')) {
+        if (((item.kind === 'file') || (item.kind === 'page')) && !item.erp) {
             tools += '<button type="button" class="btn btn-sm btn-ghost no-popover" data-ql="copy" title="' + esc(L.copy_address) + '"><i class="bi bi-link-45deg"></i></button>';
         }
 
@@ -5556,6 +6291,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if ((item.kind === 'product') || (item.kind === 'group')) {
             tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.edit_url) + '&send_to=' + encodeURIComponent(currentSendTo()) + '" title="' + esc(L.edit) + '"><i class="bi bi-pencil-square"></i></a>';
+        }
+
+        // An ERP document has no public address to copy; what is worth having
+        // at hand is the file itself and the screen it belongs to.
+        if (item.erp) {
+            if (item.download_url) {
+                tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.download_url) + '" download="' + esc(item.name || '') + '" title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
+            }
+            if (item.edit_url) {
+                tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.edit_url) + '" title="' + esc(erpGotoLabel(item)) + '"><i class="bi ' + erpGotoIcon(item) + '"></i></a>';
+            }
         }
 
         if (item.url) {
@@ -5713,6 +6459,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 shortLinkEditButton.addEventListener('click', function () { openShortLinkWizard(item); });
             }
 
+            return;
+        }
+
+        if (item.erp) {
+            renderErpPreview(item, pane);
             return;
         }
 
@@ -6279,6 +7030,71 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             return;
         }
 
+        // The ERP folders read, open and lead elsewhere; they change nothing.
+        // The documents are the module's records, and every entry on the
+        // folder menu below would be aimed at the files table with an id that
+        // is not a file's.
+        if (insideErp()) {
+
+            var erpMenu = '';
+            var erpMulti = multiSelected(selected);
+            var erpAllSelected = (state.ordered.length > 0) && (selected.length === state.ordered.length);
+
+            if (item && (item.kind === 'folder')) {
+
+                erpMenu += menuItem('bi-box-arrow-up-right', L.open_folder, 'open', erpMulti);
+                erpMenu += menuDivider();
+
+            } else if (item) {
+
+                erpMenu += menuItem('bi-box-arrow-up-right', L.open_in_new_tab, 'erp_open', erpMulti || !item.url);
+                erpMenu += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', erpMulti || !quickLookable(item));
+                erpMenu += menuItem('bi-download', L.download, 'erp_download', erpMulti || !item.download_url);
+                erpMenu += menuDivider();
+
+                erpGotoLinks(item).forEach(function (link) {
+                    erpMenu += menuItem(link.icon, link.label, link.action, erpMulti);
+                });
+
+                if ((state.erpFolder === '') && item.erp_folder) {
+                    erpMenu += menuItem('bi-folder2-open', L.open_containing_folder, 'erp_open_folder', erpMulti);
+                }
+
+                erpMenu += menuDivider();
+                erpMenu += menuItem('bi-clipboard', L.copy_name, 'copy_name');
+                erpMenu += menuItem('bi-123', L.erp_copy_number, 'erp_copy_number', !item.number);
+                erpMenu += menuDivider();
+
+            } else {
+
+                erpMenu += menuSubmenu('bi-grid-3x3-gap', L.view_label,
+                    menuCheckItem(L.grid_view, 'view_grid', state.viewType === 'grid') +
+                    menuCheckItem(L.list_view, 'view_list', state.viewType === 'list') +
+                    tileSizeMenu() + columnSubmenu());
+
+                erpMenu += menuSubmenu('bi-sort-alpha-down', L.sort_by,
+                    menuCheckItem(L.name, 'sort_name', state.sort.key === 'name') +
+                    menuCheckItem(L.erp_date, 'sort_date', state.sort.key === 'date') +
+                    menuCheckItem(L.amount, 'sort_total', state.sort.key === 'total') +
+                    menuCheckItem(L.last_modified, 'sort_timestamp', state.sort.key === 'timestamp') +
+                    menuDivider() +
+                    menuCheckItem(L.ascending, 'sort_asc', state.sort.dir === 'asc') +
+                    menuCheckItem(L.descending, 'sort_desc', state.sort.dir === 'desc'));
+
+                erpMenu += menuDivider();
+            }
+
+            erpMenu += menuItem('bi-arrow-clockwise', L.refresh, 'refresh');
+            erpMenu += menuItem(erpAllSelected ? 'bi-square' : 'bi-check2-square', erpAllSelected ? L.deselect_all : L.select_all, 'select_all_toggle', state.ordered.length === 0);
+
+            menuElement.innerHTML = erpMenu;
+            menuElement.setAttribute('data-target-source', 'content');
+            menuElement.setAttribute('data-target-kind', item ? item.kind : '');
+            menuElement.setAttribute('data-target-id', item ? item.id : '');
+            positionMenu(event);
+            return;
+        }
+
         if (insideBackups()) {
             var backupMenu = '';
 
@@ -6744,7 +7560,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'tile_medium': setTileSize('medium'); break;
             case 'tile_large': setTileSize('large'); break;
             case 'tile_xlarge': setTileSize('xlarge'); break;
-            case 'sort_name': case 'sort_type': case 'sort_size': case 'sort_price': case 'sort_timestamp':
+            case 'sort_name': case 'sort_type': case 'sort_size': case 'sort_price': case 'sort_timestamp': case 'sort_date': case 'sort_total':
                 state.sort.key = action.substring(5);
                 renderContent();
                 applySelectionClasses();
@@ -6839,6 +7655,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'short_link_paste': pasteShortLinks(); break;
             case 'short_link_duplicate': duplicateShortLinks(catalogTargets(item)); break;
             case 'short_link_delete': deleteShortLinks(catalogTargets(item)); break;
+            case 'erp_open': if (item && item.url) { window.open(item.url, '_blank'); } break;
+            case 'erp_download': erpDownload(item); break;
+            // Where a document belongs, in this tab: these are the screens the
+            // operator was about to open by hand.
+            case 'erp_goto_doc': if (item && item.edit_url) { window.location.href = item.edit_url; } break;
+            case 'erp_goto_account': if (item && item.account_url) { window.location.href = item.account_url; } break;
+            case 'erp_goto_order': if (item && item.order_url) { window.location.href = item.order_url; } break;
+            case 'erp_goto_invoice': if (item && item.invoice_url) { window.location.href = item.invoice_url; } break;
+            case 'erp_open_folder': if (item && item.erp_folder) { enterErp(item.erp_folder); } break;
+            case 'erp_copy_number':
+                var numbersToCopy = selectedItems().map(function (each) { return each.number || ''; }).filter(function (each) { return each !== ''; });
+                if (numbersToCopy.length > 0) { copyText(numbersToCopy.join('\n'), L.copied); }
+                break;
             case 'backup_create': createBackup(); break;
             case 'backup_open': if (item) { enterBackups(item.path); } break;
             case 'backup_download': if (item) { window.location.href = backupDownloadUrl(item.path); } break;
@@ -7569,7 +8398,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function clipboardSet(mode) {
 
-        if (insideCatalogBin()) { return; }
+        if (insideCatalogBin() || insideErp()) { return; }
 
         var items = selectedItems();
 
@@ -8595,6 +9424,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function beginRename(item) {
+        if (item && item.erp) { return; }
         if (item && item.short_link) { beginShortLinkRename(item); return; }
         if (item && item.backup) { beginBackupRename(item); return; }
 
@@ -8701,6 +9531,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // element has to BE the line that truncates, not sit inside it, or the
     // input it turns into is clipped by its own wrapper.
     function catalogSubNameHtml(item) {
+
+        if (item && item.erp) { return ''; }
 
         var text = catalogSubName(item);
 
@@ -8999,6 +9831,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // Short links have no bin behind them either, and the same warning is
         // the right one whichever way the delete was asked for.
         if (insideShortLinks()) { deleteShortLinks(selected); return; }
+
+        // An issued document keeps its number; the ERP folders delete nothing.
+        if (insideErp()) { return; }
 
         // Backup entries are files on disk with no bin behind them, so the
         // keyboard follows the same path the menu does.
@@ -9435,6 +10270,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     //                links, the pages list
     function fileDropTarget() {
         if (insideBackups()) { return 'backups'; }
+        if (insideErp()) { return null; }
         if (insideCatalog() || insideShortLinks() || insideShared() || insideBin()) { return null; }
         if (state.mode === 'all') { return newActions().upload ? 'window' : null; }
         return canWriteCurrent() ? 'folder' : 'denied';
@@ -9449,6 +10285,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // Backup entries are files on disk with no record to move.
             if (insideBackups()) { event.preventDefault(); return; }
+
+            // ERP documents stay where the module keeps them.
+            if (insideErp()) { event.preventDefault(); return; }
 
             // The bin is a place things are taken out of, not moved around in.
             if (insideCatalogBin()) { event.preventDefault(); return; }
@@ -10608,7 +11447,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var activeId = insideCatalog() ? state.groupId : state.folderId;
         // The flat lists and the bin are views across the whole catalog, so no
         // node in the tree is the place they are showing.
-        var treeLive = insideCatalog() ? (state.allFilter === '') : (state.mode !== 'all');
+        var treeLive = insideCatalog() ? (state.allFilter === '') : ((state.mode !== 'all') && (state.mode !== 'erp'));
 
         document.querySelectorAll('#explorer_tree_pane .tree-row[data-folder-id]').forEach(function (element) {
             element.classList.toggle('active', treeLive && String(element.getAttribute('data-folder-id')) === String(activeId));
@@ -10631,6 +11470,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var backupsRow = document.getElementById('backups_quick');
         if (backupsRow) { backupsRow.classList.toggle('active', state.mode === 'backups'); }
+
+        highlightErpTree();
 
         // Every way of arriving somewhere ends here, which makes this the
         // one place the two lists can be kept true without threading a call
@@ -11021,6 +11862,27 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('backups_quick').addEventListener('click', function () { enterBackups(''); });
         document.getElementById('backups_menu_item').addEventListener('click', function () { enterBackups(''); });
     }
+
+    // The ERP branch: the chevron folds it, the row opens the top of it, and
+    // each row under it opens its folder.
+    var erpQuick = document.getElementById('erp_quick');
+
+    if (erpQuick) {
+
+        erpQuick.addEventListener('click', function (event) {
+            if (event.target.closest('[data-role="erp-toggle"]')) { setErpTreeOpen(!erpTreeOpen()); return; }
+            setErpTreeOpen(true);
+            enterErp('');
+        });
+
+        document.getElementById('erp_tree').addEventListener('click', function (event) {
+            var row = event.target.closest('[data-erp-folder]');
+            if (row) { enterErp(row.getAttribute('data-erp-folder')); }
+        });
+    }
+
+    var erpMenuItem = document.getElementById('erp_menu_item');
+    if (erpMenuItem) { erpMenuItem.addEventListener('click', function () { enterErp(''); }); }
 
     document.getElementById('explorer_tree_pane').addEventListener('contextmenu', function (event) {
         var row = event.target.closest('.tree-row');
@@ -12868,6 +13730,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         handleItemClick(item, event);
     });
 
+    // The rest of a long ERP folder, under what is already drawn.
+    content.addEventListener('click', function (event) {
+        if (event.target.closest('[data-role="erp-more"]')) { erpLoadMore(); }
+    });
+
     content.addEventListener('dblclick', function (event) {
         var element = event.target.closest('.explorer-item');
         if (!element) { return; }
@@ -12989,6 +13856,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             return;
         }
 
+        if (insideErp()) {
+            if (state.erpFolder !== '') { enterErp(''); } else { exitAllFiles(0); }
+            return;
+        }
+
         if (state.mode === 'all') { exitAllFiles(0); return; }
         if (state.breadcrumb.length > 1) {
             load(state.breadcrumb[state.breadcrumb.length - 2].id, highlightTree);
@@ -13023,6 +13895,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     document.getElementById('filter_input').addEventListener('input', function () {
         state.filter = this.value.trim();
+
+        // The ERP folders are searched where the documents are, a moment
+        // after the typing stops rather than on every key.
+        if (insideErp()) {
+            if (erpSearchTimer) { window.clearTimeout(erpSearchTimer); }
+            erpSearchTimer = window.setTimeout(function () { erpSearchTimer = null; reload(); }, 300);
+            return;
+        }
+
         renderContent();
         applySelectionClasses();
         renderStatusbar();
@@ -13638,6 +14519,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     attachDragHandlers();
     watchListBreakpoints();
+
+    // Opened on the ERP folders: documents are read newest first, and the
+    // branch is drawn open so it is plain where on the screen they are.
+    if (insideErp()) {
+        state.sortOutsideErp = state.sort;
+        state.sort = { key: 'date', dir: 'desc' };
+        setErpTreeOpen(true);
+    } else if (state.erpAllowed && (storageGet('pg_explorer_erp_open') === '1')) {
+        setErpTreeOpen(true);
+    }
 
     // The tour opens itself only once the grid and the tree have arrived. A
     // tour that starts against a loading screen rings empty boxes and its

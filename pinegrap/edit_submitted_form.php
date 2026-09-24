@@ -712,6 +712,14 @@ if (!$_POST) {
             <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning " data-loading-content="' . lang(array('string'=>'Converting Incomplete') ) . '"><span class="material-icons me-2">radio_button_checked</span><span class="btn-text">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
     }
     
+    // Where it was talked about in the workspace, and the tasks about it.
+    $output_workspace_button = '';
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_workspace_button = ws_record_button($user, 'form', (int) $_GET['id'], trim($form_name . ' ' . $reference_code));
+    }
+
     echo
     pg_page_shell(
         array(
@@ -743,6 +751,7 @@ if (!$_POST) {
                                 <p class="p-0 m-0">' . lang('Reference Code') . ': ' . $reference_code . '</p>
                                 <p class="p-0 m-0">' . lang('Submitted') . ': ' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</p>
                             </div>
+                            <div class="col-12 col-md-auto">' . $output_workspace_button . '</div>
                         </div>
                     </div>
                     <form' . $output_enctype . ' name="form" action="edit_submitted_form.php" method="post">

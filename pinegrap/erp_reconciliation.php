@@ -51,7 +51,7 @@ if ($_POST) {
 
     if (($_POST['erp_action'] ?? '') === 'send') {
         $to = trim((string) ($_POST['to'] ?? ''));
-        $result = erp_reconciliation_send($account_id, $options, $to);
+        $result = erp_reconciliation_send($account_id, $options, $to, (int) $user['id']);
 
         if (!$result['success']) {
             $liveform->mark_error('to', $result['error']);
@@ -94,8 +94,8 @@ $output_send_note = ($sender !== '')
 echo
 pg_page_shell([
     'title' => lang('Reconciliation Letter'),
-    'extra_classes' => 'erp erp_accounts',
-    'icon' => 'store',
+    'extra classes' => 'erp erp_accounts',
+    'icon' => 'erp',
     'heading' => lang('Reconciliation Letter'),
     'heading_description' => lang('What the books say this account owes or is owed as of a date, for the counterparty to confirm.'),
     'cancel' => array('enable' => 'true', 'url' => 'edit_erp_account.php?id=' . $account_id),
@@ -112,14 +112,10 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row mb-2 flex-wrap">
-                <div class="col-12 text-center text-md-start">
-                    <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="' . $pdf_url . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-2"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="' . $pdf_url . '&amp;download=1"><i class="bi bi-download me-2"></i>' . lang('Download') . '</a>
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                        <a class="btn btn-sm btn-outline-secondary" href="' . $pdf_url . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="' . $pdf_url . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
                     </nav>
-                </div>
-            </div>
 
             <div class="card my-4">
                 <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
@@ -156,7 +152,7 @@ pg_page_shell([
                             <input type="number" id="reply_days" name="reply_days" class="form-control" value="' . (int) $options['reply_days'] . '" min="0" max="' . (int) ERP_RECONCILIATION_MAX_REPLY_DAYS . '" step="1" />
                             <div class="form-text">' . lang('0 leaves the reply deadline out of the letter.') . '</div>
                         </div>
-                        <button type="submit" class="btn btn-outline-primary w-100"><span class="bi bi-arrow-repeat me-2"></span>' . lang('Update the preview') . '</button>
+                        <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i>' . lang('Update the preview') . '</button>
                     </form>
                 </div>
             </div>
@@ -176,7 +172,7 @@ pg_page_shell([
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                             <div class="form-text">' . h($output_send_note) . '</div>
                         </div>
-                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Sending')) . '"><span class="bi bi-envelope me-2"></span><span class="btn-text">' . lang('Send the letter') . '</span></button>
+                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '" data-loading-content="' . lang(array('string' => 'Sending')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Send the letter') . '</span></button>
                     </form>
                 </div>
             </div>

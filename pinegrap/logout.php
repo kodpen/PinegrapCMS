@@ -67,6 +67,13 @@ if (($_REQUEST['send_to'] ?? '') != '') {
 
 // else, print a default logout page
 } else {
+    // A site built with the page designer says goodbye on its own page.
+    $pg_logout_page = function_exists('pg_sw_page_type_widget_url') ? pg_sw_page_type_widget_url('logout') : '';
+    if ($pg_logout_page !== '') {
+        header('Location: ' . URL_SCHEME . HOSTNAME . $pg_logout_page . '?logged_out=true');
+        exit();
+    }
+
     // Start the session again because we killed it when we logged out above,
     // and we are going to initialize some session values below.
     session_start();

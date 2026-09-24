@@ -202,6 +202,10 @@ if (
     // ownership, captcha and rate limiting live inside chat.php.
     and (strpos($action, 'site_chat_') !== 0)
 
+    // The workspace is open to its team, role 3 members included; the case
+    // block checks the session and the token, the module decides the rest.
+    and (strpos($action, 'ws_') !== 0)
+
     // Every panel page fires the sitemap check whatever the visitor's role,
     // so it is exempted from the role <= 1 gate below; the case block checks
     // the session and the token for itself.
@@ -307,6 +311,106 @@ switch ($action) {
         require_once(dirname(__FILE__) . '/chat.php');
 
         respond(pg_chat_handle_backend_action($action, $request));
+
+        break;
+
+    // ── Workspace ───────────────────────────────────────────────────────
+    // Session + CSRF token here; who may read, post, assign and plan is
+    // decided in includes/workspace/actions.php.
+    case 'ws_bootstrap':
+    case 'ws_channels':
+    case 'ws_channel_open':
+    case 'ws_sync':
+    case 'ws_messages_before':
+    case 'ws_send':
+    case 'ws_edit':
+    case 'ws_delete':
+    case 'ws_mark':
+    case 'ws_attach':
+    case 'ws_channel_create':
+    case 'ws_channel_update':
+    case 'ws_channel_members_add':
+    case 'ws_mention_invite':
+    case 'ws_channel_member_remove':
+    case 'ws_channel_join':
+    case 'ws_channel_leave':
+    case 'ws_channel_make_public':
+    case 'ws_channel_archive':
+    case 'ws_channel_audit':
+    case 'ws_audit_list':
+    case 'ws_timeline':
+    case 'ws_home':
+    case 'ws_tick':
+    case 'ws_calc':
+    case 'ws_notes':
+    case 'ws_note_get':
+    case 'ws_note_save':
+    case 'ws_note_delete':
+    case 'ws_note_from_message':
+    case 'ws_note_share':
+    case 'ws_note_channel':
+    case 'ws_note_unshare':
+    case 'ws_note_file':
+    case 'ws_note_claude':
+    case 'ws_note_claude_deliver':
+    case 'ws_file_text':
+    case 'ws_file_text_save':
+    case 'ws_file_history':
+    case 'ws_channel_notify':
+    case 'ws_channel_pin':
+    case 'ws_channel_order':
+    case 'ws_channel_summary':
+    case 'ws_channel_decisions':
+    case 'ws_channel_files':
+    case 'ws_channel_tasks':
+    case 'ws_search':
+    case 'ws_ref_search':
+    case 'ws_record_refs':
+    case 'ws_task_get':
+    case 'ws_task_check':
+    case 'ws_task_save':
+    case 'ws_task_status':
+    case 'ws_task_move':
+    case 'ws_tasks':
+    case 'ws_board':
+    case 'ws_conflicts':
+    case 'ws_calendar':
+    case 'ws_event_save':
+    case 'ws_event_get':
+    case 'ws_event_delete':
+    case 'ws_inbox':
+    case 'ws_inbox_read':
+    case 'ws_react':
+    case 'ws_check':
+    case 'ws_poll_create':
+    case 'ws_poll_vote':
+    case 'ws_poll_close':
+    case 'ws_poll_edit':
+    case 'ws_task_tick':
+    case 'ws_task_item_add':
+    case 'ws_task_note_add':
+    case 'ws_task_note_edit':
+    case 'ws_task_note_delete':
+    case 'ws_task_recurrence_end':
+    case 'ws_channel_claude':
+    case 'ws_ai_draft_accept':
+    case 'ws_ai_draft_dismiss':
+    case 'ws_ai_change_apply':
+    case 'ws_ai_change_dismiss':
+    case 'ws_claude_kick':
+
+        if (!USER_LOGGED_IN) {
+            respond(array(
+                'status' => 'error',
+                'message' => 'Invalid login.'
+            ));
+        }
+
+        validate_token();
+
+        require_once(dirname(__FILE__) . '/includes/workspace/actions.php');
+
+        respond(ws_handle_action($action, $request));
 
         break;
 
@@ -424,9 +528,9 @@ switch ($action) {
             'message' => lang(array(
                 'string' => '{var:1} table(s) checked, {var:2} issue(s) found, {var:3} repaired.',
                 'vars' => array(
-                    number_format(count($deep_report)),
-                    number_format($deep_issues),
-                    number_format($deep_repairs),
+                    pg_format_number(count($deep_report), 0),
+                    pg_format_number($deep_issues, 0),
+                    pg_format_number($deep_repairs, 0),
                 ),
             )),
             // The tile that starts this is one of the health tiles and has a
@@ -434,7 +538,7 @@ switch ($action) {
             // in the row beneath it; this is what fits on the tile itself.
             'summary' => lang(array(
                 'string' => '{var:1} issue(s)',
-                'vars' => array(number_format($deep_issues)),
+                'vars' => array(pg_format_number($deep_issues, 0)),
             )),
         ));
         break;
@@ -731,11 +835,11 @@ switch ($action) {
                     };
 
                     $sm_money = function ($cents) {
-                        return BASE_CURRENCY_SYMBOL . number_format($cents / 100, 2, ',', '.');
+                        return pg_format_money($cents / 100, BASE_CURRENCY_SYMBOL);
                     };
 
                     $sm_count = function ($number) {
-                        return number_format($number, 0, ',', '.');
+                        return pg_format_number($number, 0);
                     };
 
                     $sm_orders = function ($number) use ($sm_count) {
@@ -1869,7 +1973,7 @@ switch ($action) {
                         </div>
                         <div class="pg-job-panel-row">
                             <span class="text-truncate">' . h(lang('Root certificates')) . '</span>
-                            <span class="text-muted flex-shrink-0">' . h(number_format((int) $ca_bundle['count'])) . '</span>
+                            <span class="text-muted flex-shrink-0">' . h(pg_format_number((int) $ca_bundle['count'], 0)) . '</span>
                         </div>
                         <div class="pg-job-panel-row">
                             <span class="text-truncate">' . h(lang('Source')) . '</span>
@@ -2517,10 +2621,10 @@ switch ($action) {
                     // a stock value of "798.380,70". The rest of this file
                     // passes ',' and '.' the same way.
                     $pg_money = function ($cents) {
-                        return BASE_CURRENCY_SYMBOL . number_format($cents / 100, 2, ',', '.');
+                        return pg_format_money($cents / 100, BASE_CURRENCY_SYMBOL);
                     };
                     $pg_count = function ($number) {
-                        return number_format($number, 0, ',', '.');
+                        return pg_format_number($number, 0);
                     };
 
                     // ── Head: stock on one line, two facts under it ──────────
@@ -2927,7 +3031,7 @@ switch ($action) {
                         return '
                         <div class="d-flex align-items-center justify-content-between px-2 pt-2 pb-1">
                             <span class="text-muted text-uppercase" style="font-size:10px;letter-spacing:.06em">' . h($eg_label) . '</span>
-                            <span class="text-muted" style="font-size:10px">' . number_format($eg_count) . '</span>
+                            <span class="text-muted" style="font-size:10px">' . pg_format_number($eg_count, 0) . '</span>
                         </div>';
                     };
 
@@ -2975,13 +3079,13 @@ switch ($action) {
                             <div class="d-flex flex-column gap-1 p-2">
                                 <div class="pg-eg-stat" style="--pg-eg-ink:#10b981">
                                     <i class="bi bi-people-fill"></i>
-                                    <span class="pg-eg-stat-value">' . number_format($eg_active_visitors) . '</span>
+                                    <span class="pg-eg-stat-value">' . pg_format_number($eg_active_visitors, 0) . '</span>
                                     <span class="pg-eg-stat-label">' . lang('Active Visitors') . '</span>
                                     <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
                                 </div>
                                 <div class="pg-eg-stat" style="--pg-eg-ink:#3b82f6">
                                     <i class="bi bi-person-gear"></i>
-                                    <span class="pg-eg-stat-value">' . number_format($eg_online_users_count) . '</span>
+                                    <span class="pg-eg-stat-value">' . pg_format_number($eg_online_users_count, 0) . '</span>
                                     <span class="pg-eg-stat-label">' . lang('Online Users') . '</span>
                                     <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
                                 </div>
@@ -3332,7 +3436,7 @@ switch ($action) {
                         return '<div class="d-flex align-items-center gap-1" style="font-size:11px">'
                             . '<i class="bi bi-window text-muted flex-shrink-0"></i>'
                             . '<span class="text-truncate flex-grow-1 text-muted" title="' . $tp['name'] . '">' . $tp['name'] . '</span>'
-                            . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:10px" title="' . h($vs5_views_label) . '">' . number_format($tp['cnt']) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
+                            . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:10px" title="' . h($vs5_views_label) . '">' . pg_format_number($tp['cnt'], 0) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
                             . '</div>';
                     };
 
@@ -3388,7 +3492,7 @@ switch ($action) {
                     if ($tp_today) {
                         $vs5_today_top = '<span class="pg-vs-today">' . lang('Today') . ': <b>'
                             . $tp_today['name'] . '</b> &middot; '
-                            . number_format($tp_today['cnt']) . ' ' . h($vs5_views_label) . '</span>';
+                            . pg_format_number($tp_today['cnt'], 0) . ' ' . h($vs5_views_label) . '</span>';
                     }
 
                     $vs5_cell = function ($key, $label, $value, $pct_badge, $active = false) {
@@ -3411,17 +3515,17 @@ switch ($action) {
                         <div class="pg-vs-head">
                           <div>
                             <div class="pg-vs-eyebrow" id="vs5_eyebrow">' . lang('Daily Traffic') . '</div>
-                            <div class="pg-vs-big"><span id="vs5_kpi">' . number_format($kpi_today) . '</span><span class="pg-vs-unit">' . lang('visitors') . '</span></div>
+                            <div class="pg-vs-big"><span id="vs5_kpi">' . pg_format_number($kpi_today, 0) . '</span><span class="pg-vs-unit">' . lang('visitors') . '</span></div>
                             <div class="pg-vs-compare" id="vs5_compare">
                               ' . $vs5_badge($vs5_day_pct) . '
                               <span class="pg-vs-cmp">' . lang(array(
                                   'string' => 'by this time yesterday {var:1}',
-                                  'vars' => '<b>' . number_format($kpi_yesterday_same) . '</b>',
+                                  'vars' => '<b>' . pg_format_number($kpi_yesterday_same, 0) . '</b>',
                               )) . '</span>
                             </div>
                             <div class="pg-vs-sub" id="vs5_sub">' . lang(array(
                                 'string' => 'all of yesterday {var:1}',
-                                'vars' => number_format($kpi_yesterday),
+                                'vars' => pg_format_number($kpi_yesterday, 0),
                             )) . '</div>
                           </div>
                           <div class="pg-vs-legend" id="vs5_legend">
@@ -3435,14 +3539,14 @@ switch ($action) {
                         </div>
 
                         <div class="pg-vs-strip">
-                          ' . $vs5_cell('w', lang('This Week'), number_format($kpi_tw), $vs5_badge($vs5_week_pct)) . '
-                          ' . $vs5_cell('m', lang('This Month'), number_format($kpi_tm), $vs5_badge($vs5_month_pct)) . '
-                          ' . $vs5_cell('y', lang('Last 12 Months'), number_format($kpi_pm), '') . '
+                          ' . $vs5_cell('w', lang('This Week'), pg_format_number($kpi_tw, 0), $vs5_badge($vs5_week_pct)) . '
+                          ' . $vs5_cell('m', lang('This Month'), pg_format_number($kpi_tm, 0), $vs5_badge($vs5_month_pct)) . '
+                          ' . $vs5_cell('y', lang('Last 12 Months'), pg_format_number($kpi_pm, 0), '') . '
                           <div class="pg-vs-cell pg-vs-top">
                             <span class="pg-vs-cell-label">' . lang('Most Visited') . '</span>
                             ' . ($tp_tm
                                 ? '<span class="pg-vs-page">' . $tp_tm['name'] . '</span>'
-                                  . '<span class="pg-vs-views">' . number_format($tp_tm['cnt']) . ' ' . h($vs5_views_label) . '</span>'
+                                  . '<span class="pg-vs-views">' . pg_format_number($tp_tm['cnt'], 0) . ' ' . h($vs5_views_label) . '</span>'
                                 : '<span class="pg-vs-views">&mdash;</span>') . '
                             ' . $vs5_today_top . '
                           </div>
@@ -3796,7 +3900,7 @@ switch ($action) {
                             'target' => '_blank',
                             'badge'  => '<i class="bi bi-window"></i>',
                             'name'   => h($pg['name']) . $trend_badge,
-                            'aside'  => number_format($pg['visits']),
+                            'aside'  => pg_format_number($pg['visits'], 0),
                         ));
                     }
 
@@ -3812,7 +3916,7 @@ switch ($action) {
                                     ? '<img src="' . PATH . h($pr['image_name']) . '" alt="">'
                                     : '<i class="bi bi-box-seam"></i>',
                                 'name'  => $pr['product_name'],
-                                'aside' => number_format($pr['qty'], 0, ',', '.'),
+                                'aside' => pg_format_number($pr['qty'], 0),
                             ));
                         }
                     }
@@ -4788,7 +4892,7 @@ switch ($action) {
                                 "SELECT SUM(order_items.price * order_items.quantity)
                                 FROM order_items
                                 WHERE order_id = '" . (int) $cart['id'] . "'");
-                            $total = BASE_CURRENCY_SYMBOL . number_format(round((float) $cart_total) / 100, 2, '.', ',');
+                            $total = pg_format_money(round((float) $cart_total) / 100, BASE_CURRENCY_SYMBOL);
 
                             $output_link_url = 'view_order.php?id=' . $cart['id'];
 
@@ -5062,7 +5166,7 @@ switch ($action) {
                             $meta = '#' . h($shipment['order_number'])
                                 . ' &middot; ' . h(lang(array(
                                     'string' => '{var:1} package{suffix:1}',
-                                    'vars' => number_format($shipment_packages, 0, ',', '.'),
+                                    'vars' => pg_format_number($shipment_packages, 0),
                                     'suffix' => ($shipment_packages == 1 ? '' : 's'),
                                 )));
 
@@ -5128,14 +5232,14 @@ switch ($action) {
                         . ' &middot; '
                         . lang(array(
                             'string' => 'worth {var:1}',
-                            'vars' => BASE_CURRENCY_SYMBOL . number_format($pending_value / 100, 2, ',', '.'),
+                            'vars' => pg_format_money($pending_value / 100, BASE_CURRENCY_SYMBOL),
                         ));
 
                     $output_data = '
                     <div class="card-body p-0 overflow-x-hidden overflow-y-auto">
                         <div class="pg-ship-head">
                             <div class="d-flex align-items-baseline flex-wrap gap-2">
-                                <span class="pg-ship-count">' . number_format($package_count, 0, ',', '.') . '</span>
+                                <span class="pg-ship-count">' . pg_format_number($package_count, 0) . '</span>
                                 <span class="pg-ship-summary text-muted">' . $output_summary . '</span>
                             </div>
                             <div class="pg-ship-meter">' . $output_meter . '</div>
@@ -5993,7 +6097,7 @@ switch ($action) {
 
                             $output_link_url = 'edit_currency.php?id=' . $currency['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
                             if ($currency['base'] != 1) {
-                                $rate_display = ((float) $currency['exchange_rate'] > 0) ? number_format((1 / $currency['exchange_rate']), 5) : '-';
+                                $rate_display = ((float) $currency['exchange_rate'] > 0) ? pg_format_number((1 / $currency['exchange_rate']), 5) : '-';
                                 $output_rows .= pg_widget_row(array(
                                     'href'  => $output_link_url,
                                     'badge' => $currency['symbol'],
@@ -6474,13 +6578,13 @@ switch ($action) {
                 <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
                     <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
                         <span class="text-muted" style="font-size:11px">' . lang('Needs optimizing') . '</span>
-                        <span class="text-muted" style="font-size:10px">' . number_format($fm_optimize_total) . '</span>
+                        <span class="text-muted" style="font-size:10px">' . pg_format_number($fm_optimize_total, 0) . '</span>
                     </div>
                     <div class="px-3 pb-1">' . $fm_optimize_rows . '</div>
                     ' . $fm_optimizer_note . '
                     <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1 border-top">
                         <span class="text-muted" style="font-size:11px">' . lang('Largest files') . '</span>
-                        <span class="text-muted" style="font-size:10px">' . lang(array('string' => 'Top {var:1}', 'vars' => number_format($fm_largest_limit))) . '</span>
+                        <span class="text-muted" style="font-size:10px">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>
                     </div>
                     <div class="px-3 pb-2">' . $fm_largest_rows . '</div>
                 </div>
@@ -6558,7 +6662,7 @@ switch ($action) {
                             $number_of_completed_email_recipients = $row[0];
 
                             $progress_percentage = ($number_of_email_recipients > 0)
-                                ? number_format($number_of_completed_email_recipients / $number_of_email_recipients * 100)
+                                ? pg_format_number($number_of_completed_email_recipients / $number_of_email_recipients * 100, 0)
                                 : '100';
 
                             $output_link_url = 'edit_email_campaign.php?id=' . $output_campaign['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
@@ -6921,7 +7025,7 @@ switch ($action) {
                                 <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                                     <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
                                     <span class="text-truncate text-muted" style="font-size:11px" title="' . h($waf_event['rule_id']) . '">' . $waf_identity . '</span>
-                                    <span class="badge rounded-pill flex-shrink-0" style="background:rgba(0,0,0,.06);color:inherit;font-size:10px" title="' . lang('Requests') . '">&times;' . number_format($waf_event_hits) . '</span>
+                                    <span class="badge rounded-pill flex-shrink-0" style="background:rgba(0,0,0,.06);color:inherit;font-size:10px" title="' . lang('Requests') . '">&times;' . pg_format_number($waf_event_hits, 0) . '</span>
                                 </div>
                                 <div class="d-flex align-items-center mt-1" style="gap:6px">
                                     <span class="text-truncate text-muted flex-shrink-0" style="font-size:10px;max-width:45%" title="' . h($waf_event['target']) . '">' . h($waf_evidence) . '</span>
@@ -7043,15 +7147,15 @@ switch ($action) {
                             </div>
                             <div class="row g-0 text-center border-bottom">
                                 <div class="col-4 py-2 border-end">
-                                    <div class="fw-semibold text-' . h($waf_headline_color) . '" style="font-size:17px">' . number_format($waf_headline_value) . '</div>
+                                    <div class="fw-semibold text-' . h($waf_headline_color) . '" style="font-size:17px">' . pg_format_number($waf_headline_value, 0) . '</div>
                                     <div class="text-muted text-truncate" style="font-size:10px">' . h($waf_headline_label) . '</div>
                                 </div>
                                 <div class="col-4 py-2 border-end">
-                                    <div class="fw-semibold" style="font-size:17px">' . number_format($waf_addresses) . '</div>
+                                    <div class="fw-semibold" style="font-size:17px">' . pg_format_number($waf_addresses, 0) . '</div>
                                     <div class="text-muted text-truncate" style="font-size:10px">' . lang('Addresses') . '</div>
                                 </div>
                                 <div class="col-4 py-2">
-                                    <div class="fw-semibold" style="font-size:17px">' . number_format($waf_active_bans) . '</div>
+                                    <div class="fw-semibold" style="font-size:17px">' . pg_format_number($waf_active_bans, 0) . '</div>
                                     <div class="text-muted text-truncate" style="font-size:10px">' . lang('Bans') . '</div>
                                 </div>
                             </div>
@@ -7219,11 +7323,11 @@ switch ($action) {
                         <div class="mb-2">
                             <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                                 <span class="text-truncate' . $td_text . '" style="font-size:12px" title="' . h($td_source['category']) . '">' . h($td_label) . '</span>
-                                <span class="text-muted flex-shrink-0" style="font-size:11px">' . number_format($td_hits) . '</span>
+                                <span class="text-muted flex-shrink-0" style="font-size:11px">' . pg_format_number($td_hits, 0) . '</span>
                             </div>
                             <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang(array(
                                 'string' => '{var:1} address{suffix:1}',
-                                'vars'   => number_format((int) $td_source['ips']),
+                                'vars'   => pg_format_number((int) $td_source['ips'], 0),
                                 'suffix' => ((int) $td_source['ips'] == 1 ? '' : 'es'),
                             )) . '">
                                 <div class="progress-bar ' . $td_bar . '" style="width:' . $td_width . '%"></div>
@@ -7547,11 +7651,11 @@ switch ($action) {
                                 ? '<div class="text-truncate text-muted" style="font-size:11px" title="' . h($pf_worst_label) . '">' . h($pf_worst_display) . '</div>
                                    <div class="text-muted" style="font-size:11px">' . lang(array(
                                         'string' => '{var:1} ms at its fastest',
-                                        'vars'   => number_format($pf_worst_ms),
+                                        'vars'   => pg_format_number($pf_worst_ms, 0),
                                     )) . '</div>'
                                 : '<div class="text-muted" style="font-size:11px">' . lang(array(
                                         'string' => '{var:1} request{suffix:1} recorded',
-                                        'vars'   => number_format($pf_hits),
+                                        'vars'   => pg_format_number($pf_hits, 0),
                                         'suffix' => ($pf_hits == 1 ? '' : 's'),
                                     )) . '</div>')
                         . '</div>
@@ -7628,11 +7732,11 @@ switch ($action) {
                         <div class="mb-2">
                             <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                                 <span class="text-truncate" style="font-size:12px" title="' . h($pf_page['label']) . '">' . h($pf_label) . '</span>
-                                <span class="text-muted flex-shrink-0" style="font-size:11px">' . number_format($pf_page_avg) . ' ms</span>
+                                <span class="text-muted flex-shrink-0" style="font-size:11px">' . pg_format_number($pf_page_avg, 0) . ' ms</span>
                             </div>
                             <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang(array(
                                 'string' => '{var:1} request{suffix:1} · peak {var:2} ms',
-                                'vars'   => array(number_format((int) $pf_page['hits']), number_format((int) $pf_page['max_ms'])),
+                                'vars'   => array(pg_format_number((int) $pf_page['hits'], 0), pg_format_number((int) $pf_page['max_ms'], 0)),
                                 'suffix' => ((int) $pf_page['hits'] == 1 ? '' : 's'),
                             )) . '">
                                 <div class="progress-bar ' . $pf_bar . '" style="width:' . $pf_width . '%"></div>
@@ -7663,14 +7767,14 @@ switch ($action) {
                             ' . $pf_gauge . '
                             <div class="d-flex border-bottom">
                                 <div class="flex-fill px-3 py-2">
-                                    <div class="fw-semibold text-' . h($pf_avg_color) . '" style="font-size:17px;line-height:1">' . number_format($pf_avg) . ' <span style="font-size:11px">ms</span></div>
+                                    <div class="fw-semibold text-' . h($pf_avg_color) . '" style="font-size:17px;line-height:1">' . pg_format_number($pf_avg, 0) . ' <span style="font-size:11px">ms</span></div>
                                     <div class="text-muted text-truncate" style="font-size:11px">' . lang('Average') . '</div>
                                 </div>
                                 <div class="flex-fill px-3 py-2 border-start">
-                                    <div class="fw-semibold text-' . h($pf_slow_color) . '" style="font-size:17px;line-height:1">' . number_format($pf_slow) . '</div>
+                                    <div class="fw-semibold text-' . h($pf_slow_color) . '" style="font-size:17px;line-height:1">' . pg_format_number($pf_slow, 0) . '</div>
                                     <div class="text-muted text-truncate" style="font-size:11px">' . lang(array(
                                         'string' => 'Slower than {var:1} ms',
-                                        'vars'   => number_format($pf_slow_ms),
+                                        'vars'   => pg_format_number($pf_slow_ms, 0),
                                     )) . '</div>
                                 </div>
                             </div>
@@ -7841,7 +7945,7 @@ switch ($action) {
                     <div class="px-3 py-1 text-center border-top">
                         <span class="text-muted" style="font-size:10px">' . lang(array(
                             'string' => '{var:1} more waiting',
-                            'vars'   => number_format($cm_total - count($cm_items)),
+                            'vars'   => pg_format_number($cm_total - count($cm_items), 0),
                         )) . '</span>
                     </div>';
                 }
@@ -7850,7 +7954,7 @@ switch ($action) {
                 <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
                     <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
                         <span class="text-muted" style="font-size:11px">' . lang('Waiting for approval') . '</span>
-                        <span class="fw-semibold text-' . ($cm_total > 0 ? 'warning' : 'success') . '" style="font-size:15px">' . number_format($cm_total) . '</span>
+                        <span class="fw-semibold text-' . ($cm_total > 0 ? 'warning' : 'success') . '" style="font-size:15px">' . pg_format_number($cm_total, 0) . '</span>
                     </div>
                     ' . $cm_rows . '
                     ' . $cm_more . '
@@ -7947,7 +8051,7 @@ switch ($action) {
                     $rf_amount_line = '';
 
                     if (count($rf_groups) === 1) {
-                        $rf_amount_line = number_format(((float) $rf_groups[0]['orders_total']) / 100, 2, ',', '.')
+                        $rf_amount_line = pg_format_number(((float) $rf_groups[0]['orders_total']) / 100, 2)
                             . ' ' . h($rf_groups[0]['currency_code']);
                     }
 
@@ -7994,7 +8098,7 @@ switch ($action) {
                                 <span class="' . $rf_wait_class . ' ms-auto flex-shrink-0" style="font-size:10px">' . get_relative_time(array('timestamp' => (int) $rf_item['cancelled_at'])) . '</span>
                             </div>
                             <div class="text-muted" style="font-size:11px">'
-                                . number_format(((float) $rf_item['total']) / 100, 2, ',', '.') . ' ' . h($rf_item['currency_code'])
+                                . pg_format_number(((float) $rf_item['total']) / 100, 2) . ' ' . h($rf_item['currency_code'])
                             . '</div>
                         </a>';
                     }
@@ -8014,7 +8118,7 @@ switch ($action) {
                         <div class="px-3 py-1 text-center border-top">
                             <span class="text-muted" style="font-size:10px">' . lang(array(
                                 'string' => '{var:1} more waiting',
-                                'vars'   => number_format($rf_total_count - count($rf_items)),
+                                'vars'   => pg_format_number($rf_total_count - count($rf_items), 0),
                             )) . '</span>
                         </div>';
                     }
@@ -8028,7 +8132,7 @@ switch ($action) {
                                     ? '<span class="text-muted text-truncate d-block" style="font-size:10px">' . $rf_amount_line . '</span>'
                                     : '')
                             . '</div>
-                            <span class="fw-semibold text-' . ($rf_total_count > 0 ? 'danger' : 'success') . ' flex-shrink-0" style="font-size:15px">' . number_format($rf_total_count) . '</span>
+                            <span class="fw-semibold text-' . ($rf_total_count > 0 ? 'danger' : 'success') . ' flex-shrink-0" style="font-size:15px">' . pg_format_number($rf_total_count, 0) . '</span>
                         </div>
                         ' . $rf_rows . '
                         ' . $rf_more . '
@@ -8355,6 +8459,20 @@ switch ($action) {
 
             foreach (pg_chat_unread_for_push($user['id'], 3 - count($array)) as $conversation) {
                 $array[] = $conversation;
+            }
+        }
+
+        // Mentions and hand-overs in the workspace, the same way - unless the
+        // bell carries them already (addressed rows, 4.83), which the loop
+        // above has just listed.
+        if ((count($array) < 3) && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && !pg_notification_targets_available()) {
+
+            require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
+
+            if (ws_ready()) {
+                foreach (ws_push_pending($user, 3 - count($array)) as $item) {
+                    $array[] = $item;
+                }
             }
         }
 
@@ -9544,6 +9662,7 @@ switch ($action) {
     //     "cardType": "CREDIT_CARD",
     //     "max_allowed": 6,
     //     "currency_symbol": "₺",
+    //     "currency_code": "TRY",
     //     "installments": [
     //         {"number": 1, "monthly": "17.64", "total": "17.64", "increase": "0.00"},
     //         {"number": 3, "monthly": "6.06", "total": "18.18", "increase": "0.54"}
@@ -9570,7 +9689,8 @@ switch ($action) {
                 'status'         => 'success',
                 'binNumber'      => $eo_inst_bin,
                 'max_allowed'    => 1,
-                'currency_symbol'=> defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '',
+                'currency_symbol'=> defined('BASE_CURRENCY_SYMBOL') ? html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8') : '',
+                'currency_code'  => defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '',
                 'installments'   => array(array(
                     'number' => 1,
                     'monthly'=> number_format((float)$eo_inst_price, 2, '.', ''),
@@ -9639,6 +9759,7 @@ switch ($action) {
             'currency_symbol' => defined('BASE_CURRENCY_SYMBOL')
                                     ? html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')
                                     : '',
+            'currency_code'   => defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '',
             'installments'    => $eo_inst_list,
         ));
         exit();
@@ -11051,13 +11172,13 @@ switch ($action) {
         $product['price']           = number_format($_pg_price_dec, 2, '.', '');
         $product['price_cents']     = $_pg_price_cents;
         $product['price_decimal']   = number_format($_pg_price_dec, 2, '.', '');
-        $product['price_formatted'] = $_pg_curr . number_format($_pg_price_dec, 2, '.', ',');
+        $product['price_formatted'] = pg_visitor_money($_pg_price_dec, $_pg_curr);
         $product['original_price']           = number_format($_pg_orig_dec, 2, '.', '');
         $product['original_price_cents']     = $_pg_orig_cents;
-        $product['original_price_formatted'] = $_pg_curr . number_format($_pg_orig_dec, 2, '.', ',');
+        $product['original_price_formatted'] = pg_visitor_money($_pg_orig_dec, $_pg_curr);
         $product['has_discount']             = (string)$_pg_has_disc;
         $product['discount_amount']          = $_pg_save_cents > 0 ? number_format($_pg_save_cents / 100, 2, '.', '') : '';
-        $product['discount_amount_formatted']= $_pg_save_cents > 0 ? $_pg_curr . number_format($_pg_save_cents / 100, 2, '.', ',') : '';
+        $product['discount_amount_formatted']= $_pg_save_cents > 0 ? pg_visitor_money($_pg_save_cents / 100, $_pg_curr) : '';
         $product['discount_percent']         = $_pg_save_pct > 0 ? (string)$_pg_save_pct : '';
         $product['image_url']       = $_pg_main !== '' ? PATH . encode_url_path($_pg_main) : '';
         $product['address_name']    = $_pg_addr;
@@ -11713,6 +11834,8 @@ switch ($action) {
             case 'explorer_backup_extract':
             case 'explorer_backup_chmod':
             case 'explorer_zip_create':
+            case 'explorer_erp_tree':
+            case 'explorer_erp_list':
             case 'explorer_zip_extract':
             case 'explorer_short_links_list':
             case 'explorer_short_link_options':
@@ -11757,6 +11880,15 @@ switch ($action) {
                 WHERE files.id = '" . escape($request['file_id']) . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_array($result);
+
+                // A document the ERP module keeps is read-only here, whoever
+                // asks (see pg_files_include_erp_document()).
+                if (is_array($row) && pg_files_include_erp_document(array($row['id']))) {
+                    respond(array(
+                        'status' => 'error',
+                        'request' => $request['type'],
+                        'message' => lang('ERP documents are read-only in the file manager.')));
+                }
 
                 $file_id = $row['id'];
                 $file_design = $row['design'];
@@ -13421,7 +13553,8 @@ switch ($action) {
         // where the whole layout used to be.
         $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
         $_sc_read_only = array('list', 'usage_all', 'prefetch', 'get',
-                               'list_custom_forms', 'list_form_item_view_pages', 'list_product_groups');
+                               'list_custom_forms', 'list_form_item_view_pages', 'list_product_groups',
+                               'list_calendars', 'list_calendar_event_pages');
         if (((int)$user['role'] > 1) && !in_array($sub, $_sc_read_only, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
         }
@@ -13728,7 +13861,37 @@ switch ($action) {
                          ORDER BY page_title ASC, page_name ASC"
                     );
                 }
-                respond(array('status' => 'success', 'pages' => $sc_iv_rows));
+                // Pages built in the visual editor show a record through a
+                // form_item_view widget bound to the same form.
+                $sc_iv_merged = array();
+                foreach ((array)$sc_iv_rows as $sc_iv_p) $sc_iv_merged[(int)$sc_iv_p['page_id']] = $sc_iv_p;
+                foreach (pg_sw_widget_pages('form_item_view', function ($cfg) use ($sc_iv_form_id) {
+                    return $sc_iv_form_id <= 0 || (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : 0) === $sc_iv_form_id;
+                }) as $sc_iv_p) $sc_iv_merged[(int)$sc_iv_p['page_id']] = $sc_iv_p;
+                respond(array('status' => 'success', 'pages' => array_values($sc_iv_merged)));
+                break;
+
+            // ── LIST CALENDARS ──────────────────────────────────────────────
+            // The calendars a calendar widget can show — its settings panel
+            // lists them as checkboxes.
+            case 'list_calendars':
+                $sc_cal_rows = db_items("SELECT id, name FROM calendars ORDER BY name ASC");
+                respond(array('status' => 'success', 'calendars' => is_array($sc_cal_rows) ? $sc_cal_rows : array()));
+                break;
+
+            // ── LIST CALENDAR EVENT PAGES ───────────────────────────────────
+            // Where a calendar widget's events can link: legacy Calendar Event
+            // View pages and pages carrying a calendar_event_view widget.
+            case 'list_calendar_event_pages':
+                $sc_ce_merged = array();
+                foreach ((array)db_items(
+                    "SELECT page_id, page_name, page_title FROM page
+                     WHERE page_type = 'calendar event view'
+                     ORDER BY page_title ASC, page_name ASC") as $sc_ce_p) {
+                    $sc_ce_merged[(int)$sc_ce_p['page_id']] = $sc_ce_p;
+                }
+                foreach (pg_sw_widget_pages('calendar_event_view') as $sc_ce_p) $sc_ce_merged[(int)$sc_ce_p['page_id']] = $sc_ce_p;
+                respond(array('status' => 'success', 'pages' => array_values($sc_ce_merged)));
                 break;
 
             // ── LIST PRODUCT GROUPS ─────────────────────────────────────────
@@ -13952,11 +14115,34 @@ switch ($action) {
             // the designer can select any page as the login redirect target.
             // Response shape: { status:'success', pages:[{page_id,page_name,page_title},...] }
             case 'list_all_pages':
+                // Each page also carries its page_type and the system widgets
+                // its tree holds, so a picker that asks for a sign-in page
+                // lists sign-in pages instead of every page on the site.
+                $sc_ap_types = array();
+                foreach ((array) db_items("SELECT id, system_region_config FROM shared_components WHERE system_region_config IS NOT NULL AND system_region_config <> ''") as $sc_ap_w) {
+                    $sc_ap_cfg = json_decode((string) $sc_ap_w['system_region_config'], true);
+                    if (is_array($sc_ap_cfg) && !empty($sc_ap_cfg['regionType'])) {
+                        $sc_ap_types[(int) $sc_ap_w['id']] = (string) $sc_ap_cfg['regionType'];
+                    }
+                }
                 $sc_ap_rows = db_items(
-                    "SELECT page_id, page_name, page_title
+                    "SELECT page_id, page_name, page_title, page_type,
+                            IF(page_tree_json LIKE '%sharedId%', page_tree_json, '') AS page_tree_json
                      FROM page
                      ORDER BY page_title ASC, page_name ASC"
                 );
+                foreach ($sc_ap_rows as &$sc_ap_row) {
+                    $sc_ap_found = array();
+                    if ($sc_ap_types && $sc_ap_row['page_tree_json'] !== '') {
+                        preg_match_all('/"sharedId"\s*:\s*"?(\d+)/', (string) $sc_ap_row['page_tree_json'], $sc_ap_m);
+                        foreach (array_unique($sc_ap_m[1]) as $sc_ap_sid) {
+                            if (isset($sc_ap_types[(int) $sc_ap_sid])) $sc_ap_found[] = $sc_ap_types[(int) $sc_ap_sid];
+                        }
+                    }
+                    $sc_ap_row['widgets'] = array_values(array_unique($sc_ap_found));
+                    unset($sc_ap_row['page_tree_json']);
+                }
+                unset($sc_ap_row);
                 respond(array('status' => 'success', 'pages' => $sc_ap_rows));
                 break;
 
@@ -13969,8 +14155,13 @@ switch ($action) {
                 if ($sc_ff_pid <= 0) {
                     respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
                 }
+                // rss_field names a field's role (title / description /
+                // media / category), wysiwyg says whether a text area holds
+                // markup, office_use_only keeps staff fields off a public
+                // layout — the designer builds a form's starter layout from
+                // these, in the form's own order.
                 $sc_ff_rows = db_items(
-                    "SELECT id, name, label, type
+                    "SELECT id, name, label, type, rss_field, wysiwyg, office_use_only
                      FROM form_fields
                      WHERE page_id = '$sc_ff_pid'
                      ORDER BY sort_order ASC, id ASC"
@@ -14305,12 +14496,12 @@ function pg_widget_headline($properties)
     return '
     <div class="pg-head">
         <div class="pg-head-line">
-            <span class="pg-head-num">' . number_format($today) . '</span>
+            <span class="pg-head-num">' . pg_format_number($today, 0) . '</span>
             <span class="pg-head-unit text-muted">' . $unit . '</span>
             <i class="bi ' . $arrow . ' pg-head-dir ' . $color . '" title="' . h(lang('Compared to yesterday')) . '"></i>
             <span class="pg-head-total text-muted">' . lang(array(
                 'string' => 'in 7 days {var:1}',
-                'vars' => '<b>' . number_format($total) . '</b>',
+                'vars' => '<b>' . pg_format_number($total, 0) . '</b>',
             )) . '</span>
         </div>
         <span class="pg-head-spark"><canvas id="' . $id . '" data-series="' . h(json_encode($series)) . '" data-rgb="' . $rgb . '"></canvas></span>

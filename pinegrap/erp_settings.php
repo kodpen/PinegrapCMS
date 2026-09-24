@@ -68,6 +68,32 @@ $document = $documents[$doc];
 $default_template = $document['default'];
 $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);
 
+// The accounting rules have a form of their own on this screen.
+if ($_POST && ((string) ($_POST['rules'] ?? '') === '1')) {
+
+    validate_token_field();
+
+    $rules_input = array();
+
+    if (isset($_POST['vat_net_withholding'])) {
+        $rules_input['vat_net_withholding'] = ((string) $_POST['vat_net_withholding'] === '1');
+    }
+
+    if (isset($_POST['vat_exemption_code'])) {
+        $rules_input['vat_exemption_code'] = (string) $_POST['vat_exemption_code'];
+    }
+
+    $saved = erp_rules_save($rules_input);
+
+    if (!$saved['success']) {
+        $liveform->mark_error($saved['field'], h($saved['error']));
+    } else {
+        $liveform->add_notice(lang('The accounting rules were saved.'));
+    }
+
+    go($self_url . '#erp_rules');
+}
+
 if ($_POST) {
 
     validate_token_field();
@@ -155,7 +181,8 @@ $placeholders = array(
         'seller.state' => lang('State'),
         'seller.zip_code' => lang('Zip Code'),
         'seller.country' => lang('Country'),
-        'seller.vkn' => lang('Seller VKN / TCKN'),
+        'seller.locality' => lang('Place line in the country\'s order: postcode, city, state, country'),
+        'seller.vkn' => (erp_account_country('') === 'TR') ? lang('Seller VKN / TCKN') : lang('Seller tax number'),
         'seller.tax_office' => lang('Seller Tax Office'),
         'seller.web_address' => lang('Address the sale was made at'),
         'seller.email' => lang('Email'),
@@ -165,13 +192,15 @@ $placeholders = array(
     lang('Account') => array(
         'account.title' => lang('Title'),
         'account.is_person' => lang('True for an individual, empty for a company'),
-        'account.tax_number' => lang('VKN / TCKN'),
+        'account.tax_number' => erp_tax_id_label(),
         'account.tax_office' => lang('Tax Office'),
         'account.address' => lang('Address'),
         'account.district' => lang('District'),
         'account.city' => lang('City'),
+        'account.state' => lang('State / Province'),
         'account.country' => lang('Country'),
         'account.postcode' => lang('Postcode'),
+        'account.locality' => lang('Place line in the country\'s order: postcode, city, state, country'),
         'account.email' => lang('Email'),
         'account.phone' => lang('Phone'),
     ),
@@ -195,7 +224,7 @@ $placeholders = array(
         'invoice.payment_date' => lang('Payment Date'),
         'invoice.shipment_date' => lang('Shipment Date'),
         'invoice.carrier_title' => lang('Carrier'),
-        'invoice.carrier_vkn' => lang('Carrier VKN'),
+        'invoice.carrier_vkn' => (erp_account_country('') === 'TR') ? lang('Carrier VKN') : lang('Carrier tax number'),
         'invoice.web_address' => lang('Address the sale was made at'),
         'invoice.notes' => lang('Notes'),
         'invoice.is_purchase' => lang('True for a purchase invoice'),
@@ -213,7 +242,7 @@ $placeholders = array(
         'has_discount' => lang('True when the line carries a discount'),
         'base' => lang('Taxable Amount'),
         'tax_rate' => lang('Rate'),
-        'tax' => lang('VAT'),
+        'tax' => erp_tax_label('tax'),
         'total' => lang('Total'),
     ),
     lang('Totals') => array(
@@ -222,7 +251,7 @@ $placeholders = array(
         'totals.shipping_total' => lang('Shipping'),
         'totals.surcharge_total' => lang('Surcharge'),
         'totals.gift_card_total' => lang('Settled by gift card'),
-        'totals.tax_total' => lang('VAT'),
+        'totals.tax_total' => erp_tax_label('tax'),
         'totals.grand_total' => lang('Total'),
         'totals.grand_total_base' => lang('Total in the base currency, empty for a base-currency document'),
         'totals.has_discount' => lang('True when there is a discount'),
@@ -231,6 +260,7 @@ $placeholders = array(
         'totals.has_gift_card' => lang('True when a gift card was used'),
         'generated_at' => lang('The moment the document was generated'),
         'language' => lang('The language code of the site, for the html lang attribute'),
+        'paper' => lang('Paper size for the @page rule: letter in the US, Canada and much of Latin America, A4 elsewhere'),
     ),
 );
 
@@ -280,6 +310,37 @@ foreach ($placeholders as $group => $names) {
                                 </div>';
 }
 
+// The accounting rules: the withholding and the exemption code concern
+// Turkish VAT and e-documents, so they are offered where those are in use.
+$rules = erp_rules();
+$rules_turkish = erp_turkish_features();
+$output_rules = '';
+
+if (erp_rules_ready() && $rules_turkish) {
+    $output_rules .= '
+                        <fieldset class="mb-4">
+                            <legend class="form-label fs-6">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vat_net_withholding" id="vat_net_withholding_0" value="0"' . ($rules['vat_net_withholding'] ? '' : ' checked') . ' />
+                                <label class="form-check-label" for="vat_net_withholding_0">' . lang('Shown beside the calculated VAT, which stays in full') . '</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vat_net_withholding" id="vat_net_withholding_1" value="1"' . ($rules['vat_net_withholding'] ? ' checked' : '') . ' />
+                                <label class="form-check-label" for="vat_net_withholding_1">' . lang('Taken off the calculated VAT, since the buyer declares that part') . '</label>
+                            </div>
+                            <div class="form-text">' . lang('The invoices do not change: they carry the whole VAT and the withheld part either way. Only the difference the report works out does.') . '</div>
+                        </fieldset>
+                        <div class="mb-4" style="max-width:36rem">
+                            <label class="form-label" for="vat_exemption_code">' . lang('Exemption code for zero-rated lines') . '</label>
+                            <input type="text" class="form-control font-monospace" style="max-width:8rem" id="vat_exemption_code" name="vat_exemption_code" value="' . h($rules['vat_exemption_code']) . '" maxlength="3" inputmode="numeric" pattern="[0-9]{3}" placeholder="351" autocomplete="off" />
+                            <div class="form-text">' . lang('A 0% line on an e-document has to say why it carries no VAT. A line takes its product\'s code when the product has one, otherwise this one; empty leaves the line without a code. Which code fits your sales is for your accountant to say.') . '</div>
+                        </div>';
+}
+
+$output_rules .= '
+                        <p class="mb-0">' . lang('Whether an expense category takes its VAT back is set with the categories.') . '
+                            <a href="erp_expense_categories.php">' . lang('Expense categories') . '</a></p>';
+
 $output_document_pills = '';
 foreach ($documents as $key => $item) {
     $output_document_pills .= '
@@ -288,10 +349,10 @@ foreach ($documents as $key => $item) {
 
 echo pg_page_shell(array(
     'title'               => lang('ERP Settings'),
-    'extra_classes'       => 'erp erp_settings',
-    'icon'                => 'store',
+    'extra classes'       => 'erp erp_settings',
+    'icon'                => 'erp',
     'heading'             => lang('ERP Settings'),
-    'heading_description' => lang('Where the seller is named and how the printed documents look.'),
+    'heading_description' => lang('Where the seller is named, the accounting rules and how the printed documents look.'),
     'cancel'              => false,
 )) . '
 <main id="content" class="container-fluid">
@@ -314,6 +375,19 @@ echo pg_page_shell(array(
                         <a href="' . h($edoc_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('E-Invoice') . '</a></p>
                 </div>
             </div>
+
+            <form action="erp_settings.php" method="post" id="erp_rules">
+                ' . get_token_field() . '
+                <input type="hidden" name="rules" value="1">
+                <div class="card my-4">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Accounting rules') . '</div>
+                    <div class="card-body">
+                        <p class="text-body-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
+                        ' . $output_rules . '
+                        ' . ((erp_rules_ready() && $rules_turkish) ? '<div class="mt-3"><button type="submit" class="btn btn-sm btn-primary" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-check2 me-2" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
+                    </div>
+                </div>
+            </form>
 
             <form name="form" action="erp_settings.php" method="post">
                 ' . get_token_field() . '

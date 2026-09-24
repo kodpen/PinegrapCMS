@@ -718,3 +718,46 @@ function pg_post_body_discarded()
 
     return ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0);
 }
+
+/**
+ * Whether any of these `files` rows is a document the ERP module keeps.
+ *
+ * Issued invoices, delivery notes, accepted e-documents and e-mailed
+ * reconciliation letters are kept as ordinary `files` rows with no folder and
+ * files.erp_doc_type naming the document (includes/erp/archive.php). They are
+ * read-only everywhere a file is changed by id: an issued document keeps its
+ * number and its PDF, and a request that names one by id - typed by hand or
+ * left over from another screen - must not rename, move, replace or delete
+ * it. Installs from before the column existed have no such rows.
+ *
+ * @param array $file_ids
+ * @return bool
+ */
+function pg_files_include_erp_document($file_ids)
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    }
+
+    if (!$ready) {
+        return false;
+    }
+
+    $ids = array();
+
+    foreach ((array) $file_ids as $file_id) {
+        $file_id = (int) $file_id;
+
+        if ($file_id > 0) {
+            $ids[$file_id] = $file_id;
+        }
+    }
+
+    if (count($ids) == 0) {
+        return false;
+    }
+
+    return ((int) db_value("SELECT COUNT(*) FROM files WHERE id IN (" . implode(',', $ids) . ") AND erp_doc_type <> ''") > 0);
+}

@@ -720,9 +720,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     // if at least one form was deleted
     if ($number_of_forms > 0) {
-        log_activity(lang(array('string'=>'{var:1} submitted form(s) from custom form(s) ({var:2}) were deleted','vars'=>array(number_format($number_of_forms),$custom_form_list ) )) , $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} submitted form(s) from custom form(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_forms, 0),$custom_form_list ) )) , $_SESSION['sessionusername']);
 
-        $liveform->add_notice( lang(array('string'=>'{var:1} form(s) were deleted','vars'=>number_format($number_of_forms))) );
+        $liveform->add_notice( lang(array('string'=>'{var:1} form(s) were deleted','vars'=>pg_format_number($number_of_forms, 0))) );
     } else {
         $liveform->add_notice(lang('No forms were deleted'));
     }

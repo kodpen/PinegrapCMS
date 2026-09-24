@@ -316,8 +316,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                         <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     <td class="chart_label align-middle"><span class=" badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . BASE_CURRENCY_SYMBOL . number_format($gift_card['balance'] / 100, 2) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . BASE_CURRENCY_SYMBOL . number_format($gift_card['amount'] / 100, 2) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td class="align-middle">' . $output_expiration_date . '</td>
                     <td class="align-middle">' . nl2br(h($gift_card['notes'])) . '</td>
                     <td class="align-middle">' . $output_from_name . '</td>
@@ -428,17 +428,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                                 <div class="row">
                                     <div class="col-12 text-center">
                                         <h5>' . lang('Active Balance') . '</h5>
-                                        <p class="fw-bolder">' . BASE_CURRENCY_SYMBOL . number_format($active_balance / 100, 2) . '</p>
+                                        <p class="fw-bolder">' . pg_format_money($active_balance / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                         <hr/>
                                     </div>
                                     <div class="col-12 text-center">
                                         <h5>' . lang('Expired Balance') . '</h5>
-                                        <p class="fw-bolder">' . BASE_CURRENCY_SYMBOL . number_format($expired_balance / 100, 2) . '</p>
+                                        <p class="fw-bolder">' . pg_format_money($expired_balance / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                         <hr/>
                                     </div>
                                     <div class="col-12 text-center ">
                                         <h5>' . lang('Total Balance') . '</h5>
-                                        <p class="fw-bolder">' . BASE_CURRENCY_SYMBOL . number_format($total_balance / 100, 2) . '</p>
+                                        <p class="fw-bolder">' . pg_format_money($total_balance / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     </div>
                                 </div>
                             </div>

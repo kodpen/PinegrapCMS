@@ -47,12 +47,38 @@ function _apply_shopping_cart_bindings(&$node, $context)
         && isset($bindings['action'])) {
         $action = $bindings['action'];
         if ($action === 'cart_checkout') {
-            // Anchor to next-page URL; force href (overrides any literal).
-            $node['props']['btnElement'] = 'a';
-            $node['props']['href']       = isset($context['checkout_url']) ? $context['checkout_url'] : '#';
+            // A submit button of the cart form, like Update: cart_action.php
+            // saves what the visitor changed (quantities, donation amounts,
+            // gift card and form fields, schedules) and then goes on to the
+            // checkout page. A plain link to that page dropped the edits.
+            $node['props']['btnElement'] = 'button';
+            $node['props']['btnType']    = 'submit';
+            unset($node['props']['href']);
+            $existing = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs']))
+                            ? $node['props']['_attrs'] : array();
+            $managed  = array('type' => 1, 'name' => 1, 'value' => 1, 'form' => 1, 'formnovalidate' => 1, 'href' => 1);
+            $kept     = array();
+            foreach ($existing as $a) {
+                if (is_array($a) && isset($a['name']) && !isset($managed[$a['name']])) {
+                    $kept[] = $a;
+                }
+            }
+            $kept[] = array('name' => 'name',  'value' => 'submit_checkout');
+            $kept[] = array('name' => 'value', 'value' => '1');
+            $kept[] = array('name' => 'form',  'value' => isset($context['cart_form_id']) ? $context['cart_form_id'] : '');
+            // Required fields are enforced on the checkout page, which says
+            // which item they belong to; a browser bubble on a collapsed
+            // panel here would just block the button.
+            $kept[] = array('name' => 'formnovalidate', 'value' => '');
+            $node['props']['_attrs'] = $kept;
+            // The label setting also replaces the starter's own wording
+            // ("Proceed to Checkout"): the button every new cart carries
+            // ignored the setting. Text the designer typed on the canvas wins.
+            $_lbl = (string)($context['checkout_button_label'] ?? '');
             if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me'
-                || $node['props']['text'] === 'Button') {
-                $node['props']['text'] = (($context['checkout_button_label'] ?? '') !== '') ? $context['checkout_button_label'] : lang('Checkout');
+                || $node['props']['text'] === 'Button'
+                || ($_lbl !== '' && in_array($node['props']['text'], array(lang('Proceed to Checkout'), lang('Checkout')), true))) {
+                $node['props']['text'] = ($_lbl !== '') ? $_lbl : lang('Checkout');
             }
         } elseif ($action === 'cart_update') {
             // Submit button against the cart form.
@@ -77,9 +103,11 @@ function _apply_shopping_cart_bindings(&$node, $context)
             $kept[] = array('name' => 'form',  'value' => isset($context['cart_form_id']) ? $context['cart_form_id'] : '');
             $kept[] = array('name' => 'formnovalidate', 'value' => '');
             $node['props']['_attrs'] = $kept;
+            $_lbl = (string)($context['update_button_label'] ?? '');
             if (empty($node['props']['text']) || $node['props']['text'] === 'Click Me'
-                || $node['props']['text'] === 'Button') {
-                $node['props']['text'] = (($context['update_button_label'] ?? '') !== '') ? $context['update_button_label'] : lang('Update');
+                || $node['props']['text'] === 'Button'
+                || ($_lbl !== '' && $node['props']['text'] === lang('Update'))) {
+                $node['props']['text'] = ($_lbl !== '') ? $_lbl : lang('Update');
             }
         }
     }
@@ -511,6 +539,37 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         ));
     }
 
+    // ── Empty cart ─────────────────────────────────────────────────────────
+    // Decided before the messages node is drawn (it consumes the liveform):
+    // the notice added after it only surfaced on the NEXT page — on a first
+    // visit the empty cart said nothing, and a later page said "your cart is
+    // empty" out of the blue. A tree that does not use the has_items flag
+    // has nothing but empty labels, a ₺0.00 summary, a saved-cart link and a
+    // checkout button to show for an empty cart; like the legacy cart it
+    // shows the message alone (with any notice the last action left, such
+    // as "the item was removed").
+    $_pg_cart_oid   = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
+    $_pg_cart_empty = ($_pg_cart_oid <= 0)
+        || ((int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $_pg_cart_oid . "'") === 0);
+    if ($_pg_cart_empty) {
+        $_pg_cart_empty_msg = (string)(isset($cfg['empty_message']) ? $cfg['empty_message'] : lang('Your cart is empty.'));
+        if (strpos((string)$tree_json, '"has_items"') === false && function_exists('_pg_sw_render_message_only')) {
+            // The legacy empty cart still offers the quick add box.
+            $_pg_cart_qa_gid = (int)(isset($cfg['quick_add_product_group_id']) ? $cfg['quick_add_product_group_id'] : 0);
+            $_pg_cart_qa_html = ($_pg_cart_qa_gid > 0)
+                ? _pg_render_quick_add($_pg_cart_qa_gid,
+                    (string)(isset($cfg['quick_add_label']) ? $cfg['quick_add_label'] : lang('Quick Add')),
+                    $cart_action_url,
+                    function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/'))
+                : '';
+            return _pg_sw_render_message_only($tree_decoded, 'shopping_cart', h($_pg_cart_empty_msg), 'notice',
+                $_pg_cart_qa_html !== '' ? '<div class="pg-cart-quick-add-auto mb-3">' . $_pg_cart_qa_html . '</div>' : '');
+        }
+        if ($_pg_cart_form_lf && $_pg_cart_empty_msg !== '') {
+            $_pg_cart_form_lf->add_notice(h($_pg_cart_empty_msg));
+        }
+    }
+
     // Per-widget messages safety net — same pattern as the other system widgets.
     if (function_exists('_pg_inject_messages_node')) {
         _pg_inject_messages_node($tree_decoded, 'shopping_cart');
@@ -566,6 +625,11 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             ? $_SESSION['software']['liveforms']['shopping_cart'][0] : array()
     );
 
+    // The tree is drawn before the items are read, so visibility bindings
+    // (the recurring summary shows only for a cart with a subscription) are
+    // marked here and resolved once the totals are known.
+    _pg_sw_mark_visibility($tree_decoded);
+
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -592,13 +656,15 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // entity form (& → &amp;) and the visitor sees the raw `&#8378;299.95`
     // string. The numeric portion of the price is digits + . + , so it's
     // already HTML-safe; we concatenate the symbol AS-IS.
-    $currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '₺';
+    $currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$';
     if (!empty($cfg['currency']) && is_string($cfg['currency'])) {
         $currency_symbol = $cfg['currency'];
     }
     $fmt_money = function ($cents) use ($currency_symbol) {
-        // Pinegrap stores money as integer cents. Display as "{symbol}{N.NN}".
-        return $currency_symbol . number_format(((int)$cents) / 100, 2, '.', ',');
+        // Pinegrap stores money as integer cents in the base currency; shown
+        // in the visitor's currency, the site language decides the separators
+        // and the symbol goes first (pg_visitor_money()).
+        return pg_visitor_money(((int)$cents) / 100, $currency_symbol);
     };
 
     // ── Cart settings (from cfg, with sensible defaults) ───────────────────
@@ -935,16 +1001,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // Build the items list — join products to get address_name + image_name
         // for the per-row detail link. Detail URL preference:
         //   1) cfg.detail_page_id (designer-picked)
-        //   2) session shopping_cart_page_id (legacy)
-        //   3) bare /<address_name> as a last-ditch fallback (matches legacy
-        //      `OUTPUT_PATH . encode_url_path($address_name)` behaviour for
-        //      sites that route product slugs at the root).
-        $detail_page_name = '';
-        if (!empty($cfg['detail_page_id'])) {
-            $detail_page_name = (string)db_value(
-                "SELECT page_name FROM page WHERE page_id = '" . (int)$cfg['detail_page_id'] . "' LIMIT 1"
-            );
-        }
+        //   2) the site's catalog detail page (pg_sw_catalog_detail_page_name)
+        //   3) bare /<address_name> only when the site has no detail page.
+        $detail_page_name = pg_sw_catalog_detail_page_name(isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0);
         // SELECT also includes products.short_description + full_description
         // because Pinegrap installs typically use products.short_description
         // as the user-facing display name (products.name is treated as an
@@ -1298,17 +1357,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
 
     $cart_count = count($items);
 
-    // Empty cart notice — surfaces through the Messages content node
-    // (auto-injected at the top of the cart widget container by
-    // `_pg_inject_messages_node`). This puts the alert INSIDE the system
-    // widget but OUTSIDE the loop_area (the loop is the products list);
-    // exactly the placement legacy `get_shopping_cart.php` used via
-    // `$form->add_notice()`. Re-added on every render so the notice
-    // persists as long as the cart stays empty (Messages render consumes
-    // it, but the next render re-adds it if the cart is still empty).
-    if ($cart_count === 0 && $empty_message !== '' && $_pg_cart_form_lf) {
-        $_pg_cart_form_lf->add_notice($empty_message);
-    }
+    // The empty-cart notice is raised before the tree is drawn (see
+    // "Empty cart" above), so it lands on this page.
 
     // ── Next-page redirect URL ─────────────────────────────────────────────
     // Pick the shipping vs. no-shipping target based on whether the cart has
@@ -1371,6 +1421,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                       . get_token_field()
                       . '<input type="hidden" name="send_to" value="' . h($request_uri) . '">'
                       . '<input type="hidden" name="page_id" value="' . (isset($_pg_cart_pid) ? (int)$_pg_cart_pid : 0) . '">'
+                      // Where "Proceed to Checkout" continues once the cart
+                      // is saved (cart_action.php, submit_checkout).
+                      . '<input type="hidden" name="checkout_to" value="' . h($checkout_url) . '">'
                       . '</form>';
     // Update button HTML — submits through the cart form via form="..." attr.
     // w-100 so it fills the d-grid container in the default layout (designer
@@ -1386,9 +1439,11 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // checkout, not at every quantity update.
     $update_button_html = '<button type="submit" name="submit_update_cart" value="1" form="' . h($cart_form_id) . '" formnovalidate class="btn btn-outline-secondary w-100">' . h($update_button_label) . '</button>';
 
-    // Checkout button — posts via standard <a> to the resolved next page.
+    // Checkout button — submits the cart form (saving the visitor's edits)
+    // and cart_action.php continues to the resolved next page. A link to
+    // that page lost whatever was typed since the last Update.
     // w-100 to match the d-grid container in the default layout.
-    $checkout_button_html = '<a href="' . h($checkout_url) . '" class="btn btn-primary w-100">' . h($checkout_button_label) . '</a>';
+    $checkout_button_html = '<button type="submit" name="submit_checkout" value="1" form="' . h($cart_form_id) . '" formnovalidate class="btn btn-primary w-100">' . h($checkout_button_label) . '</button>';
 
     // ── Build per-row HTML ─────────────────────────────────────────────────
     // Each row exposes both display tokens (price, total, name) AND an
@@ -1424,9 +1479,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // A donation has no meaningful quantity — the visitor edits the
                 // AMOUNT. Field name `donations[<item_id>]` matches what the
                 // legacy cart posts, so the handler logic is shared.
-                // type=text, not number: the value is displayed grouped
-                // ("1.250,00") and a number input would reject the separators.
-                $_don_amount = number_format((int)$item['line_cents'] / 100, 2, '.', ',');
+                // type=text, not number: the value uses the site's decimal
+                // separator ("1250,00") and a number input would reject it.
+                $_don_amount = pg_format_input_amount(pg_visitor_amount((int)$item['line_cents'] / 100));
                 $qty_input = '<div class="input-group input-group-sm pg-cart-donation" style="max-width:11rem;display:inline-flex">'
                            // Symbol emitted RAW, like every other price in this
                            // widget: VISITOR_CURRENCY_SYMBOL may already be an
@@ -1637,6 +1692,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
             }
             $row_html = pg_sw_sweep_tokens($row_html);
+            if ($_it_is_donation || $_it_by_offer) {
+                $row_html = _pg_cart_retarget_qty_box($row_html, 'quantities[' . (int)$item['item_id'] . ']',
+                    (int)$item['item_id'], $_it_is_donation ? $_don_amount : null);
+            }
 
             // Auto-append form data when the row HAS form_data_html AND the
             // designer hasn't placed `^^__item_form_data_html^^` in the
@@ -1745,7 +1804,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // mentioned when the cart holds a shippable item AND the site charges
         // shipping; tax only when the site charges tax. Empty when neither
         // applies (all-digital cart on a tax-free site) — no filler sentence.
-        '__tax_shipping_notice'        => _pg_cart_tax_shipping_notice($has_shippable_item),
+        // A tax figure already on screen is the default-rate estimate, so
+        // the sentence says so rather than that tax is yet to come.
+        '__tax_shipping_notice'        => _pg_cart_tax_shipping_notice($has_shippable_item, $tax_cents > 0),
 
         // Offline-payment toggle. NOT a customer control — legacy gates it on
         // ECOMMERCE_OFFLINE_PAYMENT plus a logged-in user who is either staff
@@ -1799,6 +1860,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         if (strpos($rendered, '<!--pg-applied-offers-placeholder-->') !== false) {
             $rendered = str_replace('<!--pg-applied-offers-placeholder-->', $applied_offers_html, $rendered);
         }
+        $rendered = _pg_sw_resolve_visibility($rendered, array('has_recurring_items' => $_recurring_cents > 0, 'has_items' => $cart_count > 0));
         return _pg_widget_layout_css_once() . $update_form_html . $rendered . _pg_qty_stepper_inline_js() . _pg_remove_from_cart_inline_js();
     }
 
@@ -1842,6 +1904,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
     }
 
+    $body = _pg_sw_resolve_visibility($body, array('has_recurring_items' => $_recurring_cents > 0, 'has_items' => $cart_count > 0));
     return _pg_widget_layout_css_once() . $update_form_html . $body . _pg_qty_stepper_inline_js() . _pg_remove_from_cart_inline_js();
 }
 
@@ -2085,7 +2148,13 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                     oi.ship_to_id, p.name AS product_name, p.short_description, p.full_description,
                     p.shippable, p.image_name, p.address_name, p.selection_type, p.gift_card,
                     p.form, p.form_name, p.form_quantity_type,
-                    p.inventory, p.inventory_quantity, p.backorder
+                    p.inventory, p.inventory_quantity, p.backorder,
+                    oi.added_by_offer,
+                    p.recurring, p.payment_period, p.recurring_schedule_editable_by_customer,
+                    p.number_of_payments AS product_number_of_payments,
+                    p.start AS recurring_start_days,
+                    oi.recurring_start_date, oi.recurring_payment_period,
+                    oi.recurring_number_of_payments
              FROM order_items oi
              INNER JOIN products p ON p.id = oi.product_id
              WHERE oi.order_id = '" . (int)$order_id . "'" . $_eo_sfl_filter . "
@@ -2171,11 +2240,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
 
     // ── Currency formatter ────────────────────────────────────────────────────
     $_eo_fmt = function ($cents) {
-        if (function_exists('format_price_for_display')) {
-            return format_price_for_display(((int)$cents) / 100);
-        }
-        $sym = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '';
-        return $sym . number_format(((int)$cents) / 100, 2);
+        return pg_visitor_money(((int)$cents) / 100);
     };
 
     // ── Build URLs / hidden fields ───────────────────────────────────────────
@@ -2409,17 +2474,17 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // the styling matches the rest of the site (Bootstrap alerts).
     $errors_html  = $_eo_lf ? (string)$_eo_lf->output_errors()  : '';
     $notices_html = $_eo_lf ? (string)$_eo_lf->output_notices() : '';
-    // CONSUME-ON-RENDER: errors/notices are ONE-SHOT — wipe them from
-    // session after rendering. Otherwise they would stick around forever
-    // (e.g. visitor submits with empty CC fields → sees errors → switches
-    // payment method to Offline → reloads → STILL sees the now-irrelevant
-    // CC errors). Legacy `clear_notices()` at the top of express_order.php
-    // handles notices but NOT field errors; without this manual unmark
-    // the only way to clear field errors is to re-submit and pass.
-    if ($_eo_lf) {
+    // CONSUME-ON-RENDER: errors/notices are ONE-SHOT — they are wiped from
+    // the session once shown (see $_eo_consume_messages below). Otherwise
+    // they would stick around forever (e.g. visitor submits with empty CC
+    // fields → sees errors → switches payment method to Offline → reloads →
+    // STILL sees the now-irrelevant CC errors). Legacy `clear_notices()` at
+    // the top of express_order.php handles notices but NOT field errors.
+    $_eo_consume_messages = function () use ($_eo_lf) {
+        if (!$_eo_lf) return;
         if (method_exists($_eo_lf, 'unmark_errors')) $_eo_lf->unmark_errors();
         if (method_exists($_eo_lf, 'clear_notices')) $_eo_lf->clear_notices();
-    }
+    };
 
     // Hidden `total` / `total_with_surcharge` fields — submit_order.php
     // (line 1296-1308) rejects the submit if the recomputed server-side
@@ -2471,6 +2536,22 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $eo_has_messages_node = is_array($tree_decoded_for_eo)
         ? _eo_tree_has_messages_node($tree_decoded_for_eo) : false;
     $sections_html['errors_notices'] = $eo_has_messages_node ? '' : ($errors_html . $notices_html);
+
+    // The messages node prints the errors itself when the designed tree is
+    // drawn further down, and it consumes them from the session. Wiping them
+    // here first left it nothing to print: a rejected order came back with
+    // no word of what was wrong, and the rejected fields were not marked
+    // either (the field bindings read the same errors). Every other path
+    // shows the copy taken above, so the session is cleared now.
+    if ($tree_has_bindings && $eo_has_messages_node) {
+        // Only this widget's messages: an unstamped node prints the pending
+        // messages of every form on the page.
+        if (function_exists('_pg_inject_messages_node')) {
+            _pg_inject_messages_node($tree_decoded_for_eo, 'express_order');
+        }
+    } else {
+        $_eo_consume_messages();
+    }
 
     if ($tree_has_bindings) {
         // ── 1. Mutate the tree in-place:
@@ -2537,6 +2618,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             'has_shipping_cost'  => (bool)$needs_shipping,
             'has_gift_card'      => $gc_disc_cents > 0,
             'has_surcharge'      => $surcharge_cents > 0,
+            // The visitor reads the page in another currency than the base
+            // one the gateway charges: the "amount charged" row and its note.
+            'has_foreign_currency' => (defined('VISITOR_CURRENCY_CODE') && defined('BASE_CURRENCY_CODE') && VISITOR_CURRENCY_CODE != BASE_CURRENCY_CODE),
         );
         _eo_apply_visibility_bindings($tree_decoded_for_eo, $_eo_vis_ctx);
         _eo_apply_section_bindings($tree_decoded_for_eo, $sections_html);
@@ -2574,6 +2658,14 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         $eo_static_tree  = $eo_split['static_tree'];
         $eo_loop_kids    = $eo_split['loop_children'];
 
+        // The messages node drawn with the static portion removes the
+        // liveform from the session; the item rows built after it read the
+        // visitor's rejected values (gift card, recurring schedule) from
+        // this copy.
+        $_eo_lf_rows = ($_eo_lf && $eo_has_messages_node)
+            ? new pg_liveform_snapshot($_SESSION['software']['liveforms']['express_order'][0] ?? array())
+            : $_eo_lf;
+
         // ── 3. Render the static portion → HTML with ^^token^^ placeholders.
         $designed_body = (string)_render_tree_node($eo_static_tree, 0, 0);
 
@@ -2589,8 +2681,14 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $eo_back_url = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
             $loop_html = '';
             foreach ($items as $_it) {
-                $item_vars = _eo_compute_item_tokens($_it, $widget_id, $form_id, $_eo_fmt, $_eo_lf, $gift_card_data, $base_path, $sw_dir, $csrf_token, $eo_back_url);
+                $item_vars = _eo_compute_item_tokens($_it, $widget_id, $form_id, $_eo_fmt, $_eo_lf_rows, $gift_card_data, $base_path, $sw_dir, $csrf_token, $eo_back_url);
                 $row_html  = _eo_replace_tokens($tmpl_html, $item_vars);
+                $_eo_iid   = (int)$_it['item_id'];
+                $_eo_don   = (($_it['selection_type'] ?? '') === 'donation');
+                if ($_eo_don || !empty($_it['added_by_offer'])) {
+                    $row_html = _pg_cart_retarget_qty_box($row_html, 'quantity[' . $_eo_iid . ']', $_eo_iid,
+                        $_eo_don ? pg_format_input_amount(pg_visitor_amount((int)$_it['price'] * max(1, (int)$_it['quantity']) / 100)) : null);
+                }
                 // Same row, repeated: without this every item card carries the
                 // same ids and a collapse in one opens another's panel. The
                 // three ids this widget's own script looks up (card_number,
@@ -2792,6 +2890,42 @@ if (!class_exists('pg_liveform_snapshot')) {
     }
 }
 
+// ── Quantity box of a row that is not edited by quantity ────────────────
+//
+// The cart's input bound to cart_qty and the express order's quantity[<id>]
+// input are always drawn as quantity boxes. Two kinds of row are not edited
+// that way — the same split ^^__item_qty_input^^ makes: a donation, whose
+// AMOUNT the visitor sets (donations[<id>], what the legacy screens post),
+// and a row an offer added, whose quantity the promotion fixes (read-only;
+// the next offers pass would revert an edit). The box keeps the designer's
+// classes and styling; only its role changes. The −/+ stepper buttons of
+// the row are dropped, they would step an amount or a fixed quantity.
+//
+// @param string      $html      One rendered row
+// @param string      $qty_name  The box's name, e.g. quantities[12]
+// @param int         $item_id   Order item id
+// @param string|null $donation  Amount to show for a donation row, or null
+//                               for an offer-added row
+// @return string
+function _pg_cart_retarget_qty_box($html, $qty_name, $item_id, $donation)
+{
+    $re = '~<input\b[^>]*\bname="' . preg_quote($qty_name, '~') . '"[^>]*>~';
+    if (!preg_match($re, $html, $m, PREG_OFFSET_CAPTURE)) return $html;
+    $tag = $m[0][0];
+    if ($donation === null) {
+        $new = preg_replace('~\s*/?>$~', ' readonly>', $tag, 1);
+    } else {
+        $new = preg_replace('~\s(?:type|value|min|max|step)="[^"]*"~', '', $tag);
+        $new = str_replace(
+            'name="' . $qty_name . '"',
+            'name="donations[' . (int)$item_id . ']" type="text" inputmode="decimal" value="' . h($donation) . '"'
+                . (stripos($tag, 'aria-label=') === false ? ' aria-label="' . h(lang('Amount')) . '"' : ''),
+            $new);
+    }
+    $html = substr_replace($html, $new, $m[0][1], strlen($tag));
+    return preg_replace('~<button\b[^>]*\bdata-pg-qty-action="(?:inc|dec)"[^>]*>.*?</button>~s', '', $html);
+}
+
 // ── Recurring schedule: product defaults ────────────────────────────────
 //
 // The schedule a recurring row carries when the customer has not (or may
@@ -2927,14 +3061,24 @@ function _pg_render_cart_item_recurring_schedule($row, $lf, $form_attr)
 // Neither applies (all-digital cart, tax-free site) → empty string, so the
 // bound element collapses instead of printing a disclaimer about nothing.
 //
+// When the totals already show a tax amount (the estimate at the site's
+// default rate), "tax will be calculated at checkout" contradicts the row
+// above it; the sentence then calls that figure an estimate instead.
+//
 // @param bool $has_shippable_item Cart contains at least one shippable item
+// @param bool $tax_shown          The totals show a tax amount
 // @return string                  Plain sentence (already lang()'d), or ''
-function _pg_cart_tax_shipping_notice($has_shippable_item)
+function _pg_cart_tax_shipping_notice($has_shippable_item, $tax_shown = false)
 {
     $tax_applies = (!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX == true);
     $ship_applies = $has_shippable_item
                  && (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING == true);
 
+    if ($tax_applies && $tax_shown) {
+        return $ship_applies
+            ? (string)lang('The tax shown is an estimate; tax and shipping are finalised at checkout.')
+            : (string)lang('The tax shown is an estimate; it is finalised at checkout.');
+    }
     if ($tax_applies && $ship_applies) return (string)lang('Tax and shipping will be calculated at checkout.');
     if ($ship_applies)                 return (string)lang('Shipping will be calculated at checkout.');
     if ($tax_applies)                  return (string)lang('Tax will be calculated at checkout.');
@@ -3318,7 +3462,7 @@ function _pg_render_quick_add($group_id, $label, $post_url, $send_to)
         ? '<div class="col-6 col-sm-3 pg-qa-row pg-qa-amount" style="display:none">'
         .    '<label class="form-label small mb-1" for="pg-qa-amount">' . h(lang('Amount')) . '</label>'
         .    '<div class="input-group input-group-sm">'
-        .      '<span class="input-group-text">' . (defined('BASE_CURRENCY_SYMBOL') ? html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8') : '') . '</span>'
+        .      '<span class="input-group-text">' . (defined('VISITOR_CURRENCY_SYMBOL') ? html_entity_decode(VISITOR_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8') : '') . '</span>'
         .      '<input type="text" inputmode="decimal" class="form-control" id="pg-qa-amount" name="quick_add_amount" size="6">'
         .    '</div>'
         .  '</div>'

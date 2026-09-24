@@ -44,6 +44,24 @@ function pg_notification_reads_available()
 	return $available;
 }
 
+// Whether a notification can be addressed to one person yet (4.83):
+// notifications.target_user_id, and reference_id pointing at what the row is
+// about in the module that wrote it. Probed once per request.
+function pg_notification_targets_available()
+{
+	static $available = null;
+
+	if ($available === null) {
+		$count = db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+			WHERE TABLE_SCHEMA = DATABASE()
+			AND TABLE_NAME = 'notifications'
+			AND COLUMN_NAME = 'target_user_id'");
+		$available = ((int) $count > 0);
+	}
+
+	return $available;
+}
+
 // Can this person see this notification?
 //
 // The rights are passed in rather than read from the session, because the
@@ -59,6 +77,19 @@ function pg_notification_reads_available()
 function pg_notification_visible($notification, $rights)
 {
 	$action = isset($notification['action']) ? $notification['action'] : '';
+
+	// A row addressed to one person is theirs alone, whatever its kind.
+	$target = isset($notification['target_user_id']) ? (int) $notification['target_user_id'] : 0;
+
+	if (($target > 0) && ($target !== (int) $rights['id'])) {
+		return false;
+	}
+
+	// A mention, a task handed over, an invitation to a channel: always
+	// addressed, and only while the workspace is switched on.
+	if ($action == 'workspace') {
+		return (($target > 0) && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED);
+	}
 
 	if (($action == 'new_order') || ($action == 'out_stock')) {
 		return ((ECOMMERCE === true) && $rights['manage_ecommerce']);
@@ -82,6 +113,17 @@ function pg_notification_visible($notification, $rights)
 		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
 	}
 
+	// Money in is for whoever may open the receipt: the ERP with its cash
+	// right. A low stock notice is for whoever may use the ERP.
+	if ($action == 'erp_money') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']
+			&& (isset($rights['manage_erp_cash']) ? $rights['manage_erp_cash'] : $rights['manage_erp']));
+	}
+
+	if ($action == 'erp_low_stock') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
+	}
+
 	// Anything else - a message written by the software itself - is for
 	// everybody who can sign in.
 	return true;
@@ -95,7 +137,8 @@ function pg_notification_visible_to($notification, $user)
 		'role'             => $user['role'],
 		'manage_ecommerce' => (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE),
 		'manage_forms'     => (($user['role'] < 3) || ($user['manage_forms'] == true)),
-		'manage_erp'       => (($user['role'] < 3) || !empty($user['manage_erp']))
+		'manage_erp'       => (($user['role'] < 3) || !empty($user['manage_erp'])),
+		'manage_erp_cash'  => (($user['role'] < 3) || !empty($user['manage_erp_cash']))
 	));
 }
 
@@ -112,7 +155,8 @@ function pg_notification_visible_to_user($notification, $user_row)
 		'role'             => $role,
 		'manage_ecommerce' => (($role < 3) || ($user_row['manage_ecommerce'] == 'yes')),
 		'manage_forms'     => (($role < 3) || ($user_row['manage_forms'] == 'yes')),
-		'manage_erp'       => (($role < 3) || ((int) ($user_row['manage_erp'] ?? 0) === 1))
+		'manage_erp'       => (($role < 3) || ((int) ($user_row['manage_erp'] ?? 0) === 1)),
+		'manage_erp_cash'  => (($role < 3) || ((int) ($user_row['manage_erp_cash'] ?? 0) === 1))
 	));
 }
 
@@ -176,6 +220,14 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 	// has to render the notification asks for the whole row instead.
 	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id';
 
+	// Rows addressed to somebody else are not even read.
+	$target_filter = '';
+
+	if (pg_notification_targets_available()) {
+		$columns .= ($full_row) ? '' : ', notifications.target_user_id, notifications.reference_id';
+		$target_filter = " AND notifications.target_user_id IN (0, '" . $user_id . "')";
+	}
+
 	if (!pg_notification_reads_available()) {
 		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, readed') . " FROM notifications
 			WHERE readed = 0
@@ -187,7 +239,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 		LEFT JOIN notification_reads
 			ON notification_reads.notification_id = notifications.id
 			AND notification_reads.user_id = '" . $user_id . "'
-		WHERE notification_reads.notification_id IS NULL
+		WHERE notification_reads.notification_id IS NULL" . $target_filter . "
 		ORDER BY notifications.timestamp DESC");
 }
 
@@ -273,6 +325,28 @@ function pg_notification_display($notification)
 		$display['badge']    = 'assets/images/notification-comment-badge.png';
 		$display['action']      = $action;
 
+	} elseif ($action == 'workspace') {
+
+		// The row points at the reader's workspace inbox row, which says what
+		// happened and where; the row's own title is what it said when it was
+		// written, kept for when the inbox row is gone.
+		$display['action'] = $action;
+		$display['icon']   = 'assets/images/notification-chat.png';
+		$display['badge']  = 'assets/images/notification-chat-badge.png';
+
+		if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ((int) ($notification['reference_id'] ?? 0) > 0)) {
+
+			require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+			$described = ws_ready() ? ws_bell_describe((int) $notification['reference_id'], (int) ($notification['target_user_id'] ?? 0)) : null;
+
+			if (is_array($described)) {
+				$display['title']       = h($described['title']);
+				$display['description'] = h($described['body']);
+				$display['url']         = $described['url'];
+			}
+		}
+
 	} elseif ($action == 'erp_overdue') {
 
 		// The row carries the counts and the formatted total the way an order
@@ -298,6 +372,38 @@ function pg_notification_display($notification)
 		$display['url']         = 'erp_invoices.php?filter=overdue&direction=sales';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'erp_money') {
+
+		// title is the account, form_id the receipt, order_total the amount
+		// as it was received (includes/erp/alerts.php).
+		$display['title']       = lang('Money received');
+		$display['description'] = lang(array('string' => '{var:1} from {var:2}', 'vars' => array(h($notification['order_total']), h($notification['title']))));
+		$display['url']         = 'erp_receipt.php?id=' . (int) ($notification['form_id'] ?? 0);
+		$display['icon']        = 'assets/images/notification-order.png';
+		$display['badge']       = 'assets/images/notification-order-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'erp_low_stock') {
+
+		// title is the number of products newly at or below their minimum;
+		// product_id the first of them, named when it is the only one.
+		$count = (int) $notification['title'];
+		$name  = '';
+
+		if (($count === 1) && ((int) ($notification['product_id'] ?? 0) > 0)) {
+			$product = db_item("SELECT name, short_description FROM products WHERE id = '" . (int) $notification['product_id'] . "' LIMIT 1");
+			$name = is_array($product) ? ((trim((string) $product['short_description']) !== '') ? (string) $product['short_description'] : (string) $product['name']) : '';
+		}
+
+		$display['title']       = lang('Stock running low');
+		$display['description'] = ($name !== '')
+			? lang(array('string' => '{var:1} is at or below its minimum stock.', 'vars' => array(h($name))))
+			: lang(array('string' => '{var:1} product(s) dropped to or below their minimum stock.', 'vars' => array($count)));
+		$display['url']         = 'erp_stock_minimums.php?show=low';
+		$display['icon']        = 'assets/images/notification-order.png';
+		$display['badge']       = 'assets/images/notification-order-badge.png';
 		$display['action']      = $action;
 	}
 
@@ -364,6 +470,20 @@ function pg_notification_mark_read($notification_ids, $user_id)
 
 	db("INSERT IGNORE INTO notification_reads (notification_id, user_id, timestamp)
 		VALUES " . implode(',', $values));
+
+	// A workspace row read in the bell is read in the workspace's inbox too.
+	if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && pg_notification_targets_available()) {
+
+		$references = db_values("SELECT reference_id FROM notifications
+			WHERE action = 'workspace' AND target_user_id = '" . $user_id . "'
+			AND id IN (" . implode(',', array_keys($values)) . ")");
+
+		if (!empty($references)) {
+			db("UPDATE ws_inbox SET read_at = '" . time() . "'
+				WHERE read_at = 0 AND user_id = '" . $user_id . "'
+				AND id IN (" . implode(',', array_map('intval', $references)) . ")");
+		}
+	}
 }
 
 // Back to unread, for this person only. No row means unread, so there is

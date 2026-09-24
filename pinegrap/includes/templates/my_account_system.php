@@ -53,7 +53,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?php if ($reward_points): ?>
 			<tr>
 				<td><?=h(lang('Reward Points'))?>:&nbsp;</td>
-				<td><?=h(number_format($reward_points))?></td>
+				<td><?=h(pg_format_number($reward_points, 0))?></td>
 			</tr>
 			<?php endif ?>
 		</table>
@@ -185,15 +185,15 @@ if (!defined('PG_INIT_LOADED')) {
 			</tr>
 			<tr>
 				<td><?=h(lang('Pending Total'))?>:</td>
-				<td><?=BASE_CURRENCY_SYMBOL . number_format($affiliate_pending_total, 2)?></td>
+				<td><?=pg_format_money($affiliate_pending_total, BASE_CURRENCY_SYMBOL)?></td>
 			</tr>
 			<tr>
 				<td><?=h(lang('Payable Total'))?>:</td>
-				<td><?=BASE_CURRENCY_SYMBOL . number_format($affiliate_payable_total, 2)?></td>
+				<td><?=pg_format_money($affiliate_payable_total, BASE_CURRENCY_SYMBOL)?></td>
 			</tr>
 			<tr>
 				<td><?=h(lang('Paid Total'))?>:</td>
-				<td><?=BASE_CURRENCY_SYMBOL . number_format($affiliate_paid_total, 2)?></td>
+				<td><?=pg_format_money($affiliate_paid_total, BASE_CURRENCY_SYMBOL)?></td>
 			</tr>
 		</table>
 		<?php if ($commissions): ?>
@@ -216,7 +216,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</td>
 						<td><?=h($commission['status_label'])?></td>
 						<td style="text-align: right">
-							<?=BASE_CURRENCY_SYMBOL . number_format($commission['amount'], 2)?>
+							<?=pg_format_money($commission['amount'], BASE_CURRENCY_SYMBOL)?>
 						</td>
 					</tr>
 					<?php endforeach ?>

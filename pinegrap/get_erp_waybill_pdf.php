@@ -47,6 +47,15 @@ if (!is_array($waybill)) {
     exit();
 }
 
+// The copy kept at issue is the document, while the note stands; a cancelled
+// note is rendered live so its cancelled mark shows.
+$live = (($preview_template !== null) || !empty($_GET['html']) || ((string) $waybill['status'] !== 'issued'));
+$kept = $live ? null : erp_archive_file('waybill', $waybill_id);
+
+if ($kept !== null) {
+    erp_archive_send($kept, ((string) $waybill['full_number'] !== '' ? (string) $waybill['full_number'] : 'waybill_' . $waybill_id) . '.pdf', !empty($_GET['download']));
+}
+
 $html = erp_waybill_html($waybill_id, $preview_template);
 
 if ($html === false) {
@@ -66,6 +75,10 @@ $pdf = erp_invoice_pdf($html);
 if ($pdf === false) {
     output_error(lang('The PDF library is not installed.'));
     exit();
+}
+
+if (!$live) {
+    erp_archive_store('waybill', $waybill_id, $pdf, (string) $waybill['full_number'], 'pdf', (int) $user['id']);
 }
 
 // The document number is the file name; anything that is not safe in a header

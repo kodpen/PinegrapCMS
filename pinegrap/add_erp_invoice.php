@@ -34,8 +34,11 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
-    // Orders that are complete, belong to somebody - a contact, or an account
-    // named on the order the way a counter sale is - and carry no invoice yet.
+    // Orders that are complete, belong to somebody - a contact that still
+    // exists or already has an account, or an account named on the order the
+    // way a counter sale is - and carry no invoice yet. An order whose contact
+    // has been deleted cannot be billed (erp_invoice_from_order() says so),
+    // so it is not offered.
     // A bank transfer order may be complete without being paid; the picker
     // says so on the option rather than hiding the order, because an invoice
     // is sometimes what the customer needs before they pay.
@@ -48,8 +51,10 @@ if (!$_POST) {
         FROM orders
         LEFT JOIN contacts ON contacts.id = orders.contact_id
         LEFT JOIN erp_accounts ON erp_accounts.id = orders.erp_account_id
-        WHERE orders.status = 'complete'
-          AND (orders.contact_id > 0 OR COALESCE(orders.erp_account_id, 0) > 0)
+        WHERE " . erp_order_billable_sql('orders.status') . "
+          AND (contacts.id IS NOT NULL
+               OR COALESCE(orders.erp_account_id, 0) > 0
+               OR EXISTS (SELECT 1 FROM erp_accounts linked WHERE linked.contact_id = orders.contact_id AND orders.contact_id > 0))
           AND COALESCE(orders.erp_invoice_id, 0) = 0
         ORDER BY orders.order_date DESC
         LIMIT 500");
@@ -90,8 +95,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Invoice an Order'),
-        'extra_classes' => 'erp erp_invoices',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_invoices',
+        'icon' => 'erp',
         'heading' => lang('Invoice an Order'),
         'heading_description' => lang('Raise a sales invoice from an order that has been paid for but not yet invoiced.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
@@ -134,7 +139,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><span class="bi bi-receipt me-2"></span><span class="btn-text">' . lang(array('string' => 'Create the Invoice')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the Invoice')) . '</span></button>
                         </div>
                     </div>
                 </nav>

@@ -46,6 +46,15 @@ function erp_query($query)
  */
 function erp_db_error()
 {
+    // A posting refused by the period lock is not a database error, and what
+    // the operator needs to read is the reason (includes/erp/lock.php).
+    if (!empty($GLOBALS['_erp_refusal'])) {
+        $refusal = (string) $GLOBALS['_erp_refusal'];
+        $GLOBALS['_erp_refusal'] = '';
+
+        return $refusal;
+    }
+
     return (isset(db::$con) && db::$con) ? (string) mysqli_error(db::$con) : '';
 }
 
@@ -145,6 +154,12 @@ function erp_account_post($movement)
     $amount = (int) ($movement['amount'] ?? 0);
 
     if (($account_id <= 0) || ($amount < 0)) {
+        return false;
+    }
+
+    // Nothing is written into a locked period, whichever path asked.
+    if (function_exists('erp_lock_refusal') && (($refusal = erp_lock_refusal((string) ($movement['doc_date'] ?? date('Y-m-d')))) !== '')) {
+        erp_lock_refused($refusal);
         return false;
     }
 

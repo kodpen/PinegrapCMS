@@ -510,7 +510,7 @@ if (!$_POST) {
                         <span class="badge bg-secondary-subtle text-secondary-emphasis border fw-normal">
                             <i class="bi bi-list-ul me-1"></i>' . lang(array(
                                 'string' => '{var:1} record{suffix:1}',
-                                'vars'   => array(number_format($number_of_results)),
+                                'vars'   => array(pg_format_number($number_of_results, 0)),
                                 'suffix' => array(($number_of_results == 1) ? '' : 's')
                             )) . '
                         </span>
@@ -810,7 +810,7 @@ if (!$_POST) {
             $liveform->add_notice(
                 lang(array(
                     'string' => '{var:1} site log(s) were deleted.',
-                    'vars'   => array(number_format($number_of_logs))
+                    'vars'   => array(pg_format_number($number_of_logs, 0))
                 ))
             );
         } else {

@@ -68,9 +68,14 @@ function erp_export_profiles()
         'csv_invoices' => $csv + array('entity' => 'invoices', 'label' => lang('Invoices (CSV, one row per line)'), 'file' => 'invoices'),
         'csv_accounts' => $csv + array('entity' => 'accounts', 'label' => lang('Accounts (CSV)'), 'file' => 'accounts'),
         'csv_receipts' => $csv + array('entity' => 'receipts', 'label' => lang('Receipts and payments (CSV)'), 'file' => 'receipts'),
-        'parasut_invoices' => $parasut + array('entity' => 'invoices', 'label' => lang('Paraşüt - sales invoices (Excel)'), 'file' => 'parasut_satis_faturalari', 'template' => 'parasut_satis_faturalari.xlsx'),
-        'parasut_contacts' => $parasut + array('entity' => 'accounts', 'label' => lang('Paraşüt - customers and suppliers (Excel)'), 'file' => 'parasut_musteri_ve_tedarikciler', 'template' => 'parasut_musteri_ve_tedarikciler.xlsx'),
     );
+
+    // Paraşüt is Turkish software; its import sheets are offered to a store
+    // that could use them.
+    if (erp_turkish_features()) {
+        $profiles['parasut_invoices'] = $parasut + array('entity' => 'invoices', 'label' => lang('Paraşüt - sales invoices (Excel)'), 'file' => 'parasut_satis_faturalari', 'template' => 'parasut_satis_faturalari.xlsx');
+        $profiles['parasut_contacts'] = $parasut + array('entity' => 'accounts', 'label' => lang('Paraşüt - customers and suppliers (Excel)'), 'file' => 'parasut_musteri_ve_tedarikciler', 'template' => 'parasut_musteri_ve_tedarikciler.xlsx');
+    }
 
     return $profiles;
 }
@@ -111,19 +116,26 @@ function erp_export_columns($profile)
         case 'csv_accounts':
             // The same headings the import screen maps by itself, so a file
             // exported here can be loaded back.
-            return array(lang('Name'), lang('Type'), lang('Taxpayer'), lang('VKN / TCKN'), lang('Tax Office'), lang('E-mail Address'),
-                lang('Phone Number'), lang('Address'), lang('District'), lang('City'), lang('Postal Code'), lang('Country'),
+            return array(lang('Name'), lang('Type'), lang('Taxpayer'), erp_tax_id_label(), lang('Tax Office'), lang('E-mail Address'),
+                lang('Phone Number'), lang('Address'), lang('District'), lang('City'), lang('State / Province'), lang('Postal Code'), lang('Country'),
                 lang('Currency'), lang('Status'), lang('Notes'), lang('Payment Term (days)'), lang('Reminder threshold (days)'), lang('Remind the customer'), lang('Balance'), lang('Account ID'));
 
         case 'csv_invoices':
-            return array(lang('Invoice Number'), lang('Date'), lang('Due Date'), lang('Direction'), lang('Document Type'), lang('Status'),
-                lang('Account'), lang('VKN / TCKN'), lang('Tax Office'), lang('Country'), lang('Currency'), lang('Exchange Rate'),
-                lang('Line No'), lang('Description'), lang('Quantity'), lang('Unit'), lang('Unit Price'), lang('Discount'), lang('VAT Rate'),
-                lang('VAT'), lang('Line Total'), lang('Invoice Subtotal'), lang('Invoice VAT'), lang('Invoice Total'),
-                lang('Invoice Total (base currency)'), lang('Paid'), lang('Order Number'), lang('Invoice ID'));
+            // A second tax, where the store names one, adds its columns at the
+            // end, after the withholding ones.
+            $tax2_columns = erp_tax2_enabled()
+                ? array(lang(array('string' => '{var:1} rate', 'vars' => erp_tax2_name())), erp_tax2_name(), lang(array('string' => 'Invoice {var:1} total', 'vars' => erp_tax2_name())))
+                : array();
+
+            return array_merge(array(lang('Invoice Number'), lang('Date'), lang('Due Date'), lang('Direction'), lang('Document Type'), lang('Status'),
+                lang('Account'), erp_tax_id_label(), lang('Tax Office'), lang('Country'), lang('Currency'), lang('Exchange Rate'),
+                lang('Line No'), lang('Description'), lang('Quantity'), lang('Unit'), lang('Unit Price'), lang('Discount'), erp_tax_label('rate'),
+                erp_tax_label('tax'), lang('Line Total'), lang('Invoice Subtotal'), erp_tax_label('invoice_tax'), lang('Invoice Total'),
+                lang('Invoice Total (base currency)'), lang('Paid'), lang('Order Number'), lang('Invoice ID'),
+                lang('VAT Withholding Code'), lang('VAT Withholding'), lang('Invoice VAT Withholding')), $tax2_columns);
 
         case 'csv_receipts':
-            return array(lang('Date'), lang('Direction'), lang('Account'), lang('VKN / TCKN'), lang('Till or Bank Account'),
+            return array(lang('Date'), lang('Direction'), lang('Account'), erp_tax_id_label(), lang('Till or Bank Account'),
                 lang('Payment Method'), lang('Amount'), lang('Currency'), lang('Exchange Rate'), lang('Amount (base currency)'),
                 lang('Description'), lang('Receipt ID'));
 
@@ -431,6 +443,7 @@ function erp_export_rows_csv_accounts($accounts, $profile)
             (string) $a['address'],
             (string) $a['district'],
             (string) $a['city'],
+            (string) ($a['state'] ?? ''),
             (string) $a['postcode'],
             strtoupper((string) $a['country_code']),
             erp_export_currency($a['currency'], $profile),
@@ -494,7 +507,20 @@ function erp_export_rows_csv_invoices($invoices, $profile)
                 erp_export_amount($i['paid_total'], $profile),
                 (string) ($i['order_number'] ?? ''),
                 (string) (int) $i['id'],
+                // Added after the columns above, so a file read by position
+                // keeps reading them where they were.
+                (string) ($line['withholding_code'] ?? ''),
+                erp_export_amount($line['withholding_amount'] ?? 0, $profile),
+                erp_export_amount($i['withholding_total'] ?? 0, $profile),
             );
+
+            if (erp_tax2_enabled()) {
+                $row = array_pop($rows);
+                $row[] = erp_export_rate($line['tax2_rate'] ?? 0, $profile, 3);
+                $row[] = erp_export_amount($line['tax2_amount'] ?? 0, $profile);
+                $row[] = erp_export_amount($i['tax2_total'] ?? 0, $profile);
+                $rows[] = $row;
+            }
         }
     }
 
@@ -759,10 +785,11 @@ function erp_export_write_csv($columns, $rows, $path)
     }
 
     fwrite($handle, "\xEF\xBB\xBF");
-    fputcsv($handle, $columns, ';', '"', '\\');
+    $delimiter = erp_csv_delimiter();
+    fputcsv($handle, $columns, $delimiter, '"', '\\');
 
     foreach ($rows as $row) {
-        fputcsv($handle, array_map('strval', $row), ';', '"', '\\');
+        fputcsv($handle, array_map('strval', $row), $delimiter, '"', '\\');
     }
 
     fclose($handle);

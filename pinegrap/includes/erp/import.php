@@ -66,7 +66,7 @@ function erp_import_fields()
             'tür', 'tur', 'türü', 'tip', 'tipi', 'cari türü', 'hesap türü', 'type', 'kind', 'account type')),
         'is_person' => array('label' => lang('Taxpayer'), 'length' => 10, 'synonyms' => array(
             'mükellef', 'mükellef türü', 'şahıs', 'şahıs/şirket', 'kişi', 'taxpayer', 'person', 'is person', 'entity')),
-        'tax_number' => array('label' => lang('VKN / TCKN'), 'length' => 11, 'synonyms' => array(
+        'tax_number' => array('label' => erp_tax_id_label(), 'length' => erp_tax_number_width(), 'synonyms' => array(
             'vkn', 'tckn', 'vkn/tckn', 'vkn / tckn', 'vergi no', 'vergi numarası', 'vergi numarasi', 'tc', 'tc kimlik',
             'tc kimlik no', 'kimlik no', 'tax number', 'tax no', 'tax id', 'vat number', 'tin')),
         'tax_office' => array('label' => lang('Tax Office'), 'length' => 100, 'synonyms' => array(
@@ -81,7 +81,9 @@ function erp_import_fields()
         'district' => array('label' => lang('District'), 'length' => 100, 'synonyms' => array(
             'ilçe', 'ilce', 'semt', 'district', 'town')),
         'city' => array('label' => lang('City'), 'length' => 100, 'synonyms' => array(
-            'il', 'şehir', 'sehir', 'city', 'province', 'state')),
+            'il', 'şehir', 'sehir', 'city')),
+        'state' => array('label' => lang('State / Province'), 'length' => 100, 'synonyms' => array(
+            'eyalet', 'state', 'province', 'region', 'state / province', 'state/province')),
         'postcode' => array('label' => lang('Postal Code'), 'length' => 20, 'synonyms' => array(
             'posta kodu', 'pk', 'postcode', 'post code', 'postal code', 'zip', 'zip code')),
         'country_code' => array('label' => lang('Country'), 'length' => 2, 'synonyms' => array(
@@ -476,7 +478,7 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
 
     $account = array(
         'title' => '', 'kind' => $defaults['kind'], 'is_person' => null, 'tax_number' => '', 'tax_office' => '',
-        'email' => '', 'phone' => '', 'address' => '', 'district' => '', 'city' => '', 'postcode' => '',
+        'email' => '', 'phone' => '', 'address' => '', 'district' => '', 'city' => '', 'state' => '', 'postcode' => '',
         'country_code' => '', 'currency' => '', 'status' => 'active', 'notes' => '', 'payment_days' => '',
         'overdue_notify_days' => '',
     );
@@ -565,9 +567,25 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
         $account['currency'] = $defaults['currency'];
     }
 
+    // A Turkish address has no state: the province is the city (il). A file
+    // headed in English may still name it Province or State.
+    if (erp_account_country($account['country_code']) === 'TR') {
+        if (($account['city'] === '') && ($account['state'] !== '')) {
+            $account['city'] = $account['state'];
+            $mapped['city'] = true;
+        }
+        $account['state'] = '';
+    }
+
+    // Guessed only when the file does not say. In Turkey the length tells:
+    // a VKN has ten digits, a person's TCKN eleven. Elsewhere a row that
+    // carries a tax number is taken to be a business.
     if ($account['is_person'] === null) {
-        $length = strlen($account['tax_number']);
-        $account['is_person'] = ($length === 10) ? 0 : 1;
+        if (erp_account_country($account['country_code']) === 'TR') {
+            $account['is_person'] = (strlen($account['tax_number']) === 10) ? 0 : 1;
+        } else {
+            $account['is_person'] = ($account['tax_number'] === '') ? 1 : 0;
+        }
     }
 
     $account['mapped'] = $mapped;
@@ -590,8 +608,11 @@ function erp_import_validate_row($account)
         $errors[] = lang('Name is missing.');
     }
 
-    if (($account['tax_number'] !== '') && (preg_match('/^[0-9]{10,11}$/', $account['tax_number']) !== 1)) {
-        $errors[] = lang('Tax number must be 10 or 11 digits.');
+    // The rules of the account's country (erp_tax_number_check()).
+    $tax = erp_tax_number_check($account['tax_number'], (string) $account['country_code']);
+
+    if ($tax['error'] !== '') {
+        $errors[] = $tax['error'];
     }
 
     if (($account['email'] !== '') && !validate_email_address($account['email'])) {
@@ -760,6 +781,7 @@ function erp_import_merge($existing, $account)
         'address' => $existing['address'],
         'district' => $existing['district'],
         'city' => $existing['city'],
+        'state' => (string) ($existing['state'] ?? ''),
         'country_code' => $existing['country_code'],
         'postcode' => $existing['postcode'],
         'currency' => $existing['currency'],
@@ -999,14 +1021,14 @@ function erp_import_template_csv()
 
     $example = array(
         lang('Example Ltd.'), lang('Customer'), lang('Company'), '1234567890', lang('Central'), 'info@example.com',
-        '+90 212 000 00 00', lang('Example Street 1'), '', '', '', erp_default_country_code(), erp_base_currency(),
+        '+90 212 000 00 00', lang('Example Street 1'), '', '', '', '', erp_default_country_code(), erp_base_currency(),
         lang('Active'), '', '30', '',
     );
 
     $handle = fopen('php://temp', 'r+');
     fwrite($handle, "\xEF\xBB\xBF");
-    fputcsv($handle, $header, ';', '"', '\\');
-    fputcsv($handle, $example, ';', '"', '\\');
+    fputcsv($handle, $header, erp_csv_delimiter(), '"', '\\');
+    fputcsv($handle, $example, erp_csv_delimiter(), '"', '\\');
     rewind($handle);
     $csv = stream_get_contents($handle);
     fclose($handle);

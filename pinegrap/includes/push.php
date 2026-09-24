@@ -693,6 +693,19 @@ function pg_push_queue_still_relevant($row)
 		return ($read_id < $reference_id);
 	}
 
+	if ($row['source'] == 'ws') {
+
+		// The reference is the workspace inbox row: worth a banner while it
+		// is unread and its channel or task is still the person's to see.
+		if ((!defined('WORKSPACE_ENABLED')) || (!WORKSPACE_ENABLED)) {
+			return false;
+		}
+
+		require_once(dirname(__FILE__) . '/workspace/bootstrap.php');
+
+		return ws_ready() && ws_push_still_relevant($user_id, $reference_id);
+	}
+
 	return false;
 }
 

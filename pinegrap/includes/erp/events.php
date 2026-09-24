@@ -41,6 +41,18 @@ function erp_event($event, $payload)
         return 0;
     }
 
+    // The audit trail keeps every announced event, with the API or without
+    // it (includes/erp/audit.php).
+    if (function_exists('erp_audit_event')) {
+        erp_audit_event($event, $payload);
+    }
+
+    // The bell and the devices, for the events the store asked to be told
+    // about as they happen (includes/erp/alerts.php).
+    if (function_exists('erp_alert_event')) {
+        erp_alert_event($event, $payload);
+    }
+
     $webhooks = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';
 
     if (!function_exists('api_webhook_enqueue')) {
@@ -86,6 +98,18 @@ function erp_event_invoice($invoice_id, $event)
 
     if (!is_array($invoice)) {
         return 0;
+    }
+
+    // The document as issued is kept once the request that issued it is
+    // over (includes/erp/archive.php).
+    if (($event === 'erp.invoice.created') && function_exists('erp_archive_defer')) {
+        erp_archive_defer('invoice', (int) $invoice['id']);
+    }
+
+    // The customer's copy by e-mail, where the store sends invoices on their
+    // own (includes/erp/mail.php): on the issue, or on GIB's acceptance.
+    if (in_array($event, array('erp.invoice.created', 'erp.invoice.edoc_changed'), true) && function_exists('erp_mail_auto_consider')) {
+        erp_mail_auto_consider((int) $invoice['id'], $event);
     }
 
     return erp_event($event, array(
@@ -185,6 +209,10 @@ function erp_event_waybill($waybill_id)
         return 0;
     }
 
+    if (function_exists('erp_archive_defer')) {
+        erp_archive_defer('waybill', (int) $waybill['id']);
+    }
+
     return erp_event('erp.waybill.created', array(
         'id' => (int) $waybill['id'],
         'number' => (string) $waybill['full_number'],
@@ -195,5 +223,50 @@ function erp_event_waybill($waybill_id)
         'issue_date' => erp_event_date($waybill['issue_date']),
         'ship_date' => erp_event_date($waybill['ship_date']),
         'carrier_title' => (string) $waybill['carrier_title'],
+    ));
+}
+
+/**
+ * Announce an expense: recorded, paid or cancelled. Called inside the
+ * writer's transaction, after the row has its final state for that step, so
+ * an expense recorded as paid announces itself as paid.
+ *
+ * @param int    $expense_id
+ * @param string $event  'erp.expense.created' | 'erp.expense.paid' | 'erp.expense.cancelled'
+ * @return int
+ */
+function erp_event_expense($expense_id, $event)
+{
+    $expense = db_item("SELECT e.id, e.expense_date, e.category_id, c.name AS category_name, e.supplier, e.supplier_tax_number,
+            e.document_no, e.description, e.currency, e.net_amount, e.tax_amount, e.total_amount, e.total_base,
+            e.tax_deductible, e.due_date, e.status, e.paid_date, e.cash_account_id, e.cash_id
+        FROM erp_expenses e
+        LEFT JOIN erp_expense_categories c ON c.id = e.category_id
+        WHERE e.id = '" . (int) $expense_id . "' LIMIT 1");
+
+    if (!is_array($expense)) {
+        return 0;
+    }
+
+    return erp_event($event, array(
+        'id' => (int) $expense['id'],
+        'date' => erp_event_date($expense['expense_date']),
+        'category_id' => (int) $expense['category_id'],
+        'category_name' => (string) $expense['category_name'],
+        'supplier' => (string) $expense['supplier'],
+        'supplier_tax_number' => (string) $expense['supplier_tax_number'],
+        'document_no' => (string) $expense['document_no'],
+        'description' => (string) $expense['description'],
+        'currency' => (string) $expense['currency'],
+        'net_amount' => (int) $expense['net_amount'],
+        'tax_amount' => (int) $expense['tax_amount'],
+        'total_amount' => (int) $expense['total_amount'],
+        'total_base' => (int) $expense['total_base'],
+        'tax_deductible' => ((int) $expense['tax_deductible'] === 1),
+        'due_date' => erp_event_date($expense['due_date']),
+        'status' => (string) $expense['status'],
+        'paid_date' => erp_event_date($expense['paid_date']),
+        'cash_account_id' => (int) $expense['cash_account_id'],
+        'cash_id' => (int) $expense['cash_id'],
     ));
 }

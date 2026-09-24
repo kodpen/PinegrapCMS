@@ -32,7 +32,7 @@ if (!defined('PG_INIT_LOADED')) {
 			</div>
 			<div class="name"><strong><?=h($album['name'])?></strong></div>
 			<div class="number_of_photos">
-				(<?=h(($album['number_of_photos'] > 1) ? lang(array('string' => '{var:1} Photos', 'vars' => array(number_format($album['number_of_photos'])))) : lang(array('string' => '{var:1} Photo', 'vars' => array(number_format($album['number_of_photos'])))))?>)
+				(<?=h(($album['number_of_photos'] > 1) ? lang(array('string' => '{var:1} Photos', 'vars' => array(pg_format_number($album['number_of_photos'], 0)))) : lang(array('string' => '{var:1} Photo', 'vars' => array(pg_format_number($album['number_of_photos'], 0)))))?>)
 			</div>
 		</a>
 	</div>

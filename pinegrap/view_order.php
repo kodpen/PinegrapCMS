@@ -118,15 +118,15 @@ if (!$_POST) {
     $order_type = $row['type'];
     $order_number = $row['order_number'];
     $order_date = get_absolute_time(array('timestamp' => $row['order_date']));
-    $subtotal = number_format($row['subtotal'] / 100, 2, '.', ',');
-    $discount = number_format($row['discount'] / 100, 2, '.', ',');
-    $tax = number_format($row['tax'] / 100, 2, '.', ',');
-    $shipping = number_format($row['shipping'] / 100, 2, '.', ',');
-    $gift_card_discount = number_format($row['gift_card_discount'] / 100, 2, '.', ',');
-    $surcharge = number_format($row['surcharge'] / 100, 2, '.', ',');
+    $subtotal = $row['subtotal'] / 100;
+    $discount = $row['discount'] / 100;
+    $tax = $row['tax'] / 100;
+    $shipping = $row['shipping'] / 100;
+    $gift_card_discount = $row['gift_card_discount'] / 100;
+    $surcharge = $row['surcharge'] / 100;
     $payment_installment = $row['payment_installment'];
-    $installment_charges = number_format($row['installment_charges'] / 100, 2, '.', ',');
-    $total = number_format($row['total'] / 100, 2, '.', ',');
+    $installment_charges = $row['installment_charges'] / 100;
+    $total = $row['total'] / 100;
     $total_cents = (int)$row['total'];
     $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
 
@@ -160,7 +160,7 @@ if (!$_POST) {
             </div>';
     }
     $order_refund_reference = isset($row['refund_reference']) ? (string) $row['refund_reference'] : '';
-    $commission = number_format($row['commission'] / 100, 2, '.', ',');
+    $commission = $row['commission'] / 100;
     $transaction_id = $row['transaction_id'];
     $authorization_code = $row['authorization_code'];
     $special_offer_code = $row['special_offer_code'];
@@ -447,7 +447,7 @@ if (!$_POST) {
         $output_gift_card_discount_row =
         '<div class="row" >
             <span class="translateable col text-muted">' . lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))) . ':</span>
-            <span class="col text-end">-' . BASE_CURRENCY_SYMBOL . $gift_card_discount . '</span>
+            <span class="col text-end">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</span>
         </div>';
     }
     $output_surcharge_row = '';
@@ -457,7 +457,7 @@ if (!$_POST) {
         $output_surcharge_row =
             '<div class="row" >
                 <span class="translateable col text-muted">' . lang('Surcharge') . ':</span>
-                <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $surcharge . '</span>
+                <span class="col text-end">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
             </div>';
     }
     //if there is installment charge and payment installment((1) is no installment)
@@ -470,7 +470,7 @@ if (!$_POST) {
             </div>
             <div class="row" >
                 <span class="translateable col text-muted">' . lang('Installment Charge') . ':</span>
-                <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $installment_charges . '</span>
+                <span class="col text-end">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
             </div>';
     }
     $output_payment_information = '';
@@ -563,7 +563,7 @@ if (!$_POST) {
                            ' . ($refunded_amount_cents > 0 ?
                                '<div class="row text-danger mt-2">
                                    <span class="translateable col text-muted">' . lang('Total Refunded') . ':</span>
-                                   <span class="col text-end fw-semibold">-' . BASE_CURRENCY_SYMBOL . number_format($refunded_amount_cents / 100, 2, '.', ',') . '</span>
+                                   <span class="col text-end fw-semibold">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                </div>'
                            : '') . '
                            <br/>
@@ -687,7 +687,7 @@ if (!$_POST) {
                     </div>
                     <div class="row">
                         <span class="translateable col text-muted">' . lang('Commission') . ':</span>
-                        <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $commission . '</span>
+                        <span class="col text-end">' . pg_format_money($commission, BASE_CURRENCY_SYMBOL) . '</span>
                     </div>
                 </div>
             </div>';
@@ -1093,7 +1093,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="row my-2">
                                             <span class="col text-muted">' . lang('Shipping Cost') . ':</span>
-                                            <span class="col text-end">' . BASE_CURRENCY_SYMBOL . number_format($ship_tos[$key]['shipping_cost'] / 100, 2, '.', ',') . '</span>
+                                            <span class="col text-end">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                         </div>
                                         ' . $packages . '
                                         <div class="row">
@@ -1263,7 +1263,7 @@ if (!$_POST) {
                         
                     // else the number of payments is greater than 0, so show value
                     } else {
-                        $output_recurring_number_of_payments = number_format($recurring_number_of_payments);
+                        $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                     }
                     $output_recurring_number_of_payments = '
                         <div class="col-12 col-sm-4 col-md-auto">
@@ -1712,7 +1712,7 @@ if (!$_POST) {
                     
                 // else the number of payments is greater than 0, so show value
                 } else {
-                    $output_recurring_number_of_payments = number_format($recurring_number_of_payments);
+                    $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                 }
                 $output_recurring_number_of_payments = '
                     <div class="col-12 col-sm-4 col-md-auto">
@@ -2051,7 +2051,7 @@ if (!$_POST) {
                 </div>
                 <div class="row" >
                     <span class="translateable col text-muted">' . lang('Amount') . ':</span>
-                    <span class="col text-end">' . BASE_CURRENCY_SYMBOL . number_format($applied_gift_card['amount'] / 100, 2, '.', ',') . '</span>
+                    <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>
                 <div class="row" >
                     <span class="translateable col text-muted">' . lang('Givex Auth') . ' #:</span>
@@ -2059,7 +2059,7 @@ if (!$_POST) {
                 </div>
                 <div class="row" >
                     <span class="translateable col text-muted">' . lang('Remaining Balance') . ':</span>
-                    <span class="col text-end">' . BASE_CURRENCY_SYMBOL . number_format($applied_gift_card['new_balance'] / 100, 2, '.', ',') . '</span>
+                    <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>';
         }
         
@@ -2103,6 +2103,21 @@ if (!$_POST) {
 
 	}
 
+    // With the ERP on, a card refund is chosen by line and quantity instead of
+    // typed as an amount: the amount is then the same figure the return
+    // invoice will carry (includes/erp/order_refund.php).
+    $erp_refund = null;
+    $erp_refund_invoice = null;
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_refund.php');
+        $erp_refund = erp_order_refund_lines((int) $_GET['id']);
+        $erp_refund_order = db_item("SELECT erp_invoice_id FROM orders WHERE id = '" . (int) $_GET['id'] . "' LIMIT 1");
+        $erp_refund_invoice = (is_array($erp_refund_order) && ((int) $erp_refund_order['erp_invoice_id'] > 0))
+            ? db_item("SELECT id, full_number, status FROM erp_invoices WHERE id = '" . (int) $erp_refund_order['erp_invoice_id'] . "' AND status <> 'cancelled' LIMIT 1")
+            : null;
+    }
+
     // Build the iyzico refund modal (separate form, placed outside the main form).
     // The CANCEL modal is built further down and is gateway-independent.
     $output_iyzico_modals = '';
@@ -2113,8 +2128,27 @@ if (!$_POST) {
         && $status != 'incomplete'
     ) {
         $iyzico_remaining_cents = $total_cents - $refunded_amount_cents;
-        $iyzico_remaining_formatted = number_format($iyzico_remaining_cents / 100, 2, '.', ',');
-        $iyzico_refunded_formatted = number_format($refunded_amount_cents / 100, 2, '.', ',');
+        // The input takes the machine format; the text shows the site's.
+        $iyzico_remaining_value = number_format($iyzico_remaining_cents / 100, 2, '.', '');
+        $iyzico_remaining_formatted = pg_format_money($iyzico_remaining_cents / 100, BASE_CURRENCY_SYMBOL);
+        $iyzico_refunded_formatted = pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL);
+
+        // What the modal asks for: an amount, or - with the ERP - the lines
+        // and quantities that came back, the amount worked out from them.
+        $output_iyzico_refund_body = '
+                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $iyzico_remaining_formatted . ')</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
+                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $iyzico_remaining_value . '" value="' . $iyzico_remaining_value . '" required>
+                                    </div>
+                                    <p class="form-text text-muted mt-2">' . lang('This will refund the specified amount via iyzico.') . '</p>';
+
+        if (is_array($erp_refund)) {
+            $erp_refund_dialog = erp_order_refund_dialog($erp_refund, (int) $_GET['id'], $refunded_amount_cents, $iyzico_remaining_cents);
+            if ($erp_refund_dialog !== '') {
+                $output_iyzico_refund_body = $erp_refund_dialog;
+            }
+        }
 
         // Refund modal
         if ($iyzico_remaining_cents > 0) {
@@ -2132,14 +2166,8 @@ if (!$_POST) {
                                 </div>
                                 <div class="modal-body">
                                     ' . ($refunded_amount_cents > 0 ?
-                                        '<p class="text-muted small">' . lang('Total Refunded') . ': ' . BASE_CURRENCY_SYMBOL . $iyzico_refunded_formatted . '</p>'
-                                    : '') . '
-                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . BASE_CURRENCY_SYMBOL . $iyzico_remaining_formatted . ')</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
-                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $iyzico_remaining_formatted . '" value="' . $iyzico_remaining_formatted . '" required>
-                                    </div>
-                                    <p class="form-text text-muted mt-2">' . lang('This will refund the specified amount via iyzico.') . '</p>
+                                        '<p class="text-muted small">' . lang('Total Refunded') . ': ' . $iyzico_refunded_formatted . '</p>'
+                                    : '') . $output_iyzico_refund_body . '
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
@@ -2195,7 +2223,7 @@ if (!$_POST) {
 
     // From the copy taken next to the main order query; see the note there.
     $refund_state = $order_refund_status;
-    $refund_amount_text = number_format($total_cents / 100, 2, ',', '.')
+    $refund_amount_text = pg_format_number($total_cents / 100, 2)
         . ($currency_code != '' ? ' ' . h($currency_code) : '');
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
@@ -2269,6 +2297,15 @@ if (!$_POST) {
             : ($total_cents > 0
                 ? '<p class="text-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>'
                 : '');
+
+        // The invoice is the ERP's, and cancelling the order leaves it alone:
+        // an official document is taken back with a return, not deleted. The
+        // operator is told here, before, and the card offers the steps after.
+        if (is_array($erp_refund_invoice) && ((string) $erp_refund_invoice['status'] !== 'draft')) {
+            $cancel_payment_note .= '<div class="alert alert-info small py-2 mb-2"><i class="bi bi-receipt me-1" aria-hidden="true"></i>'
+                . lang(array('string' => 'This order has invoice {var:1}. Cancelling the order does not change it: afterwards the order\'s document card offers to cancel the invoice (if it has not been made official) or to issue a return invoice, and then to record the money going back.', 'vars' => h((string) $erp_refund_invoice['full_number'])))
+                . '</div>';
+        }
 
         $output_cancel_button =
             '<button type="button" class="btn btn-link link-danger py-0 mb-2" data-bs-toggle="modal" data-bs-target="#order-cancel-modal"><i class="bi bi-x-circle me-1"></i>' . lang('Cancel Order') . '</button>';
@@ -2424,6 +2461,9 @@ if (!$_POST) {
     $output_erp_buttons = '';
     if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id')) {
         $erp_order = db_item("SELECT status, contact_id, erp_invoice_id, erp_account_id FROM orders WHERE id = '" . (int) $_GET['id'] . "' LIMIT 1");
+        // The ERP's read-only right (the accountant's) sees the documents but
+        // is offered nothing to issue.
+        $erp_writes = ((int) $user['role'] < 3) || empty($user['manage_erp_readonly']);
         $erp_invoice = ($erp_order && ((int) $erp_order['erp_invoice_id'] > 0))
             ? db_item("SELECT id, full_number, status FROM erp_invoices WHERE id = '" . (int) $erp_order['erp_invoice_id'] . "' LIMIT 1")
             : null;
@@ -2431,12 +2471,12 @@ if (!$_POST) {
         // The delivery note for the shipment, when the module's tables are
         // there: the one written, or the way to write it from the order.
         $output_erp_waybill = '';
-        if ($erp_order && ((string) $erp_order['status'] === 'complete') && waf_table_has_column('erp_waybills', 'order_id')) {
+        if ($erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true) && waf_table_has_column('erp_waybills', 'order_id')) {
             $erp_waybill = db_item("SELECT id, full_number FROM erp_waybills WHERE order_id = '" . (int) $_GET['id'] . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
             if ($erp_waybill) {
                 $output_erp_waybill = '
                 <a class="btn btn-link link-success py-0 mb-2" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . h($erp_waybill['full_number']) . '</a>';
-            } elseif (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
+            } elseif ($erp_writes && (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0))) {
                 $output_erp_waybill = '
                 <a class="btn btn-link link-secondary py-0 mb-2" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . lang('Issue the Delivery Note') . '</a>';
             }
@@ -2447,7 +2487,7 @@ if (!$_POST) {
             <div class="btn-group btn-group-sm flex-wrap">
                 <a class="btn btn-link link-success py-0 mb-2" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-1"></i>' . h($erp_invoice['full_number']) . '</a>' . $output_erp_waybill . '
             </div>';
-        } elseif ($erp_order && ((string) $erp_order['status'] === 'complete')) {
+        } elseif ($erp_writes && $erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true)) {
             if (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
                 $output_erp_buttons = '
             <form method="post" action="add_erp_invoice.php" class="d-inline">
@@ -2460,6 +2500,31 @@ if (!$_POST) {
                 $output_erp_buttons = '
             <span class="btn btn-link link-secondary py-0 mb-2 disabled" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</span>';
             }
+        }
+    }
+
+    // The order's documents in the order they are made - invoice, its
+    // e-document, delivery note, e-delivery note - each with where it
+    // stands and the next one as a single button. It replaces the ERP
+    // buttons of the bar above, which offered the same links one by one.
+    $output_erp_documents = '';
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
+        $output_erp_documents = erp_order_flow_card((int) $_GET['id']);
+        if ($output_erp_documents !== '') {
+            $output_erp_buttons = '';
+        }
+    }
+
+    // Where the order was talked about in the workspace, and the tasks about it.
+    $output_workspace_button = '';
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'btn btn-link link-secondary py-0 mb-2');
+        if ($workspace_button !== '') {
+            $output_workspace_button = '
+            <div class="btn-group btn-group-sm flex-wrap">' . $workspace_button . '</div>';
         }
     }
 
@@ -2494,6 +2559,7 @@ if (!$_POST) {
                             ' . $output_cancel_button . '
                             ' . $output_parasut_buttons . '
                             ' . $output_erp_buttons . '
+                            ' . $output_workspace_button . '
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <button type="button" class="btn btn-link link-secondary py-0 mb-2 position-relative" title="' . lang('Print Order') . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;""><span class="material-icons me-1">print</span>' . lang('Print') . '</a>
 
@@ -2501,6 +2567,7 @@ if (!$_POST) {
                         </nav>
                     </div>
                 </div>
+                ' . $output_erp_documents . '
                 <form method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
@@ -2535,17 +2602,17 @@ if (!$_POST) {
                                         <span class="translateable col text-muted">' . lang('Subtotal') . ':</span>
                                         <span class="col text-end" style="font-size: 110%">' . prepare_amount($subtotal) . '</span>
                                     </div>
-                                    <div class="row" >
+                                    ' . ($discount > 0 ? '<div class="row" >
                                         <span class="translateable col text-muted">' . lang('Discount') . ':</span>
-                                        <span class="col text-end">-' . BASE_CURRENCY_SYMBOL . $discount . '</span>
-                                    </div>
+                                        <span class="col text-end">-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</span>
+                                    </div>' : '') . '
                                     <div class="row" >
                                         <span class="translateable col text-muted">' . lang('Tax') . ':</span>
-                                        <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $tax . '</span>
+                                        <span class="col text-end">' . pg_format_money($tax, BASE_CURRENCY_SYMBOL) . '</span>
                                     </div>
                                     <div class="row" >
                                         <span class="translateable col text-muted">' . lang('Shipping') . ':</span>
-                                        <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $shipping . '</span>
+                                        <span class="col text-end">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</span>
                                     </div>
                                     ' . $output_gift_card_discount_row . '
                                     ' . $output_surcharge_row . '
@@ -2557,11 +2624,11 @@ if (!$_POST) {
                                     ' . ($refunded_amount_cents > 0 ?
                                         '<div class="row text-danger">
                                             <span class="translateable col text-muted">' . lang('Total Refunded') . ':</span>
-                                            <span class="col text-end">-' . BASE_CURRENCY_SYMBOL . number_format($refunded_amount_cents / 100, 2, '.', ',') . '</span>
+                                            <span class="col text-end">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                         </div>
                                         <div class="row">
                                             <span class="translateable col text-muted fw-semibold">' . lang('Net Total') . ':</span>
-                                            <span class="col text-end"><strong style="font-size: 120%">' . prepare_amount(number_format(($total_cents - $refunded_amount_cents) / 100, 2, '.', ',')) . '</strong></span>
+                                            <span class="col text-end"><strong style="font-size: 120%">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></span>
                                         </div>'
                                     : '') . '
                                     <hr/>
@@ -2788,6 +2855,33 @@ if (!$_POST) {
         $remaining_cents = (int)$order_row['total'] - (int)($order_row['refunded_amount'] ?? 0);
         $refund_cents = (int)round($refund_amount * 100);
 
+        // Chosen by line and quantity (ERP on): the amount is worked out here,
+        // never taken from the page, by the function the return invoice uses.
+        $refund_by_lines = null;
+        if (
+            ($liveform->get_field_value('refund_mode') == 'lines')
+            && defined('ERP_ENABLED') && ERP_ENABLED
+            && (((int) $user['role'] < 3) || !empty($user['manage_erp']))
+        ) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_refund.php');
+
+            $refund_source = erp_order_refund_lines($order_id);
+            $refund_by_lines = ($refund_source !== null)
+                ? erp_order_refund_amount($refund_source, (isset($_POST['refund_qty']) && is_array($_POST['refund_qty'])) ? $_POST['refund_qty'] : array())
+                : array('error' => lang('Order not found.'));
+
+            if ($refund_by_lines['error'] !== '') {
+                $liveform->mark_error('_error', h($refund_by_lines['error']));
+                go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+            }
+
+            // A part paid another way (a gift card) is not on the card to give
+            // back; the card refund stops at what is left on it.
+            $refund_cents = min((int) $refund_by_lines['amount'], $remaining_cents);
+            $refund_amount = round($refund_cents / 100, 2);
+        }
+
         if ($refund_cents <= 0) {
             $liveform->mark_error('_error',lang('The refund amount must be greater than 0.'));
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
@@ -2837,6 +2931,18 @@ if (!$_POST) {
         }
 
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
+
+        // The return invoice for the same lines comes next, filled in; the
+        // operator checks it and saves. Nothing is issued without them.
+        if (is_array($refund_by_lines) && ($refund_source['source'] === 'invoice')) {
+            $return_query = array('invoice_id' => (int) $refund_source['invoice_id'], 'back_order' => $order_id, 'qty' => array());
+            foreach ($refund_by_lines['quantities'] as $line_id => $count) {
+                $return_query['qty'][(int) $line_id] = $count;
+            }
+            $liveform_return = new liveform('add_erp_return');
+            $liveform_return->add_notice(lang(array('string' => 'The card refund of {var:1} has been processed. Issue the return invoice for the same lines to finish.', 'vars' => pg_format_money($refund_cents / 100, BASE_CURRENCY_SYMBOL))));
+            go(PATH . SOFTWARE_DIRECTORY . '/add_erp_return.php?' . http_build_query($return_query));
+        }
 
         $liveform->add_notice(lang('The refund has been processed.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));

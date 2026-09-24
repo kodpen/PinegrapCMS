@@ -23,12 +23,40 @@
  *   erp_edoc_<code>_check_taxpayer($vkn)      is this tax number an e-invoice user
  *   erp_edoc_<code>_send_invoice($invoice, $lines, $options)
  *   erp_edoc_<code>_poll($invoice, $job_id)
+ *   erp_edoc_<code>_cancellable($invoice)     can it be taken back there, and how
  *   erp_edoc_<code>_cancel_invoice($invoice, $reason)
  *   erp_edoc_<code>_fetch_document($invoice, $format)
  *   erp_edoc_<code>_send_waybill($waybill, $lines, $options)
+ *   erp_edoc_<code>_date_refusal($message)    was an answer GİB's date order, and the latest date
+ *   erp_edoc_<code>_inbox($from, $to, $page)      one page of incoming e-invoices
+ *   erp_edoc_<code>_inbox_document($item, $format) an incoming one's UBL or PDF
+ *                                             (both: includes/erp/edoc/inbox.php)
+ *   erp_edoc_<code>_accounts($page)           one page of the provider's customer and supplier cards
+ *   erp_edoc_<code>_account($external_id)     one of those cards, whole
+ *   erp_edoc_<code>_account_save($card, $external_id) create ('' id) or change one card
+ *                                             (all three: includes/erp/edoc/account_sync.php)
  *
  * Every operation answers an array with 'success' and 'error'; what else it
- * carries is written at each contract function below. Credentials live in
+ * carries is written at each contract function below. poll() may also name
+ * the provider's customer card the invoice landed on ('party' =>
+ * external_id, code, title); the account is then linked to that card when
+ * it has none yet (erp_edoc_account_link_from_invoice()).
+ *
+ * Taking a document back is two questions, because the answer depends on
+ * the provider and on the document. cancellable() is asked when a screen is
+ * drawn, from the row alone (no call to the provider): ['ok' => bool,
+ * 'manual' => bool, 'reason' => string, 'url' => string]. ok with manual
+ * false means cancel_invoice() does it through the API; ok with manual true
+ * means the operator does it on the provider's own screen (url) and
+ * cancel_invoice() only checks that it has been done; not ok means the
+ * document stays and is answered with a return. cancel_invoice() answers
+ * ['success', 'error', 'message', 'outcome' => 'deleted'|'cancelled'].
+ *
+ * Capabilities (info()['capabilities']): 'einvoice', 'earchive',
+ * 'ewaybill', 'inbox', 'accounts' - its customer and supplier cards can be
+ * read and written - and 'return' - the provider takes a sales return
+ * through its API. The screens ask erp_edoc_has_capability() before they
+ * offer a step, so a driver that gains one needs no change anywhere else. Credentials live in
  * erp_edoc_providers (4.61), AES-encrypted the way the Paraşüt secret has
  * been since Faz -1; a driver that keeps its own (Paraşüt, in the commerce
  * settings card) says so by declaring no fields.
@@ -145,11 +173,48 @@ function erp_edoc_active()
 }
 
 /**
+ * Whether the store works with e-documents at all: a provider is selected,
+ * or one carried documents before. Screens that speak of e-Invoices, GİB
+ * numbers and ETTNs ask this first - a store without either (most of the
+ * world) is not shown what it cannot have.
+ *
+ * @return bool
+ */
+function erp_edoc_in_use()
+{
+    static $in_use = null;
+
+    if ($in_use === null) {
+        $in_use = erp_edoc_installed()
+            && ((erp_edoc_active() !== '')
+                || ((int) db_value("SELECT COUNT(*) FROM erp_invoices WHERE edoc_status <> 'none' LIMIT 1") > 0)
+                || ((int) db_value("SELECT COUNT(*) FROM erp_waybills WHERE edoc_external_id <> '' LIMIT 1") > 0));
+    }
+
+    return $in_use;
+}
+
+/**
+ * Whether Turkish tax features are offered: the store is in Turkey, or it
+ * works through a Turkish e-document provider. VAT withholding (tevkifat),
+ * the internet-sale box of an e-Arşiv invoice and the Paraşüt export
+ * profiles are Turkish law and Turkish software; elsewhere they are noise.
+ * A document that already carries one of them shows it regardless.
+ *
+ * @return bool
+ */
+function erp_turkish_features()
+{
+    return (erp_account_country('') === 'TR') || erp_edoc_in_use();
+}
+
+/**
  * What a driver says about itself, with defaults filled in.
  *
  * @param string $code
  * @return array|null  label, description, docs_url, capabilities (list of
- *                     'einvoice', 'earchive', 'ewaybill', 'inbox'), settings_note
+ *                     'einvoice', 'earchive', 'ewaybill', 'inbox', 'accounts',
+ *                     'return'), settings_note
  */
 function erp_edoc_info($code)
 {
@@ -172,7 +237,8 @@ function erp_edoc_info($code)
  * The credential fields a driver asks the settings card for.
  *
  * @param string $code
- * @return array  Each: name, label, type ('text' | 'password'), help, required
+ * @return array  Each: name, label, type ('text' | 'password' | 'select'),
+ *                help, required; a select also carries options (value => label)
  */
 function erp_edoc_fields($code)
 {
@@ -229,13 +295,18 @@ function erp_edoc_credentials_save($code, $posted)
 
     foreach (erp_edoc_fields($code) as $field) {
         $name = (string) $field['name'];
-        $value = trim((string) ($posted[$name] ?? ''));
 
-        if (($value === '') && ($field['type'] === 'password')) {
+        // A field the caller did not send at all is not a field the caller
+        // cleared: a partial array (one box, one screen) leaves the rest as
+        // it is.
+        if (!array_key_exists($name, $posted)) {
             continue;
         }
 
-        $current[$name] = $value;
+        // Emptied means emptied. The box shows what is stored, so a blank
+        // one is the operator saying blank - not the old "empty means keep",
+        // which left no way to clear a key that should no longer be there.
+        $current[$name] = trim((string) $posted[$name]);
     }
 
     $encoded = '';
@@ -384,6 +455,135 @@ function erp_edoc_test($code)
 }
 
 /**
+ * Test or live, when the driver knows the difference. A driver that does
+ * not define erp_edoc_<code>_environment() is simply live.
+ *
+ * @param string $code  A driver code; the active one when omitted
+ * @return array ['is_test' => bool, 'label' => string]
+ */
+function erp_edoc_environment($code = '')
+{
+    $code = ($code === '') ? erp_edoc_active() : (string) $code;
+    $none = array('is_test' => false, 'label' => '');
+
+    if (($code === '') || !erp_edoc_supports('environment', $code)) {
+        return $none;
+    }
+
+    return ((array) call_user_func('erp_edoc_' . $code . '_environment')) + $none;
+}
+
+/**
+ * The identity number an e-Archive invoice carries when the buyer is a
+ * final consumer nobody asked for a TCKN from - eleven ones, which is what
+ * the tax authority's own e-Arşiv guidance uses and what every provider
+ * expects for a counter sale. A driver uses it only where its provider
+ * demands an identity number; it is never written to the account card,
+ * because the card's blank is the truth about what the store knows.
+ *
+ * @return string
+ */
+function erp_edoc_final_consumer_tckn()
+{
+    return '11111111111';
+}
+
+/**
+ * Whether an identity number passes the tax authority's check digits: the
+ * TCKN algorithm for eleven digits, the VKN algorithm for ten. Every GİB
+ * integrator runs the same arithmetic and refuses the document when it
+ * fails, so a mistyped digit is caught here, on the card, instead of as a
+ * rejected send.
+ *
+ * The final-consumer number does not pass the TCKN arithmetic and is
+ * accepted by GİB anyway; it is valid only where the caller says so.
+ *
+ * @param string $number
+ * @param bool   $allow_final_consumer
+ * @return bool
+ */
+function erp_edoc_tax_number_valid($number, $allow_final_consumer = false)
+{
+    $number = preg_replace('/\D/', '', (string) $number);
+
+    if ($number === erp_edoc_final_consumer_tckn()) {
+        return (bool) $allow_final_consumer;
+    }
+
+    if (strlen($number) === 11) {
+        $d = array_map('intval', str_split($number));
+
+        if ($d[0] === 0) {
+            return false;
+        }
+
+        $odd = $d[0] + $d[2] + $d[4] + $d[6] + $d[8];
+        $even = $d[1] + $d[3] + $d[5] + $d[7];
+
+        if (((($odd * 7) - $even) % 10 + 10) % 10 !== $d[9]) {
+            return false;
+        }
+
+        return (array_sum(array_slice($d, 0, 10)) % 10) === $d[10];
+    }
+
+    if (strlen($number) === 10) {
+        $d = array_map('intval', str_split($number));
+        $sum = 0;
+
+        for ($i = 0; $i < 9; $i++) {
+            $tmp = ($d[$i] + (9 - $i)) % 10;
+            $sum += ($tmp === 9) ? 9 : (($tmp * (2 ** (9 - $i))) % 9);
+        }
+
+        return ((10 - ($sum % 10)) % 10) === $d[9];
+    }
+
+    return false;
+}
+
+/**
+ * A person's name as first name and surname, the way GİB carries an
+ * individual: the last word is the surname, the rest the first name.
+ * A one-word name cannot be split, and an individual without a surname is
+ * refused by every integrator ("Ad ve Soyad gereklidir").
+ *
+ * @param string $name
+ * @return array|null  ['first' => string, 'last' => string], or null
+ */
+function erp_edoc_person_name($name)
+{
+    $parts = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+
+    if (count($parts) < 2) {
+        return null;
+    }
+
+    $last = array_pop($parts);
+
+    return array('first' => implode(' ', $parts), 'last' => $last);
+}
+
+/**
+ * Whether a postcode has the shape its country uses. Only Turkey is known
+ * here - five digits (PTT) - and a foreign code is taken as written.
+ *
+ * @param string $postcode
+ * @param string $country_code
+ * @return bool
+ */
+function erp_edoc_postcode_valid($postcode, $country_code = 'TR')
+{
+    $postcode = trim((string) $postcode);
+
+    if (strtoupper(trim((string) $country_code)) !== 'TR') {
+        return $postcode !== '';
+    }
+
+    return (bool) preg_match('/^\d{5}$/', $postcode);
+}
+
+/**
  * The capability words as the screen prints them.
  *
  * @return array  code => label
@@ -395,7 +595,29 @@ function erp_edoc_capability_labels()
         'earchive' => lang('e-Archive'),
         'ewaybill' => lang('e-Delivery note'),
         'inbox' => lang('Incoming e-invoices'),
+        'accounts' => lang('Account sync'),
+        'return' => lang('Return invoices'),
     );
+}
+
+/**
+ * Whether a provider declares a capability (see the header).
+ *
+ * @param string $capability
+ * @param string $code  A driver code; the active one when omitted
+ * @return bool
+ */
+function erp_edoc_has_capability($capability, $code = '')
+{
+    $code = ($code === '') ? erp_edoc_active() : (string) $code;
+
+    if (($code === '') || !erp_edoc_load($code)) {
+        return false;
+    }
+
+    $info = erp_edoc_info($code);
+
+    return in_array((string) $capability, (array) ($info['capabilities'] ?? array()), true);
 }
 
 /* ---------------------------------------------------------------------------
@@ -682,10 +904,15 @@ function erp_edoc_invoice_party($invoice)
             'email' => (string) ($invoice['account_email'] ?? ''),
             'phone' => (string) ($account['phone'] ?? ''),
             'address' => (string) ($invoice['account_address'] ?? ''),
-            'district' => (string) ($account['district'] ?? ''),
+            // Out of the copy since 4.64. A document issued before that has
+            // them empty there, so the card answers for those - which is
+            // what this function did for every invoice until now.
+            'district' => (trim((string) ($invoice['account_district'] ?? '')) !== '')
+                ? (string) $invoice['account_district'] : (string) ($account['district'] ?? ''),
             'city' => (string) ($invoice['account_city'] ?? ''),
             'country_code' => (string) ($invoice['account_country_code'] ?? 'TR'),
-            'postcode' => (string) ($account['postcode'] ?? ''),
+            'postcode' => (trim((string) ($invoice['account_postcode'] ?? '')) !== '')
+                ? (string) $invoice['account_postcode'] : (string) ($account['postcode'] ?? ''),
         );
     }
 

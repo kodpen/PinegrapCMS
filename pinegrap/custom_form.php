@@ -1639,8 +1639,11 @@ if ($liveform->check_form_errors() == false) {
         $submitted_form_reference_code = '';
         
         // If the page type is a custom form confirmation or form item view,
-        // then pass the submitted form's reference code to the page.
-        if (($page_type == 'custom form confirmation') || ($page_type == 'form item view')) {
+        // then pass the submitted form's reference code to the page. A
+        // designed page carrying a form item view widget reads it the same
+        // way, and shows the answers to the visitor who just sent them.
+        if (($page_type == 'custom form confirmation') || ($page_type == 'form item view')
+            || (function_exists('pg_sw_page_widget') && pg_sw_page_widget($confirmation_page_id, 'form_item_view'))) {
             $submitted_form_reference_code = '?r=' . urlencode($reference_code);
         }
         

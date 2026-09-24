@@ -365,7 +365,7 @@ function get_order_receipt($properties) {
                             
                         // else the number of payments is greater than 0, so show value
                         } else {
-                            $output_recurring_number_of_payments = number_format($recurring_number_of_payments);
+                            $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                         }
                         
                         // determine if start row should be outputted
@@ -436,7 +436,7 @@ function get_order_receipt($properties) {
                             $output_delivery_date = '';
 
                             if ($order_item_gift_card['delivery_date'] == '0000-00-00') {
-                                $output_delivery_date = 'Immediate';
+                                $output_delivery_date = lang('Immediate');
 
                             } else {
                                 $output_delivery_date = get_absolute_time(array('timestamp' => strtotime($order_item_gift_card['delivery_date']), 'type' => 'date', 'size' => 'long'));
@@ -855,8 +855,8 @@ function get_order_receipt($properties) {
                     }
 
                     if (($non_donations_exist_in_non_recurring == true) || ($donations_exist_in_non_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = lang('Qty');
+                        $output_price_heading = lang('Price');
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -981,8 +981,8 @@ function get_order_receipt($properties) {
                     }
 
                     if (($non_donations_exist_in_recurring == true) || ($donations_exist_in_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = lang('Qty');
+                        $output_price_heading = lang('Price');
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -1162,7 +1162,7 @@ function get_order_receipt($properties) {
             $output_installment_charges =
                 '<tr class="order_totals data">
                     <td class="mobile_left" colspan="4" style="text-align: right">Installment Charge:</td>
-                    <td class="mobile_right" style="text-align: right">' . BASE_CURRENCY_SYMBOL . number_format($installment_charges, 2, '.', ',') . '</td>
+                    <td class="mobile_right" style="text-align: right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td>
                 </tr>';
         }
 
@@ -1391,7 +1391,7 @@ function get_order_receipt($properties) {
                 $base_currency_name = 'US Dollar';
             }
             
-            $output_multicurrency_disclaimer = '<div style="margin-bottom: 15px">*This amount is based on our current currency exchange rate to ' . h($base_currency_name) . ' and may differ from the exact charges (displayed above in ' . h($base_currency_name) . ').</div>';
+            $output_multicurrency_disclaimer = '<div style="margin-bottom: 15px">' . lang(array('string' => '*This amount is based on our current currency exchange rate to {var:1} and may differ from the exact charges (displayed above in {var:1}).', 'vars' => h($base_currency_name))) . '</div>';
         }
 
         $output_applied_gift_cards = '';

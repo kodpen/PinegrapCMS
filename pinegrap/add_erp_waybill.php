@@ -119,8 +119,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('New Delivery Note'),
-        'extra_classes' => 'erp erp_waybills',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_waybills',
+        'icon' => 'erp',
         'heading' => lang('New Delivery Note'),
         'heading_description' => lang('What left, to whom, where, when and with which vehicle. Prices come later, on the invoice.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_waybills.php'),
@@ -148,7 +148,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><span class="bi bi-truck me-2"></span><span class="btn-text">' . lang('Issue the Delivery Note') . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-truck me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Delivery Note') . '</span></button>
                         </div>
                     </div>
                 </nav>

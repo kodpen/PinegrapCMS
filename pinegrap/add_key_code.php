@@ -173,7 +173,7 @@ if (!$_POST) {
     // Otherwise more than 1 key code was created, so prepare log and notice for that.
     } else {
 
-        log_activity( lang(array('string'=>'{var:1} key codes were created.','vars'=>number_format($quantity) )) );
+        log_activity( lang(array('string'=>'{var:1} key codes were created.','vars'=>pg_format_number($quantity, 0) )) );
         $liveform->remove_form();
         $liveform_view_key_codes->add_notice(lang('The key codes have been created.'));
     }

@@ -180,23 +180,23 @@ while ($row = mysqli_fetch_array($result)) {
 
     // If variable base rate is enabled, then show all base rates.
     if ($variable_base_rate) {
-        $output_base_rate .= BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate / 100) . ' (@' . BASE_CURRENCY_SYMBOL . '0.00)';
+        $output_base_rate .= pg_format_money($base_rate / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money(0, BASE_CURRENCY_SYMBOL) . ')';
 
         if ($base_rate_2_subtotal) {
-            $output_base_rate .= '<br>' . BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate_2 / 100) . ' (@' . BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate_2_subtotal / 100) . ')';
+            $output_base_rate .= '<br>' . pg_format_money($base_rate_2 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_2_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
         }
 
         if ($base_rate_3_subtotal) {
-            $output_base_rate .= '<br>' . BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate_3 / 100) . ' (@' . BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate_3_subtotal / 100) . ')';
+            $output_base_rate .= '<br>' . pg_format_money($base_rate_3 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_3_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
         }
 
         if ($base_rate_4_subtotal) {
-            $output_base_rate .= '<br>' . BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate_4 / 100) . ' (@' . BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate_4_subtotal / 100) . ')';
+            $output_base_rate .= '<br>' . pg_format_money($base_rate_4 / 100, BASE_CURRENCY_SYMBOL) . ' (@' . pg_format_money($base_rate_4_subtotal / 100, BASE_CURRENCY_SYMBOL) . ')';
         }
 
     // Otherwise variable base rate is disabled, so just show the base rate.
     } else {
-        $output_base_rate = BASE_CURRENCY_SYMBOL . sprintf("%01.2lf", $base_rate / 100);
+        $output_base_rate = pg_format_money($base_rate / 100, BASE_CURRENCY_SYMBOL);
     }
 
     // For handle days, show blank instead of zero.
@@ -265,9 +265,9 @@ while ($row = mysqli_fetch_array($result)) {
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
             <td class="align-middle text-center">' . $realtime_rate . '</td>
             <td class="align-middle text-end">' . $output_base_rate . '</td>
-            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . $primary_weight_rate . '</td>
-            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . $secondary_weight_rate . '</td>
-            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . $item_rate . '</td>
+            <td class="align-middle text-end">' . pg_format_money($primary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
+            <td class="align-middle text-end">' . pg_format_money($secondary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
+            <td class="align-middle text-end">' . pg_format_money($item_rate, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle text-end">' . h($handle_days) . '</td>
             <td class="align-middle text-center">' . $base_transit_days . '</td>
             <td class="align-middle text-center">' . $street_address . '</td>

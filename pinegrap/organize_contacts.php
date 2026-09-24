@@ -45,12 +45,12 @@ while ($row = mysqli_fetch_assoc($result)) {
         $output_add_to_contact_groups .= '
         <div class="form-check">
             <input type="checkbox" name="add_to_contact_groups" id="add_to_contact_group_' . $id . '" value="' . $id . '" class="checkbox form-check-input multiselect-checkbox" />
-            <label class="form-check-label" for="add_to_contact_group_' . $id . '">' . h($name) . ' (' . number_format($number_of_contacts) . ')</label>    
+            <label class="form-check-label" for="add_to_contact_group_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label>    
         </div>';
         $output_remove_from_contact_groups .= '
         <div class="form-check">
         <input type="checkbox" name="remove_from_contact_groups" id="remove_from_contact_group_' . $id . '" value="' . $id . '" class="checkbox form-check-input multiselect-checkbox" />
-            <label class="form-check-label" for="remove_from_contact_group_' . $id . '">' . h($name) . ' (' . number_format($number_of_contacts) . ')</label>    
+            <label class="form-check-label" for="remove_from_contact_group_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label>    
         </div>';
     }
 }

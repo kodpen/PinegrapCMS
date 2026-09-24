@@ -217,7 +217,7 @@ foreach ($recurring_commission_profiles as $recurring_commission_profile) {
         
     // else the number of commissions is not 0, so format the number
     } else {
-        $recurring_commission_profile['number_of_commissions'] = number_format($recurring_commission_profile['number_of_commissions']);
+        $recurring_commission_profile['number_of_commissions'] = pg_format_number($recurring_commission_profile['number_of_commissions'], 0);
     }
     
     // if there is a short description for the product, then prepend " - " so it appears correctly after the product name
@@ -244,7 +244,7 @@ foreach ($recurring_commission_profiles as $recurring_commission_profile) {
             <td class="align-middle chart_label">' . h($recurring_commission_profile['affiliate_name']) . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['affiliate_code']) . '</td>
             <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
-            <td class="align-middle text-end"><span class="badge bg-primary text-light fw-light">' . BASE_CURRENCY_SYMBOL . number_format($recurring_commission_profile['amount'] / 100, 2, '.', ',') . '</td>
+            <td class="align-middle text-end"><span class="badge bg-primary text-light fw-light">' . pg_format_money($recurring_commission_profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle">' . prepare_form_data_for_output($recurring_commission_profile['start_date'], 'date') . '</td>
             <td class="align-middle">' . lang(ucwords($recurring_commission_profile['period'])) . '</td>
             <td class="align-middle"><span class="badge bg-success text-light fw-light">' . $recurring_commission_profile['number_of_commissions'] . '</span></td>

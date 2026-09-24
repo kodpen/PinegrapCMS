@@ -56,6 +56,12 @@ function erp_cash_post($movement)
         return false;
     }
 
+    // Nothing is written into a locked period, whichever path asked.
+    if (function_exists('erp_lock_refusal') && (($refusal = erp_lock_refusal((string) ($movement['doc_date'] ?? date('Y-m-d')))) !== '')) {
+        erp_lock_refused($refusal);
+        return false;
+    }
+
     // Same rule as the ledger: no currency means the base, and the base needs
     // no conversion.
     $base = erp_base_currency();
@@ -168,6 +174,10 @@ function erp_post_receipt($data)
         return $fail(lang('Choose a till or bank account.'));
     }
 
+    if (($refusal = erp_lock_refusal((string) ($data['doc_date'] ?? date('Y-m-d')))) !== '') {
+        return $fail($refusal);
+    }
+
     // Checked here and not in erp_cash_post(): a cancellation copies the
     // original row's method onto the reversal, and rows written before the
     // enum was widened may hold the empty member. Refusing them there would
@@ -232,7 +242,14 @@ function erp_post_receipt($data)
     }
 
     // The till movement's id names the pair, so it goes on both rows.
-    if (erp_query("UPDATE erp_cash_transactions SET doc_id = '" . $cash_id . "' WHERE id = '" . $cash_id . "'") === false) {
+    // The order the money was for, when it was recorded from one. Written
+    // apart from the insert so a store that has not run 4.66 yet still
+    // records the movement.
+    $order_id = (int) ($data['order_id'] ?? 0);
+    $order_sql = (($order_id > 0) && erp_overdue_column_exists('erp_cash_transactions', 'order_id'))
+        ? ", order_id = '" . $order_id . "'" : '';
+
+    if (erp_query("UPDATE erp_cash_transactions SET doc_id = '" . $cash_id . "'" . $order_sql . " WHERE id = '" . $cash_id . "'") === false) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail(lang('The receipt was not saved.') . ' ' . $error);
@@ -368,6 +385,9 @@ function erp_post_transfer($data)
     }
     if (($from_id <= 0) || ($to_id <= 0)) {
         return $fail(lang('Choose both accounts.'));
+    }
+    if (($refusal = erp_lock_refusal((string) ($data['doc_date'] ?? date('Y-m-d')))) !== '') {
+        return $fail($refusal);
     }
     if ($from_id === $to_id) {
         return $fail(lang('Choose two different accounts.'));
@@ -521,6 +541,12 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
 
     if ((int) $receipt['reversal_id'] > 0) {
         return $fail(lang('That receipt has already been cancelled.'));
+    }
+
+    // A receipt inside a closed period stays: cancelling it would change
+    // what was filed.
+    if (($refusal = erp_lock_refusal((string) $receipt['doc_date'])) !== '') {
+        return $fail($refusal);
     }
 
     $reason = trim((string) $reason);

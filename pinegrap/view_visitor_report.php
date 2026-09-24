@@ -1341,17 +1341,17 @@ if (!$_POST) {
                 '<tr style="font-weight: bold; color: #008000; cursor: default">
                     <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</td>
                     ' . $output_report_detail_cells . '
-                    <td class="align-middle text-end">' . number_format($summarize_by_1_result['count']) . '</td>
-                    <td class="align-middle text-end">' . number_format($count_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . number_format($summarize_by_1_result['page_views']) . '</td>
-                    <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . number_format($custom_form_submitted_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . number_format($order_created_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . number_format($order_retrieved_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . number_format($order_checked_out_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . number_format($order_completed_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'], 0) . '</td>
+                    <td class="align-middle text-end">' . pg_format_number($count_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['page_views'], 0) . '</td>
+                    <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($custom_form_submitted_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($order_created_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($order_retrieved_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($order_checked_out_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($order_completed_percentage, 2) . '%</td>
                     <td class="align-middle text-end">' . prepare_amount($summarize_by_1_result['order_total'] / 100) . '</td>
-                    <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                     <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
                 </tr>';
             
@@ -1390,17 +1390,17 @@ if (!$_POST) {
                             <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                             <td class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</td>
                             ' . $output_report_detail_cells . '
-                            <td class="align-middle text-end">' . number_format($summarize_by_2_result['count']) . '</td>
-                            <td class="align-middle text-end">' . number_format($count_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($summarize_by_2_result['page_views']) . '</td>
-                            <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($custom_form_submitted_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($order_created_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($order_retrieved_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($order_checked_out_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($order_completed_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['count'], 0) . '</td>
+                            <td class="align-middle text-end">' . pg_format_number($count_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['page_views'], 0) . '</td>
+                            <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($custom_form_submitted_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($order_created_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($order_retrieved_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($order_checked_out_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($order_completed_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . prepare_amount($summarize_by_2_result['order_total'] / 100) . '</td>
-                            <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
                         </tr>';
                     
@@ -1438,17 +1438,17 @@ if (!$_POST) {
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                                     <td class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</td>
                                     ' . $output_report_detail_cells . '
-                                    <td class="align-middle text-end">' . number_format($summarize_by_3_result['count']) . '</td>
-                                    <td class="align-middle text-end">' . number_format($count_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . number_format($summarize_by_3_result['page_views']) . '</td>
-                                    <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . number_format($custom_form_submitted_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . number_format($order_created_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . number_format($order_retrieved_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . number_format($order_checked_out_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . number_format($order_completed_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['count'], 0) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_number($count_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['page_views'], 0) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($custom_form_submitted_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($order_created_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($order_retrieved_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($order_checked_out_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($order_completed_percentage, 2) . '%</td>
                                     <td class="align-middle text-end">' . prepare_amount($summarize_by_3_result['order_total'] / 100) . '</td>
-                                    <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                                     <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
                                 </tr>';
                             
@@ -1474,15 +1474,15 @@ if (!$_POST) {
                                             <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                                             <td>&nbsp;</td>
                                             <td>&nbsp;</td>
-                                            <td class="align-middle text-end">' . number_format($visitor['page_views']) . '</td>
-                                            <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
+                                            <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
+                                            <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
                                             <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                                             <td class="align-middle text-end">' . $output_order_created . '</td>
                                             <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                             <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                                             <td class="align-middle text-end">' . $output_order_completed . '</td>
                                             <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                                            <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                                            <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                                             <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                         </tr>';
                                 }
@@ -1513,15 +1513,15 @@ if (!$_POST) {
                                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                                         <td>&nbsp;</td>
                                         <td>&nbsp;</td>
-                                        <td class="align-middle text-end">' . number_format($visitor['page_views']) . '</td>
-                                        <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
+                                        <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
+                                        <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
                                         <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                                         <td class="align-middle text-end">' . $output_order_created . '</td>
                                         <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                         <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                                         <td class="align-middle text-end">' . $output_order_completed . '</td>
                                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                                        <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                                        <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                     </tr>';
                             }
@@ -1553,15 +1553,15 @@ if (!$_POST) {
                                 <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                                 <td>&nbsp;</td>
                                 <td>&nbsp;</td>
-                                <td class="align-middle text-end">' . number_format($visitor['page_views']) . '</td>
-                                <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
+                                <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
+                                <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
                                 <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                                 <td class="align-middle text-end">' . $output_order_created . '</td>
                                 <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                 <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                                 <td class="align-middle text-end">' . $output_order_completed . '</td>
                                 <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                                <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                                <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                                 <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                             </tr>';
                     }
@@ -1593,15 +1593,15 @@ if (!$_POST) {
                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
-                        <td class="align-middle text-end">' . number_format($visitor['page_views']) . '</td>
-                        <td class="align-middle text-end">' . number_format($page_views_percentage, 2) . '%</td>
+                        <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
+                        <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
                         <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                         <td class="align-middle text-end">' . $output_order_created . '</td>
                         <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                         <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                         <td class="align-middle text-end">' . $output_order_completed . '</td>
                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                        <td class="align-middle text-end">' . number_format($order_total_percentage, 2) . '%</td>
+                        <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                     </tr>';
             }
@@ -1645,7 +1645,7 @@ if (!$_POST) {
                 <span class="text-muted small">'
                 . h(lang(array(
                     'string' => 'Showing {var:1} to {var:2} of {var:3} visitor{suffix:3}',
-                    'vars'   => array(number_format($detail_from), number_format($detail_to), number_format($detail_total)),
+                    'vars'   => array(pg_format_number($detail_from, 0), pg_format_number($detail_to, 0), pg_format_number($detail_total, 0)),
                     'suffix' => array('', '', ($detail_total == 1 ? '' : 's')),
                 )))
                 . '</span>
@@ -1657,7 +1657,7 @@ if (!$_POST) {
                         . $pager_link(1, '&laquo;', $detail_page <= 1)
                         . $pager_link($detail_page - 1, '&lsaquo;', $detail_page <= 1)
                         . '<li class="page-item disabled"><span class="page-link">'
-                        . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array(number_format($detail_page), number_format($detail_pages)))))
+                        . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array(pg_format_number($detail_page, 0), pg_format_number($detail_pages, 0)))))
                         . '</span></li>'
                         . $pager_link($detail_page + 1, '&rsaquo;', $detail_page >= $detail_pages)
                         . $pager_link($detail_pages, '&raquo;', $detail_page >= $detail_pages)
@@ -1677,15 +1677,15 @@ if (!$_POST) {
                         '<tr style="font-weight: bold; color: #c49700;  cursor: default">
                             <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</td>
                             ' . $output_report_detail_cells . '
-                            <td class="align-middle text-end">' . number_format($grand_count) . '</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
                             <td class="align-middle text-end">100.00%</td>
-                            <td class="align-middle text-end">' . number_format($grand_page_views) . '</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_page_views, 0) . '</td>
                             <td class="align-middle text-end">100.00%</td>
-                            <td class="align-middle text-end">' . number_format($grand_custom_form_submitted_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($grand_order_created_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($grand_order_retrieved_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($grand_order_checked_out_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . number_format($grand_order_completed_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_custom_form_submitted_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_order_created_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_order_retrieved_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_order_checked_out_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($grand_order_completed_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_order_total / 100) . '</td>
                             <td class="align-middle text-end">100.00%</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_average_order_total / 100) . '</td>

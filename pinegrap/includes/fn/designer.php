@@ -828,10 +828,8 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_forgot_password($tree_json, $sid, $cfg, $mode);
             }
 
-            // 'search_results' — renders a search result list from $_GET['q'].
-            // Static tokens: ^^__search_query^^, ^^__result_count^^.
-            // Loop tokens (per result): ^^__result_title^^, ^^__result_url^^,
-            //   ^^__result_excerpt^^, ^^__result_type^^.
+            // 'search_results' — the site search for ?query=, loop_area per result;
+            // tokens listed at the renderer.
             if ($region_type === 'search_results') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
                 return _render_system_widget_search_results($tree_json, $sid, $cfg);
@@ -904,13 +902,33 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_custom_form($tree_json, $sid, $cfg, $mode);
             }
 
-            // 'calendar_view' — renders a calendar event list with loop_area per event.
-            // Static tokens: ^^__month_name^^, ^^__year^^, ^^__prev_month_url^^, ^^__next_month_url^^
-            // Loop tokens:   ^^__event_title^^, ^^__event_date^^, ^^__event_time^^,
-            //                ^^__event_url^^, ^^__event_excerpt^^
+            // 'calendar_view' — the events of the widget's calendars (monthly, weekly
+            // or upcoming), loop_area per occurrence; tokens listed at the renderer.
             if ($region_type === 'calendar_view') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
                 return _render_system_widget_calendar_view($tree_json, $sid, $cfg);
+            }
+
+            // 'calendar_event_view' — one event occurrence (?id=, ?recurrence_number=),
+            // the page a calendar_view widget's events link to.
+            if ($region_type === 'calendar_event_view') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_calendar_event_view($tree_json, $sid, $cfg);
+            }
+
+            // The account widgets (widgets_account.php): each posts to the
+            // processor of the legacy page type it stands in for.
+            $account_renderers = array(
+                'logout'            => '_render_system_widget_logout',
+                'change_password'   => '_render_system_widget_change_password',
+                'set_password'      => '_render_system_widget_set_password',
+                'account_profile'   => '_render_system_widget_account_profile',
+                'email_preferences' => '_render_system_widget_email_preferences',
+                'address_book'      => '_render_system_widget_address_book',
+            );
+            if (isset($account_renderers[$region_type])) {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return call_user_func($account_renderers[$region_type], $tree_json, $sid, $cfg, $mode);
             }
 
             // Future region types handled here.
@@ -2359,6 +2377,15 @@ function _pg_render_carousel_init_script($crl_id, $hover_zoom)
 function _render_tree_node($node, $indent = 0, $depth = 0)
 {
     if (!$node || !isset($node['type'])) return '';
+
+    // Smart active state: fence the element so the page render can mark the
+    // link to the current page inside it (pg_apply_smart_active). The markers
+    // are resolved on every request, so page code saved once stays correct
+    // on every page that shows this element.
+    if (!empty($node['props']['smartActive'])) {
+        $node['props']['smartActive'] = false;
+        return '<!--pg-active:begin-->' . _render_tree_node($node, $indent, $depth) . '<!--pg-active:end-->';
+    }
 
     $pad = str_repeat('    ', $indent);
     $html = '';
@@ -3984,4 +4011,428 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
         }
     }
     return $menu_sequence;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Smart active state
+// ─────────────────────────────────────────────────────────────────────────────
+// A navigation element whose designer switch "Smart active state" is on
+// (props.smartActive) is rendered between <!--pg-active:begin--> and
+// <!--pg-active:end--> markers (see _render_tree_node). At page-render time
+// pg_apply_smart_active() looks inside each marked fragment for the link that
+// points to the page being served and marks it active (class "active" and
+// aria-current="page"), after clearing the active states that were set by
+// hand in the designer. Elements without the switch are never touched, so
+// hand-made states and every other use of the "active" class keep working.
+
+/**
+ * Resolve every smart-active fragment in $html and drop the markers.
+ *
+ * @param string     $html
+ * @param array|null $ctx  array('page_name' => string, 'home' => bool) for the
+ *                         page being served, or null to only strip the markers
+ *                         (e-mail output has no "current page").
+ * @return string
+ */
+function pg_apply_smart_active($html, $ctx = null)
+{
+    $begin = '<!--pg-active:begin-->';
+    $end   = '<!--pg-active:end-->';
+
+    if (strpos($html, '<!--pg-active:') === false) {
+        return $html;
+    }
+    if (!is_array($ctx)) {
+        return str_replace(array($begin, $end), '', $html);
+    }
+
+    $target = _pg_smart_active_target($ctx);
+
+    // Innermost fragment first: the first end marker closes the last begin
+    // marker before it. A switch nested in another one is simply resolved
+    // twice, which gives the same result.
+    $guard = 0;
+    while ((($e = strpos($html, $end)) !== false) && ($guard++ < 500)) {
+        $b = strrpos(substr($html, 0, $e), $begin);
+        if ($b === false) {
+            $html = substr($html, 0, $e) . substr($html, $e + strlen($end));
+            continue;
+        }
+        $inner = substr($html, $b + strlen($begin), $e - $b - strlen($begin));
+        $html  = substr($html, 0, $b) . _pg_smart_active_fragment($inner, $target) . substr($html, $e + strlen($end));
+    }
+
+    return str_replace(array($begin, $end), '', $html);
+}
+
+/**
+ * What "the current page" looks like as a link: the requested path, the
+ * page's own name path and, for the home page, the site root.
+ */
+function _pg_smart_active_target($ctx)
+{
+    $uri = defined('REQUEST_URL') ? (string) REQUEST_URL : (isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '');
+    $raw_path = (string) parse_url($uri, PHP_URL_PATH);
+    if ($raw_path === '' || $raw_path[0] !== '/') {
+        $raw_path = '/' . $raw_path;
+    }
+    $base = defined('PATH') ? (string) PATH : '/';
+
+    $current = _pg_smart_active_path($raw_path);
+    $root    = _pg_smart_active_path($base);
+
+    $exact = array($current => true);
+    $page_name = isset($ctx['page_name']) ? (string) $ctx['page_name'] : '';
+    if ($page_name !== '') {
+        $exact[_pg_smart_active_path($base . encode_url_path($page_name))] = true;
+    }
+    if (!empty($ctx['home'])) {
+        $exact[$root] = true;
+    }
+
+    $query = array();
+    parse_str((string) parse_url($uri, PHP_URL_QUERY), $query);
+    ksort($query);
+
+    $hosts = array();
+    foreach (array(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '', defined('HOSTNAME') ? HOSTNAME : '') as $h) {
+        $h = strtolower(preg_replace('~:\d+$~', '', trim((string) $h)));
+        if ($h !== '') {
+            $hosts[$h] = true;
+        }
+    }
+
+    return array(
+        'current' => $current,
+        'root'    => $root,
+        'exact'   => $exact,
+        'query'   => $query,
+        'dir'     => substr($raw_path, 0, strrpos($raw_path, '/') + 1),
+        'hosts'   => $hosts,
+    );
+}
+
+/** Decode, resolve dot segments, drop the trailing slash, lower-case. */
+function _pg_smart_active_path($path)
+{
+    $out = array();
+    foreach (explode('/', rawurldecode((string) $path)) as $seg) {
+        if ($seg === '' || $seg === '.') {
+            continue;
+        }
+        if ($seg === '..') {
+            array_pop($out);
+            continue;
+        }
+        $out[] = $seg;
+    }
+    return mb_strtolower('/' . implode('/', $out));
+}
+
+/**
+ * Normalize a link for comparison. Returns array(path, query) or null when
+ * the link cannot point to a page of this site (anchor, mailto:, other host…).
+ */
+function _pg_smart_active_link($href, $target)
+{
+    $href = trim(html_entity_decode((string) $href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    if ($href === '' || $href[0] === '#') {
+        return null;
+    }
+    if (preg_match('~^[a-z][a-z0-9+.\-]*:~i', $href) && !preg_match('~^https?:~i', $href)) {
+        return null;
+    }
+    $parts = parse_url($href);
+    if ($parts === false) {
+        return null;
+    }
+    if (isset($parts['host'])) {
+        if (!isset($target['hosts'][strtolower($parts['host'])])) {
+            return null;
+        }
+        $path = isset($parts['path']) && $parts['path'] !== '' ? $parts['path'] : '/';
+    } else {
+        // "?sort=new" alone is a view of whatever page it sits on, not a menu link.
+        if (!isset($parts['path']) || $parts['path'] === '') {
+            return null;
+        }
+        $path = $parts['path'];
+        if ($path[0] !== '/') {
+            $path = $target['dir'] . $path;
+        }
+    }
+    $query = array();
+    if (isset($parts['query'])) {
+        parse_str($parts['query'], $query);
+        ksort($query);
+    }
+    return array(_pg_smart_active_path($path), $query);
+}
+
+/**
+ * Attributes of a start tag, in source order: name (lower case), raw value
+ * and the byte range of the whole "name=value" piece inside $attrs.
+ */
+function _pg_smart_active_attrs($attrs)
+{
+    $out = array();
+    if (preg_match_all('~([^\s=/>"\']+)(?:\s*=\s*(?|"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+)))?~', $attrs, $m, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        foreach ($m as $a) {
+            $out[] = array(
+                'name'  => strtolower($a[1][0]),
+                'value' => (isset($a[2]) && $a[2][1] >= 0) ? $a[2][0] : '',
+                'off'   => $a[0][1],
+                'len'   => strlen($a[0][0]),
+            );
+        }
+    }
+    return $out;
+}
+
+/** Decoded value of an attribute (the first one wins, as in browsers), or null. */
+function _pg_smart_active_attr($attrs, $name)
+{
+    foreach (_pg_smart_active_attrs($attrs) as $a) {
+        if ($a['name'] === $name) {
+            return html_entity_decode($a['value'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+    }
+    return null;
+}
+
+/** Rebuild a start tag with classes added/removed and aria-current set. */
+function _pg_smart_active_retag($name, $attrs, $add, $remove, $aria)
+{
+    $list = $attrs === '' ? array() : _pg_smart_active_attrs($attrs);
+    $class_done = false;
+
+    // Right to left, so earlier offsets stay valid while pieces change.
+    for ($k = count($list) - 1; $k >= 0; $k--) {
+        $a = $list[$k];
+        $piece = null;
+        if ($a['name'] === 'aria-current' && $aria !== null) {
+            $piece = '';
+        } elseif ($a['name'] === 'class' && !$class_done && !_pg_smart_active_has_earlier($list, $k, 'class')) {
+            $class_done = true;
+            $classes = preg_split('~\s+~', trim($a['value']), -1, PREG_SPLIT_NO_EMPTY);
+            $classes = array_values(array_diff($classes, $remove));
+            foreach ($add as $c) {
+                if (!in_array($c, $classes, true)) {
+                    $classes[] = $c;
+                }
+            }
+            $piece = $classes ? 'class="' . implode(' ', $classes) . '"' : '';
+        }
+        if ($piece !== null) {
+            $off = $a['off'];
+            $len = $a['len'];
+            if ($piece === '') {
+                // Take the blank before a dropped attribute with it.
+                while ($off > 0 && ctype_space($attrs[$off - 1])) {
+                    $off--;
+                    $len++;
+                }
+            }
+            $attrs = substr_replace($attrs, $piece, $off, $len);
+        }
+    }
+
+    $extra = '';
+    if (!$class_done && $add) {
+        $extra .= ' class="' . implode(' ', $add) . '"';
+    }
+    if ($aria === 'page') {
+        $extra .= ' aria-current="page"';
+    }
+    if ($extra !== '') {
+        if (preg_match('~\s*/\s*$~', $attrs, $m)) {
+            $attrs = substr($attrs, 0, -strlen($m[0])) . $extra . $m[0];
+        } else {
+            $attrs = rtrim($attrs) . $extra;
+        }
+    }
+
+    return '<' . $name . $attrs . '>';
+}
+
+function _pg_smart_active_has_earlier($list, $k, $name)
+{
+    for ($i = 0; $i < $k; $i++) {
+        if ($list[$i]['name'] === $name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Mark the current-page link inside one fragment. */
+function _pg_smart_active_fragment($html, $target)
+{
+    // Comments and raw-text elements are blanked out (same byte length) so
+    // markup inside them is not taken for real elements.
+    $scan = preg_replace_callback('~<!--.*?-->|<(script|style|textarea|template)\b[^>]*>.*?</\1\s*>~is', function ($m) {
+        return str_repeat(' ', strlen($m[0]));
+    }, $html);
+    if (!is_string($scan) || strlen($scan) !== strlen($html)) {
+        return $html;
+    }
+    if (!preg_match_all('~<(/?)([a-zA-Z][a-zA-Z0-9\-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>~', $scan, $tags, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        return $html;
+    }
+
+    $void = array('area'=>1,'base'=>1,'br'=>1,'col'=>1,'embed'=>1,'hr'=>1,'img'=>1,'input'=>1,'link'=>1,'meta'=>1,'param'=>1,'source'=>1,'track'=>1,'wbr'=>1);
+    $els = array();
+    $stack = array();
+    foreach ($tags as $t) {
+        $name = strtolower($t[2][0]);
+        if ($t[1][0] === '/') {
+            for ($k = count($stack) - 1; $k >= 0; $k--) {
+                if ($els[$stack[$k]]['name'] === $name) {
+                    for ($j = count($stack) - 1; $j >= $k; $j--) {
+                        $els[$stack[$j]]['end'] = $t[0][1];
+                    }
+                    array_splice($stack, $k);
+                    break;
+                }
+            }
+            continue;
+        }
+        $attrs = substr($html, $t[3][1], strlen($t[3][0]));
+        $cls = _pg_smart_active_attr($attrs, 'class');
+        $els[] = array(
+            'name'   => $name,
+            'off'    => $t[0][1],
+            'len'    => strlen($t[0][0]),
+            'nameraw'=> $t[2][0],
+            'attrs'  => $attrs,
+            'class'  => $cls === null ? array() : preg_split('~\s+~', trim($cls), -1, PREG_SPLIT_NO_EMPTY),
+            'parent' => $stack ? $stack[count($stack) - 1] : -1,
+            'end'    => strlen($html),
+        );
+        $idx = count($els) - 1;
+        if (!isset($void[$name]) && !preg_match('~/\s*$~', $attrs)) {
+            $stack[] = $idx;
+        }
+    }
+
+    $edits = array();
+    $edit = function ($i, $add, $remove, $aria) use (&$edits) {
+        if (!isset($edits[$i])) {
+            $edits[$i] = array('add' => array(), 'remove' => array(), 'aria' => null);
+        }
+        $edits[$i]['add']    = array_merge($edits[$i]['add'], $add);
+        $edits[$i]['remove'] = array_merge($edits[$i]['remove'], $remove);
+        if ($aria !== null && $edits[$i]['aria'] !== 'page') {
+            $edits[$i]['aria'] = $aria;
+        }
+    };
+
+    // 1. Clear the states that were set by hand, and collect candidates.
+    $exact = array();
+    $prefix = array();
+    $best_prefix = 0;
+    foreach ($els as $i => $el) {
+        $toggle = _pg_smart_active_attr($el['attrs'], 'data-bs-toggle');
+        $is_nav_link = ($el['name'] === 'a') && ($toggle === null || $toggle === 'dropdown');
+        $is_toggle = in_array('dropdown-toggle', $el['class'], true) || $toggle === 'dropdown';
+
+        if (in_array('active', $el['class'], true) && ($el['name'] === 'li' || $is_nav_link || ($el['name'] === 'button' && $is_toggle))) {
+            $edit($i, array(), array('active'), null);
+        }
+        if ($is_nav_link && _pg_smart_active_attr($el['attrs'], 'aria-current') !== null) {
+            $edit($i, array(), array(), 'remove');
+        }
+
+        if (!$is_nav_link || $is_toggle || in_array('navbar-brand', $el['class'], true) || in_array('btn', $el['class'], true)) {
+            continue;
+        }
+        $href = _pg_smart_active_attr($el['attrs'], 'href');
+        if ($href === null) {
+            continue;
+        }
+        $link = _pg_smart_active_link($href, $target);
+        if ($link === null) {
+            continue;
+        }
+        list($path, $query) = $link;
+        if (isset($target['exact'][$path])) {
+            // Same path: a link carrying the very query of this request beats
+            // a plain link, which beats a link to another view of the page.
+            $tier = $query ? ($query == $target['query'] ? 3 : 1) : 2;
+            $exact[$tier][] = $i;
+        } elseif ($path !== $target['root'] && strpos($target['current'] . '/', $path . '/') === 0) {
+            // A section link (/shop) stays lit on its sub pages (/shop/shoes).
+            $len = strlen($path);
+            if ($len > $best_prefix) {
+                $best_prefix = $len;
+                $prefix = array();
+            }
+            if ($len === $best_prefix) {
+                $prefix[] = $i;
+            }
+        }
+    }
+
+    if ($exact) {
+        krsort($exact);
+        $chosen = reset($exact);
+    } else {
+        $chosen = $prefix;
+    }
+
+    // 2. Mark the chosen links, their menu item and the dropdown they sit in.
+    foreach ($chosen as $i) {
+        $edit($i, array('active'), array(), 'page');
+        $li_done = false;
+        $p = $els[$i]['parent'];
+        while ($p >= 0) {
+            $pel = $els[$p];
+            if (!$li_done && $pel['name'] === 'li') {
+                $li_done = true;
+                if (in_array('nav-item', $pel['class'], true) || in_array('list-group-item', $pel['class'], true)) {
+                    $edit($p, array('active'), array(), null);
+                }
+            }
+            if (in_array('dropdown-menu', $pel['class'], true) && $pel['parent'] >= 0) {
+                $owner = $pel['parent'];
+                $oel = $els[$owner];
+                foreach ($els as $j => $cand) {
+                    if ($cand['off'] <= $oel['off'] || $cand['off'] >= $oel['end']) {
+                        continue;
+                    }
+                    if ($cand['off'] >= $pel['off'] && $cand['off'] < $pel['end']) {
+                        continue;
+                    }
+                    if (($cand['name'] === 'a' || $cand['name'] === 'button')
+                        && (in_array('dropdown-toggle', $cand['class'], true) || _pg_smart_active_attr($cand['attrs'], 'data-bs-toggle') === 'dropdown')) {
+                        $edit($j, array('active'), array(), null);
+                        break;
+                    }
+                }
+                if ($oel['name'] === 'li' && in_array('nav-item', $oel['class'], true)) {
+                    $edit($owner, array('active'), array(), null);
+                }
+                $li_done = true;
+                $p = $owner;
+                continue;
+            }
+            $p = $pel['parent'];
+        }
+    }
+
+    if (!$edits) {
+        return $html;
+    }
+
+    // 3. Rewrite the touched start tags, last first so offsets stay valid.
+    krsort($edits);
+    foreach ($edits as $i => $ed) {
+        $el = $els[$i];
+        $add = array_values(array_unique($ed['add']));
+        $remove = array_values(array_diff(array_unique($ed['remove']), $add));
+        $tag = _pg_smart_active_retag($el['nameraw'], $el['attrs'], $add, $remove, $ed['aria']);
+        $html = substr_replace($html, $tag, $el['off'], $el['len']);
+    }
+
+    return $html;
 }

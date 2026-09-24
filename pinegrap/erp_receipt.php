@@ -168,7 +168,7 @@ $output_header = '
                         <div class="col-12 col-sm-6 col-lg-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('Amount') . '</div>
                             <div class="h5 mb-0 ' . ($is_cancelled ? 'text-decoration-line-through text-body-secondary' : '') . '">' . $money((int) $receipt['amount']) . '</div>
-                            ' . ($is_foreign ? '<div class="text-body-secondary small">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_out($receipt['exchange_rate'])) . '</div>' : '') . '
+                            ' . ($is_foreign ? '<div class="text-body-secondary small">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_text($receipt['exchange_rate'])) . '</div>' : '') . '
                         </div>
                         <div class="col-12 col-sm-6 col-lg-3 my-2">
                             <div class="form-label text-body-secondary">' . lang('Account') . '</div>
@@ -211,17 +211,17 @@ foreach ($settlements as $settlement) {
 
     $output_allocation_rows .= '
                                 <tr>
-                                    <td class="text-nowrap">' . h(prepare_form_data_for_output($settlement['doc_date'], 'date')) . '</td>
+                                    <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $settlement['doc_date'])) . '">' . h(prepare_form_data_for_output($settlement['doc_date'], 'date')) . '</td>
                                     <td><a href="edit_erp_invoice.php?id=' . $invoice_id . '" class="link-body-emphasis">' . h($settlement['full_number']) . '</a></td>
                                     <td>' . h((string) $settlement['invoice_status']) . '</td>
-                                    <td class="text-end">' . $money((int) $settlement['amount'])
+                                    <td class="text-end" data-sort="' . (int) $settlement['amount'] . '">' . $money((int) $settlement['amount'])
                                         . ($is_foreign ? ' <span class="text-body-secondary small">' . h(erp_money_out((int) $settlement['amount_base'])) . '</span>' : '') . '</td>
                                     <td class="text-end text-nowrap">' . $output_remove . '</td>
                                 </tr>';
 }
 
 if ($output_allocation_rows === '') {
-    $output_allocation_rows = '<tr><td colspan="5" class="text-center text-body-secondary py-3">' . lang('This receipt has not been allocated to any invoice.') . '</td></tr>';
+    $output_allocation_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-3">' . lang('This receipt has not been allocated to any invoice.') . '</td></tr>';
 }
 
 $output_allocations = '
@@ -232,14 +232,14 @@ $output_allocations = '
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" id="allocations_table">
+                        <table class="table table-sm table-hover align-middle mb-0" id="allocations_table" data-pg-sort>
                             <thead>
                                 <tr>
                                     <th>' . lang('Date') . '</th>
                                     <th>' . lang('Invoice') . '</th>
                                     <th>' . lang('Status') . '</th>
                                     <th class="text-end">' . lang('Amount') . '</th>
-                                    <th class="text-end">' . lang(array('string' => 'Action')) . '</th>
+                                    <th class="text-end" data-pg-sort="none">' . lang(array('string' => 'Action')) . '</th>
                                 </tr>
                             </thead>
                             <tbody>' . $output_allocation_rows . '
@@ -269,8 +269,8 @@ if (!$is_cancelled && ($unallocated > 0)) {
         $output_open_rows .= '
                                 <tr>
                                     <td><a href="edit_erp_invoice.php?id=' . $invoice_id . '" class="link-body-emphasis">' . h($invoice['full_number']) . '</a></td>
-                                    <td class="text-nowrap">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
-                                    <td class="text-end">' . $money((int) $invoice['open_amount']) . '</td>
+                                    <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $invoice['issue_date'])) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
+                                    <td class="text-end" data-sort="' . (int) $invoice['open_amount'] . '">' . $money((int) $invoice['open_amount']) . '</td>
                                     <td class="text-end" style="width:12rem">
                                         <input type="text" name="allocate[' . $invoice_id . ']" id="allocate_' . $invoice_id . '" class="form-control form-control-sm text-end" inputmode="decimal" autocomplete="off" value="' . (($proposed > 0) ? h(number_format($proposed / 100, 2, '.', '')) : '') . '" />
                                     </td>
@@ -290,13 +290,13 @@ if (!$is_cancelled && ($unallocated > 0)) {
                     <div class="card-body">
                         <div class="form-text mb-2">' . lang('The amounts are suggested oldest first; change them before saving. Nothing is written until you save.') . '</div>
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0" id="open_invoices_table">
+                            <table class="table table-sm align-middle mb-0" id="open_invoices_table" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th>' . lang('Invoice') . '</th>
                                         <th>' . lang('Date') . '</th>
                                         <th class="text-end">' . lang('Outstanding') . '</th>
-                                        <th class="text-end">' . lang('Allocate') . '</th>
+                                        <th class="text-end" data-pg-sort="none">' . lang('Allocate') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_open_rows . '
@@ -304,7 +304,7 @@ if (!$is_cancelled && ($unallocated > 0)) {
                             </table>
                         </div>
                         <div class="text-end mt-3">
-                            <button type="submit" name="submit_allocate" value="Allocate" class="btn btn-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-link-45deg me-2"></span><span class="btn-text">' . lang('Save the allocations') . '</span></button>
+                            <button type="submit" name="submit_allocate" value="Allocate" class="btn btn-primary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the allocations') . '</span></button>
                         </div>
                     </div>
                 </div>
@@ -325,7 +325,7 @@ if (!$is_cancelled) {
             <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
-                        <button type="button" class="btn my-1 btn-outline-warning" data-bs-toggle="modal" data-bs-target="#cancel_receipt_modal"><span class="bi bi-arrow-counterclockwise me-2"></span>' . ($is_collection ? lang('Cancel the Receipt') : lang('Cancel the Payment')) . '</button>
+                        <button type="button" class="btn my-1 btn-outline-warning" data-bs-toggle="modal" data-bs-target="#cancel_receipt_modal"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . ($is_collection ? lang('Cancel the Receipt') : lang('Cancel the Payment')) . '</button>
                     </div>
                 </div>
             </nav>
@@ -348,7 +348,7 @@ if (!$is_cancelled) {
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                                <button type="submit" name="submit_cancel" value="Cancel" class="btn btn-outline-warning" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><span class="bi bi-arrow-counterclockwise me-2"></span><span class="btn-text">' . lang('Confirm the cancellation') . '</span></button>
+                                <button type="submit" name="submit_cancel" value="Cancel" class="btn btn-outline-warning" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Confirm the cancellation') . '</span></button>
                             </div>
                         </div>
                     </form>
@@ -356,11 +356,19 @@ if (!$is_cancelled) {
             </div>';
 }
 
+// Where it was talked about in the workspace, and the tasks about it.
+$output_workspace_button = '';
+
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $output_workspace_button = ws_record_button($user, 'receipt', (int) $cash_id, $title . ' #' . $cash_id);
+}
+
 echo
 pg_page_shell([
     'title' => $title,
-    'extra_classes' => 'erp erp_cash',
-    'icon' => 'store',
+    'extra classes' => 'erp erp_cash',
+    'icon' => 'erp',
     'heading' => $title . ' #' . $cash_id,
     'heading_description' => lang('The movement, the invoices it closed, and the corrections it allows.'),
     'cancel' => array('enable' => 'true', 'url' => 'edit_erp_till.php?id=' . (int) $receipt['cash_account_id']),
@@ -376,6 +384,7 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            ' . (($output_workspace_button !== '') ? '<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">' . $output_workspace_button . '</nav>' : '') . '
             ' . $output_header . '
             ' . $output_allocations . '
             ' . $output_allocate . '

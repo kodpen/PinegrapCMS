@@ -259,7 +259,7 @@ if (!$_POST) {
     $number_of_completed_email_recipients = $row[0];
     
     if ($number_of_email_recipients > 0) {
-        $output_progress_percentage = number_format($number_of_completed_email_recipients / $number_of_email_recipients * 100);
+        $output_progress_percentage = pg_format_number($number_of_completed_email_recipients / $number_of_email_recipients * 100, 0);
     } else {
         $output_progress_percentage = '100';
     }
@@ -469,7 +469,7 @@ if (!$_POST) {
                     <div class="col-12 col-sm-6 col-xl my-2">
                         <div class="alert border-4 alert-secondary" role="alert">
                             <h4 class="alert-heading">' . lang('Progress') . '</h4>
-                            <p>' . $output_progress_percentage . '% (' . number_format($number_of_completed_email_recipients) . lang(' of ') . number_format($number_of_email_recipients) . ' ' . lang('subscribers') . ')</p>
+                            <p>' . $output_progress_percentage . '% (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
                         </div>
                     </div> 
                     ' . $output_auto_campaign . '

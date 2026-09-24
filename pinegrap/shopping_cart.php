@@ -110,8 +110,8 @@ if (!empty($_POST['quick_add'])) {
                             break;
                             
                         case 'donation':
-                            // remove commas from donation amount if they exist
-                            $donation_amount = str_replace(',', '', $_POST['quick_add_amount']);
+                            // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
+                            $donation_amount = pg_parse_amount($_POST['quick_add_amount']);
                             
                             // convert donation amount into USD
                             // Suppressing error for PHP 7.1+ support
@@ -227,8 +227,8 @@ foreach ($order_items as $order_item) {
     
     // if this order item is a donation
     if (isset($_POST['donations'][$order_item['id']]) == true) {
-        // remove commas from donation amount if they exist
-        $donation_amount = str_replace(',', '', $_POST['donations'][$order_item['id']]);
+        // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
+        $donation_amount = pg_parse_amount($_POST['donations'][$order_item['id']]);
         
         // convert donation amount into USD
         // Suppressing error for PHP 7.1+ support

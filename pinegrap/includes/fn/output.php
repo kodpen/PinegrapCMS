@@ -202,6 +202,9 @@ function output_control_panel_header_includes($include_assistant = true)
         'Save a barcode first before printing.' => lang('Save a barcode first before printing.'),
         'Confirm' => lang('Confirm'),
         'OK' => lang('OK'),
+        'Sort' => lang('Sort'),
+        'Ascending' => lang('Ascending'),
+        'Descending' => lang('Descending'),
     );
 
     return '
@@ -2294,32 +2297,87 @@ function output_menu($properties = false)
 
         $menu_items[22]['id'] = 22;
         $menu_items[22]['href'] = 'erp_dashboard.php';
-        $menu_items[22]['icon'] = 'bi-receipt';
+        $menu_items[22]['icon'] = 'bi-safe2-fill';
         $menu_items[22]['color_class'] = 'erp-color';
-        $menu_items[22]['title'] = 'ERP';
+        $menu_items[22]['title'] = 'Resource planning (ERP)';
         $menu_items[22]['context'] = true;
         // Open sales invoices past due; the dashboard card's number.
         $menu_items[22]['badge'] = pg_erp_overdue_badge_count();
         $menu_items[22]['badge_title'] = lang(array('string' => '{var:1} document(s) past due', 'vars' => $menu_items[22]['badge']));
-        $menu_items[22]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_dashboard.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('ERP Dashboard') . '</a>';
+        $menu_items[22]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_dashboard.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>' . lang('ERP Dashboard') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Accounts') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-building bi-me-2\'>' . lang('Accounts') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Invoices') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-text bi-me-2\'>' . lang('Quotes') . '</a>';
+        // Screens only an e-document provider can fill; a store without one
+        // (or with one that does not hand these over) is not shown them.
+        if (pg_erp_provider_offers('inbox')) {
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_inbox.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-inbox bi-me-2\'>' . lang('Incoming e-invoices') . '</a>';
+        }
+
+        if (pg_erp_provider_offers('accounts')) {
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_sync.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-left-right bi-me-2\'>' . lang('Account sync') . '</a>';
+        }
+
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_aging.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-hourglass-split bi-me-2\'>' . lang('Aging report') . '</a>';
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_waybills.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-truck bi-me-2\'>' . lang('Delivery Notes') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_profit.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up bi-me-2\'>' . lang('Profit and loss') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_vat_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-percent bi-me-2\'>' . h(pg_erp_tax_report_label()) . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-boxes bi-me-2\'>' . lang('Stock and cost') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt-cutoff bi-me-2\'>' . lang('Expenses') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_waybills.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-check bi-me-2\'>' . lang('Delivery Notes') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up bi-me-2\'>' . lang('Export') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accountant.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-briefcase bi-me-2\'>' . lang('Accountant pack') . '</a>';
 
         if (USER_MANAGE_ERP_CASH) {
             $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cash-stack bi-me-2\'>' . lang('Cash and Bank') . '</a>';
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cashflow.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('Cash flow') . '</a>';
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cheques.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-journal-check bi-me-2\'>' . lang('Cheques and notes') . '</a>';
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_bank_statements.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bank bi-me-2\'>' . lang('Bank statements') . '</a>';
+        }
+
+        if (USER_MANAGE_ERP_SETTINGS || (defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
+            $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_audit.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-shield-check bi-me-2\'>' . lang('Audit trail') . '</a>';
         }
 
         if (USER_MANAGE_ERP_SETTINGS) {
-            $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('ERP Settings') . '</a>';
         }
 
+    }
+
+    // WORKSPACE. Slot 23, under the same never-reused rule as the ERP's 22. The
+    // module file is loaded only here and only when the module is on, so a
+    // site that never switches it on pays nothing on every panel page.
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+        $ws_menu_rights = ws_ready() ? ws_rights($user) : null;
+
+        if ($ws_menu_rights && $ws_menu_rights['member']) {
+
+            $menu_items[23]['id'] = 23;
+            $menu_items[23]['href'] = 'workspace.php';
+            $menu_items[23]['icon'] = 'bi-clipboard2-check';
+            $menu_items[23]['color_class'] = 'workspace-color';
+            $menu_items[23]['title'] = 'Workspace';
+            $menu_items[23]['context'] = true;
+            // Mentions, assignments and invitations not yet looked at.
+            $menu_items[23]['badge'] = ws_inbox_unread_count((int) $user['id']);
+            $menu_items[23]['badge_title'] = lang(array('string' => '{var:1} new item(s) for you', 'vars' => $menu_items[23]['badge']));
+            $menu_items[23]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-chat-square-text bi-me-2\'>' . lang('Channels') . '</a>';
+            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_tasks.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-check2-square bi-me-2\'>' . lang('My Tasks') . '</a>';
+            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_board.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-week bi-me-2\'>' . lang('Planning Board') . '</a>';
+            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar3 bi-me-2\'>' . lang('Work Calendar') . '</a>';
+            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_timeline.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-clock-history bi-me-2\'>' . lang('Decision Timeline') . '</a>';
+
+            if ($ws_menu_rights['settings']) {
+                $menu_items[23]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+                $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('Workspace Settings') . '</a>';
+            }
+        }
     }
 
     // Site Settings has no menu item. It is a modal now, opened from the gear
@@ -2424,9 +2482,29 @@ function output_menu($properties = false)
         case 'erp_accounts.php':
         case 'add_erp_account.php':
         case 'edit_erp_account.php':
+        case 'erp_account_prices.php':
         case 'erp_accounts_import.php':
         case 'erp_invoices.php':
+        case 'erp_invoice_recurrences.php':
+        case 'erp_quotes.php':
+        case 'add_erp_quote.php':
+        case 'edit_erp_quote.php':
+        case 'erp_inbox.php':
+        case 'erp_inbox_document.php':
+        case 'erp_account_sync.php':
+        case 'erp_account_sync_item.php':
         case 'erp_aging.php':
+        case 'erp_stock.php':
+        case 'erp_stock_minimums.php':
+        case 'erp_stock_counts.php':
+        case 'erp_stock_count.php':
+        case 'erp_accountant.php':
+        case 'erp_expenses.php':
+        case 'add_erp_expense.php':
+        case 'edit_erp_expense.php':
+        case 'erp_expense_categories.php':
+        case 'erp_profit.php':
+        case 'erp_vat_report.php':
         case 'add_erp_invoice.php':
         case 'add_erp_manual_invoice.php':
         case 'edit_erp_invoice_draft.php':
@@ -2443,9 +2521,22 @@ function output_menu($properties = false)
         case 'edit_erp_waybill.php':
         case 'erp_reconciliation.php':
         case 'erp_cashflow.php':
+        case 'erp_cheques.php':
+        case 'erp_cheque.php':
+        case 'erp_bank_statements.php':
+        case 'erp_bank_statement.php':
         case 'erp_export.php':
+        case 'erp_audit.php':
         case 'erp_settings.php':
             $active_menu = 22;
+            break;
+        case 'workspace.php':
+        case 'workspace_tasks.php':
+        case 'workspace_board.php':
+        case 'workspace_calendar.php':
+        case 'workspace_timeline.php':
+        case 'workspace_settings.php':
+            $active_menu = 23;
             break;
         case 'view_orders.php':
         case 'view_order.php':
@@ -2593,6 +2684,45 @@ function output_menu($properties = false)
             // nothing: there is no menu item to highlight any more. They are
             // reached from the sidebar of the settings modal.
 
+    }
+
+    // Where two rows sit in the rail: the workspace right under the
+    // dashboard, the ERP after the campaigns. The rows are built in the order
+    // of their ids above and drawn in the order of the array, so they are
+    // moved here; the ids, which the active-row switch reads, stay. When the
+    // row to follow is not there (no access to it), the nearest one before it
+    // is followed.
+    foreach (array(23 => array(0), 22 => array(9, 8, 7, 6, 5, 4, 3, 2, 1, 0)) as $move => $after_ids) {
+        if (!isset($menu_items[$move])) {
+            continue;
+        }
+
+        $after = null;
+
+        foreach ($after_ids as $candidate) {
+            if (isset($menu_items[$candidate])) {
+                $after = $candidate;
+                break;
+            }
+        }
+
+        if ($after === null) {
+            continue;
+        }
+
+        $moved = $menu_items[$move];
+        unset($menu_items[$move]);
+        $reordered = array();
+
+        foreach ($menu_items as $key => $options) {
+            $reordered[$key] = $options;
+
+            if ($key === $after) {
+                $reordered[$move] = $moved;
+            }
+        }
+
+        $menu_items = $reordered;
     }
 
     $output_all_menu_items = '';
@@ -3404,7 +3534,7 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
         if ($views > 0) {
             $facts[] = array(
                 'label' => lang('Page Views'),
-                'text'  => number_format($views) . ' · ' . lang('Last 30 days'));
+                'text'  => pg_format_number($views, 0) . ' · ' . lang('Last 30 days'));
         }
     }
 

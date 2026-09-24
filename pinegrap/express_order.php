@@ -62,6 +62,13 @@ $ghost = $_SESSION['software']['ghost'] ?? false;
 // callback POST carries the gateway's fields, not the form's.
 if (!$is_gateway_return) {
     $liveform->add_fields_to_session();
+
+    // Errors of the previous submit go before this one is checked; every
+    // check below re-marks what still applies. (submit_order() used to do
+    // this and so also discarded the errors raised here.)
+    if (method_exists($liveform, 'unmark_errors')) {
+        $liveform->unmark_errors();
+    }
 }
 
 $liveform->clear_notices();
@@ -159,8 +166,8 @@ if (!empty($_POST['quick_add'])) {
                             break;
                             
                         case 'donation':
-                            // remove commas from donation amount if they exist
-                            $donation_amount = str_replace(',', '', $_POST['quick_add_amount']);
+                            // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
+                            $donation_amount = pg_parse_amount($_POST['quick_add_amount']);
                             
                             // convert donation amount into USD
                             // Suppressing error for PHP 7.1+ support
@@ -193,7 +200,7 @@ if (!empty($_POST['quick_add'])) {
                     
                 // else ship to should have been selected or entered, so prepare error
                 } else {
-                    $liveform->mark_error('quick_add_ship_to', 'The item that you attempted to add requires a recipient.');
+                    $liveform->mark_error('quick_add_ship_to', lang('The item that you attempted to add requires a recipient.'));
                     $liveform->mark_error('quick_add_add_name', '');
                 }
                 
@@ -222,7 +229,7 @@ if (!empty($_POST['quick_add'])) {
             
         // else product was not found, so prepare error
         } else {
-            $liveform->mark_error('quick_add_product_id', 'The item that you selected could not be found. Please select a different item to add.');
+            $liveform->mark_error('quick_add_product_id', lang('The item that you selected could not be found. Please select a different item to add.'));
         }
         
     // else no quick add product was selected, so prepare error
@@ -291,8 +298,8 @@ if ($order_submitted == false) {
     foreach ($order_items as $key => $order_item) {
         // if this order item is a donation
         if (isset($_POST['donations'][$order_item['id']]) == true) {
-            // remove commas from donation amount if they exist
-            $donation_amount = str_replace(',', '', $_POST['donations'][$order_item['id']]);
+            // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
+            $donation_amount = pg_parse_amount($_POST['donations'][$order_item['id']]);
             
             // convert donation amount into USD
             // Suppressing error for PHP 7.1+ support
@@ -460,7 +467,7 @@ if ($order_submitted == false) {
                                 }
                             }
                             
-                            $liveform->add_notice('The ' . h($special_offer_code_label) . ' that you entered (' . $output_descriptions . ') is valid, but the offer cannot be applied to your ' . h($shopping_cart_label) . ' until the requirements of the offer are met.');
+                            $liveform->add_notice(lang(array('string' => 'The {var:1} that you entered ({var:2}) is valid, but the offer cannot be applied to your {var:3} until the requirements of the offer are met.', 'vars' => array(h($special_offer_code_label), $output_descriptions, h($shopping_cart_label)))));
                             
                             // record that a notice has been displayed to the shopper for this offer, so that we do not display a notice again in the future
                             $_SESSION['ecommerce']['offer_codes_that_generated_notices'][] = $offer_code;
@@ -469,14 +476,14 @@ if ($order_submitted == false) {
                     
                 // else an active offer does not exist, so add error
                 } else {
-                    $liveform->mark_error('special_offer_code', 'The ' . h($special_offer_code_label) . ' that you entered (' . h($special_offer_code) . ') is not available at this time. Please try a different code.');
+                    $liveform->mark_error('special_offer_code', lang(array('string' => 'The {var:1} that you entered ({var:2}) is not available at this time. Please try a different code.', 'vars' => array(h($special_offer_code_label), h($special_offer_code)))));
                     $liveform->set('special_offer_code', '');
                     $special_offer_code = '';
                 }
             
             // else an offer was not found, so prepare error
             } else {
-                $liveform->mark_error('special_offer_code', 'The ' . h($special_offer_code_label) . ' that you entered (' . h($special_offer_code) . ') could not be found. Please try a different code.');
+                $liveform->mark_error('special_offer_code', lang(array('string' => 'The {var:1} that you entered ({var:2}) could not be found. Please try a different code.', 'vars' => array(h($special_offer_code_label), h($special_offer_code)))));
                 $liveform->set('special_offer_code', '');
                 $special_offer_code = '';
             }
@@ -969,7 +976,7 @@ foreach ($order_items as $order_item) {
         if ($order_item['recurring_schedule_editable_by_customer'] == 1) {
             // if the order has been submitted, then require recurring schedule fields
             if ($order_submitted == true) {
-                $liveform->validate_required_field('recurring_payment_period_' . $order_item['id'], 'Frequency is required.');
+                $liveform->validate_required_field('recurring_payment_period_' . $order_item['id'], lang('Frequency is required.'));
                 
                 // if credit/debit card is enabled as a payment method and the payment gateway is set to ClearCommerce or First Data Global Gateway
                 // then require number of payments
@@ -981,12 +988,12 @@ foreach ($order_items as $order_item) {
                         || (ECOMMERCE_PAYMENT_GATEWAY == 'First Data Global Gateway')
                     )
                 ) {
-                    $liveform->validate_required_field('recurring_number_of_payments_' . $order_item['id'], 'Number of Payments is required.');
+                    $liveform->validate_required_field('recurring_number_of_payments_' . $order_item['id'], lang('Number of Payments is required.'));
                 }
                 
                 // if credit/debit card payment method is not enabled or the payment gateway is not ClearCommerce, then require start date
                 if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
-                    $liveform->validate_required_field('recurring_start_date_' . $order_item['id'], 'Start Date is required.');
+                    $liveform->validate_required_field('recurring_start_date_' . $order_item['id'], lang('Start Date is required.'));
                 }
             }
             
@@ -997,14 +1004,14 @@ foreach ($order_items as $order_item) {
                     case 'ClearCommerce':
                         // if the value is not 2-999, then mark error
                         if (($liveform->get_field_value('recurring_number_of_payments_' . $order_item['id']) < 2) || ($liveform->get_field_value('recurring_number_of_payments_' . $order_item['id']) > 999)) {
-                            $liveform->mark_error('recurring_number_of_payments_' . $order_item['id'], 'Number of Payments requires a value from 2-999.');
+                            $liveform->mark_error('recurring_number_of_payments_' . $order_item['id'], lang('Number of Payments requires a value from 2-999.'));
                         }
                         break;
                         
                     case 'First Data Global Gateway':
                         // if the value is not 1-99, then mark error
                         if (($liveform->get_field_value('recurring_number_of_payments_' . $order_item['id']) < 1) || ($liveform->get_field_value('recurring_number_of_payments_' . $order_item['id']) > 99)) {
-                            $liveform->mark_error('recurring_number_of_payments_' . $order_item['id'], 'Number of Payments requires a value from 1-99.');
+                            $liveform->mark_error('recurring_number_of_payments_' . $order_item['id'], lang('Number of Payments requires a value from 1-99.'));
                         }
                         break;
                 }
@@ -1020,7 +1027,7 @@ foreach ($order_items as $order_item) {
             ) {
                 // if the date is not valid, then mark error
                 if (validate_date($liveform->get_field_value('recurring_start_date_' . $order_item['id'])) == false) {
-                    $liveform->mark_error('recurring_start_date_' . $order_item['id'], 'Start Date must contain a valid date.');
+                    $liveform->mark_error('recurring_start_date_' . $order_item['id'], lang('Start Date must contain a valid date.'));
                     
                 // else the date is valid, so check if date is in the past
                 } else {
@@ -1028,7 +1035,7 @@ foreach ($order_items as $order_item) {
                     
                     // if the date is in the past, then mark error
                     if ($start_date_for_comparison < date('Y-m-d')) {
-                        $liveform->mark_error('recurring_start_date_' . $order_item['id'], 'Start Date may not contain a date in the past.');
+                        $liveform->mark_error('recurring_start_date_' . $order_item['id'], lang('Start Date may not contain a date in the past.'));
                     }
                 }
             }
@@ -1090,7 +1097,7 @@ foreach ($order_items as $order_item) {
         for ($quantity_number = 1; $quantity_number <= $number_of_gift_cards; $quantity_number++) {
             // If the order has been submitted, then require recipient email address.
             if ($order_submitted == true) {
-                $liveform->validate_required_field('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', 'Recipient Email is required.');
+                $liveform->validate_required_field('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', lang('Recipient Email is required.'));
             }
 
             // If there is not already an error for the recipient email address field,
@@ -1101,18 +1108,18 @@ foreach ($order_items as $order_item) {
                 && ($liveform->get_field_value('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address') != '')
                 && (validate_email_address($liveform->get_field_value('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address')) == false)
             ) {
-                $liveform->mark_error('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', 'Please enter a valid email address for Recipient Email.');
+                $liveform->mark_error('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', lang('Please enter a valid email address for Recipient Email.'));
             }
 
             // If a delivery date has been entered, then validate it.
             if ($liveform->get_field_value('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date') != '') {
                 // If the date is not valid, then add error.
                 if (validate_date($liveform->get_field_value('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date')) == false) {
-                    $liveform->mark_error('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'Delivery Date must contain a valid date.');
+                    $liveform->mark_error('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', lang('Delivery Date must contain a valid date.'));
                     
                 // Otherwise if the date is in the past, then add error.
                 } else if (prepare_form_data_for_input($liveform->get_field_value('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date'), 'date') < date('Y-m-d')) {
-                    $liveform->mark_error('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'Delivery Date may not contain a date in the past.');
+                    $liveform->mark_error('order_item_' . $order_item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', lang('Delivery Date may not contain a date in the past.'));
                 }
             }
 
@@ -1200,7 +1207,7 @@ foreach ($order_items as $order_item) {
                     
                     // if there is a field label, then prepare error message
                     if ($form_field['label']) {
-                        $error_message = $form_field['label'] . ' is required.';
+                        $error_message = lang(array('string' => '{var:1} is required.', 'vars' => $form_field['label']));
                     }
                     
                     $liveform->validate_required_field($html_field_name, $error_message);
@@ -1211,7 +1218,7 @@ foreach ($order_items as $order_item) {
                     case 'date':
                         // if value is not blank and date is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_date($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, 'Please enter a valid date for ' . $form_field['label']);
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $form_field['label'])));
                         }
                         
                         break;
@@ -1219,7 +1226,7 @@ foreach ($order_items as $order_item) {
                     case 'date and time':
                         // if value is not blank and date and time is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_date_and_time($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, 'Please enter a valid date &amp; time for ' . $form_field['label']);
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $form_field['label'])));
                         }
                         
                         break;
@@ -1227,7 +1234,7 @@ foreach ($order_items as $order_item) {
                     case 'email address':
                         // if value is not blank and e-mail address is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_email_address($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, 'Please enter a valid e-mail address for ' . $form_field['label']);
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => $form_field['label'])));
                         }
                         
                         break;
@@ -1235,7 +1242,7 @@ foreach ($order_items as $order_item) {
                     case 'time':
                         // if value is not blank and time is not valid, then mark error
                         if (($liveform->get_field_value($html_field_name) != '') && (validate_time($liveform->get_field_value($html_field_name)) == false)) {
-                            $liveform->mark_error($html_field_name, 'Please enter a valid time for ' . $form_field['label']);
+                            $liveform->mark_error($html_field_name, lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $form_field['label'])));
                         }
                         
                         break;
@@ -1433,34 +1440,34 @@ if (ECOMMERCE_SHIPPING) {
 
             $liveform->validate_required_field(
                 $prefix . 'first_name',
-                'First Name is required.' . $output_message_ship_to_name);
+                lang('First Name is required.') . $output_message_ship_to_name);
 
             $liveform->validate_required_field(
                 $prefix . 'last_name',
-                'Last Name is required.' . $output_message_ship_to_name);
+                lang('Last Name is required.') . $output_message_ship_to_name);
 
             $liveform->validate_required_field(
                 $prefix . 'address_1',
-                'Address 1 is required.' . $output_message_ship_to_name);
+                lang('Address 1 is required.') . $output_message_ship_to_name);
 
             $liveform->validate_required_field(
                 $prefix . 'city',
-                'City is required.' . $output_message_ship_to_name);
+                lang('City is required.') . $output_message_ship_to_name);
 
             $liveform->validate_required_field(
                 $prefix . 'country',
-                'Country is required.' . $output_message_ship_to_name);
+                lang('Country is required.') . $output_message_ship_to_name);
 
             if ($state_required) {
                 $liveform->validate_required_field(
                     $prefix . 'state',
-                    'State/Province is required.' . $output_message_ship_to_name);
+                    lang('State/Province is required.') . $output_message_ship_to_name);
             }
 
             if ($zip_code_required) {
                 $liveform->validate_required_field(
                     $prefix . 'zip_code',
-                    'Zip/Postal Code is required.' . $output_message_ship_to_name);
+                    lang('Zip/Postal Code is required.') . $output_message_ship_to_name);
             }
         }
 
@@ -1495,7 +1502,7 @@ if (ECOMMERCE_SHIPPING) {
 
                     // Otherwise product restriction message is not set, so use default message
                     } else {
-                        $message = 'Sorry, this item cannot be delivered to the specified shipping address. Please remove it from your order to continue.';
+                        $message = lang('Sorry, this item cannot be delivered to the specified shipping address. Please remove it from your order to continue.');
                     }
 
                     $message .= ' (' . $item['name'] . ' - ' . $item['short_description'] . ')';
@@ -1545,7 +1552,7 @@ if (ECOMMERCE_SHIPPING) {
         if ($order_submitted and $arrival_dates) {
             $liveform->validate_required_field(
                 $prefix . 'arrival_date',
-                'Requested Arrival Date is required.' . $output_message_ship_to_name);
+                lang('Requested Arrival Date is required.') . $output_message_ship_to_name);
         }
 
         $arrival_date_id = $liveform->get($prefix . 'arrival_date');
@@ -1567,7 +1574,7 @@ if (ECOMMERCE_SHIPPING) {
 
                     $liveform->validate_required_field(
                         $prefix . 'custom_arrival_date_' . $arrival_date['id'],
-                        'A custom arrival date is required, because you selected ' . h($arrival_date['name']) . '.' . $output_message_ship_to_name);
+                        lang(array('string' => 'A custom arrival date is required, because you selected {var:1}.', 'vars' => h($arrival_date['name']))) . $output_message_ship_to_name);
                     
                     // If there is not already an error for the custom date field, then validate date
                     if (!$liveform->check_field_error($prefix . 'custom_arrival_date_' . $arrival_date['id'])) {
@@ -1594,7 +1601,7 @@ if (ECOMMERCE_SHIPPING) {
                         ) {
                             $liveform->mark_error(
                                 $prefix . 'custom_arrival_date_' . $arrival_date['id'],
-                                'The custom arrival date is not valid.' . $output_message_ship_to_name);
+                                lang('The custom arrival date is not valid.') . $output_message_ship_to_name);
 
                             $arrival_date['arrival_date'] = '';
                         }
@@ -1611,7 +1618,7 @@ if (ECOMMERCE_SHIPPING) {
                     ) {
                         $liveform->mark_error(
                             $prefix . 'custom_arrival_date_' . $arrival_date['id'],
-                            'The custom arrival date that you entered is after the latest allowed arrival date. Please enter a date that is on or before ' . prepare_form_data_for_output($arrival_date['custom_maximum_arrival_date'], 'date') . '.' . $output_message_ship_to_name);
+                            lang(array('string' => 'The custom arrival date that you entered is after the latest allowed arrival date. Please enter a date that is on or before {var:1}.', 'vars' => prepare_form_data_for_output($arrival_date['custom_maximum_arrival_date'], 'date'))) . $output_message_ship_to_name);
 
                         $arrival_date['arrival_date'] = '';
                     }
@@ -1621,15 +1628,21 @@ if (ECOMMERCE_SHIPPING) {
             } else {
                 $liveform->mark_error(
                     $prefix . 'arrival_date',
-                    'Sorry, that arrival date is not currently available.' . $output_message_ship_to_name);
+                    lang('Sorry, that arrival date is not currently available.') . $output_message_ship_to_name);
             }
+        }
+
+        // No method is stored as 0, which the required check below would
+        // take for an answer.
+        if ((string)$liveform->get($prefix . 'method') !== '' && (int)$liveform->get($prefix . 'method') <= 0) {
+            $liveform->set($prefix . 'method', '');
         }
 
         // If the order has been submitted then require shipping method
         if ($order_submitted) {
             $liveform->validate_required_field(
                 $prefix . 'method',
-                'Please select a shipping method.' . $output_message_ship_to_name);
+                lang('Please select a shipping method.') . $output_message_ship_to_name);
         }
 
         $shipping_method_id = $liveform->get($prefix . 'method');

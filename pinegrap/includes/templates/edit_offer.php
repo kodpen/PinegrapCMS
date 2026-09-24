@@ -24,6 +24,7 @@ if (!defined('PG_INIT_LOADED')) {
         <div class="pg-toolbar mb-3">
             <span class="badge rounded-pill text-bg-secondary" id="pg-if-status"></span>
             <div class="pg-toolbar-grow"></div>
+            <?= $output_workspace_button ?? '' ?>
             <div class="dropdown ms-auto">
                 <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="dropdown" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end">

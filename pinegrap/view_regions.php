@@ -177,7 +177,7 @@ switch ($filter) {
                     
                 // else transition duration is not 0, so set to value
                 } else {
-                    $output_transition_duration = number_format($transition_duration);
+                    $output_transition_duration = pg_format_number($transition_duration, 0);
                 }
                 
                 $output_slideshow = '';

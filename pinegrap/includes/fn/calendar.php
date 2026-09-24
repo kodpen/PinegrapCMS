@@ -665,6 +665,12 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         }
         // sort events by date and time
         array_multisort($event_start_dates_and_times, SORT_ASC, $events);
+        // The calendar system widget lays the occurrences out itself: the
+        // monthly and weekly views hand back the expanded, sorted events
+        // instead of markup, as the upcoming view already could.
+        if (($return == 'array') && ($view != 'upcoming')) {
+            return $events;
+        }
         // Output Calendar based on View
         if ($view == 'upcoming') {
             // If the request asked for the data as an array instead of HTML, then just return that.

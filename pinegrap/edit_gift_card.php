@@ -51,7 +51,7 @@ if (!$_POST) {
 
     // If the form has not been submitted yet, then pre-populate fields with data.
     if ($liveform->field_in_session('id') == false) {
-        $liveform->assign_field_value('balance', number_format($gift_card['balance'] / 100, 2));
+        $liveform->assign_field_value('balance', pg_format_number($gift_card['balance'] / 100, 2));
 
         if ($gift_card['expiration_date'] != '0000-00-00') {
             $liveform->assign_field_value('expiration_date', prepare_form_data_for_output($gift_card['expiration_date'], 'date'));
@@ -206,8 +206,8 @@ if (!$_POST) {
                         <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     <td class="align-middle">' . h($redemption['order_number']) . '</td>
-                    <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . BASE_CURRENCY_SYMBOL . number_format($redemption['amount'] / 100, 2, '.', ',') . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . BASE_CURRENCY_SYMBOL . number_format($redemption['new_balance'] / 100, 2, '.', ',') . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td>' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
                     <td></td>
                 </tr>';
@@ -291,7 +291,7 @@ if (!$_POST) {
                                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'currency', 'data-inputmask-groupSeparator'=>',', 'data-inputmask-digits'=>'2','data-inputmask-digitsOptional'=>'false', 'data-inputmask-placeholder'=>'0')) . '
                                                 <label class="input-group-text" for="balance">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
-                                            <div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array(BASE_CURRENCY_SYMBOL . number_format($gift_card['amount'] / 100, 2) ))) . '</div>
+                                            <div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array(pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) ))) . '</div>
                                         </div>
                                         <div class="col-12 col-sm-4 col-xl-3 my-2">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
@@ -364,8 +364,8 @@ if (!$_POST) {
         $expiration_date = $liveform->get_field_value('expiration_date');
         $notes = $liveform->get_field_value('notes');
 
-        // Remove commas from balance.
-        $balance = str_replace(',', '', $balance);
+        // Read the balance either way it is typed (12,50 / 1,234.56).
+        $balance = pg_normalize_amount($balance);
 
         // If a balance was entered, and the value is not a number
         // greater than or equal to 0, then add error.

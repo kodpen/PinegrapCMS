@@ -43,18 +43,18 @@ $row = mysqli_fetch_assoc($result);
 $status = $row['status'];
 $order_number = $row['order_number'] ?? '';
 $order_date = get_absolute_time(array('timestamp' => $row['order_date']));
-$subtotal = number_format($row['subtotal'] / 100, 2, '.', ',');
-$discount = number_format($row['discount'] / 100, 2, '.', ',');
-$tax = number_format($row['tax'] / 100, 2, '.', ',');
-$shipping = number_format($row['shipping'] / 100, 2, '.', ',');
-$gift_card_discount = number_format($row['gift_card_discount'] / 100, 2, '.', ',');
-$surcharge = number_format($row['surcharge'] / 100, 2, '.', ',');
+$subtotal = $row['subtotal'] / 100;
+$discount = $row['discount'] / 100;
+$tax = $row['tax'] / 100;
+$shipping = $row['shipping'] / 100;
+$gift_card_discount = $row['gift_card_discount'] / 100;
+$surcharge = $row['surcharge'] / 100;
 $payment_installment = $row['payment_installment'];
-$installment_charges = number_format($row['installment_charges'] / 100, 2, '.', ',');
-$total = number_format($row['total'] / 100, 2, '.', ',');
+$installment_charges = $row['installment_charges'] / 100;
+$total = $row['total'] / 100;
 $total_cents = (int)$row['total'];
 $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
-$commission = number_format($row['commission'] / 100, 2, '.', ',');
+$commission = $row['commission'] / 100;
 $transaction_id = $row['transaction_id'];
 $authorization_code = $row['authorization_code'];
 $special_offer_code = $row['special_offer_code'];
@@ -328,7 +328,7 @@ if ($gift_card_discount > 0) {
     $output_gift_card_discount_row =
     '<div class="row" >
         <span class="translateable col text-muted">' . lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))) . ':</span>
-        <span class="col text-end">-' . BASE_CURRENCY_SYMBOL . $gift_card_discount . '</span>
+        <span class="col text-end">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</span>
     </div>';
 }
 $output_surcharge_row = '';
@@ -337,7 +337,7 @@ if ($surcharge > 0) {
     $output_surcharge_row =
         '<div class="row" >
             <span class="translateable col text-muted">' . lang('Surcharge') . ':</span>
-            <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $surcharge . '</span>
+            <span class="col text-end">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
         </div>';
 }
 //if there is installment charge and payment installment((1) is no installment)
@@ -350,7 +350,7 @@ if(($installment_charges != 0)&&($payment_installment >= 2)){
         </div>
         <div class="row" >
             <span class="translateable col text-muted">' . lang('Installment Charge') . ':</span>
-            <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $installment_charges . '</span>
+            <span class="col text-end">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
         </div>';
 }
 $output_payment_information = '';
@@ -430,7 +430,7 @@ if ($payment_method != '') {
                        ' . ($refunded_amount_cents > 0 ?
                            '<div class="row" style="color:#dc3545">
                                <span class="translateable col text-muted">' . lang('Total Refunded') . ':</span>
-                               <span class="col text-end">-' . BASE_CURRENCY_SYMBOL . number_format($refunded_amount_cents / 100, 2, '.', ',') . '</span>
+                               <span class="col text-end">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
                            </div>' : '') . '
                        <br/>
                    </div>
@@ -534,7 +534,7 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
                 </div>
                 <div class="row">
                     <span class="translateable col text-muted">' . lang('Commission') . ':</span>
-                    <span class="col text-end">' . BASE_CURRENCY_SYMBOL . $commission . '</span>
+                    <span class="col text-end">' . pg_format_money($commission, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>
             </div>
         </div>';
@@ -879,7 +879,7 @@ if ($ship_to_exists == true) {
                                     </div>
                                     <div class="row my-2">
                                         <span class="col text-muted">' . lang('Shipping Cost') . ':</span>
-                                        <span class="col text-end">' . BASE_CURRENCY_SYMBOL . number_format($ship_tos[$key]['shipping_cost'] / 100, 2, '.', ',') . '</span>
+                                        <span class="col text-end">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                     </div>
                                     ' . $packages . '
                                     <div class="row">
@@ -1063,7 +1063,7 @@ if ($ship_to_exists == true) {
                     
                 // else the number of payments is greater than 0, so show value
                 } else {
-                    $output_recurring_number_of_payments = number_format($recurring_number_of_payments);
+                    $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                 }
                 $output_recurring_number_of_payments = '
                     <div class="col-12 col-sm-4 col-md-auto">
@@ -1153,7 +1153,7 @@ if ($ship_to_exists == true) {
                     }
                     
                     $output_gift_cards .=
-                            '<fieldset' . $output_top_margin . '>
+                            '<fieldset' . ($output_top_margin ?? '') . '>
                                 ' . $output_legend . '
                                 <div style="padding: 0.7em">
                                     <table cellpadding="4" class="order_details table table-bordered w-auto">
@@ -1215,7 +1215,7 @@ if ($ship_to_exists == true) {
                     }
                     
                     $output_forms .=
-                        '<fieldset' . $output_top_margin . '>
+                        '<fieldset' . ($output_top_margin ?? '') . '>
                             ' . $output_legend . '
                             <div style="padding: 0.7em">
                                 <table cellpadding="4" class="order_details table table-bordered w-auto">
@@ -1430,7 +1430,7 @@ if ($ship_to_exists == true) {
                 
             // else the number of payments is greater than 0, so show value
             } else {
-                $output_recurring_number_of_payments = number_format($recurring_number_of_payments);
+                $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
             }
             $output_recurring_number_of_payments = '
                 <div class="col-12 col-sm-4 col-md-auto">
@@ -1520,7 +1520,7 @@ if ($ship_to_exists == true) {
                 }
                 
                 $output_gift_cards .=
-                        '<fieldset' . $output_top_margin . '>
+                        '<fieldset' . ($output_top_margin ?? '') . '>
                             ' . $output_legend . '
                             <div style="padding: 0.7em">
                                 <table cellpadding="4" class="order_details table table-bordered w-auto">
@@ -1584,7 +1584,7 @@ if ($ship_to_exists == true) {
                 }
                 
                 $output_forms .=
-                            '<fieldset' . $output_top_margin . '>
+                            '<fieldset' . ($output_top_margin ?? '') . '>
                                 ' . $output_legend . '
                                 <div style="padding: 0.7em">
                                     <table cellpadding="4" class="order_details table table-bordered w-auto">
@@ -1681,7 +1681,7 @@ if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
             </div>
             <div class="row" >
                 <span class="translateable col text-muted">' . lang('Amount') . ':</span>
-                <span class="col text-end">' . BASE_CURRENCY_SYMBOL . number_format($applied_gift_card['amount'] / 100, 2, '.', ',') . '</span>
+                <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
             </div>
             <div class="row" >
                 <span class="translateable col text-muted">' . lang('Givex Auth') . ' #:</span>
@@ -1689,7 +1689,7 @@ if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
             </div>
             <div class="row" >
                 <span class="translateable col text-muted">' . lang('Remaining Balance') . ':</span>
-                <span class="col text-end">' . BASE_CURRENCY_SYMBOL . number_format($applied_gift_card['new_balance'] / 100, 2, '.', ',') . '</span>
+                <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
             </div>';
     }
     
@@ -1865,16 +1865,16 @@ legend { font-size: .9em; font-weight: bold; }
     <!-- TOTALS -->
     <table style="margin-left:auto;margin-top:.5em;border-collapse:collapse">
         <tr><td style="padding:.15em .5em">' . lang('Subtotal') . '</td><td style="padding:.15em .5em;text-align:right">' . prepare_amount($subtotal) . '</td></tr>
-        ' . ($discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Discount') . '</td><td style="padding:.15em .5em;text-align:right">-' . BASE_CURRENCY_SYMBOL . $discount . '</td></tr>' : '') . '
-        ' . ($tax > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Tax') . '</td><td style="padding:.15em .5em;text-align:right">' . BASE_CURRENCY_SYMBOL . $tax . '</td></tr>' : '') . '
-        ' . ($shipping > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Shipping') . '</td><td style="padding:.15em .5em;text-align:right">' . BASE_CURRENCY_SYMBOL . $shipping . '</td></tr>' : '') . '
-        ' . ($gift_card_discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Gift Card') . '</td><td style="padding:.15em .5em;text-align:right">-' . BASE_CURRENCY_SYMBOL . $gift_card_discount . '</td></tr>' : '') . '
-        ' . ($surcharge > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Surcharge') . '</td><td style="padding:.15em .5em;text-align:right">' . BASE_CURRENCY_SYMBOL . $surcharge . '</td></tr>' : '') . '
-        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . BASE_CURRENCY_SYMBOL . $installment_charges . '</td></tr>' : '') . '
+        ' . ($discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Discount') . '</td><td style="padding:.15em .5em;text-align:right">-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($tax > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Tax') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($tax, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($shipping > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Shipping') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($gift_card_discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Gift Card') . '</td><td style="padding:.15em .5em;text-align:right">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($surcharge > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Surcharge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         <tr style="border-top:2px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount($total) . '</strong></td></tr>
         ' . ($refunded_amount_cents > 0 ?
-            '<tr><td style="padding:.15em .5em;color:#dc3545">' . lang('Total Refunded') . '</td><td style="padding:.15em .5em;text-align:right;color:#dc3545">-' . BASE_CURRENCY_SYMBOL . number_format($refunded_amount_cents / 100, 2, '.', ',') . '</td></tr>
-            <tr style="border-top:1px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Net Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount(number_format(($total_cents - $refunded_amount_cents) / 100, 2, '.', ',')) . '</strong></td></tr>'
+            '<tr><td style="padding:.15em .5em;color:#dc3545">' . lang('Total Refunded') . '</td><td style="padding:.15em .5em;text-align:right;color:#dc3545">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</td></tr>
+            <tr style="border-top:1px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Net Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></td></tr>'
         : '') . '
     </table>
 

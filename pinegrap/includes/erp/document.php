@@ -238,7 +238,10 @@ function erp_invoice_document_labels()
         'currency' => lang('Currency'),
         'exchange_rate' => lang(array('string' => 'Exchange Rate ({var:1})', 'vars' => array($base_currency))),
         'exchange_rate_date' => lang('Exchange Rate Date'),
-        'tax_id' => lang('VKN / TCKN'),
+        // The seller's number is named by the store's country, the buyer's by
+        // theirs (set per document, where the account is known).
+        'tax_id' => erp_tax_id_label(),
+        'account_tax_id' => erp_tax_id_label(),
         'tax_office' => lang('Tax Office'),
         'bill_to' => lang('BILL TO'),
         'description' => lang('Description'),
@@ -246,16 +249,19 @@ function erp_invoice_document_labels()
         'unit_price' => lang('Unit Price'),
         'discount' => lang('Discount'),
         'taxable_amount' => lang('Taxable Amount'),
-        'vat' => lang('VAT'),
-        'vat_amount' => lang('VAT Amount'),
+        'vat' => erp_tax_label('tax'),
+        'vat_amount' => erp_tax_label('amount'),
         'total' => lang('Total'),
         'no_lines' => lang('This document has no lines.'),
         'subtotal' => lang('Subtotal'),
         'shipping' => lang('Shipping'),
         'surcharge' => lang('Surcharge'),
-        'vat_total' => lang('Calculated VAT'),
+        'vat_total' => erp_tax_label('calculated'),
         'grand_total' => lang('Grand Total'),
         'grand_total_base' => lang(array('string' => 'Grand Total ({var:1} equivalent)', 'vars' => array($base_currency))),
+        'tax_inclusive' => lang('Total including taxes'),
+        'withholding' => lang('VAT withholding'),
+        'amount_payable' => lang('Amount payable'),
         'gift_card' => lang('Settled by gift card'),
         'internet_sale' => lang('INTERNET SALE DETAILS'),
         'sale_address' => lang('Address the sale was made at'),
@@ -279,26 +285,33 @@ function erp_invoice_document_labels()
  * captions travel with the data under `label`, and `language` is the site
  * language code for the html lang attribute.
  *
- * @param int $invoice_id
+ * A document that is not an invoice row - a quote (includes/erp/quotes.php)
+ * - passes its own row and lines as $source, shaped like an erp_invoices row
+ * with the live_* account columns and erp_invoice_items rows, and may name
+ * its own title and captions.
+ *
+ * @param int        $invoice_id
+ * @param array|null $source  ['invoice' => row, 'items' => rows, 'title' => string, 'label' => array]
  * @return array|false  false when the invoice does not exist
  */
-function erp_invoice_document_data($invoice_id)
+function erp_invoice_document_data($invoice_id, $source = null)
 {
     $invoice_id = (int) $invoice_id;
 
-    $invoice = ($invoice_id > 0)
+    $invoice = is_array($source) ? (array) $source['invoice'] : (($invoice_id > 0)
         ? db_item("SELECT i.*,
                 a.title AS live_title, a.is_person AS live_is_person,
                 a.tax_number AS live_tax_number, a.tax_office AS live_tax_office,
                 a.address AS live_address, a.district AS live_district,
                 a.city AS live_city, a.country_code AS live_country_code,
+                " . (waf_table_has_column('erp_accounts', 'state') ? 'a.state AS live_state,' : '') . "
                 a.postcode AS live_postcode, a.email AS live_email, a.phone AS live_phone,
                 o.order_number
             FROM erp_invoices i
             LEFT JOIN erp_accounts a ON i.account_id = a.id
             LEFT JOIN orders o ON i.order_id = o.id
             WHERE i.id = '" . $invoice_id . "' LIMIT 1")
-        : null;
+        : null);
 
     if (!is_array($invoice)) {
         return false;
@@ -325,10 +338,13 @@ function erp_invoice_document_data($invoice_id)
         'logo_url' => $logo['url'],
         'logo_data_uri' => $logo['data_uri'],
     );
+    $seller['locality'] = erp_seller_locality($seller);
 
     // The counterparty is the copy taken when the document was issued. An
-    // invoice written before the copy existed reads the live card instead;
-    // the copy keeps the postcode and district inside the address line.
+    // invoice written before the copy existed reads the live card instead.
+    // Since 4.64 the copy carries the district and the postcode of its own,
+    // which is what these templates print on their second address line; a
+    // copy from before that upgrade has them empty and prints as it did.
     if (trim((string) ($invoice['account_title'] ?? '')) !== '') {
         $account = array(
             'title' => (string) $invoice['account_title'],
@@ -336,10 +352,11 @@ function erp_invoice_document_data($invoice_id)
             'tax_number' => (string) $invoice['account_tax_number'],
             'tax_office' => (string) $invoice['account_tax_office'],
             'address' => (string) $invoice['account_address'],
-            'district' => '',
+            'district' => (string) ($invoice['account_district'] ?? ''),
             'city' => (string) $invoice['account_city'],
+            'state' => (string) ($invoice['account_state'] ?? ''),
             'country' => (string) $invoice['account_country_code'],
-            'postcode' => '',
+            'postcode' => (string) ($invoice['account_postcode'] ?? ''),
             'email' => (string) $invoice['account_email'],
             'phone' => (string) $invoice['live_phone'],
         );
@@ -352,12 +369,15 @@ function erp_invoice_document_data($invoice_id)
             'address' => (string) $invoice['live_address'],
             'district' => (string) $invoice['live_district'],
             'city' => (string) $invoice['live_city'],
+            'state' => (string) ($invoice['live_state'] ?? ''),
             'country' => (string) $invoice['live_country_code'],
             'postcode' => (string) $invoice['live_postcode'],
             'email' => (string) $invoice['live_email'],
             'phone' => (string) $invoice['live_phone'],
         );
     }
+
+    $account['locality'] = erp_address_locality($account, $account['country']);
 
     $doc_type = (string) $invoice['doc_type'];
     $is_return = ($doc_type === 'return');
@@ -414,7 +434,7 @@ function erp_invoice_document_data($invoice_id)
         'due_date' => erp_document_date($invoice['due_date']),
         'doc_type' => $doc_type,
         'is_return' => $is_return,
-        'title' => $titles[$doc_type] ?? $titles['invoice'],
+        'title' => (is_array($source) && isset($source['title'])) ? (string) $source['title'] : ($titles[$doc_type] ?? $titles['invoice']),
         'status' => (string) $invoice['status'],
         'status_label' => $status_labels[$invoice['status']] ?? (string) $invoice['status'],
         'order_number' => $order_number,
@@ -422,10 +442,12 @@ function erp_invoice_document_data($invoice_id)
         'currency' => $currency,
         'is_foreign' => $is_foreign,
         'base_currency' => erp_base_currency(),
-        'exchange_rate' => $is_foreign ? erp_fx_rate_out((float) $invoice['exchange_rate']) : '',
+        'exchange_rate' => $is_foreign ? erp_fx_rate_text((float) $invoice['exchange_rate']) : '',
         'exchange_rate_date' => $is_foreign ? erp_document_date($invoice['exchange_rate_date']) : '',
         'grand_total_base' => $is_foreign ? erp_money_out((int) $invoice['grand_total_base']) : '',
-        'is_internet_sale' => ((int) $invoice['is_internet_sale'] === 1),
+        // The internet-sale box is what a Turkish e-Arşiv invoice has to
+        // carry; a store outside Turkey that sells online prints none.
+        'is_internet_sale' => ((int) $invoice['is_internet_sale'] === 1) && erp_turkish_features(),
         'payment_method' => $payment_method,
         'payment_method_label' => $payment_method_label,
         'payment_date' => erp_document_date($invoice['payment_date']),
@@ -439,27 +461,41 @@ function erp_invoice_document_data($invoice_id)
         'supplier_invoice_date' => erp_document_date($invoice['supplier_invoice_date'] ?? ''),
     );
 
-    $rows = (array) db_items("SELECT * FROM erp_invoice_items
+    $rows = is_array($source) ? (array) ($source['items'] ?? array()) : (array) db_items("SELECT * FROM erp_invoice_items
         WHERE invoice_id = '" . $invoice_id . "' ORDER BY line_no ASC, id ASC");
 
     $lines = array();
+    $tax2_name = (erp_tax2_name() !== '') ? erp_tax2_name() : lang('Second tax');
 
     foreach ($rows as $row) {
         $discount = (int) $row['discount_amount'];
         $base = (int) $row['line_total'] - $discount;
         $tax = (int) $row['tax_total'];
+        // A line's tax_total holds both taxes when it carries a second one;
+        // the rate column names both rates.
+        $tax2_rate = (float) ($row['tax2_rate'] ?? 0);
+        $tax_rate_text = erp_percent_text($row['tax_rate']) . (($tax2_rate > 0) ? (' + ' . erp_percent_text($tax2_rate)) : '');
+
+        $withholding_code = trim((string) ($row['withholding_code'] ?? ''));
 
         $lines[] = array(
             'no' => (int) $row['line_no'],
             'description' => (string) $row['description'],
-            'quantity' => rtrim(rtrim(number_format((float) $row['quantity'], 4, '.', ''), '0'), '.'),
+            'withholding' => ($withholding_code !== '')
+                ? lang(array('string' => 'VAT withholding {var:1}: {var:2}', 'vars' => array(
+                    erp_withholding_label($withholding_code, (float) $row['withholding_rate'], false),
+                    $money((int) ($row['withholding_amount'] ?? 0)))))
+                : '',
+            'quantity' => erp_quantity_text($row['quantity']),
             'unit' => (string) $row['unit_code'],
             'unit_price' => $money((int) $row['unit_price']),
             'discount' => ($discount > 0) ? $money($discount) : '',
             'has_discount' => ($discount > 0),
             'base' => $money($base),
-            'tax_rate' => '%' . rtrim(rtrim((string) $row['tax_rate'], '0'), '.'),
+            'tax_rate' => $tax_rate_text,
             'tax' => $money($tax),
+            'tax2_rate' => ($tax2_rate > 0) ? erp_percent_text($tax2_rate) : '',
+            'tax2' => ($tax2_rate > 0) ? $money((int) ($row['tax2_amount'] ?? 0)) : '',
             'total' => $money($base + $tax),
         );
     }
@@ -470,7 +506,16 @@ function erp_invoice_document_data($invoice_id)
         'shipping_total' => $money((int) $invoice['shipping_total']),
         'surcharge_total' => $money((int) $invoice['surcharge_total']),
         'gift_card_total' => $money((int) $invoice['gift_card_total']),
-        'tax_total' => $money((int) $invoice['tax_total']),
+        // The first tax alone; a second one, where the document carries it,
+        // has its own line (tax2_total) and both are in tax_total.
+        'tax_total' => $money((int) $invoice['tax_total'] - (int) ($invoice['tax2_total'] ?? 0)),
+        'tax2_total' => $money((int) ($invoice['tax2_total'] ?? 0)),
+        'has_tax2' => ((int) ($invoice['tax2_total'] ?? 0) !== 0),
+        // With withholding the grand total is what the buyer pays the
+        // seller; the document also shows the total before it comes off.
+        'withholding_total' => $money((int) ($invoice['withholding_total'] ?? 0)),
+        'tax_inclusive' => $money((int) $invoice['grand_total'] + (int) ($invoice['withholding_total'] ?? 0)),
+        'has_withholding' => ((int) ($invoice['withholding_total'] ?? 0) !== 0),
         'grand_total' => $money((int) $invoice['grand_total']),
         'grand_total_base' => $is_foreign ? erp_money_out((int) $invoice['grand_total_base']) : '',
         'has_discount' => ((int) $invoice['discount_total'] !== 0),
@@ -485,8 +530,16 @@ function erp_invoice_document_data($invoice_id)
         'invoice' => $document,
         'lines' => $lines,
         'totals' => $totals,
-        'label' => erp_invoice_document_labels(),
+        // A line's tax amount holds both taxes on a document that carries
+        // the second one, and its column is named for both.
+        'label' => array_merge(erp_invoice_document_labels(), array(
+            'account_tax_id' => erp_tax_id_label((string) ($account['country'] ?? '')),
+            'tax2' => $tax2_name,
+            'vat' => erp_line_tax_label('tax', $totals['has_tax2']),
+            'vat_amount' => erp_line_tax_label('amount', $totals['has_tax2']),
+        ), is_array($source) ? (array) ($source['label'] ?? array()) : array()),
         'language' => defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : 'en',
+        'paper' => erp_paper_size(),
         'generated_at' => (string) prepare_form_data_for_output(date('Y-m-d H:i:s'), 'date and time', false),
     );
 }
@@ -540,6 +593,21 @@ function erp_invoice_html($invoice_id, $template = null)
 }
 
 /**
+ * The paper a document is laid out on: US Letter in the countries that use
+ * it (the United States, Canada, Mexico, the Philippines and much of Latin
+ * America), A4 everywhere else. The built-in templates take it through
+ * {{paper}} in their @page rule; a template may still name its own size.
+ *
+ * @return string  A4 | letter
+ */
+function erp_paper_size()
+{
+    $letter = array('US', 'CA', 'MX', 'PH', 'CL', 'CO', 'VE', 'CR', 'GT', 'DO', 'PR', 'PA', 'SV', 'NI', 'HN');
+
+    return in_array(erp_account_country(''), $letter, true) ? 'letter' : 'A4';
+}
+
+/**
  * Turn the rendered document into PDF bytes with the vendored dompdf.
  *
  * Remote fetching and embedded PHP are off and the renderer is rooted at the
@@ -586,7 +654,7 @@ function erp_invoice_pdf($html)
 
     $dompdf = new \Dompdf\Dompdf($options);
     $dompdf->loadHtml(erp_invoice_pdf_prepare_html((string) $html), 'UTF-8');
-    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->setPaper(erp_paper_size(), 'portrait');
     $dompdf->render();
 
     return $dompdf->output();

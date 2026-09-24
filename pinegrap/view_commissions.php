@@ -344,7 +344,7 @@ foreach ($commissions as $commission) {
             <td class="align-middle">' . h($commission['affiliate_code']) . '</td>
             <td class="align-middle">' . $commission['reference_code'] . '</td>
             <td class="align-middle"><span class="badge ' . $output_status_classes . '">' . lang(ucwords($commission['status'])) . '</span></td>
-            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($commission['amount'] / 100, 2, '.', ',') . '</td>
+            <td class="align-middle text-end">' . pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle">' . lang(ucwords($commission['period'])) . '</td>
             <td class="align-middle">' . $commission['order_number'] . '</td>
             <td class="align-middle">' . h($commission['product_name']) . h($commission['product_short_description']) . '</td>
@@ -510,22 +510,22 @@ $output_header_with_options . '
                             <div class="row">
                                 <div class="col-12 text-center">
                                     <h5>' . lang('Pending Total') . '</h5>
-                                    <p class="fw-bolder text-dark">' . BASE_CURRENCY_SYMBOL . number_format($pending_total / 100, 2, '.', ',') . '</p>
+                                    <p class="fw-bolder text-dark">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center">
                                     <h5>' . lang('Payable Total') . '</h5>
-                                    <p class="fw-bolder text-primary">' . BASE_CURRENCY_SYMBOL . number_format($payable_total / 100, 2, '.', ',') . '</p>
+                                    <p class="fw-bolder text-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center ">
                                     <h5>' . lang('Ineligible Total') . '</h5>
-                                    <p class="fw-bolder text-danger">' . BASE_CURRENCY_SYMBOL . number_format($ineligible_total / 100, 2, '.', ',') . '</p>
+                                    <p class="fw-bolder text-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center ">
                                     <h5>' . lang('Paid Total') . '</h5>
-                                    <p class="fw-bolder text-success">' . BASE_CURRENCY_SYMBOL . number_format($paid_total / 100, 2, '.', ',') . '</p>
+                                    <p class="fw-bolder text-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                 </div>
                             </div>
                         </div>

@@ -512,6 +512,9 @@ define('CHAT_WIDGET_TITLE', isset($row['chat_widget_title']) ? $row['chat_widget
 // until the operator enables them.
 define('CHAT_ALLOW_FILES', isset($row['chat_allow_files']) ? (int) $row['chat_allow_files'] : 0);
 define('CHAT_ALLOW_IMAGES', isset($row['chat_allow_images']) ? (int) $row['chat_allow_images'] : 0);
+// Voice messages and audio files (2026.4.4): a separate switch from files -
+// allowing documents is not the same decision as handing out a microphone.
+define('CHAT_ALLOW_AUDIO', isset($row['chat_allow_audio']) ? (int) $row['chat_allow_audio'] : 0);
 define('CHAT_VISITOR_IMAGE_LIMIT', isset($row['chat_visitor_image_limit']) ? (int) $row['chat_visitor_image_limit'] : 5);
 // Scheduled-job dispatch (2026.4.2), same pattern: off when the columns are
 // not there yet, so the general job on an installation that has not run the
@@ -648,6 +651,14 @@ define('PARASUT_USERNAME', $row['parasut_username'] ?? '');
 // (_parasut_credentials()) rather than being unwrapped into a constant that
 // every page of the site would carry.
 define('PARASUT_CREDENTIALS_ENC', $row['parasut_credentials_enc'] ?? '');
+// Workspace module: channels, tasks and the planning board. Read defensively for
+// the same reason as the ERP switch below - the files can land before the columns.
+// The day and the week are the defaults a person's own profile falls back to; the
+// week is a bit mask with Monday as bit 0.
+define('WORKSPACE_ENABLED', isset($row['workspace_enabled']) ? (int) $row['workspace_enabled'] : 0);
+define('WS_DAY_MINUTES', isset($row['ws_day_minutes']) ? (int) $row['ws_day_minutes'] : 480);
+define('WS_WORKDAYS', isset($row['ws_workdays']) ? (int) $row['ws_workdays'] : 31);
+define('WS_DEFAULT_TASK_MINUTES', isset($row['ws_default_task_minutes']) ? (int) $row['ws_default_task_minutes'] : 60);
 // ERP module. Read defensively: code lands before the schema does on a site that
 // has its files replaced and its upgrade run afterwards, and a missing column has
 // to read as "off" rather than as a notice on every page.
@@ -659,6 +670,10 @@ define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id'])
 // The account a counter sale with no customer is billed to (4.59); 0 = none named.
 define('ERP_WALKIN_ACCOUNT_ID', isset($row['erp_walkin_account_id']) ? (int) $row['erp_walkin_account_id'] : 0);
 define('ERP_EINVOICE_SCENARIO', $row['erp_einvoice_scenario'] ?? 'basic');
+// A document created at the e-document provider is handed to the tax authority
+// in the same step unless the store says otherwise (4.63). On by default: a
+// button that says "send" is expected to finish the job.
+define('ERP_EDOC_AUTOSEND', isset($row['erp_edoc_autosend']) ? (int) $row['erp_edoc_autosend'] : 1);
 define('ERP_WEB_ADDRESS', $row['erp_web_address'] ?? '');
 define('ERP_SELLER_VKN', $row['erp_seller_vkn'] ?? '');
 define('ERP_SELLER_TAX_OFFICE', $row['erp_seller_tax_office'] ?? '');

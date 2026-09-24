@@ -38,11 +38,11 @@ if (!defined('PG_INIT_LOADED')) {
 <?php else: ?>
 <?php if ($limited): ?>
 <p>
-	<strong><?=lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(number_format($number_of_results), h($query))))?></strong>
+	<strong><?=lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(pg_format_number($number_of_results, 0), h($query))))?></strong>
 </p>
 <?php else: ?>
 <p>
-	<strong><?=($number_of_results > 1) ? lang(array('string' => 'Found {var:1} results for: {var:2}', 'vars' => array(number_format($number_of_results), h($query)))) : lang(array('string' => 'Found {var:1} result for: {var:2}', 'vars' => array(number_format($number_of_results), h($query))))?></strong>
+	<strong><?=($number_of_results > 1) ? lang(array('string' => 'Found {var:1} results for: {var:2}', 'vars' => array(pg_format_number($number_of_results, 0), h($query)))) : lang(array('string' => 'Found {var:1} result for: {var:2}', 'vars' => array(pg_format_number($number_of_results, 0), h($query))))?></strong>
 </p>
 <?php endif ?>
 <?php if ($featured_items): ?>

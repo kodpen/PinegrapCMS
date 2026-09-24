@@ -48,6 +48,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_account.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/custom_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/signature.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/files.php');

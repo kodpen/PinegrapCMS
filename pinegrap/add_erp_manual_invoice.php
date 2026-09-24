@@ -40,8 +40,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('New Invoice'),
-        'extra_classes' => 'erp erp_invoices',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_invoices',
+        'icon' => 'erp',
         'heading' => lang('New Invoice'),
         'heading_description' => lang('Type in a sales or purchase invoice. Keep it as a draft, or issue it and take the next number.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
@@ -63,8 +63,8 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-save me-2"></span><span class="btn-text">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><span class="bi bi-receipt me-2"></span><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Issue the Invoice') . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -115,6 +115,10 @@ if (!$_POST) {
         $liveform->remove_form();
         $liveform_document = new liveform('edit_erp_invoice');
         $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $result['full_number'])));
+
+        if (function_exists('erp_credit_issued_warning') && (($credit_warning = erp_credit_issued_warning((int) $result['invoice_id'])) !== '')) {
+            $liveform_document->add_warning(h($credit_warning));
+        }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . (int) $result['invoice_id']);
     }

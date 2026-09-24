@@ -152,7 +152,7 @@ foreach ($containers as $container) {
     $output_cost = '';
 
     if ($container['cost'] > 0) {
-        $output_cost = BASE_CURRENCY_SYMBOL . number_format($container['cost'], 2);
+        $output_cost = pg_format_money($container['cost'], BASE_CURRENCY_SYMBOL);
     }
 
     $created_username = '';

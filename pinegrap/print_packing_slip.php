@@ -198,7 +198,7 @@ foreach ($order_items as $order_item) {
         '<tr>
             <td>' . h($order_item['name']) . '</td>
             <td>' . h($order_item['short_description']) . '</td>
-            <td>' . number_format($order_item['quantity']) . '</td>
+            <td>' . pg_format_number($order_item['quantity'], 0) . '</td>
             ' . $output_custom_field_1_cell . '
             ' . $output_custom_field_2_cell . '
             ' . $output_custom_field_3_cell . '

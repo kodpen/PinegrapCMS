@@ -423,7 +423,7 @@ if (!defined('PG_INIT_LOADED')) {
 							// then just show uneditable quantity amount.
 							if ($item['added_by_offer']):
 							?>
-						<?=number_format($item['quantity'])?>
+						<?=pg_format_number($item['quantity'], 0)?>
 						<?php
 							// Otherwise the item was not added by an offer
 							// so allow customer to change quantity.
@@ -1068,7 +1068,7 @@ if (!defined('PG_INIT_LOADED')) {
 							// (i.e. don't allow customer to change quantity).
 							if ($item['added_by_offer'] or $item['in_nonrecurring']):
 							?>
-						<?=number_format($item['quantity'])?>
+						<?=pg_format_number($item['quantity'], 0)?>
 						<?php
 							// Otherwise allow customer to change quantity.
 							else:

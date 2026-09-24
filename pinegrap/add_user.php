@@ -82,7 +82,12 @@ if (!$_POST) {
         // rights that sit behind it belong in the panel.
         $permission_panels['erp_switches'] =
             pg_user_permission_switch('manage_erp_cash', '1', false, lang('See cash and bank'), lang('Balances, receipts and payments.'))
-            . pg_user_permission_switch('manage_erp_settings', '1', false, lang('Change ERP settings'), lang('Numbering, default accounts and the Parasut connection.'));
+            . pg_user_permission_switch('manage_erp_settings', '1', false, lang('Change ERP settings'), lang('Numbering, default accounts and the Parasut connection.'))
+            . (pg_user_has_erp_readonly_column() ? pg_user_permission_switch('manage_erp_readonly', '1', false, lang('Read only (accountant)'), lang('Every ERP screen to read and the accountant\'s pack to download; nothing can be issued, paid or changed.')) : '');
+    }
+
+    if (pg_user_permission_ws_available()) {
+        $permission_panels['workspace_switches'] = pg_user_permission_ws_switches();
     }
 
     if (ADS === true) {
@@ -361,6 +366,14 @@ if (!$_POST) {
     // Modern password hash plus the algo stamp; see pg_password_insert_fragments().
     $sql_password = pg_password_insert_fragments($random_password);
 
+    // The workspace rights, when their columns exist.
+    $sql_ws_columns = pg_user_permission_ws_sql('columns');
+    $sql_ws_values = pg_user_permission_ws_sql('values');
+
+    // The ERP's read-only right, when its column exists.
+    $sql_erp_readonly_column = pg_user_erp_readonly_sql('columns');
+    $sql_erp_readonly_value = pg_user_erp_readonly_sql('values');
+
     // insert row into user table
     $query =
         "INSERT INTO user (
@@ -386,6 +399,8 @@ if (!$_POST) {
             manage_erp,
             manage_erp_cash,
             manage_erp_settings,
+            $sql_erp_readonly_column
+            $sql_ws_columns
             user_set_offline_payment,
             user_publish_calendar_events,
             user_set_page_type_email_a_friend,
@@ -419,6 +434,8 @@ if (!$_POST) {
             '" . e($_POST['manage_erp'] ?? '') . "',
             '" . e($_POST['manage_erp_cash'] ?? '') . "',
             '" . e($_POST['manage_erp_settings'] ?? '') . "',
+            $sql_erp_readonly_value
+            $sql_ws_values
             '" . escape($_POST['set_offline_payment'] ?? '') . "',
             '" . escape($_POST['publish_calendar_events'] ?? '') . "',
             '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
@@ -655,6 +672,7 @@ if (!$_POST) {
             || ($_POST['manage_ecommerce'] == 'yes')
             || $_POST['manage_ecommerce_reports']
             || ($_POST['manage_erp'] ?? '')
+            || ($_POST['manage_workspace'] ?? '')
             || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
         ) {
             // The link leaves the request in an e-mail, so it is built from the

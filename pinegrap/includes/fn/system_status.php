@@ -878,7 +878,7 @@ function pg_write_permission_repair()
     if (count($failed) === 0) {
         $message = lang(array(
             'string' => '{var:1} folder(s) and file(s) are writable now.',
-            'vars' => number_format($fixed),
+            'vars' => pg_format_number($fixed, 0),
         ));
 
         // The listing is capped; a tree with more than two hundred refusing
@@ -886,7 +886,7 @@ function pg_write_permission_repair()
         if ($more > 0) {
             $message .= ' ' . lang(array(
                 'string' => '{var:1} more were not listed this time; press Fix again.',
-                'vars' => number_format($more),
+                'vars' => pg_format_number($more, 0),
             ));
         }
 
@@ -894,7 +894,7 @@ function pg_write_permission_repair()
     } else {
         $message = lang(array(
             'string' => '{var:1} made writable, {var:2} could not be changed because they belong to another system user: {var:3}. Give them to the web server user, or set the permission from the hosting panel or over FTP.',
-            'vars' => array(number_format($fixed), number_format(count($failed)), implode(', ', array_slice(array_keys($failed), 0, 8)) . ((count($failed) > 8) ? ', …' : '')),
+            'vars' => array(pg_format_number($fixed, 0), pg_format_number(count($failed), 0), implode(', ', array_slice(array_keys($failed), 0, 8)) . ((count($failed) > 8) ? ', …' : '')),
         ));
 
         $status = ($fixed > 0) ? 'partial' : 'error';
@@ -1846,7 +1846,7 @@ function get_system_status_checks()
             'The web server configuration file is missing rules that keep private folders from being downloaded. Open the panel to see which, and use the tile below to add them.',
             lang(array(
                 'string' => '{var:1} missing',
-                'vars'   => number_format(count($server_rules_detail)),
+                'vars'   => pg_format_number(count($server_rules_detail), 0),
             )),
             '',
             $server_rules_detail
@@ -1862,7 +1862,7 @@ function get_system_status_checks()
             'The private folders are protected. Some recommended rules are not in the file yet — open the panel to see which.',
             lang(array(
                 'string' => '{var:1} missing',
-                'vars'   => number_format(count($server_rules_detail)),
+                'vars'   => pg_format_number(count($server_rules_detail), 0),
             )),
             '',
             $server_rules_detail
@@ -1924,7 +1924,7 @@ function get_system_status_checks()
             'The web server cannot write into some folders of the software, so an update cannot add or replace files there and the site keeps old code next to new. Open the panel to see which; Fix sets them writable (0777 folders, 0666 files).',
             lang(array(
                 'string' => '{var:1} folder(s), {var:2} file(s)',
-                'vars'   => array(number_format($permissions['directories_count']), number_format($permissions['files_count'])),
+                'vars'   => array(pg_format_number($permissions['directories_count'], 0), pg_format_number($permissions['files_count'], 0)),
             )),
             '',
             $permissions_detail
@@ -1941,7 +1941,7 @@ function get_system_status_checks()
             'Every folder is writable, but some files are not. The updater replaces such a file by deleting it first, so an update still lands; Fix makes them writable outright.',
             lang(array(
                 'string' => '{var:1} file(s)',
-                'vars'   => number_format($permissions['files_count']),
+                'vars'   => pg_format_number($permissions['files_count'], 0),
             )),
             '',
             $permissions_detail
@@ -1956,7 +1956,7 @@ function get_system_status_checks()
             'The web server can write to every folder and file of the software, so an update can replace all of it.',
             lang(array(
                 'string' => '{var:1} folders',
-                'vars'   => number_format($permissions['checked_directories']),
+                'vars'   => pg_format_number($permissions['checked_directories'], 0),
             )),
             '',
             array()
@@ -2153,7 +2153,7 @@ function get_system_status_checks()
                 rtrim(lang('Scheduled task(s) that have stopped running:')) . ' ' . implode(', ', $cron_stalled),
                 lang(array(
                     'string' => '{var:1} stopped',
-                    'vars' => number_format(count($cron_stalled)),
+                    'vars' => pg_format_number(count($cron_stalled), 0),
                 )),
                 '',
                 $cron_detail
@@ -2167,7 +2167,7 @@ function get_system_status_checks()
                 'Scheduled tasks are running on time.',
                 lang(array(
                     'string' => '{var:1} running',
-                    'vars' => number_format($cron_ok),
+                    'vars' => pg_format_number($cron_ok, 0),
                 )),
                 '',
                 $cron_detail
@@ -2308,7 +2308,7 @@ function get_system_status_checks()
                     'An event notification address stopped answering and is no longer being tried. The system it feeds is not hearing about orders.',
                     lang(array(
                         'string' => '{var:1} not delivering',
-                        'vars' => number_format($webhook_failing),
+                        'vars' => pg_format_number($webhook_failing, 0),
                     )),
                     $webhook_href,
                     $webhook_detail
@@ -2325,7 +2325,7 @@ function get_system_status_checks()
                     'Some event notifications could not be delivered and were given up on. The address is answering again, so the ones that follow will arrive.',
                     lang(array(
                         'string' => '{var:1} undelivered',
-                        'vars' => number_format($webhook_stuck),
+                        'vars' => pg_format_number($webhook_stuck, 0),
                     )),
                     $webhook_href,
                     $webhook_detail
@@ -2342,7 +2342,7 @@ function get_system_status_checks()
                     'Event notifications are being delivered.',
                     lang(array(
                         'string' => '{var:1} active',
-                        'vars' => number_format($webhook_active),
+                        'vars' => pg_format_number($webhook_active, 0),
                     )),
                     $webhook_href,
                     $webhook_detail
@@ -2363,7 +2363,7 @@ function get_system_status_checks()
                     'Every event subscription is switched off, or the application that registered it is gone. Nothing is being delivered.',
                     lang(array(
                         'string' => '{var:1} stopped',
-                        'vars' => number_format($webhook_total),
+                        'vars' => pg_format_number($webhook_total, 0),
                     )),
                     $webhook_href,
                     $webhook_detail

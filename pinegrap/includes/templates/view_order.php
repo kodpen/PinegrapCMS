@@ -273,7 +273,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<dt>Number of Payments</dt>
 						<dd>
 							<?php if ($item['recurring_number_of_payments']): ?>
-							<?=number_format($item['recurring_number_of_payments'])?>
+							<?=pg_format_number($item['recurring_number_of_payments'], 0)?>
 							<?php else: ?>
 							[no limit]
 							<?php endif ?>
@@ -367,14 +367,14 @@ if (!defined('PG_INIT_LOADED')) {
 						if ($item['selection_type'] != 'donation'):
 						
 						?>
-					<?=number_format($item['quantity'])?>
+					<?=pg_format_number($item['quantity'], 0)?>
 					<?php endif ?>
 				</td>
                 <?php if($status != 'incomplete'):?>
 				    <?php if ($shipped_quantities_exist):?>
                     	<td class="text-center">
                             <?php if ($item['shipped_quantity'] > 0):?>
-                            	(<?=number_format($item['shipped_quantity'])?>)
+                            	(<?=pg_format_number($item['shipped_quantity'], 0)?>)
                             <?php else:?>
                             	-
                             <?php endif ?>
@@ -719,7 +719,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<dt>Number of Payments</dt>
 						<dd>
 							<?php if ($item['recurring_number_of_payments']): ?>
-							<?=number_format($item['recurring_number_of_payments'])?>
+							<?=pg_format_number($item['recurring_number_of_payments'], 0)?>
 							<?php else: ?>
 							[no limit]
 							<?php endif ?>
@@ -790,14 +790,14 @@ if (!defined('PG_INIT_LOADED')) {
 						if ($item['selection_type'] != 'donation'):
 						
 						?>
-					<?=number_format($item['quantity'])?>
+					<?=pg_format_number($item['quantity'], 0)?>
 					<?php endif ?>
 				</td>
                 <?php if($status != 'incomplete'):?>
 				    <?php if ($shipped_quantities_exist):?>
                     	<td class="text-center">
                             <?php if ($item['shipped_quantity'] > 0):?>
-                            	(<?=number_format($item['shipped_quantity'])?>)
+                            	(<?=pg_format_number($item['shipped_quantity'], 0)?>)
                             <?php else:?>
                             	-
                             <?php endif ?>

@@ -2529,8 +2529,11 @@ elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 
             AND (page_id = '" . escape($page_id) . "')";
 	$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-	// if calendar event is not allowed in this view, then output error
-	if (mysqli_num_rows($result) == 0)
+	// if calendar event is not allowed in this view, then output error. A
+	// designed page carrying a calendar event widget answers with the
+	// widget's own calendars.
+	if ((mysqli_num_rows($result) == 0)
+		&& !(function_exists('pg_sw_calendar_event_page_allows') && pg_sw_calendar_event_page_allows($page_id, (int) $_GET['id'])))
 	{
 		output_error(lang('The requested calendar event is not allowed in this calendar event view.'), 403);
 	}
@@ -2636,7 +2639,7 @@ else
 		$get_access_cp = $_GET['edit'];
 	}
 	// if the user is logged in and $get_access_cp is not set to 'no' and the user has control panel access, then remember that the toolbar should be outputted
-	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
+	if ((isset($user) == true) && ($get_access_cp != 'no') && (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)))
 	{
 		$toolbar = true;
 	}

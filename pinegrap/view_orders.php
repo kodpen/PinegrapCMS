@@ -3053,6 +3053,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                            <a class="btn btn-sm btn-primary rounded-pill px-3 m-1" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                             <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                                 ' . get_token_field() . '
                                 ' . $output_gateway_buttons . '  

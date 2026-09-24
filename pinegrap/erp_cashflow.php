@@ -114,12 +114,12 @@ foreach ($report['rows'] as $row) {
 
     $output_rows .= '
                             <tr' . ($quiet ? ' class="text-body-secondary"' : '') . '>
-                                <td class="align-middle text-nowrap">' . h($row['label']) . '</td>
-                                <td class="align-middle text-end">' . $money($row['in']) . '</td>
-                                <td class="align-middle text-end">' . $money($row['out']) . '</td>
-                                <td class="align-middle text-end">' . $signed($row['net']) . '</td>
-                                <td class="align-middle text-end small">' . ($quiet ? '—' : number_format($row['count'])) . '</td>
-                                <td class="align-middle text-end fw-bold' . (($row['balance'] < 0) ? ' text-danger' : '') . '">' . h(erp_money_out($row['balance'])) . '</td>
+                                <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['start'])) . '">' . h($row['label']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['net'] . '">' . $signed($row['net']) . '</td>
+                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . ($quiet ? '—' : number_format($row['count'])) . '</td>
+                                <td class="align-middle text-end fw-bold' . (($row['balance'] < 0) ? ' text-danger' : '') . '" data-sort="' . (int) $row['balance'] . '">' . h(erp_money_out($row['balance'])) . '</td>
                             </tr>';
 }
 
@@ -134,18 +134,18 @@ foreach ($by_till as $row) {
                             <tr>
                                 <td class="align-middle"><a href="edit_erp_till.php?id=' . (int) $row['id'] . '" class="link-body-emphasis">' . $name . '</a>' . $note . '</td>
                                 <td class="align-middle">' . h($kind_labels[$row['kind']] ?? $row['kind']) . '</td>
-                                <td class="align-middle text-end">' . h(erp_money_out($row['opening'])) . '</td>
-                                <td class="align-middle text-end">' . $money($row['in']) . '</td>
-                                <td class="align-middle text-end">' . $money($row['out']) . '</td>
-                                <td class="align-middle text-end">' . $signed($row['net']) . '</td>
-                                <td class="align-middle text-end small">' . (($row['count'] === 0) ? '—' : number_format($row['count'])) . '</td>
-                                <td class="align-middle text-end fw-bold' . (($row['closing'] < 0) ? ' text-danger' : '') . '">' . h(erp_money_out($row['closing'])) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['opening'] . '">' . h(erp_money_out($row['opening'])) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['net'] . '">' . $signed($row['net']) . '</td>
+                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . (($row['count'] === 0) ? '—' : number_format($row['count'])) . '</td>
+                                <td class="align-middle text-end fw-bold' . (($row['closing'] < 0) ? ' text-danger' : '') . '" data-sort="' . (int) $row['closing'] . '">' . h(erp_money_out($row['closing'])) . '</td>
                             </tr>';
 }
 
 if ($output_till_rows === '') {
     $output_till_rows = '
-                            <tr><td colspan="8" class="text-center text-body-secondary py-4">' . lang('There are no tills yet.') . '</td></tr>';
+                            <tr data-pg-sort-fixed><td colspan="8" class="text-center text-body-secondary py-4">' . lang('There are no tills yet.') . '</td></tr>';
 }
 
 // ------------------------------------------------------------ method rows
@@ -155,16 +155,16 @@ foreach ($by_method as $row) {
     $output_method_rows .= '
                             <tr>
                                 <td class="align-middle">' . h($row['label']) . '</td>
-                                <td class="align-middle text-end">' . $money($row['in']) . '</td>
-                                <td class="align-middle text-end">' . $money($row['out']) . '</td>
-                                <td class="align-middle text-end">' . $signed($row['in'] - $row['out']) . '</td>
-                                <td class="align-middle text-end small">' . number_format($row['count']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) ($row['in'] - $row['out']) . '">' . $signed($row['in'] - $row['out']) . '</td>
+                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . number_format($row['count']) . '</td>
                             </tr>';
 }
 
 if ($output_method_rows === '') {
     $output_method_rows = '
-                            <tr><td colspan="5" class="text-center text-body-secondary py-4">' . lang('No movements in this period.') . '</td></tr>';
+                            <tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('No movements in this period.') . '</td></tr>';
 }
 
 // -------------------------------------------------------------- footnotes
@@ -188,8 +188,8 @@ foreach ($notes as $note) {
 echo
 pg_page_shell(array(
         'title' => lang('Cash flow'),
-        'extra_classes' => 'erp erp_cash',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_cash',
+        'icon' => 'erp',
         'heading' => lang('Cash flow'),
         'heading_description' => lang('What came into the tills and what went out over a period, in the base currency, and where the position stood.'),
         'cancel' => false,
@@ -211,7 +211,7 @@ pg_page_shell(array(
                     ' . $quick($last_90, lang('Last 90 days')) . '
                     ' . $quick($this_year, lang('This year')) . '
                 </div>
-                <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-2 mb-0">
+                <form method="get" action="erp_cashflow.php" class="d-flex flex-wrap flex-md-nowrap align-items-center gap-2 mb-0">
                     <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
                     <label for="from" class="small text-body-secondary text-nowrap mb-0">' . lang('Start') . '</label>
                     <input type="date" id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
@@ -260,8 +260,8 @@ pg_page_shell(array(
                     <span>' . h($groups[$options['group']]) . '</span>
                     <span class="small text-body-secondary fw-normal text-lowercase ms-auto">' . h($period_text) . '</span>
                 </div>
-                <div class="card-body p-0 position-relative">
-                    <table class="table table-hover align-middle mb-0">
+                <div class="card-body p-0 position-relative table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Period') . '</th>
@@ -273,7 +273,7 @@ pg_page_shell(array(
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="fw-bold">
+                            <tr class="fw-bold" data-pg-sort-fixed="top">
                                 <td>' . lang('Opening Balance') . '</td>
                                 <td colspan="4"></td>
                                 <td class="text-end">' . h(erp_money_out($report['opening'])) . '</td>
@@ -298,8 +298,8 @@ pg_page_shell(array(
                 <div class="col-12 col-xl-8">
                     <div class="card my-4">
                         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('By till') . '</div>
-                        <div class="card-body p-0 position-relative">
-                            <table class="table table-hover align-middle mb-0">
+                        <div class="card-body p-0 position-relative table-responsive">
+                            <table class="table table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th>' . lang('Till') . '</th>
@@ -322,8 +322,8 @@ pg_page_shell(array(
                 <div class="col-12 col-xl-4">
                     <div class="card my-4">
                         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('By payment method') . '</div>
-                        <div class="card-body p-0 position-relative">
-                            <table class="table table-hover align-middle mb-0">
+                        <div class="card-body p-0 position-relative table-responsive">
+                            <table class="table table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th>' . lang('Method') . '</th>

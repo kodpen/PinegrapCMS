@@ -338,10 +338,10 @@ if (!$_POST) {
     }
     fclose($handle);
     
-    log_activity(lang(array('string'=>'{var:1} contacts were imported','vars'=>number_format($imported_contacts))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'{var:1} contacts were imported','vars'=>pg_format_number($imported_contacts, 0))), $_SESSION['sessionusername']);
     
     $liveform_view_contacts = new liveform('view_contacts');
-    $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contacts were imported','vars'=>number_format($imported_contacts))) );
+    $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contacts were imported','vars'=>pg_format_number($imported_contacts, 0))) );
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

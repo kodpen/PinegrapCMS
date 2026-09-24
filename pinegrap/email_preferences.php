@@ -48,6 +48,17 @@ if (!$_POST) {
         $email_preferences_path = PATH . SOFTWARE_DIRECTORY . '/email_preferences.php';
     }
     
+    // A designed page (the email_preferences widget) names itself in
+    // return_to; every answer goes back there. The id and signature are
+    // added below as for the legacy page, so they are left off its address.
+    // pg_controls lists what the widget drew: the opt-in and the lists it
+    // did not draw are left as they are.
+    $pg_return_to = pg_sw_return_to();
+    $pg_controls  = pg_sw_posted_controls();
+    if ($pg_return_to !== '') {
+        $email_preferences_path = strtok($pg_return_to, '?');
+    }
+
     // if an id was submitted, set id (and its signature) for query string in case we need to forward user back to e-mail preferences screen
     if (!empty($_POST['id'])) {
         $url_id = '?id=' . urlencode($_POST['id']) . '&sig=' . urlencode((string) ($_POST['sig'] ?? ''));
@@ -312,7 +323,7 @@ if (!$_POST) {
             "UPDATE contacts
             SET
                 email_address = '" . escape($liveform->get_field_value('email_address')) . "',
-                opt_in = '" . escape($liveform->get_field_value('opt_in')) . "',
+                " . (pg_sw_posted_control($pg_controls, 'opt_in') ? "opt_in = '" . escape($liveform->get_field_value('opt_in')) . "'," : '') . "
                 $sql_update_user
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . $contact['id'] . "'";
@@ -320,6 +331,9 @@ if (!$_POST) {
         
         // loop through contact groups in order to opt-in or opt-out contact
         foreach ($contact_groups as $contact_group) {
+            if (!pg_sw_posted_control($pg_controls, 'contact_group_' . $contact_group['id'])) {
+                continue;
+            }
             // if user opted-in to this group
             if ($liveform->get_field_value('contact_group_' . $contact_group['id'])) {
                 // check to see if contact is already in contact group

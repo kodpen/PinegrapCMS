@@ -4519,6 +4519,248 @@ function get_discounted_product_prices()
     }
     return $discounted_product_prices;
 }
+// ── Money and number display ────────────────────────────────────────────
+//
+// One rule for every figure a person reads, the one the ERP uses too
+// (erp_number_separators()). The software writes 1,234.56; a language file
+// that writes figures differently says so by translating the sample
+// "1,234.56" (tr.json: "1.234,56"), and the separators are read from that
+// translation. The currency symbol stands in front of the figure ($1,234.56,
+// -$10.00). Only display follows this: typed amounts are read with either
+// separator (pg_parse_amount()), and form values, files and the API keep the
+// machine format 1234.56.
+
+/**
+ * Decimal and thousands separators of the site language, read from the
+ * translation of the sample figure "1,234.56". A translation that is missing
+ * or does not have that shape leaves the software's own separators.
+ *
+ * @return array ['decimal' => string, 'thousands' => string]
+ */
+function pg_number_separators()
+{
+    static $separators = null;
+
+    if ($separators === null) {
+        $separators = array('decimal' => '.', 'thousands' => ',');
+        $sample = function_exists('lang') ? (string) lang('1,234.56') : '1,234.56';
+        // "1<thousands>234<decimal>56"; the thousands separator may be empty
+        // ("1234,56") or a space.
+        if (preg_match('/^1(\D?)234(\D)56$/u', $sample, $m) && ($m[1] !== $m[2])) {
+            $thousands = $m[1];
+            // A plain space would let a figure wrap at its grouping.
+            if ($thousands === ' ') $thousands = "\u{00A0}";
+            $separators = array('decimal' => $m[2], 'thousands' => $thousands);
+        }
+    }
+
+    return $separators;
+}
+
+/**
+ * A number for display with the site's separators.
+ *
+ * @param float|int|string $amount
+ * @param int              $decimals
+ * @return string
+ */
+function pg_format_number($amount, $decimals = 2)
+{
+    $s = pg_number_separators();
+    $amount = is_numeric($amount) ? (float) $amount : 0.0;
+    return number_format($amount, (int) $decimals, $s['decimal'], $s['thousands']);
+}
+
+/**
+ * An amount for an input box the person edits: the site's decimal separator
+ * and no grouping, so 1250,00 (tr) or 1250.00 (en). pg_parse_amount() reads
+ * it back either way.
+ *
+ * @param float|int|string $amount
+ * @return string
+ */
+function pg_format_input_amount($amount)
+{
+    $s = pg_number_separators();
+    $amount = is_numeric($amount) ? (float) $amount : 0.0;
+    return number_format($amount, 2, $s['decimal'], '');
+}
+
+/**
+ * An amount of money for display: the minus sign, the symbol, the figure.
+ *
+ * The amount is in major units (lira, not kuruş) and already in the currency
+ * the symbol belongs to - no conversion happens here.
+ *
+ * @param float|int|string $amount
+ * @param string|null      $symbol  Currency symbol as stored (it may be an
+ *                                  entity such as &#8378;); null = the
+ *                                  visitor's currency.
+ * @param string           $suffix  Written after the figure, e.g. " USD"
+ * @return string  HTML-safe as long as $symbol and $suffix are
+ */
+function pg_format_money($amount, $symbol = null, $suffix = '')
+{
+    if ($symbol === null) {
+        $symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '';
+    }
+    $amount = is_numeric($amount) ? (float) $amount : 0.0;
+    $negative = '';
+    // Round first: -0.004 would otherwise print as "-₺0,00".
+    if (round($amount, 2) < 0) {
+        $negative = '-';
+        $amount = abs($amount);
+    }
+    return $negative . $symbol . pg_format_number($amount, 2) . $suffix;
+}
+
+/**
+ * A base-currency amount in the visitor's currency (major units): the stored
+ * price times the visitor's exchange rate. 1 when the visitor has not picked
+ * another currency.
+ *
+ * @param float|int|string $base_amount
+ * @return float
+ */
+function pg_visitor_amount($base_amount)
+{
+    $rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && ((float) VISITOR_CURRENCY_EXCHANGE_RATE > 0))
+        ? (float) VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
+    return (is_numeric($base_amount) ? (float) $base_amount : 0.0) * $rate;
+}
+
+/**
+ * A base-currency amount shown to the visitor: converted to the currency they
+ * picked, written like pg_format_money(), with the currency code after it
+ * when that is not the base currency ("€12,50 EUR") - the same thing
+ * prepare_price_for_output() writes.
+ *
+ * @param float|int|string $base_amount  Major units, base currency
+ * @param string|null      $symbol       null = the visitor's currency symbol
+ * @return string HTML
+ */
+function pg_visitor_money($base_amount, $symbol = null)
+{
+    $suffix = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? h(VISITOR_CURRENCY_CODE_FOR_OUTPUT) : '';
+    return pg_format_money(pg_visitor_amount($base_amount), $symbol, $suffix);
+}
+
+/**
+ * The same as pg_format_money(), as plain text: a symbol stored as an entity
+ * (&#8378;) becomes the character, for text that is escaped later (h(),
+ * plain-text e-mail, PDF text).
+ *
+ * @param float|int|string $amount
+ * @param string|null      $symbol  null = the visitor's currency
+ * @param string           $suffix
+ * @return string
+ */
+function pg_money_text($amount, $symbol = null, $suffix = '')
+{
+    if ($symbol === null) {
+        $symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '';
+    }
+    if (mb_substr((string) $symbol, 0, 1) === '&') {
+        $symbol = html_entity_decode((string) $symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+    return pg_format_money($amount, (string) $symbol, $suffix);
+}
+
+/**
+ * Read an amount a person typed: 1.234,56, 1,234.56, 1234,5, 1234.50 or
+ * 1 234,56 all come out as 1234.56.
+ *
+ * When both separators appear, the last one is the decimal one. A separator
+ * that appears more than once groups thousands. A single separator with one
+ * or two digits after it is the decimal one; with three digits (1.500,
+ * 1,500) the site language decides, as it does for how figures are shown.
+ * Anything else that is not a digit or a minus sign is ignored (symbols,
+ * spaces).
+ *
+ * @param mixed $value
+ * @return float
+ */
+function pg_parse_amount($value)
+{
+    $value = trim(str_replace(array("\u{00A0}", ' '), '', (string) $value));
+    $negative = (strpos($value, '-') === 0);
+    $value = preg_replace('/[^0-9.,]/', '', $value);
+    if ($value === '') return 0.0;
+
+    $last_dot   = strrpos($value, '.');
+    $last_comma = strrpos($value, ',');
+
+    if (($last_dot !== false) && ($last_comma !== false)) {
+        $decimal = ($last_dot > $last_comma) ? '.' : ',';
+    } else {
+        $sep = ($last_dot !== false) ? '.' : (($last_comma !== false) ? ',' : '');
+        if ($sep === '') {
+            $decimal = '';
+        } elseif (substr_count($value, $sep) > 1) {
+            $decimal = '';
+        } else {
+            $after = strlen($value) - strrpos($value, $sep) - 1;
+            if ($after === 3) {
+                $s = pg_number_separators();
+                $decimal = ($s['decimal'] === $sep) ? $sep : '';
+            } else {
+                $decimal = $sep;
+            }
+        }
+    }
+
+    if ($decimal === '') {
+        $number = str_replace(array('.', ','), '', $value);
+    } else {
+        $pos = strrpos($value, $decimal);
+        $number = str_replace(array('.', ','), '', substr($value, 0, $pos)) . '.'
+                . str_replace(array('.', ','), '', substr($value, $pos + 1));
+    }
+
+    $number = (float) $number;
+    return $negative ? -$number : $number;
+}
+
+/**
+ * An amount typed into a form, in the machine format ("1.234,56" ->
+ * "1234.56"), for the handlers that validate with is_numeric() before they
+ * store it. A value that is not a number is returned trimmed and otherwise
+ * untouched, so that validation still rejects it.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_normalize_amount($value)
+{
+    $raw = trim(str_replace(array("\u{00A0}", ' '), '', (string) $value));
+    if (($raw === '') || !preg_match('/^-?[0-9.,]+$/', $raw) || !preg_match('/[0-9]/', $raw)) {
+        return $raw;
+    }
+    return (string) pg_parse_amount($raw);
+}
+
+/**
+ * What the storefront scripts need to write money the same way: a data
+ * attribute value (JSON) with the separators and the visitor's symbol.
+ *
+ * @return string JSON
+ */
+function pg_money_format_json()
+{
+    $s = pg_number_separators();
+    $symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '';
+    if (mb_substr($symbol, 0, 1) === '&') {
+        $symbol = html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+    return json_encode(array(
+        'decimal'   => $s['decimal'],
+        'thousands' => $s['thousands'],
+        'symbol'    => $symbol,
+        'suffix'    => defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? VISITOR_CURRENCY_CODE_FOR_OUTPUT : '',
+        'rate'      => pg_visitor_amount(1),
+    ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+}
+
 function prepare_price_for_output($original_price, $discounted, $discounted_price, $format, $show_code = true, $show_html_entity_symbol = true)
 {
     $original_amount = get_currency_amount($original_price / 100, VISITOR_CURRENCY_EXCHANGE_RATE);
@@ -4557,20 +4799,20 @@ function prepare_price_for_output($original_price, $discounted, $discounted_pric
         case 'html':
             // if the product is discounted by an offer, then prepare to show original price and discounted price
             if ($discounted == true) {
-                return '<span style="text-decoration: line-through; white-space: nowrap">' . $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code . '</span> <span style="white-space: nowrap" class="software_discounted_price">' . $discounted_negative . $output_symbol . number_format($discounted_amount, 2, '.', ',') . $output_code . '</span>';
+                return '<span style="text-decoration: line-through; white-space: nowrap">' . $original_negative . $output_symbol . pg_format_number($original_amount, 2) . $output_code . '</span> <span style="white-space: nowrap" class="software_discounted_price">' . $discounted_negative . $output_symbol . pg_format_number($discounted_amount, 2) . $output_code . '</span>';
                 // else the product is not discounted by an offer, so prepare to just show the product price
             } else {
-                return '<span style="white-space: nowrap">' . $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code . '</span>';
+                return '<span style="white-space: nowrap">' . $original_negative . $output_symbol . pg_format_number($original_amount, 2) . $output_code . '</span>';
             }
             break;
         // if the format is plain text then prepare to show price with no styling
         case 'plain_text':
             // if the product is discounted by an offer, then prepare to show original price and discounted price
             if ($discounted == true) {
-                return lang(array('string' => '{var:1} (was {var:2})', 'vars' => array($discounted_negative . $output_symbol . number_format($discounted_amount, 2, '.', ',') . $output_code, $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code)));
+                return lang(array('string' => '{var:1} (was {var:2})', 'vars' => array($discounted_negative . $output_symbol . pg_format_number($discounted_amount, 2) . $output_code, $original_negative . $output_symbol . pg_format_number($original_amount, 2) . $output_code)));
                 // else the product is not discounted by an offer, so prepare to just show the product price
             } else {
-                return $original_negative . $output_symbol . number_format($original_amount, 2, '.', ',') . $output_code;
+                return $original_negative . $output_symbol . pg_format_number($original_amount, 2) . $output_code;
             }
             break;
     }
@@ -4586,7 +4828,11 @@ function prepare_amount($amount)
     // Remove any commas that might exist in amount, because number_format()
     // below won't work correctly when commas exist.  number_format() below
     // will add the commas back properly.
-    $amount = str_replace(',', '', $amount);
+    // A missing amount (e.g. a submitted form that lacked the field) counts
+    // as zero: PHP 8 compares '' < 0 as strings, which is true, and abs('')
+    // then threw a TypeError that ended the whole request.
+    $amount = str_replace(',', '', (string)$amount);
+    $amount = is_numeric($amount) ? (float)$amount : 0.0;
     $negative_symbol = '';
     // If the amount is negative, then prepare to show negative sign before amount,
     // and convert amount to positive value.
@@ -4594,7 +4840,7 @@ function prepare_amount($amount)
         $negative_symbol = '-';
         $amount = abs($amount);
     }
-    return $negative_symbol . BASE_CURRENCY_SYMBOL . number_format($amount, 2);
+    return $negative_symbol . BASE_CURRENCY_SYMBOL . pg_format_number($amount, 2);
 }
 // Create function that is responsible for checking minimum and maximum quantity for products
 // and adjusting order items as necessary.
@@ -4657,7 +4903,7 @@ function check_quantity($liveform)
             if ($product_description == '') {
                 $product_description = lang('an item');
             }
-            $liveform->add_notice(lang(array('string' => 'We\'re sorry, we require a quantity of {var:1} for {var:2}, so we have updated the quantity for you.', 'vars' => array(number_format($order_item['minimum_quantity']), h($product_description)))));
+            $liveform->add_notice(lang(array('string' => 'We\'re sorry, we require a quantity of {var:1} for {var:2}, so we have updated the quantity for you.', 'vars' => array(pg_format_number($order_item['minimum_quantity'], 0), h($product_description)))));
             // Otherwise, if there is a minimum quantity and the quantity is below that minimum,
             // then update quantity and add notice.
         } else if (($order_item['minimum_quantity'] != 0) && ($order_item['quantity'] < $order_item['minimum_quantity'])) {
@@ -4680,7 +4926,7 @@ function check_quantity($liveform)
             if ($product_description == '') {
                 $product_description = lang('an item');
             }
-            $liveform->add_notice(lang(array('string' => 'We\'re sorry, we require a minimum quantity of {var:1} for {var:2}, so we have increased the quantity for you.', 'vars' => array(number_format($order_item['minimum_quantity']), h($product_description)))));
+            $liveform->add_notice(lang(array('string' => 'We\'re sorry, we require a minimum quantity of {var:1} for {var:2}, so we have increased the quantity for you.', 'vars' => array(pg_format_number($order_item['minimum_quantity'], 0), h($product_description)))));
             // Otherwise, if there is a maximum quantity and the quantity is above that maximum,
             // then update quantity and add notice.
         } else if (($order_item['maximum_quantity'] != 0) && ($order_item['quantity'] > $order_item['maximum_quantity'])) {
@@ -4703,7 +4949,7 @@ function check_quantity($liveform)
             if ($product_description == '') {
                 $product_description = lang('an item');
             }
-            $liveform->add_notice(lang(array('string' => 'We\'re sorry, we allow a maximum quantity of {var:1} for {var:2}, so we have decreased the quantity for you.', 'vars' => array(number_format($order_item['maximum_quantity']), h($product_description)))));
+            $liveform->add_notice(lang(array('string' => 'We\'re sorry, we allow a maximum quantity of {var:1} for {var:2}, so we have decreased the quantity for you.', 'vars' => array(pg_format_number($order_item['maximum_quantity'], 0), h($product_description)))));
         }
     }
 }
@@ -6789,7 +7035,7 @@ function _send_order_cancellation_email($order, $reason, $refund_status)
         ? (string) $order['order_number']
         : (string) $order_id;
     $total_amount = isset($order['total']) ? (int) $order['total'] : 0;
-    $amount_str   = $total_amount > 0 ? number_format($total_amount / 100, 2, ',', '.') : '';
+    $amount_str   = $total_amount > 0 ? pg_money_text($total_amount / 100, defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '') : '';
     $customer     = trim((string) ($order['billing_first_name'] ?? '') . ' ' . (string) ($order['billing_last_name'] ?? ''));
 
     $subject = lang(array(
@@ -6927,4 +7173,186 @@ function pg_erp_overdue_badge_count()
           AND IF(due_date = '0000-00-00', issue_date, due_date) < '" . escape(date('Y-m-d')) . "'");
 
     return $count;
+}
+
+/**
+ * The store's country as the ERP reads it (countries.default_selected, the
+ * same place the checkout takes it from), for screens that run without the
+ * ERP loaded - the settings card. Inside the ERP it is
+ * erp_default_country_code().
+ *
+ * @return string  Two letters, or '' when the store names none
+ */
+function pg_erp_store_country()
+{
+    static $code = null;
+
+    if ($code === null) {
+        $code = function_exists('erp_default_country_code')
+            ? erp_default_country_code()
+            : strtoupper(trim((string) db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1")));
+    }
+
+    return $code;
+}
+
+/**
+ * The name of the ERP's tax report as the menu shows it on every panel page,
+ * the ERP loaded or not: "VAT report", or the report of the tax name set in
+ * the ERP settings. Inside the ERP it is erp_tax_label('report').
+ *
+ * @return string
+ */
+function pg_erp_tax_report_label()
+{
+    if (function_exists('erp_tax_label')) {
+        return erp_tax_label('report');
+    }
+
+    static $name = null;
+
+    if ($name === null) {
+        $name = (function_exists('waf_table_has_column') && waf_table_has_column('config', 'erp_tax_name'))
+            ? trim((string) db_value("SELECT erp_tax_name FROM config LIMIT 1"))
+            : '';
+    }
+
+    return ($name === '') ? lang('VAT report') : lang(array('string' => '{var:1} report', 'vars' => $name));
+}
+
+/**
+ * How long a carrier's tax number the shipping method holds
+ * (shipping_methods.carrier_vkn): 32 from 2026.4.4 (4.70), 11 before it.
+ *
+ * @return int
+ */
+function pg_carrier_number_width()
+{
+    static $width = null;
+
+    if ($width === null) {
+        $width = (int) db_value("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'shipping_methods' AND COLUMN_NAME = 'carrier_vkn' LIMIT 1");
+        $width = ($width > 0) ? $width : 11;
+    }
+
+    return $width;
+}
+
+/**
+ * A carrier's tax number as the shipping method stores it. In Turkey it is a
+ * VKN or TCKN - digits only, eleven at most - which is what the e-archive
+ * invoice carries. Elsewhere it is whatever the carrier prints on its own
+ * invoices (a VAT id with its country prefix, an EIN with its dash), so
+ * letters, digits and the usual separators are kept, up to the column width.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_carrier_number_clean($value)
+{
+    $value = trim((string) $value);
+
+    if (pg_erp_store_country() === 'TR') {
+        return substr(preg_replace('/\D/', '', $value), 0, 11);
+    }
+
+    $value = trim((string) preg_replace('/[^\p{L}\p{N} .\/-]/u', '', $value));
+
+    return mb_substr($value, 0, pg_carrier_number_width());
+}
+
+/**
+ * The carrier number field of the shipping method form: label, input and
+ * help text for the store's country.
+ *
+ * @param string $value  Already escaped for HTML
+ * @return string  HTML
+ */
+function pg_carrier_number_field($value)
+{
+    if (pg_erp_store_country() === 'TR') {
+        return '<label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
+            <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
+            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
+    }
+
+    return '<label for="carrier_vkn" class="form-label">' . lang('Carrier tax number') . '</label>
+        <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="' . pg_carrier_number_width() . '" />
+        <div class="form-text text-end">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
+}
+
+/**
+ * Whether the settings show the e-invoice card. The providers behind it are
+ * Turkish (GİB integrators and Paraşüt), so a store elsewhere sees it only
+ * when one of them is already switched on or documents were sent through
+ * one - never losing sight of a setting that is in effect.
+ *
+ * @return bool
+ */
+function pg_edoc_settings_shown()
+{
+    static $shown = null;
+
+    if ($shown === null) {
+        $shown = (pg_erp_store_country() === 'TR')
+            || (defined('ENABLE_PARASUT') && ((int) ENABLE_PARASUT === 1))
+            || (defined('ERP_PARASUT_ENABLED') && ((int) ERP_PARASUT_ENABLED === 1))
+            || (function_exists('waf_table_has_column') && waf_table_has_column('erp_edoc_providers', 'is_active')
+                && ((int) db_value("SELECT COUNT(*) FROM erp_edoc_providers WHERE is_active = 1") > 0))
+            || (function_exists('waf_table_has_column') && waf_table_has_column('erp_invoices', 'edoc_status')
+                && ((int) db_value("SELECT COUNT(*) FROM erp_invoices WHERE edoc_status <> 'none'") > 0));
+    }
+
+    return $shown;
+}
+
+/**
+ * Whether the ERP menu offers a screen that only an e-document provider can
+ * fill: incoming e-invoices ('inbox') or the provider's customer and
+ * supplier cards ('accounts'). The ERP itself works without any provider -
+ * most stores in the world will never have one - so a link that could only
+ * lead to "your provider does not do this" is not drawn at all.
+ *
+ * The answer comes from the same functions the screens ask, so the menu and
+ * the screen never disagree. That needs the e-document registry and the
+ * active driver loaded, which is done only while the ERP is on and only
+ * once per request.
+ *
+ * @param string $screen  'inbox' | 'accounts'
+ * @return bool
+ */
+function pg_erp_provider_offers($screen)
+{
+    static $answers = array();
+
+    $screen = (string) $screen;
+
+    if (isset($answers[$screen])) {
+        return $answers[$screen];
+    }
+
+    $answers[$screen] = false;
+
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !in_array($screen, array('inbox', 'accounts'), true)) {
+        return false;
+    }
+
+    // The gate every file under includes/erp/ checks; the ERP bootstrap
+    // defines it the same way.
+    if (!defined('PG_ERP_ENTRY')) {
+        define('PG_ERP_ENTRY', true);
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
+
+    if ($screen === 'inbox') {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/inbox.php');
+        $answers[$screen] = erp_edoc_inbox_installed() && (erp_edoc_inbox_provider() !== '');
+    } else {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/account_sync.php');
+        $answers[$screen] = erp_edoc_accounts_installed() && (erp_edoc_accounts_provider() !== '');
+    }
+
+    return $answers[$screen];
 }

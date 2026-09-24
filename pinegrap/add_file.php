@@ -598,7 +598,7 @@ if (!$_POST) {
 
     // Otherwise more than one file was uploaded, so prepare different notice for that.
     } else {
-        $liveform_view_files->add_notice(lang(array('string'=>'{var:1} files have been uploaded.','vars'=>array(number_format($number_of_uploaded_files)) )) );
+        $liveform_view_files->add_notice(lang(array('string'=>'{var:1} files have been uploaded.','vars'=>array(pg_format_number($number_of_uploaded_files, 0)) )) );
     }
 
 

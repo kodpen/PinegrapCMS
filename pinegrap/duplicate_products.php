@@ -963,10 +963,10 @@ if (!$_POST) {
         /* build product filter options */
 
         // set all products option
-        $output_filter_options = '<option value="all_products"' . $all_products_filter_selected . '>' . lang(array('string'=>'All Products') ) . ' (' . number_format($all_products) . ')</option>';
+        $output_filter_options = '<option value="all_products"' . $all_products_filter_selected . '>' . lang(array('string'=>'All Products') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
         // set all product actions option
-        $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang(array('string'=>'All Product Actions') ) . ' (' . number_format($all_products) . ')</option>';
+        $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang(array('string'=>'All Product Actions') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
         // get the amount of shippable products
         $query = "SELECT count(id) FROM products WHERE shippable = '1'";
@@ -974,7 +974,7 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
 
         // set shippable product option
-        $output_filter_options .= '<option value="shippable_products"' . $shippable_product_filter_selected . '>' . lang(array('string'=>'Shippable Products') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="shippable_products"' . $shippable_product_filter_selected . '>' . lang(array('string'=>'Shippable Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of recurring products
         $query = "SELECT count(id) FROM products WHERE recurring = '1'";
@@ -982,7 +982,7 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
 
         // set recurring product option
-        $output_filter_options .= '<option value="recurring_products"' . $recurring_product_filter_selected . '>' . lang(array('string'=>'Recurring Products') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="recurring_products"' . $recurring_product_filter_selected . '>' . lang(array('string'=>'Recurring Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of donation products
         $query = "SELECT count(id) FROM products WHERE selection_type = 'donation'";
@@ -990,7 +990,7 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
 
         // set donation product option
-        $output_filter_options .= '<option value="donation_products"' . $donation_product_filter_selected . '>' . lang(array('string'=>'Donation Products') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="donation_products"' . $donation_product_filter_selected . '>' . lang(array('string'=>'Donation Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of grant access products
         $query = "SELECT count(id) FROM products WHERE grant_private_access = '1' AND (private_folder != '0' OR send_to_page != '0')";
@@ -998,7 +998,7 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
 
         // set grant access product option
-        $output_filter_options .= '<option value="grant_access_products"' . $grant_access_product_filter_selected . '>' . lang(array('string'=>'Grant Access Products') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="grant_access_products"' . $grant_access_product_filter_selected . '>' . lang(array('string'=>'Grant Access Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of membership products
         $query = "SELECT count(id) FROM products WHERE membership_renewal != '0'";
@@ -1006,7 +1006,7 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
 
         // set membership product option
-        $output_filter_options .= '<option value="membership_products"' . $membership_product_filter_selected . '>' . lang(array('string'=>'Membership Products') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="membership_products"' . $membership_product_filter_selected . '>' . lang(array('string'=>'Membership Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of out of stock products
         $query = "SELECT count(id) FROM products WHERE out_of_stock = '1'";
@@ -1014,7 +1014,7 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
 
         // set out of stock product option
-        $output_filter_options .= '<option value="out_of_stock_products"' . $out_of_stock_products_filter_selected . '>' . lang(array('string'=>'All Out of Stock Products') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="out_of_stock_products"' . $out_of_stock_products_filter_selected . '>' . lang(array('string'=>'All Out of Stock Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
     
 
 
@@ -1460,7 +1460,7 @@ if (!$_POST) {
                     $free_shipping = '';
                 }
 
-                $extra_shipping_cost = BASE_CURRENCY_SYMBOL . number_format($row['extra_shipping_cost'] / 100, 2, '.', ',');
+                $extra_shipping_cost = pg_format_money($row['extra_shipping_cost'] / 100, BASE_CURRENCY_SYMBOL);
 
 
                 $output_allowed_zones = '';
@@ -1664,20 +1664,20 @@ if (!$_POST) {
                 <td class=" align-middle ' . $output_name_and_short_description_color_class . '">' . $short_description . '</td>
                 <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
                 <td class="align-middle text-end">' . prepare_amount($price) . '</td>
-                ' . $output_inventory_columns . '
-                ' . $output_tax_column . '
-                ' . $output_product_form_column . '
-                ' . $output_all_products_columns . ' 
-                ' . $output_shipping_columns . '
-                ' . $output_recurring_column . '
-                ' . $output_recurring_option_columns . '
-                ' . $output_recurring_set_schedule_column . '
-                ' . $output_start_page_column . '
-                ' . $output_private_folder_access_columns . '
-                ' . $output_add_membership_column . '
-                ' . $output_all_product_actions_columns . '
+                ' . ($output_inventory_columns ?? '') . '
+                ' . ($output_tax_column ?? '') . '
+                ' . ($output_product_form_column ?? '') . '
+                ' . ($output_all_products_columns ?? '') . ' 
+                ' . ($output_shipping_columns ?? '') . '
+                ' . ($output_recurring_column ?? '') . '
+                ' . ($output_recurring_option_columns ?? '') . '
+                ' . ($output_recurring_set_schedule_column ?? '') . '
+                ' . ($output_start_page_column ?? '') . '
+                ' . ($output_private_folder_access_columns ?? '') . '
+                ' . ($output_add_membership_column ?? '') . '
+                ' . ($output_all_product_actions_columns ?? '') . '
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $row['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) ) . '</td>
-                ' . $output_out_of_stock_timestamp_column . '
+                ' . ($output_out_of_stock_timestamp_column ?? '') . '
             </tr>';
         }
 
@@ -1717,21 +1717,21 @@ if (!$_POST) {
                                             <th>' . get_column_heading(lang(array('string'=>'ID') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
                                             <th>' . get_column_heading(lang(array('string'=>'Short Description') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th>
                                             <th>' . get_column_heading(lang(array('string'=>'Enabled') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th> 
-                                            ' . $output_price_header . ' 
-                                            ' . $output_inventory_headers . '
-                                            ' . $output_tax_header . '  
-                                            ' . $output_product_form_header . ' 
-                                            ' . $output_all_products_headers . ' 
-                                            ' . $output_shipping_headers . ' 
-                                            ' . $output_recurring_header . ' 
-                                            ' . $output_recurring_option_headers . ' 
-                                            ' . $output_recurring_set_schedule_header . ' 
-                                            ' . $output_start_page_header . ' 
-                                            ' . $output_private_folder_access_headers . ' 
-                                            ' . $output_add_membership_header . ' 
-                                            ' . $output_all_product_actions_headers . ' 
+                                            ' . ($output_price_header ?? '') . ' 
+                                            ' . ($output_inventory_headers ?? '') . '
+                                            ' . ($output_tax_header ?? '') . '  
+                                            ' . ($output_product_form_header ?? '') . ' 
+                                            ' . ($output_all_products_headers ?? '') . ' 
+                                            ' . ($output_shipping_headers ?? '') . ' 
+                                            ' . ($output_recurring_header ?? '') . ' 
+                                            ' . ($output_recurring_option_headers ?? '') . ' 
+                                            ' . ($output_recurring_set_schedule_header ?? '') . ' 
+                                            ' . ($output_start_page_header ?? '') . ' 
+                                            ' . ($output_private_folder_access_headers ?? '') . ' 
+                                            ' . ($output_add_membership_header ?? '') . ' 
+                                            ' . ($output_all_product_actions_headers ?? '') . ' 
                                             <th>' . get_column_heading(lang(array('string'=>'Last Modified') ), ($_SESSION['software']['ecommerce']['view_products']['sort'] ?? ''), ($_SESSION['software']['ecommerce']['view_products']['order'] ?? '')) . '</th> 
-                                            ' . $output_out_of_stock_timestamp_header . ' 
+                                            ' . ($output_out_of_stock_timestamp_header ?? '') . ' 
                                         </tr>
                                     </thead>
                                     <tbody>' . $output_rows . '</tbody>

@@ -170,6 +170,93 @@ function pg_user_permission_switch($name, $value, $checked, $label, $help = '')
 						</div>';
 }
 
+// Whether the workspace row is drawn at all: the module switched on and the
+// four columns in place. The three screens that edit rights ask this before
+// they build the panel, so a site between its new files and its upgrade never
+// posts a column that is not there.
+function pg_user_permission_ws_available()
+{
+	return (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
+		&& function_exists('pg_user_has_ws_columns') && pg_user_has_ws_columns());
+}
+
+// The three workspace rights that sit behind the manage_workspace gate. The
+// gate itself is drawn by the row.
+function pg_user_permission_ws_switches($values = array())
+{
+	$on = function ($field) use ($values) {
+		return !empty($values[$field]);
+	};
+
+	return pg_user_permission_switch('manage_workspace_assign', '1', $on('manage_workspace_assign'), lang('Assign work to others'), lang('Create tasks for colleagues and hand out a department\'s work.'))
+		. pg_user_permission_switch('manage_workspace_board', '1', $on('manage_workspace_board'), lang('See the team board'), lang('Everyone\'s load, the company plan and the list of conflicts.'))
+		. pg_user_permission_switch('manage_workspace_settings', '1', $on('manage_workspace_settings'), lang('Change workspace settings'), lang('Departments, working hours and capacity.'));
+}
+
+// The workspace columns of one account, or zeros where they do not exist yet.
+// Read on their own so the screens' long SELECTs never have to name them.
+function pg_user_permission_ws_values($user_id)
+{
+	$values = array(
+		'manage_workspace'          => 0,
+		'manage_workspace_assign'   => 0,
+		'manage_workspace_board'    => 0,
+		'manage_workspace_settings' => 0,
+	);
+
+	if (function_exists('pg_user_has_ws_columns') && pg_user_has_ws_columns() && ((int) $user_id > 0)) {
+		$row = db_item("SELECT manage_workspace, manage_workspace_assign, manage_workspace_board, manage_workspace_settings
+			FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+		if (is_array($row)) {
+			foreach ($values as $field => $unused) {
+				$values[$field] = (int) $row[$field];
+			}
+		}
+	}
+
+	return $values;
+}
+
+// The posted workspace rights as SQL, for the INSERT and the UPDATE of the
+// three screens. Empty when the columns are not there yet.
+function pg_user_permission_ws_sql($mode)
+{
+	if (!function_exists('pg_user_has_ws_columns') || !pg_user_has_ws_columns()) {
+		return '';
+	}
+
+	$fields = array('manage_workspace', 'manage_workspace_assign', 'manage_workspace_board', 'manage_workspace_settings');
+	$posted = array();
+
+	foreach ($fields as $field) {
+		$posted[$field] = !empty($_POST[$field]) ? 1 : 0;
+	}
+
+	// The three rights mean nothing without the gate.
+	if ($posted['manage_workspace'] === 0) {
+		$posted['manage_workspace_assign'] = 0;
+		$posted['manage_workspace_board'] = 0;
+		$posted['manage_workspace_settings'] = 0;
+	}
+
+	if ($mode === 'columns') {
+		return implode(', ', $fields) . ',';
+	}
+
+	if ($mode === 'values') {
+		return "'" . implode("', '", $posted) . "',";
+	}
+
+	$set = array();
+
+	foreach ($posted as $field => $value) {
+		$set[] = $field . " = '" . $value . "'";
+	}
+
+	return implode(', ', $set) . ',';
+}
+
 /**
  * Build the whole block: the rows and the offcanvas panels that go with them.
  *
@@ -344,6 +431,24 @@ function pg_user_permission_ui($config)
 			'gate_value'  => '1',
 			'gate_on'     => $value('manage_erp', '1'),
 			'panel'       => pg_user_permission_switches(lang('Within the ERP module the User may'), $panels['erp_switches']),
+			'counters'    => array(),
+		);
+	}
+
+	// The workspace, only when the module is on. Same column shape as the ERP:
+	// prefix-less TINYINT, so the gate value is '1'.
+	if (isset($panels['workspace_switches'])) {
+		$groups[] = array(
+			'id'          => 'workspace',
+			'icon'        => 'bi-clipboard2-check',
+			'color'       => '#9575cd',
+			'title'       => lang('Workspace'),
+			'description' => lang('Channels, tasks and the planning board'),
+			'panel_lead'  => lang('Every team member can talk in the channels and plan their own work. Handing work to others, seeing the whole team\'s board and changing the settings are separate rights.'),
+			'gate_field'  => 'manage_workspace',
+			'gate_value'  => '1',
+			'gate_on'     => $value('manage_workspace', '1'),
+			'panel'       => pg_user_permission_switches(lang('Within the workspace the User may'), $panels['workspace_switches']),
 			'counters'    => array(),
 		);
 	}

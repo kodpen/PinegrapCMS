@@ -142,8 +142,8 @@ foreach ($styles as $style) {
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-loading-content=" " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label"  nowrap>' . h($style['name']) . '</td>
-            <td class="align-middle text-center">' . number_format(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_folders'] : 0) . '</td>
-            <td class="align-middle text-center">' . number_format(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_pages'] : 0) . '</td>
+            <td class="align-middle text-center">' . pg_format_number(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_folders'] : 0, 0) . '</td>
+            <td class="align-middle text-center">' . pg_format_number(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_pages'] : 0, 0) . '</td>
             <td class="align-middle ">' . h($style['theme_name']) . '</td>
             <td class="align-middle text-center">' . strtoupper($style['collection']) . '</td>
             <td class="align-middle ">' . ucwords($style['layout_type']) . '</td>

@@ -123,10 +123,10 @@ if ($site_name === '' && defined('TITLE')) $site_name = trim((string)TITLE);
 if ($site_name === '' && defined('HOSTNAME')) $site_name = (string)HOSTNAME;
 
 // Currency + money formatter — mirror the widget so totals match exactly.
-$currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '₺';
+$currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$';
 $currency_symbol = html_entity_decode((string)$currency_symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 $fmt = function ($cents) use ($currency_symbol) {
-    return $currency_symbol . number_format((int)$cents / 100, 2, '.', ',');
+    return pg_visitor_money((int)$cents / 100, $currency_symbol);
 };
 
 // Order date — int unix timestamp, same as widget.
@@ -287,7 +287,7 @@ header('Content-Type: text/html; charset=utf-8');
         <?php if ((int)$order['payment_installment'] > 1): ?>
             <div class="row" style="font-size:.85rem;color:#6c757d">
                 <span><?= h((int)$order['payment_installment'] . ' ' . lang('Installments')) ?></span>
-                <span><?= h($fmt((int)round(((int)$order['total'] + (int)$order['installment_charges']) / (int)$order['payment_installment']))) ?> / <?= h(lang('month')) ?></span>
+                <span><?= h($fmt((int)round((int)$order['total'] / (int)$order['payment_installment']))) ?> / <?= h(lang('month')) ?></span>
             </div>
         <?php endif; ?>
     </div>

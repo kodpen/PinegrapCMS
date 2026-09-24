@@ -645,11 +645,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         }
     }
 
-    // Bail early with an alert when the URL carried an unmatched group segment.
-    // We do this BEFORE doing any expensive query / filter / pagination work.
+    // Bail early when the URL carried an unmatched group segment, BEFORE
+    // doing any expensive query / filter / pagination work: the widget is
+    // drawn as its message area alone, carrying the empty message, so the
+    // designer's container and message styling stay.
     if ($url_segment_invalid) {
-        return '<div class="pg-sw-cl-not-found alert alert-warning" role="alert">'
-             . h($empty_message)
+        return '<div class="pg-sw-cl-not-found">'
+             . _pg_sw_render_message_only(json_decode($tree_json, true), 'catalog_listing', h($empty_message), 'warning')
              . '</div>';
     }
 
@@ -762,7 +764,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         if ($field === '' || $field === null) return null;
         switch ($field) {
             case 'id':           return "products.id $dir";
-            case 'name':         return "products.name $dir";
+            // "Name" is the title the visitor reads (short_description);
+            // products.name is the SKU, and sorting by it put the list in
+            // an order the visitor could not recognise as alphabetical.
+            case 'name':         return "products.short_description $dir";
             case 'price':        return "products.price $dir";
             case 'created_at':   return "products.timestamp $dir";
             case 'sort_order':
@@ -835,11 +840,14 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         ) ";
     }
     if ($price_filter_enabled) {
+        // The visitor types the range in the currency the prices are shown
+        // in; the stored prices are in the base currency.
+        $_pf_rate = pg_visitor_amount(1);
         if ($pmin_param !== null) {
-            $extra_conditions .= " AND products.price >= '" . (int)($pmin_param * 100) . "' ";
+            $extra_conditions .= " AND products.price >= '" . (int)floor($pmin_param / $_pf_rate * 100) . "' ";
         }
         if ($pmax_param !== null) {
-            $extra_conditions .= " AND products.price <= '" . (int)($pmax_param * 100) . "' ";
+            $extra_conditions .= " AND products.price <= '" . (int)ceil($pmax_param / $_pf_rate * 100) . "' ";
         }
     }
     if ($stock_filter_active) {
@@ -948,15 +956,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // further down) have access even when we hit a "no products" early-exit.
     // The $detail_url_prefix is needed by the group tree to choose between
     // listing-drill URLs and select-group variant-chooser URLs.
+    // No page picked: the site's catalog detail page (see the helper) —
+    // otherwise every "View" button was a dead href="#".
     $detail_page_id    = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
     $detail_url_prefix = '';
-    if ($detail_page_id > 0) {
-        $detail_page_name = db_value(
-            "SELECT page_name FROM page WHERE page_id = '" . (int)$detail_page_id . "' LIMIT 1"
-        );
-        if ($detail_page_name) {
-            $detail_url_prefix = $base_path . encode_url_path($detail_page_name) . '/';
-        }
+    $detail_page_name  = pg_sw_catalog_detail_page_name($detail_page_id);
+    if ($detail_page_name !== '') {
+        $detail_url_prefix = $base_path . encode_url_path($detail_page_name) . '/';
     }
 
     // Resolve the active group's name once (used for __category_name when
@@ -1211,8 +1217,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $price_cents          = isset($_pg_disc_prices[$pid]) ? (int)round($_pg_disc_prices[$pid]) : $original_price_cents;
         $price_decimal        = $price_cents / 100;
         $original_price_dec   = $original_price_cents / 100;
-        $price_formatted      = $currency_symbol . number_format($price_decimal, 2, '.', ',');
-        $original_price_formatted = $currency_symbol . number_format($original_price_dec, 2, '.', ',');
+        $price_formatted      = pg_visitor_money($price_decimal, $currency_symbol);
+        $original_price_formatted = pg_visitor_money($original_price_dec, $currency_symbol);
         $has_discount         = ($price_cents < $original_price_cents) ? 1 : 0;
         $disc_save_cents      = $original_price_cents - $price_cents;
         $disc_save_pct        = ($original_price_cents > 0 && $disc_save_cents > 0)
@@ -1270,7 +1276,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__original_price_formatted' => $has_discount ? $original_price_formatted : '',
             '__has_discount'             => (string)$has_discount,
             '__discount_amount'          => $disc_save_cents > 0 ? number_format($disc_save_cents / 100, 2, '.', '') : '',
-            '__discount_amount_formatted'=> $disc_save_cents > 0 ? $currency_symbol . number_format($disc_save_cents / 100, 2, '.', ',') : '',
+            '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money($disc_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $disc_save_pct > 0 ? (string)$disc_save_pct : '',
 
             // Image
@@ -1809,80 +1815,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             ? (int)$active_group_id
             : 0;
 
-        // Search-aware group filter: when the visitor has typed a query,
-        // ONLY surface groups that either (a) match the query themselves
-        // by name/short_description/address_name OR (b) contain matching
-        // products in any descendant group (recursive). Without descendant
-        // recursion, a top-level "Ofis Malzemeleri" group would not surface
-        // when the visitor searched "Sandalye" even though "Ofis
-        // Sandalyesi" subgroup contains matching products — the "kısmen
-        // çalışıyor" symptom.
-        //
-        // Two steps, no recursive SQL (the product still runs on MySQL 5.7,
-        // which has no CTEs). First the groups that DIRECTLY xref a matching
-        // product are read. Then each candidate child group is expanded to
-        // its enabled subtree with _pg_catalog_group_subtree_ids(), and the
-        // child is kept when that subtree touches one of those groups; the
-        // matching ids are added to the standard name/short_description/
-        // address_name OR clause as an IN (...) list.
+        // Search-aware group filter: while the visitor searches, only the
+        // groups whose own name, description or address matches are shown.
+        // The product list already spans the whole subtree during a search
+        // (see $_pg_narrowing_active), so a group card that was only there
+        // because some product under it matched repeated those products
+        // behind a click and quoted the whole group's price range, not the
+        // matching items' — it read as a result that did not match.
         if ($search_active) {
             $_q = e($search_query);
-            $_pg_seed_rows = db_items(
-                "SELECT DISTINCT _pgx.product_group AS id
-                    FROM products_groups_xref _pgx
-                    INNER JOIN products _p ON _p.id = _pgx.product
-                    WHERE _p.enabled = 1
-                      AND (
-                           _p.name              LIKE '%$_q%'
-                        OR _p.short_description LIKE '%$_q%'
-                        OR _p.full_description  LIKE '%$_q%'
-                        OR _p.details           LIKE '%$_q%'
-                        OR _p.keywords          LIKE '%$_q%'
-                        OR _p.meta_keywords     LIKE '%$_q%'
-                        OR _p.meta_description  LIKE '%$_q%'
-                        OR _p.address_name      LIKE '%$_q%'
-                        OR EXISTS (
-                              SELECT 1
-                              FROM products_attributes_xref _pas
-                              INNER JOIN product_attribute_options _pao
-                                ON _pao.id = _pas.option_id
-                              WHERE _pas.product_id = _p.id
-                                AND _pao.label LIKE '%$_q%'
-                           )
-                      )"
-            );
-            $_pg_seed_ids = array();
-            if (is_array($_pg_seed_rows)) {
-                foreach ($_pg_seed_rows as $_sr) {
-                    if ((int)$_sr['id'] > 0) $_pg_seed_ids[(int)$_sr['id']] = true;
-                }
-            }
-
-            $_pg_candidate_rows = db_items(
-                "SELECT id FROM product_groups
-                 WHERE parent_id = '" . $_pg_parent_filter . "' AND enabled = 1"
-            );
-            $_pg_candidate_ids = array();
-            if (is_array($_pg_candidate_rows)) {
-                foreach ($_pg_candidate_rows as $_cr) {
-                    if ((int)$_cr['id'] > 0) $_pg_candidate_ids[] = (int)$_cr['id'];
-                }
-            }
-
-            $_pg_matched_ids = array();
-            if ($_pg_seed_ids && $_pg_candidate_ids) {
-                $_pg_subtrees = _pg_catalog_group_subtree_ids($_pg_candidate_ids);
-                foreach ($_pg_candidate_ids as $_cid) {
-                    $_tree = isset($_pg_subtrees[$_cid]) ? $_pg_subtrees[$_cid] : array($_cid);
-                    foreach ($_tree as $_tid) {
-                        if (isset($_pg_seed_ids[$_tid])) { $_pg_matched_ids[] = $_cid; break; }
-                    }
-                }
-            }
-            $_pg_matched_sql = $_pg_matched_ids
-                ? " OR product_groups.id IN (" . implode(',', $_pg_matched_ids) . ")"
-                : '';
-
             $children = db_items(
                 "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
@@ -1894,7 +1835,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                        product_groups.name              LIKE '%$_q%'
                     OR product_groups.short_description LIKE '%$_q%'
                     OR product_groups.address_name      LIKE '%$_q%'
-                    " . $_pg_matched_sql . "
                   )
                 ORDER BY product_groups.sort_order ASC, product_groups.name ASC"
             );
@@ -2011,8 +1951,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 $_pg_gp         = isset($_pg_grp_price[(int)$cg['id']]) ? $_pg_grp_price[(int)$cg['id']] : null;
                 $_pg_min_cents  = $_pg_gp ? (int)$_pg_gp['min'] : 0;
                 $_pg_max_cents  = $_pg_gp ? (int)$_pg_gp['max'] : 0;
-                $_pg_min_str    = $currency_symbol . number_format($_pg_min_cents / 100, 2, '.', ',');
-                $_pg_max_str    = $currency_symbol . number_format($_pg_max_cents / 100, 2, '.', ',');
+                $_pg_min_str    = pg_visitor_money($_pg_min_cents / 100, $currency_symbol);
+                $_pg_max_str    = pg_visitor_money($_pg_max_cents / 100, $currency_symbol);
                 $_pg_grp_disc   = $_pg_gp ? !empty($_pg_gp['discounted']) : false;
                 $_pg_grp_orig   = $_pg_gp ? (int)$_pg_gp['original'] : 0;
                 $_pg_range_str  = $_pg_gp
@@ -2051,7 +1991,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     // designer's "indirim" markup works on group cards too.
                     '__has_discount'             => $_pg_grp_disc ? '1' : '0',
                     '__original_price'           => ($_pg_grp_disc && $_pg_grp_orig > 0) ? number_format($_pg_grp_orig / 100, 2, '.', '') : '',
-                    '__original_price_formatted' => ($_pg_grp_disc && $_pg_grp_orig > 0) ? $currency_symbol . number_format($_pg_grp_orig / 100, 2, '.', ',') : '',
+                    '__original_price_formatted' => ($_pg_grp_disc && $_pg_grp_orig > 0) ? pg_visitor_money($_pg_grp_orig / 100, $currency_symbol) : '',
                     '__has_variants'      => '1',
                     // Real product count in the subtree (was hard-coded 1/0).
                     '__variant_count'     => $_pg_gp ? (string)(int)$_pg_gp['count'] : '0',
@@ -3310,8 +3250,8 @@ function _pg_format_price_with_discount($original_cents, $effective_cents, $curr
     $wrap   = !isset($opts['wrap']) || !empty($opts['wrap']);
     $orig_d = ((int)$original_cents) / 100;
     $eff_d  = ((int)$effective_cents) / 100;
-    $orig_s = $currency_symbol . number_format($orig_d, 2, '.', ',');
-    $eff_s  = $currency_symbol . number_format($eff_d,  2, '.', ',');
+    $orig_s = pg_visitor_money($orig_d, $currency_symbol);
+    $eff_s  = pg_visitor_money($eff_d, $currency_symbol);
     $has_d  = ((int)$effective_cents < (int)$original_cents);
     if ($has_d) {
         $inner = '<span class="pg-price-original">' . $orig_s . '</span>'
@@ -3625,12 +3565,12 @@ function _civ_normalize_xsell_item($it, $url_prefix, $disc_prices)
         'url'                      => $url,
         'price'                    => number_format($eff_cents / 100, 2, '.', ''),
         'price_cents'              => $eff_cents,
-        'price_formatted'          => $currency . number_format($eff_cents / 100, 2, '.', ','),
+        'price_formatted'          => pg_visitor_money($eff_cents / 100, $currency),
         'original_price'           => number_format($orig_cents / 100, 2, '.', ''),
         'original_price_cents'     => $orig_cents,
-        'original_price_formatted' => $currency . number_format($orig_cents / 100, 2, '.', ','),
+        'original_price_formatted' => pg_visitor_money($orig_cents / 100, $currency),
         'has_discount'             => (string)$has_d,
-        'discount_amount_formatted'=> $has_d ? $currency . number_format(($orig_cents - $eff_cents) / 100, 2, '.', ',') : '',
+        'discount_amount_formatted'=> $has_d ? pg_visitor_money(($orig_cents - $eff_cents) / 100, $currency) : '',
         'discount_percent'         => ($has_d && $orig_cents > 0) ? (string)((int)round((($orig_cents - $eff_cents) / $orig_cents) * 100)) : '',
         'price_block_html'         => _pg_format_price_with_discount($orig_cents, $eff_cents, $currency),
     );
@@ -4465,13 +4405,13 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         // for the "indirim" badge.
                         'price'           => number_format($_p_disc_cents / 100, 2, '.', ''),
                         'price_cents'     => $_p_disc_cents,
-                        'price_formatted' => $currency_symbol . number_format($_p_disc_cents / 100, 2, '.', ','),
+                        'price_formatted' => pg_visitor_money($_p_disc_cents / 100, $currency_symbol),
                         'original_price'           => number_format($_p_orig_cents / 100, 2, '.', ''),
                         'original_price_cents'     => $_p_orig_cents,
-                        'original_price_formatted' => $currency_symbol . number_format($_p_orig_cents / 100, 2, '.', ','),
+                        'original_price_formatted' => pg_visitor_money($_p_orig_cents / 100, $currency_symbol),
                         'has_discount'             => (string)$_p_has_disc,
                         'discount_amount'          => $_p_save_cents > 0 ? number_format($_p_save_cents / 100, 2, '.', '') : '',
-                        'discount_amount_formatted' => $_p_save_cents > 0 ? $currency_symbol . number_format($_p_save_cents / 100, 2, '.', ',') : '',
+                        'discount_amount_formatted' => $_p_save_cents > 0 ? pg_visitor_money($_p_save_cents / 100, $currency_symbol) : '',
                         'discount_percent'         => $_p_save_pct > 0 ? (string)$_p_save_pct : '',
                         'image_url'       => $_p_image_url,
                         'image_alt'       => (string)$_vr['product_short_desc'],
@@ -4845,8 +4785,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $price_cents              = isset($_civ_disc_prices[$p_id]) ? (int)$_civ_disc_prices[$p_id] : $original_price_cents;
         $price_decimal            = $price_cents / 100;
         $original_price_decimal   = $original_price_cents / 100;
-        $price_formatted          = $currency_symbol . number_format($price_decimal, 2, '.', ',');
-        $original_price_formatted = $currency_symbol . number_format($original_price_decimal, 2, '.', ',');
+        $price_formatted          = pg_visitor_money($price_decimal, $currency_symbol);
+        $original_price_formatted = pg_visitor_money($original_price_decimal, $currency_symbol);
         $has_discount             = ($price_cents < $original_price_cents) ? 1 : 0;
         $discount_save_cents      = $original_price_cents - $price_cents;
         $discount_save_pct        = ($original_price_cents > 0 && $discount_save_cents > 0)
@@ -4885,7 +4825,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__original_price_formatted' => $has_discount ? $original_price_formatted : '',
             '__has_discount'             => (string)$has_discount,
             '__discount_amount'          => $discount_save_cents > 0 ? number_format($discount_save_cents / 100, 2, '.', '') : '',
-            '__discount_amount_formatted'=> $discount_save_cents > 0 ? $currency_symbol . number_format($discount_save_cents / 100, 2, '.', ',') : '',
+            '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money($discount_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $discount_save_pct > 0 ? (string)$discount_save_pct : '',
             // Pre-rendered strike+new HTML — the unified discount visual
             // across catalog/cart/cross-sell/upsell. Drop this single
@@ -5204,22 +5144,19 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_html = preg_replace('/<!--pg-variant-attr:[A-Za-z0-9+\/=]+-->/', '', $_civ_html);
     }
 
-    // ── Empty / mismatched URL → show alert instead of the widget design ──
+    // ── Empty / mismatched URL → the message area alone ─────────────────
     // If no product was resolved (URL had no trailing address_name segment,
     // or the segment didn't match an enabled product), the designer's layout
     // would render with empty tokens (no name, no price, broken image src) —
-    // worse, the form would POST a blank product_id. Replace the entire
-    // output with a single Bootstrap alert. Designer's not_found_message
+    // worse, the form would POST a blank product_id. The widget is drawn as
+    // its message area only, carrying the not-found message, the way the
+    // other widgets show a state with nothing else to show: the designer's
+    // container and message styling stay. Designer's not_found_message
     // (config "Bulunamadı mesajı") drives the text; default falls back to
     // the legacy "Sorry, the item could not be found." equivalent in TR.
     if (!$p) {
-        // Wrap the not-found alert in a Bootstrap container so it inherits
-        // the same width/padding as the rest of the page rather than
-        // bleeding edge-to-edge across the viewport.
-        return '<div class="container py-4">'
-             . '<div class="pg-sw-civ-not-found alert alert-warning" role="alert">'
-             . h($not_found_message)
-             . '</div>'
+        return '<div class="pg-sw-civ-not-found">'
+             . _pg_sw_render_message_only($tree_decoded, 'catalog_detail', h($not_found_message), 'warning')
              . '</div>';
     }
 
@@ -5483,7 +5420,7 @@ function _pg_catalog_listing_rss_products($active_group_id, $order_by_field = 's
         $extra_select = ", MIN(xref.sort_order) AS _pg_sort";
         $field_map = array(
             'sort_order' => '_pg_sort',
-            'name'       => 'products.name',
+            'name'       => 'products.short_description',
             'price'      => 'products.price',
             'newest'     => 'products.timestamp',
         );
@@ -5491,7 +5428,7 @@ function _pg_catalog_listing_rss_products($active_group_id, $order_by_field = 's
         $order_sql = "$field $order_by_direction, products.id DESC";
     } else {
         $field_map = array(
-            'name'   => 'products.name',
+            'name'   => 'products.short_description',
             'price'  => 'products.price',
             'newest' => 'products.timestamp',
         );

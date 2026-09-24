@@ -223,6 +223,10 @@ if (!$_POST) {
     $manage_erp = $row['manage_erp'] ?? 0;
     $manage_erp_cash = $row['manage_erp_cash'] ?? 0;
     $manage_erp_settings = $row['manage_erp_settings'] ?? 0;
+    $manage_erp_readonly = pg_user_has_erp_readonly_column()
+        ? (int) db_value("SELECT manage_erp_readonly FROM user WHERE user_id = '" . (int) $_GET['id'] . "' LIMIT 1")
+        : 0;
+    $ws_rights = pg_user_permission_ws_values((int) $_GET['id']);
     $set_offline_payment = $row['user_set_offline_payment'];
     $publish_calendar_events = $row['user_publish_calendar_events'];
     $set_page_type_values['set_page_type_email_a_friend'] = $row['user_set_page_type_email_a_friend'];
@@ -524,7 +528,12 @@ if (!$_POST) {
         // rights that sit behind it belong in the panel.
         $permission_panels['erp_switches'] =
             pg_user_permission_switch('manage_erp_cash', '1', ($manage_erp_cash == 1), lang('See cash and bank'), lang('Balances, receipts and payments.'))
-            . pg_user_permission_switch('manage_erp_settings', '1', ($manage_erp_settings == 1), lang('Change ERP settings'), lang('Numbering, default accounts and the Parasut connection.'));
+            . pg_user_permission_switch('manage_erp_settings', '1', ($manage_erp_settings == 1), lang('Change ERP settings'), lang('Numbering, default accounts and the Parasut connection.'))
+            . (pg_user_has_erp_readonly_column() ? pg_user_permission_switch('manage_erp_readonly', '1', ($manage_erp_readonly == 1), lang('Read only (accountant)'), lang('Every ERP screen to read and the accountant\'s pack to download; nothing can be issued, paid or changed.')) : '');
+    }
+
+    if (pg_user_permission_ws_available()) {
+        $permission_panels['workspace_switches'] = pg_user_permission_ws_switches($ws_rights);
     }
 
     if (ADS === true) {
@@ -576,6 +585,10 @@ if (!$_POST) {
             'manage_contacts'         => $manage_contacts,
             'manage_emails'           => $manage_emails,
             'manage_ecommerce'        => $manage_ecommerce,
+            // The two prefix-less gates store '1'. Without them here the rows
+            // drew switched off and a save cleared the right.
+            'manage_erp'              => ($manage_erp == 1) ? '1' : '',
+            'manage_workspace'        => ($ws_rights['manage_workspace'] == 1) ? '1' : '',
         ),
         'panels' => $permission_panels,
         'counts' => array(
@@ -962,6 +975,14 @@ if (!$_POST) {
             </div>'
             : '');
 
+    // Where it was talked about in the workspace, and the tasks about it.
+    $output_workspace_button = '';
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_workspace_button = ws_record_button($user, 'user_account', (int) $_GET['id'], (string) $username, 'btn btn-sm btn-outline-secondary rounded-pill px-3');
+    }
+
     print
     pg_page_shell(
         array(
@@ -992,6 +1013,7 @@ if (!$_POST) {
                             <div class="pg-identity-actions">
                                 ' . $output_login_as_user_button . '
                                 ' . $output_reset_password_button . '
+                                ' . $output_workspace_button . '
                             </div>
                         </div>
                     </div>
@@ -1380,6 +1402,12 @@ if (!$_POST) {
                 user_set_page_type_order_receipt = '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
         }
         
+        // The workspace rights, when their columns exist.
+        $sql_ws_rights = pg_user_permission_ws_sql('set');
+
+        // The ERP's read-only right, when its column exists.
+        $sql_erp_readonly = pg_user_erp_readonly_sql('set');
+
         // update user
         $query =
             "UPDATE user
@@ -1405,6 +1433,8 @@ if (!$_POST) {
                 manage_erp = '" . e($_POST['manage_erp'] ?? '') . "',
                 manage_erp_cash = '" . e($_POST['manage_erp_cash'] ?? '') . "',
                 manage_erp_settings = '" . e($_POST['manage_erp_settings'] ?? '') . "',
+                $sql_erp_readonly
+                $sql_ws_rights
                 $sql_offline_payment
                 user_publish_calendar_events = '" . escape($_POST['publish_calendar_events'] ?? '') . "',
                 user_set_page_type_email_a_friend = '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',

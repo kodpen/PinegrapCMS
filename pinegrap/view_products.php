@@ -774,10 +774,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     /* build product filter options */
 
     // set all products option
-    $output_filter_options = '<option value="all_products"' . $all_products_filter_selected . '>' . lang(array('string'=>'All Products') ) . ' (' . number_format($all_products) . ')</option>';
+    $output_filter_options = '<option value="all_products"' . $all_products_filter_selected . '>' . lang(array('string'=>'All Products') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
     // set all product actions option
-    $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang(array('string'=>'All Product Actions') ) . ' (' . number_format($all_products) . ')</option>';
+    $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang(array('string'=>'All Product Actions') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
     // get the amount of shippable products
     $query = "SELECT count(id) FROM products WHERE shippable = '1'";
@@ -785,7 +785,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $row = mysqli_fetch_row($result);
 
     // set shippable product option
-    $output_filter_options .= '<option value="shippable_products"' . $shippable_product_filter_selected . '>' . lang(array('string'=>'Shippable Products') ) . ' (' . number_format($row[0]) . ')</option>';
+    $output_filter_options .= '<option value="shippable_products"' . $shippable_product_filter_selected . '>' . lang(array('string'=>'Shippable Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of recurring products
     $query = "SELECT count(id) FROM products WHERE recurring = '1'";
@@ -793,7 +793,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $row = mysqli_fetch_row($result);
 
     // set recurring product option
-    $output_filter_options .= '<option value="recurring_products"' . $recurring_product_filter_selected . '>' . lang(array('string'=>'Recurring Products') ) . ' (' . number_format($row[0]) . ')</option>';
+    $output_filter_options .= '<option value="recurring_products"' . $recurring_product_filter_selected . '>' . lang(array('string'=>'Recurring Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of donation products
     $query = "SELECT count(id) FROM products WHERE selection_type = 'donation'";
@@ -801,7 +801,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $row = mysqli_fetch_row($result);
 
     // set donation product option
-    $output_filter_options .= '<option value="donation_products"' . $donation_product_filter_selected . '>' . lang(array('string'=>'Donation Products') ) . ' (' . number_format($row[0]) . ')</option>';
+    $output_filter_options .= '<option value="donation_products"' . $donation_product_filter_selected . '>' . lang(array('string'=>'Donation Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of grant access products
     $query = "SELECT count(id) FROM products WHERE grant_private_access = '1' AND (private_folder != '0' OR send_to_page != '0')";
@@ -809,7 +809,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $row = mysqli_fetch_row($result);
 
     // set grant access product option
-    $output_filter_options .= '<option value="grant_access_products"' . $grant_access_product_filter_selected . '>' . lang(array('string'=>'Grant Access Products') ) . ' (' . number_format($row[0]) . ')</option>';
+    $output_filter_options .= '<option value="grant_access_products"' . $grant_access_product_filter_selected . '>' . lang(array('string'=>'Grant Access Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // get the amount of membership products
     $query = "SELECT count(id) FROM products WHERE membership_renewal != '0'";
@@ -817,7 +817,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $row = mysqli_fetch_row($result);
 
     // set membership product option
-    $output_filter_options .= '<option value="membership_products"' . $membership_product_filter_selected . '>' . lang(array('string'=>'Membership Products') ) . ' (' . number_format($row[0]) . ')</option>';
+    $output_filter_options .= '<option value="membership_products"' . $membership_product_filter_selected . '>' . lang(array('string'=>'Membership Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
     
     // get the amount of out of stock products
     $query = "SELECT count(id) FROM products WHERE out_of_stock = '1'";
@@ -825,7 +825,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $row = mysqli_fetch_row($result);
     
     // set out of stock product option
-    $output_filter_options .= '<option value="out_of_stock_products"' . $out_of_stock_products_filter_selected . '>' . lang(array('string'=>'All Out of Stock Products') ) . ' (' . number_format($row[0]) . ')</option>';
+    $output_filter_options .= '<option value="out_of_stock_products"' . $out_of_stock_products_filter_selected . '>' . lang(array('string'=>'All Out of Stock Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
     // SEO filters. Only offered once the score columns exist, and the
     // structure one only once the analysis half that fills its bit does.
@@ -834,14 +834,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $result = mysqli_query(db::$con, "SELECT count(id) FROM products WHERE (seo_score < 55) AND (seo_analysis_current = 1)") or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
-        $output_filter_options .= '<option value="seo_weak_products"' . $seo_weak_products_filter_selected . '>' . lang(array('string'=>'Products With a Weak SEO Score') ) . ' (' . number_format($row[0]) . ')</option>';
+        $output_filter_options .= '<option value="seo_weak_products"' . $seo_weak_products_filter_selected . '>' . lang(array('string'=>'Products With a Weak SEO Score') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         if (pg_seo_structure_schema_ready()) {
 
             $result = mysqli_query(db::$con, "SELECT count(id) FROM products WHERE (seo_flags & 32768) != 0") or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
 
-            $output_filter_options .= '<option value="seo_struct_error_products"' . $seo_struct_error_products_filter_selected . '>' . lang(array('string'=>'Products With HTML Structure Errors') ) . ' (' . number_format($row[0]) . ')</option>';
+            $output_filter_options .= '<option value="seo_struct_error_products"' . $seo_struct_error_products_filter_selected . '>' . lang(array('string'=>'Products With HTML Structure Errors') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
         }
     }
    
@@ -1342,7 +1342,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 $free_shipping = '';
             }
             
-            $extra_shipping_cost = BASE_CURRENCY_SYMBOL . number_format($row['extra_shipping_cost'] / 100, 2, '.', ',');
+            $extra_shipping_cost = pg_format_money($row['extra_shipping_cost'] / 100, BASE_CURRENCY_SYMBOL);
                 
             
             $output_allowed_zones = '';

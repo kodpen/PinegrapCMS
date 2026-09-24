@@ -41,6 +41,13 @@ if (!$row) {
     output_error(lang('Sorry, the item could not be found.'), 404);
 }
 
+// A document the ERP module keeps is read-only: this screen renames, replaces
+// and deletes files, and an issued invoice keeps its PDF. It opens from the
+// ERP screens instead.
+if (pg_files_include_erp_document(array($_REQUEST['id'] ?? 0, $_POST['id'] ?? 0))) {
+    output_error(lang('ERP documents are read-only in the file manager.'));
+}
+
 // if the user does not have edit rights to this file's folder,
 // or this file is a design file and the user is not a designer or administrator,
 // then log activity and output error

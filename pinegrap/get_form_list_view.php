@@ -3236,7 +3236,7 @@ function get_form_list_view($properties) {
                             // Otherwise the value is not blank, so format the number,
                             // so that it has commas in the thousands place.
                             } else {
-                                $data = number_format($data);
+                                $data = pg_format_number($data, 0);
                             }
                         }
                         

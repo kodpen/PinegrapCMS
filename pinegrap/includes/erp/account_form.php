@@ -34,7 +34,7 @@ if (!defined('PG_ERP_ENTRY')) {
  *                                reads it, or null for none
  * @return string  HTML
  */
-function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false, $contact = null)
+function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false, $contact = null, $account = null)
 {
     $kind_options = array();
     $kind_options[lang('Customer')] = 'customer';
@@ -48,6 +48,23 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     $person_options = array();
     $person_options[lang('Person')] = '1';
     $person_options[lang('Company')] = '0';
+
+    // The account's country decides which rules and words apply: VKN / TCKN
+    // and a tax office are Turkish; elsewhere it is a tax number and there is
+    // no tax office to name. The form is drawn for the country it holds and
+    // follows a change of the country field without a reload.
+    $country = erp_account_country((string) $liveform->get_field_value('country_code'));
+    $is_tr = ($country === 'TR');
+    $tr_only = $is_tr ? '' : ' d-none';
+    $not_tr = $is_tr ? ' d-none' : '';
+
+    $country_options = array();
+    if ($country === '') {
+        $country_options['—'] = '';
+    }
+    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' ORDER BY name ASC") as $country_row) {
+        $country_options[(string) $country_row['name']] = strtoupper((string) $country_row['code']);
+    }
 
     $output = '
     <div class="card my-4">
@@ -104,7 +121,40 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         ? lang('Goes to the e-mail address above. Switch it off for a customer who asked not to be written to.')
                         : lang('Reminder e-mails to customers are switched off on the ERP settings card; this choice takes effect once they are on.')) . '</div>
                 </div>
-            </div>
+            </div>' . ((function_exists('erp_mail_ready') && erp_mail_ready() && waf_table_has_column('erp_accounts', 'invoice_email')) ? '
+            <div class="row">
+                <div class="col-12 col-lg-6 my-2">
+                    <label for="invoice_email" class="form-label">' . lang('Invoice e-mail address') . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'email', 'id' => 'invoice_email', 'name' => 'invoice_email',
+                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
+                    <div class="form-text">' . lang('Where invoices are e-mailed when that is not the address above, such as the customer\'s accounts department. Empty uses the address above.') . '</div>
+                </div>
+                <div class="col-12 col-lg-6 my-2">
+                    <div class="form-label">' . lang('Invoices by e-mail') . '</div>
+                    <div class="form-check form-switch">
+                        ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'invoice_mail', 'name' => 'invoice_mail', 'value' => '1', 'class' => 'form-check-input')) . '
+                        <label class="form-check-label" for="invoice_mail">' . lang('Send this account its invoices on their own') . '</label>
+                    </div>
+                    <div class="form-text">' . h((function_exists('erp_mail_auto_on') && erp_mail_auto_on())
+                        ? lang('Each issued invoice goes to the account by e-mail. Switch it off for a customer who does not want them; an invoice can still be sent from its own screen.')
+                        : lang('Sending invoices on their own is switched off on the ERP settings card; this choice takes effect once it is on. An invoice can always be sent from its own screen.')) . '</div>
+                </div>
+            </div>' : '') . ((function_exists('erp_credit_ready') && erp_credit_ready()) ? '
+            <div class="row">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                    <label for="credit_limit" class="form-label">' . h(lang(array('string' => 'Credit limit ({var:1})', 'vars' => erp_base_currency()))) . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'text', 'id' => 'credit_limit', 'name' => 'credit_limit',
+                        'class' => 'form-control', 'maxlength' => '20', 'inputmode' => 'decimal',
+                        'autocomplete' => 'off', 'placeholder' => lang('No limit'))) . '
+                </div>
+                <div class="col-12 col-lg-9 my-2 d-flex align-items-end">
+                    <div class="form-text">' . h((erp_credit_mode() === 'block')
+                        ? lang('The most this customer may owe, in the base currency. An invoice typed in the ERP that would take the balance past it is refused until a payment comes in. Empty is no limit; order invoices are never held back.')
+                        : lang('The most this customer may owe, in the base currency. An invoice typed in the ERP that takes the balance past it is still issued, with a warning, and the account list shows the account as over. Empty is no limit.')) . '</div>
+                </div>
+            </div>' : '') . '
         </div>
     </div>
 
@@ -119,16 +169,17 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'is_person', 'name' => 'is_person',
                         'class' => 'form-select', 'options' => $person_options)) . '
-                    <div class="form-text">' . lang('Decides whether the number is read as a TCKN or a VKN.') . '</div>
+                    <div class="form-text' . $tr_only . '" data-erp-tr-only>' . lang('Decides whether the number is read as a TCKN or a VKN.') . '</div>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
-                    <label for="tax_number" class="form-label">' . lang('VKN / TCKN') . '</label>
-                    ' . $liveform->output_field(array(
+                    <label for="tax_number" class="form-label" data-label-tr="' . h(lang('VKN / TCKN')) . '" data-label-other="' . h(lang('Tax number')) . '">' . h(erp_tax_id_label($country)) . '</label>
+                    ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'tax_number', 'name' => 'tax_number',
-                        'class' => 'form-control', 'maxlength' => '11',
-                        'inputmode' => 'numeric', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => (string) erp_tax_number_width(),
+                        'autocomplete' => 'off'), $is_tr ? array('inputmode' => 'numeric') : array())) . '
+                    ' . erp_account_form_einvoice_state($account) . '
                 </div>
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 col-lg-6 my-2' . $tr_only . '" data-erp-tr-only>
                     <label for="tax_office" class="form-label">' . lang('Tax Office') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'tax_office', 'name' => 'tax_office',
@@ -162,27 +213,70 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'address', 'name' => 'address',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-5 my-2">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'district', 'name' => 'district',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-4 my-2">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="city" class="form-label">' . lang('City') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'city', 'name' => 'city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-3 my-2">
+                <div class="col-12 col-sm-6 col-lg-3 my-2' . $not_tr . '" data-erp-not-tr>
+                    <label for="state" class="form-label">' . lang('State / Province') . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'text', 'id' => 'state', 'name' => 'state',
+                        'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="postcode" class="form-label">' . lang('Postal Code') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'postcode', 'name' => 'postcode',
                         'class' => 'form-control', 'maxlength' => '20', 'autocomplete' => 'off')) . '
                 </div>
+                <div class="col-12 col-sm-6 col-lg-4 my-2">
+                    <label for="country_code" class="form-label">' . lang('Country') . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'select', 'id' => 'country_code', 'name' => 'country_code',
+                        'class' => 'form-select', 'options' => $country_options)) . '
+                </div>
             </div>
         </div>
-    </div>';
+    </div>
+    <script>
+    (function () {
+        // Follows a change of country: the Turkish-only fields and words
+        // show for Turkey alone; the rules themselves are checked on save.
+        var select = document.getElementById("country_code");
+        if (!select) {
+            return;
+        }
+        select.addEventListener("change", function () {
+            var tr = (select.value === "TR");
+            document.querySelectorAll("[data-erp-tr-only]").forEach(function (element) {
+                element.classList.toggle("d-none", !tr);
+            });
+            document.querySelectorAll("[data-erp-not-tr]").forEach(function (element) {
+                element.classList.toggle("d-none", tr);
+            });
+            var label = document.querySelector("label[for=tax_number]");
+            if (label) {
+                label.textContent = label.getAttribute(tr ? "data-label-tr" : "data-label-other");
+            }
+            var input = document.getElementById("tax_number");
+            if (input) {
+                if (tr) {
+                    input.setAttribute("inputmode", "numeric");
+                } else {
+                    input.removeAttribute("inputmode");
+                }
+            }
+        });
+    })();
+    </script>';
 
     if ($with_opening) {
         $output .= '
@@ -242,6 +336,44 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
 }
 
 /**
+ * What GİB last said about this account's tax number, for the line under it.
+ *
+ * Written by erp_edoc_account_check_taxpayer(); an account nobody has asked
+ * about says so rather than looking like a "no".
+ *
+ * @param array|null $account  An erp_accounts row
+ * @return string
+ */
+function erp_account_form_einvoice_state($account)
+{
+    if (!is_array($account) || !array_key_exists('einvoice_checked_at', $account)) {
+        return '';
+    }
+
+    $checked_at = (int) $account['einvoice_checked_at'];
+
+    if ($checked_at <= 0) {
+        // Only worth saying when there is an e-document provider to ask; a
+        // store without one never registers for e-Invoice at all.
+        if (!function_exists('erp_edoc_active') || (erp_edoc_active() === '')) {
+            return '';
+        }
+
+        return '<div class="form-text">' . lang('Whether this number is registered for e-Invoice has not been asked yet.') . '</div>';
+    }
+
+    $is_user = ((int) $account['einvoice_user'] === 1);
+    $alias = trim((string) $account['einvoice_alias']);
+
+    return '<div class="form-text">'
+        . '<span class="badge text-bg-' . ($is_user ? 'success' : 'secondary') . '">'
+        . ($is_user ? lang('e-Invoice taxpayer') : lang('Not an e-Invoice taxpayer')) . '</span> '
+        . h(lang(array('string' => 'asked {var:1}', 'vars' => date('d.m.Y H:i', $checked_at))))
+        . (($is_user && ($alias !== '')) ? '<br />' . h($alias) : '')
+        . '</div>';
+}
+
+/**
  * The contact behind the account, as one line of the summary column.
  *
  * @param array $contact  erp_contact_summary()
@@ -260,8 +392,9 @@ function erp_account_form_contact_summary($contact)
     if ($contact['phone'] !== '') {
         $lines[] = h($contact['phone']);
     }
-    if (trim($contact['district'] . ' ' . $contact['city']) !== '') {
-        $lines[] = h(trim($contact['district'] . ' ' . $contact['city']));
+    $place = trim(implode(' ', array_filter(array($contact['district'], $contact['city'], $contact['state'] ?? ''), 'strlen')));
+    if ($place !== '') {
+        $lines[] = h($place);
     }
 
     $links = array();
@@ -275,10 +408,24 @@ function erp_account_form_contact_summary($contact)
         $links[] = '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username']))) . '</a>';
     }
 
+    // The contact's own picture, at the size the rest of the panel uses for
+    // a person. No picture, no box: an empty grey square beside every name
+    // would be noise, and the name is doing the work anyway.
+    $photo = (trim((string) ($contact['image'] ?? '')) !== '')
+        ? '<img class="img-thumbnail lazy flex-shrink-0" style="width:56px;height:56px;object-fit:cover;" alt=""'
+            . ' src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif"'
+            . ' data-src="' . PATH . h((string) $contact['image']) . '" />'
+        : '';
+
     return '
-                    <div class="fw-bold">' . h($contact['name']) . '</div>
-                    ' . (($lines !== array()) ? '<div class="small text-body-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
-                    <div class="d-flex flex-wrap gap-2 mt-2">' . implode('', $links) . '</div>';
+                    <div class="d-flex align-items-start gap-3">
+                        ' . $photo . '
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="fw-bold">' . h($contact['name']) . '</div>
+                            ' . (($lines !== array()) ? '<div class="small text-body-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
+                            <div class="d-flex flex-wrap gap-2 mt-2">' . implode('', $links) . '</div>
+                        </div>
+                    </div>';
 }
 
 /**
@@ -466,4 +613,80 @@ function erp_currency_form_row($liveform, $locked, $help)
                     ' . $field . '
                 </div>
             </div>';
+}
+
+/**
+ * The country the form was sent with, or '' with the field marked when it is
+ * not one the store knows. An empty choice stays empty (the store's country
+ * applies).
+ *
+ * @param liveform $liveform
+ * @return string
+ */
+function erp_account_form_country($liveform)
+{
+    $code = strtoupper(trim((string) $liveform->get_field_value('country_code')));
+
+    if ($code === '') {
+        return '';
+    }
+
+    if (!preg_match('/^[A-Z]{2}$/', $code) || ((int) db_value("SELECT COUNT(*) FROM countries WHERE code = '" . escape($code) . "'") === 0)) {
+        $liveform->mark_error('country_code', lang('The country is not known.'));
+        return '';
+    }
+
+    return $code;
+}
+
+/**
+ * The format checks an account card is held to on save, marked on the
+ * fields. An empty field is not judged here - the e-document readiness
+ * check says what a document still needs.
+ *
+ * Everywhere: a tax number is letters, digits and the usual separators, and
+ * fits the card. For a Turkish account (its own country, or the store's
+ * when it has none) also the tax authority's rules - ten or eleven digits
+ * whose check digits hold, a five-digit postcode, a person's name in two
+ * parts - because GİB's integrators refuse a document without them and the
+ * card is where the mistake is cheapest to fix. Other countries' formats
+ * are too many to check and are taken as typed.
+ *
+ * @param liveform $liveform
+ * @param string   $country_code  The account's country; the store's when empty
+ * @return void
+ */
+function erp_account_form_check_formats($liveform, $country_code = '')
+{
+    $country = erp_account_country($country_code);
+    $tax = erp_tax_number_check((string) $liveform->get_field_value('tax_number'), $country);
+
+    if ($tax['error'] !== '') {
+        $liveform->mark_error('tax_number', $tax['error']);
+    }
+
+    $postcode = trim((string) $liveform->get_field_value('postcode'));
+
+    if (($postcode !== '') && ($country !== '') && function_exists('erp_edoc_postcode_valid') && !erp_edoc_postcode_valid($postcode, $country)) {
+        $liveform->mark_error('postcode', lang('A Turkish postcode has five digits.'));
+    }
+
+    $credit_limit = trim((string) $liveform->get_field_value('credit_limit'));
+
+    if (($credit_limit !== '') && ((preg_match('/^[0-9.,\s]+$/', $credit_limit) !== 1) || (erp_kurus($credit_limit) < 0))) {
+        $liveform->mark_error('credit_limit', lang('Enter the credit limit as an amount, or leave it empty for none.'));
+    }
+
+    $invoice_email = trim((string) $liveform->get_field_value('invoice_email'));
+
+    if (($invoice_email !== '') && !filter_var($invoice_email, FILTER_VALIDATE_EMAIL)) {
+        $liveform->mark_error('invoice_email', lang('The invoice e-mail address is not an e-mail address.'));
+    }
+
+    // A Turkish person's card needs a first name and a surname: an
+    // individual is carried that way on every GİB e-document.
+    if (($country === 'TR') && ((string) $liveform->get_field_value('is_person') === '1') && (trim((string) $liveform->get_field_value('title')) !== '')
+        && function_exists('erp_edoc_person_name') && (erp_edoc_person_name((string) $liveform->get_field_value('title')) === null)) {
+        $liveform->mark_error('title', lang('A person needs a first name and a surname. If this is a company, choose company as the taxpayer type.'));
+    }
 }

@@ -41,8 +41,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Transfer'),
-        'extra_classes' => 'erp erp_cash',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_cash',
+        'icon' => 'erp',
         'heading' => lang('Transfer'),
         'heading_description' => lang('Move money from one of your tills to another. Nobody owes anybody anything differently afterwards.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
@@ -111,7 +111,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-check-circle me-2"></span><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>

@@ -90,6 +90,35 @@ function pg_chat_attachments_ready()
     return $ready;
 }
 
+// Voice messages and audio files need the 2026.4.4 enum value. Writing
+// 'audio' into an enum that does not list it stores an empty string with
+// strict mode off (and fails with it on), so the button is never offered and
+// the endpoints refuse until the column has been widened.
+function pg_chat_audio_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = false;
+
+        if (pg_chat_attachments_ready()) {
+            $column = db_item("SHOW COLUMNS FROM chat_messages LIKE 'attachment_kind'");
+
+            $ready = (is_array($column) && isset($column['Type']) && strpos($column['Type'], "'audio'") !== false);
+        }
+    }
+
+    return $ready;
+}
+
+// Is the audio switch on for the visitor side? Staff are not bound by it
+// (same as images and files, which the panel sends regardless) - the setting
+// governs what the site offers, not what the operator may answer with.
+function pg_chat_audio_allowed()
+{
+    return (pg_chat_audio_ready() && defined('CHAT_ALLOW_AUDIO') && CHAT_ALLOW_AUDIO);
+}
+
 // Fragment that adds the attachment columns/JOIN to message SELECTs only
 // when the schema is ready — kept in one place so the four queries can
 // never drift apart.
@@ -144,10 +173,48 @@ function pg_chat_attachment_payload($row)
 // Attachment kind from the extension: 'image' | 'file' | '' (not allowed).
 // The extension lists live ONLY here — every server-side decision goes
 // through this single function, so the lists cannot drift apart.
+// The one and only extension allowlist. pg_chat_upload_kind() decides with
+// it and pg_chat_accept_list() builds the filter of the file picker from it,
+// so what the picker offers and what the server accepts are the same list.
+//
+// weba/webm and m4a are what MediaRecorder hands back: Chrome and Firefox
+// record into a WebM container, Safari into MPEG-4. They sit beside the
+// ordinary audio extensions because a recording and an uploaded track are
+// the same thing once stored - a bubble with a player.
+function pg_chat_upload_extensions()
+{
+    return array(
+        'image' => array('jpg', 'jpeg', 'png', 'gif', 'webp'),
+        'file' => array('pdf', 'zip', 'rar', '7z', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'),
+        'audio' => array('mp3', 'm4a', 'ogg', 'oga', 'wav', 'weba', 'webm')
+    );
+}
+
+// accept="" for the file input, built from the kinds this side may send.
+function pg_chat_accept_list($kinds)
+{
+    $extensions = pg_chat_upload_extensions();
+    $accept = array();
+
+    foreach ($kinds as $kind) {
+        if (!isset($extensions[$kind])) {
+            continue;
+        }
+
+        foreach ($extensions[$kind] as $extension) {
+            $accept[] = '.' . $extension;
+        }
+    }
+
+    return implode(',', $accept);
+}
+
 function pg_chat_upload_kind($original_name)
 {
-    $image_extensions = array('jpg', 'jpeg', 'png', 'gif', 'webp');
-    $file_extensions = array('pdf', 'zip', 'rar', '7z', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv');
+    $extensions = pg_chat_upload_extensions();
+    $image_extensions = $extensions['image'];
+    $file_extensions = $extensions['file'];
+    $audio_extensions = $extensions['audio'];
 
     $original_name = trim((string) $original_name);
     $dot_position = mb_strrpos($original_name, '.');
@@ -166,10 +233,16 @@ function pg_chat_upload_kind($original_name)
         return 'file';
     }
 
+    // Audio is offered only once the enum knows the value; before the
+    // upgrade the extension is simply not an allowed type.
+    if (in_array($extension, $audio_extensions, true) && pg_chat_audio_ready()) {
+        return 'audio';
+    }
+
     return '';
 }
 
-function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files)
+function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files, $allow_audio = false)
 {
     if (!pg_chat_attachments_ready()) {
         return array('error' => lang('Attachments are disabled.'));
@@ -181,6 +254,7 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
     if ($kind == ''
         || ($kind == 'image' && !$allow_images)
         || ($kind == 'file' && !$allow_files)
+        || ($kind == 'audio' && !$allow_audio)
     ) {
         return array('error' => lang('This file type is not allowed.'));
     }
@@ -226,6 +300,25 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
             @unlink($stored_path);
 
             return array('error' => lang('This file type is not allowed.'));
+        }
+    } elseif ($kind == 'audio') {
+        // Audio is checked by what the container actually is, not by the
+        // extension the sender chose. video/webm and video/ogg are on the
+        // allowed list because that is how libmagic labels an audio-only
+        // WebM or Ogg stream - the very thing MediaRecorder produces.
+        if (function_exists('finfo_open')) {
+            $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+
+            if ($finfo) {
+                $mime = (string) @finfo_file($finfo, $stored_path);
+                @finfo_close($finfo);
+
+                if (!preg_match('#^(audio/|video/webm|video/ogg|video/mp4|application/ogg)#i', $mime)) {
+                    @unlink($stored_path);
+
+                    return array('error' => lang('This file type is not allowed.'));
+                }
+            }
         }
     } elseif (function_exists('finfo_open')) {
         $finfo = @finfo_open(FILEINFO_MIME_TYPE);
@@ -425,11 +518,39 @@ function pg_chat_push_peer($conversation, $message_id, $sender_user_id)
 // ── Permission rules ─────────────────────────────────────────────────────
 
 // Backend pairing rule: at least one side must be staff (role <= 2).
-// Admin/designer/manager can chat with everyone; role 3 <-> role 3 is
-// never allowed.
-function pg_chat_can_pair($role_a, $role_b)
+// Admin/designer/manager can chat with everyone. Role 3 <-> role 3 is
+// allowed only between two team members - both holding manage_workspace
+// while the workspace is switched on - so a site member can still never
+// open a conversation with another site member. The ids are optional for the
+// callers that only know the roles; without them the rule is the strict one.
+function pg_chat_can_pair($role_a, $role_b, $user_a = 0, $user_b = 0)
 {
-    return (min((int) $role_a, (int) $role_b) <= 2);
+    if (min((int) $role_a, (int) $role_b) <= 2) {
+        return true;
+    }
+
+    return (pg_chat_is_team_member($user_a) && pg_chat_is_team_member($user_b));
+}
+
+// A basic user who belongs to the team: the workspace is on and the account
+// holds its gate. Probed defensively - before the upgrade the column is not
+// there and nobody is.
+function pg_chat_is_team_member($user_id)
+{
+    static $cache = array();
+
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED
+        || !function_exists('pg_user_has_ws_columns') || !pg_user_has_ws_columns()) {
+        return false;
+    }
+
+    if (!isset($cache[$user_id])) {
+        $cache[$user_id] = ((int) db_value("SELECT manage_workspace FROM user WHERE user_id = '" . $user_id . "'") === 1);
+    }
+
+    return $cache[$user_id];
 }
 
 // ── User presentation helpers ────────────────────────────────────────────
@@ -605,7 +726,11 @@ function pg_chat_online_users()
     $where = "user.user_id != '" . e((int) USER_ID) . "'";
 
     if ((int) USER_ROLE >= 3) {
-        $where .= " AND user.user_role <= 2";
+        // A team member also sees the other team members, the list-side
+        // counterpart of the widened pairing rule.
+        $where .= pg_chat_is_team_member((int) USER_ID)
+            ? " AND (user.user_role <= 2 OR user.manage_workspace = 1)"
+            : " AND user.user_role <= 2";
     }
 
     $rows = db_items("
@@ -694,6 +819,24 @@ function pg_chat_can_manage($conversation)
     return ((int) USER_ROLE <= (int) $peer_role);
 }
 
+// Who the person on the other side is, as a brief - or null when there is
+// nobody to name.
+//
+// A site conversation used to have a peer only for the staff side, because
+// the other side was an anonymous visitor. Since a signed-in member now
+// reads their own site conversations in the same window, the initiator of
+// one has a peer as well: the operator it was addressed to. Without this the
+// member is shown their OWN name and their OWN address as the party they are
+// talking to.
+function pg_chat_conversation_peer($conversation, $user_id, $side)
+{
+    if ($conversation['channel'] == 'backend' || $side == 'initiator') {
+        return pg_chat_user_brief(pg_chat_user_row(pg_chat_peer_id($conversation, $user_id)));
+    }
+
+    return null;
+}
+
 // The peer's user id (backend channel).
 function pg_chat_peer_id($conversation, $user_id)
 {
@@ -722,11 +865,7 @@ function pg_chat_conversation_payload($conversation, $with_messages = true)
     $me = (int) USER_ID;
     $side = pg_chat_side($conversation, $me);
 
-    $peer = null;
-
-    if ($conversation['channel'] == 'backend') {
-        $peer = pg_chat_user_brief(pg_chat_user_row(pg_chat_peer_id($conversation, $me)));
-    }
+    $peer = pg_chat_conversation_peer($conversation, $me, $side);
 
     $my_read_column = ($side == 'initiator') ? 'initiator_last_read_id' : 'target_last_read_id';
     $peer_read_column = ($side == 'initiator') ? 'target_last_read_id' : 'initiator_last_read_id';
@@ -738,8 +877,10 @@ function pg_chat_conversation_payload($conversation, $with_messages = true)
         'side' => $side,
         'peer' => $peer,
         'party_name' => $conversation['party_name'],
-        // Visitor IP for the panel header (site channel only).
-        'ip_address' => (($conversation['channel'] == 'site') ? (string) $conversation['ip_address'] : ''),
+        // Visitor IP for the panel header: the staff side of a site
+        // conversation only. The member reading their own conversation has
+        // no use for their own address.
+        'ip_address' => (($conversation['channel'] == 'site' && $side != 'initiator') ? (string) $conversation['ip_address'] : ''),
         'last_message_id' => (int) $conversation['last_message_id'],
         'last_message_at' => (int) $conversation['last_message_at'],
         'last_message_preview' => $conversation['last_message_preview'],
@@ -815,7 +956,7 @@ function pg_chat_open_backend_conversation($target_user_id)
     }
 
     // Pairing rule at open time; it is verified again on every send.
-    if (!pg_chat_can_pair(USER_ROLE, $target['role'])) {
+    if (!pg_chat_can_pair(USER_ROLE, $target['role'], USER_ID, $target_user_id)) {
         return array('status' => 'error', 'message' => lang('You cannot chat with this user.'));
     }
 
@@ -897,7 +1038,7 @@ function pg_chat_send($conversation_id, $body, $target_user_id = 0)
 
         $target = pg_chat_user_row($target_user_id);
 
-        if (!$target || !pg_chat_can_pair(USER_ROLE, $target['role'])) {
+        if (!$target || !pg_chat_can_pair(USER_ROLE, $target['role'], USER_ID, $target_user_id)) {
             return array('status' => 'error', 'message' => lang('You cannot chat with this user.'));
         }
 
@@ -937,7 +1078,7 @@ function pg_chat_send($conversation_id, $body, $target_user_id = 0)
     if ($conversation['channel'] == 'backend') {
         $peer_role = db_value("SELECT user_role FROM user WHERE user_id = '" . e(pg_chat_peer_id($conversation, $me)) . "'");
 
-        if ($peer_role === null || !pg_chat_can_pair(USER_ROLE, $peer_role)) {
+        if ($peer_role === null || !pg_chat_can_pair(USER_ROLE, $peer_role, USER_ID, pg_chat_peer_id($conversation, $me))) {
             return array('status' => 'error', 'message' => lang('You cannot chat with this user.'));
         }
     }
@@ -1086,11 +1227,7 @@ function pg_chat_poll($conversation_id, $since_id, $mark_read, $typing = false)
         $peer_typing = (isset($conversation[$peer_typing_column]) && (int) $conversation[$peer_typing_column] > $now);
     }
 
-    $peer = null;
-
-    if ($conversation['channel'] == 'backend') {
-        $peer = pg_chat_user_brief(pg_chat_user_row(pg_chat_peer_id($conversation, $me)));
-    }
+    $peer = pg_chat_conversation_peer($conversation, $me, $side);
 
     // Delivered/seen ticks: the peer's read cursor. The row was read at the
     // start of the poll, so it can be at most one round stale — the cursor
@@ -1174,7 +1311,10 @@ function pg_chat_conversation_list()
         $side = ((int) $row['initiator_user_id'] === $me) ? 'initiator' : 'target';
         $my_read = ($side == 'initiator') ? $row['initiator_last_read_id'] : $row['target_last_read_id'];
 
-        if ($row['channel'] == 'site') {
+        // A site conversation the viewer STARTED is read from the other
+        // end: the peer is the operator, exactly as in the window. Only the
+        // staff side sees a visitor here.
+        if ($row['channel'] == 'site' && ($side != 'initiator' || $row['peer_id'] === null)) {
             $title = ($row['party_name'] != '') ? $row['party_name'] : lang('Visitor') . ' #' . (int) $row['id'];
             $peer = null;
         } else {
@@ -1215,11 +1355,11 @@ function pg_chat_conversation_list()
             // channel only — backend peers are logged-in users, not
             // visitors. Captured once at conversation creation
             // (waf_client_ip, real address behind CDN/proxy).
-            'ip_address' => (($row['channel'] == 'site') ? (string) $row['ip_address'] : ''),
+            'ip_address' => (($row['channel'] == 'site' && $side != 'initiator') ? (string) $row['ip_address'] : ''),
             // Visitor context for the header: email under the name, the
             // page the chat was started from in the hover tooltip.
-            'party_email' => (($row['channel'] == 'site') ? (string) $row['party_email'] : ''),
-            'page_url' => (($row['channel'] == 'site') ? (string) $row['page_url'] : ''),
+            'party_email' => (($row['channel'] == 'site' && $side != 'initiator') ? (string) $row['party_email'] : ''),
+            'page_url' => (($row['channel'] == 'site' && $side != 'initiator') ? (string) $row['page_url'] : ''),
             // Which operator a site conversation was addressed to. Since
             // role 0 sees all site conversations, this is carried explicitly
             // so another operator's conversation never looks like it was
@@ -1377,6 +1517,7 @@ function pg_chat_handle_backend_action($action, $request)
     switch ($action) {
 
         case 'chat_bootstrap':
+            pg_chat_adopt_session_conversation();
             pg_chat_cleanup_empty();
 
             return array('status' => 'success', 'data' => array(
@@ -1453,7 +1594,7 @@ function pg_chat_attach($conversation_id, $name, $data)
     if ($conversation['channel'] == 'backend') {
         $peer_role = db_value("SELECT user_role FROM user WHERE user_id = '" . e(pg_chat_peer_id($conversation, $me)) . "'");
 
-        if ($peer_role === null || !pg_chat_can_pair(USER_ROLE, $peer_role)) {
+        if ($peer_role === null || !pg_chat_can_pair(USER_ROLE, $peer_role, USER_ID, pg_chat_peer_id($conversation, $me))) {
             return array('status' => 'error', 'message' => lang('You cannot chat with this user.'));
         }
     }
@@ -1483,7 +1624,7 @@ function pg_chat_attach($conversation_id, $name, $data)
         }
     }
 
-    $stored = pg_chat_store_upload($name, $data, true, true);
+    $stored = pg_chat_store_upload($name, $data, true, true, pg_chat_audio_ready());
 
     if (isset($stored['error'])) {
         return array('status' => 'error', 'message' => $stored['error']);
@@ -1498,6 +1639,63 @@ function pg_chat_attach($conversation_id, $name, $data)
 // and handed to JS as JSON config; chat_backend.src.js contains no text.
 // The CSS is deliberately inline: the launcher is on every panel page and
 // too small to justify a separate CSS request.
+// Every string the panel launcher and the signed-in site widget put on
+// screen. One table for both: the two windows show the same conversations
+// and must not end up calling the same thing by two names. Neither JS file
+// contains any user-visible literal text.
+function pg_chat_panel_strings()
+{
+    return array(
+        'chat' => lang('Chat'),
+        'online_users' => lang('Online Users'),
+        'conversations' => lang('Conversations'),
+        'no_online_users' => lang('No one else is online right now.'),
+        'no_conversations' => lang('No conversations yet.'),
+        'type_a_message' => lang('Type a message'),
+        'send' => lang('Send'),
+        'back' => lang('Back'),
+        'close_conversation' => lang('Close Conversation'),
+        'delete_conversation' => lang('Delete Conversation'),
+        'delete_confirm' => lang('This conversation will be permanently deleted. Continue?'),
+        'conversation_closed' => lang('This conversation is closed.'),
+        'closed_short' => lang('Closed'),
+        'delete' => lang('Delete'),
+        'cancel' => lang('Cancel'),
+        'loading' => lang('Loading'),
+        'online' => lang('Online'),
+        'away' => lang('Away'),
+        'offline' => lang('Offline'),
+        'site' => lang('Site'),
+        'panel' => lang('Panel'),
+        'start_chat' => lang('Start Chat'),
+        'typing' => lang('Typing'),
+        'close' => lang('Close'),
+        'tab_users' => lang('Users'),
+        'tab_conversations' => lang('Conversations'),
+        'attach' => lang('Attach File'),
+        'file_too_big' => lang('File is too large.'),
+        'file_type' => lang('This file type is not allowed.'),
+        'write_first' => lang('Write a message first.'),
+        // The "Delivered" language key belongs to shipping delivery -
+        // the chat tick needs its own keys.
+        'delivered' => lang('Message delivered'),
+        'seen' => lang('Message seen'),
+        'ip' => lang('IP'),
+        'last_seen' => lang('Last seen'),
+        'edit_contact' => lang('Edit Contact'),
+        'edit_user' => lang('Edit User'),
+        'page' => lang('Page'),
+        // Composer toolbar (2026.4.4).
+        'emoji' => lang('Emoji'),
+        'recent' => lang('Recently used'),
+        'voice_message' => lang('Record voice message'),
+        'stop_recording' => lang('Stop recording'),
+        'discard_recording' => lang('Discard recording'),
+        'mic_denied' => lang('Microphone permission was denied.'),
+        'mic_unsupported' => lang('Voice recording is not supported in this browser.')
+    );
+}
+
 function pg_chat_render_backend_launcher()
 {
     if (!pg_chat_enabled()) {
@@ -1524,7 +1722,12 @@ function pg_chat_render_backend_launcher()
         'token' => isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : '',
         'me' => array('id' => (int) USER_ID, 'role' => (int) USER_ROLE),
         'ai' => $ai,
-        'attach' => array('enabled' => pg_chat_attachments_ready(), 'max' => 5242880),
+        'attach' => array(
+            'enabled' => pg_chat_attachments_ready(),
+            'audio' => pg_chat_audio_ready(),
+            'accept' => pg_chat_accept_list(pg_chat_audio_ready() ? array('image', 'file', 'audio') : array('image', 'file')),
+            'max' => 5242880
+        ),
         'poll' => array('badge' => 60, 'list' => 15, 'conversation' => 5),
         // Profile edit link targets; the JS appends the id. Rendered only
         // for peers whose can_edit_user / can_edit_contact flags are true.
@@ -1532,42 +1735,7 @@ function pg_chat_render_backend_launcher()
             'edit_user' => PATH . SOFTWARE_DIRECTORY . '/edit_user.php?id=',
             'edit_contact' => PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id='
         ),
-        'strings' => array(
-            'chat' => lang('Chat'),
-            'online_users' => lang('Online Users'),
-            'conversations' => lang('Conversations'),
-            'no_online_users' => lang('No one else is online right now.'),
-            'no_conversations' => lang('No conversations yet.'),
-            'type_a_message' => lang('Type a message'),
-            'send' => lang('Send'),
-            'back' => lang('Back'),
-            'close_conversation' => lang('Close Conversation'),
-            'delete_conversation' => lang('Delete Conversation'),
-            'delete_confirm' => lang('This conversation will be permanently deleted. Continue?'),
-            'conversation_closed' => lang('This conversation is closed.'),
-            'delete' => lang('Delete'),
-            'cancel' => lang('Cancel'),
-            'loading' => lang('Loading'),
-            'online' => lang('Online'),
-            'away' => lang('Away'),
-            'offline' => lang('Offline'),
-            'site' => lang('Site'),
-            'panel' => lang('Panel'),
-            'start_chat' => lang('Start Chat'),
-            'typing' => lang('Typing'),
-            'close' => lang('Close'),
-            'tab_users' => lang('Users'),
-            'tab_conversations' => lang('Conversations'),
-            'attach' => lang('Attach File'),
-            'file_too_big' => lang('File is too large.'),
-            // The "Delivered" language key belongs to shipping delivery —
-            // the chat tick needs its own keys.
-            'delivered' => lang('Message delivered'),
-            'seen' => lang('Message seen'),
-            'ip' => lang('IP'),
-            'last_seen' => lang('Last seen'),
-            'page' => lang('Page')
-        )
+        'strings' => pg_chat_panel_strings()
     );
 
     $js_file = 'assets/js/chat_backend.' . ENVIRONMENT_SUFFIX . '.js';
@@ -1579,7 +1747,7 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 1080; width: 58px; height: 58px; border-radius: 50%; border: 0; color: #fff; background: linear-gradient(135deg, var(--bs-primary, #0d6efd), #6f42c1); box-shadow: 0 8px 24px rgba(13,110,253,.35); font-size: 22px; transition: transform .15s ease, box-shadow .15s ease; }
             #pg-chat-root .pg-chat-launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px rgba(13,110,253,.45); }
             #pg-chat-root .pg-chat-launcher:focus-visible { outline: 2px solid rgba(13,110,253,.5); outline-offset: 2px; }
-            #pg-chat-root .pg-chat-badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: #dc3545; color: #fff; font-size: 11px; line-height: 20px; padding: 0 5px; display: none; border: 2px solid var(--bs-body-bg, #fff); }
+            #pg-chat-root .pg-chat-badge { box-sizing: border-box; position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; border-radius: 999px; background: #dc3545; color: #fff; font-size: 11px; line-height: 1; padding: 0 5px; display: none; align-items: center; justify-content: center; border: 2px solid var(--bs-body-bg, #fff); }
             #pg-chat-root .pg-chat-panel { position: fixed; right: 24px; bottom: 96px; z-index: 1080; width: 372px; max-width: calc(100vw - 32px); height: 544px; max-height: calc(100vh - 128px); display: none; flex-direction: column; overflow: hidden; border: 0; border-radius: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.35); --bs-card-inner-border-radius: calc(var(--bs-border-radius-lg) - (var(--bs-border-width))); }
             #pg-chat-root .pg-chat-panel.pg-chat-open { display: flex; animation: pgChatPop .18s ease-out; }
             @keyframes pgChatPop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -1587,8 +1755,17 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-tabs .nav-link { border: 0; border-radius: 9px; color: var(--bs-secondary-color, #6c757d); font-size: 12.5px; font-weight: 600; padding: 4px 10px; }
             #pg-chat-root .pg-chat-tabs .nav-link.active { color: var(--bs-primary, #0d6efd); background: rgba(13,110,253,.15); }
             #pg-chat-root .pg-chat-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
-            #pg-chat-root .pg-chat-row { border-radius: 12px; margin: 2px 6px; cursor: pointer; transition: background .12s ease; }
+            #pg-chat-root .pg-chat-row { display: flex; align-items: center; gap: 10px; border-radius: 12px; margin: 4px 8px; padding: 8px 10px; cursor: pointer; background: var(--bs-body-bg, #fff); transition: background .12s ease; }
             #pg-chat-root .pg-chat-row:hover { background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-row-main { flex: 1 1 auto; min-width: 0; }
+            #pg-chat-root .pg-chat-row-name { font-size: 13px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            #pg-chat-root .pg-chat-row-unread .pg-chat-row-name { font-weight: 600; }
+            #pg-chat-root .pg-chat-row-sub { font-size: 11.5px; line-height: 1.35; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            #pg-chat-root .pg-chat-row-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+            #pg-chat-root .pg-chat-row-time { font-size: 10.5px; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; }
+            #pg-chat-root .pg-chat-row-dot { width: 9px; height: 9px; border-radius: 50%; background: #dc3545; }
+            #pg-chat-root .pg-chat-letter { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-secondary-color, #6c757d); font-size: 14px; font-weight: 700; }
+            #pg-chat-root .pg-chat-chip { flex-shrink: 0; font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--bs-secondary-color, #6c757d); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 5px; padding: 0 4px; line-height: 15px; }
             #pg-chat-root .pg-chat-avatar { width: 34px; height: 34px; object-fit: cover; }
             #pg-chat-root .pg-chat-ai-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #20c997, #0dcaf0); font-size: 16px; }
             #pg-chat-root .pg-chat-ai-frame { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
@@ -1603,8 +1780,58 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-tick-seen { color: #9ff3ff; }
             #pg-chat-root .pg-chat-bubble-peer { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-body-color, #212529); border-bottom-left-radius: 5px; }
             #pg-chat-root .pg-chat-bubble-system { background: transparent; color: var(--bs-secondary-color, #6c757d); font-size: 12px; text-align: center; max-width: 100%; box-shadow: none; }
-            #pg-chat-root .pg-chat-compose textarea { resize: none; height: 38px; max-height: 96px; font-size: 13px; border-radius: 10px; }
-            #pg-chat-root .pg-chat-compose input[type="file"] { display: none !important; }
+            /* Composer: one framed box holding the text area with the tool
+               row underneath it - attach, emoji and microphone on the left,
+               the round send button on the right. The same shape the site
+               widget draws, so the two windows read as one feature. */
+            #pg-chat-root .pg-chat-composer { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 14px; background: var(--bs-body-bg, #fff); padding: 7px 8px 6px; transition: border-color .15s ease; }
+            #pg-chat-root .pg-chat-composer textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--bs-body-color, #212529); font-size: 13px; line-height: 1.45; height: auto; min-height: 25px; max-height: 96px; padding: 1px 4px 5px; overflow-y: hidden; }
+            /* The panel window keeps its own scrollbars: an unstyled one is
+               the native Windows control, arrow buttons and all, and it sat
+               inside the composer the moment the field grew. */
+            #pg-chat-root .pg-chat-panel ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+            #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+            #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-track { background: transparent; border: 0; box-shadow: none; }
+            #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-thumb { background: var(--bs-border-color, #dee2e6); border: 0; border-radius: 4px; }
+            #pg-chat-root .pg-chat-panel { scrollbar-width: thin; }
+            #pg-chat-root .pg-chat-tools { display: flex; align-items: center; gap: 1px; }
+            #pg-chat-root .pg-chat-tool { flex-shrink: 0; width: 30px; height: 30px; border: 0; background: transparent; color: var(--bs-secondary-color, #6c757d); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+            #pg-chat-root .pg-chat-tool:hover { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-body-color, #212529); }
+            #pg-chat-root .pg-chat-tool.pg-chat-tool-on { color: var(--bs-primary, #0d6efd); background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-tools-grow { flex: 1 1 auto; }
+            #pg-chat-root .pg-chat-send { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--bs-primary, #0d6efd); color: #fff; display: flex; align-items: center; justify-content: center; }
+            #pg-chat-root .pg-chat-send:disabled { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-secondary-color, #6c757d); }
+            /* Recording replaces the tool row, so the microphone cannot be
+               armed twice and the only two things on offer are stop and
+               discard. */
+            #pg-chat-root .pg-chat-rec { display: none; align-items: center; gap: 9px; padding: 0 2px; }
+            #pg-chat-root .pg-chat-composer.pg-chat-recording .pg-chat-tools { display: none; }
+            #pg-chat-root .pg-chat-composer.pg-chat-recording .pg-chat-rec { display: flex; }
+            #pg-chat-root .pg-chat-composer.pg-chat-recording textarea { display: none; }
+            #pg-chat-root .pg-chat-rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #dc3545; animation: pgChatPulse 1.1s ease-in-out infinite; }
+            #pg-chat-root .pg-chat-rec-time { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+            @keyframes pgChatPulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+            /* Emoji palette: no external font or library, just the
+               characters the browser already draws. */
+            #pg-chat-root .pg-chat-emoji { display: none; border-top: 1px solid var(--bs-border-color, #dee2e6); padding: 6px 8px 8px; }
+            #pg-chat-root .pg-chat-emoji.pg-chat-emoji-on { display: block; }
+            #pg-chat-root .pg-chat-emoji-tabs { display: flex; gap: 1px; margin-bottom: 5px; overflow-x: auto; }
+            #pg-chat-root .pg-chat-emoji-tab { flex-shrink: 0; border: 0; background: transparent; font-size: 15px; line-height: 1; padding: 5px 7px; border-radius: 8px; opacity: .55; }
+            #pg-chat-root .pg-chat-emoji-tab.pg-chat-tool-on { opacity: 1; background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; height: 138px; overflow-y: auto; overscroll-behavior: contain; }
+            #pg-chat-root .pg-chat-emoji-grid button { border: 0; background: transparent; font-size: 19px; line-height: 1; padding: 4px 0; border-radius: 8px; }
+            #pg-chat-root .pg-chat-emoji-grid button:hover { background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-bubble audio { display: block; width: 210px; max-width: 100%; height: 34px; margin-top: 3px; }
+            #pg-chat-root .pg-chat-file { display: inline-flex; align-items: center; gap: 7px; color: inherit; text-decoration: none; }
+            #pg-chat-root .pg-chat-file:hover .pg-chat-file-name { text-decoration: underline; }
+            #pg-chat-root .pg-chat-file-ext { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 22px; padding: 0 6px; border-radius: 6px; background: rgba(0,0,0,.14); font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+            #pg-chat-root .pg-chat-bubble-me .pg-chat-file-ext { background: rgba(255,255,255,.22); }
+            /* The raw file input is NOT inside the launcher: it is created
+               on demand, parked directly on the body, clicked and removed
+               again. Off-screen rather than display:none, which some engines
+               treat as "not clickable"; the element carries the same rules
+               inline with !important as well. */
+            #pg-chat-backend-file { position: fixed !important; left: -9999px !important; top: 0 !important; width: 1px !important; height: 1px !important; opacity: 0 !important; z-index: -1 !important; pointer-events: none !important; }
             #pg-chat-root .pg-chat-compose .btn { border-radius: 10px; }
             #pg-chat-root .pg-chat-row-unread { font-weight: 600; }
             #pg-chat-root .pg-chat-link { color: inherit; text-decoration: none; }
@@ -1642,6 +1869,23 @@ function pg_chat_site_enabled()
     return (pg_chat_enabled()
         && defined('CHAT_SITE_ENABLED') && CHAT_SITE_ENABLED
         && defined('CHAT_OPERATOR_USER_ID') && CHAT_OPERATOR_USER_ID > 0);
+}
+
+// Member mode: a signed-in visitor gets the PANEL's chat on the front of the
+// site - their own conversation list and the staff they may write to - rather
+// than the single-operator visitor bubble. It is the same pool of
+// conversations the panel shows, reached through the same chat_* endpoints,
+// so a conversation started in one place continues in the other.
+//
+// The site switch still governs (an operator who turned the frontend bubble
+// off gets no bubble for anyone), but no operator has to be configured:
+// member mode does not route to one.
+function pg_chat_site_member_enabled()
+{
+    return (pg_chat_enabled()
+        && defined('CHAT_SITE_ENABLED') && CHAT_SITE_ENABLED
+        && defined('USER_LOGGED_IN') && USER_LOGGED_IN
+        && defined('USER_ID') && (int) USER_ID > 0);
 }
 
 function pg_chat_site_operator()
@@ -1728,6 +1972,71 @@ function pg_chat_site_conversation()
     }
 
     return $conversation;
+}
+
+// A conversation started while signed out, claimed by the account that just
+// signed in. Without this the history of the visitor would be stranded: the
+// session id is the only thing that owned it, and member mode never looks at
+// that id again.
+//
+// The messages are rewritten along with the row. They were written by this
+// person, and the panel decides which side of the window a message sits on
+// by sender_user_id - left as visitor/0 the words of the member would come
+// back as the words of the other side. Both writes are bounded by the
+// conversation and repeat harmlessly.
+//
+// Exactly one attempt is made whatever the outcome: the session key has done
+// its job at the moment it is read, and an id that turned out to belong to
+// somebody else must not follow the account from page to page.
+function pg_chat_adopt_session_conversation()
+{
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || (int) USER_ID <= 0) {
+        return false;
+    }
+
+    if (empty($_SESSION['chat']['site_conversation_id']) || !pg_chat_ready()) {
+        return false;
+    }
+
+    $conversation_id = (int) $_SESSION['chat']['site_conversation_id'];
+
+    unset($_SESSION['chat']['site_conversation_id']);
+    unset($_SESSION['chat']['site_name']);
+    unset($_SESSION['chat']['site_email']);
+
+    $conversation = pg_chat_conversation($conversation_id);
+
+    // Only an unclaimed site conversation, and never one this account is
+    // already the staff side of - a row whose two sides are the same user
+    // has no peer to answer it.
+    if (!$conversation
+        || $conversation['channel'] != 'site'
+        || (int) $conversation['initiator_user_id'] !== 0
+        || (int) $conversation['target_user_id'] === (int) USER_ID
+    ) {
+        return false;
+    }
+
+    $identity = pg_chat_site_identity();
+
+    $name = ($identity['name'] != '') ? $identity['name'] : $conversation['party_name'];
+    $email = ($identity['email'] != '') ? $identity['email'] : $conversation['party_email'];
+
+    db("UPDATE chat_conversations SET
+            initiator_user_id = '" . e((int) USER_ID) . "',
+            party_name = '" . e(mb_substr((string) $name, 0, 100)) . "',
+            party_email = '" . e(mb_substr((string) $email, 0, 255)) . "'
+        WHERE id = '" . e((int) $conversation['id']) . "'
+            AND channel = 'site'
+            AND initiator_user_id = 0");
+
+    db("UPDATE chat_messages SET
+            sender_kind = 'user',
+            sender_user_id = '" . e((int) USER_ID) . "'
+        WHERE conversation_id = '" . e((int) $conversation['id']) . "'
+            AND sender_kind = 'visitor'");
+
+    return true;
 }
 
 // Does the client-supplied id really belong to this visitor? Non-owners
@@ -2145,20 +2454,23 @@ function pg_chat_site_attach($conversation_id, $name, $data)
 
     $allow_images = (defined('CHAT_ALLOW_IMAGES') && CHAT_ALLOW_IMAGES) ? true : false;
     $allow_files = (defined('CHAT_ALLOW_FILES') && CHAT_ALLOW_FILES) ? true : false;
+    $allow_audio = pg_chat_audio_allowed();
 
     $kind = pg_chat_upload_kind($name);
 
-    if ($kind == '' || ($kind == 'image' && !$allow_images) || ($kind == 'file' && !$allow_files)) {
+    if ($kind == ''
+        || ($kind == 'image' && !$allow_images)
+        || ($kind == 'file' && !$allow_files)
+        || ($kind == 'audio' && !$allow_audio)
+    ) {
         return array('status' => 'error', 'message' => lang('This file type is not allowed.'));
     }
 
-    // Identity requirement: an anonymous visitor must have provided name +
-    // email for EVERY attachment kind (images included). The client shows
-    // the fields again; this check is the final gate, independent of the
-    // client.
-    if (!$identity['member'] && ($identity['name'] == '' || $identity['email'] == '')) {
-        return array('status' => 'error', 'code' => 'identity', 'message' => lang('Please enter your name and email before sending a file.'));
-    }
+    // No name-and-email gate here. A visitor reaches this point only after
+    // the captcha and the first message, and the two fields take whatever
+    // is typed into them - two scribbled characters passed the old check as
+    // easily as a real address did. It cost the honest visitor a puzzling
+    // refusal and cost an attacker nothing.
 
     // The visitor side's existing attachments in this conversation (for
     // the limits).
@@ -2177,21 +2489,23 @@ function pg_chat_site_attach($conversation_id, $name, $data)
             return array('status' => 'error', 'message' => lang('File limit reached for this conversation.'));
         }
     } else {
-        // The image limit comes from the site settings (default 5, min 1).
-        $image_limit = defined('CHAT_VISITOR_IMAGE_LIMIT') ? max(1, (int) CHAT_VISITOR_IMAGE_LIMIT) : 5;
+        // Images and voice notes share the ceiling from the site settings
+        // (default 5, min 1) but are counted separately: five pictures and
+        // five recordings, not five of the two together.
+        $media_limit = defined('CHAT_VISITOR_IMAGE_LIMIT') ? max(1, (int) CHAT_VISITOR_IMAGE_LIMIT) : 5;
 
-        $image_count = (int) db_value("
+        $media_count = (int) db_value("
             SELECT COUNT(*) FROM chat_messages
             WHERE conversation_id = '" . e((int) $conversation['id']) . "'
-                AND attachment_kind = 'image'
+                AND attachment_kind = '" . e($kind) . "'
                 AND " . $sender_condition);
 
-        if ($image_count >= $image_limit) {
+        if ($media_count >= $media_limit) {
             return array('status' => 'error', 'message' => lang('File limit reached for this conversation.'));
         }
     }
 
-    $stored = pg_chat_store_upload($name, $data, $allow_images, $allow_files);
+    $stored = pg_chat_store_upload($name, $data, $allow_images, $allow_files, $allow_audio);
 
     if (isset($stored['error'])) {
         return array('status' => 'error', 'message' => $stored['error']);
@@ -2321,35 +2635,51 @@ function pg_chat_handle_site_action($action, $request)
 }
 
 // ── Site bubble rendering ────────────────────────────────────────────────
-// Called by get_page_content.php just before </body>. Frontend pages have
-// no Bootstrap/jQuery guarantee: the CSS is self-contained under the
-// pg-chat-site (pgcs-*) prefix, the JS lives in its own file
-// (chat_site.*.js) and runs independently over XMLHttpRequest. Theme,
-// color and icon come from the site settings; a visitor who never opens
-// the chat causes no extra request.
+// Called by get_page_content.php just before </body>. Two different windows
+// come out of this one function:
+//
+//  - VISITOR (signed out): the single-operator bubble, unchanged.
+//  - MEMBER (signed in): the PANEL's chat, on the front of the site. The
+//    same conversation list, the same people and the same chat_* endpoints
+//    the panel window uses, so a conversation started in one place is
+//    continued in the other. Nothing here grants rights: those endpoints
+//    apply the pairing rule, the role gates and the ownership checks on
+//    their own, exactly as they do for the panel.
+//
+// Frontend pages have no Bootstrap/jQuery guarantee, so both modes are
+// FULLY self-contained: the CSS lives under the pg-chat-site (pgcs-*)
+// prefix, the JS in its own file (chat_site.*.js) over XMLHttpRequest.
+// Theme, color and icon come from the site settings; a visitor who never
+// opens the chat causes no extra request.
 function pg_chat_render_site_widget()
 {
-    if (!pg_chat_site_enabled()) {
+    $member = pg_chat_site_member_enabled();
+
+    if (!$member && !pg_chat_site_enabled()) {
         return '';
     }
 
-    // The bubble is not rendered while the operator browses the site —
-    // chatting with themselves is pointless; they already use the panel
-    // launcher.
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && (int) USER_ID === (int) CHAT_OPERATOR_USER_ID) {
-        return '';
+    // A conversation started before signing in belongs to the account from
+    // here on. Claimed at render time so it happens on the first page after
+    // the login, whether or not the window is ever opened.
+    if ($member) {
+        pg_chat_adopt_session_conversation();
     }
 
     $identity = pg_chat_site_identity();
 
-    // A single indexed read so visitors with a conversation get the unread
-    // badge on the bubble — anonymous visitors who never used the chat
-    // cause no query at all (nothing is looked up without a session id).
     $has_conversation = false;
     $unread = 0;
     $conversation_id = 0;
 
-    if ((defined('USER_LOGGED_IN') && USER_LOGGED_IN) || !empty($_SESSION['chat']['site_conversation_id'])) {
+    if ($member) {
+        // The member's badge is the panel's badge: every open conversation
+        // of theirs with something unread, in either channel.
+        $unread = pg_chat_unread_total();
+    } elseif (!empty($_SESSION['chat']['site_conversation_id'])) {
+        // A single indexed read so visitors with a conversation get the
+        // unread badge on the bubble - anonymous visitors who never used the
+        // chat cause no query at all.
         $conversation = pg_chat_site_conversation();
 
         if ($conversation) {
@@ -2357,7 +2687,7 @@ function pg_chat_render_site_widget()
             $conversation_id = (int) $conversation['id'];
 
             // Badge count: only counted when the cursor is behind. Handing
-            // the id to the client does not loosen ownership — every
+            // the id to the client does not loosen ownership - every
             // request re-validates against the session
             // (pg_chat_site_own_conversation).
             if ((int) $conversation['last_message_id'] > (int) $conversation['initiator_last_read_id']) {
@@ -2393,23 +2723,73 @@ function pg_chat_render_site_widget()
         ? trim((string) CHAT_WIDGET_TITLE)
         : lang('Live Support');
 
+    // What this side of the wire may upload. Members are panel users and
+    // follow the panel's rule (the schema decides); visitors follow the
+    // three site switches. One shape for both so the client has a single
+    // test, and the accept list is built from the server's own allowlist.
+    if ($member) {
+        $allow_images = pg_chat_attachments_ready();
+        $allow_files = pg_chat_attachments_ready();
+        $allow_audio = pg_chat_audio_ready();
+    } else {
+        $allow_images = (defined('CHAT_ALLOW_IMAGES') && CHAT_ALLOW_IMAGES && pg_chat_attachments_ready()) ? true : false;
+        $allow_files = (defined('CHAT_ALLOW_FILES') && CHAT_ALLOW_FILES && pg_chat_attachments_ready()) ? true : false;
+        $allow_audio = pg_chat_audio_allowed();
+    }
+
+    $accept_kinds = array();
+
+    if ($allow_images) {
+        $accept_kinds[] = 'image';
+    }
+
+    if ($allow_files) {
+        $accept_kinds[] = 'file';
+    }
+
+    if ($allow_audio) {
+        $accept_kinds[] = 'audio';
+    }
+
     $config = array(
         'api_url' => PATH . SOFTWARE_DIRECTORY . '/api.php',
         'token' => isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : '',
+        'member_mode' => $member,
         'member' => $identity['member'],
-        'name' => $identity['name'],
-        'email' => $identity['email'],
-        'welcome' => defined('CHAT_WELCOME_MESSAGE') ? CHAT_WELCOME_MESSAGE : '',
-        'has_conversation' => $has_conversation,
-        'conversation_id' => $conversation_id,
-        'unread' => $unread,
         'theme' => $theme,
+        'unread' => $unread,
         'attach' => array(
-            'images' => (defined('CHAT_ALLOW_IMAGES') && CHAT_ALLOW_IMAGES && pg_chat_attachments_ready()) ? true : false,
-            'files' => (defined('CHAT_ALLOW_FILES') && CHAT_ALLOW_FILES && pg_chat_attachments_ready()) ? true : false,
+            'images' => $allow_images,
+            'files' => $allow_files,
+            'audio' => $allow_audio,
+            'accept' => pg_chat_accept_list($accept_kinds),
             'max' => 5242880
-        ),
-        'strings' => array(
+        )
+    );
+
+    if ($member) {
+        $config['me'] = array('id' => (int) USER_ID, 'role' => (int) USER_ROLE);
+        // Same cadence as the panel launcher: the badge is cheap, the open
+        // conversation is not.
+        $config['poll'] = array('badge' => 60, 'list' => 15, 'conversation' => 5);
+        // Presence heartbeat. The panel writes user_online_timestamp on
+        // every page load; a member who spends the afternoon on the front of
+        // the site never loads one, and would sit in the staff list as
+        // offline while typing. Same period as the panel's own check.
+        $config['heartbeat'] = 50;
+        $config['urls'] = array('panel' => PATH . SOFTWARE_DIRECTORY . '/welcome.php');
+        $config['strings'] = array_merge(pg_chat_panel_strings(), array(
+            'title' => (defined('TITLE') && TITLE != '') ? TITLE : $widget_label,
+            'subtitle' => $widget_label,
+            'unavailable' => lang('Chat is not available right now.')
+        ));
+    } else {
+        $config['name'] = $identity['name'];
+        $config['email'] = $identity['email'];
+        $config['welcome'] = defined('CHAT_WELCOME_MESSAGE') ? CHAT_WELCOME_MESSAGE : '';
+        $config['has_conversation'] = $has_conversation;
+        $config['conversation_id'] = $conversation_id;
+        $config['strings'] = array(
             'title' => (defined('TITLE') && TITLE != '') ? TITLE : $widget_label,
             'subtitle' => $widget_label,
             'online' => lang('Online'),
@@ -2417,6 +2797,7 @@ function pg_chat_render_site_widget()
             'offline_note' => lang('We are offline right now. Leave a message and we will get back to you.'),
             'placeholder' => lang('Write your message'),
             'send' => lang('Send'),
+            'identity_invite' => lang('Leave your name and email and we can help you better.'),
             'name_placeholder' => lang('Your name (optional)'),
             'email_placeholder' => lang('Your email (optional)'),
             'captcha_hint' => lang('Slide the piece into place to continue'),
@@ -2428,15 +2809,22 @@ function pg_chat_render_site_widget()
             'attach' => lang('Attach File'),
             'file_too_big' => lang('File is too large.'),
             'file_type' => lang('This file type is not allowed.'),
-            'file_identity' => lang('Please enter your name and email before sending a file.'),
             'write_first' => lang('Write a message first.'),
             // "Delivered" is the shipping-delivery language key; the chat
             // tick uses its own keys.
             'delivered' => lang('Message delivered'),
             'seen' => lang('Message seen'),
-            'new_chat' => lang('Start New Chat')
-        )
-    );
+            'new_chat' => lang('Start New Chat'),
+            // Composer toolbar (2026.4.5).
+            'emoji' => lang('Emoji'),
+            'recent' => lang('Recently used'),
+            'voice_message' => lang('Record voice message'),
+            'stop_recording' => lang('Stop recording'),
+            'discard_recording' => lang('Discard recording'),
+            'mic_denied' => lang('Microphone permission was denied.'),
+            'mic_unsupported' => lang('Voice recording is not supported in this browser.')
+        );
+    }
 
     $js_file = 'chat_site.' . ENVIRONMENT_SUFFIX . '.js';
     $js_url = PATH . SOFTWARE_DIRECTORY . '/' . $js_file . '?v=' . @filemtime(dirname(__FILE__) . '/' . $js_file);
@@ -2449,56 +2837,153 @@ function pg_chat_render_site_widget()
     );
 
     $output = '
-<div id="pg-chat-site" data-theme="' . h($theme) . '" style="--pgcs-accent: ' . h($color) . ';"></div>
+<div id="pg-chat-site" data-theme="' . h($theme) . '"' . ($member ? ' data-mode="member"' : '') . ' style="--pinegrap-chat-accent: ' . h($color) . ';"></div>
 <style>
-#pg-chat-site { position: fixed; z-index: 2147483000; right: 20px; bottom: 20px; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.4;
-  --pgcs-bg: #ffffff; --pgcs-text: #1f2329; --pgcs-muted: #6b7280; --pgcs-border: #e5e7eb; --pgcs-peer-bubble: #f0f2f5; }
-#pg-chat-site[data-theme="dark"] { --pgcs-bg: #1f2329; --pgcs-text: #e5e7eb; --pgcs-muted: #9ca3af; --pgcs-border: #374151; --pgcs-peer-bubble: #2b3138; }
-#pg-chat-site * { box-sizing: border-box; margin: 0; padding: 0; }
-#pg-chat-site .pgcs-bubble { width: 56px; height: 56px; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: var(--pgcs-accent); box-shadow: 0 6px 20px rgba(0,0,0,.28); display: flex; align-items: center; justify-content: center; position: relative; }
-#pg-chat-site .pgcs-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; border-radius: 9px; background: #dc3545; color: #fff; font-size: 11px; font-weight: 700; line-height: 14px; padding: 0 4px; border: 2px solid #fff; display: none; align-items: center; justify-content: center; }
-#pg-chat-site .pgcs-window { position: absolute; right: 0; bottom: 70px; width: 340px; max-width: calc(100vw - 32px); height: 480px; max-height: calc(100vh - 110px); background: var(--pgcs-bg); color: var(--pgcs-text); border: 1px solid var(--pgcs-border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.25); display: none; flex-direction: column; overflow: hidden; overscroll-behavior: contain; }
-#pg-chat-site.pgcs-open .pgcs-window { display: flex; }
-#pg-chat-site .pgcs-header { background: var(--pgcs-accent); color: #fff; padding: 12px 44px 12px 14px; position: relative; }
-#pg-chat-site .pgcs-close { position: absolute; right: 8px; top: 10px; width: 30px; height: 30px; border: 0; background: transparent; color: #fff; font-size: 17px; line-height: 1; cursor: pointer; opacity: .85; }
-#pg-chat-site .pgcs-close:hover { opacity: 1; }
-#pg-chat-site .pgcs-header strong { display: block; font-size: 15px; }
-#pg-chat-site .pgcs-status { font-size: 12px; opacity: .9; }
-#pg-chat-site .pgcs-offline-note { background: #fff3cd; color: #664d03; font-size: 12px; padding: 8px 12px; border-bottom: 1px solid var(--pgcs-border); }
-#pg-chat-site[data-theme="dark"] .pgcs-offline-note { background: #4a3f12; color: #ffe69c; }
-#pg-chat-site .pgcs-messages { flex: 1 1 auto; overflow-y: auto; padding: 10px 12px; overscroll-behavior: contain; }
-#pg-chat-site .pgcs-row { display: flex; margin-bottom: 6px; }
-#pg-chat-site .pgcs-msg { max-width: 82%; padding: 7px 11px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: break-word; font-size: 13px; }
-#pg-chat-site .pgcs-mine { margin-left: auto; background: var(--pgcs-accent); color: #fff; border-bottom-right-radius: 4px; }
-#pg-chat-site .pgcs-tick { display: inline-block; margin-left: 7px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.65); letter-spacing: -2px; white-space: nowrap; vertical-align: baseline; }
-#pg-chat-site .pgcs-tick-seen { color: #9ff3ff; }
-#pg-chat-site .pgcs-newchat { display: block; margin: 2px auto 6px; border: 1px solid var(--pgcs-border); background: var(--pgcs-bg); color: var(--pgcs-accent); border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
-#pg-chat-site .pgcs-newchat:hover { border-color: var(--pgcs-accent); }
-#pg-chat-site .pgcs-peer { margin-right: auto; background: var(--pgcs-peer-bubble); color: var(--pgcs-text); border-bottom-left-radius: 4px; }
-#pg-chat-site .pgcs-system { margin: 0 auto; background: transparent; color: var(--pgcs-muted); font-size: 12px; text-align: center; }
-#pg-chat-site .pgcs-typing { font-size: 12px; color: var(--pgcs-muted); padding: 0 14px 4px; display: none; }
-#pg-chat-site .pgcs-identity { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--pgcs-border); }
-#pg-chat-site .pgcs-identity input { width: 100%; border: 1px solid var(--pgcs-border); background: var(--pgcs-bg); color: var(--pgcs-text); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
-#pg-chat-site .pgcs-compose { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--pgcs-border); }
-#pg-chat-site .pgcs-attach { flex-shrink: 0; border: 1px solid var(--pgcs-border); background: var(--pgcs-bg); color: var(--pgcs-muted); border-radius: 8px; width: 38px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-#pg-chat-site .pgcs-attach span { font-size: 20px; line-height: 1; font-weight: 600; }
-/* The raw file input stays hidden in EVERY theme: some themes set display
-   on inputs with !important, so an inline style is not enough — id +
-   !important + off-screen. */
-#pg-chat-site .pgcs-compose input[type="file"] { display: none !important; position: absolute !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; }
-#pg-chat-site .pgcs-msg img { max-width: 100%; border-radius: 10px; display: block; cursor: pointer; }
-#pg-chat-site .pgcs-msg a.pgcs-file { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: underline; word-break: break-all; }
-#pg-chat-site .pgcs-identity input.pgcs-required { border-color: #dc3545; }
-#pg-chat-site .pgcs-compose textarea { flex: 1 1 auto; resize: none; height: 38px; max-height: 90px; border: 1px solid var(--pgcs-border); background: var(--pgcs-bg); color: var(--pgcs-text); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; }
-#pg-chat-site .pgcs-send { flex-shrink: 0; border: 0; border-radius: 8px; background: var(--pgcs-accent); color: #fff; width: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-#pg-chat-site .pgcs-captcha { padding: 12px 14px; border-top: 1px solid var(--pgcs-border); display: none; }
-#pg-chat-site .pgcs-captcha-hint { font-size: 12px; color: var(--pgcs-muted); margin-bottom: 8px; }
-#pg-chat-site .pgcs-cimg { position: relative; height: 96px; border-radius: 10px; overflow: hidden; background: var(--pgcs-peer-bubble); touch-action: none; user-select: none; }
-#pg-chat-site .pgcs-hole { position: absolute; top: 24px; width: 48px; height: 48px; background: rgba(0,0,0,.55); }
-#pg-chat-site .pgcs-piece { position: absolute; top: 24px; left: 0; width: 48px; height: 48px; cursor: grab; touch-action: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
-#pg-chat-site .pgcs-cimg.pgcs-solved .pgcs-hole { display: none; }
-#pg-chat-site .pgcs-piece.pgcs-snap { transition: left .18s ease-out; }
-#pg-chat-site .pgcs-error { color: #dc3545; font-size: 12px; margin-top: 6px; display: none; }
+/* ── Isolation ──────────────────────────────────────────────────────────
+   The widget is dropped into a stylesheet written by somebody else. Every declaration
+   below carries !important and every selector is anchored to the id of the widget
+   id, which together outrank anything a theme declares about buttons, text
+   areas, links or scrollbars. The blanket rule underneath neutralises the
+   handful of INHERITED properties a theme sets far away and which would
+   otherwise arrive here unannounced - an uppercase transform on every form
+   control being the usual one. SVG is excluded: the size and colour of an icon
+   come from presentation attributes that a reset would throw away. */
+#pg-chat-site *:not(svg):not(svg *) { box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; font-family: inherit !important; text-transform: none !important; letter-spacing: normal !important; word-spacing: normal !important; text-indent: 0 !important; text-shadow: none !important; float: none !important; list-style: none !important; }
+#pg-chat-site ::-webkit-scrollbar { width: 8px !important; height: 8px !important; background: transparent !important; }
+#pg-chat-site ::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }
+#pg-chat-site ::-webkit-scrollbar-track { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+#pg-chat-site ::-webkit-scrollbar-thumb { background: var(--pinegrap-chat-border) !important; border: 0 !important; border-radius: 4px !important; }
+#pg-chat-site ::-webkit-scrollbar-corner { background: transparent !important; }
+
+#pg-chat-site { position: fixed !important; z-index: 2147483000 !important; right: 20px !important; bottom: 20px !important; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important; font-size: 14px !important; line-height: 1.4 !important; font-weight: 400 !important; font-style: normal !important; text-align: left !important; scrollbar-width: thin !important;
+  --pinegrap-chat-bg: #ffffff; --pinegrap-chat-text: #1f2329; --pinegrap-chat-muted: #6b7280; --pinegrap-chat-border: #e5e7eb; --pinegrap-chat-peer-bubble: #f0f2f5; }
+#pg-chat-site[data-theme="dark"] { --pinegrap-chat-bg: #1f2329; --pinegrap-chat-text: #e5e7eb; --pinegrap-chat-muted: #9ca3af; --pinegrap-chat-border: #374151; --pinegrap-chat-peer-bubble: #2b3138; }
+#pg-chat-site .pinegrap-chat-bubble { width: 56px !important; height: 56px !important; border: 0 !important; border-radius: 50% !important; cursor: pointer !important; color: #fff !important; background: var(--pinegrap-chat-accent) !important; box-shadow: 0 6px 20px rgba(0,0,0,.28) !important; display: flex !important; align-items: center !important; justify-content: center !important; position: relative !important; }
+#pg-chat-site .pinegrap-chat-badge { position: absolute !important; top: -5px !important; right: -5px !important; min-width: 18px !important; height: 18px !important; border-radius: 9px !important; background: #dc3545 !important; color: #fff !important; font-size: 11px !important; font-weight: 700 !important; line-height: 14px !important; padding: 0 4px !important; border: 2px solid #fff !important; display: none !important; align-items: center !important; justify-content: center !important; }
+#pg-chat-site .pinegrap-chat-window { position: absolute !important; right: 0 !important; bottom: 70px !important; width: 340px !important; max-width: calc(100vw - 32px) !important; height: 480px !important; max-height: calc(100vh - 110px) !important; background: var(--pinegrap-chat-bg) !important; color: var(--pinegrap-chat-text) !important; border: 1px solid var(--pinegrap-chat-border) !important; border-radius: 14px !important; box-shadow: 0 12px 40px rgba(0,0,0,.25) !important; display: none !important; flex-direction: column !important; overflow: hidden !important; overscroll-behavior: contain !important; }
+#pg-chat-site.pinegrap-chat-open .pinegrap-chat-window { display: flex !important; }
+#pg-chat-site .pinegrap-chat-header { background: var(--pinegrap-chat-accent) !important; color: #fff !important; padding: 12px 44px 12px 14px !important; position: relative !important; flex: 0 0 auto !important; }
+#pg-chat-site .pinegrap-chat-close { position: absolute !important; right: 8px !important; top: 10px !important; width: 30px !important; height: 30px !important; border: 0 !important; background: transparent !important; color: #fff !important; font-size: 17px !important; line-height: 1 !important; cursor: pointer !important; opacity: .85 !important; }
+#pg-chat-site .pinegrap-chat-close:hover { opacity: 1 !important; }
+#pg-chat-site .pinegrap-chat-header strong { display: block !important; font-size: 15px !important; font-weight: 700 !important; color: #fff !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#pg-chat-site .pinegrap-chat-status { font-size: 12px !important; opacity: .9 !important; color: #fff !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#pg-chat-site .pinegrap-chat-offline-note { background: #fff3cd !important; color: #664d03 !important; font-size: 12px !important; padding: 8px 12px !important; border-bottom: 1px solid var(--pinegrap-chat-border) !important; flex: 0 0 auto !important; }
+#pg-chat-site[data-theme="dark"] .pinegrap-chat-offline-note { background: #4a3f12 !important; color: #ffe69c !important; }
+#pg-chat-site .pinegrap-chat-messages { flex: 1 1 auto !important; overflow-y: auto !important; padding: 10px 12px !important; overscroll-behavior: contain !important; }
+#pg-chat-site .pinegrap-chat-row { display: flex !important; margin-bottom: 6px !important; }
+#pg-chat-site .pinegrap-chat-msg { max-width: 82% !important; padding: 7px 11px !important; border-radius: 14px !important; white-space: pre-wrap !important; overflow-wrap: break-word !important; font-size: 13px !important; }
+#pg-chat-site .pinegrap-chat-mine { margin-left: auto !important; background: var(--pinegrap-chat-accent) !important; color: #fff !important; border-bottom-right-radius: 4px !important; }
+#pg-chat-site .pinegrap-chat-tick { display: inline-block !important; margin-left: 7px !important; font-size: 11px !important; line-height: 1 !important; color: rgba(255,255,255,.65) !important; letter-spacing: -2px !important; white-space: nowrap !important; vertical-align: baseline !important; }
+#pg-chat-site .pinegrap-chat-tick-seen { color: #9ff3ff !important; }
+#pg-chat-site .pinegrap-chat-newchat { display: block !important; margin: 2px auto 6px !important; border: 1px solid var(--pinegrap-chat-border) !important; background: var(--pinegrap-chat-bg) !important; color: var(--pinegrap-chat-accent) !important; border-radius: 999px !important; padding: 5px 14px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; }
+#pg-chat-site .pinegrap-chat-newchat:hover { border-color: var(--pinegrap-chat-accent) !important; }
+#pg-chat-site .pinegrap-chat-peer { margin-right: auto !important; background: var(--pinegrap-chat-peer-bubble) !important; color: var(--pinegrap-chat-text) !important; border-bottom-left-radius: 4px !important; }
+#pg-chat-site .pinegrap-chat-system { margin: 0 auto !important; background: transparent !important; color: var(--pinegrap-chat-muted) !important; font-size: 12px !important; text-align: center !important; }
+#pg-chat-site .pinegrap-chat-typing { font-size: 12px !important; color: var(--pinegrap-chat-muted) !important; padding: 0 14px 4px !important; display: none !important; flex: 0 0 auto !important; }
+/* The name and e-mail are asked for AFTER the first message, and then only
+   as one quiet line; the two fields appear when it is clicked. Nothing is
+   asked of somebody who has not said anything yet. */
+#pg-chat-site .pinegrap-chat-identity { display: none !important; flex-direction: column !important; gap: 6px !important; padding: 8px 12px !important; border-top: 1px solid var(--pinegrap-chat-border) !important; flex: 0 0 auto !important; }
+#pg-chat-site .pinegrap-chat-identity.pinegrap-chat-on { display: flex !important; }
+#pg-chat-site .pinegrap-chat-identity-invite { border: 0 !important; background: transparent !important; color: var(--pinegrap-chat-muted) !important; font-size: 11.5px !important; line-height: 1.35 !important; text-align: left !important; cursor: pointer !important; padding: 0 !important; text-transform: none !important; }
+#pg-chat-site .pinegrap-chat-identity-invite:hover { color: var(--pinegrap-chat-accent) !important; }
+#pg-chat-site .pinegrap-chat-identity-fields { display: none !important; flex-direction: column !important; gap: 6px !important; }
+#pg-chat-site .pinegrap-chat-identity.pinegrap-chat-expanded .pinegrap-chat-identity-fields { display: flex !important; }
+#pg-chat-site .pinegrap-chat-identity.pinegrap-chat-expanded .pinegrap-chat-identity-invite { display: none !important; }
+#pg-chat-site .pinegrap-chat-identity input { width: 100% !important; border: 1px solid var(--pinegrap-chat-border) !important; background: var(--pinegrap-chat-bg) !important; color: var(--pinegrap-chat-text) !important; border-radius: 8px !important; padding: 6px 9px !important; font-size: 12px !important; line-height: 1.4 !important; height: auto !important; min-height: 0 !important; box-shadow: none !important; outline: 0 !important; text-align: left !important; vertical-align: middle !important; -webkit-appearance: none !important; appearance: none !important; }
+#pg-chat-site .pinegrap-chat-identity input.pinegrap-chat-required { border-color: #dc3545 !important; }
+#pg-chat-site .pinegrap-chat-msg img { max-width: 100% !important; width: auto !important; height: auto !important; border-radius: 10px !important; display: block !important; cursor: pointer !important; }
+#pg-chat-site .pinegrap-chat-msg audio { display: block !important; width: 210px !important; max-width: 100% !important; height: 34px !important; margin-top: 3px !important; }
+#pg-chat-site .pinegrap-chat-msg a.pinegrap-chat-file { display: inline-flex !important; align-items: center !important; gap: 7px !important; color: inherit !important; text-decoration: none !important; word-break: break-all !important; background: transparent !important; }
+#pg-chat-site .pinegrap-chat-msg a.pinegrap-chat-file:hover span.pinegrap-chat-file-name { text-decoration: underline !important; }
+#pg-chat-site .pinegrap-chat-file-ext { flex-shrink: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; min-width: 36px !important; height: 22px !important; padding: 0 6px !important; border-radius: 6px !important; background: rgba(0,0,0,.14) !important; font-size: 10px !important; font-weight: 700 !important; letter-spacing: .4px !important; text-transform: uppercase !important; }
+#pg-chat-site .pinegrap-chat-mine .pinegrap-chat-file-ext { background: rgba(255,255,255,.22) !important; }
+
+/* ── Composer ──────────────────────────────────────────────────────────
+   One framed box holding the text area with the tool row underneath it:
+   attach, emoji, microphone on the left, the round send button on the
+   right. Both modes use it. The text area is written out property by
+   property rather than trusting a reset, because it is the one control a
+   theme is certain to have opinions about. */
+#pg-chat-site .pinegrap-chat-compose { padding: 10px 12px !important; border-top: 1px solid var(--pinegrap-chat-border) !important; flex: 0 0 auto !important; background: var(--pinegrap-chat-bg) !important; }
+#pg-chat-site .pinegrap-chat-composer { border: 1px solid var(--pinegrap-chat-border) !important; border-radius: 14px !important; background: var(--pinegrap-chat-bg) !important; padding: 7px 8px 6px !important; transition: border-color .15s ease !important; box-shadow: none !important; }
+#pg-chat-site .pinegrap-chat-composer.pinegrap-chat-focus { border-color: var(--pinegrap-chat-accent) !important; }
+#pg-chat-site .pinegrap-chat-composer textarea { display: block !important; width: 100% !important; resize: none !important; border: 0 none !important; outline: 0 !important; background: transparent none !important; color: var(--pinegrap-chat-text) !important; font-family: inherit !important; font-size: 13px !important; font-weight: 400 !important; font-style: normal !important; line-height: 1.45 !important; letter-spacing: normal !important; text-transform: none !important; text-align: left !important; text-indent: 0 !important; height: auto !important; min-height: 25px !important; max-height: 96px !important; padding: 1px 4px 5px !important; margin: 0 !important; overflow-y: hidden !important; box-shadow: none !important; border-radius: 0 !important; vertical-align: top !important; -webkit-appearance: none !important; appearance: none !important; }
+#pg-chat-site .pinegrap-chat-composer textarea::placeholder { color: var(--pinegrap-chat-muted) !important; opacity: 1 !important; font-size: 13px !important; text-transform: none !important; letter-spacing: normal !important; }
+#pg-chat-site .pinegrap-chat-composer textarea::-webkit-input-placeholder { color: var(--pinegrap-chat-muted) !important; opacity: 1 !important; font-size: 13px !important; text-transform: none !important; letter-spacing: normal !important; }
+#pg-chat-site .pinegrap-chat-composer textarea::-moz-placeholder { color: var(--pinegrap-chat-muted) !important; opacity: 1 !important; font-size: 13px !important; text-transform: none !important; letter-spacing: normal !important; }
+#pg-chat-site .pinegrap-chat-tools { display: flex !important; align-items: center !important; gap: 1px !important; }
+#pg-chat-site .pinegrap-chat-tool { flex-shrink: 0 !important; width: 30px !important; height: 30px !important; border: 0 !important; background: transparent !important; color: var(--pinegrap-chat-muted) !important; border-radius: 8px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: none !important; }
+#pg-chat-site .pinegrap-chat-tool:hover { background: var(--pinegrap-chat-peer-bubble) !important; color: var(--pinegrap-chat-text) !important; }
+#pg-chat-site .pinegrap-chat-tool.pinegrap-chat-on { color: var(--pinegrap-chat-accent) !important; background: var(--pinegrap-chat-peer-bubble) !important; }
+#pg-chat-site .pinegrap-chat-tools-grow { flex: 1 1 auto !important; }
+#pg-chat-site .pinegrap-chat-send { flex-shrink: 0 !important; width: 32px !important; height: 32px !important; border: 0 !important; border-radius: 50% !important; background: var(--pinegrap-chat-accent) !important; color: #fff !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: none !important; padding: 0 !important; }
+#pg-chat-site .pinegrap-chat-send:disabled { background: var(--pinegrap-chat-peer-bubble) !important; color: var(--pinegrap-chat-muted) !important; cursor: default !important; }
+
+/* Recording replaces the tool row, so the microphone cannot be armed twice
+   and the only two things on offer are stop and discard. */
+#pg-chat-site .pinegrap-chat-rec { display: none !important; align-items: center !important; gap: 9px !important; padding: 0 2px !important; }
+#pg-chat-site .pinegrap-chat-composer.pinegrap-chat-recording .pinegrap-chat-tools { display: none !important; }
+#pg-chat-site .pinegrap-chat-composer.pinegrap-chat-recording .pinegrap-chat-rec { display: flex !important; }
+#pg-chat-site .pinegrap-chat-composer.pinegrap-chat-recording textarea { display: none !important; }
+#pg-chat-site .pinegrap-chat-rec-dot { width: 10px !important; height: 10px !important; border-radius: 50% !important; background: #dc3545 !important; animation: pinegrapChatPulse 1.1s ease-in-out infinite !important; }
+#pg-chat-site .pinegrap-chat-rec-time { font-size: 12.5px !important; color: var(--pinegrap-chat-text) !important; font-variant-numeric: tabular-nums !important; }
+@keyframes pinegrapChatPulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+/* Emoji palette: no external font or library, just the characters the
+   browser already draws. */
+#pg-chat-site .pinegrap-chat-emoji { display: none !important; border-top: 1px solid var(--pinegrap-chat-border) !important; padding: 6px 8px 8px !important; flex: 0 0 auto !important; }
+#pg-chat-site .pinegrap-chat-emoji.pinegrap-chat-on { display: block !important; }
+#pg-chat-site .pinegrap-chat-emoji-tabs { display: flex !important; gap: 1px !important; margin-bottom: 5px !important; overflow-x: auto !important; }
+#pg-chat-site .pinegrap-chat-emoji-tab { flex-shrink: 0 !important; border: 0 !important; background: transparent !important; font-size: 15px !important; line-height: 1 !important; padding: 5px 7px !important; border-radius: 8px !important; cursor: pointer !important; opacity: .55 !important; }
+#pg-chat-site .pinegrap-chat-emoji-tab.pinegrap-chat-on { opacity: 1 !important; background: var(--pinegrap-chat-peer-bubble) !important; }
+#pg-chat-site .pinegrap-chat-emoji-grid { display: grid !important; grid-template-columns: repeat(8, 1fr) !important; gap: 1px !important; height: 138px !important; overflow-y: auto !important; overscroll-behavior: contain !important; }
+#pg-chat-site .pinegrap-chat-emoji-grid button { border: 0 !important; background: transparent !important; font-size: 19px !important; line-height: 1 !important; padding: 4px 0 !important; border-radius: 8px !important; cursor: pointer !important; }
+#pg-chat-site .pinegrap-chat-emoji-grid button:hover { background: var(--pinegrap-chat-peer-bubble) !important; }
+
+/* ── Puzzle captcha (anonymous visitors) ─────────────────────────────── */
+#pg-chat-site .pinegrap-chat-captcha { padding: 12px 14px !important; border-top: 1px solid var(--pinegrap-chat-border) !important; display: none !important; flex: 0 0 auto !important; }
+#pg-chat-site .pinegrap-chat-captcha-hint { font-size: 12px !important; color: var(--pinegrap-chat-muted) !important; margin-bottom: 8px !important; }
+#pg-chat-site .pinegrap-chat-cimg { position: relative !important; height: 96px !important; border-radius: 10px !important; overflow: hidden !important; background: var(--pinegrap-chat-peer-bubble) !important; touch-action: none !important; user-select: none !important; -webkit-user-select: none !important; }
+#pg-chat-site .pinegrap-chat-hole { position: absolute !important; top: 24px !important; width: 48px !important; height: 48px !important; background: rgba(0,0,0,.55) !important; }
+#pg-chat-site .pinegrap-chat-piece { position: absolute !important; top: 24px !important; left: 0 !important; width: 48px !important; height: 48px !important; cursor: grab !important; touch-action: none !important; filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)) !important; }
+#pg-chat-site .pinegrap-chat-cimg.pinegrap-chat-solved .pinegrap-chat-hole { display: none !important; }
+#pg-chat-site .pinegrap-chat-piece.pinegrap-chat-snap { transition: left .18s ease-out !important; }
+#pg-chat-site .pinegrap-chat-error { color: #dc3545 !important; font-size: 12px !important; margin-top: 6px !important; display: none !important; }
+
+/* ── Member mode: list view ────────────────────────────────────────────── */
+#pg-chat-site .pinegrap-chat-back { position: absolute !important; left: 6px !important; top: 10px !important; width: 30px !important; height: 30px !important; border: 0 !important; background: transparent !important; color: #fff !important; cursor: pointer !important; display: none !important; align-items: center !important; justify-content: center !important; opacity: .85 !important; }
+#pg-chat-site .pinegrap-chat-back:hover { opacity: 1 !important; }
+#pg-chat-site .pinegrap-chat-head-action { position: absolute !important; right: 40px !important; top: 10px !important; width: 30px !important; height: 30px !important; border: 0 !important; background: transparent !important; color: #fff !important; cursor: pointer !important; display: none !important; align-items: center !important; justify-content: center !important; opacity: .85 !important; }
+#pg-chat-site .pinegrap-chat-head-action:hover { opacity: 1 !important; }
+#pg-chat-site .pinegrap-chat-list { flex: 1 1 auto !important; overflow-y: auto !important; overscroll-behavior: contain !important; display: none !important; }
+#pg-chat-site .pinegrap-chat-tabs { display: flex !important; gap: 4px !important; padding: 8px 8px 2px !important; }
+#pg-chat-site .pinegrap-chat-tab { flex: 1 1 0 !important; border: 0 !important; background: transparent !important; color: var(--pinegrap-chat-muted) !important; font-size: 12.5px !important; font-weight: 600 !important; padding: 6px 8px !important; border-radius: 9px !important; cursor: pointer !important; }
+#pg-chat-site .pinegrap-chat-tab.pinegrap-chat-on { color: var(--pinegrap-chat-accent) !important; background: var(--pinegrap-chat-peer-bubble) !important; }
+#pg-chat-site .pinegrap-chat-item { display: flex !important; align-items: center !important; gap: 9px !important; padding: 7px 9px !important; margin: 2px 6px !important; border-radius: 11px !important; cursor: pointer !important; }
+#pg-chat-site .pinegrap-chat-item:hover { background: var(--pinegrap-chat-peer-bubble) !important; }
+#pg-chat-site .pinegrap-chat-ava-wrap { position: relative !important; flex-shrink: 0 !important; }
+#pg-chat-site .pinegrap-chat-ava { width: 34px !important; height: 34px !important; border-radius: 50% !important; object-fit: cover !important; display: block !important; }
+#pg-chat-site .pinegrap-chat-ava-letter { width: 34px !important; height: 34px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; background: var(--pinegrap-chat-peer-bubble) !important; color: var(--pinegrap-chat-muted) !important; font-size: 14px !important; font-weight: 700 !important; }
+#pg-chat-site .pinegrap-chat-dot { position: absolute !important; right: -1px !important; bottom: -1px !important; width: 11px !important; height: 11px !important; border-radius: 50% !important; border: 2px solid var(--pinegrap-chat-bg) !important; }
+#pg-chat-site .pinegrap-chat-dot-online { background: #10b981 !important; }
+#pg-chat-site .pinegrap-chat-dot-away { background: #f59e0b !important; }
+#pg-chat-site .pinegrap-chat-dot-offline { background: #a1a1a1 !important; }
+#pg-chat-site .pinegrap-chat-item-main { flex: 1 1 auto !important; min-width: 0 !important; }
+#pg-chat-site .pinegrap-chat-item-name { font-size: 13px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#pg-chat-site .pinegrap-chat-item-unread .pinegrap-chat-item-name { font-weight: 700 !important; }
+#pg-chat-site .pinegrap-chat-item-sub { font-size: 11.5px !important; color: var(--pinegrap-chat-muted) !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#pg-chat-site .pinegrap-chat-item-badge { flex-shrink: 0 !important; width: 9px !important; height: 9px !important; border-radius: 50% !important; background: var(--pinegrap-chat-accent) !important; }
+#pg-chat-site .pinegrap-chat-chip { flex-shrink: 0 !important; font-size: 10px !important; font-weight: 700 !important; letter-spacing: .3px !important; text-transform: uppercase !important; color: var(--pinegrap-chat-muted) !important; border: 1px solid var(--pinegrap-chat-border) !important; border-radius: 5px !important; padding: 1px 5px !important; }
+#pg-chat-site .pinegrap-chat-empty { padding: 20px 16px !important; text-align: center !important; color: var(--pinegrap-chat-muted) !important; font-size: 12.5px !important; }
+#pg-chat-site.pinegrap-chat-view-list .pinegrap-chat-list { display: block !important; }
+#pg-chat-site.pinegrap-chat-view-list .pinegrap-chat-messages,
+#pg-chat-site.pinegrap-chat-view-list .pinegrap-chat-typing,
+#pg-chat-site.pinegrap-chat-view-list .pinegrap-chat-emoji,
+#pg-chat-site.pinegrap-chat-view-list .pinegrap-chat-compose { display: none !important; }
+#pg-chat-site.pinegrap-chat-view-conv .pinegrap-chat-back,
+#pg-chat-site.pinegrap-chat-view-conv .pinegrap-chat-head-action.pinegrap-chat-shown { display: flex !important; }
+#pg-chat-site.pinegrap-chat-view-conv .pinegrap-chat-header { padding-left: 42px !important; }
 @media (max-width: 575.98px) {
   /* Full-screen window on phones: the header stays FIXED at the top, only
      the message area scrolls. A fixed element is anchored to the LAYOUT
@@ -2507,10 +2992,21 @@ function pg_chat_render_site_widget()
      the CSS-only floor (and the fallback for browsers without dvh support);
      the script pins top/height to the visual viewport where that API
      exists. */
-  #pg-chat-site .pgcs-window { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; height: 100dvh; max-height: none; border-radius: 0; }
-  #pg-chat-site.pgcs-open .pgcs-bubble { display: none; }
-  body.pgcs-no-scroll { overflow: hidden; }
+  #pg-chat-site .pinegrap-chat-window { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; max-width: 100% !important; height: 100% !important; height: 100dvh !important; max-height: none !important; border-radius: 0 !important; }
+  #pg-chat-site.pinegrap-chat-open .pinegrap-chat-bubble { display: none !important; }
 }
+/* The page does not move while the window is open. The in-window scroll
+   guard alone was not enough: themes that drive scrolling themselves (a
+   smooth-scroll or parallax script listening on wheel) move the page anyway,
+   and the page slid under the chat on every wheel turn. */
+html.pinegrap-chat-no-scroll, body.pinegrap-chat-no-scroll { overflow: hidden !important; }
+/* The raw file input is NOT inside the widget: themes that restyle or
+   replace file inputs kept catching it there. It is created on demand,
+   parked directly on the body, clicked, and removed again. It is parked
+   off-screen rather than with display:none, which some engines treat as
+   "not clickable", and the element also carries the same rules inline with
+   !important, which no stylesheet can outrank. */
+#pg-chat-site-file { position: fixed !important; left: -9999px !important; top: 0 !important; width: 1px !important; height: 1px !important; opacity: 0 !important; z-index: -1 !important; pointer-events: none !important; }
 </style>
 <script type="application/json" id="pg-chat-site-config">' . encode_json($config) . '</script>
 <script type="text/template" id="pg-chat-site-icon">' . $icons[$icon] . '</script>

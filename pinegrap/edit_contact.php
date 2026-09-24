@@ -53,10 +53,22 @@ if (!$_POST) {
 
             $output_bar_links .= '
                     <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
-        } else {
+        } elseif (($user['role'] < 3) || empty($user['manage_erp_readonly'])) {
+            // The ERP's read-only right opens no account.
             $output_bar_links .= '
                     <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Loading') . '" href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
         }
+    }
+
+    // Where the contact was talked about in the workspace, its customer
+    // channels and the tasks about it.
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $workspace_contact = db_item("SELECT first_name, last_name, company FROM contacts WHERE id = '" . (int) $_REQUEST['id'] . "'");
+        $workspace_label = is_array($workspace_contact)
+            ? trim(trim($workspace_contact['first_name'] . ' ' . $workspace_contact['last_name']) ?: (string) $workspace_contact['company'])
+            : '';
+        $output_bar_links .= ws_record_button($user, 'contact', (int) $_REQUEST['id'], $workspace_label, 'btn btn-link link-secondary py-0 mb-2');
     }
 
     if ($output_bar_links !== '') {

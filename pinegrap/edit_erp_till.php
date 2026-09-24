@@ -71,7 +71,7 @@ if (!$_POST) {
     // order.
     $running = (int) $till['opening_balance'];
     $output_movements = '
-        <tr class="text-body-secondary">
+        <tr class="text-body-secondary" data-pg-sort-fixed="top">
             <td colspan="4">' . lang('Opening Balance') . '</td>
             <td class="text-end">' . $money($running) . '</td>
         </tr>';
@@ -87,6 +87,8 @@ if (!$_POST) {
         $output_description = h($movement['description']);
         if ($is_receipt) {
             $output_description = '<a href="erp_receipt.php?id=' . (int) $movement['id'] . '" class="link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['id'])) . '</a>';
+        } elseif (((string) $movement['doc_type'] === 'expense') && ((int) $movement['doc_id'] > 0)) {
+            $output_description = '<a href="edit_erp_expense.php?id=' . (int) $movement['doc_id'] . '" class="link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['doc_id'])) . '</a>';
         }
         if ($is_cancelled) {
             $output_description = '<span class="text-decoration-line-through text-body-secondary">' . $output_description . '</span> <span class="badge text-bg-secondary">' . lang('Cancelled') . '</span>';
@@ -94,18 +96,18 @@ if (!$_POST) {
 
         $output_movements .= '
         <tr>
-            <td class="align-middle text-nowrap">' . h(prepare_form_data_for_output($movement['doc_date'], 'date')) . '</td>
+            <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $movement['doc_date'])) . '">' . h(prepare_form_data_for_output($movement['doc_date'], 'date')) . '</td>
             <td class="align-middle">' . $output_description . '</td>
             <td class="align-middle">' . h($movement['account_title']) . '</td>
-            <td class="align-middle text-end ' . ($in ? 'text-success' : 'text-danger') . '">'
+            <td class="align-middle text-end ' . ($in ? 'text-success' : 'text-danger') . '" data-sort="' . ($in ? $amount : -$amount) . '">'
                 . ($in ? '+' : '&minus;') . $money($amount, false) . '</td>
-            <td class="align-middle text-end">' . $money($running) . '</td>
+            <td class="align-middle text-end" data-sort="' . (int) $running . '">' . $money($running) . '</td>
         </tr>';
     }
 
     if (empty($movements)) {
         $output_movements .= '
-        <tr><td colspan="5" class="text-center text-body-secondary py-4">' . lang('There are no movements in this till yet.') . '</td></tr>';
+        <tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('There are no movements in this till yet.') . '</td></tr>';
     }
 
     $balance = (int) $till['balance'];
@@ -113,8 +115,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Edit Till'),
-        'extra_classes' => 'erp erp_cash',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_cash',
+        'icon' => 'erp',
         'heading' => h($till['name']),
         'heading_description' => lang('The till, and every movement through it.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
@@ -144,9 +146,9 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-check-circle me-2"></span><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                             ' . (empty($movements)
-                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger" data-loading-content="' . lang(array('string' => 'Deleting')) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger" data-loading-content="' . lang(array('string' => 'Deleting')) . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '') . '
                         </div>
                     </div>
@@ -157,8 +159,8 @@ if (!$_POST) {
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                     ' . lang('Cash Book') . '
                 </div>
-                <div class="card-body p-0 position-relative">
-                    <table class="table table-hover align-middle mb-0">
+                <div class="card-body p-0 position-relative table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Date') . '</th>

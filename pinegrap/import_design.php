@@ -264,7 +264,7 @@ if ($action != 'import') {
             $output_max_imported_items_warning = '';
 
             if ($number_of_items >= $max_imported_items) {
-                $output_max_imported_items_warning = '<br><strong>' . lang(array('string' => 'Warning: The scan limit of {var:1} items has been reached.', 'vars' => array(number_format($max_imported_items)))) . '</strong>';
+                $output_max_imported_items_warning = '<br><strong>' . lang(array('string' => 'Warning: The scan limit of {var:1} items has been reached.', 'vars' => array(pg_format_number($max_imported_items, 0)))) . '</strong>';
             }
 
             echo '<div class="card-footer"><div class="alert alert-success mb-0"><strong>' . lang('Scan completed successfully.') . '</strong> ' . lang('Click Import to transfer items to your site, or Restart to adjust settings and scan again.') . $output_max_imported_items_warning . '</div></div>';

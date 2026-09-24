@@ -3648,6 +3648,19 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     //
     // Edit only. Before the product exists there is nothing to preview, list or
     // print, so the create screen keeps the plain field instead.
+    // Where the product was talked about in the workspace, and the tasks
+    // about it. Edit only, like the barcode card below.
+    $output_workspace_card = '';
+
+    if (($pg_mode === 'edit') && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $workspace_button = ws_record_button($user, 'product', $pg_product_id, (string) ($values['name'] ?? ''), 'btn btn-sm btn-outline-secondary w-100');
+
+        if ($workspace_button !== '') {
+            $output_workspace_card = '<div class="mb-3">' . $workspace_button . '</div>';
+        }
+    }
+
     $output_barcode_card = '';
 
     if (($pg_mode === 'edit') && defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
@@ -5157,6 +5170,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                         was tall enough to push the preview off the screen — the
                         panel it was sharing the column with.
                     -->
+                    ' . $output_workspace_card . '
                     ' . $output_barcode_card . '
                     ' . pg_pb_render_preview($pg_mode !== 'edit') . '
                 </div>
@@ -5220,6 +5234,8 @@ function pg_pb_render_product_screen($values = array(), $context = array())
            an empty CSRF token. */
         window.PinegrapProductBuilder = {
             currencySymbol: ' . str_replace('</', '<\/', encode_json(BASE_CURRENCY_SYMBOL)) . ',
+            // The separators the catalog, the cart and the receipt write with.
+            moneySeparators: ' . str_replace('</', '<\/', encode_json(pg_number_separators())) . ',
             token: ' . str_replace('</', '<\/', encode_json($_SESSION['software']['token'])) . ',
             // Host only, the way a search result prints it — no scheme.
             siteUrl: ' . str_replace('</', '<\/', encode_json(HOSTNAME . PATH)) . ',

@@ -195,7 +195,7 @@ function erp_waybill_form_prefill($liveform, $data)
     $liveform->assign_field_value('ship_time', (string) ($data['ship_time'] ?? ''));
 
     foreach (array('carrier_title', 'carrier_vkn', 'plate', 'driver_name', 'driver_tckn',
-        'ship_to_title', 'ship_to_address', 'ship_to_district', 'ship_to_city', 'notes') as $field) {
+        'ship_to_title', 'ship_to_address', 'ship_to_district', 'ship_to_city', 'ship_to_state', 'notes') as $field) {
         $liveform->assign_field_value($field, (string) ($data[$field] ?? ''));
     }
 
@@ -256,6 +256,7 @@ function erp_waybill_form_cards($liveform, $options = array())
          data-erp-editor
          data-products-url="get_erp_products.php"
          data-max-lines="' . (int) ERP_WAYBILL_MAX_LINES . '"
+         data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '"
          data-text-no-results="' . lang('No products match.') . '"
          data-text-stock="' . h(lang('In stock: {var:1}')) . '"
          data-text-no-stock-tracking="' . h(lang('Stock not tracked')) . '"
@@ -326,23 +327,41 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 col-sm-4 my-2">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="ship_to_district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_district', 'name' => 'ship_to_district',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-4 my-2">
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="ship_to_city" class="form-label">' . lang('City') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_city', 'name' => 'ship_to_city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-4 my-2">
+                <div class="col-12 col-sm-6 col-lg-3 my-2' . ((strtoupper((string) $liveform->get_field_value('ship_to_country')) === 'TR') ? ' d-none' : '') . '" id="ship_to_state_box">
+                    <label for="ship_to_state" class="form-label">' . lang('State / Province') . '</label>
+                    ' . $liveform->output_field(array(
+                        'type' => 'text', 'id' => 'ship_to_state', 'name' => 'ship_to_state',
+                        'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="ship_to_country" class="form-label">' . lang('Country') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'ship_to_country', 'name' => 'ship_to_country',
                         'class' => 'form-select', 'options' => erp_waybill_country_options())) . '
+                    <script>
+                    (function () {
+                        // A Turkish address has no state: the province is the city.
+                        var select = document.getElementById("ship_to_country");
+                        var box = document.getElementById("ship_to_state_box");
+                        if (select && box) {
+                            select.addEventListener("change", function () {
+                                box.classList.toggle("d-none", select.value === "TR");
+                            });
+                        }
+                    })();
+                    </script>
                 </div>
             </div>
         </div>
@@ -362,10 +381,11 @@ function erp_waybill_form_cards($liveform, $options = array())
                     <div class="form-text">' . lang('The shipping company, or the store itself when its own vehicle delivers.') . '</div>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
-                    <label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
-                    ' . $liveform->output_field(array(
+                    <label for="carrier_vkn" class="form-label">' . ((erp_account_country('') === 'TR') ? lang('Carrier VKN') : lang('Carrier tax number')) . '</label>
+                    ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'carrier_vkn', 'name' => 'carrier_vkn',
-                        'class' => 'form-control', 'maxlength' => '11', 'inputmode' => 'numeric', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => (erp_account_country('') === 'TR') ? '11' : '32', 'autocomplete' => 'off'),
+                        (erp_account_country('') === 'TR') ? array('inputmode' => 'numeric') : array())) . '
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 my-2">
                     <label for="plate" class="form-label">' . lang('Plate') . '</label>
@@ -383,9 +403,10 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="driver_tckn" class="form-label">' . lang('Driver ID No') . '</label>
-                    ' . $liveform->output_field(array(
+                    ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'driver_tckn', 'name' => 'driver_tckn',
-                        'class' => 'form-control', 'maxlength' => '11', 'inputmode' => 'numeric', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => (erp_account_country('') === 'TR') ? '11' : '32', 'autocomplete' => 'off'),
+                        (erp_account_country('') === 'TR') ? array('inputmode' => 'numeric') : array())) . '
                 </div>
             </div>
         </div>
@@ -487,6 +508,7 @@ function erp_waybill_form_read($liveform, $user)
         'ship_to_address' => (string) $liveform->get_field_value('ship_to_address'),
         'ship_to_district' => (string) $liveform->get_field_value('ship_to_district'),
         'ship_to_city' => (string) $liveform->get_field_value('ship_to_city'),
+        'ship_to_state' => (string) $liveform->get_field_value('ship_to_state'),
         'ship_to_country' => (string) $liveform->get_field_value('ship_to_country'),
         'notes' => (string) $liveform->get_field_value('notes'),
         'lines' => is_array($lines) ? $lines : array(),
@@ -503,6 +525,7 @@ function erp_waybill_form_read($liveform, $user)
                 $data['ship_to_address'] = (string) $account['address'];
                 $data['ship_to_district'] = (string) $account['district'];
                 $data['ship_to_city'] = (string) $account['city'];
+                $data['ship_to_state'] = (string) ($account['state'] ?? '');
                 $data['ship_to_country'] = (string) $account['country_code'];
             }
         }

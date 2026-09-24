@@ -222,7 +222,7 @@ if (!defined('PG_INIT_LOADED')) {
 	
 	?>
 <div class="number_of_results_message" style="font-weight:bold; margin-bottom: .75em">
-	Found <?=number_format($total_number_of_forms)?>
+	Found <?=pg_format_number($total_number_of_forms, 0)?>
 	result<?php if ($total_number_of_forms > 1): ?>s<?php endif ?>.
 </div>
 <?php endif ?>

@@ -105,8 +105,8 @@ $output_fx_note = erp_fx_enabled()
 echo
 pg_page_shell(array(
         'title' => lang('Aging report'),
-        'extra_classes' => 'erp erp_aging',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_aging',
+        'icon' => 'erp',
         'heading' => lang('Aging report'),
         'heading_description' => lang('Open invoices by account and by how long they have been past due, in the base currency.'),
         'cancel' => false,

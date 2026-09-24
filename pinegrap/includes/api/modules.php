@@ -54,6 +54,12 @@ function api_modules() {
 			'enabled' => (defined('ERP_ENABLED') && ERP_ENABLED == true),
 			'file'    => dirname(__FILE__) . '/../erp/api.php',
 			'prefix'  => 'erp_'
+		),
+
+		'workspace' => array(
+			'enabled' => (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED == true),
+			'file'    => dirname(__FILE__) . '/../workspace/api.php',
+			'prefix'  => 'ws_'
 		)
 
 	);

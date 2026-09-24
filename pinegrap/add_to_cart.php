@@ -121,7 +121,7 @@ function add_to_cart($request) {
 
         // Format totals
         $items_total = number_format($order_total_raw / 100, 2, '.', ','); // without symbol
-        $items_total_info = BASE_CURRENCY_SYMBOL . $items_total;           // with symbol
+        $items_total_info = pg_format_money($order_total_raw / 100, BASE_CURRENCY_SYMBOL); // with symbol, site separators
     }
 
     // Return response array

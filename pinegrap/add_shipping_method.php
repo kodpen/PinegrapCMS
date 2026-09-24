@@ -84,9 +84,7 @@ if (!$_POST) {
                                             <div class="form-text text-end">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
                                         </div>
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
-                                            <label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
-                                            <input type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
-                                            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>
+                                            ' . pg_carrier_number_field('') . '
                                         </div>
                                         <div class="col-12 col-sm-6 col-lg-4 my-2">
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
@@ -588,7 +586,7 @@ if (!$_POST) {
     $base_rate = 0;
     if($_POST['base_rate']){
         // remove commas and spaces from price
-        $base_rate = str_replace(',', '', $_POST['base_rate']);
+        $base_rate = pg_normalize_amount($_POST['base_rate']);
         $base_rate = str_replace(' ', '',$base_rate); 
         // convert price from dollars to cents
         $base_rate = (int) round($base_rate * 100);
@@ -596,7 +594,7 @@ if (!$_POST) {
     $primary_weight_rate = 0;
     if($_POST['primary_weight_rate']){
         // remove commas and spaces from price
-        $primary_weight_rate = str_replace(',', '', $_POST['primary_weight_rate']);
+        $primary_weight_rate = pg_normalize_amount($_POST['primary_weight_rate']);
         $primary_weight_rate = str_replace(' ', '',$primary_weight_rate); 
         // convert price from dollars to cents
         $primary_weight_rate = (int) round($primary_weight_rate * 100);
@@ -604,7 +602,7 @@ if (!$_POST) {
     $secondary_weight_rate = 0;
     if($_POST['secondary_weight_rate']){
         // remove commas and spaces from price
-        $secondary_weight_rate = str_replace(',', '', $_POST['secondary_weight_rate']);
+        $secondary_weight_rate = pg_normalize_amount($_POST['secondary_weight_rate']);
         $secondary_weight_rate = str_replace(' ', '',$secondary_weight_rate); 
         // convert price from dollars to cents
         $secondary_weight_rate = (int) round($secondary_weight_rate * 100);
@@ -612,7 +610,7 @@ if (!$_POST) {
     $item_rate = 0;
     if($_POST['item_rate']){
         // remove commas and spaces from price
-        $item_rate = str_replace(',', '', $_POST['item_rate']);
+        $item_rate = pg_normalize_amount($_POST['item_rate']);
         $item_rate = str_replace(' ', '',$item_rate); 
         // convert price from dollars to cents
         $item_rate = (int) round($item_rate * 100);
@@ -742,7 +740,7 @@ if (!$_POST) {
                 '" . escape($_POST['description'] ?? '') . "',
                 '" . escape($_POST['code'] ?? '') . "',
                 '" . escape($_POST['carrier_title'] ?? '') . "',
-                '" . escape(substr(preg_replace('/[^0-9]/', '', (string) ($_POST['carrier_vkn'] ?? '')), 0, 11)) . "',
+                '" . escape(pg_carrier_number_clean($_POST['carrier_vkn'] ?? '')) . "',
                 '" . escape($status) . "',
                 '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
                 '" . escape(prepare_form_data_for_input($_POST['end_time'], 'date and time')) . "',

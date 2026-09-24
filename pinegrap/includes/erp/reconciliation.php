@@ -143,7 +143,10 @@ function erp_reconciliation_labels()
         'reference' => lang('Reference'),
         'letter_date' => lang('Date'),
         'as_of' => lang('Balance as of'),
-        'tax_id' => lang('VKN / TCKN'),
+        // The sender's number is named by the store's country, the
+        // addressee's by theirs (set per letter).
+        'tax_id' => erp_tax_id_label(),
+        'account_tax_id' => erp_tax_id_label(),
         'tax_office' => lang('Tax Office'),
         'to' => lang('Addressed to'),
         'dear' => lang('Dear Sirs,'),
@@ -213,6 +216,7 @@ function erp_reconciliation_data($account_id, $options)
         'logo_url' => $logo['url'],
         'logo_data_uri' => $logo['data_uri'],
     );
+    $seller['locality'] = erp_seller_locality($seller);
 
     $account = array(
         'title' => (string) $account_row['title'],
@@ -221,10 +225,12 @@ function erp_reconciliation_data($account_id, $options)
         'address' => (string) $account_row['address'],
         'district' => (string) $account_row['district'],
         'city' => (string) $account_row['city'],
+        'state' => (string) ($account_row['state'] ?? ''),
         'country' => (string) $account_row['country_code'],
         'postcode' => (string) $account_row['postcode'],
         'email' => (string) $account_row['email'],
     );
+    $account['locality'] = erp_address_locality($account, $account['country']);
 
     // ----------------------------------------------------------- the balance
     $balance = erp_reconciliation_balance($account_id, $options['as_of']);
@@ -334,8 +340,9 @@ function erp_reconciliation_data($account_id, $options)
         'account' => $account,
         'letter' => $letter,
         'movements' => $movements,
-        'label' => erp_reconciliation_labels(),
+        'label' => array_merge(erp_reconciliation_labels(), array('account_tax_id' => erp_tax_id_label((string) ($account['country'] ?? '')))),
         'language' => defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : 'en',
+        'paper' => erp_paper_size(),
         'generated_at' => (string) prepare_form_data_for_output(date('Y-m-d H:i:s'), 'date and time', false),
     );
 }
@@ -485,12 +492,16 @@ function erp_reconciliation_mail_html($data)
  * letter is a question to the counterparty, and the answer, when it comes,
  * is what matters.
  *
+ * The letter that went is kept with a row in erp_reconciliation_log (4.65),
+ * so what was sent to whom, and when, can be found again.
+ *
  * @param int    $account_id
  * @param array  $options
  * @param string $to  Recipient address
+ * @param int    $created_by
  * @return array ['success' => bool, 'error' => string]
  */
-function erp_reconciliation_send($account_id, $options, $to)
+function erp_reconciliation_send($account_id, $options, $to, $created_by = 0)
 {
     $to = trim((string) $to);
 
@@ -539,6 +550,10 @@ function erp_reconciliation_send($account_id, $options, $to)
 
     if (!$sent) {
         return array('success' => false, 'error' => lang('The e-mail could not be sent. The details are in the activity log.'));
+    }
+
+    if (function_exists('erp_archive_reconciliation')) {
+        erp_archive_reconciliation((int) $account_id, $options, $to, $pdf, (int) $created_by);
     }
 
     return array('success' => true, 'error' => '');
