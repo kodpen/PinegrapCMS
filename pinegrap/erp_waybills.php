@@ -21,6 +21,7 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_waybills');
 
@@ -61,7 +62,7 @@ $waybills = (array) db_items("SELECT w.*, a.title AS account_title, o.order_numb
 // toolbar. Complete and linked to a contact, the way the invoice picker asks.
 $open_orders = (array) db_items("SELECT orders.id, orders.order_number, orders.billing_first_name, orders.billing_last_name, orders.billing_company
     FROM orders
-    WHERE orders.status = 'complete'
+    WHERE " . erp_order_billable_sql('orders.status') . "
       AND orders.contact_id > 0
       AND NOT EXISTS (SELECT 1 FROM erp_waybills w WHERE w.order_id = orders.id AND w.status <> 'cancelled')
     ORDER BY orders.order_date DESC
@@ -110,7 +111,7 @@ foreach ($waybills as $waybill) {
     }
 
     $output_rows .=
-        '<tr' . ($is_cancelled ? ' class="text-body-secondary"' : '') . '>
+        '<tr' . erp_drawer_row_attributes($id) . ($is_cancelled ? ' class="text-body-secondary"' : '') . '>
             <td class="align-middle text-start">
                 <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" data-loading-content=" " title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_waybill.php?id=' . $id . '\'"><i class="bi bi-eye"></i></button>
             </td>
@@ -130,8 +131,8 @@ foreach ($waybills as $waybill) {
 echo
 pg_page_shell([
         'title' => lang('Delivery Notes'),
-        'extra_classes' => 'erp erp_waybills',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_waybills',
+        'icon' => 'erp',
         'heading' => lang('Delivery Notes'),
         'heading_description' => lang('Delivery notes and the invoices they turn into.'),
         'cancel' => false,
@@ -182,7 +183,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' .
+' . erp_drawer_markup('waybill') .
 output_footer();
 
 $liveform->remove_form();

@@ -7,8 +7,12 @@
  * The hard part is not copying the lines. It is that an order keeps four
  * figures on its header that are not lines at all:
  *
- *   shipping           a line on the invoice, priced as sold
- *   surcharge          a line on the invoice
+ *   shipping           a line on the invoice, for the amount charged; taxed
+ *                      at the rate of the goods, the tax inside that amount,
+ *                      unless the store leaves it untaxed (erp_order_charge_lines)
+ *   surcharge          the same
+ *   installment_charges the card's installment charge (taksit farkı), already
+ *                      in orders.total: the same, a line of its own
  *   discount           NOT a line - spread across the lines it discounted
  *   gift_card_discount not a reduction of the sale at all: it is a payment,
  *                      so it leaves the invoice alone and settles it instead
@@ -37,6 +41,31 @@
 
 if (!defined('PG_ERP_ENTRY')) {
     exit;
+}
+
+/**
+ * The order statuses that are a finished sale and can be invoiced.
+ *
+ * 'exported' is a complete order that has since been exported (to an
+ * accounting file, to Paraşüt); it is still the same sale, and the rest of
+ * the software counts both as one (reports, offers, the customer's account).
+ *
+ * @return string[]
+ */
+function erp_order_billable_statuses()
+{
+    return array('complete', 'exported');
+}
+
+/**
+ * The same list as a SQL condition.
+ *
+ * @param string $column
+ * @return string
+ */
+function erp_order_billable_sql($column = 'orders.status')
+{
+    return $column . " IN ('" . implode("', '", erp_order_billable_statuses()) . "')";
 }
 
 /**
@@ -117,38 +146,6 @@ function erp_order_lines($order, $items)
         }
     }
 
-    // Shipping and the surcharge are sold, so they are lines. Neither carries
-    // tax in Pinegrap - the order's tax comes from the item lines alone.
-    $shipping = (int) ($order['shipping'] ?? 0);
-    if ($shipping > 0) {
-        $lines[] = array(
-            'product_id' => 0,
-            'description' => lang('Shipping'),
-            'quantity' => 1,
-            'unit_code' => 'C62',
-            'unit_price' => $shipping,
-            'discount_amount' => 0,
-            'tax_rate' => 0,
-            'tax_total' => 0,
-            'line_total' => $shipping,
-        );
-    }
-
-    $surcharge = (int) ($order['surcharge'] ?? 0);
-    if ($surcharge > 0) {
-        $lines[] = array(
-            'product_id' => 0,
-            'description' => lang('Surcharge'),
-            'quantity' => 1,
-            'unit_code' => 'C62',
-            'unit_price' => $surcharge,
-            'discount_amount' => 0,
-            'tax_rate' => 0,
-            'tax_total' => 0,
-            'line_total' => $surcharge,
-        );
-    }
-
     // Tie the tax back to the order.
     //
     // submit_order.php takes the discount off the tax once, on the header
@@ -185,6 +182,31 @@ function erp_order_lines($order, $items)
         }
     }
 
+    // Shipping and the surcharge are sold, so they are lines, after the goods
+    // and after the tie-back above: the order's tax is the goods' tax alone,
+    // and the tax these lines carry lies inside the amount charged for them.
+    // The installment charge the card payment added is in orders.total as
+    // well; without its line the invoice fell short of every installment
+    // order and was refused. The document has no column of its own for it,
+    // so surcharge_total counts it with the surcharge.
+    $shipping_lines = erp_order_charge_lines(lang('Shipping'), (int) ($order['shipping'] ?? 0), $lines);
+    $surcharge_lines = array_merge(
+        erp_order_charge_lines(lang('Surcharge'), (int) ($order['surcharge'] ?? 0), $lines),
+        erp_order_charge_lines(lang('Installment Charge'), (int) ($order['installment_charges'] ?? 0), $lines)
+    );
+
+    $shipping = 0;
+    foreach ($shipping_lines as $line) {
+        $shipping += $line['line_total'];
+    }
+
+    $surcharge = 0;
+    foreach ($surcharge_lines as $line) {
+        $surcharge += $line['line_total'];
+    }
+
+    $lines = array_merge($lines, $shipping_lines, $surcharge_lines);
+
     $subtotal = 0;
     $discount_total = 0;
     $tax_total = 0;
@@ -220,6 +242,73 @@ function erp_order_lines($order, $items)
     );
 
     return array('lines' => $lines, 'totals' => $totals);
+}
+
+/**
+ * The invoice lines for a charge the order keeps on its header: the shipping,
+ * the surcharge.
+ *
+ * The checkout adds no tax to either, so the amount the customer paid is the
+ * whole charge. When the store taxes these charges (erp_shipping_taxed()) the
+ * tax is inside that amount (erp_split_gross()) and follows the goods: at
+ * their rate, and on an order of goods at several rates the charge is shared
+ * between the rates in proportion to the goods each one carries, one line
+ * per rate. Untaxed, or with no taxed goods, it is one line at 0. Either way
+ * the lines add up to the amount charged, so the invoice total still meets
+ * the order's.
+ *
+ * @param string $label       The line's description
+ * @param int    $gross       Kurus charged
+ * @param array  $item_lines  The order's goods lines, discount applied
+ * @return array  Lines in erp_order_lines() shape
+ */
+function erp_order_charge_lines($label, $gross, $item_lines)
+{
+    $gross = (int) $gross;
+
+    if ($gross <= 0) {
+        return array();
+    }
+
+    $weights = array();
+
+    if (erp_shipping_taxed()) {
+        foreach ($item_lines as $line) {
+            $base = (int) $line['line_total'] - (int) $line['discount_amount'];
+
+            if ($base > 0) {
+                $key = number_format(max(0, (float) $line['tax_rate']), 3, '.', '');
+                $weights[$key] = ($weights[$key] ?? 0) + $base;
+            }
+        }
+    }
+
+    $shares = empty($weights) ? array('0.000' => $gross) : erp_allocate($gross, $weights);
+    $several = (count(array_filter($shares)) > 1);
+    $lines = array();
+
+    foreach ($shares as $key => $share) {
+        if ((int) $share <= 0) {
+            continue;
+        }
+
+        $rate = (float) $key;
+        $split = erp_split_gross((int) $share, $rate);
+
+        $lines[] = array(
+            'product_id' => 0,
+            'description' => $several ? ($label . ' (' . erp_percent_text($rate) . ')') : $label,
+            'quantity' => 1,
+            'unit_code' => 'C62',
+            'unit_price' => $split['net'],
+            'discount_amount' => 0,
+            'tax_rate' => $rate,
+            'tax_total' => $split['tax'],
+            'line_total' => $split['net'],
+        );
+    }
+
+    return $lines;
 }
 
 /**
@@ -439,7 +528,7 @@ function erp_invoice_from_order($order_id, $options = array())
 
     $account_id = (int) ($order['erp_account_id'] ?? 0);
     if ($account_id <= 0) {
-        $account_id = erp_account_for_contact((int) $order['contact_id'], (int) ($options['created_by'] ?? 0));
+        $account_id = erp_account_for_contact((int) $order['contact_id'], (int) ($options['created_by'] ?? 0), $order);
     }
     if ($account_id <= 0) {
         // Two different situations, and telling them apart is the difference
@@ -465,11 +554,21 @@ function erp_invoice_from_order($order_id, $options = array())
     }
 
     $series = trim((string) ($options['series'] ?? (defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF')));
-    $issue_date = (string) ($options['issue_date'] ?? date('Y-m-d', (int) $order['order_date']));
-    if ($issue_date === '1970-01-01') {
+    // The invoice is dated the day it is issued, not the day of the order. An
+    // order invoiced weeks later would otherwise carry a date older than
+    // documents already issued, and GİB takes e-documents of one type only in
+    // date order ("Girilen tarihten sonra aynı tipte fatura kesilmiş"); a
+    // back-dated invoice also falls outside the seven days VUK allows after
+    // delivery. A caller that needs another date still passes issue_date.
+    $issue_date = (string) ($options['issue_date'] ?? date('Y-m-d'));
+    if (($issue_date === '1970-01-01') || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $issue_date)) {
         $issue_date = date('Y-m-d');
     }
     $issue_year = (int) substr($issue_date, 0, 4);
+
+    if (($refusal = erp_lock_refusal($issue_date)) !== '') {
+        return $fail($refusal);
+    }
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
@@ -505,7 +604,7 @@ function erp_invoice_from_order($order_id, $options = array())
             invoice_type = 'SATIS',
             series = '" . escape($series) . "',
             number = '" . (int) $numbered['number'] . "',
-            issue_year = '" . $issue_year . "',
+            issue_year = '" . (int) $numbered['year'] . "',
             full_number = '" . escape($numbered['full']) . "',
             account_id = '" . $account_id . "',
             order_id = '" . $order_id . "',
@@ -566,6 +665,7 @@ function erp_invoice_from_order($order_id, $options = array())
                 discount_amount = '" . (int) $line['discount_amount'] . "',
                 tax_rate = '" . escape((string) $line['tax_rate']) . "',
                 tax_total = '" . (int) $line['tax_total'] . "',
+                vat_exemption_code = '" . escape(erp_vat_line_exemption_code($line)) . "',
                 line_total = '" . (int) $line['line_total'] . "'");
 
         if ($ok === false) {
@@ -615,6 +715,13 @@ function erp_invoice_from_order($order_id, $options = array())
     }
 
     if (!erp_account_refresh_balance($account_id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
+    // What the goods cost, for the margins; the order already moved the stock.
+    if (!erp_stock_post_invoice($invoice_id, (int) ($options['created_by'] ?? 0))) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);

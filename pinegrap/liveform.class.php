@@ -163,7 +163,7 @@ class liveform {
             $data_inputmask_placeholder = $attributes['data-inputmask-placeholder'];
         }
         if(isset($attributes['datalist'])){
-            $datalist = $attributes['list'];
+            $datalist = $attributes['datalist'];
         }
 
 

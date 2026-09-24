@@ -72,7 +72,7 @@ function pg_settings_keywords($terms)
  */
 function pg_settings_categories()
 {
-    return array(
+    $categories = array(
 
         'general' => array(
             'label' => lang('General'),
@@ -229,6 +229,16 @@ function pg_settings_categories()
         ),
 
     );
+
+    // The e-invoice card carries Turkish e-document providers only; outside
+    // Turkey, with none in use, it is left out of the list (the card is still
+    // drawn, hidden, so a save never finds its fields missing).
+    if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
+        unset($categories['commerce']['sections']['pgset-invoice'], $categories['commerce']['keywords']['pgset-invoice']);
+        $categories['commerce']['description'] = lang('Store, shipping, gift cards, payment and affiliates.');
+    }
+
+    return $categories;
 }
 
 
@@ -594,6 +604,7 @@ function pg_settings_facts($key, $row)
                 lang('Site Search Type')              => $value('search_type', $dash),
                 lang('Product Image Limit')           => $value('image_product_max_dimension', $dash) . ' px',
                 lang('Enable Performance Monitoring') => $yesno('perf_monitor'),
+                lang('Workspace')                     => $yesno('workspace_enabled'),
             );
 
         case 'seo':

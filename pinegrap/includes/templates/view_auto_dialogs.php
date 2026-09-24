@@ -68,12 +68,12 @@ if (!defined('PG_INIT_LOADED')) {
 									<td class="align-middle"><?=h($auto_dialog['url'])?></td>
 									<td class="align-middle">
 										<?php if ($auto_dialog['width']): ?>
-										<?=number_format($auto_dialog['width'])?>px
+										<?=pg_format_number($auto_dialog['width'], 0)?>px
 										<?php endif ?>
 									</td>
 									<td class="align-middle">
 										<?php if ($auto_dialog['height']): ?>
-										<?=number_format($auto_dialog['height'])?>px
+										<?=pg_format_number($auto_dialog['height'], 0)?>px
 										<?php endif ?>
 									</td>
 									<td class="align-middle">
@@ -83,7 +83,7 @@ if (!defined('PG_INIT_LOADED')) {
 													$delay_suffix = 's';
 												}
 											?>
-											<?=lang(array('string'=>'{var:1} second{suffix:1}','vars'=>number_format($auto_dialog['delay']),'suffix'=>array($delay_suffix))); ?>
+											<?=lang(array('string'=>'{var:1} second{suffix:1}','vars'=>pg_format_number($auto_dialog['delay'], 0),'suffix'=>array($delay_suffix))); ?>
 										<?php endif ?>
 									</td>
 									<td class="align-middle">
@@ -93,7 +93,7 @@ if (!defined('PG_INIT_LOADED')) {
 													$frequency_suffix = 's';
 												}
 											?>
-											<?=lang(array('string'=>'{var:1} hour{suffix:1}','vars'=>number_format($auto_dialog['frequency']),'suffix'=>array($frequency_suffix))); ?>
+											<?=lang(array('string'=>'{var:1} hour{suffix:1}','vars'=>pg_format_number($auto_dialog['frequency'], 0),'suffix'=>array($frequency_suffix))); ?>
 										<?php endif ?>
 									</td>
 									<td class="align-middle">

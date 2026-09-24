@@ -226,7 +226,7 @@ if (!defined('PG_INIT_LOADED')) {
 	?>
 <p>
 	<strong>
-	Found <?=number_format($total_number_of_forms)?>
+	Found <?=pg_format_number($total_number_of_forms, 0)?>
 	result<?php if ($total_number_of_forms > 1): ?>s<?php endif ?>.
 	</strong>
 </p>
@@ -259,9 +259,9 @@ if (!defined('PG_INIT_LOADED')) {
 		<li>
 			&nbsp;
 			Page
-			<?=number_format($page_number)?>
+			<?=pg_format_number($page_number, 0)?>
 			of
-			<?=number_format($number_of_pages)?>
+			<?=pg_format_number($number_of_pages, 0)?>
 			&nbsp;
 		</li>
 		<?php

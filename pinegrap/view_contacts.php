@@ -1123,9 +1123,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
     // if at least one contact was deleted
     if ($number_of_contacts > 0) {
-        log_activity(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(number_format($number_of_contacts),$contact_group_list  ) )), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_contacts, 0),$contact_group_list  ) )), $_SESSION['sessionusername']);
 
-        $liveform->add_notice(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(number_format($number_of_contacts),$contact_group_list  ) )) );
+        $liveform->add_notice(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_contacts, 0),$contact_group_list  ) )) );
     } else {
         $liveform->add_notice(lang('No contacts were deleted'));
     }
@@ -1206,10 +1206,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if ($number_of_merged_contacts > 0) {
         $notice = lang(array(
             'string'=>'{var:1} contact(s) were merged successfully',
-            'vars'=>number_format($number_of_merged_contacts) ));
+            'vars'=>pg_format_number($number_of_merged_contacts, 0) ));
         log_activity(lang(array(
             'string'=>'{var:1} contact(s) were merged successfully',
-            'vars'=>number_format($number_of_merged_contacts) )), $_SESSION['sessionusername']);
+            'vars'=>pg_format_number($number_of_merged_contacts, 0) )), $_SESSION['sessionusername']);
     
     // else output a notice informing the user that no contacts where merged.
     } else {
@@ -1286,7 +1286,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             // get number of contacts in contact group
             $number_of_contacts = get_number_of_contacts($contact_group['id'], $require_email = false);
 
-            $output_contact_group_options .= '<option value="' . $contact_group['id'] . '"' . $selected . '>' . h($contact_group['name']) . ' (' . number_format($number_of_contacts) . ')</option>';
+            $output_contact_group_options .= '<option value="' . $contact_group['id'] . '"' . $selected . '>' . h($contact_group['name']) . ' (' . pg_format_number($number_of_contacts, 0) . ')</option>';
         }
 
         // if user has a role that is greater than user role, then prepare to output [None] option
@@ -1300,7 +1300,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
             $number_of_contacts = get_number_of_contacts('[' . lang('None') . ']', $require_email = false);
 
-            $output_contact_group_options ='<option value="[' . lang('None') . ']"' . $selected . '>[' . lang('None') . '] (' . number_format($number_of_contacts) . ')</option>' . $output_contact_group_options;
+            $output_contact_group_options ='<option value="[' . lang('None') . ']"' . $selected . '>[' . lang('None') . '] (' . pg_format_number($number_of_contacts, 0) . ')</option>' . $output_contact_group_options;
         }
 
         // if all contact group is selected

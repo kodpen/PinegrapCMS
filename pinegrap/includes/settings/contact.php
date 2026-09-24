@@ -138,6 +138,12 @@ $pg_settings_cards[] = '
                                                                         </div>
                                                                     </div>
                                                                     <div class="pg-f-md">
+                                                                        <div class="form-check form-switch">
+                                                                            <input value="1"' . $chat_allow_audio_checked . ' class="form-check-input" type="checkbox" id="chat_allow_audio" name="chat_allow_audio"/>
+                                                                            <label class="form-check-label" for="chat_allow_audio">' . lang('Allow voice messages and audio files') . '</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="pg-f-md">
                                                                         <label for="chat_visitor_image_limit" class="form-label">' . lang('Visitor Image Limit') . '</label>
                                                                         <input type="number" name="chat_visitor_image_limit" id="chat_visitor_image_limit" class="form-control" value="' . (int) $chat_visitor_image_limit . '" min="1" max="20" />
                                                                     </div>

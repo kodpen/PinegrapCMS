@@ -679,7 +679,7 @@ function get_express_order($properties) {
                 if ($upsell_offer['upsell_action_button_label']) {
                     $output_upsell_action_button_label = h($upsell_offer['upsell_action_button_label']);
                 } else {
-                    $output_upsell_action_button_label = 'More Info';
+                    $output_upsell_action_button_label = lang('More Info');
                 }
                 
                 $output_upsell_action_link = '<a href="' . OUTPUT_PATH . get_page_name($upsell_offer['upsell_action_page_id']) . '" class="software_button_small_secondary">' . $output_upsell_action_button_label . '</a>';
@@ -1299,7 +1299,7 @@ function get_express_order($properties) {
                     
                     // if order item is a donation
                     if ($selection_type == 'donation') {
-                        $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . number_format(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE), 2, '.', ',') . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
+                        $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . pg_format_input_amount(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE)) . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
                     }
                     
                     // Destructive action link; see the same line in
@@ -1438,7 +1438,7 @@ function get_express_order($properties) {
                                         AND (quantity_number = '$quantity_number')");
 
                                 // If gift card data was found in database, then prefill fields with data.
-                                if ($order_item_gift_card['id']) {
+                                if (!empty($order_item_gift_card['id'])) {
                                     $form->assign_field_value('order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_from_name', $order_item_gift_card['from_name']);
                                     $form->assign_field_value('order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', $order_item_gift_card['recipient_email_address']);
                                     $form->assign_field_value('order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_message', $order_item_gift_card['message']);
@@ -2215,8 +2215,8 @@ function get_express_order($properties) {
                     }
 
                     if (($non_donations_exist_in_non_recurring == true) || ($donations_exist_in_non_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = lang('Qty');
+                        $output_price_heading = lang('Price');
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -2260,8 +2260,8 @@ function get_express_order($properties) {
                     }
                     
                     if (($non_donations_exist_in_recurring == true) || ($donations_exist_in_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = lang('Qty');
+                        $output_price_heading = lang('Price');
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -2434,7 +2434,7 @@ function get_express_order($properties) {
                 }
 
                 $output_unconverted_total = '* <span style="white-space: nowrap">(<span class="base_currency_total">' . prepare_amount($grand_total) . ' ' . h(BASE_CURRENCY_CODE) . '</span>)</span>';
-                $output_multicurrency_disclaimer = '<div style="margin-bottom: 15px">*This amount is based on our current currency exchange rate to ' . h($base_currency_name) . ' and may differ from the exact charges (displayed above in ' . h($base_currency_name) . ').</div>';
+                $output_multicurrency_disclaimer = '<div style="margin-bottom: 15px">' . lang(array('string' => '*This amount is based on our current currency exchange rate to {var:1} and may differ from the exact charges (displayed above in {var:1}).', 'vars' => h($base_currency_name))) . '</div>';
             }
             
             // if there is a recurring product
@@ -2585,11 +2585,11 @@ function get_express_order($properties) {
                 
             // else if a shopping cart label is found, then use that with "Update" in front of the label
             } elseif ($shopping_cart_label) {
-                $output_update_button_label = 'Update ' . h($shopping_cart_label);
+                $output_update_button_label = lang(array('string' => 'Update {var:1}', 'vars' => h($shopping_cart_label)));
                 
             // else an update button label could not be found, so just use a default label
             } else {
-                $output_update_button_label = 'Update Cart';
+                $output_update_button_label = lang('Update Cart');
             }
             
             // If user is logged in and not ghosting, then get contact for user (we will use this
@@ -2940,7 +2940,7 @@ function get_express_order($properties) {
                 if (ECOMMERCE_TAX_EXEMPT_LABEL) {
                     $output_tax_exempt_label = ECOMMERCE_TAX_EXEMPT_LABEL;
                 } else {
-                    $output_tax_exempt_label = 'Tax-Exempt?';
+                    $output_tax_exempt_label = lang('Tax-Exempt?');
                 }
 
                 $output_tax_exempt =
@@ -2973,7 +2973,7 @@ function get_express_order($properties) {
                 
                 // If edit mode is on, then output grid around custom billing form.
                 if ($editable == true) {
-                    $output_title = 'Custom Billing Form';
+                    $output_title = lang('Custom Billing Form');
                     
                     // if the form name is not blank, then add it to the title
                     if ($custom_billing_form_name != '') {
@@ -3036,7 +3036,7 @@ function get_express_order($properties) {
             
             // if PayPal Express Checkout payment method is active, then prepare PayPal Express Checkout purchase now button label
             if (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == true) {
-                $paypal_express_checkout_purchase_now_button_label = 'Continue to PayPal';
+                $paypal_express_checkout_purchase_now_button_label = lang('Continue to PayPal');
             }
             
             // if a purchase now button label was entered for the page, then use that for standard purchase now button label
@@ -3045,7 +3045,7 @@ function get_express_order($properties) {
                 
             // else a purchase now button label could not be found, so use a default label for standard purchase now button label
             } else {
-                $standard_purchase_now_button_label = 'Purchase Now';
+                $standard_purchase_now_button_label = lang('Purchase Now');
             }
             
             // assume that we will not output payment information until we find out otherwise
@@ -3319,7 +3319,7 @@ function get_express_order($properties) {
                 ) {
                     // if the offline payment label is blank, then set it to the default label
                     if ($offline_payment_label == '') {
-                        $offline_payment_label = 'Offline Payment';
+                        $offline_payment_label = lang('Offline Payment');
                     }
                     
                     // set the offline payment label in the session so that it can be used on the order receipt screen
@@ -3372,7 +3372,7 @@ function get_express_order($properties) {
                 
                 // if the shopping cart label is blank, then set it to cart
                 if ($output_shopping_cart_label == '') {
-                    $output_shopping_cart_label = 'Cart';
+                    $output_shopping_cart_label = lang('Cart');
                 }
                 
                 // output the offline payment option
@@ -3689,7 +3689,7 @@ function get_express_order($properties) {
                     <input type="hidden" name="total" value="' . h($grand_total) . '">
                 </form>
                 <div class="cart_link" style="font-size: 90%">
-                    This ' . h($shopping_cart_label) . ' has been saved.  To retrieve this ' . h($shopping_cart_label) . ' at a later time, please use this link:<br />
+                    ' . lang(array('string' => 'This {var:1} has been saved. To retrieve this {var:1} at a later time, please use this link:', 'vars' => h($shopping_cart_label))) . '<br />
                     <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . h(get_page_name($page_id)) . '?r=' . $reference_code . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . h(get_page_name($page_id)) . '?<wbr />r=' . $reference_code . '</a>
                 </div>';
         
@@ -4546,7 +4546,7 @@ function get_express_order($properties) {
                                         AND (quantity_number = '$quantity_number')");
 
                                 // If gift card data was found in database, then prefill fields with data.
-                                if ($order_item_gift_card['id']) {
+                                if (!empty($order_item_gift_card['id'])) {
                                     $form->set('order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', $order_item_gift_card['recipient_email_address']);
 
                                     $form->set('order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_from_name', $order_item_gift_card['from_name']);
@@ -4975,7 +4975,7 @@ function get_express_order($properties) {
                     // If there is an offer applied to this order item
                     // and offer has not already been added to applied offers array,
                     // then store this offer as an applied offer.
-                    if ($item['offer_id'] and !in_array($item['offer_id'], $applied_offers)) {
+                    if (!empty($item['offer_id']) and !in_array($item['offer_id'], $applied_offers)) {
                         $applied_offers[] = $item['offer_id'];
                     }
 
@@ -4986,7 +4986,7 @@ function get_express_order($properties) {
                 // If there is an offer applied to this ship to
                 // and offer has not already been added to applied offers array,
                 // then store this offer as an applied offer
-                if ($recipient['offer_id'] and !in_array($recipient['offer_id'], $applied_offers)) {
+                if (!empty($recipient['offer_id']) and !in_array($recipient['offer_id'], $applied_offers)) {
                     $applied_offers[] = $recipient['offer_id'];
                 }
 
@@ -5217,22 +5217,24 @@ function get_express_order($properties) {
             }
 
             if ($shopping_cart_label == '') {
-                $shopping_cart_label = 'Cart';
+                $shopping_cart_label = lang('Cart');
             }
 
             // If an update button label was not entered for the page,
             // then set default label.
             if ($update_button_label == '') {
-                $update_button_label = 'Update ' . $shopping_cart_label;
+                $update_button_label = lang(array('string' => 'Update {var:1}', 'vars' => $shopping_cart_label));
             }
 
             // If a purchase now button label was not entered for the page,
             // then set default label.
             if ($purchase_now_button_label == '') {
-                $purchase_now_button_label = 'Purchase Now';
+                $purchase_now_button_label = lang('Purchase Now');
             }
 
             // If user is logged in and not ghosting, get contact for user.
+            // A visitor has none; the fallback below fills the columns in.
+            $contact = null;
             if (USER_LOGGED_IN and !$ghost) {
                 $contact = db_item(
                     "SELECT
@@ -5554,7 +5556,7 @@ function get_express_order($properties) {
                 if (ECOMMERCE_TAX_EXEMPT_LABEL != '') {
                     $tax_exempt_label = ECOMMERCE_TAX_EXEMPT_LABEL;
                 } else {
-                    $tax_exempt_label = 'Tax-Exempt?';
+                    $tax_exempt_label = lang('Tax-Exempt?');
                 }
 
             } else {
@@ -5816,27 +5818,27 @@ function get_express_order($properties) {
                                 $twelveinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[5]->totalPrice;
 
                                 if($twoinstallment_price){
-                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twoinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $twoinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . pg_format_money($twoinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($twoinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_two_installment = '<td></td>';
                                 }
                                 if($threeinstallment_price){
-                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $threeinstallment_price  . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $threeinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . pg_format_money($threeinstallment_price, BASE_CURRENCY_SYMBOL)  . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($threeinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_three_installment = '<td></td>';
                                 }
                                 if($sixinstallment_price){
-                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $sixinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $sixinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . pg_format_money($sixinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($sixinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_six_installment = '<td></td>';
                                 }
                                 if($nineinstallment_price){
-                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $nineinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $nineinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . pg_format_money($nineinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($nineinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_nine_installment = '<td></td>';
                                 }
                                 if($twelveinstallment_price){
-                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twelveinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $twelveinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . pg_format_money($twelveinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($twelveinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_twelve_installment = '<td></td>';
                                 }
@@ -5874,34 +5876,28 @@ function get_express_order($properties) {
                             if( ($oneinstallment_price)&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
                                 //print_r($result);
                                 $installment_table_header .= '<tr>';
-                                $installment_table_header .= '<th>Cart Type</th>';
-                                $installment_table_header .= '<th>2 Installment</th>';
+                                $installment_table_header .= '<th>' . h(lang('Card Type')) . '</th>';
+                                $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 2))) . '</th>';
                                 //Check if there is at least 3x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 3){
-                                    $installment_table_header .= '<th>3 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 3))) . '</th>';
                                 }
                                 //Check if there is at least 6x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 6){
-                                    $installment_table_header .= '<th>6 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 6))) . '</th>';
                                 }
                                 //Check if there is at least 9x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 9){
-                                    $installment_table_header .= '<th>9 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 9))) . '</th>';
                                 }
                                 //Check if there is at least 12x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 12){
-                                    $installment_table_header .= '<th>12 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 12))) . '</th>';
                                 }
                                 $installment_table_header .= '</tr>';
                             }	       
 
                             if( ECOMMERCE_IYZIPAY_INSTALLMENT >= 2 ){
-                                if(lang(array('info'=>'')) === 'tr'){
-                                    $installment_table_content = str_replace('Total:', 'Top.:', $installment_table_content);
-                                    $installment_table_header = str_replace('Installment', "Taksit", $installment_table_header);
-                                    $installment_table_header = str_replace('Cart Type', "Kart Türü", $installment_table_header);
-                                    $installment_table_content = str_replace('/ month', " / ay", $installment_table_content);
-                                }
                                 //we output installment table 
                                 $installment_table .= '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >';
                                 $installment_table .= '<thead class="thead-dark">' . $installment_table_header . '</thead>';
@@ -5955,7 +5951,7 @@ function get_express_order($properties) {
 
                     // if the offline payment label is blank, then set it to the default label
                     if ($offline_payment_label == '') {
-                        $offline_payment_label = 'Offline Payment';
+                        $offline_payment_label = lang('Offline Payment');
                     }
 
                     // set the offline payment label in the session so that it can be used on the order receipt screen

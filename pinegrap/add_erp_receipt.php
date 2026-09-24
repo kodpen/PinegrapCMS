@@ -49,6 +49,23 @@ if ($preset_invoice_id > 0) {
     }
 }
 
+// Reached from an account (the list drawer): the account is chosen, the
+// amount is left to the operator. Reached from an order's documents card (a
+// refund to record), the amount, the method and the words come too, and the
+// operator is sent back to the order afterwards.
+$preset_account_id = ($preset_invoice === null) ? (int) ($_REQUEST['account_id'] ?? 0) : 0;
+$preset_amount = max(0, (int) ($_GET['amount'] ?? 0));
+$preset_method = (string) ($_GET['method'] ?? '');
+$preset_description = trim(mb_substr((string) ($_GET['description'] ?? ''), 0, 200));
+$back_order_id = (int) ($_REQUEST['back_order'] ?? 0);
+
+if (($back_order_id > 0) && !db_value("SELECT id FROM orders WHERE id = '" . $back_order_id . "' LIMIT 1")) {
+    $back_order_id = 0;
+}
+if (($preset_account_id > 0) && ((int) db_value("SELECT COUNT(*) FROM erp_accounts WHERE id = '" . $preset_account_id . "'") === 0)) {
+    $preset_account_id = 0;
+}
+
 if (!$_POST) {
 
     // The currency the money is in: the invoice's when closing one, the base
@@ -61,6 +78,20 @@ if (!$_POST) {
         $liveform->assign_field_value('payment_method', 'cash');
         $liveform->assign_field_value('currency', $preset_currency);
         $liveform->assign_field_value('exchange_rate', '');
+
+        if (($preset_invoice === null) && ($preset_account_id > 0)) {
+            $liveform->assign_field_value('account_id', (string) $preset_account_id);
+
+            if ($preset_amount > 0) {
+                $liveform->assign_field_value('amount', erp_money_out_currency($preset_amount, $preset_currency, false));
+            }
+            if (in_array($preset_method, erp_cash_payment_methods(), true)) {
+                $liveform->assign_field_value('payment_method', $preset_method);
+            }
+            if ($preset_description !== '') {
+                $liveform->assign_field_value('description', $preset_description);
+            }
+        }
 
         if ($preset_invoice !== null) {
             $liveform->assign_field_value('account_id', (string) (int) $preset_invoice['account_id']);
@@ -163,8 +194,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => $page_title,
-        'extra_classes' => 'erp erp_cash',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_cash',
+        'icon' => 'erp',
         'heading' => $page_title,
         'heading_description' => $is_collection
             ? lang('Money coming in: the till grows and what the account owes you falls.')
@@ -185,6 +216,7 @@ if (!$_POST) {
             <form name="form" action="add_erp_receipt.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="direction" value="' . h($direction) . '" />
+                ' . (($back_order_id > 0) ? '<input type="hidden" name="back_order" value="' . $back_order_id . '" />' : '') . '
                 ' . (($preset_invoice !== null)
                     ? '<input type="hidden" name="invoice_id" value="' . $preset_invoice_id . '" />'
                     : '') . '
@@ -276,7 +308,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-check-circle me-2"></span><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -295,7 +327,8 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     $back = PATH . SOFTWARE_DIRECTORY . '/add_erp_receipt.php?direction=' . $direction
-        . (($preset_invoice_id > 0) ? '&invoice_id=' . $preset_invoice_id : '');
+        . (($preset_invoice_id > 0) ? '&invoice_id=' . $preset_invoice_id : '')
+        . (($back_order_id > 0) ? '&back_order=' . $back_order_id : '');
 
     $doc_date = trim((string) $liveform->get_field_value('doc_date'));
 
@@ -361,6 +394,7 @@ if (!$_POST) {
         'payment_method' => $payment_method,
         'description' => trim((string) $liveform->get_field_value('description')),
         'invoice_id' => (int) $liveform->get_field_value('invoice_id'),
+        'order_id' => $back_order_id,
         'created_by' => (int) $user['id'],
     ));
 
@@ -377,6 +411,12 @@ if (!$_POST) {
     $liveform->remove_form();
 
     // Back to whichever screen the question was asked on.
+    if ($back_order_id > 0) {
+        $liveform_order = new liveform('view_order');
+        $liveform_order->add_notice($is_collection ? lang('Receipt recorded.') : lang('Payment recorded.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . $back_order_id . '#erp_order_documents');
+    }
+
     if ($settled_invoice_id > 0) {
         $liveform_invoice = new liveform('edit_erp_invoice');
         $liveform_invoice->add_notice($is_collection ? lang('Receipt recorded.') : lang('Payment recorded.'));

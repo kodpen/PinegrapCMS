@@ -441,7 +441,7 @@ if (mysqli_num_rows($result) > 0) {
                 <div class="progress">
                     <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%">' . $percent_complete . '%</div>
                 </div>
-                <h3>(' . number_format($number_of_completed_email_recipients) . lang(' of ') . number_format($number_of_email_recipients) . ')</h3>
+                <h3>(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
                 <div class="alert alert-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
             </div>
         </div>
@@ -474,7 +474,7 @@ if (mysqli_num_rows($result) > 0) {
     }
     
     // log end of sending e-mails
-    log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, number_format($number_of_email_recipients)))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, pg_format_number($number_of_email_recipients, 0)))), $_SESSION['sessionusername']);
     
     // If this is an automatic campaign, then check if auto campaigns need to be created.
     if ($type == 'automatic') {

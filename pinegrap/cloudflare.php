@@ -625,17 +625,17 @@ function getCloudflareAnalytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $area, $start
     // ---- Format output ----
     switch ($area) {
         case 'requests':
-            return number_format($analytics['requests']);
+            return pg_format_number($analytics['requests'], 0);
         case 'uniques':
-            return number_format($analytics['uniques']);
+            return pg_format_number($analytics['uniques'], 0);
         case 'bandwidth':
-            return number_format((isset($analytics['bandwidth']) ? $analytics['bandwidth'] : 0) / 1000 / 1000, 2) . ' MB';
+            return pg_format_number((isset($analytics['bandwidth']) ? $analytics['bandwidth'] : 0) / 1000 / 1000, 2) . ' MB';
         case 'percent_cached':
             return ($analytics['bandwidth'] > 0)
-                ? number_format(($analytics['cached_bytes'] / $analytics['bandwidth']) * 100, 2) . ' %'
+                ? pg_format_number(($analytics['cached_bytes'] / $analytics['bandwidth']) * 100, 2) . ' %'
                 : '0 %';
         case 'cached_bytes':
-            return number_format((isset($analytics['cached_bytes']) ? $analytics['cached_bytes'] : 0) / 1024 / 1024, 2) . ' MB';
+            return pg_format_number((isset($analytics['cached_bytes']) ? $analytics['cached_bytes'] : 0) / 1024 / 1024, 2) . ' MB';
         default:
             return '';
     }

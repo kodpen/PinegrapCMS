@@ -1154,6 +1154,79 @@ $(document).ready(function () {
         }
         $(target).toggle(returned);
     });
+
+    /* The e-document card's "test the connection".
+       The settings pane posts itself over AJAX, so the browser never acts on
+       a submit button's formaction: the pane's own save swallowed the click
+       and the operator was told the settings were saved instead of being
+       given an answer. The button is a plain button now and asks the
+       endpoint itself -- the provider that is picked and that provider's
+       boxes as they stand -- then prints the answer under the button. No new
+       tab: a popup is the one part of this a browser is free to refuse, and
+       an answer nobody sees is the fault all over again.
+       Nothing is saved by it; that is still the pane's Save. */
+    $(document).on("click", "button.pg-edoc-test", function (event) {
+
+        event.preventDefault();
+
+        var $button = $(this);
+        var action = $button.attr("data-pg-action");
+
+        if (!action || $button.prop("disabled")) {
+            return;
+        }
+
+        var $card = $button.closest(".pg-set-card");
+        var $result = $card.find(".pg-edoc-test-result").first();
+        var token = $("#pg_settings_modal_token").val();
+        var data = new FormData();
+
+        if (typeof token === "undefined") {
+            token = $button.closest("form").find("input[name=token]").val();
+        }
+
+        data.append("token", token || "");
+        data.append("format", "json");
+
+        $card.find("[name^='edoc_']").each(function () {
+
+            if (this.disabled || (((this.type === "checkbox") || (this.type === "radio")) && !this.checked)) {
+                return;
+            }
+
+            data.append(this.name, $(this).val());
+        });
+
+        $button.prop("disabled", true);
+        $result.html('<div class="text-body-secondary small"><span class="spinner-border spinner-border-sm me-2"></span></div>');
+
+        window.fetch(action, { method: "POST", body: data, credentials: "same-origin" })
+            .then(function (response) {
+                return response.ok ? response.json() : Promise.reject(new Error(String(response.status)));
+            })
+            .then(function (answer) {
+
+                var $alert = $("<div>").addClass("alert alert-" + (answer.tone || "secondary") + " d-flex align-items-start gap-2 mb-1");
+
+                $alert.append($("<i>").addClass("bi " + (answer.icon || "bi-info-circle") + " fs-5"));
+
+                var $body = $("<div>");
+
+                $.each(answer.lines || [], function (index, line) {
+                    $body.append($("<div>").text(line));
+                });
+
+                $alert.append($body);
+                $result.empty().append($alert).append($("<div>").addClass("form-text").text(answer.note || ""));
+            })
+            .catch(function (error) {
+                $result.html($("<div>").addClass("alert alert-danger mb-1").text("HTTP " + error.message));
+            })
+            .then(function () {
+                $button.prop("disabled", false);
+            });
+    });
+
     if ($("input.timepicker").length > 0) {
         $("input.timepicker").timepicker(timepicker_options);
     };
@@ -9175,6 +9248,7 @@ var pgSettingsModal = (function () {
     var held = null;            // the same, control by control
     var heldSet = null;         // and the membership question, asked often
     var gesture = 0;            // when a person last did something in here
+    var gestureControl = null;  // and which control they did it to
     var touched = false;        // and whether that ever changed anything
     var warned = false;         // a fill has been reported on this pane
     var reviewing = 0;
@@ -9426,12 +9500,14 @@ var pgSettingsModal = (function () {
         document.addEventListener('pointerdown', function (event) {
             unlatch(event.target);
             gesture = Date.now();
+            gestureControl = controlOf(event.target);
             review();
         }, true);
 
         document.addEventListener('keydown', function (event) {
             unlatch(event.target);
             gesture = Date.now();
+            gestureControl = controlOf(event.target);
             review();
         }, true);
 
@@ -9440,10 +9516,19 @@ var pgSettingsModal = (function () {
         // input masks and the time picker -- get a look at it.
         document.addEventListener('focusin', function (event) {
             unlatch(event.target);
+
+            // Leaving a control ends the operator's claim on it. The claim
+            // exists so that a field being worked in is not overruled while
+            // its dropdown is open; once they are somewhere else, that field
+            // is as unattended as any other and goes back under guard.
+            if (controlOf(event.target) !== gestureControl) {
+                gestureControl = null;
+            }
         }, true);
 
         $(el).on('paste drop', function () {
             gesture = Date.now();
+            gestureControl = controlOf(document.activeElement);
             review();
         });
 
@@ -9545,6 +9630,28 @@ var pgSettingsModal = (function () {
      * written by this software after the reading below, and putting them back
      * would be fighting ourselves.
      */
+    /**
+     * The form control a gesture landed on, if it landed on one. A click on a
+     * label or on the arrow inside a field is a click on the field.
+     */
+    function controlOf(target) {
+
+        if (!target || !target.closest) {
+            return null;
+        }
+
+        var control = target.closest('input, select, textarea');
+
+        if (control) {
+            return control;
+        }
+
+        var label = target.closest('label');
+
+        return (label && label.control) ? label.control : null;
+    }
+
+
     function hold() {
 
         held = [];
@@ -9563,14 +9670,32 @@ var pgSettingsModal = (function () {
     /**
      * Take one control under watch, at whatever it is showing now.
      *
-     * Called again on every review for the controls that were not on screen
-     * when the pane arrived -- inside a block the operator has since opened.
-     * Nothing could have filled them while they were hidden, so their value as
-     * they appear is the one to put back.
+     * Called again on every review for the controls that come on screen later
+     * -- inside a block the operator has since opened.
+     *
+     * A shut block used to be left out of this on the grounds that nothing
+     * could reach it. That is not true of a password manager: it fills by
+     * markup and pays no attention to what is on screen, and every credential
+     * in the settings sits inside a block that starts shut -- the payment
+     * gateways, the couriers, the accounting connections. Filled while shut,
+     * the value was then adopted as the one to keep the moment the operator
+     * opened the block, and saved from there. (Reported as an e-document
+     * provider's user name coming back reading "admin", which is the
+     * operator's own panel login: the pair of boxes looked like a login form.)
+     *
+     * So a shut INPUT or SELECT is watched and latched from the moment the
+     * pane arrives, which is the only moment its value is still the server's.
+     * A shut TEXTAREA is still left alone: nothing fills one, and the code
+     * fields are written into by the editor this software puts over them --
+     * watching those would be fighting ourselves.
      */
     function keep(control) {
 
-        if (!held || (control.type === 'hidden') || (control.offsetParent === null) || heldSet.has(control)) {
+        if (!held || (control.type === 'hidden') || heldSet.has(control)) {
+            return;
+        }
+
+        if ((control.offsetParent === null) && (control.tagName === 'TEXTAREA')) {
             return;
         }
 
@@ -9696,7 +9821,17 @@ var pgSettingsModal = (function () {
                 continue;
             }
 
-            if (mine) {
+            // The clock is not the whole answer. A native <select> the
+            // operator opens and reads through -- the hour list on the
+            // overdue card runs to twenty-four entries -- sends the page
+            // nothing between the click that opened it and the change that
+            // closes it, so a browse of more than a second looked like a fill
+            // and the choice was put back under the operator's eyes. A
+            // control they are working in is theirs however long they take:
+            // the one the last gesture landed on, or the one that has focus.
+            // A fill into some other field, which is the whole point of this
+            // machinery, still has nobody's hand on it.
+            if (mine || (control === gestureControl) || (control === document.activeElement)) {
                 held[i][1] = valueOf(control);
                 touched = true;
                 continue;
@@ -10526,3 +10661,309 @@ $(function () {
         pgSettingsModal.fromHash(window.location.hash);
     });
 });
+
+/* ---------------------------------------------------------------------------
+ * Sortable tables.
+ *
+ * A table that carries data-pg-sort gets buttons in its column headings: a
+ * click sorts the body by that column, the second click reverses it and the
+ * third puts the rows back in the order the server sent them. DataTables
+ * tables (table.chart) sort themselves and are not touched here.
+ *
+ * A cell sorts by its data-sort value when it has one (a date as Ymd, an
+ * amount in minor units), else by data-order, else by its text. A column whose
+ * values are all numbers sorts as numbers, anything else as text in the page's
+ * language; empty cells go last either way. A heading marked
+ * data-pg-sort="none", an empty heading and one that spans columns stay plain.
+ *
+ * A row marked data-pg-sort-fixed ("nothing here yet", a subtotal) stays at
+ * the end - at the top with data-pg-sort-fixed="top", for an opening balance
+ * - and a row marked data-pg-sort-with-prev moves with the row above it. The last choice is remembered per page and table for this viewer when
+ * the browser lets the page keep it.
+ * ------------------------------------------------------------------------- */
+(function () {
+    'use strict';
+
+    var collator = (window.Intl && window.Intl.Collator)
+        ? new window.Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' })
+        : null;
+
+    function say(key) {
+        return (typeof window.pgLang === 'function') ? window.pgLang(key) : key;
+    }
+
+    function addStyle() {
+        if (document.getElementById('pg_sort_style')) {
+            return;
+        }
+
+        var style = document.createElement('style');
+        style.id = 'pg_sort_style';
+        style.textContent = '.pg-sort-btn{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;'
+            + 'text-transform:inherit;letter-spacing:inherit;text-align:inherit;display:inline-flex;align-items:center;'
+            + 'gap:.3em;cursor:pointer;white-space:nowrap}'
+            + '.pg-sort-btn:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px;border-radius:2px}'
+            + '.pg-sort-btn .pg-sort-icon{opacity:.35;font-size:.8em}'
+            + 'th[aria-sort] .pg-sort-btn .pg-sort-icon{opacity:1}'
+            + '@media print{.pg-sort-btn .pg-sort-icon{display:none}}';
+        document.head.appendChild(style);
+    }
+
+    function storageKey(table) {
+        var tables = document.querySelectorAll('table[data-pg-sort]');
+        var position = Array.prototype.indexOf.call(tables, table);
+
+        return 'pgSort:' + window.location.pathname + ':' + (table.id || ('t' + position));
+    }
+
+    function remember(table, column, direction) {
+        try {
+            if (direction) {
+                window.localStorage.setItem(storageKey(table), column + ':' + direction);
+            } else {
+                window.localStorage.removeItem(storageKey(table));
+            }
+        } catch (error) {
+            // Storage refused (private window, blocked site data): the sort
+            // still works, it is just not remembered.
+        }
+    }
+
+    function recalled(table) {
+        try {
+            var kept = window.localStorage.getItem(storageKey(table));
+            var parts = kept ? kept.split(':') : [];
+
+            if ((parts.length === 2) && /^\d+$/.test(parts[0]) && ((parts[1] === 'asc') || (parts[1] === 'desc'))) {
+                return { column: parseInt(parts[0], 10), direction: parts[1] };
+            }
+        } catch (error) {
+            // Nothing kept, or nothing can be.
+        }
+
+        return null;
+    }
+
+    // The cell under a column, counting the columns a wider cell spans.
+    function cellAt(row, column) {
+        var position = 0;
+
+        for (var i = 0; i < row.cells.length; i++) {
+            var span = row.cells[i].colSpan || 1;
+
+            if ((column >= position) && (column < position + span)) {
+                return row.cells[i];
+            }
+
+            position += span;
+        }
+
+        return null;
+    }
+
+    function rawValue(cell) {
+        if (!cell) {
+            return '';
+        }
+
+        if (cell.hasAttribute('data-sort')) {
+            return cell.getAttribute('data-sort');
+        }
+
+        if (cell.hasAttribute('data-order')) {
+            return cell.getAttribute('data-order');
+        }
+
+        return (cell.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    // The body split into what moves together: a row and the rows riding
+    // with it. Fixed rows are set apart and put back at the end.
+    function groupsOf(body) {
+        var groups = [];
+        var fixed = [];
+        var top = [];
+
+        Array.prototype.forEach.call(body.rows, function (row) {
+            if (row.getAttribute('data-pg-sort-fixed') === 'top') {
+                top.push(row);
+            } else if (row.hasAttribute('data-pg-sort-fixed')) {
+                fixed.push(row);
+            } else if (row.hasAttribute('data-pg-sort-with-prev') && groups.length) {
+                groups[groups.length - 1].rows.push(row);
+            } else {
+                groups.push({ lead: row, rows: [row] });
+            }
+        });
+
+        return { groups: groups, fixed: fixed, top: top };
+    }
+
+    function sortBody(body, column, direction) {
+        var split = groupsOf(body);
+        var numeric = true;
+
+        split.groups.forEach(function (group) {
+            group.value = rawValue(cellAt(group.lead, column));
+            group.order = parseInt(group.lead.getAttribute('data-pg-sort-index') || '0', 10);
+
+            if ((group.value !== '') && !isFinite(Number(group.value))) {
+                numeric = false;
+            }
+        });
+
+        split.groups.sort(function (a, b) {
+            if (!direction) {
+                return a.order - b.order;
+            }
+
+            if ((a.value === '') !== (b.value === '')) {
+                return (a.value === '') ? 1 : -1;
+            }
+
+            var result;
+
+            if (numeric) {
+                result = Number(a.value) - Number(b.value);
+            } else if (collator) {
+                result = collator.compare(a.value, b.value);
+            } else {
+                result = (a.value < b.value) ? -1 : ((a.value > b.value) ? 1 : 0);
+            }
+
+            if (result === 0) {
+                return a.order - b.order;
+            }
+
+            return (direction === 'desc') ? -result : result;
+        });
+
+        var fragment = document.createDocumentFragment();
+
+        split.top.forEach(function (row) {
+            fragment.appendChild(row);
+        });
+        split.groups.forEach(function (group) {
+            group.rows.forEach(function (row) {
+                fragment.appendChild(row);
+            });
+        });
+        split.fixed.forEach(function (row) {
+            fragment.appendChild(row);
+        });
+
+        body.appendChild(fragment);
+    }
+
+    function show(table, column, direction) {
+        Array.prototype.forEach.call(table.querySelectorAll('th[data-pg-sort-column]'), function (heading) {
+            var mine = (parseInt(heading.getAttribute('data-pg-sort-column'), 10) === column) && direction;
+            var icon = heading.querySelector('.pg-sort-icon');
+            var button = heading.querySelector('.pg-sort-btn');
+
+            if (mine) {
+                heading.setAttribute('aria-sort', (direction === 'asc') ? 'ascending' : 'descending');
+            } else {
+                heading.removeAttribute('aria-sort');
+            }
+
+            if (icon) {
+                icon.className = 'pg-sort-icon bi ' + (mine ? ((direction === 'asc') ? 'bi-caret-up-fill' : 'bi-caret-down-fill') : 'bi-arrow-down-up');
+            }
+
+            if (button) {
+                button.title = mine ? say((direction === 'asc') ? 'Ascending' : 'Descending') : say('Sort');
+            }
+        });
+    }
+
+    function apply(table, column, direction) {
+        Array.prototype.forEach.call(table.tBodies, function (body) {
+            sortBody(body, column, direction);
+        });
+
+        table.setAttribute('data-pg-sort-state', direction ? (column + ':' + direction) : '');
+        show(table, column, direction);
+    }
+
+    function prepare(table) {
+        if (table.hasAttribute('data-pg-sort-ready') || table.classList.contains('chart') || !table.tHead) {
+            return;
+        }
+
+        table.setAttribute('data-pg-sort-ready', '1');
+        addStyle();
+
+        // The order the server sent, to come back to on the third click.
+        Array.prototype.forEach.call(table.tBodies, function (body) {
+            groupsOf(body).groups.forEach(function (group, index) {
+                group.lead.setAttribute('data-pg-sort-index', String(index));
+            });
+        });
+
+        var rows = table.tHead.rows;
+        var headingRow = rows.length ? rows[rows.length - 1] : null;
+
+        if (!headingRow) {
+            return;
+        }
+
+        var position = 0;
+
+        Array.prototype.forEach.call(headingRow.cells, function (heading) {
+            var column = position;
+            var span = heading.colSpan || 1;
+
+            position += span;
+
+            if ((span !== 1) || (heading.getAttribute('data-pg-sort') === 'none')
+                || ((heading.textContent || '').trim() === '') || heading.querySelector('input, select, button')) {
+                return;
+            }
+
+            var button = document.createElement('button');
+            var icon = document.createElement('i');
+
+            button.type = 'button';
+            button.className = 'pg-sort-btn';
+            button.title = say('Sort');
+
+            while (heading.firstChild) {
+                button.appendChild(heading.firstChild);
+            }
+
+            icon.className = 'pg-sort-icon bi bi-arrow-down-up';
+            icon.setAttribute('aria-hidden', 'true');
+            button.appendChild(icon);
+            heading.appendChild(button);
+            heading.setAttribute('data-pg-sort-column', String(column));
+
+            button.addEventListener('click', function () {
+                var state = (table.getAttribute('data-pg-sort-state') || '').split(':');
+                var current = (parseInt(state[0], 10) === column) ? state[1] : '';
+                var next = (current === 'asc') ? 'desc' : ((current === 'desc') ? '' : 'asc');
+
+                apply(table, column, next);
+                remember(table, column, next);
+            });
+        });
+
+        var kept = recalled(table);
+
+        if (kept && table.querySelector('th[data-pg-sort-column="' + kept.column + '"]')) {
+            apply(table, kept.column, kept.direction);
+        }
+    }
+
+    window.pgSortTables = function (root) {
+        Array.prototype.forEach.call((root || document).querySelectorAll('table[data-pg-sort]'), prepare);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            window.pgSortTables(document);
+        });
+    } else {
+        window.pgSortTables(document);
+    }
+})();

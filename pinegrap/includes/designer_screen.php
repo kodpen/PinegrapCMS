@@ -389,6 +389,14 @@ function pg_designer_screen_render($ctx)
             window.OUTPUT_PATH = "' . h(escape_javascript(OUTPUT_PATH)) . '";
             var sdRegionData = ' . get_style_designer_regions_as_json() . ';
             var sdDesign = ' . $design_js . ';
+            // How the site writes money and dates, for the canvas placeholders.
+            var software_money_format = ' . (function_exists('pg_money_format_json') ? pg_money_format_json() : 'null') . ';
+            var software_date_samples = ' . (function_exists('pg_sw_default_date_format')
+                ? json_encode(array(
+                    'date'     => date(pg_sw_default_date_format('date')),
+                    'datetime' => date(pg_sw_default_date_format('date and time')),
+                ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP)
+                : 'null') . ';
             window.PgCodeModalLabels = ' . encode_json(array(
                 'Code Editor' => lang('Code Editor'),
                 'Close'       => lang('Close'),
@@ -504,7 +512,7 @@ function pg_designer_start_screen($ctx)
                 <button type="button" class="m-1 btn-data-control btn btn-outline-warning border-2 sd-design-delete" title="' . lang('Delete') . '" data-style-id="' . (int)$d['style_id'] . '" data-name="' . h($d['style_name']) . '" data-pages="' . $count . '"><i class="bi bi-trash"></i></button>
             </td>
             <td class="align-middle chart_label" nowrap>' . h($d['style_name']) . ($count == 0 ? ' <span class="badge text-bg-secondary ms-1" title="' . lang('No pages — open it to add one, or delete it from the toolbar') . '">' . lang('Empty') . '</span>' : '') . '</td>
-            <td class="align-middle text-center" data-order="' . $count . '">' . number_format($count) . '</td>
+            <td class="align-middle text-center" data-order="' . $count . '">' . pg_format_number($count, 0) . '</td>
             <td class="align-middle">' . h((string)$d['theme_name']) . '</td>
             <td class="align-middle" nowrap data-order="' . (int)$d['last_modified_timestamp'] . '">' . get_relative_time(array('timestamp' => (int)$d['last_modified_timestamp'])) . '  ' . h($user_label) . '</td>
         </tr>';

@@ -75,6 +75,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              image_file_max_dimension = " . $image_file_max . ",
              image_resize_quality = " . $image_quality . ",";
     }
+    // The workspace switch, only once its column exists.
+    $sql_workspace_setting = '';
+
+    if (db_item("SHOW COLUMNS FROM config WHERE Field = 'workspace_enabled'")) {
+        $sql_workspace_setting = "workspace_enabled = '" . (post_value('workspace_enabled') ? 1 : 0) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -102,6 +109,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             signature_tsa_username = '" . escape(post_value('signature_tsa_username')) . "',
             signature_tsa_password = '" . escape(post_value('signature_tsa_password')) . "',
             " . $sql_image_settings . "
+            " . $sql_workspace_setting . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 

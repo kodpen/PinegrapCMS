@@ -40,7 +40,9 @@ if (!$_POST) {
         $liveform->assign_field_value('opening_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
         $liveform->assign_field_value('currency', erp_base_currency());
         $liveform->assign_field_value('overdue_notify_customer', '1');
+        $liveform->assign_field_value('invoice_mail', '1');
         $liveform->assign_field_value('contact_id', '0');
+        $liveform->assign_field_value('country_code', erp_default_country_code());
 
         // Opened from a contact's screen: the form comes filled in from the
         // card, the way the order bridge would fill it, for the operator to
@@ -61,10 +63,11 @@ if (!$_POST) {
             $prefill = erp_account_data_from_contact($from_contact);
 
             if (is_array($prefill)) {
-                foreach (array('title', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city', 'postcode') as $field) {
-                    $liveform->assign_field_value($field, (string) $prefill[$field]);
+                foreach (array('title', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city', 'state', 'postcode') as $field) {
+                    $liveform->assign_field_value($field, (string) ($prefill[$field] ?? ''));
                 }
                 $liveform->assign_field_value('is_person', $prefill['is_person'] ? '1' : '0');
+                $liveform->assign_field_value('country_code', strtoupper(trim((string) ($prefill['country_code'] ?? erp_default_country_code()))));
                 $liveform->assign_field_value('contact_id', (string) $from_contact);
             }
         }
@@ -75,8 +78,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Create Account'),
-        'extra_classes' => 'erp erp_accounts',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_accounts',
+        'icon' => 'erp',
         'heading' => lang('Create Account'),
         'heading_description' => lang('Add a customer or a supplier, with an opening balance if they already owe or are owed.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
@@ -98,7 +101,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string' => 'Create')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -118,6 +121,8 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
+    $country_code = erp_account_form_country($liveform);
+    erp_account_form_check_formats($liveform, $country_code);
 
     $payment_days = trim((string) $liveform->get_field_value('payment_days'));
     if (($payment_days !== '') && ((preg_match('/^[0-9]{1,4}$/', $payment_days) !== 1) || ((int) $payment_days > 3650))) {
@@ -200,13 +205,19 @@ if (!$_POST) {
         'address' => $liveform->get_field_value('address'),
         'district' => $liveform->get_field_value('district'),
         'city' => $liveform->get_field_value('city'),
+        // A Turkish address has no state: the province is the city.
+        'state' => (erp_account_country($country_code) === 'TR') ? '' : $liveform->get_field_value('state'),
         'postcode' => $liveform->get_field_value('postcode'),
+        'country_code' => ($country_code !== '') ? $country_code : erp_default_country_code(),
         'currency' => $currency,
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
         'overdue_notify_days' => (int) $overdue_notify_days,
         'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
+        'invoice_email' => (string) $liveform->get_field_value('invoice_email'),
+        'invoice_mail' => ($liveform->get_field_value('invoice_mail') === '1'),
+        'credit_limit' => erp_kurus((string) $liveform->get_field_value('credit_limit')),
         'created_by' => (int) $user['id'],
     ));
 

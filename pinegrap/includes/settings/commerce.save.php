@@ -192,6 +192,18 @@ function pg_parasut_credentials_for_save()
     // Foreign currency in the ERP (2026.4.4). The currency list is whatever
     // was ticked, kept to three-letter codes the store lists; the base is
     // never stored because it is always allowed.
+    // The seller's tax number, kept the way the store's country writes it:
+    // digits in Turkey (VKN/TCKN), as typed elsewhere - an EU VAT id carries
+    // its country prefix and letters. Never longer than the column holds
+    // (32 from 2026.4.4/4.70, 11 before it), so the save never fails on it.
+    $erp_seller_vkn_width = (int) db_value("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'config' AND COLUMN_NAME = 'erp_seller_vkn' LIMIT 1");
+    $erp_seller_vkn_width = ($erp_seller_vkn_width > 0) ? $erp_seller_vkn_width : 11;
+    $erp_seller_vkn_value = trim((string) post_value('erp_seller_vkn'));
+    $erp_seller_vkn_value = (pg_erp_store_country() === 'TR')
+        ? substr(preg_replace('/\D/', '', $erp_seller_vkn_value), 0, 11)
+        : mb_substr($erp_seller_vkn_value, 0, $erp_seller_vkn_width);
+
     $sql_erp_fx = "";
 
     // The default payment term (2026.4.4, 4.53): whole days, ten years at most.
@@ -199,6 +211,71 @@ function pg_parasut_credentials_for_save()
 
     if (waf_table_has_column('config', 'erp_default_due_days')) {
         $sql_erp_due = "erp_default_due_days = '" . min(3650, max(0, (int) post_value('erp_default_due_days'))) . "',";
+    }
+
+    // The second tax's name (4.75); empty switches it off.
+    if (waf_table_has_column('config', 'erp_tax2_name')) {
+        $sql_erp_due .= "
+            erp_tax2_name = '" . escape(mb_substr(trim((string) post_value('erp_tax2_name')), 0, 30)) . "',";
+    }
+
+    // What the till shows (4.74): 'gross' or 'net', nothing else.
+    if (waf_table_has_column('config', 'local_sale_prices')) {
+        $sql_erp_due .= "
+            local_sale_prices = '" . ((post_value('local_sale_prices') === 'net') ? 'net' : 'gross') . "',";
+    }
+
+    // Whether the ERP's documents change stock counts (4.77).
+    if (waf_table_has_column('config', 'erp_stock_documents')) {
+        $sql_erp_due .= "
+            erp_stock_documents = '" . ((post_value('erp_stock_documents') == 1) ? 1 : 0) . "',";
+    }
+
+    // Invoices by e-mail (4.97): on their own or not, and the covering text;
+    // an empty text is stored as NULL so the built-in one is used.
+    if (waf_table_has_column('config', 'erp_invoice_mail_auto')) {
+        $erp_invoice_mail_message_value = mb_substr(trim((string) post_value('erp_invoice_mail_message')), 0, 2000);
+        $sql_erp_due .= "
+            erp_invoice_mail_auto = '" . ((post_value('erp_invoice_mail_auto') == 1) ? 1 : 0) . "',
+            erp_invoice_mail_message = " . (($erp_invoice_mail_message_value === '') ? 'NULL' : "'" . escape($erp_invoice_mail_message_value) . "'") . ",";
+    }
+
+    // What a sale past a customer's credit limit does (4.98).
+    if (waf_table_has_column('config', 'erp_credit_limit_mode')) {
+        $sql_erp_due .= "
+            erp_credit_limit_mode = '" . ((post_value('erp_credit_limit_mode') === 'block') ? 'block' : 'warn') . "',";
+    }
+
+    // Notices on the bell and the devices (4.91); the amount arrives in whole
+    // units of the base currency and is kept in kurus.
+    if (waf_table_has_column('config', 'erp_notify_collections')) {
+        $sql_erp_due .= "
+            erp_notify_collections = '" . ((post_value('erp_notify_collections') == 1) ? 1 : 0) . "',
+            erp_notify_collection_min = '" . (min(100000000, max(0, (int) post_value('erp_notify_collection_min'))) * 100) . "',
+            erp_notify_low_stock = '" . ((post_value('erp_notify_low_stock') == 1) ? 1 : 0) . "',";
+    }
+
+    // How an order's shipping and surcharge are taxed on its invoice (4.76):
+    // 'included', 'none', or empty for the store's country to decide.
+    if (waf_table_has_column('config', 'erp_shipping_tax')) {
+        $erp_shipping_tax_value = (string) post_value('erp_shipping_tax');
+        if (!in_array($erp_shipping_tax_value, array('', 'included', 'none'), true)) {
+            $erp_shipping_tax_value = '';
+        }
+        $sql_erp_due .= "
+            erp_shipping_tax = '" . escape($erp_shipping_tax_value) . "',";
+    }
+
+    // Number shape and tax name (4.72). An unknown shape falls back to the
+    // GİB one rather than to an empty value the numbering would not know.
+    if (waf_table_has_column('config', 'erp_number_style')) {
+        $erp_number_style_value = (string) post_value('erp_number_style');
+        if (!in_array($erp_number_style_value, array('gib', 'year', 'continuous'), true)) {
+            $erp_number_style_value = 'gib';
+        }
+        $sql_erp_due .= "
+            erp_number_style = '" . escape($erp_number_style_value) . "',
+            erp_tax_name = '" . escape(mb_substr(trim((string) post_value('erp_tax_name')), 0, 30)) . "',";
     }
 
     // The walk-in sales account (4.59): an account that exists, or none.
@@ -209,6 +286,15 @@ function pg_parasut_credentials_for_save()
         }
         $sql_erp_due .= "
             erp_walkin_account_id = '" . $erp_walkin_account_id . "',";
+    }
+
+    // Whether a created document is handed to the tax authority in the same
+    // step (4.63). Written only when the block that carries the switch was
+    // drawn, so a pane without the e-document card cannot switch it off by
+    // simply not posting the box.
+    if (waf_table_has_column('config', 'erp_edoc_autosend') && waf_table_has_column('erp_edoc_providers', 'provider')) {
+        $sql_erp_due .= "
+            erp_edoc_autosend = '" . ((post_value('erp_edoc_autosend') == 1) ? 1 : 0) . "',";
     }
 
     if (waf_table_has_column('config', 'erp_fx_enabled')) {
@@ -320,7 +406,7 @@ function pg_parasut_credentials_for_save()
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
             erp_default_series = '" . escape(trim(post_value('erp_default_series'))) . "',
             erp_web_address = '" . escape(trim(post_value('erp_web_address'))) . "',
-            erp_seller_vkn = '" . escape(substr(preg_replace('/\D/', '', (string) post_value('erp_seller_vkn')), 0, 11)) . "',
+            erp_seller_vkn = '" . escape($erp_seller_vkn_value) . "',
             erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             " . $sql_erp_fx . "
             " . $sql_erp_due . "

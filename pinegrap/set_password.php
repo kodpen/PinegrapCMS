@@ -26,6 +26,10 @@ $form->add_fields_to_session();
 
 $token = $form->get('k');
 
+// A designed page (the set_password widget) names itself in return_to, with
+// the token still in its address: errors and the confirmation go back there.
+$pg_return_to = pg_sw_return_to($form->get('return_to'));
+
 if (!$token) {
     log_activity('Set Password: missing token');
     output_error(lang('Sorry, the token is missing, so we can\'t allow you to set a password.'));
@@ -91,7 +95,11 @@ if (($form->get('password_hint') != '') && ($form->get('new_password') != '')) {
 
 // if an error exists, then send user back to previous screen
 if ($form->check_form_errors()) {
-    go(get_page_type_url('set password'));
+    // The legacy page reads the token from its own address, so it goes back
+    // with it; without it the visitor met "the token is missing" instead of
+    // the reason the password was refused.
+    $pg_set_password_url = get_page_type_url('set password');
+    go(($pg_return_to !== '') ? $pg_return_to : ($pg_set_password_url ? $pg_set_password_url . '?k=' . urlencode($token) : PATH));
 }
 
 // Modern hash for the new password.
@@ -166,6 +174,7 @@ if ($send_to != '') {
     || ($user['manage_ecommerce'] == true)
     || $user['manage_ecommerce_reports']
     || !empty($user['manage_erp'])
+    || !empty($user['manage_workspace'])
     || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)
 ) {
     $continue_url = PATH . SOFTWARE_DIRECTORY . '/welcome.php';
@@ -177,4 +186,4 @@ if ($send_to != '') {
 
 $form->add_notice(lang(array('string' => 'We have set your password, and you are now logged in. <a href="{var:1}">Continue</a>', 'vars' => array(h($continue_url)))));
 
-go(get_page_type_url('set password'));
+go(($pg_return_to !== '') ? $pg_return_to : get_page_type_url('set password'));

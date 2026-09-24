@@ -544,7 +544,7 @@ function get_order_form($properties) {
             
             // else a submit button label could not be found, so use a default label
             } else {
-                $output_add_button_value = 'Continue';
+                $output_add_button_value = lang('Continue');
                 $output_add_button_label = lang('Continue');
             }
             

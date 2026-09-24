@@ -9,26 +9,26 @@
   value resolved in the site language.
 
   seller   .title .address_1 .address_2 .city .state .zip_code .country
-           .vkn .tax_office .web_address .email .logo_url .logo_data_uri
-  account  .title .tax_number .tax_office .address .district .city .country
-           .postcode
-  ship_to  .title .address .district .city .country
+           .locality .vkn .tax_office .web_address .email .logo_url .logo_data_uri
+  account  .title .tax_number .tax_office .address .district .city .state
+           .country .postcode .locality
+  ship_to  .title .address .district .city .state .country .locality
   waybill  .full_number .title .issue_date .ship_date .ship_time .order_number
            .invoice_number .carrier_title .carrier_vkn .plate .driver_name
            .driver_tckn .has_transport .notes .is_cancelled
   lines    (list) .no .description .quantity .unit
   label    .waybill_no .waybill_date .ship_date .ship_time .order_no .order
-           .invoice_no .tax_id .tax_office .bill_to .ship_to .description
+           .invoice_no .tax_id .account_tax_id .tax_office .bill_to .ship_to .description
            .quantity .unit .no_lines .carrier .carrier_tax_id .plate .driver
            .driver_id .note .received_by .delivered_by .generated_at .cancelled
-  language, generated_at
+  language, paper (A4 or letter, by the store's country), generated_at
 -->
 <html lang="{{language}}">
 <head>
 <meta charset="utf-8">
 <title>{{waybill.title}} {{waybill.full_number}}</title>
 <style>
-    @page { size: A4 portrait; margin: 14mm 14mm 18mm 14mm; }
+    @page { size: {{paper}} portrait; margin: 14mm 14mm 18mm 14mm; }
     body { font-family: "DejaVu Sans", sans-serif; font-size: 9.5pt; color: #222; margin: 0; }
     table { border-collapse: collapse; width: 100%; }
     td, th { vertical-align: top; }
@@ -75,7 +75,7 @@
                 <div class="name">{{seller.title}}</div>
                 {{#seller.address_1}}{{seller.address_1}}<br>{{/seller.address_1}}
                 {{#seller.address_2}}{{seller.address_2}}<br>{{/seller.address_2}}
-                {{seller.zip_code}} {{seller.city}} {{seller.state}} {{seller.country}}<br>
+                {{seller.locality}}<br>
                 {{#seller.vkn}}{{label.tax_id}}: <b>{{seller.vkn}}</b>{{/seller.vkn}}
                 {{#seller.tax_office}} &nbsp;{{label.tax_office}}: <b>{{seller.tax_office}}</b>{{/seller.tax_office}}<br>
                 {{#seller.web_address}}{{seller.web_address}}{{/seller.web_address}}
@@ -105,8 +105,8 @@
                 <div class="label">{{label.bill_to}}</div>
                 <div class="name">{{account.title}}</div>
                 {{#account.address}}{{account.address}}<br>{{/account.address}}
-                {{account.postcode}} {{account.district}} {{account.city}} {{account.country}}<br>
-                {{#account.tax_number}}{{label.tax_id}}: <b>{{account.tax_number}}</b>{{/account.tax_number}}
+                {{account.locality}}<br>
+                {{#account.tax_number}}{{label.account_tax_id}}: <b>{{account.tax_number}}</b>{{/account.tax_number}}
                 {{#account.tax_office}} &nbsp;{{label.tax_office}}: <b>{{account.tax_office}}</b>{{/account.tax_office}}
             </div>
         </td>
@@ -115,7 +115,7 @@
                 <div class="label">{{label.ship_to}}</div>
                 <div class="name">{{ship_to.title}}</div>
                 {{#ship_to.address}}{{ship_to.address}}<br>{{/ship_to.address}}
-                {{ship_to.district}} {{ship_to.city}} {{ship_to.country}}
+                {{ship_to.locality}}
             </div>
         </td>
     </tr>

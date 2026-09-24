@@ -446,10 +446,10 @@ if (!empty($_POST['orders'])) {
 
             // if at least one order was exported, then log activity
             if ($number_of_orders > 0) {
-                log_activity(lang(array('string'=>'{var:1} order(s) were exported for parasut.com','vars'=>array(number_format($number_of_orders)) )) , $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'{var:1} order(s) were exported for parasut.com','vars'=>array(pg_format_number($number_of_orders, 0)) )) , $_SESSION['sessionusername']);
             }
             $liveform_view_orders = new liveform('view_orders');
-            $liveform_view_orders->add_notice(lang(array('string'=>'{var:1} order(s) and the information of the contact(s) they are connected to have been exported with {var:2}.zip file.','vars'=>array(number_format($number_of_orders),$temp_folder_name) )) );
+            $liveform_view_orders->add_notice(lang(array('string'=>'{var:1} order(s) and the information of the contact(s) they are connected to have been exported with {var:2}.zip file.','vars'=>array(pg_format_number($number_of_orders, 0),$temp_folder_name) )) );
             
             break;
         // if the user selected to remove card data for orders, then do that
@@ -524,11 +524,11 @@ if (!empty($_POST['orders'])) {
             
             // if credit card data was removed from more than 0 orders, then log activity
             if ($number_of_orders > 0) {
-                log_activity(lang(array('string'=>'Card data was removed from {var:1} order(s).','vars'=>array(number_format($number_of_orders)))), $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'Card data was removed from {var:1} order(s).','vars'=>array(pg_format_number($number_of_orders, 0)))), $_SESSION['sessionusername']);
             }
             
             $liveform_view_orders = new liveform('view_orders');
-            $liveform_view_orders->add_notice( lang(array('string'=>'Card data was removed from {var:1} order(s).','vars'=>array(number_format($number_of_orders)))) );
+            $liveform_view_orders->add_notice( lang(array('string'=>'Card data was removed from {var:1} order(s).','vars'=>array(pg_format_number($number_of_orders, 0)))) );
             
             break;
             
@@ -552,11 +552,11 @@ if (!empty($_POST['orders'])) {
             
             // if at least one order was deleted, then log activity
             if ($number_of_orders > 0) {
-                log_activity(lang(array('string'=>'{var:1} order(s) were deleted','vars'=>array(number_format($number_of_orders)) )) , $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'{var:1} order(s) were deleted','vars'=>array(pg_format_number($number_of_orders, 0)) )) , $_SESSION['sessionusername']);
             }
             
             $liveform_view_orders = new liveform('view_orders');
-            $liveform_view_orders->add_notice(lang(array('string'=>'{var:1} order(s) were deleted','vars'=>array(number_format($number_of_orders)) )) );
+            $liveform_view_orders->add_notice(lang(array('string'=>'{var:1} order(s) were deleted','vars'=>array(pg_format_number($number_of_orders, 0)) )) );
 
             break;
 
@@ -599,7 +599,7 @@ if (!empty($_POST['orders'])) {
                 log_activity(
                     lang(array(
                         'string' => '{var:1} order(s) were cancelled',
-                        'vars'   => array(number_format($bulk_cancelled)),
+                        'vars'   => array(pg_format_number($bulk_cancelled, 0)),
                     )),
                     $_SESSION['sessionusername']
                 );
@@ -609,14 +609,14 @@ if (!empty($_POST['orders'])) {
             $liveform_view_orders->add_notice(
                 lang(array(
                     'string' => '{var:1} order(s) were cancelled',
-                    'vars'   => array(number_format($bulk_cancelled)),
+                    'vars'   => array(pg_format_number($bulk_cancelled, 0)),
                 ))
             );
             if ($bulk_skipped_already > 0) {
                 $liveform_view_orders->add_warning(
                     lang(array(
                         'string' => '{var:1} order(s) were already cancelled and skipped',
-                        'vars'   => array(number_format($bulk_skipped_already)),
+                        'vars'   => array(pg_format_number($bulk_skipped_already, 0)),
                     ))
                 );
             }
@@ -624,7 +624,7 @@ if (!empty($_POST['orders'])) {
                 $liveform_view_orders->add_warning(
                     lang(array(
                         'string' => '{var:1} order(s) had already shipped and were skipped',
-                        'vars'   => array(number_format($bulk_skipped_shipped)),
+                        'vars'   => array(pg_format_number($bulk_skipped_shipped, 0)),
                     ))
                 );
             }
@@ -632,7 +632,7 @@ if (!empty($_POST['orders'])) {
                 $liveform_view_orders->add_error(
                     lang(array(
                         'string' => '{var:1} order(s) could not be cancelled',
-                        'vars'   => array(number_format($bulk_failed)),
+                        'vars'   => array(pg_format_number($bulk_failed, 0)),
                     ))
                 );
             }

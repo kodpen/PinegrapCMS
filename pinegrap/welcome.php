@@ -56,7 +56,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('welcome');
 
 // if the user has a user role and the user does not have edit access to any folders and the user does not have access to control panels, then deny access to software welcome screen
-if (($user['role'] == 3) && (no_acl_check($user['id']) == false) && ($user['manage_calendars'] == false) && ($user['manage_forms'] == false) && ($user['manage_visitors'] == false) && ($user['manage_contacts'] == false) && ($user['manage_emails'] == false) && ($user['manage_ecommerce'] == false) && ($user['manage_ecommerce_reports'] == false) && (empty($user['manage_erp'])) && (count(get_items_user_can_edit('ad_regions', $user['id'])) == 0))
+if (($user['role'] == 3) && (no_acl_check($user['id']) == false) && ($user['manage_calendars'] == false) && ($user['manage_forms'] == false) && ($user['manage_visitors'] == false) && ($user['manage_contacts'] == false) && ($user['manage_emails'] == false) && ($user['manage_ecommerce'] == false) && ($user['manage_ecommerce_reports'] == false) && (empty($user['manage_erp'])) && (empty($user['manage_workspace'])) && (count(get_items_user_can_edit('ad_regions', $user['id'])) == 0))
 {
     log_activity("access denied to welcome screen", $_SESSION['sessionusername']);
     output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -1364,7 +1364,7 @@ if (($sig['health'] !== null) && ($sig['health'] < 70)) {
 if (((int) $sig['comments']) > 0) {
 
     $greeting_comments_link = $greeting_link('view_comments.php', lang(array(
-        'string' => '{var:1} waiting comments', 'vars' => number_format($sig['comments']))));
+        'string' => '{var:1} waiting comments', 'vars' => pg_format_number($sig['comments'], 0))));
 
     $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => lang(array(
         'string' => 'Approving the {var:1} puts them on the pages they belong to.',
@@ -1379,7 +1379,7 @@ if (((int) $sig['out_of_stock']) > 0) {
     // The filtered list, not the catalogue. Advice that drops you in front of
     // four thousand products has made you do the finding yourself.
     $greeting_stock_link = $greeting_link('view_products.php?filter=out_of_stock_products', lang(array(
-        'string' => '{var:1} empty products', 'vars' => number_format($sig['out_of_stock']))));
+        'string' => '{var:1} empty products', 'vars' => pg_format_number($sig['out_of_stock'], 0))));
 
     $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => lang(array(
         'string' => 'Restocking the {var:1} would keep those pages selling.',
@@ -1407,7 +1407,7 @@ if (((int) $sig['carts_week']) > 0) {
     // and a month-old date range left behind from the last visit would hide
     // the very rows the sentence just promised.
     $greeting_carts_link = $greeting_link('view_orders.php?reset=true&status=incomplete', lang(array(
-        'string' => '{var:1} baskets', 'vars' => number_format($sig['carts_week']))));
+        'string' => '{var:1} baskets', 'vars' => pg_format_number($sig['carts_week'], 0))));
 
     $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => lang(array(
         'string' => 'There are {var:1} left half full this week, and it is worth a look at who walked away.',
@@ -1423,7 +1423,7 @@ if (((int) $sig['new_contacts']) > 0) {
     // nothing wrong with it, and "nothing is wrong" is not the same as "there
     // is nothing worth doing".
     $greeting_people_link = $greeting_link('view_contacts.php', lang(array(
-        'string' => '{var:1} people', 'vars' => number_format($sig['new_contacts']))));
+        'string' => '{var:1} people', 'vars' => pg_format_number($sig['new_contacts'], 0))));
 
     $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => lang(array(
         'string' => 'The {var:1} who joined this week have not heard from you yet.',
@@ -1743,13 +1743,13 @@ if ($traffic_up && $perf_slower) {
 if ($traffic_up && !$perf_slower && ($sig['perf_today'] !== null)) {
     $greeting_smart[] = array('topic' => 'perf', 'text' => lang(array(
         'string' => 'Traffic is up on yesterday and the pages are holding at {var:1} ms.',
-        'vars' => number_format($sig['perf_today']))));
+        'vars' => pg_format_number($sig['perf_today'], 0))));
 }
 
 if ($orders_up && (((int) $sig['out_of_stock']) > 0)) {
     $greeting_smart[] = array('topic' => 'stock', 'text' => lang(array(
         'string' => 'Orders are running ahead of yesterday while {var:1} products sit out of stock.',
-        'vars' => number_format($sig['out_of_stock']))));
+        'vars' => pg_format_number($sig['out_of_stock'], 0))));
 }
 
 // Nobody bought, but somebody nearly did. That is a different day from one
@@ -1757,7 +1757,7 @@ if ($orders_up && (((int) $sig['out_of_stock']) > 0)) {
 if ($has_orders && ($sig['orders_today'] === 0) && (((int) $sig['carts_week']) > 0)) {
     $greeting_smart[] = array('topic' => 'carts', 'text' => lang(array(
         'string' => 'No orders today, though {var:1} baskets were filled and left this week.',
-        'vars' => number_format($sig['carts_week']))));
+        'vars' => pg_format_number($sig['carts_week'], 0))));
 }
 
 if ((((int) $sig['new_contacts']) > 0) && $has_orders && ($sig['orders_today'] === 0)) {
@@ -1793,15 +1793,15 @@ if ($has_orders && ($sig['orders_today'] > $sig['orders_before'])) {
 if ($has_perf && ($sig['perf_today'] < $sig['perf_before'])) {
     $greeting_plain[] = array('topic' => 'perf', 'text' => lang(array(
         'string' => 'The site is answering in {var:1} ms, quicker than it managed yesterday.',
-        'vars' => number_format($sig['perf_today']))));
+        'vars' => pg_format_number($sig['perf_today'], 0))));
 } elseif (($sig['perf_today'] !== null) && ($sig['perf_today'] <= 200)) {
     $greeting_plain[] = array('topic' => 'perf', 'text' => lang(array(
         'string' => 'Pages are coming back in {var:1} ms, which is comfortable.',
-        'vars' => number_format($sig['perf_today']))));
+        'vars' => pg_format_number($sig['perf_today'], 0))));
 } elseif ($sig['perf_today'] !== null) {
     $greeting_plain[] = array('topic' => 'perf', 'text' => lang(array(
         'string' => 'Pages are averaging {var:1} ms today.',
-        'vars' => number_format($sig['perf_today']))));
+        'vars' => pg_format_number($sig['perf_today'], 0))));
 }
 
 if (($sig['health'] !== null) && ($sig['health'] >= 90)) {
@@ -1820,7 +1820,7 @@ if (($sig['health'] !== null) && ($sig['health'] >= 90)) {
 if (((int) $sig['visitors_now']) > 0) {
     $greeting_plain[] = array('topic' => 'visitors', 'text' => lang(array(
         'string' => '{var:1} people are looking around the site right now.',
-        'vars' => number_format($sig['visitors_now']))));
+        'vars' => pg_format_number($sig['visitors_now'], 0))));
 }
 
 // Where the week's orders are coming from. The place is named rather than
@@ -1830,7 +1830,7 @@ if ($sig['map_lead'] !== null) {
 
     $greeting_plain[] = array('topic' => 'map', 'text' => lang(array(
         'string' => '{var:1} leads the week with {var:2} order{suffix:2}.',
-        'vars'   => array($sig['map_lead']['name'], number_format($sig['map_lead']['count'])),
+        'vars'   => array($sig['map_lead']['name'], pg_format_number($sig['map_lead']['count'], 0)),
         'suffix' => array('', ($sig['map_lead']['count'] == 1) ? '' : 's'))));
 
     $greeting_plain[] = array('topic' => 'map', 'text' => lang(array(
@@ -1841,7 +1841,7 @@ if ($sig['map_lead'] !== null) {
 if (((int) $sig['new_contacts']) > 0) {
     $greeting_plain[] = array('topic' => 'contacts', 'text' => lang(array(
         'string' => '{var:1} new people joined your contacts this week.',
-        'vars' => number_format($sig['new_contacts']))));
+        'vars' => pg_format_number($sig['new_contacts'], 0))));
 }
 
 // A reading that holds two signals against each other is worth more than one

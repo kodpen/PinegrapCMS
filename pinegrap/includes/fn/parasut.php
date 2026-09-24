@@ -1137,7 +1137,7 @@ function parasut_create_invoice($order_id)
             'parasut_invoice_id' => null,
             'error' => lang(array(
                 'string' => 'Invoice total does not match the order total ({var:1} against {var:2}). The invoice was not created.',
-                'vars' => array(number_format($built_cents / 100, 2), number_format($expected_cents / 100, 2)),
+                'vars' => array(pg_format_number($built_cents / 100, 2), pg_format_number($expected_cents / 100, 2)),
             )),
         ];
     }

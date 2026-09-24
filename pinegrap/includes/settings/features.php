@@ -172,6 +172,14 @@ $pg_settings_cards[] = '
                                                 <label class="form-check-label" for="ads">' . lang('Enable Ads') . '</label>
                                             </div>
                                         </div>
+                                        ' . ($workspace_setting_available ? '
+                                        <div class="col-12 ">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $workspace_enabled_checked . ' class="form-check-input" type="checkbox" id="workspace_enabled" name="workspace_enabled"/>
+                                                <label class="form-check-label" for="workspace_enabled">' . lang('Enable Workspace') . '</label>
+                                                <div class="form-text">' . lang('Channels for the team, tasks with owners and dates, and a planning board. Basic users are given it from their user screen.') . '</div>
+                                            </div>
+                                        </div>' : '') . '
                                    </div>
                                 </div>
                             </div>

@@ -563,6 +563,7 @@ function _pg_offer_editor_context($state)
         'modified_by'      => $modified_by,
         'modified_ago'     => (!empty($state['meta']['timestamp'])) ? get_relative_time(array('timestamp' => $state['meta']['timestamp'], 'format' => 'plain_text')) : '',
         'currency'         => _pg_offer_currency(),
+        'money_separators' => pg_number_separators(),
         'date_format'      => (DATE_FORMAT == 'month_day') ? 'month_day' : 'day_month',
         'today'            => date('Y-m-d'),
         'open_end_date'    => PG_OFFER_OPEN_END_DATE,
@@ -575,8 +576,9 @@ function _pg_offer_editor_context($state)
 // ── Validation ───────────────────────────────────────────────────────────
 
 // Reads a money value sent by the editor. The editor sends cents as integers;
-// a decimal string with a comma or a dot is accepted too so a hand-made
-// request behaves the same way.
+// a decimal string is accepted too so a hand-made request behaves the same
+// way, read like any typed amount (pg_parse_amount(): "1.250,00", "1,250.00"
+// and "12,5" all mean what they say).
 function _pg_offer_cents($value)
 {
     if (is_int($value)) {
@@ -589,8 +591,7 @@ function _pg_offer_cents($value)
     if (preg_match('/^-?\d+$/', $value)) {
         return (int) $value;
     }
-    $value = str_replace(',', '.', $value);
-    return (int) round(((float) $value) * 100);
+    return (int) round(pg_parse_amount($value) * 100);
 }
 
 // Validates a save request and normalises it. Returns array(errors, clean).
@@ -1979,14 +1980,14 @@ function pg_offer_editor_handle($request)
                 db("DELETE FROM key_codes WHERE offer_code = '" . e($offer['code']) . "'");
                 log_activity(lang(array(
                     'string' => '{var:1} key code(s) of offer ({var:2}) were deleted',
-                    'vars'   => array(number_format($count), $offer['code']))), $_SESSION['sessionusername']);
+                    'vars'   => array(pg_format_number($count, 0), $offer['code']))), $_SESSION['sessionusername']);
             }
             respond(array(
                 'status'  => 'success',
                 'request' => $type,
                 'count'   => 0,
                 'deleted' => $count,
-                'message' => lang(array('string' => '{var:1} key code(s) were deleted.', 'vars' => number_format($count)))));
+                'message' => lang(array('string' => '{var:1} key code(s) were deleted.', 'vars' => pg_format_number($count, 0)))));
             break;
 
         case 'offer_key_codes':
@@ -2005,7 +2006,7 @@ function pg_offer_editor_handle($request)
                 $quantity = 100;
             }
             $codes = _pg_offer_key_codes_generate($offer['code'], $quantity, $user);
-            log_activity(lang(array('string' => '{var:1} key codes were created.', 'vars' => number_format(count($codes)))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => '{var:1} key codes were created.', 'vars' => pg_format_number(count($codes), 0))), $_SESSION['sessionusername']);
             respond(array(
                 'status'  => 'success',
                 'request' => $type,

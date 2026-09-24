@@ -278,12 +278,12 @@ $recent_slow_result = mysqli_query(db::$con, $recent_slow_query);
 function pmon_format_kb($kb) {
     $kb = (float) $kb;
     if ($kb >= 1024 * 1024) {
-        return number_format($kb / 1024 / 1024, 2) . ' GB';
+        return pg_format_number($kb / 1024 / 1024, 2) . ' GB';
     }
     if ($kb >= 1024) {
-        return number_format($kb / 1024, 1) . ' MB';
+        return pg_format_number($kb / 1024, 1) . ' MB';
     }
-    return number_format($kb) . ' KB';
+    return pg_format_number($kb, 0) . ' KB';
 }
 
 function pmon_duration_class($ms) {
@@ -346,12 +346,12 @@ if ($slowest_result && mysqli_num_rows($slowest_result) > 0) {
             <tr>
                 <td>' . pmon_area_badge($r['area']) . '</td>
                 <td><code>' . h($r['label']) . '</code></td>
-                <td class="text-end">' . number_format((int) $r['hits']) . '</td>
-                <td class="text-end ' . pmon_duration_class((int) $r['avg_ms']) . '">' . number_format((int) $r['avg_ms']) . ' ms</td>
-                <td class="text-end ' . pmon_duration_class((int) $r['max_ms']) . '">' . number_format((int) $r['max_ms']) . ' ms</td>
+                <td class="text-end">' . pg_format_number((int) $r['hits'], 0) . '</td>
+                <td class="text-end ' . pmon_duration_class((int) $r['avg_ms']) . '">' . pg_format_number((int) $r['avg_ms'], 0) . ' ms</td>
+                <td class="text-end ' . pmon_duration_class((int) $r['max_ms']) . '">' . pg_format_number((int) $r['max_ms'], 0) . ' ms</td>
                 <td class="text-end">' . pmon_format_kb($r['avg_kb']) . '</td>
                 <td class="text-end">' . pmon_format_kb($r['max_kb']) . '</td>
-                <td class="text-end">' . number_format((int) $r['avg_cpu']) . ' ms</td>
+                <td class="text-end">' . pg_format_number((int) $r['avg_cpu'], 0) . ' ms</td>
             </tr>';
     }
 } else {
@@ -367,10 +367,10 @@ if ($memory_result && mysqli_num_rows($memory_result) > 0) {
             <tr>
                 <td>' . pmon_area_badge($r['area']) . '</td>
                 <td><code>' . h($r['label']) . '</code></td>
-                <td class="text-end">' . number_format((int) $r['hits']) . '</td>
+                <td class="text-end">' . pg_format_number((int) $r['hits'], 0) . '</td>
                 <td class="text-end fw-bold">' . pmon_format_kb($r['max_kb']) . '</td>
                 <td class="text-end">' . pmon_format_kb($r['avg_kb']) . '</td>
-                <td class="text-end ' . pmon_duration_class((int) $r['avg_ms']) . '">' . number_format((int) $r['avg_ms']) . ' ms</td>
+                <td class="text-end ' . pmon_duration_class((int) $r['avg_ms']) . '">' . pg_format_number((int) $r['avg_ms'], 0) . ' ms</td>
             </tr>';
     }
 } else {
@@ -402,9 +402,9 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
                         : '') . '</td>
                 <td><span class="badge bg-secondary">' . h($r['method']) . '</span></td>
                 <td class="text-end"><span class="badge ' . ((int) $r['http_status'] >= 400 ? 'bg-danger' : 'bg-success-subtle text-dark') . '">' . (int) $r['http_status'] . '</span></td>
-                <td class="text-end ' . pmon_duration_class((int) $r['duration_ms']) . '">' . number_format((int) $r['duration_ms']) . ' ms</td>
+                <td class="text-end ' . pmon_duration_class((int) $r['duration_ms']) . '">' . pg_format_number((int) $r['duration_ms'], 0) . ' ms</td>
                 <td class="text-end">' . pmon_format_kb($r['peak_memory_kb']) . '</td>
-                <td class="text-end">' . number_format((int) $r['cpu_user_ms'] + (int) $r['cpu_system_ms']) . ' ms</td>
+                <td class="text-end">' . pg_format_number((int) $r['cpu_user_ms'] + (int) $r['cpu_system_ms'], 0) . ' ms</td>
             </tr>';
     }
 } else {
@@ -538,7 +538,7 @@ echo '
                     <div class="card h-100">
                         <div class="card-body py-3">
                             <div class="small text-body-secondary">' . lang('Total Requests') . '</div>
-                            <div class="h4 mb-0 text-body-emphasis">' . number_format($total) . '</div>
+                            <div class="h4 mb-0 text-body-emphasis">' . pg_format_number($total, 0) . '</div>
                         </div>
                     </div>
                 </div>
@@ -546,12 +546,12 @@ echo '
                     <div class="card h-100">
                         <div class="card-body py-3">
                             <div class="small text-body-secondary">' . lang('Average Duration') . '</div>
-                            <div class="h4 mb-0 text-body-emphasis">' . number_format((int) $summary['avg_duration']) . ' <small>ms</small></div>
+                            <div class="h4 mb-0 text-body-emphasis">' . pg_format_number((int) $summary['avg_duration'], 0) . ' <small>ms</small></div>
                             <div class="small text-body-secondary">' . lang(array(
                                 'string' => '{var:1} slow request{suffix:1}',
-                                'vars'   => number_format($slow_total),
+                                'vars'   => pg_format_number($slow_total, 0),
                                 'suffix' => ($slow_total == 1 ? '' : 's'),
-                            )) . ' · ' . lang('max') . ': ' . number_format((int) $summary['max_duration']) . ' ms</div>
+                            )) . ' · ' . lang('max') . ': ' . pg_format_number((int) $summary['max_duration'], 0) . ' ms</div>
                         </div>
                     </div>
                 </div>
@@ -568,7 +568,7 @@ echo '
                     <div class="card h-100">
                         <div class="card-body py-3">
                             <div class="small text-body-secondary">' . lang('Average CPU Time') . '</div>
-                            <div class="h4 mb-0 text-body-emphasis">' . number_format((int) $summary['avg_cpu']) . ' <small>ms</small></div>
+                            <div class="h4 mb-0 text-body-emphasis">' . pg_format_number((int) $summary['avg_cpu'], 0) . ' <small>ms</small></div>
                             <div class="small text-body-secondary">' . lang('User + system') . '</div>
                         </div>
                     </div>

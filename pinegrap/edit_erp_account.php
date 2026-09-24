@@ -54,12 +54,17 @@ if (!$_POST) {
         $liveform->assign_field_value('address', $account['address']);
         $liveform->assign_field_value('district', $account['district']);
         $liveform->assign_field_value('city', $account['city']);
+        $liveform->assign_field_value('state', (string) ($account['state'] ?? ''));
         $liveform->assign_field_value('postcode', $account['postcode']);
+        $liveform->assign_field_value('country_code', strtoupper(trim((string) $account['country_code'])));
         $liveform->assign_field_value('notes', $account['notes']);
         $liveform->assign_field_value('payment_days', (string) (int) ($account['payment_days'] ?? 0));
         $liveform->assign_field_value('overdue_notify_days', (string) (int) ($account['overdue_notify_days'] ?? 0));
         // On until the column arrives, which is also what the upgrade writes.
         $liveform->assign_field_value('overdue_notify_customer', ((int) ($account['overdue_notify_customer'] ?? 1) === 1) ? '1' : '');
+        $liveform->assign_field_value('invoice_email', (string) ($account['invoice_email'] ?? ''));
+        $liveform->assign_field_value('invoice_mail', ((int) ($account['invoice_mail'] ?? 1) === 1) ? '1' : '');
+        $liveform->assign_field_value('credit_limit', function_exists('erp_credit_input_value') ? erp_credit_input_value((int) ($account['credit_limit'] ?? 0)) : '');
         $liveform->assign_field_value('currency', strtoupper(trim((string) $account['currency'])));
         $liveform->assign_field_value('contact_id', (string) (int) $account['contact_id']);
     }
@@ -79,11 +84,55 @@ if (!$_POST) {
         $output_balance_fc = '<span class="text-body-secondary">' . h(erp_money_out_currency(abs($balance_fc), $account_currency)) . ' ' . h($account_currency) . '</span>';
     }
 
+    // Asking GİB whether the counterparty is an e-Invoice taxpayer. The
+    // button sits in the toolbar above the form and submits it through the
+    // form attribute, so the number on screen is the one asked about; the
+    // form therefore needs the id the attribute names. It is only drawn when
+    // a provider that can answer is on.
+    $output_einvoice_check = (erp_edoc_installed() && erp_edoc_supports('check_taxpayer'))
+        ? '<button type="submit" form="erp_account_form" name="erp_action" value="einvoice_check" class="btn btn-sm btn-outline-secondary m-1" data-loading-content="' . lang(array('string' => 'Asking')) . '"><i class="bi bi-patch-question me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask GİB about the tax number') . '</span></button>'
+        : '';
+
+    // The account's card at the e-document provider, when the provider hands
+    // its cards over: linked and the same, linked and different, or none yet.
+    $output_card_sync = '';
+    $card_provider = function_exists('erp_edoc_accounts_provider') ? erp_edoc_accounts_provider() : '';
+
+    if ($card_provider !== '') {
+        $card_label = (string) erp_edoc_info($card_provider)['label'];
+        $card_row = erp_edoc_account_card_of($card_provider, $account_id);
+
+        if ($card_row !== null) {
+            $card_diff = erp_edoc_account_diff(erp_edoc_account_erp_card($account), erp_edoc_account_stored_card($card_row));
+            $output_card_sync = '<a class="btn btn-sm btn-outline-secondary m-1" href="erp_account_sync_item.php?id=' . (int) $card_row['id'] . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>'
+                . h(empty($card_diff)
+                    ? lang(array('string' => 'Card at {var:1}: the same', 'vars' => $card_label))
+                    : lang(array('string' => 'Card at {var:1}: {var:2} difference(s)', 'vars' => array($card_label, count($card_diff)))))
+                . '</a>';
+        } else {
+            $output_card_sync = '<a class="btn btn-sm btn-outline-secondary m-1" href="erp_account_sync_item.php?account_id=' . $account_id . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'No card at {var:1}', 'vars' => $card_label))) . '</a>';
+        }
+    }
+
     $balance = (int) $account['balance'];
     $balance_class = ($balance > 0) ? 'text-success' : (($balance < 0) ? 'text-danger' : 'text-muted');
     // Saying which way round it is beats a minus sign the reader has to read
     // the sign convention off.
     $balance_side = ($balance > 0) ? lang('owes you') : (($balance < 0) ? lang('you owe') : '');
+
+    // The credit limit beside the balance: what is left of it, or by how
+    // much the account is over.
+    $output_credit = '';
+    $credit_state = function_exists('erp_credit_state') ? erp_credit_state($account) : null;
+
+    if ($credit_state !== null) {
+        $output_credit = '<span class="ms-lg-auto small ' . ($credit_state['over'] ? 'text-danger fw-bold' : 'text-body-secondary') . '">'
+            . '<i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>'
+            . h($credit_state['over']
+                ? lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($credit_state['limit']), erp_money_out($credit_state['balance'] - $credit_state['limit']))))
+                : lang(array('string' => 'Credit limit {var:1}, {var:2} left', 'vars' => array(erp_money_out($credit_state['limit']), erp_money_out($credit_state['available'])))))
+            . '</span>';
+    }
 
     // ------------------------------------------------------------ statement
     //
@@ -113,24 +162,32 @@ if (!$_POST) {
 
         $output_statement_rows .= '
             <tr>
-                <td class="align-middle text-nowrap">' . h(prepare_form_data_for_output($row['doc_date'], 'date')) . '</td>
+                <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['doc_date'])) . '">' . h(prepare_form_data_for_output($row['doc_date'], 'date')) . '</td>
                 <td class="align-middle">' . $output_description . '</td>
-                <td class="align-middle text-end">' . ($is_debit ? h(erp_money_out((int) $row['amount_base'], false)) . $output_fc : '') . '</td>
-                <td class="align-middle text-end">' . ($is_debit ? '' : h(erp_money_out((int) $row['amount_base'], false)) . $output_fc) . '</td>
-                <td class="align-middle text-end">' . h(erp_money_out((int) $row['running_balance'])) . '</td>
+                <td class="align-middle text-end"' . ($is_debit ? ' data-sort="' . (int) $row['amount_base'] . '"' : '') . '>' . ($is_debit ? h(erp_money_out((int) $row['amount_base'], false)) . $output_fc : '') . '</td>
+                <td class="align-middle text-end"' . ($is_debit ? '' : ' data-sort="' . (int) $row['amount_base'] . '"') . '>' . ($is_debit ? '' : h(erp_money_out((int) $row['amount_base'], false)) . $output_fc) . '</td>
+                <td class="align-middle text-end" data-sort="' . (int) $row['running_balance'] . '">' . h(erp_money_out((int) $row['running_balance'])) . '</td>
             </tr>';
     }
 
     if ($output_statement_rows === '') {
         $output_statement_rows = '
-            <tr><td colspan="5" class="text-center text-body-secondary py-4">' . lang('There are no movements on this account yet.') . '</td></tr>';
+            <tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('There are no movements on this account yet.') . '</td></tr>';
+    }
+
+    // Where it was talked about in the workspace, and the tasks about it.
+    $output_workspace_button = '';
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_workspace_button = ws_record_button($user, 'erp_account', (int) $account_id, (string) $account['title']);
     }
 
     echo
     pg_page_shell([
         'title' => lang('Edit Account'),
-        'extra_classes' => 'erp erp_accounts',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_accounts',
+        'icon' => 'erp',
         'heading' => h($account['title']),
         'heading_description' => lang('The account details, and every movement behind its balance.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
@@ -146,13 +203,14 @@ if (!$_POST) {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row mb-2 flex-wrap">
-                <div class="col-12 text-center text-md-start">
-                    <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-2"></i>' . lang('Reconciliation Letter') . '</a>
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                        <a class="btn btn-sm btn-outline-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1"></i>' . lang('Reconciliation Letter') . '</a>
+                        ' . ((function_exists('erp_price_lists_ready') && erp_price_lists_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge text-bg-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
+                        ' . ((function_exists('erp_quotes_ready') && erp_quotes_ready() && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                        ' . $output_einvoice_check . '
+                        ' . $output_card_sync . '
+                        ' . $output_workspace_button . '
                     </nav>
-                </div>
-            </div>
 
             <div class="card my-4">
                 <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
@@ -160,17 +218,18 @@ if (!$_POST) {
                     <span class="h4 mb-0 ' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</span>
                     <span class="text-body-secondary">' . h($balance_side) . '</span>
                     ' . $output_balance_fc . '
+                    ' . $output_credit . '
                 </div>
             </div>
 
-            <form name="form" action="edit_erp_account.php" method="post">
+            <form name="form" id="erp_account_form" action="edit_erp_account.php" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact) . '
+                ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><span class="bi bi-check-circle me-2"></span><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Saving')) . '"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -180,8 +239,8 @@ if (!$_POST) {
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                     ' . lang('Statement') . '
                 </div>
-                <div class="card-body p-0 position-relative">
-                    <table class="table table-hover align-middle mb-0">
+                <div class="card-body p-0 position-relative table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Date') . '</th>
@@ -217,6 +276,22 @@ if (!$_POST) {
 
     $account_id = (int) $liveform->get_field_value('id');
 
+    // Asking GİB about the tax number is not a save: what is on screen stays
+    // on screen (the session keeps it), the card is not written to, and the
+    // answer comes back as a notice.
+    if ((string) ($_POST['erp_action'] ?? '') === 'einvoice_check') {
+
+        $result = erp_edoc_account_check_taxpayer($account_id, (string) $liveform->get_field_value('tax_number'));
+
+        if ($result['success']) {
+            $liveform->add_notice($result['message']);
+        } else {
+            $liveform->mark_error('_error', $result['error']);
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id);
+    }
+
     // This screen only edits. Without an existing account behind the id the
     // save would fall through to an insert and create a record nobody asked for.
     $account = ($account_id > 0) ? erp_account($account_id) : null;
@@ -229,6 +304,8 @@ if (!$_POST) {
     }
 
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
+    $country_code = erp_account_form_country($liveform);
+    erp_account_form_check_formats($liveform, $country_code);
 
     $payment_days = trim((string) $liveform->get_field_value('payment_days'));
     if (($payment_days !== '') && ((preg_match('/^[0-9]{1,4}$/', $payment_days) !== 1) || ((int) $payment_days > 3650))) {
@@ -288,13 +365,19 @@ if (!$_POST) {
         'address' => $liveform->get_field_value('address'),
         'district' => $liveform->get_field_value('district'),
         'city' => $liveform->get_field_value('city'),
+        // A Turkish address has no state: the province is the city.
+        'state' => (erp_account_country($country_code) === 'TR') ? '' : $liveform->get_field_value('state'),
         'postcode' => $liveform->get_field_value('postcode'),
+        'country_code' => $country_code,
         'currency' => $currency,
         'status' => $liveform->get_field_value('status'),
         'notes' => $liveform->get_field_value('notes'),
         'payment_days' => (int) $payment_days,
         'overdue_notify_days' => (int) $overdue_notify_days,
         'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
+        'invoice_email' => (string) $liveform->get_field_value('invoice_email'),
+        'invoice_mail' => ($liveform->get_field_value('invoice_mail') === '1'),
+        'credit_limit' => erp_kurus((string) $liveform->get_field_value('credit_limit')),
         'created_by' => (int) $user['id'],
     ));
 

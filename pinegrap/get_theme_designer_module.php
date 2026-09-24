@@ -426,7 +426,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $border_color_value = '#' . $liveform->get_field_value($area . '[' . $object . '][' . $module . '][border_color]');
                 
                 } else {
-                    $border_color_label = 'Inherit';
+                    $border_color_label = lang('Inherit');
                     $border_color_value = '#FFFFFF';
                 }
                 
@@ -487,7 +487,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $background_color_value = '#' . $liveform->get_field_value($area . '[' . $object . '][' . $module . '][background_color]');
                 
                 } else {
-                    $background_color_label = 'Inherit';
+                    $background_color_label = lang('Inherit');
                     $background_color_value = '#FFFFFF';
                 }
                 
@@ -552,7 +552,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $font_color_value = '#' . $liveform->get_field_value($area . '[' . $object . '][' . $module . '][font_color]');
                 
                 } else {
-                    $font_color_label = 'Inherit';
+                    $font_color_label = lang('Inherit');
                     $font_color_value = '#FFFFFF';
                 }
                 
@@ -1040,7 +1040,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $shadow_color_value = '#' . $liveform->get_field_value($area . '[' . $object . '][' . $module . '][shadow_color]');
                 
                 } else {
-                    $shadow_color_label = 'Inherit';
+                    $shadow_color_label = lang('Inherit');
                     $shadow_color_value = '#FFFFFF';
                 }
                 
@@ -1077,7 +1077,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $primary_color_value = '#' . $liveform->get_field_value($area . '[' . $object . '][' . $module . '][primary_color]');
                 
                 } else {
-                    $primary_color_label = 'Inherit';
+                    $primary_color_label = lang('Inherit');
                     $primary_color_value = '#FFFFFF';
                 }
                 
@@ -1087,7 +1087,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $secondary_color_value = '#' . $liveform->get_field_value($area . '[' . $object . '][' . $module . '][secondary_color]');
                 
                 } else {
-                    $secondary_color_label = 'Inherit';
+                    $secondary_color_label = lang('Inherit');
                     $secondary_color_value = '#FFFFFF';
                 }
                 

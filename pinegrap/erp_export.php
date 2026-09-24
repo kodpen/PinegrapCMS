@@ -24,7 +24,8 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// An export only reads, so the read-only right (the accountant's) may run it.
+if (!validate_erp_access($user, 'read')) {
     exit();
 }
 
@@ -209,7 +210,7 @@ foreach ($runs as $run) {
     $profile_label = isset($profiles[$run['profile']]) ? $profiles[$run['profile']]['label'] : (string) $run['profile'];
     $output_runs .= '
                                     <tr>
-                                        <td class="text-nowrap">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $run['created_at']), 'date and time')) . '</td>
+                                        <td class="text-nowrap" data-sort="' . (int) $run['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $run['created_at']), 'date and time')) . '</td>
                                         <td>' . h($profile_label) . '</td>
                                         <td class="text-end">' . (int) $run['rows_written'] . '</td>
                                         <td>' . h(isset($user_names[(int) $run['created_by']]) ? $user_names[(int) $run['created_by']] : '') . '</td>
@@ -217,7 +218,7 @@ foreach ($runs as $run) {
 }
 
 if ($output_runs === '') {
-    $output_runs = '<tr><td colspan="4" class="text-body-secondary">' . lang('No export has been recorded yet.') . '</td></tr>';
+    $output_runs = '<tr data-pg-sort-fixed><td colspan="4" class="text-body-secondary">' . lang('No export has been recorded yet.') . '</td></tr>';
 }
 
 $output_download = '';
@@ -233,8 +234,8 @@ if ($download_url !== '') {
 echo
 pg_page_shell([
     'title' => lang('Export'),
-    'extra_classes' => 'erp erp_export',
-    'icon' => 'store',
+    'extra classes' => 'erp erp_export',
+    'icon' => 'erp',
     'heading' => lang('Export'),
     'heading_description' => lang('Hand accounts, invoices and receipts to another program as a CSV file or as the spreadsheet it imports.'),
     'cancel' => array('enable' => 'true', 'url' => 'erp_dashboard.php'),
@@ -322,7 +323,7 @@ pg_page_shell([
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_export" value="Export" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Generating')) . '"><span class="bi bi-box-arrow-up me-2"></span><span class="btn-text">' . lang(array('string' => 'Create the file')) . '</span></button>
+                            <button type="submit" name="submit_export" value="Export" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Generating')) . '"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the file')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -334,7 +335,7 @@ pg_page_shell([
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" id="export_runs">
+                        <table class="table table-sm table-hover align-middle mb-0" id="export_runs" data-pg-sort>
                             <thead>
                                 <tr>
                                     <th>' . lang('Date') . '</th>

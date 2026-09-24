@@ -197,6 +197,21 @@ function erp_fx_rate_in($value)
 }
 
 /**
+ * A rate to read on a screen or a document: erp_fx_rate_out() with the
+ * decimal separator of the panel language (erp_number_separators()). Form
+ * fields keep erp_fx_rate_out(), which is what the rate readers expect back.
+ *
+ * @param float $rate
+ * @return string
+ */
+function erp_fx_rate_text($rate)
+{
+    $separators = erp_number_separators();
+
+    return str_replace('.', $separators['decimal'], erp_fx_rate_out($rate));
+}
+
+/**
  * A rate for the screen: as many decimals as it needs, at least four.
  *
  * @param float $rate

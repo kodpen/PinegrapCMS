@@ -396,7 +396,7 @@ $pg_settings_cards[] = '
 
 // ── E-Invoice ──
 $pg_settings_cards[] = '
-    <div id="pgset-invoice" class="pg-set-card">
+    <div id="pgset-invoice" class="pg-set-card' . (pg_edoc_settings_shown() ? '' : ' d-none') . '">
         <div class="card">
             <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                 ' . lang('E-Invoice') . '
@@ -407,8 +407,16 @@ $pg_settings_cards[] = '
                         <div class="form-label">' . lang('e-Document Provider') . ' <span class="text-body-secondary small">(' . lang('ERP') . ')</span></div>
                         <div class="form-text mb-2">' . lang('Where the ERP\'s invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.') . '</div>
                         ' . $output_erp_edoc_options . '
-                        <button type="submit" class="btn btn-sm btn-outline-secondary" formaction="get_erp_edoc_test.php" formmethod="post" formtarget="_blank"><i class="bi bi-plug me-2"></i>' . lang('Test the connection') . '</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug me-2"></i>' . lang('Test the connection') . '</button>
                         <div class="form-text">' . lang('Tries the provider picked above with what is typed here (or, for a box left empty, what is stored). Save the settings to keep the credentials.') . '</div>
+                        <div class="pg-edoc-test-result mt-2"></div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_edoc_autosend_checked . ' class="form-check-input" type="checkbox" id="erp_edoc_autosend" name="erp_edoc_autosend" />
+                            <label class="form-check-label" for="erp_edoc_autosend">' . lang('Hand the document to GİB in the same step') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('A document created through a provider\'s API is only a draft there; it becomes a legal document when it is handed to the tax authority. Left on, one click does both. Turned off, the invoice screen gets a second button for the hand-over, so the draft can be looked over at the provider first.') . '</div>
                     </div>
                     <div class="col-12"><hr class="my-1"></div>' : '') . '
                     <div class="col-12">
@@ -486,19 +494,38 @@ $pg_settings_cards[] = '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_default_series">' . lang('Invoice series') . '</label>
                         <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" autocomplete="off" />
-                        <div class="form-text">' . lang('Three letters is the usual shape, for example PGF. Numbering restarts each year.') . '</div>
+                        <div class="form-text">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns add I.') . '</div>
                     </div>
                     <div class="pg-f-md">
+                        <label class="form-label" for="erp_number_style">' . lang('Document numbers') . '</label>
+                        <select class="form-select" id="erp_number_style" name="erp_number_style">' . $erp_number_options . '</select>
+                        <div class="form-text">' . lang('Applies to numbers taken from now on; documents already issued keep theirs. Changing it never repeats a number.') . '</div>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_tax_name">' . lang('Tax name on documents') . '</label>
+                        <input type="text" class="form-control" id="erp_tax_name" name="erp_tax_name" value="' . h($erp_tax_name) . '" maxlength="30" placeholder="' . h(lang('VAT')) . '" autocomplete="off" />
+                        <div class="form-text">' . lang('Leave empty for VAT. Write the name your invoices use instead, for example Sales tax or GST; it is printed as written.') . '</div>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_tax2_name">' . lang('Second tax on invoice lines') . '</label>
+                        <input type="text" class="form-control" id="erp_tax2_name" name="erp_tax2_name" value="' . h($erp_tax2_name) . '" maxlength="30" autocomplete="off" />
+                        <div class="form-text">' . lang('For places that charge two taxes on the same amount, such as GST and PST in Canada: name the second one and every invoice line gets a rate for it. Leave empty for one tax per line.') . '</div>
+                    </div>
+                    <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
                         <label class="form-label" for="erp_web_address">' . lang('Address the sale was made at') . '</label>
                         <input type="text" class="form-control" id="erp_web_address" name="erp_web_address" value="' . h($erp_web_address) . '" maxlength="255" autocomplete="off" />
                         <div class="form-text">' . lang('Printed on invoices for internet sales, which have to name it. For example www.example.com.') . '</div>
                     </div>
                     <div class="pg-f-md">
-                        <label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>
+                        ' . ((pg_erp_store_country() === 'TR')
+                            ? '<label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>
                         <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="11" inputmode="numeric" autocomplete="off" />
-                        <div class="form-text">' . lang('Tax number (10 digits) or ID number (11 digits) of the company that issues the invoices') . '</div>
+                        <div class="form-text">' . lang('Tax number (10 digits) or ID number (11 digits) of the company that issues the invoices') . '</div>'
+                            : '<label class="form-label" for="erp_seller_vkn">' . lang('Seller tax number') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="32" autocomplete="off" />
+                        <div class="form-text">' . lang('The tax number of the company that issues the invoices (VAT id, EIN, ...), as it is printed on them.') . '</div>') . '
                     </div>
-                    <div class="pg-f-md">
+                    <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
                         <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
                         <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
                     </div>
@@ -511,6 +538,50 @@ $pg_settings_cards[] = '
                         <label class="form-label" for="erp_walkin_account_id">' . lang('Walk-in sales account') . '</label>
                         <select class="form-select" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
                         <div class="form-text">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>
+                        <select class="form-select" id="local_sale_prices" name="local_sale_prices">
+                            <option value="gross"' . (($local_sale_prices === 'gross') ? ' selected' : '') . '>' . lang('With tax included (VAT countries)') . '</option>
+                            <option value="net"' . (($local_sale_prices === 'net') ? ' selected' : '') . '>' . lang('Without tax, added at the total (sales-tax countries)') . '</option>
+                        </select>
+                        <div class="form-text">' . lang('Only what the local sale screen shows changes; product prices are kept without tax and the amount charged is the same.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_stock_documents_checked . ' class="form-check-input" type="checkbox" id="erp_stock_documents" name="erp_stock_documents" />
+                            <label class="form-check-label" for="erp_stock_documents">' . lang('Invoices change stock') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.') . '</div>
+                    </div>' . ($erp_invoice_mail_ready ? '
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_invoice_mail_auto_checked . ' class="form-check-input" type="checkbox" id="erp_invoice_mail_auto" name="erp_invoice_mail_auto" />
+                            <label class="form-check-label" for="erp_invoice_mail_auto">' . lang('E-mail each issued invoice to the customer') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('The invoice goes with its PDF to the account\'s invoice e-mail address (or its main address) when it is issued. Where e-documents are in use it goes once GİB has accepted it, with the official copy. Off for a single account on its card; any invoice can also be sent from its own screen.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="erp_invoice_mail_message">' . lang('Invoice e-mail message') . '</label>
+                        <textarea class="form-control" id="erp_invoice_mail_message" name="erp_invoice_mail_message" rows="2" maxlength="2000" placeholder="' . h(lang('Thank you for your purchase. Your invoice is attached to this e-mail.')) . '">' . h($erp_invoice_mail_message) . '</textarea>
+                        <div class="form-text">' . lang('The text above the invoice\'s figures in the e-mail. Empty uses the text shown.') . '</div>
+                    </div>' : '') . ($erp_credit_ready ? '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_credit_limit_mode">' . lang('A sale past a customer\'s credit limit') . '</label>
+                        <select class="form-select" id="erp_credit_limit_mode" name="erp_credit_limit_mode">
+                            <option value="warn"' . (($erp_credit_limit_mode === 'warn') ? ' selected' : '') . '>' . lang('Is issued, with a warning') . '</option>
+                            <option value="block"' . (($erp_credit_limit_mode === 'block') ? ' selected' : '') . '>' . lang('Is refused until a payment comes in') . '</option>
+                        </select>
+                        <div class="form-text">' . lang('The limit is set on each account card. Weighed on invoices typed in the ERP; an order\'s invoice is never held back.') . '</div>
+                    </div>' : '') . '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>
+                        <select class="form-select" id="erp_shipping_tax" name="erp_shipping_tax">
+                            <option value=""' . (($erp_shipping_tax === '') ? ' selected' : '') . '>' . lang('By the store\'s country') . '</option>
+                            <option value="included"' . (($erp_shipping_tax === 'included') ? ' selected' : '') . '>' . lang('Included in the amount charged, at the rate of the goods') . '</option>
+                            <option value="none"' . (($erp_shipping_tax === 'none') ? ' selected' : '') . '>' . lang('Not taxed') . '</option>
+                        </select>
+                        <div class="form-text">' . lang('How an order\'s shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store\'s country: untaxed in the United States, included everywhere else.') . '</div>
                     </div>
                     <div class="col-12">
                         <div class="form-check form-switch">
@@ -584,7 +655,30 @@ $pg_settings_cards[] = '
                                 <div class="form-text">' . lang('Comma-separated. Empty uses the store e-mail address.') . '</div>
                             </div>
                         </div>
-                    </div>
+                    </div>' . ($erp_alerts_ready ? '
+                    <div class="col-12">
+                        <div class="form-label">' . lang('Notices as they happen') . '</div>
+                        <div class="form-text mb-2">' . lang('On the panel bell and on the devices that subscribed to notifications. The person who recorded it is not told.') . '</div>
+                        <div class="row gy-2 align-items-end">
+                            <div class="col-12 col-md-7">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . $erp_notify_collections_checked . ' class="form-check-input" type="checkbox" id="erp_notify_collections" name="erp_notify_collections" />
+                                    <label class="form-check-label" for="erp_notify_collections">' . lang('A collection is recorded') . '</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <label class="form-label" for="erp_notify_collection_min">' . h(lang(array('string' => 'From this amount up ({var:1})', 'vars' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')))) . '</label>
+                                <input type="number" class="form-control" id="erp_notify_collection_min" name="erp_notify_collection_min" value="' . (int) $erp_notify_collection_min . '" min="0" max="100000000" step="1" inputmode="numeric" autocomplete="off" />
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input value="1"' . $erp_notify_low_stock_checked . ' class="form-check-input" type="checkbox" id="erp_notify_low_stock" name="erp_notify_low_stock" />
+                                    <label class="form-check-label" for="erp_notify_low_stock">' . lang('A product drops to its minimum stock') . '</label>
+                                </div>
+                                <div class="form-text">' . lang('Checked every hour; each product is announced once each time it drops.') . '</div>' . $output_erp_overdue_push_hint . '
+                            </div>
+                        </div>
+                    </div>' : '') . '
                 </div>
             </div>
         </div>

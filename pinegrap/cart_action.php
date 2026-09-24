@@ -54,7 +54,10 @@ $did_mutate = false;
 // Use isset() not !empty() — bindable cart_update buttons may submit
 // `submit_update_cart=` (empty string) when their value attr was stripped
 // by an older btn renderer. The mere PRESENCE of the key marks intent.
-if (isset($_POST['submit_update_cart']) && $oid > 0) {
+// "Proceed to Checkout" is the same save followed by the checkout page, so
+// nothing the visitor changed since the last Update is lost on the way.
+$checkout = isset($_POST['submit_checkout']);
+if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
     $qty_arr = (isset($_POST['quantities']) && is_array($_POST['quantities'])) ? $_POST['quantities'] : array();
     $applied = 0;
     foreach ($qty_arr as $iid => $q) {
@@ -88,19 +91,9 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
                                WHERE id = '$iid' AND order_id = '$oid' LIMIT 1");
         if ($owns !== $iid) continue;
 
-        // "1.250,00" / "1,250.00" both arrive depending on locale — drop the
-        // grouping separator, keep the last dot/comma as the decimal point.
-        $amount = trim((string)$raw);
-        $amount = preg_replace('/[^\d.,-]/', '', $amount);
-        if (substr_count($amount, ',') && substr_count($amount, '.')) {
-            // Both present: whichever comes last is the decimal separator.
-            $amount = (strrpos($amount, ',') > strrpos($amount, '.'))
-                ? str_replace(array('.', ','), array('', '.'), $amount)
-                : str_replace(',', '', $amount);
-        } else {
-            $amount = str_replace(',', '.', $amount);
-        }
-        $amount = (float)$amount;
+        // "1.250,00" / "1,250.00" / "1250,5" all arrive depending on how the
+        // visitor types; the site language settles "1.250" vs "1,250".
+        $amount = pg_parse_amount($raw);
 
         $rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && (float)VISITOR_CURRENCY_EXCHANGE_RATE > 0)
             ? (float)VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
@@ -412,7 +405,8 @@ if (isset($_POST['submit_update_cart']) && $oid > 0) {
 
     // A rejected schedule field already speaks for itself; "Cart updated."
     // next to it would say the opposite of what happened to that row.
-    if (!$lf->check_form_errors()) {
+    // On the way to checkout the notice would wait for the next cart visit.
+    if (!$lf->check_form_errors() && !$checkout) {
         $lf->add_notice(lang('Cart updated.'));
     }
     $did_mutate = true;
@@ -526,15 +520,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
 
                 case 'donation':
                     // Same locale-tolerant parse the donation rows use.
-                    $qa_amount = trim((string)(isset($_POST['quick_add_amount']) ? $_POST['quick_add_amount'] : ''));
-                    $qa_amount = preg_replace('/[^\d.,-]/', '', $qa_amount);
-                    if (substr_count($qa_amount, ',') && substr_count($qa_amount, '.')) {
-                        $qa_amount = (strrpos($qa_amount, ',') > strrpos($qa_amount, '.'))
-                            ? str_replace(array('.', ','), array('', '.'), $qa_amount)
-                            : str_replace(',', '', $qa_amount);
-                    } else {
-                        $qa_amount = str_replace(',', '.', $qa_amount);
-                    }
+                    $qa_amount = pg_parse_amount(isset($_POST['quick_add_amount']) ? $_POST['quick_add_amount'] : '');
                     $qa_rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && (float)VISITOR_CURRENCY_EXCHANGE_RATE > 0)
                         ? (float)VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
                     $qa_cents = (int)round(((float)$qa_amount / $qa_rate) * 100);
@@ -619,6 +605,18 @@ if ($did_mutate) {
 $send_to = isset($_POST['send_to']) ? (string)$_POST['send_to'] : '/';
 if (!preg_match('#^(?:/|\?)#', $send_to) || stripos($send_to, '://') !== false) {
     $send_to = '/';
+}
+
+// Checkout goes on only when the save went through and something is left to
+// pay for; otherwise the cart shows why (the messages above) or is empty.
+if ($checkout && $oid > 0 && !$lf->check_form_errors()) {
+    $checkout_to = isset($_POST['checkout_to']) ? (string)$_POST['checkout_to'] : '';
+    $sfl_col = db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'");
+    $items_left = (int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '$oid'"
+        . (($sfl_col !== '' && $sfl_col !== null) ? " AND saved_for_later = 0" : ''));
+    if ($items_left > 0 && preg_match('#^/#', $checkout_to) && stripos($checkout_to, '://') === false && strpos($checkout_to, '//') !== 0) {
+        $send_to = $checkout_to;
+    }
 }
 
 // Flush session writes so the next request sees the notice + updated order.

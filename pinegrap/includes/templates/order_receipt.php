@@ -249,7 +249,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<dt><?=h(lang('Number of Payments'))?></dt>
 						<dd>
 							<?php if ($item['recurring_number_of_payments']): ?>
-							<?=number_format($item['recurring_number_of_payments'])?>
+							<?=pg_format_number($item['recurring_number_of_payments'], 0)?>
 							<?php else: ?>
 							[<?=h(lang('no limit'))?>]
 							<?php endif ?>
@@ -339,7 +339,7 @@ if (!defined('PG_INIT_LOADED')) {
 						if ($item['selection_type'] != 'donation'):
 						
 						?>
-					<?=number_format($item['quantity'])?>
+					<?=pg_format_number($item['quantity'], 0)?>
 					<?php endif ?>
 				</td>
 				<td class="text-right">
@@ -674,7 +674,7 @@ if (!defined('PG_INIT_LOADED')) {
 						<dt><?=h(lang('Number of Payments'))?></dt>
 						<dd>
 							<?php if ($item['recurring_number_of_payments']): ?>
-							<?=number_format($item['recurring_number_of_payments'])?>
+							<?=pg_format_number($item['recurring_number_of_payments'], 0)?>
 							<?php else: ?>
 							[<?=h(lang('no limit'))?>]
 							<?php endif ?>
@@ -743,7 +743,7 @@ if (!defined('PG_INIT_LOADED')) {
 						if ($item['selection_type'] != 'donation'):
 						
 						?>
-					<?=number_format($item['quantity'])?>
+					<?=pg_format_number($item['quantity'], 0)?>
 					<?php endif ?>
 				</td>
 				<td class="text-right">

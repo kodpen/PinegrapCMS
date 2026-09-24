@@ -353,7 +353,7 @@ function get_order_preview($properties) {
                             
                         // else the number of payments is greater than 0, so show value
                         } else {
-                            $output_recurring_number_of_payments = number_format($recurring_number_of_payments);
+                            $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                         }
                         
                         // determine if start row should be outputted
@@ -424,7 +424,7 @@ function get_order_preview($properties) {
                             $output_delivery_date = '';
 
                             if ($order_item_gift_card['delivery_date'] == '0000-00-00') {
-                                $output_delivery_date = 'Immediate';
+                                $output_delivery_date = lang('Immediate');
 
                             } else {
                                 $output_delivery_date = get_absolute_time(array('timestamp' => strtotime($order_item_gift_card['delivery_date']), 'type' => 'date', 'size' => 'long'));
@@ -852,8 +852,8 @@ function get_order_preview($properties) {
                     }
 
                     if (($non_donations_exist_in_non_recurring == true) || ($donations_exist_in_non_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = lang('Qty');
+                        $output_price_heading = lang('Price');
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -980,8 +980,8 @@ function get_order_preview($properties) {
                     }
                     
                     if (($non_donations_exist_in_recurring == true) || ($donations_exist_in_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = lang('Qty');
+                        $output_price_heading = lang('Price');
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -1401,7 +1401,7 @@ function get_order_preview($properties) {
         
         // if PayPal Express Checkout payment method is active, then prepare PayPal Express Checkout submit button label
         if (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == true) {
-            $paypal_express_checkout_submit_button_label = 'Continue to PayPal';
+            $paypal_express_checkout_submit_button_label = lang('Continue to PayPal');
         }
         
         // if a submit button label was entered for the page, then use that for standard submit button label
@@ -1732,7 +1732,7 @@ function get_order_preview($properties) {
             ) {
                 // if the offline payment label is blank, then default it to the default label
                 if ($offline_payment_label == '') {
-                    $offline_payment_label = 'Offline Payment';
+                    $offline_payment_label = lang('Offline Payment');
                 }
                 
                 // set the offline payment label in the session so that it can be used on the order receipt screen
@@ -1780,7 +1780,7 @@ function get_order_preview($properties) {
             }
 
             $output_unconverted_total = '* <span style="white-space: nowrap">(' . prepare_amount($grand_total) . ' ' . h(BASE_CURRENCY_CODE) . ')</span>';
-            $output_multicurrency_disclaimer = '<div style="margin-bottom: 15px">*This amount is based on our current currency exchange rate to ' . h($base_currency_name) . ' and may differ from the exact charges (displayed above in ' . h($base_currency_name) . ').</div>';
+            $output_multicurrency_disclaimer = '<div style="margin-bottom: 15px">' . lang(array('string' => '*This amount is based on our current currency exchange rate to {var:1} and may differ from the exact charges (displayed above in {var:1}).', 'vars' => h($base_currency_name))) . '</div>';
         }
         
         // if the total is greater than 0 and there is not an active payment method, then prepare error and do not show purchase now button
@@ -3069,27 +3069,27 @@ function get_order_preview($properties) {
                                 $twelveinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[5]->totalPrice;
 
                                 if($twoinstallment_price){
-                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twoinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $twoinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . pg_format_money($twoinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($twoinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_two_installment = '<td></td>';
                                 }
                                 if($threeinstallment_price){
-                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $threeinstallment_price  . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $threeinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . pg_format_money($threeinstallment_price, BASE_CURRENCY_SYMBOL)  . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($threeinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_three_installment = '<td></td>';
                                 }
                                 if($sixinstallment_price){
-                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $sixinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $sixinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . pg_format_money($sixinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($sixinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_six_installment = '<td></td>';
                                 }
                                 if($nineinstallment_price){
-                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $nineinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $nineinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . pg_format_money($nineinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($nineinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_nine_installment = '<td></td>';
                                 }
                                 if($twelveinstallment_price){
-                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . BASE_CURRENCY_SYMBOL . $twelveinstallment_price . ' / month</span><br/><span class="installment_month_total">Total: ' . BASE_CURRENCY_SYMBOL . $twelveinstallment_totalprice . '</span></td>';
+                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . pg_format_money($twelveinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($twelveinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
                                 }else{
                                     $outout_installment_table_twelve_installment = '<td></td>';
                                 }
@@ -3127,34 +3127,28 @@ function get_order_preview($properties) {
                             if( ($oneinstallment_price)&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
                                 //print_r($result);
                                 $installment_table_header .= '<tr>';
-                                $installment_table_header .= '<th>Cart Type</th>';
-                                $installment_table_header .= '<th>2 Installment</th>';
+                                $installment_table_header .= '<th>' . h(lang('Card Type')) . '</th>';
+                                $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 2))) . '</th>';
                                 //Check if there is at least 3x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 3){
-                                    $installment_table_header .= '<th>3 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 3))) . '</th>';
                                 }
                                 //Check if there is at least 6x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 6){
-                                    $installment_table_header .= '<th>6 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 6))) . '</th>';
                                 }
                                 //Check if there is at least 9x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 9){
-                                    $installment_table_header .= '<th>9 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 9))) . '</th>';
                                 }
                                 //Check if there is at least 12x installment option activated from site settings.
                                 if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 12){
-                                    $installment_table_header .= '<th>12 Installment</th>';
+                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 12))) . '</th>';
                                 }
                                 $installment_table_header .= '</tr>';
                             }	       
 
                             if( ECOMMERCE_IYZIPAY_INSTALLMENT >= 2 ){
-                                if(lang(array('info'=>'')) === 'tr'){
-                                    $installment_table_content = str_replace('Total:', 'Top.:', $installment_table_content);
-                                    $installment_table_header = str_replace('Installment', "Taksit", $installment_table_header);
-                                    $installment_table_header = str_replace('Cart Type', "Kart Türü", $installment_table_header);
-                                    $installment_table_content = str_replace('/ month', " / ay", $installment_table_content);
-                                }
                                 //we output installment table 
                                 $installment_table .= '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >';
                                 $installment_table .= '<thead class="thead-dark">' . $installment_table_header . '</thead>';
@@ -3222,7 +3216,7 @@ function get_order_preview($properties) {
 
                     // if the offline payment label is blank, then set it to the default label
                     if ($offline_payment_label == '') {
-                        $offline_payment_label = 'Offline Payment';
+                        $offline_payment_label = lang('Offline Payment');
                     }
 
                     // set the offline payment label in the session so that it can be used on the order receipt screen

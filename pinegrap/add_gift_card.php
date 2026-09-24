@@ -181,8 +181,9 @@ if (!$_POST) {
     $liveform->validate_required_field('amount', lang(array('string'=>'{var:1} is required','vars'=>lang('Amount'))) );
     $liveform->validate_required_field('quantity', lang(array('string'=>'{var:1} is required','vars'=>lang('Quantity'))) );
 
-    // Remove commas from amount and quantity.
-    $amount = str_replace(',', '', $amount);
+    // Read the amount either way it is typed (12,50 / 1.234,56 / 1,234.56);
+    // remove commas from quantity.
+    $amount = pg_normalize_amount($amount);
     $quantity = str_replace(',', '', $quantity);
 
     // If there is not already an error for the amount field,
@@ -271,7 +272,7 @@ if (!$_POST) {
         
     // Otherwise more than 1 gift card was created, so prepare log and notice for that situation.
     } else {
-        log_activity(lang(array('string'=>'{var:1} gift cards were created','vars'=>number_format($quantity))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} gift cards were created','vars'=>pg_format_number($quantity, 0))), $_SESSION['sessionusername']);
         
         $liveform_view_gift_cards->add_notice(lang('The gift cards have been created.'));
     }

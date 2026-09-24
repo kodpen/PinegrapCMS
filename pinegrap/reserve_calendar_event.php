@@ -54,8 +54,15 @@ $page_name = $row['page_name'];
 $folder_id = $row['folder_id'];
 $page_type = $row['page_type'];
 
+// A page built in the visual editor reserves through the calendar event
+// widget it carries: the widget's calendars answer for the page type and for
+// calendar_event_views_calendars_xref, which only the legacy page type has.
+$widget_page = ($page_type != 'calendar event view')
+    && function_exists('pg_sw_calendar_event_page_allows')
+    && pg_sw_calendar_event_page_allows($page_id, $calendar_event_id);
+
 // if the page type is not calendar event view, then log activity and output error
-if ($page_type != 'calendar event view') {
+if (($page_type != 'calendar event view') && !$widget_page) {
     log_activity(lang(array('string' => 'access denied to reserve calendar event for page ({var:1}) because page is not a calendar event view', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because the page is not a calendar event view.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
@@ -92,16 +99,19 @@ foreach ($calendar_ids as $calendar_id) {
 }
 
 // check if this calendar event is in a calendar that is allowed to appear on this page
-$query =
-    "SELECT calendar_id
-    FROM calendar_event_views_calendars_xref
-    WHERE
-        (" . $where_calendars . ")
-        AND (page_id = '" . escape($page_id) . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+// (a widget page was already checked against the widget's calendars above)
+if (!$widget_page) {
+    $query =
+        "SELECT calendar_id
+        FROM calendar_event_views_calendars_xref
+        WHERE
+            (" . $where_calendars . ")
+            AND (page_id = '" . escape($page_id) . "')";
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+}
 
 // if calendar event is not allowed in this view, then log activity and output error
-if (mysqli_num_rows($result) == 0) {
+if (!$widget_page && (mysqli_num_rows($result) == 0)) {
     log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because calendar event is not allowed in this calendar event view.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because it is not allowed in this calendar event view.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }

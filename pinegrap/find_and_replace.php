@@ -528,9 +528,9 @@ if (!$_POST) {
         }
 
         // Summary
-        $summary = number_format($total_matches) . ' '
+        $summary = pg_format_number($total_matches, 0) . ' '
             . lang('matches found in')
-            . ' ' . number_format($total_records) . ' '
+            . ' ' . pg_format_number($total_records, 0) . ' '
             . lang('records');
 
         echo
@@ -634,7 +634,7 @@ if (!$_POST) {
 
         $message = lang(array(
             'string' => '{var:1} match{suffix:1} {var:2} found and replaced in {var:3} item{suffix:2}.',
-            'vars'   => array(number_format($number_of_replacements), $match_verb, number_format($number_of_items)),
+            'vars'   => array(pg_format_number($number_of_replacements, 0), $match_verb, pg_format_number($number_of_items, 0)),
             'suffix' => array($match_plural_suffix, $item_plural_suffix),
         ));
 

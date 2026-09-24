@@ -505,6 +505,14 @@ if (!$_POST) {
         $output_delete_button = '';
     }
     
+    // Where it was talked about in the workspace, and the tasks about it.
+    $output_workspace_button = '';
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_workspace_button = ws_record_button($user, 'product_group', (int) $_GET['id'], (string) db_value("SELECT name FROM product_groups WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-link link-secondary py-0 mb-2');
+    }
+
     echo
     pg_page_shell([
         'title'=> lang('Edit Product Group'),
@@ -529,6 +537,7 @@ if (!$_POST) {
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                ' . $output_workspace_button . '
                             </div>
                         </nav>
                     </div>

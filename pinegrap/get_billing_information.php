@@ -524,7 +524,7 @@ function get_billing_information($properties) {
             
             // If edit mode is on, then output grid around custom billing form.
             if ($editable == true) {
-                $output_title = 'Custom Billing Form';
+                $output_title = lang('Custom Billing Form');
                 
                 // if the form name is not blank, then add it to the title
                 if ($form_name != '') {
@@ -544,7 +544,7 @@ function get_billing_information($properties) {
             
         // else a submit button label could not be found, so use a default label
         } else {
-            $output_submit_button_label = 'Continue';
+            $output_submit_button_label = lang('Continue');
         }
 
         $output =
@@ -1008,7 +1008,7 @@ function get_billing_information($properties) {
 
         // If a submit button label was not entered for the page, then set default label.
         if ($submit_button_label == '') {
-            $submit_button_label = 'Continue';
+            $submit_button_label = lang('Continue');
         }
 
         $system .=

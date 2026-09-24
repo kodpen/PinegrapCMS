@@ -184,10 +184,14 @@ function _eo_restore_cart_from_reference_code()
 //   ^^__cart_total_with_surcharge_cents^^   "1839"
 //   ^^__currency_symbol^^                   "₺"
 //   ^^__form_id^^                          "pg-eo-form-w79" (parent form's id attr)
+//   ^^__cart_total_charged^^                "₺18,39 TRY" — what the card is
+//                                           charged, in the base currency
+//   ^^__currency_disclaimer^^               the exchange-rate note; both for
+//                                           the has_foreign_currency flag
 //
 // Tokens — PER ITEM (replaced inside loop template for each cart item):
 //   ^^__item_id^^                    "612"            (order_items.id)
-//   ^^__item_name^^                  "Lorem ipsum…"   (short_description or name)
+//   ^^__item_name^^                  "Office Chair"   (short_description or name)
 //   ^^__item_qty^^                   "1"
 //   ^^__item_price^^               "₺14,95"
 //   ^^__item_total^^               "₺14,95"
@@ -240,7 +244,69 @@ function _eo_compute_static_tokens($state)
         '^^__cart_total_with_surcharge_cents^^'   => (string)$tws,
         '^^__currency_symbol^^'              => $sym,
         '^^__form_id^^'                      => (string)($state['form_id'] ?? ''),
+        // The gateway takes the base currency only, so a visitor reading the
+        // page in another currency is shown what the card is charged and why
+        // the figures above may differ (the classic screens' note).
+        '^^__cart_total_charged^^'           => pg_format_money($tws / 100, defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '')
+                                                . (defined('BASE_CURRENCY_CODE') ? ' ' . h(BASE_CURRENCY_CODE) : ''),
+        '^^__currency_disclaimer^^'          => _eo_currency_disclaimer(),
     );
+}
+
+// The instalment scripts' syncTotals(block): puts the chosen plan into the
+// totals. The plan's amounts are in the base currency the gateway charges
+// (Iyzipay takes Turkish lira only); the total and fee rows are shown in the
+// visitor's currency like every other figure on the page, the "amount
+// charged" row keeps the base amount, and the hidden total fields - what the
+// server checks - stay in the base currency.
+function _eo_installment_sync_js()
+{
+    return 'function syncTotals(block){'
+        .   'var data=block.__pgEoInstData;if(!data||!data.installments)return;'
+        .   'var hidden=block.querySelector(".pg-eo-installment-input");var n=parseInt(hidden?hidden.value:"1",10)||1;'
+        .   'var plan=null;data.installments.forEach(function(o){if(o.number===n)plan=o;});if(!plan)return;'
+        .   'var form=block.closest("form");if(!form)return;'
+        .   'var wrap=form.parentNode;'
+        .   'var totSpan=wrap.querySelector(".pg-eo-total-formatted");'
+        .   'var chSpan=wrap.querySelector(".pg-eo-charged-formatted");'
+        .   'var feeRow=wrap.querySelector(".pg-eo-installment-fee-row");'
+        .   'var feeVal=wrap.querySelector(".pg-eo-installment-fee-value");'
+        .   'var feeCents=Math.round(parseFloat(plan.increase||"0")*100);'
+        .   'var totalCents=Math.round(parseFloat(plan.total||"0")*100);'
+        .   'var sym=data.currency_symbol||"";'
+        .   'var mf=window.software_money_format||null;'
+        .   'var rate=(mf&&mf.rate>0)?mf.rate:1;'
+        .   'var vsym=mf?mf.symbol:sym,vsuf=mf?(mf.suffix||""):"";'
+        .   'var money=function(a,s,x){return window.software_format_money?software_format_money(a,s,x):(s||"")+(+a).toFixed(2)+(x||"");};'
+        .   'if(totSpan&&totalCents>0){'
+        .     'totSpan.textContent=money(totalCents/100*rate,vsym,vsuf);'
+        .     'totSpan.setAttribute("data-pg-eo-total-with-surcharge-cents",totalCents);'
+        .   '}'
+        .   'if(chSpan&&totalCents>0){chSpan.textContent=money(totalCents/100,sym,data.currency_code?" "+data.currency_code:"");}'
+        .   'if(feeRow){'
+        .     'if(feeCents>0){feeRow.style.display="";if(feeVal)feeVal.textContent=money(feeCents/100*rate,vsym,vsuf);}'
+        .     'else{feeRow.style.display="none";}'
+        .   '}'
+        .   'var hTotal=form.querySelector(\'input[name="total"]\');'
+        .   'var hTws=form.querySelector(\'input[name="total_with_surcharge"]\');'
+        .   'if(hTws&&totalCents>0)hTws.value=(totalCents/100).toFixed(2);'
+        .   'if(hTotal&&totalCents>0)hTotal.value=(totalCents/100).toFixed(2);'
+        . '}';
+}
+
+// The note under the totals when the visitor reads the page in another
+// currency than the one charged; '' otherwise.
+function _eo_currency_disclaimer()
+{
+    if (!defined('VISITOR_CURRENCY_CODE') || !defined('BASE_CURRENCY_CODE') || VISITOR_CURRENCY_CODE == BASE_CURRENCY_CODE) {
+        return '';
+    }
+    $name = defined('BASE_CURRENCY_ID') ? (string)db_value("SELECT name FROM currencies WHERE id = '" . (int)BASE_CURRENCY_ID . "'") : '';
+    if ($name === '') $name = (string)BASE_CURRENCY_CODE;
+    return h(lang(array(
+        'string' => '*This amount is based on our current currency exchange rate to {var:1} and may differ from the exact charges (displayed above in {var:1}).',
+        'vars'   => $name,
+    )));
 }
 
 function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_data, $base, $sw_dir, $csrf_token, $back_url)
@@ -322,6 +388,24 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         }
         $extra_html .= '<tr><td colspan="5" class="bg-body-tertiary border-top-0"><div class="pg-eo-gift-cards" data-pg-eo-gc-item="' . $iid . '">' . $rows_html . '</div></td></tr>';
     }
+    // Recurring schedule the customer may set: the same controls as the
+    // cart row (field names are the legacy ones express_order.php checks —
+    // the handler requires them, so without these a recurring donation
+    // could never be ordered from this page).
+    if ((int)($item['recurring'] ?? 0) === 1 && (int)($item['recurring_schedule_editable_by_customer'] ?? 0) === 1
+        && function_exists('_pg_render_cart_item_recurring_schedule')) {
+        $rec_row = $item;
+        if ((string)($rec_row['recurring_payment_period'] ?? '') === '' && function_exists('_pg_cart_recurring_defaults')) {
+            $def = _pg_cart_recurring_defaults($rec_row);
+            $rec_row['recurring_payment_period']     = $def['period'];
+            $rec_row['recurring_number_of_payments'] = $def['payments'];
+            $rec_row['recurring_start_date']         = $def['start_date'];
+        }
+        $rec_html = _pg_render_cart_item_recurring_schedule($rec_row, $lf, ' form="' . h($form_id) . '"');
+        if ($rec_html !== '') {
+            $extra_html .= '<tr><td colspan="5" class="bg-body-tertiary border-top-0">' . $rec_html . '</td></tr>';
+        }
+    }
     if ($is_gc && $has_form && $qty > 0) {
         // Hidden recipient_email so legacy express_order.php:1074 validation passes.
         $billing_email = $lf ? (string)$lf->get_field_value('billing_email_address') : '';
@@ -332,11 +416,15 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
         }
     }
 
-    // Detail URL — `/<address_name>` (legacy convention). Designer can bind
-    // an `<a>` href to __item_detail_url to make item names link out.
+    // Detail URL — the product under the catalog detail page. Designer can
+    // bind an `<a>` href to __item_url to make item names link out.
     $detail_url = '';
     if (!empty($item['address_name'])) {
-        $detail_url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path((string)$item['address_name']);
+        // Under the catalog detail page: a bare /<address_name> is a 404.
+        $detail_page = function_exists('pg_sw_catalog_detail_page_name') ? pg_sw_catalog_detail_page_name(0) : '';
+        $detail_url  = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
+                     . ($detail_page !== '' ? encode_url_path($detail_page) . '/' : '')
+                     . encode_url_path((string)$item['address_name']);
     }
 
     // Short vs full description — separate so designer can pick which one
@@ -854,8 +942,10 @@ function _eo_default_designer_tree()
     //   has_discount, has_tax, has_shipping_cost, has_gift_card,
     //   has_surcharge, has_installment_fee — see _eo_vis_ctx for the
     //   full registry.
-    $tot_row = function ($label, $token, $visibleIf = '', $trCss = '', $tdCss = 'text-end pe-0', $valueSpanCss = '', $preview = '₺0,00')
+    $tot_row = function ($label, $token, $visibleIf = '', $trCss = '', $tdCss = 'text-end pe-0', $valueSpanCss = '', $preview = null)
                 use ($sem) {
+        // Written the way the site writes money ("₺0,00" / "$0.00").
+        if ($preview === null) $preview = pg_money_text(0);
         $tr_extra = array();
         if ($visibleIf !== '') $tr_extra['bindings'] = array('eo_visible_if' => $visibleIf);
         return $sem('tr', $trCss, array(
@@ -880,7 +970,7 @@ function _eo_default_designer_tree()
             $sem('span', 'pg-eo-tot-label', lang('Instalment Fee')),
         )),
         $sem('td', 'text-end pe-0 text-warning', array(
-            $sem('span', 'pg-eo-tot-value pg-eo-installment-fee-value', '0,00'),
+            $sem('span', 'pg-eo-tot-value pg-eo-installment-fee-value', pg_money_text(0)),
         )),
     ), array('style' => 'display:none'));
 
@@ -1029,9 +1119,9 @@ function _eo_default_designer_tree()
                                                             ), 'children' => array()),
                                                             $sem('div', 'flex-grow-1 min-width-0', array(
                                                                 // Short description — real <p> with text binding.
-                                                                $sem('p', 'fw-semibold mb-1', 'Lorem ipsum dolor sit amet', array('bindings' => array('text' => '__item_short_description'))),
+                                                                $sem('p', 'fw-semibold mb-1', lang('Sample Product Name'), array('bindings' => array('text' => '__item_short_description'))),
                                                                 // Full description — real <p> with text binding.
-                                                                $sem('p', 'small text-muted mb-0', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', array('bindings' => array('text' => '__item_full_description'))),
+                                                                $sem('p', 'small text-muted mb-0', lang('A sample product description — short and clear.'), array('bindings' => array('text' => '__item_description'))),
                                                             )),
                                                         )),
                                                     )),
@@ -1090,10 +1180,10 @@ function _eo_default_designer_tree()
                                                     // these two were the exception and the default tree is what
                                                     // every new design gets copied from.
                                                     $sem('td', 'text-start text-md-end align-middle d-block d-md-table-cell', array(
-                                                        $sem('span', '', '₺39,95', array('bindings' => array('text' => '__item_price_formatted'))),
+                                                        $sem('span', '', pg_money_text(39.95), array('bindings' => array('text' => '__item_price'))),
                                                     )),
                                                     $sem('td', 'text-start text-md-end fw-semibold align-middle d-block d-md-table-cell', array(
-                                                        $sem('span', '', '₺79,90', array('bindings' => array('text' => '__item_line_total_formatted'))),
+                                                        $sem('span', '', pg_money_text(79.9), array('bindings' => array('text' => '__item_total'))),
                                                     )),
                                                     $sem('td', 'text-start text-md-end align-middle pe-3 d-block d-md-table-cell', array(
                                                         // Remove link — action-bound. Designer can swap the
@@ -1306,8 +1396,15 @@ function _eo_default_designer_tree()
                                         // Total — always visible (last row, bold + border-top accent)
                                         $tot_row(lang('Total'),          '__cart_total_with_surcharge',    '',
                                                  'fw-bold border-top', 'text-end pe-0', 'pg-eo-total-formatted'),
+                                        // Amount charged — only when the visitor reads another currency
+                                        // than the base one the gateway takes; the instalment JS keeps it
+                                        // in step with the chosen plan.
+                                        $tot_row(lang('Amount charged'), '__cart_total_charged',           'has_foreign_currency',
+                                                 'small', 'text-end pe-0', 'pg-eo-charged-formatted'),
                                     )),
                                 )),
+                                $sem('p', 'small text-muted pg-eo-currency-note', '',
+                                     array('bindings' => array('text' => '__currency_disclaimer', 'eo_visible_if' => 'has_foreign_currency'))),
                                 // Active promotion list — sourced from
                                 // orders.discount_offer_id /
                                 // order_items.offer_id / ship_tos.offer_id.
@@ -2437,10 +2534,17 @@ function _eo_render_installment_box($lf)
           . 'if(window.__pgEoInstInit)return;window.__pgEoInstInit=1;'
           . 'var apiUrl=' . json_encode($api_url) . ';'
           . 'function blockFor(inp){var f=inp.closest("form");if(!f)return null;return f.querySelector("[data-pg-eo-installments]");}'
+          // The price the plans are asked for is the order total before any
+          // plan: syncTotals() rewrites the total with a plan's increase, and
+          // reading it back would ask for instalments on top of instalments
+          // when the card number changes. Kept from the first read.
           . 'function currentPriceCents(form){'
+          .   'if(form.__pgEoBaseCents)return form.__pgEoBaseCents;'
           .   'var totEl=form.parentNode.querySelector("[data-pg-eo-total-with-surcharge-cents],[data-pg-eo-total-cents]");'
-          .   'if(!totEl){var h=form.querySelector("input[name=\'total_with_surcharge\']")||form.querySelector("input[name=\'total\']");if(h){return Math.round(parseFloat(h.value)*100);}return 0;}'
-          .   'var v=totEl.getAttribute("data-pg-eo-total-with-surcharge-cents")||totEl.getAttribute("data-pg-eo-total-cents");return parseInt(v||"0",10);'
+          .   'var c=0;'
+          .   'if(!totEl){var h=form.querySelector("input[name=\'total_with_surcharge\']")||form.querySelector("input[name=\'total\']");if(h){c=Math.round(parseFloat(h.value)*100);}}'
+          .   'else{var v=totEl.getAttribute("data-pg-eo-total-with-surcharge-cents")||totEl.getAttribute("data-pg-eo-total-cents");c=parseInt(v||"0",10);}'
+          .   'if(c>0)form.__pgEoBaseCents=c;return c;'
           . '}'
           // Cache last API response so the radio-change handler can pull the
           // chosen plan's totalPrice/increase WITHOUT re-fetching.
@@ -2450,7 +2554,7 @@ function _eo_render_installment_box($lf)
           .   'if(!data||data.status!=="success"||!data.installments||!data.installments.length){status.textContent=' . json_encode(lang('No installments available for this card.')) . ';list.innerHTML="";meta.style.display="none";return;}'
           .   'status.textContent="";var brand=[data.cardAssociation,data.cardFamilyName,data.bankName].filter(Boolean).join(" / ");meta.textContent=brand;meta.style.display=brand?"":"none";'
           .   'var cur=parseInt(hidden.value||"1",10);var html="<div class=\\"row g-2\\">";'
-          .   'data.installments.forEach(function(o){var checked=(o.number===cur)?" checked":"";var label=o.number===1?' . json_encode(lang('Single payment')) . ':(o.number+"x "+(data.currency_symbol||"")+o.monthly);var tot=(data.currency_symbol||"")+o.total;var inc=parseFloat(o.increase||"0")>0?(" <span class=\\"text-warning\\">+"+(data.currency_symbol||"")+o.increase+"</span>"):"";html+="<div class=\\"col-12 col-md-6\\"><label class=\\"d-flex justify-content-between align-items-center border rounded p-2 small mb-0\\" style=\\"cursor:pointer\\"><span><input type=\\"radio\\" class=\\"form-check-input me-2 pg-eo-installment-radio\\" name=\\"_pg_eo_installment_radio\\" value=\\""+o.number+"\\""+checked+">"+label+"</span><span class=\\"text-muted\\">"+tot+inc+"</span></label></div>";});html+="</div>";list.innerHTML=html;'
+          .   'data.installments.forEach(function(o){var checked=(o.number===cur)?" checked":"";var label=o.number===1?' . json_encode(lang('Single payment')) . ':(o.number+"x "+(window.software_format_money?software_format_money(o.monthly,(data.currency_symbol||"")):(data.currency_symbol||"")+(+(o.monthly)).toFixed(2)));var tot=(window.software_format_money?software_format_money(o.total,(data.currency_symbol||"")):(data.currency_symbol||"")+(+(o.total)).toFixed(2));var inc=parseFloat(o.increase||"0")>0?(" <span class=\\"text-warning\\">+"+(window.software_format_money?software_format_money(o.increase,(data.currency_symbol||"")):(data.currency_symbol||"")+(+(o.increase)).toFixed(2))+"</span>"):"";html+="<div class=\\"col-12 col-md-6\\"><label class=\\"d-flex justify-content-between align-items-center border rounded p-2 small mb-0\\" style=\\"cursor:pointer\\"><span><input type=\\"radio\\" class=\\"form-check-input me-2 pg-eo-installment-radio\\" name=\\"_pg_eo_installment_radio\\" value=\\""+o.number+"\\""+checked+">"+label+"</span><span class=\\"text-muted\\">"+tot+inc+"</span></label></div>";});html+="</div>";list.innerHTML=html;'
           // Sync the sidebar totals to the currently-selected installment so
           // the visitor sees the price they\'re actually paying.
           .   'syncTotals(block);'
@@ -2460,37 +2564,7 @@ function _eo_render_installment_box($lf)
           // visitor saw 1x total but server charged Nx total → "tutar değişti"
           // rejection in the legacy total-change guard (which we also relax
           // server-side, but updating the UI is the proper UX fix).
-          . 'function syncTotals(block){'
-          .   'var data=block.__pgEoInstData;if(!data||!data.installments)return;'
-          .   'var hidden=block.querySelector(".pg-eo-installment-input");var n=parseInt(hidden?hidden.value:"1",10)||1;'
-          .   'var plan=null;data.installments.forEach(function(o){if(o.number===n)plan=o;});if(!plan)return;'
-          .   'var form=block.closest("form");if(!form)return;'
-          // Find sidebar totals on the SAME page (sibling of form, since
-          // the right column lives in a different col but same parent grid).
-          .   'var wrap=form.parentNode;'
-          .   'var totSpan=wrap.querySelector(".pg-eo-total-formatted");'
-          .   'var feeRow=wrap.querySelector(".pg-eo-installment-fee-row");'
-          .   'var feeVal=wrap.querySelector(".pg-eo-installment-fee-value");'
-          .   'var feeCents=Math.round(parseFloat(plan.increase||"0")*100);'
-          .   'var totalCents=Math.round(parseFloat(plan.total||"0")*100);'
-          .   'var sym=data.currency_symbol||"";'
-          .   'if(totSpan&&totalCents>0){'
-          .     'totSpan.textContent=sym+(totalCents/100).toFixed(2);'
-          .     'totSpan.setAttribute("data-pg-eo-total-with-surcharge-cents",totalCents);'
-          .   '}'
-          .   'if(feeRow){'
-          .     'if(feeCents>0){'
-          .       'feeRow.style.display="";'
-          .       'if(feeVal)feeVal.textContent=sym+(feeCents/100).toFixed(2);'
-          .     '}else{feeRow.style.display="none";}'
-          .   '}'
-          // Update hidden total + total_with_surcharge so the server-side
-          // total-change guard accepts the new total.
-          .   'var hTotal=form.querySelector(\'input[name="total"]\');'
-          .   'var hTws=form.querySelector(\'input[name="total_with_surcharge"]\');'
-          .   'if(hTws&&totalCents>0)hTws.value=(totalCents/100).toFixed(2);'
-          .   'if(hTotal&&totalCents>0)hTotal.value=(totalCents/100).toFixed(2);'
-          . '}'
+          . _eo_installment_sync_js()
           . 'var lastBin="",aborter=null;'
           . 'function fetchInst(inp){var bin=(inp.value||"").replace(/[^0-9]/g,"").slice(0,6);var block=blockFor(inp);if(!block)return;if(bin.length<6){var s=block.querySelector(".pg-eo-installment-status");if(s)s.textContent=' . json_encode(lang('Enter your card number to view installment options.')) . ';block.querySelector(".pg-eo-installment-list").innerHTML="";block.querySelector(".pg-eo-installment-meta").style.display="none";lastBin="";return;}if(bin===lastBin)return;lastBin=bin;var price=(currentPriceCents(inp.closest("form"))/100).toFixed(2);if(aborter)aborter.abort();aborter=new AbortController();block.querySelector(".pg-eo-installment-status").textContent=' . json_encode(lang('Loading installment options…')) . ';var body=JSON.stringify({action:"eo_get_installments",card:bin,price:price});fetch(apiUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:aborter.signal,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){render(block,d);}).catch(function(e){if(e.name==="AbortError")return;var s=block.querySelector(".pg-eo-installment-status");if(s)s.textContent=' . json_encode(lang('Could not load installments.')) . ';});}'
           . 'var debTimer=null;'
@@ -2706,18 +2780,25 @@ function _eo_render_payment_methods($lf, $cfg)
                   // (data-pg-eo-total-with-surcharge-cents is rendered by
                   // _eo_render_order_totals when surcharge>0, otherwise we
                   // fall back to data-pg-eo-total-cents).
+                  // Same basis as the other copy: the total before any plan.
                   .   'function currentPriceCents(form){'
+                  .     'if(form.__pgEoBaseCents)return form.__pgEoBaseCents;'
                   .     'var totEl=form.parentNode.querySelector("[data-pg-eo-total-with-surcharge-cents],[data-pg-eo-total-cents]");'
+                  .     'var c=0;'
                   .     'if(!totEl){'
                   .       'var h=form.querySelector("input[name=\'total_with_surcharge\']")||form.querySelector("input[name=\'total\']");'
-                  .       'if(h){return Math.round(parseFloat(h.value)*100);}return 0;'
+                  .       'if(h){c=Math.round(parseFloat(h.value)*100);}'
+                  .     '}else{'
+                  .       'var v=totEl.getAttribute("data-pg-eo-total-with-surcharge-cents")||totEl.getAttribute("data-pg-eo-total-cents");'
+                  .       'c=parseInt(v||"0",10);'
                   .     '}'
-                  .     'var v=totEl.getAttribute("data-pg-eo-total-with-surcharge-cents")||totEl.getAttribute("data-pg-eo-total-cents");'
-                  .     'return parseInt(v||"0",10);'
+                  .     'if(c>0)form.__pgEoBaseCents=c;return c;'
                   .   '}'
+                  . _eo_installment_sync_js()
                   // Render the installment radio list from the API response.
                   // Highlights the currently-saved installment if available.
                   .   'function render(block,data){'
+                  .     'block.__pgEoInstData=data;'
                   .     'var status=block.querySelector(".pg-eo-installment-status");'
                   .     'var meta=block.querySelector(".pg-eo-installment-meta");'
                   .     'var list=block.querySelector(".pg-eo-installment-list");'
@@ -2733,9 +2814,9 @@ function _eo_render_payment_methods($lf, $cfg)
                   .     'var html="<div class=\\"row g-2\\">";'
                   .     'data.installments.forEach(function(o){'
                   .       'var checked=(o.number===cur)?" checked":"";'
-                  .       'var label=o.number===1?' . json_encode(lang('Single payment')) . ':(o.number+"x "+(data.currency_symbol||"")+o.monthly);'
-                  .       'var tot=(data.currency_symbol||"")+o.total;'
-                  .       'var inc=parseFloat(o.increase||"0")>0?(" <span class=\\"text-warning\\">+"+(data.currency_symbol||"")+o.increase+"</span>"):"";'
+                  .       'var label=o.number===1?' . json_encode(lang('Single payment')) . ':(o.number+"x "+(window.software_format_money?software_format_money(o.monthly,(data.currency_symbol||"")):(data.currency_symbol||"")+(+(o.monthly)).toFixed(2)));'
+                  .       'var tot=(window.software_format_money?software_format_money(o.total,(data.currency_symbol||"")):(data.currency_symbol||"")+(+(o.total)).toFixed(2));'
+                  .       'var inc=parseFloat(o.increase||"0")>0?(" <span class=\\"text-warning\\">+"+(window.software_format_money?software_format_money(o.increase,(data.currency_symbol||"")):(data.currency_symbol||"")+(+(o.increase)).toFixed(2))+"</span>"):"";'
                   .       'html+="<div class=\\"col-12 col-md-6\\">"+'
                   .         '"<label class=\\"d-flex justify-content-between align-items-center border rounded p-2 small mb-0\\" style=\\"cursor:pointer\\">"+'
                   .         '"<span><input type=\\"radio\\" class=\\"form-check-input me-2 pg-eo-installment-radio\\" name=\\"_pg_eo_installment_radio\\" value=\\""+o.number+"\\""+checked+">"+label+"</span>"+'
@@ -2786,6 +2867,7 @@ function _eo_render_payment_methods($lf, $cfg)
                   .     'var block=t.closest("[data-pg-eo-installments]");if(!block)return;'
                   .     'var hidden=block.querySelector(".pg-eo-installment-input");if(!hidden)return;'
                   .     'hidden.value=t.value;'
+                  .     'syncTotals(block);'
                   .   '});'
                   // Run once on page load in case the visitor's card_number
                   // was prefilled (e.g. coming back from a 3DS failure).
@@ -3379,12 +3461,76 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
             $out .= '</div>';
         }
 
-        // Shipping method picker — JS-populated container
+        // Shipping method picker — JS-populated container. A recipient with
+        // no method yet carries 0 in ship_tos; posting that 0 back satisfied
+        // the handler's "select a shipping method" check, so an order could
+        // go through with no method and no shipping charge whenever the
+        // script had not filled the choice in. Empty until one is picked.
+        $_eo_method_val = $get('shipping_method_id');
+        if ((int)$_eo_method_val <= 0) $_eo_method_val = '';
+        // A liveform value from the last submit wins over the stored one.
+        $_eo_posted_method = $get('method');
+        if ((int)$_eo_posted_method > 0) $_eo_method_val = $_eo_posted_method;
+
+        // Without the script nothing fills the list below, and no method can
+        // be picked. When the country is already known (an earlier submit,
+        // the address book) the methods are worked out here, the same way
+        // api.php does for the script, and offered as plain radios that post
+        // the method themselves. The script adopts them (renames them and
+        // posts through the hidden input, which starts disabled for that
+        // reason) and redraws the list whenever the address changes.
+        $_eo_status_text = lang('Enter address to see options.');
+        $_eo_server_list = '';
+        $_eo_country     = $get('country');
+        if ($_eo_country !== '') {
+            if (!function_exists('get_shipping_methods')) {
+                require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+            }
+            $_eo_aid  = isset($sel_aid) ? (string)$sel_aid : '';
+            $_eo_resp = get_shipping_methods(array(
+                'ship_to_id'      => $rid,
+                'address_1'       => $get('address_1'),
+                'state'           => $get('state'),
+                'zip_code'        => $get('zip_code'),
+                'country'         => $_eo_country,
+                'arrival_date_id' => $_eo_aid,
+                'arrival_date'    => ($_eo_aid !== '') ? $get('custom_arrival_date_' . $_eo_aid) : '',
+            ));
+            if (is_array($_eo_resp) && ($_eo_resp['status'] ?? '') === 'success' && !empty($_eo_resp['shipping_methods'])) {
+                $_eo_methods = array_values($_eo_resp['shipping_methods']);
+                // The script's rule: the previous pick while it is still on
+                // offer, otherwise the cheapest (the list comes sorted by cost).
+                $_eo_pick = (string)$_eo_methods[0]['id'];
+                foreach ($_eo_methods as $_m) {
+                    if ((string)$_m['id'] === (string)$_eo_method_val) { $_eo_pick = (string)$_m['id']; break; }
+                }
+                foreach ($_eo_methods as $_m) {
+                    $_mid  = (string)$_m['id'];
+                    $_mdom = 'pg_eo_ship_' . $rid . '_' . $_mid;
+                    $_eo_server_list .= '<div class="form-check d-flex align-items-center justify-content-between border-bottom py-2">'
+                        . '<div>'
+                        .   '<input class="form-check-input pg-eo-method-radio" type="radio" name="shipping_' . $rid . '_method"'
+                        .     ' id="' . h($_mdom) . '" value="' . h($_mid) . '" data-pg-eo-rid="' . $rid . '"'
+                        .     ' data-pg-eo-cost="' . h((string)(float)$_m['cost']) . '"'
+                        .     ($_mid === $_eo_pick ? ' checked' : '') . '>'
+                        .   '<label class="form-check-label ms-2" for="' . h($_mdom) . '">'
+                        .     '<strong>' . h((string)$_m['name']) . '</strong>'
+                        .     ((string)$_m['description'] !== '' ? '<div class="small text-muted">' . h((string)$_m['description']) . '</div>' : '')
+                        .   '</label>'
+                        . '</div>'
+                        . '<div class="ms-3 fw-semibold">' . (((float)$_m['cost'] == 0) ? h(lang('Free')) : $_m['cost_info']) . '</div>'
+                        . '</div>';
+                }
+            } elseif (is_array($_eo_resp) && !empty($_eo_resp['message'])) {
+                $_eo_status_text = (string)$_eo_resp['message'];
+            }
+        }
         $out .= '<div class="pg-eo-shipping-methods mt-3" data-pg-eo-rid="' . $rid . '">'
               . '<label class="form-label small fw-semibold d-block">' . h(lang('Shipping Method')) . '</label>'
-              . '<div class="text-muted small pg-eo-methods-status">' . h(lang('Enter address to see options.')) . '</div>'
-              . '<div class="pg-eo-methods-list mt-2"></div>'
-              . '<input type="hidden" name="shipping_' . $rid . '_method" value="' . h($get('shipping_method_id')) . '" class="pg-eo-method-input">'
+              . '<div class="text-muted small pg-eo-methods-status"' . ($_eo_server_list !== '' ? ' style="display:none"' : '') . '>' . h($_eo_status_text) . '</div>'
+              . '<div class="pg-eo-methods-list mt-2">' . $_eo_server_list . '</div>'
+              . '<input type="hidden" name="shipping_' . $rid . '_method" value="' . h($_eo_method_val) . '" class="pg-eo-method-input"'
+              .   ($_eo_server_list !== '' ? ' disabled' : '') . '>'
               . '</div>';
 
         $out .= '</div>'; // /pg-eo-recipient
@@ -3816,7 +3962,9 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
             total += parseFloat(r.getAttribute('data-pg-eo-cost') || 0);
         });
         var shipSpan = document.querySelector('.pg-eo-shipping-formatted');
-        if (shipSpan) shipSpan.textContent = total > 0 ? formatCost(total) : '—';
+        // The method costs are in the base currency, the sidebar shows the
+        // visitor's.
+        if (shipSpan) shipSpan.textContent = total > 0 ? formatCost(total * moneyRate()) : '—';
         // Recompute total too — read other displayed amounts and sum.
         recomputeSidebarTotal();
     }
@@ -3846,8 +3994,19 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         var totalSpan = document.querySelector('.pg-eo-total-formatted');
         if (totalSpan) totalSpan.textContent = formatCost(total);
     }
+    // software_money_format / software_format_money / software_parse_money
+    // come from frontend.js and write money the way the server does; the
+    // fallbacks below only matter on a page without them.
+    function moneyFormat() {
+        return (typeof software_money_format !== 'undefined' && software_money_format) ? software_money_format : null;
+    }
+    function moneyRate() {
+        var f = moneyFormat();
+        return (f && f.rate > 0) ? f.rate : 1;
+    }
     function parseAmt(el) {
         if (!el) return 0;
+        if (window.software_parse_money && moneyFormat()) return software_parse_money(el.textContent);
         var t = el.textContent.replace(/[^0-9,.\-]/g, '');
         // Locale-aware: assume Turkish format `1.234,56` if comma present
         // after a dot; else fall back to dot-decimal.
@@ -3858,6 +4017,8 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         return isNaN(n) ? 0 : n;
     }
     function formatCost(amount) {
+        var f = moneyFormat();
+        if (f && window.software_format_money) return software_format_money(amount, f.symbol, f.suffix);
         // Match the server-side currency formatter as best we can. The exact
         // symbol comes from the existing rendered span.
         var ref = document.querySelector('.pg-eo-subtotal-formatted');
@@ -3915,11 +4076,22 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 if (String(trid) === String(rid)) updateMethodSelection(rid, e.target);
             }
         });
+        // The page may already carry the list (worked out on the server for
+        // visitors without the script): adopt it — the radios become the
+        // picker and the hidden input posts the choice — instead of asking
+        // the server for the same list again.
+        var hidInit = form.querySelector('.pg-eo-shipping-methods[data-pg-eo-rid="' + rid + '"] .pg-eo-method-input');
+        var served  = form.querySelectorAll('.pg-eo-shipping-methods[data-pg-eo-rid="' + rid + '"] input.pg-eo-method-radio');
+        if (hidInit) hidInit.disabled = false;
+        if (served.length) {
+            served.forEach(function (r) { r.name = 'pg_eo_ship_picker_' + rid; });
+            var servedPick = form.querySelector('.pg-eo-shipping-methods[data-pg-eo-rid="' + rid + '"] input.pg-eo-method-radio:checked');
+            if (servedPick) updateMethodSelection(rid, servedPick);
         // Initial fetch as soon as a country is set (covers the prefilled
         // case — visitor lands on the page with country=TR already chosen
         // from address_book / orders, so we surface methods immediately
         // rather than making them edit something to trigger the lookup).
-        if (ctry && ctry.value) {
+        } else if (ctry && ctry.value) {
             _doFetch(rid);
         }
     });

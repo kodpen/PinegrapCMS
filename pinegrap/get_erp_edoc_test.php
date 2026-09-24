@@ -82,6 +82,26 @@ if ($code === '') {
 $tone = $ok ? 'success' : ($pending ? 'info' : 'danger');
 $icon = $ok ? 'bi-check-circle' : ($pending ? 'bi-info-circle' : 'bi-x-circle');
 
+// The settings card asks for the answer as data and prints it under the
+// button. The page below is what a direct post gets - the card used to open
+// it in a tab, and a browser that refuses to open one left the operator
+// with no answer at all.
+if ((string) ($_POST['format'] ?? '') === 'json') {
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('X-Robots-Tag: noindex');
+    header('Cache-Control: private, no-store');
+
+    echo json_encode(array(
+        'tone' => $tone,
+        'icon' => $icon,
+        'lines' => array_values($lines),
+        'note' => lang('Nothing was saved; use Save on the settings card to keep the credentials.'),
+    ), JSON_UNESCAPED_UNICODE);
+
+    exit();
+}
+
 header('Content-Type: text/html; charset=utf-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');

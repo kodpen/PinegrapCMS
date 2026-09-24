@@ -399,6 +399,14 @@ if (!$_POST) {
         $next_page_id_row_style = '';
     }
     
+    // Where it was talked about in the workspace, and the tasks about it.
+    $output_workspace_button = '';
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $output_workspace_button = ws_record_button($user, 'calendar_event', (int) $_GET['id'], (string) db_value("SELECT name FROM calendar_events WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-link link-secondary py-0 mb-2');
+    }
+
     print
      
     pg_page_shell(
@@ -427,6 +435,7 @@ if (!$_POST) {
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 mb-2 " data-loading-content="' . lang('Duplicating') . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_calendar_event.php?id=' . h(escape_javascript($_GET['id'])) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                ' . $output_workspace_button . '
                             </div>
                         </nav>
                     </div>

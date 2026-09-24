@@ -1503,7 +1503,7 @@ function get_shipping_method($properties) {
 
         // If a submit button label was not entered for the page, then set default label.
         if ($submit_button_label == '') {
-            $submit_button_label = 'Continue';
+            $submit_button_label = lang('Continue');
         }
 
         $system =

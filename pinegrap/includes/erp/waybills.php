@@ -167,8 +167,11 @@ function erp_waybill_lines_build($lines_in)
         $row_no++;
 
         $description = mb_substr(trim((string) ($line['description'] ?? '')), 0, 255);
-        $quantity_raw = trim(str_replace(',', '.', (string) ($line['quantity'] ?? '')));
-        $quantity = is_numeric($quantity_raw) ? (float) $quantity_raw : 0.0;
+        $quantity_raw = trim((string) ($line['quantity'] ?? ''));
+        // Digits and separators only; the separators are read the way the
+        // store's country writes them (erp_quantity_in()).
+        $quantity_valid = (preg_match('/^[0-9][0-9., ]*$/', $quantity_raw) === 1);
+        $quantity = $quantity_valid ? erp_quantity_in($quantity_raw) : 0.0;
         $product_id = (int) ($line['product_id'] ?? 0);
 
         $unit_code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($line['unit_code'] ?? '')));
@@ -181,7 +184,7 @@ function erp_waybill_lines_build($lines_in)
         if ($description === '') {
             return array('lines' => array(), 'error' => lang(array('string' => 'Line {var:1} needs a description.', 'vars' => $row_no)));
         }
-        if (($quantity <= 0) || !is_numeric($quantity_raw)) {
+        if (($quantity <= 0) || !$quantity_valid) {
             return array('lines' => array(), 'error' => lang(array('string' => 'Line {var:1} needs a quantity greater than zero.', 'vars' => $row_no)));
         }
 
@@ -203,7 +206,8 @@ function erp_waybill_lines_build($lines_in)
  *                     (Y-m-d, empty = issue date), ship_time (HH:MM, may be
  *                     empty), carrier_title, carrier_vkn, plate, driver_name,
  *                     driver_tckn, ship_to_title, ship_to_address,
- *                     ship_to_district, ship_to_city, ship_to_country, notes
+ *                     ship_to_district, ship_to_city, ship_to_state,
+ *                     ship_to_country, notes
  * @return array ['header' => array, 'error' => string]
  */
 function erp_waybill_header_build($data)
@@ -254,18 +258,27 @@ function erp_waybill_header_build($data)
         $ship_time = '00:00:00';
     }
 
-    $digits = function ($value, $length) {
-        return substr(preg_replace('/\D/', '', (string) $value), 0, $length);
-    };
+    // The carrier and the driver are held to the store's country's rules:
+    // in Turkey a VKN/TCKN and an eleven-digit TCKN (e-İrsaliye asks for
+    // both); elsewhere what was written - a carrier's tax id, a driver's
+    // licence - within the column.
+    if (erp_account_country('') === 'TR') {
+        $carrier_vkn = substr(preg_replace('/\D/', '', (string) ($data['carrier_vkn'] ?? '')), 0, 11);
+        if (($carrier_vkn !== '') && !in_array(strlen($carrier_vkn), array(10, 11), true)) {
+            return $fail(lang('The carrier tax number has to be 10 or 11 digits.'));
+        }
 
-    $carrier_vkn = $digits($data['carrier_vkn'] ?? '', 11);
-    if (($carrier_vkn !== '') && !in_array(strlen($carrier_vkn), array(10, 11), true)) {
-        return $fail(lang('The carrier tax number has to be 10 or 11 digits.'));
-    }
-
-    $driver_tckn = $digits($data['driver_tckn'] ?? '', 11);
-    if (($driver_tckn !== '') && (strlen($driver_tckn) !== 11)) {
-        return $fail(lang('The driver ID number has to be 11 digits.'));
+        $driver_tckn = substr(preg_replace('/\D/', '', (string) ($data['driver_tckn'] ?? '')), 0, 11);
+        if (($driver_tckn !== '') && (strlen($driver_tckn) !== 11)) {
+            return $fail(lang('The driver ID number has to be 11 digits.'));
+        }
+    } else {
+        $carrier = erp_tax_number_check((string) ($data['carrier_vkn'] ?? ''));
+        if ($carrier['error'] !== '') {
+            return $fail(lang('The carrier tax number:') . ' ' . $carrier['error']);
+        }
+        $carrier_vkn = $carrier['value'];
+        $driver_tckn = mb_substr(trim((string) ($data['driver_tckn'] ?? '')), 0, 32);
     }
 
     $country = strtoupper(trim((string) ($data['ship_to_country'] ?? '')));
@@ -298,6 +311,8 @@ function erp_waybill_header_build($data)
         'ship_to_address' => $text('ship_to_address', 255),
         'ship_to_district' => $text('ship_to_district', 100),
         'ship_to_city' => $text('ship_to_city', 100),
+        // A Turkish address has no state: the province is the city.
+        'ship_to_state' => ($country === 'TR') ? '' : $text('ship_to_state', 100),
         'ship_to_country' => $country,
         'notes' => mb_substr(trim((string) ($data['notes'] ?? '')), 0, 5000),
     ), 'error' => '');
@@ -395,7 +410,7 @@ function erp_waybill_create($data)
     $ok = erp_query("INSERT INTO erp_waybills SET
             series = '" . escape($series) . "',
             number = '" . (int) $numbered['number'] . "',
-            issue_year = '" . $issue_year . "',
+            issue_year = '" . (int) $numbered['year'] . "',
             full_number = '" . escape($numbered['full']) . "',
             account_id = '" . (int) $header['account_id'] . "',
             order_id = '" . (int) $header['order_id'] . "',
@@ -412,6 +427,7 @@ function erp_waybill_create($data)
             ship_to_address = '" . escape($header['ship_to_address']) . "',
             ship_to_district = '" . escape($header['ship_to_district']) . "',
             ship_to_city = '" . escape($header['ship_to_city']) . "',
+            " . (waf_table_has_column('erp_waybills', 'ship_to_state') ? "ship_to_state = '" . escape($header['ship_to_state']) . "'," : '') . "
             ship_to_country = '" . escape($header['ship_to_country']) . "',
             status = 'issued',
             notes = '" . escape($header['notes']) . "',
@@ -506,7 +522,7 @@ function erp_waybill_write_back($waybill_id)
             }
             if ((trim((string) $invoice['carrier_title']) === '') && (trim((string) $waybill['carrier_title']) !== '')) {
                 $sets[] = "carrier_title = '" . escape(mb_substr((string) $waybill['carrier_title'], 0, 255)) . "'";
-                $sets[] = "carrier_vkn = '" . escape(substr((string) $waybill['carrier_vkn'], 0, 11)) . "'";
+                $sets[] = "carrier_vkn = '" . escape(mb_substr((string) $waybill['carrier_vkn'], 0, 32)) . "'";
                 $written['invoice_carrier'] = (string) $waybill['carrier_title'];
             }
 
@@ -607,6 +623,7 @@ function erp_waybill_data_from_invoice($invoice_id, $created_by = 0)
         'ship_to_address' => is_array($account) ? (string) $account['address'] : '',
         'ship_to_district' => is_array($account) ? (string) $account['district'] : '',
         'ship_to_city' => is_array($account) ? (string) $account['city'] : '',
+        'ship_to_state' => is_array($account) ? (string) ($account['state'] ?? '') : '',
         'ship_to_country' => is_array($account) ? (string) $account['country_code'] : '',
         'notes' => '',
         'lines' => $lines,
@@ -663,7 +680,7 @@ function erp_waybill_data_from_order($order_id, $created_by = 0)
 
     $account_id = (int) ($order['erp_account_id'] ?? 0);
     if ($account_id <= 0) {
-        $account_id = erp_account_for_contact((int) $order['contact_id'], (int) $created_by);
+        $account_id = erp_account_for_contact((int) $order['contact_id'], (int) $created_by, $order);
     }
     if ($account_id <= 0) {
         return $fail(((int) $order['contact_id'] > 0)
@@ -684,7 +701,7 @@ function erp_waybill_data_from_order($order_id, $created_by = 0)
     // The first recipient. An order with several recipients is one shipment
     // to one address in the eyes of this note; the others are typed by hand.
     $recipient = db_item("SELECT * FROM ship_tos WHERE order_id = '" . $order_id . "' ORDER BY id ASC LIMIT 1");
-    $ship_to = array('title' => '', 'address' => '', 'district' => '', 'city' => '', 'country' => '');
+    $ship_to = array('title' => '', 'address' => '', 'district' => '', 'city' => '', 'state' => '', 'country' => '');
 
     if (is_array($recipient)) {
         $who = trim((string) ($recipient['company'] ?? ''));
@@ -697,14 +714,17 @@ function erp_waybill_data_from_order($order_id, $created_by = 0)
         $address = trim(trim((string) ($recipient['address_1'] ?? '')) . ' ' . trim((string) ($recipient['address_2'] ?? '')));
         $zip = trim((string) ($recipient['zip_code'] ?? ''));
 
-        // Checkout keeps the province in state and the district in city, the
-        // way the account card is filled from a contact.
+        // The checkout's city and state are read by the recipient's
+        // country, the way the account card is filled from a contact.
+        $country = trim((string) ($recipient['country'] ?? ''));
+        $place = erp_address_from_checkout((string) ($recipient['city'] ?? ''), (string) ($recipient['state'] ?? ''), $country);
         $ship_to = array(
             'title' => $who,
             'address' => trim($address . (($zip !== '') ? ' ' . $zip : '')),
-            'district' => trim((string) ($recipient['city'] ?? '')),
-            'city' => trim((string) ($recipient['state'] ?? '')),
-            'country' => trim((string) ($recipient['country'] ?? '')),
+            'district' => $place['district'],
+            'city' => $place['city'],
+            'state' => $place['state'],
+            'country' => $country,
         );
     }
 
@@ -721,6 +741,7 @@ function erp_waybill_data_from_order($order_id, $created_by = 0)
                 $ship_to['address'] = (string) $account['address'];
                 $ship_to['district'] = (string) $account['district'];
                 $ship_to['city'] = (string) $account['city'];
+                $ship_to['state'] = (string) ($account['state'] ?? '');
                 $ship_to['country'] = (string) $account['country_code'];
             }
         }
@@ -745,6 +766,7 @@ function erp_waybill_data_from_order($order_id, $created_by = 0)
         'ship_to_address' => $ship_to['address'],
         'ship_to_district' => $ship_to['district'],
         'ship_to_city' => $ship_to['city'],
+        'ship_to_state' => $ship_to['state'],
         'ship_to_country' => $ship_to['country'],
         'notes' => '',
         'lines' => $lines,
@@ -910,7 +932,10 @@ function erp_waybill_document_labels()
         'order_no' => lang('Order No'),
         'order' => lang('Order'),
         'invoice_no' => lang('Invoice No'),
-        'tax_id' => lang('VKN / TCKN'),
+        // The seller's number is named by the store's country, the
+        // customer's by theirs (set per note).
+        'tax_id' => erp_tax_id_label(),
+        'account_tax_id' => erp_tax_id_label(),
         'tax_office' => lang('Tax Office'),
         'bill_to' => lang('Customer'),
         'ship_to' => lang('Delivered to'),
@@ -919,7 +944,7 @@ function erp_waybill_document_labels()
         'unit' => lang('Unit'),
         'no_lines' => lang('No lines'),
         'carrier' => lang('Carrier'),
-        'carrier_tax_id' => lang('Carrier VKN'),
+        'carrier_tax_id' => (erp_account_country('') === 'TR') ? lang('Carrier VKN') : lang('Carrier tax number'),
         'plate' => lang('Plate'),
         'driver' => lang('Driver'),
         'driver_id' => lang('Driver ID No'),
@@ -967,6 +992,7 @@ function erp_waybill_document_data($waybill_id)
         'logo_url' => $logo['url'],
         'logo_data_uri' => $logo['data_uri'],
     );
+    $seller['locality'] = erp_seller_locality($seller);
 
     $account_row = erp_account((int) $waybill['account_id']);
     $account = array(
@@ -976,9 +1002,11 @@ function erp_waybill_document_data($waybill_id)
         'address' => is_array($account_row) ? (string) $account_row['address'] : '',
         'district' => is_array($account_row) ? (string) $account_row['district'] : '',
         'city' => is_array($account_row) ? (string) $account_row['city'] : '',
+        'state' => is_array($account_row) ? (string) ($account_row['state'] ?? '') : '',
         'country' => is_array($account_row) ? (string) $account_row['country_code'] : '',
         'postcode' => is_array($account_row) ? (string) $account_row['postcode'] : '',
     );
+    $account['locality'] = erp_address_locality($account, $account['country']);
 
     $order_number = '';
     if ((int) $waybill['order_id'] > 0) {
@@ -1014,8 +1042,10 @@ function erp_waybill_document_data($waybill_id)
         'address' => (string) $waybill['ship_to_address'],
         'district' => (string) $waybill['ship_to_district'],
         'city' => (string) $waybill['ship_to_city'],
+        'state' => (string) ($waybill['ship_to_state'] ?? ''),
         'country' => (string) $waybill['ship_to_country'],
     );
+    $ship_to['locality'] = erp_address_locality($ship_to, $ship_to['country']);
 
     $lines = array();
 
@@ -1023,7 +1053,7 @@ function erp_waybill_document_data($waybill_id)
         $lines[] = array(
             'no' => (int) $row['line_no'],
             'description' => (string) $row['description'],
-            'quantity' => rtrim(rtrim(number_format((float) $row['quantity'], 4, '.', ''), '0'), '.'),
+            'quantity' => erp_quantity_text($row['quantity']),
             'unit' => erp_waybill_unit_label($row['unit_code']),
         );
     }
@@ -1034,8 +1064,9 @@ function erp_waybill_document_data($waybill_id)
         'waybill' => $document,
         'ship_to' => $ship_to,
         'lines' => $lines,
-        'label' => erp_waybill_document_labels(),
+        'label' => array_merge(erp_waybill_document_labels(), array('account_tax_id' => erp_tax_id_label((string) ($account['country'] ?? '')))),
         'language' => defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : 'en',
+        'paper' => erp_paper_size(),
         'generated_at' => (string) prepare_form_data_for_output(date('Y-m-d H:i:s'), 'date and time', false),
     );
 }

@@ -127,7 +127,7 @@ if (!$_POST) {
             if ($number_of_contacts > 0) {
                 $output_contact_group_rows .=
                     '<tr>
-                        <td>' . h($name) . ' (' . number_format($number_of_contacts) . ')</td>
+                        <td>' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</td>
                         <td style="text-align: center"><div class="form-check  form-check-inline"><input class="form-check-input" type="radio" name="contact_group_' . $id . '" value="ignored" class="radio" checked="checked" /></div></td>
                         <td style="text-align: center"><div class="form-check  form-check-inline"><input class="form-check-input" type="radio" name="contact_group_' . $id . '" value="included" class="radio" /></div></td>
                         <td style="text-align: center"><div class="form-check  form-check-inline"><input class="form-check-input" type="radio" name="contact_group_' . $id . '" value="excluded" class="radio" /></div></td>

@@ -64,8 +64,8 @@ function erp_import_page($liveform, $body, $list_url)
 {
     return pg_page_shell([
         'title' => lang('Import Accounts from CSV'),
-        'extra_classes' => 'erp erp_accounts',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_accounts',
+        'icon' => 'erp',
         'heading' => lang('Import Accounts from CSV'),
         'heading_description' => lang('Upload a list of customers and suppliers. Matching accounts can be updated or left alone; nothing is written until the last step.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
@@ -198,7 +198,7 @@ function erp_import_step_upload($liveform, $kind_options)
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-upload me-2"></span><span class="btn-text">' . lang(array('string' => 'Continue')) . '</span></button>
+                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Continue')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -373,7 +373,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                     <div class="card-body">
                         <div class="mb-3 small">' . $output_summary . '</div>
                         <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0">
+                            <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th class="text-end">' . lang('Row') . '</th>
@@ -392,8 +392,8 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-arrow-repeat me-2"></span><span class="btn-text">' . lang(array('string' => 'Re-check')) . '</span></button>
-                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . ' data-loading-content="' . lang(array('string' => 'Importing')) . '"><span class="bi bi-check2-circle me-2"></span><span class="btn-text">' . lang(array('string' => 'Start import')) . '</span></button>
+                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Re-check')) . '</span></button>
+                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . ' data-loading-content="' . lang(array('string' => 'Importing')) . '"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Start import')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -442,7 +442,7 @@ function erp_import_step_result($outcome, $list_url)
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0">
+                            <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th class="text-end">' . lang('Row') . '</th>
@@ -470,8 +470,8 @@ function erp_import_step_result($outcome, $list_url)
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <a href="' . h($list_url) . '" class="btn my-1 btn-primary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-people me-2"></span>' . lang('Accounts') . '</a>
-                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><span class="bi bi-upload me-2"></span>' . lang('Import another file') . '</a>
+                            <a href="' . h($list_url) . '" class="btn my-1 btn-primary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-people me-2" aria-hidden="true"></i>' . lang('Accounts') . '</a>
+                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline-secondary" data-loading-content="' . lang(array('string' => 'Loading')) . '"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Import another file') . '</a>
                         </div>
                     </div>
                 </nav>';

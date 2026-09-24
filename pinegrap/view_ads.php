@@ -103,7 +103,7 @@ foreach ($ad_regions as $ad_region) {
     $row = mysqli_fetch_row($result);
     $number_of_ads = $row[0];
     
-    $output_ad_region_options .= '<option value="' . $ad_region['id'] . '"' . $selected . '>' . h($ad_region['name']) . ' (' . number_format($number_of_ads) . ')</option>';
+    $output_ad_region_options .= '<option value="' . $ad_region['id'] . '"' . $selected . '>' . h($ad_region['name']) . ' (' . pg_format_number($number_of_ads, 0) . ')</option>';
 }
 
 // if the user clicked on the clear button, then clear the search
@@ -278,7 +278,7 @@ if ($ads) {
             
             // if the sort order is not equal to 0, then set value
             if ($ad['sort_order'] != 0) {
-                $output_sort_order = number_format($ad['sort_order']);
+                $output_sort_order = pg_format_number($ad['sort_order'], 0);
             }
         }
         
@@ -327,7 +327,7 @@ print
                             <form id="search_form" action="view_ads.php" method="get" class="search_form col-auto">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="ad_region_id" name="ad_region_id" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')"><option value="[All]">[' . lang('All') . '] (' . number_format($all_ads) . ')</option>' . $output_ad_region_options . '</select>
+                                    <select id="ad_region_id" name="ad_region_id" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
                                 </div>
                             </form>
                         </div>

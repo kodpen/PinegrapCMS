@@ -37,18 +37,33 @@ if (!$_POST) {
     $query = "SELECT address_type FROM update_address_book_pages WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $address_type = $row['address_type'];
+    $address_type = is_array($row) ? $row['address_type'] : 0;
 
     $liveform = new liveform('update_address_book');
 
     $liveform->add_fields_to_session();
 
+    // A designed page (the address_book widget) names itself in return_to
+    // and lists the controls it drew in pg_controls: only those are required
+    // and written. Its own switch says whether the address type is asked.
+    $pg_return_to = pg_sw_return_to();
+    $pg_controls  = pg_sw_posted_controls();
+    if ($pg_return_to !== '') {
+        $pg_widget_cfg = pg_sw_widget_cfg((int) ($_POST['pg_widget_id'] ?? 0), 'address_book');
+        $address_type  = (is_array($pg_widget_cfg) && !empty($pg_widget_cfg['address_type'])) ? 1 : 0;
+    }
+
     $liveform->validate_required_field('ship_to_name', lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Ship to Name')))));
-    $liveform->validate_required_field('first_name', lang('First Name is required.'));
-    $liveform->validate_required_field('last_name', lang('Last Name is required.'));
-    $liveform->validate_required_field('address_1', lang('Address 1 is required.'));
-    $liveform->validate_required_field('city', lang('City is required.'));
-    $liveform->validate_required_field('country', lang('Country is required.'));
+    foreach (array(
+        'first_name' => lang('First Name is required.'),
+        'last_name'  => lang('Last Name is required.'),
+        'address_1'  => lang('Address 1 is required.'),
+        'city'       => lang('City is required.'),
+        'country'    => lang('Country is required.')) as $pg_field => $pg_message) {
+        if (pg_sw_posted_control($pg_controls, $pg_field)) {
+            $liveform->validate_required_field($pg_field, $pg_message);
+        }
+    }
 
     // If a country has been selected and then determine if state and zip code are required.
     if ($liveform->get('country')) {
@@ -60,7 +75,9 @@ if (!$_POST) {
             WHERE countries.code = '" . e($liveform->get('country')) . "'
             LIMIT 1")
         ) {
-            $liveform->validate_required_field('state', lang('State/Province is required.'));
+            if (pg_sw_posted_control($pg_controls, 'state')) {
+                $liveform->validate_required_field('state', lang('State/Province is required.'));
+            }
         }
 
         // If this country requires a zip code, then require it.
@@ -69,7 +86,9 @@ if (!$_POST) {
                 "SELECT zip_code_required FROM countries
                 WHERE code = '" . e($liveform->get('country')) . "'")
         ) {
-            $liveform->validate_required_field('zip_code', lang('Zip/Postal Code is required.'));
+            if (pg_sw_posted_control($pg_controls, 'zip_code')) {
+                $liveform->validate_required_field('zip_code', lang('Zip/Postal Code is required.'));
+            }
         }
     }
     
@@ -105,6 +124,9 @@ if (!$_POST) {
     } else {
         $update_address_book_path = PATH . SOFTWARE_DIRECTORY . '/update_address_book.php';
     }
+    if ($pg_return_to !== '') {
+        $update_address_book_path = strtok($pg_return_to, '?');
+    }
 
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
@@ -117,20 +139,19 @@ if (!$_POST) {
                 $sql_address_type = "address_type = '" . escape($liveform->get_field_value('address_type')) . "',";
             }
             
+            // Every column for the legacy screen; for a widget, the ones it drew.
+            $sql_address_book_set = '';
+            foreach (array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2',
+                'city', 'state', 'zip_code', 'country', 'phone_number') as $pg_column) {
+                if (pg_sw_posted_control($pg_controls, $pg_column)) {
+                    $sql_address_book_set .= $pg_column . " = '" . escape($liveform->get_field_value($pg_column)) . "',\n";
+                }
+            }
+
             $query = "UPDATE address_book SET
-                        ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "',
-                        salutation = '" . escape($liveform->get_field_value('salutation')) . "',
-                        first_name = '" . escape($liveform->get_field_value('first_name')) . "',
-                        last_name = '" . escape($liveform->get_field_value('last_name')) . "',
-                        company = '" . escape($liveform->get_field_value('company')) . "',
-                        address_1 = '" . escape($liveform->get_field_value('address_1')) . "',
-                        address_2 = '" . escape($liveform->get_field_value('address_2')) . "',
-                        city = '" . escape($liveform->get_field_value('city')) . "',
-                        state = '" . escape($liveform->get_field_value('state')) . "',
-                        zip_code = '" . escape($liveform->get_field_value('zip_code')) . "',
-                        country = '" . escape($liveform->get_field_value('country')) . "',
+                        $sql_address_book_set
                         $sql_address_type
-                        phone_number = '" . escape($liveform->get_field_value('phone_number')) . "'
+                        ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "'
                      WHERE id = '" . (int) $_POST['id'] . "' AND user = '$user_id'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -174,6 +195,15 @@ if (!$_POST) {
 
         // remove liveform because software does not need it anymore
         $liveform->remove_form('update_address_book');
+
+        // The widget lists the recipients itself, so it comes back to itself
+        // (or goes where it was told) with a word that the save went through.
+        if ($pg_return_to !== '') {
+            $pg_done = new liveform('update_address_book');
+            $pg_done->add_notice(lang('The address book has been updated.'));
+            $pg_send_to = pg_safe_redirect_path((string) ($_POST['send_to'] ?? ''), '/__none__');
+            go(($pg_send_to !== '/__none__') ? $pg_send_to : $pg_return_to);
+        }
 
         go(get_page_type_url('my account'));
 

@@ -78,6 +78,12 @@ $user_manage_emails = $row['user_manage_emails'];
 $user_manage_ecommerce = $row['user_manage_ecommerce'];
 $manage_ecommerce_reports = $row['manage_ecommerce_reports'];
 $manage_erp = $row['manage_erp'] ?? 0;
+
+// Read on its own: the column may not exist yet, and naming it in the query
+// above would fail the whole screen on a site whose upgrade has not run.
+$manage_workspace = (pg_user_has_ws_columns())
+    ? (int) db_value("SELECT manage_workspace FROM user WHERE user_id = '" . (int) ($_POST['user_id'] ?? 0) . "'")
+    : 0;
 $user_manage_forms = $row['user_manage_forms'];
 $user_manage_calendars = $row['user_manage_calendars'];
 $user_manage_visitors = $row['user_manage_visitors'];
@@ -127,6 +133,7 @@ if (
     || ($user_manage_ecommerce == 'yes')
     || $manage_ecommerce_reports
     || $manage_erp
+    || $manage_workspace
     || (count(get_items_user_can_edit('ad_regions', $_POST['user_id'])) > 0)
 ) {
     $login = 

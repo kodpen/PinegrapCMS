@@ -73,6 +73,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                  chat_allow_images = '" . escape(post_value('chat_allow_images') ? 1 : 0) . "',";
         }
 
+        // Voice messages and audio files arrive with 2026.4.4; its own guard
+        // so an installation between the two upgrades still saves the rest.
+        if (waf_table_has_column('config', 'chat_allow_audio')) {
+            $sql_chat_settings .=
+                "chat_allow_audio = '" . escape(post_value('chat_allow_audio') ? 1 : 0) . "',";
+        }
+
         // The visitor image limit arrives with 2026.4.2; clamped to 1-20.
         if (waf_table_has_column('config', 'chat_visitor_image_limit')) {
             $chat_post_image_limit = max(1, min(20, (int) post_value('chat_visitor_image_limit')));

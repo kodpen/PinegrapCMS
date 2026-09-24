@@ -80,6 +80,252 @@ function erp_default_country_code()
 }
 
 /**
+ * The country an account's rules are read by: its own, or the store's when
+ * it has none. The ERP is used in many countries; a rule of one country's
+ * tax authority (a VKN's check digits, a five-digit postcode, a person's
+ * name in two parts for GİB) applies only to accounts of that country.
+ *
+ * @param string $country_code
+ * @return string  Two letters, or '' when neither the account nor the store names one
+ */
+function erp_account_country($country_code = '')
+{
+    $code = strtoupper(trim((string) $country_code));
+
+    return preg_match('/^[A-Z]{2}$/', $code) ? $code : erp_default_country_code();
+}
+
+/**
+ * A country's name from the store's country list, or the code when the list
+ * does not know it.
+ *
+ * @param string $code
+ * @return string
+ */
+function erp_country_name($code)
+{
+    static $names = array();
+
+    $code = strtoupper(trim((string) $code));
+
+    if ($code === '') {
+        return '';
+    }
+
+    if (!isset($names[$code])) {
+        $name = (string) db_value("SELECT name FROM countries WHERE code = '" . escape($code) . "' LIMIT 1");
+        $names[$code] = ($name !== '') ? $name : $code;
+    }
+
+    return $names[$code];
+}
+
+/**
+ * A state or province as the code the store's tax zones use (states.code),
+ * found by its code or its name; '' when the country has no such state.
+ *
+ * @param string $state
+ * @param string $country_code
+ * @return string
+ */
+function erp_state_code($state, $country_code)
+{
+    $state = trim((string) $state);
+    $country = strtoupper(trim((string) $country_code));
+
+    if (($state === '') || ($country === '')) {
+        return '';
+    }
+
+    $code = (string) db_value("SELECT s.code FROM states s
+        INNER JOIN countries c ON c.id = s.country_id
+        WHERE c.code = '" . escape($country) . "' AND (s.code = '" . escape($state) . "' OR s.name = '" . escape($state) . "')
+        LIMIT 1");
+
+    return $code;
+}
+
+/**
+ * How a checkout address lands on the account card. The checkout has a city
+ * and a state (province) field. In Turkey the province is what the card and
+ * GİB call the city (il) and the checkout's city field holds the district
+ * (ilçe); elsewhere the city is the city and the state the state.
+ *
+ * @param string $city   The checkout's city field
+ * @param string $state  The checkout's state field
+ * @param string $country_code
+ * @return array ['city' => string, 'district' => string, 'state' => string]
+ */
+function erp_address_from_checkout($city, $state, $country_code)
+{
+    $city = trim((string) $city);
+    $state = trim((string) $state);
+
+    if (erp_account_country($country_code) === 'TR') {
+        return array('city' => $state, 'district' => $city, 'state' => '');
+    }
+
+    return array('city' => $city, 'district' => '', 'state' => $state);
+}
+
+/**
+ * The place line of an address, written the way its country writes it:
+ * "34710 Kadıköy İstanbul" in Turkey, "Austin, TX 78701" in North America
+ * and Australia, "London SW1A 1AA" in Britain, "10115 Berlin" in most of
+ * Europe. The country's name follows when it is not the store's own.
+ *
+ * @param array  $parts  postcode, district, city, state
+ * @param string $country_code
+ * @param bool   $with_country
+ * @return string
+ */
+function erp_address_locality($parts, $country_code, $with_country = true)
+{
+    $country = erp_account_country($country_code);
+    $postcode = trim((string) ($parts['postcode'] ?? ''));
+    $district = trim((string) ($parts['district'] ?? ''));
+    $city = trim((string) ($parts['city'] ?? ''));
+    $state = trim((string) ($parts['state'] ?? ''));
+    $join = function ($items, $glue = ' ') {
+        return implode($glue, array_filter(array_map('trim', $items), 'strlen'));
+    };
+
+    switch ($country) {
+        case 'TR':
+            $line = $join(array($postcode, $district, $city, $state));
+            break;
+
+        case 'US':
+        case 'CA':
+        case 'AU':
+            $line = $join(array($join(array($district, $city), ', '), $join(array($state, $postcode))), ', ');
+            break;
+
+        case 'GB':
+        case 'IE':
+            $line = $join(array($district, $city, $state, $postcode));
+            break;
+
+        default:
+            $line = $join(array($district, $join(array($postcode, $city)), $state), ', ');
+    }
+
+    if ($with_country && ($country !== '') && ($country !== erp_default_country_code())) {
+        $line = $join(array($line, erp_country_name($country)), ', ');
+    }
+
+    return $line;
+}
+
+/**
+ * The seller's place line on a document, from the organization's address in
+ * the site settings. The settings hold the country as free text, so it is
+ * printed as typed, after the place in the store country's own order.
+ *
+ * @param array $seller  zip_code, city, state, country
+ * @return string
+ */
+function erp_seller_locality($seller)
+{
+    $store = erp_account_country('');
+    $line = erp_address_locality(array(
+        'postcode' => (string) ($seller['zip_code'] ?? ''),
+        'city' => (string) ($seller['city'] ?? ''),
+        'state' => (string) ($seller['state'] ?? ''),
+    ), $store, false);
+    $country = trim((string) ($seller['country'] ?? ''));
+
+    if ($country === '') {
+        return $line;
+    }
+
+    if ($line === '') {
+        return $country;
+    }
+
+    return $line . (($store === 'TR') ? ' ' : ', ') . $country;
+}
+
+/**
+ * How long a tax number the account card holds (erp_accounts.tax_number),
+ * read from the table so that the width the schema has is the width every
+ * check uses.
+ *
+ * @return int
+ */
+function erp_tax_number_width()
+{
+    static $width = null;
+
+    if ($width === null) {
+        $width = (int) db_value("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'erp_accounts' AND COLUMN_NAME = 'tax_number' LIMIT 1");
+        $width = ($width > 0) ? $width : 11;
+    }
+
+    return $width;
+}
+
+/**
+ * A tax number checked by the rules of its country, and the form it is kept
+ * in. One check for every door an account comes through (the form, the
+ * counter, the CSV import, the API), so they cannot disagree.
+ *
+ * Turkey: a VKN (10 digits) or TCKN (11) whose check digits hold, kept as
+ * digits. Elsewhere the formats are too many to check (EIN, VAT id, ABN,
+ * GSTIN, ...): letters, digits and the usual separators, kept as typed, as
+ * long as the card can hold it.
+ *
+ * @param string $number
+ * @param string $country_code  The account's country; the store's when empty
+ * @return array ['value' => string, 'error' => string]
+ */
+function erp_tax_number_check($number, $country_code = '')
+{
+    $typed = trim((string) $number);
+
+    if ($typed === '') {
+        return array('value' => '', 'error' => '');
+    }
+
+    if (erp_account_country($country_code) === 'TR') {
+        $digits = preg_replace('/\D/', '', $typed);
+
+        if (preg_match('/[^0-9\s.\-]/', $typed) || ((strlen($digits) !== 10) && (strlen($digits) !== 11))) {
+            return array('value' => $digits, 'error' => lang('A VKN has 10 digits and a TCKN 11.'));
+        }
+
+        if (function_exists('erp_edoc_tax_number_valid') && !erp_edoc_tax_number_valid($digits)) {
+            return array('value' => $digits, 'error' => lang('The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.'));
+        }
+
+        return array('value' => $digits, 'error' => '');
+    }
+
+    if (!preg_match('/^[\p{L}\p{N}][\p{L}\p{N} .\/-]*$/u', $typed)) {
+        return array('value' => $typed, 'error' => lang('A tax number holds letters, digits, spaces, dots, dashes and slashes.'));
+    }
+
+    if (mb_strlen($typed) > erp_tax_number_width()) {
+        return array('value' => $typed, 'error' => lang(array('string' => 'Longer than the account card holds ({var:1} characters).', 'vars' => erp_tax_number_width())));
+    }
+
+    return array('value' => $typed, 'error' => '');
+}
+
+/**
+ * What a tax number is called on screen: VKN / TCKN in Turkey, "tax
+ * number" elsewhere, where neither word means anything.
+ *
+ * @param string $country_code  The record's country; the store's when empty
+ * @return string
+ */
+function erp_tax_id_label($country_code = '')
+{
+    return (erp_account_country($country_code) === 'TR') ? lang('VKN / TCKN') : lang('Tax number');
+}
+
+/**
  * Create or update an account.
  *
  * @param array $data  id (0 to create), title, kind, is_person, tax_number, ...
@@ -105,7 +351,6 @@ function erp_account_save($data)
         'address' => trim((string) ($data['address'] ?? '')),
         'district' => trim((string) ($data['district'] ?? '')),
         'city' => trim((string) ($data['city'] ?? '')),
-        'country_code' => strtoupper(trim((string) ($data['country_code'] ?? erp_default_country_code()))),
         'postcode' => trim((string) ($data['postcode'] ?? '')),
         'currency' => strtoupper(trim((string) ($data['currency'] ?? erp_base_currency()))),
         'status' => (($data['status'] ?? 'active') === 'passive') ? 'passive' : 'active',
@@ -114,6 +359,20 @@ function erp_account_save($data)
         // store's default term.
         'payment_days' => min(3650, max(0, (int) ($data['payment_days'] ?? 0))),
     );
+
+    // A state or province, for addresses that have one; written only when
+    // the caller names it and once the upgrade has added it.
+    if (array_key_exists('state', $data) && function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'state')) {
+        $columns['state'] = mb_substr(trim((string) $data['state']), 0, 100);
+    }
+
+    // The country. A new account takes the store's when none is given; an
+    // update writes it only when the caller names it, so a form without a
+    // country field does not move every foreign account to the store's
+    // country on save.
+    if (array_key_exists('country_code', $data) || ($id <= 0)) {
+        $columns['country_code'] = strtoupper(trim((string) ($data['country_code'] ?? erp_default_country_code())));
+    }
 
     // The contact behind the account. Written only when the caller names it:
     // a save that does not mention the contact keeps the link, rather than
@@ -134,6 +393,25 @@ function erp_account_save($data)
     if (array_key_exists('overdue_notify_customer', $data)
         && function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'overdue_notify_customer')) {
         $columns['overdue_notify_customer'] = !empty($data['overdue_notify_customer']) ? 1 : 0;
+    }
+
+    // Where invoices are e-mailed and whether they go on their own (4.97);
+    // left out of $data, the account keeps what it has.
+    if (function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'invoice_email')) {
+        if (array_key_exists('invoice_email', $data)) {
+            $invoice_email = trim((string) $data['invoice_email']);
+            $columns['invoice_email'] = (($invoice_email !== '') && filter_var($invoice_email, FILTER_VALIDATE_EMAIL)) ? mb_substr($invoice_email, 0, 255) : '';
+        }
+
+        if (array_key_exists('invoice_mail', $data)) {
+            $columns['invoice_mail'] = !empty($data['invoice_mail']) ? 1 : 0;
+        }
+    }
+
+    // The most the account may owe, base-currency kurus, 0 for none (4.98).
+    if (array_key_exists('credit_limit', $data)
+        && function_exists('waf_table_has_column') && waf_table_has_column('erp_accounts', 'credit_limit')) {
+        $columns['credit_limit'] = max(0, (int) $data['credit_limit']);
     }
 
     $pairs = array();
@@ -280,11 +558,13 @@ function erp_account_open($data)
  * contact and needs the account; a statement starts from the account and needs
  * the person.
  *
- * @param int $contact_id
- * @param int $created_by
+ * @param int        $contact_id
+ * @param int        $created_by
+ * @param array|null $order  The order being billed, whose billing block fills
+ *                           what a bare card leaves empty on a new account
  * @return int  Account id, 0 when the contact does not exist
  */
-function erp_account_for_contact($contact_id, $created_by = 0)
+function erp_account_for_contact($contact_id, $created_by = 0, $order = null)
 {
     $contact_id = (int) $contact_id;
 
@@ -304,6 +584,10 @@ function erp_account_for_contact($contact_id, $created_by = 0)
         return 0;
     }
 
+    if (is_array($order)) {
+        $data = erp_account_data_with_order($data, $order, $contact_id);
+    }
+
     $data['created_by'] = $created_by;
     $result = erp_account_save($data);
 
@@ -317,13 +601,67 @@ function erp_account_for_contact($contact_id, $created_by = 0)
 }
 
 /**
+ * A new account's fields with the gaps the contact card leaves filled from
+ * the order's billing block.
+ *
+ * The checkout normally writes what it asked for onto the card. A customer
+ * who chose not to update it, or an order placed against a bare card, would
+ * otherwise open an account called "#<contact>" with no address, and the
+ * invoice would go out made out to nobody. Only empty fields are filled: a
+ * card that names someone keeps its name.
+ *
+ * @param array $data        erp_account_data_from_contact() output
+ * @param array $order       The orders row
+ * @param int   $contact_id
+ * @return array
+ */
+function erp_account_data_with_order($data, $order, $contact_id)
+{
+    $company = trim((string) ($order['billing_company'] ?? ''));
+    $person = trim(trim((string) ($order['billing_first_name'] ?? '')) . ' ' . trim((string) ($order['billing_last_name'] ?? '')));
+
+    if (((string) $data['title'] === ('#' . (int) $contact_id)) && (($company !== '') || ($person !== ''))) {
+        $data['title'] = ($company !== '') ? $company : $person;
+        $data['is_person'] = ($company === '');
+    }
+
+    $street = trim(trim((string) ($order['billing_address_1'] ?? '')) . ' ' . trim((string) ($order['billing_address_2'] ?? '')));
+
+    // The address moves as a whole: a street from the order under the card's
+    // city would be an address nobody lives at.
+    if ((trim((string) $data['address']) === '') && ($street !== '')) {
+        $country_code = (trim((string) ($order['billing_country'] ?? '')) !== '')
+            ? strtoupper(trim((string) $order['billing_country']))
+            : (string) $data['country_code'];
+        $place = erp_address_from_checkout((string) ($order['billing_city'] ?? ''), (string) ($order['billing_state'] ?? ''), $country_code);
+
+        $data['address'] = $street;
+        $data['city'] = $place['city'];
+        $data['district'] = $place['district'];
+        $data['state'] = $place['state'];
+        $data['postcode'] = trim((string) ($order['billing_zip_code'] ?? ''));
+        $data['country_code'] = $country_code;
+    }
+
+    if (trim((string) $data['email']) === '') {
+        $data['email'] = trim((string) ($order['billing_email_address'] ?? ''));
+    }
+
+    if (trim((string) $data['phone']) === '') {
+        $data['phone'] = trim((string) ($order['billing_phone_number'] ?? ''));
+    }
+
+    return $data;
+}
+
+/**
  * What a contact's card says, as the fields of a new account.
  *
  * The same reading whether the account is opened by the order bridge or by an
  * operator who asked for the form filled in: the company name when there is
  * one, because that is who the invoice is made out to, the person's name
- * otherwise; the checkout keeps the province in business_state and the
- * district in business_city.
+ * otherwise. The checkout's city and state fields are read by the contact's
+ * country (erp_address_from_checkout()).
  *
  * @param int $contact_id
  * @return array|null  Fields for erp_account_save(), or null when the contact does not exist
@@ -343,6 +681,8 @@ function erp_account_data_from_contact($contact_id)
 
     $company = trim((string) $contact['company']);
     $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
+    $country_code = (trim((string) $contact['business_country']) !== '') ? strtoupper(trim((string) $contact['business_country'])) : erp_default_country_code();
+    $place = erp_address_from_checkout((string) $contact['business_city'], (string) $contact['business_state'], $country_code);
 
     return array(
         'kind' => 'customer',
@@ -353,10 +693,11 @@ function erp_account_data_from_contact($contact_id)
         'email' => (string) $contact['email_address'],
         'phone' => (trim((string) $contact['business_phone']) !== '') ? (string) $contact['business_phone'] : (string) $contact['mobile_phone'],
         'address' => (string) $contact['business_address_1'],
-        'city' => (string) $contact['business_state'],
-        'district' => (string) $contact['business_city'],
+        'city' => $place['city'],
+        'district' => $place['district'],
+        'state' => $place['state'],
         'postcode' => (string) $contact['business_zip_code'],
-        'country_code' => (trim((string) $contact['business_country']) !== '') ? (string) $contact['business_country'] : erp_default_country_code(),
+        'country_code' => $country_code,
         'contact_id' => $contact_id,
     );
 }
@@ -378,7 +719,7 @@ function erp_contact_summary($contact_id)
     }
 
     $contact = db_item("SELECT id, first_name, last_name, company, email_address, business_phone, mobile_phone,
-            business_city, business_state, erp_account_id
+            business_city, business_state, business_country, erp_account_id, image
         FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
 
     if (!is_array($contact)) {
@@ -387,6 +728,7 @@ function erp_contact_summary($contact_id)
 
     $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
     $company = trim((string) $contact['company']);
+    $place = erp_address_from_checkout((string) $contact['business_city'], (string) $contact['business_state'], (string) $contact['business_country']);
 
     // The panel user this contact signs in as, when there is one.
     $user = db_item("SELECT user_id, user_username FROM user WHERE user_contact = '" . $contact_id . "' LIMIT 1");
@@ -402,12 +744,14 @@ function erp_contact_summary($contact_id)
         'company' => $company,
         'email' => trim((string) $contact['email_address']),
         'phone' => (trim((string) $contact['business_phone']) !== '') ? trim((string) $contact['business_phone']) : trim((string) $contact['mobile_phone']),
-        'district' => trim((string) $contact['business_city']),
-        'city' => trim((string) $contact['business_state']),
+        'district' => $place['district'],
+        'city' => $place['city'],
+        'state' => $place['state'],
         'user_id' => is_array($user) ? (int) $user['user_id'] : 0,
         'username' => is_array($user) ? (string) $user['user_username'] : '',
         'orders' => (int) db_value("SELECT COUNT(*) FROM orders WHERE contact_id = '" . $contact_id . "' AND status <> 'incomplete'"),
         'account_id' => $account_id,
+        'image' => trim((string) ($contact['image'] ?? '')),
     );
 }
 
@@ -433,7 +777,7 @@ function erp_contact_search($query, $limit = 15)
     $like = escape(escape_like(mb_substr($query, 0, 100)));
     $limit = max(1, min(50, (int) $limit));
 
-    $rows = (array) db_items("SELECT c.id, c.first_name, c.last_name, c.company, c.email_address, c.business_state,
+    $rows = (array) db_items("SELECT c.id, c.first_name, c.last_name, c.company, c.email_address, c.business_city, c.business_state, c.business_country,
             (SELECT a.id FROM erp_accounts a WHERE a.contact_id = c.id ORDER BY a.id ASC LIMIT 1) AS account_id
         FROM contacts c
         WHERE c.first_name LIKE '%" . $like . "%'
@@ -449,13 +793,14 @@ function erp_contact_search($query, $limit = 15)
     foreach ($rows as $row) {
         $person = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
         $company = trim((string) $row['company']);
+        $place = erp_address_from_checkout((string) $row['business_city'], (string) $row['business_state'], (string) $row['business_country']);
 
         $results[] = array(
             'id' => (int) $row['id'],
             'name' => ($person !== '') ? $person : (($company !== '') ? $company : ('#' . (int) $row['id'])),
             'company' => $company,
             'email' => trim((string) $row['email_address']),
-            'city' => trim((string) $row['business_state']),
+            'city' => $place['city'],
             'account_id' => (int) $row['account_id'],
         );
     }
@@ -553,8 +898,10 @@ function erp_accounts_sync_contacts($created_by = 0)
  * its tax office - and a document that reads the card live starts saying
  * something it never said. The copy is taken when the document is issued;
  * a draft copies it too, so the editor shows what will be printed, and copies
- * it again on issue. The postcode and district fold into the address line:
- * the document prints the address as one block.
+ * it again on issue. Address, district and postcode are kept apart (4.64):
+ * the templates print them on their own lines and the e-document providers
+ * ask for them as separate fields, so folding them into one line only had
+ * to be undone again by everyone who read it.
  *
  * Runs inside the caller's transaction and never opens one.
  *
@@ -570,18 +917,24 @@ function erp_invoice_snapshot_account($invoice_id, $account_id)
         return false;
     }
 
-    $locality = trim((string) ($account['postcode'] ?? '') . ' ' . (string) ($account['district'] ?? ''));
-    $address = trim((string) ($account['address'] ?? ''));
-    if ($locality !== '') {
-        $address = ($address !== '') ? ($address . ', ' . $locality) : $locality;
+    // The two 4.64 columns are written only where they exist: code lands on a
+    // site before its upgrade runs, and a snapshot that skips them is still a
+    // usable snapshot.
+    $locality = '';
+
+    if (waf_table_has_column('erp_invoices', 'account_district')) {
+        $locality = "
+            account_district = '" . escape(mb_substr((string) ($account['district'] ?? ''), 0, 100)) . "',
+            account_postcode = '" . escape(mb_substr((string) ($account['postcode'] ?? ''), 0, 20)) . "',";
     }
 
     return (erp_query("UPDATE erp_invoices SET
             account_title = '" . escape(mb_substr((string) $account['title'], 0, 255)) . "',
             account_tax_number = '" . escape(mb_substr((string) $account['tax_number'], 0, 32)) . "',
             account_tax_office = '" . escape(mb_substr((string) $account['tax_office'], 0, 100)) . "',
-            account_address = '" . escape(mb_substr($address, 0, 255)) . "',
+            account_address = '" . escape(mb_substr(trim((string) ($account['address'] ?? '')), 0, 255)) . "'," . $locality . "
             account_city = '" . escape(mb_substr((string) $account['city'], 0, 100)) . "',
+            " . (waf_table_has_column('erp_invoices', 'account_state') ? "account_state = '" . escape(mb_substr((string) ($account['state'] ?? ''), 0, 100)) . "'," : '') . "
             account_country_code = '" . escape(substr((string) $account['country_code'], 0, 2)) . "',
             account_email = '" . escape(mb_substr((string) $account['email'], 0, 255)) . "'
         WHERE id = '" . (int) $invoice_id . "'") !== false);

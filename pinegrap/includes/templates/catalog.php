@@ -22,7 +22,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="col-sm-9 col-sm-push-3">
 		<?=$edit_start // Add edit button and grid around product group in edit mode ?> <?=$full_description?> <?php if ($items): ?> <?php if ($mode == 'search'): ?> 
 		<p>
-			<strong><?=($number_of_items > 1) ? lang(array('string' => 'Found {var:1} items for: {var:2}', 'vars' => array(number_format($number_of_items), h($query)))) : lang(array('string' => 'Found {var:1} item for: {var:2}', 'vars' => array(number_format($number_of_items), h($query))))?></strong>
+			<strong><?=($number_of_items > 1) ? lang(array('string' => 'Found {var:1} items for: {var:2}', 'vars' => array(pg_format_number($number_of_items, 0), h($query)))) : lang(array('string' => 'Found {var:1} item for: {var:2}', 'vars' => array(pg_format_number($number_of_items, 0), h($query))))?></strong>
 		</p>
 		<?php endif ?> 
 		<div>

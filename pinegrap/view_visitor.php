@@ -338,7 +338,7 @@ pg_page_shell(
                             <div class="row">
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('Page Views') . '</div>
-                                    <h4>' . number_format($page_views) . '</h4>
+                                    <h4>' . pg_format_number($page_views, 0) . '</h4>
                                 </div>
                                 <div class="col-12 col-md-6 col-lg-4 my-2">
                                     <div class="form-text">' . lang('Custom Form Submitted') . '</div>

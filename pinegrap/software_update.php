@@ -208,7 +208,7 @@ if (function_exists('pg_write_permission_scan')) {
         }
 
         if ($permissions['directories_count'] > 12) {
-            $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => number_format($permissions['directories_count'] - 12)))) . '</li>';
+            $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
         }
 
         // The repair changes who may write into the software directory, so it
@@ -233,7 +233,7 @@ if (function_exists('pg_write_permission_scan')) {
             <div class="alert alert-danger">
                 <p class="form-text mb-2"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
                     'string' => 'The web server cannot write into {var:1} folder(s) of the software. The update cannot add or replace files there, so it does not start until they are opened:',
-                    'vars' => number_format($permissions['directories_count'])
+                    'vars' => pg_format_number($permissions['directories_count'], 0)
                 ))) . '</p>
                 <ul class="mb-2 small">' . $permissions_rows . '</ul>
                 ' . $permissions_action . '

@@ -77,6 +77,159 @@ function erp_kurus($value)
 }
 
 /**
+ * Whether the store's country writes a decimal comma (1,5) rather than a
+ * decimal point (1.5). Most of continental Europe, Turkey and South America
+ * use the comma; the English-speaking world, most of Asia and Mexico the
+ * point. The ERP prints its own figures with a point either way; this only
+ * settles how a typed figure with one comma is read.
+ *
+ * @return bool
+ */
+function erp_decimal_comma()
+{
+    static $comma = null;
+
+    if ($comma === null) {
+        $point = array('US', 'GB', 'IE', 'CA', 'AU', 'NZ', 'IN', 'PK', 'BD', 'LK', 'NP', 'CN', 'HK', 'MO', 'TW',
+            'JP', 'KR', 'SG', 'MY', 'PH', 'TH', 'MX', 'GT', 'HN', 'SV', 'NI', 'PA', 'DO', 'PR', 'IL', 'SA', 'AE',
+            'QA', 'KW', 'BH', 'OM', 'JO', 'EG', 'NG', 'KE', 'GH', 'UG', 'TZ', 'ZW', 'BW', 'MT', 'CH', 'LI');
+        $country = function_exists('erp_account_country') ? erp_account_country('') : '';
+        $comma = !in_array($country, $point, true);
+    }
+
+    return $comma;
+}
+
+/**
+ * The column separator of the CSV files the ERP writes: a semicolon where the
+ * comma is the decimal separator (the way a spreadsheet saved in Turkey or
+ * Germany writes CSV), a comma where it is not. Imports detect it by
+ * themselves, so either reads back.
+ *
+ * @return string
+ */
+function erp_csv_delimiter()
+{
+    return erp_decimal_comma() ? ';' : ',';
+}
+
+/**
+ * Read a quantity typed by an operator: a decimal with up to four places.
+ *
+ * Both separators are accepted. When both appear, the last is the decimal
+ * one and the others group thousands (1.234,5 and 1,234.5). A separator that
+ * appears more than once groups (1,000,000). A single point is a decimal
+ * point: it is what the ERP writes back into its own fields. A single comma
+ * with three digits behind it is the one case that reads two ways - 1,500 is
+ * one and a half in Istanbul and fifteen hundred in Chicago - and the store's
+ * country decides (erp_decimal_comma()).
+ *
+ * @param string|int|float $value
+ * @return float  Never negative
+ */
+function erp_quantity_in($value)
+{
+    $raw = preg_replace('/[^0-9.,]/', '', (string) $value);
+
+    if ($raw === '') {
+        return 0.0;
+    }
+
+    $dots = substr_count($raw, '.');
+    $commas = substr_count($raw, ',');
+    $decimal = '';
+
+    if (($dots > 0) && ($commas > 0)) {
+        $decimal = (strrpos($raw, '.') > strrpos($raw, ',')) ? '.' : ',';
+    } elseif ($dots === 1) {
+        $decimal = '.';
+    } elseif ($commas === 1) {
+        $behind = strlen($raw) - strrpos($raw, ',') - 1;
+        $decimal = (($behind === 3) && !erp_decimal_comma()) ? '' : ',';
+    }
+
+    if ($decimal === '') {
+        return (float) preg_replace('/[^0-9]/', '', $raw);
+    }
+
+    $position = strrpos($raw, $decimal);
+    $whole = preg_replace('/[^0-9]/', '', substr($raw, 0, $position));
+    $fraction = preg_replace('/[^0-9]/', '', substr($raw, $position + 1));
+
+    return (float) (($whole !== '' ? $whole : '0') . '.' . ($fraction !== '' ? $fraction : '0'));
+}
+
+/**
+ * A quantity for the screen, written like the ERP's amounts: a point for the
+ * decimals, commas between thousands, no trailing zeros (1,250.5).
+ *
+ * @param float|string $quantity
+ * @return string
+ */
+function erp_quantity_text($quantity)
+{
+    $separators = erp_number_separators();
+    $text = rtrim(rtrim(number_format((float) $quantity, 4, $separators['decimal'], $separators['thousands']), '0'), $separators['decimal']);
+
+    return ($text === '' || $text === '-0') ? '0' : $text;
+}
+
+/**
+ * The separators figures are written with on screen and on documents, by the
+ * panel language: 1.234,56 in Turkish, German, Spanish and the like; 1 234,56
+ * in French, Russian and the Nordic languages; 1,234.56 in English and the
+ * rest. Only what is shown follows it - typed figures are read with either
+ * separator (erp_kurus(), erp_quantity_in()), files and the API keep their
+ * own fixed formats.
+ *
+ * @return array ['decimal' => string, 'thousands' => string]
+ */
+function erp_number_separators()
+{
+    // The storefront and the rest of the panel follow the same rule, read
+    // from the language file (pg_number_separators(), ecommerce.php).
+    if (function_exists('pg_number_separators')) {
+        return pg_number_separators();
+    }
+
+    static $separators = null;
+
+    if ($separators === null) {
+        $language = defined('SOFTWARE_LANGUAGE') ? strtolower(substr((string) SOFTWARE_LANGUAGE, 0, 2)) : 'en';
+        $dot_group = array('tr', 'de', 'es', 'it', 'pt', 'nl', 'id', 'da', 'ro', 'hr', 'sl', 'sr', 'el', 'az', 'ca', 'is');
+        $space_group = array('fr', 'ru', 'pl', 'cs', 'sk', 'uk', 'bg', 'hu', 'sv', 'fi', 'nb', 'no', 'et', 'lt', 'lv', 'kk');
+
+        if (in_array($language, $dot_group, true)) {
+            $separators = array('decimal' => ',', 'thousands' => '.');
+        } elseif (in_array($language, $space_group, true)) {
+            // A no-break space, so a figure never wraps at its grouping.
+            $separators = array('decimal' => ',', 'thousands' => "\u{00A0}");
+        } else {
+            $separators = array('decimal' => '.', 'thousands' => ',');
+        }
+    }
+
+    return $separators;
+}
+
+/**
+ * A percentage for the screen and the documents, the way the panel language
+ * writes it: %20 in Turkish, 20% in English and most other languages. Up to
+ * three decimals, trailing zeros dropped.
+ *
+ * @param float|string $rate
+ * @return string
+ */
+function erp_percent_text($rate)
+{
+    $separators = erp_number_separators();
+    $number = rtrim(rtrim(number_format((float) $rate, 3, $separators['decimal'], ''), '0'), $separators['decimal']);
+    $language = defined('SOFTWARE_LANGUAGE') ? strtolower(substr((string) SOFTWARE_LANGUAGE, 0, 2)) : 'en';
+
+    return ($language === 'tr') ? ('%' . $number) : ($number . '%');
+}
+
+/**
  * Apply a percentage to an amount.
  *
  * The module's only multiplication of money by a rate. Rounding is half away
@@ -90,6 +243,39 @@ function erp_kurus($value)
 function erp_apply_rate($kurus, $rate)
 {
     return (int) round(((int) $kurus) * ((float) $rate) / 100);
+}
+
+/**
+ * Take the tax out of an amount that already includes it.
+ *
+ * The net is the amount that, with erp_apply_rate() on top, comes back to the
+ * gross; where rounding leaves no such amount the nearest one is kept and the
+ * tax is what is left, a kurus away from rate x net at most. Net and tax add
+ * up to the gross exactly, always.
+ *
+ * @param int   $gross  Kurus, tax included
+ * @param float $rate   Percentage
+ * @return array ['net' => int, 'tax' => int]
+ */
+function erp_split_gross($gross, $rate)
+{
+    $gross = (int) $gross;
+    $rate = (float) $rate;
+
+    if (($rate <= 0) || ($gross === 0)) {
+        return array('net' => $gross, 'tax' => 0);
+    }
+
+    $net = (int) round($gross * 100 / (100 + $rate));
+
+    foreach (array($net, $net - 1, $net + 1) as $candidate) {
+        if (($candidate + erp_apply_rate($candidate, $rate)) === $gross) {
+            $net = $candidate;
+            break;
+        }
+    }
+
+    return array('net' => $net, 'tax' => $gross - $net);
 }
 
 /**
@@ -253,7 +439,8 @@ function erp_money_out_currency($kurus, $currency_code, $show_sign = true)
         $symbol = html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
-    $output = $symbol . number_format(abs($kurus) / 100, 2, '.', ',') . $suffix;
+    $separators = erp_number_separators();
+    $output = $symbol . number_format(abs($kurus) / 100, 2, $separators['decimal'], $separators['thousands']) . $suffix;
 
     return (($kurus < 0) && $show_sign) ? ('-' . $output) : $output;
 }

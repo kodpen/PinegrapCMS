@@ -147,6 +147,102 @@ function upgrade_to_2026_4_4() {
 
 	upgrade_2026_4_4_erp_edoc_providers();     // 4.61
 	upgrade_2026_4_4_erp_edoc_log();           // 4.62
+	upgrade_2026_4_4_erp_edoc_autosend();      // 4.63
+	upgrade_2026_4_4_erp_invoice_locality();   // 4.64
+	upgrade_2026_4_4_erp_document_files();     // 4.65
+	upgrade_2026_4_4_erp_cash_order();         // 4.66
+	upgrade_2026_4_4_erp_edoc_inbox();         // 4.67
+	upgrade_2026_4_4_erp_withholding_amount(); // 4.68
+	upgrade_2026_4_4_erp_edoc_accounts();       // 4.69
+	upgrade_2026_4_4_erp_tax_number_width();   // 4.70
+	upgrade_2026_4_4_erp_state();              // 4.71
+	upgrade_2026_4_4_erp_document_settings();  // 4.72
+	upgrade_2026_4_4_erp_country_defaults();   // 4.73
+	upgrade_2026_4_4_local_sale_prices();      // 4.74
+	upgrade_2026_4_4_erp_second_tax();         // 4.75
+	upgrade_2026_4_4_erp_shipping_tax();       // 4.76
+	upgrade_2026_4_4_erp_stock();              // 4.77
+	upgrade_2026_4_4_erp_accountant();         // 4.78
+	upgrade_2026_4_4_erp_period_lock();        // 4.79
+
+	upgrade_2026_4_4_workspace_core();          // 4.80
+	upgrade_2026_4_4_workspace_permissions();   // 4.81
+	upgrade_2026_4_4_workspace_folders();       // 4.82
+	upgrade_2026_4_4_notification_owner();      // 4.83
+	upgrade_2026_4_4_workspace_channel_order(); // 4.84
+	upgrade_2026_4_4_workspace_interactions();  // 4.85
+	upgrade_2026_4_4_workspace_task_work();     // 4.86
+	upgrade_2026_4_4_workspace_claude();        // 4.87
+	upgrade_2026_4_4_workspace_recurrence();    // 4.88
+	upgrade_2026_4_4_workspace_calendar();      // 4.89
+	upgrade_2026_4_4_workspace_notes();         // 4.110
+	upgrade_2026_4_4_workspace_file_edits();    // 4.111
+
+	upgrade_2026_4_4_erp_expenses();           // 4.95
+	upgrade_2026_4_4_erp_expense_recurring();  // 4.96
+	upgrade_2026_4_4_erp_document_mail();      // 4.97
+	upgrade_2026_4_4_erp_credit_limit();       // 4.98
+	upgrade_2026_4_4_erp_stock_minimums();     // 4.99
+	upgrade_2026_4_4_erp_audit();              // 4.90
+	upgrade_2026_4_4_erp_alerts();             // 4.91
+	upgrade_2026_4_4_erp_quotes();             // 4.92
+	upgrade_2026_4_4_erp_invoice_recurring();  // 4.93
+	upgrade_2026_4_4_erp_account_prices();     // 4.94
+	upgrade_2026_4_4_erp_stock_counts();       // 4.100
+	upgrade_2026_4_4_erp_cheques();            // 4.101
+	upgrade_2026_4_4_erp_bank_statements();    // 4.102
+	upgrade_2026_4_4_erp_accounting_rules();   // 4.103
+
+	upgrade_2026_4_4_chat_audio();             // 4.63
+}
+
+
+// Voice messages and audio attachments in the live chat (2026.4.4).
+//
+// A recorded voice note and an uploaded .mp3 are the same thing once they are
+// stored: a file whose bubble must draw a player rather than a download link.
+// That decision is the attachment_kind column, so the enum gains a third value
+// instead of a second boolean column being invented beside it. Everything the
+// chat module does with an attachment already branches on that one column, so
+// the player follows from the value alone.
+//
+// The MODIFY only widens the enum - no existing row's value changes meaning and
+// nothing has to be backfilled. It is still guarded on the current column shape:
+// a MODIFY on a table with hundreds of thousands of messages rewrites the table,
+// and an upgrade that is re-run (or a site that reaches this version twice
+// through a restore) should not pay for that a second time.
+//
+// chat_allow_audio is its own switch rather than riding on chat_allow_files. A
+// microphone is a different thing to hand a visitor than a file picker, and an
+// operator who allows documents has not thereby asked for recordings; it starts
+// at 0 like every other chat switch, so nothing appears until it is turned on.
+function upgrade_2026_4_4_chat_audio() {
+
+	// The chat tables arrive with 2026.4.2, which always runs first. The guard
+	// is for the installation whose chat tables were dropped by hand: skipped is
+	// the right answer there, a thrown exception is not.
+	if (install_table_exists('chat_messages')) {
+
+		$column = install_column_info('chat_messages', 'attachment_kind');
+
+		if (!is_array($column) || !isset($column['Type'])) {
+
+			install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'chat_messages.attachment_kind')));
+
+		} else if (strpos($column['Type'], "'audio'") === false) {
+
+			install_modify_column('chat_messages', 'attachment_kind', "ENUM('none','image','file','audio') NOT NULL DEFAULT 'none'");
+
+		} else {
+
+			install_skipped(lang('chat_messages.attachment_kind already knows about audio'));
+
+		}
+
+	}
+
+	install_add_column('config', 'chat_allow_audio', "TINYINT(1) NOT NULL DEFAULT 0");
+
 }
 
 
@@ -2218,7 +2314,7 @@ function upgrade_2026_4_4_erp_invoices() {
 		web_address              VARCHAR(255) NOT NULL DEFAULT '',
 		edoc_kind                ENUM('none','einvoice','earchive') NOT NULL DEFAULT 'none',
 		edoc_scenario            ENUM('basic','commercial') NOT NULL DEFAULT 'basic',
-		edoc_status              ENUM('none','queued','sending','sent','accepted','rejected','error') NOT NULL DEFAULT 'none',
+		edoc_status              ENUM('none','queued','sending','created','sent','accepted','rejected','error') NOT NULL DEFAULT 'none',
 		earchive_cancel_deadline DATE NOT NULL DEFAULT '0000-00-00',
 		parasut_invoice_id       VARCHAR(32) NOT NULL DEFAULT '',
 		parasut_edoc_id          VARCHAR(32) NOT NULL DEFAULT '',
@@ -3128,5 +3224,1753 @@ function upgrade_2026_4_4_erp_edoc_log() {
 	// The renamed table lacks these two.
 	install_add_column('erp_edoc_log', 'provider', "VARCHAR(20) NOT NULL DEFAULT ''");
 	install_add_index('erp_edoc_log', 'idx_provider', "KEY idx_provider (provider, created_at)");
+
+}
+
+// The hand-over to GİB (2026.4.4, 4.63). A document created through a
+// provider's API is a draft until it is handed over - Logo confirmed it for
+// İşbaşı on 2026-09-21 - so the row needs a word for "at the provider, not
+// yet at the tax authority", and the store needs to say whether that second
+// step should follow the first on its own.
+function upgrade_2026_4_4_erp_edoc_autosend() {
+
+	install_modify_column('erp_invoices', 'edoc_status',
+		"ENUM('none','queued','sending','created','sent','accepted','rejected','error') NOT NULL DEFAULT 'none'", false);
+
+	install_add_column('config', 'erp_edoc_autosend', "TINYINT UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('An invoice sent to the e-document provider is handed to the tax authority in the same step, unless the E-Invoice card of the commerce settings says to look the draft over first.');
+
+}
+
+// The documents as they were issued (2026.4.4, 4.65). An invoice and a
+// delivery note are rendered from their rows and a template that can change;
+// the PDF made at issue is kept in the file directory, next to the file
+// manager's own files, as a `files` row with no folder. erp_doc_type /
+// erp_doc_id say which document a row is, so the file manager's own lists
+// leave these rows out and an ERP area can list them by document; get_file.php
+// uses the column to refuse them to anyone without the ERP right.
+//
+// The reconciliation log is new: a letter that was e-mailed used to leave only
+// an activity-log line. Each row keeps the letter's figures and points at the
+// PDF that went (a `files` row with erp_doc_type 'reconciliation').
+function upgrade_2026_4_4_erp_document_files() {
+
+	install_add_column('files', 'erp_doc_type', "VARCHAR(20) NOT NULL DEFAULT ''");
+	install_add_column('files', 'erp_doc_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('files', 'idx_erp_doc', "INDEX idx_erp_doc (erp_doc_type, erp_doc_id)");
+
+	install_create_table('erp_reconciliation_log', "CREATE TABLE erp_reconciliation_log (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		reference    VARCHAR(64) NOT NULL DEFAULT '',
+		as_of        DATE NOT NULL DEFAULT '0000-00-00',
+		from_date    DATE NOT NULL DEFAULT '0000-00-00',
+		reply_days   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		balance_base BIGINT NOT NULL DEFAULT 0,
+		sent_to      VARCHAR(255) NOT NULL DEFAULT '',
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_account (account_id, as_of)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Issued invoices and delivery notes now keep the PDF they were issued with, and every e-mailed reconciliation letter is recorded with the letter that went.');
+
+}
+
+// Money for an order (2026.4.4, 4.66). A till movement names the account it
+// came from or went to, never the sale behind it; for a refund that matters,
+// because a walk-in account is shared by every counter sale and its balance
+// cannot say whether this order's money has gone back. order_id is written
+// when a receipt or a payment is recorded from an order's document card,
+// and stays 0 everywhere else. The e-document status gains 'cancelled' in
+// the same step: an e-Archive invoice cancelled at the provider is neither
+// rejected nor still valid.
+function upgrade_2026_4_4_erp_cash_order() {
+
+	install_add_column('erp_cash_transactions', 'order_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_cash_transactions', 'idx_order', "INDEX idx_order (order_id)");
+
+	// A document taken back at the provider keeps its GİB numbers; the row
+	// needs a word for "cancelled there" that is not a refusal.
+	install_modify_column('erp_invoices', 'edoc_status',
+		"ENUM('none','queued','sending','created','sent','accepted','rejected','error','cancelled') NOT NULL DEFAULT 'none'", false);
+
+	install_note('Receipts and payments recorded from an order now remember the order, so a refund can be matched to the sale it pays back; an e-document cancelled at the provider is marked as such.');
+
+}
+
+// The buyer's copy, completed (2026.4.4, 4.64). The copy taken at issue
+// froze the title, the tax number, the address and the city, but not the
+// district or the postcode: those were folded into the address line and
+// then read live from the card by whatever needed them apart. İşbaşı wants
+// them as their own fields, so half the copy was frozen and half was not -
+// filling in a district fixed an invoice, filling in a city did not.
+//
+// The backfill unfolds the address line again where it can: the writer
+// appended ", <postcode> <district>", so a line that still ends in exactly
+// what the card would append today has that tail removed. A card whose
+// district has changed since will not match, and then the line is left
+// alone - the old locality stays inside it and nothing is lost.
+function upgrade_2026_4_4_erp_invoice_locality() {
+
+	install_add_column('erp_invoices', 'account_district', "VARCHAR(100) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoices', 'account_postcode', "VARCHAR(20) NOT NULL DEFAULT ''");
+
+	db("UPDATE erp_invoices i
+		INNER JOIN erp_accounts a ON a.id = i.account_id
+		SET i.account_district = a.district,
+			i.account_postcode = a.postcode,
+			i.account_address = CASE
+				WHEN TRIM(CONCAT(a.postcode, ' ', a.district)) = '' THEN i.account_address
+				WHEN i.account_address = TRIM(CONCAT(a.postcode, ' ', a.district)) THEN ''
+				WHEN i.account_address LIKE CONCAT('%, ', TRIM(CONCAT(a.postcode, ' ', a.district)))
+					THEN LEFT(i.account_address, CHAR_LENGTH(i.account_address) - CHAR_LENGTH(CONCAT(', ', TRIM(CONCAT(a.postcode, ' ', a.district)))))
+				ELSE i.account_address END
+		WHERE i.account_title <> '' AND i.account_district = '' AND i.account_postcode = ''");
+
+	install_note('An invoice now keeps the buyer\'s district and postcode in its own copy, beside the address it already kept.');
+
+}
+
+// Incoming e-invoices (2026.4.4, 4.67). What suppliers send the store
+// through GİB lands at the e-document provider; the provider's list is read
+// on request and each document is kept here once, by its ETTN, with where it
+// stands on the store's side: not yet looked at, taken into the ERP as a
+// purchase invoice, or set aside. The provider's own fields (number, date,
+// supplier, totals, its status word) are refreshed on every read; the
+// store's decision (status, invoice_id) is never overwritten by a read.
+//
+// document holds the invoice as it was read from its UBL - header, supplier,
+// lines, totals - as JSON, so looking a document over twice or taking it in
+// costs one provider call, not one per screen. The signed XML itself stays
+// with the provider and GİB, where it is kept by law.
+function upgrade_2026_4_4_erp_edoc_inbox() {
+
+	install_create_table('erp_edoc_inbox', "CREATE TABLE erp_edoc_inbox (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		provider            VARCHAR(20) NOT NULL DEFAULT '',
+		external_id         VARCHAR(64) NOT NULL DEFAULT '',
+		gib_uuid            CHAR(36) NOT NULL DEFAULT '',
+		gib_number          VARCHAR(20) NOT NULL DEFAULT '',
+		invoice_type        VARCHAR(20) NOT NULL DEFAULT '',
+		profile             VARCHAR(30) NOT NULL DEFAULT '',
+		issue_date          DATE NOT NULL DEFAULT '0000-00-00',
+		supplier_title      VARCHAR(255) NOT NULL DEFAULT '',
+		supplier_tax_number VARCHAR(11) NOT NULL DEFAULT '',
+		currency            CHAR(3) NOT NULL DEFAULT 'TRY',
+		tax_base            BIGINT NOT NULL DEFAULT 0,
+		total               BIGINT NOT NULL DEFAULT 0,
+		provider_status     VARCHAR(100) NOT NULL DEFAULT '',
+		status              ENUM('new','imported','ignored') NOT NULL DEFAULT 'new',
+		invoice_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		account_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		document            MEDIUMTEXT,
+		document_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		handled_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		handled_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_document (provider, gib_uuid),
+		KEY idx_status (status, issue_date),
+		KEY idx_supplier (supplier_tax_number),
+		KEY idx_invoice (invoice_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Incoming e-invoices can be read from the e-document provider and taken into the ERP as purchase invoices.');
+
+}
+
+// VAT withholding on a line (2026.4.4, 4.68). The line table has carried the
+// withholding code and share since 4.43 and nothing wrote them; the amount
+// withheld joins them, so a line keeps the figure its document was built
+// from the way it keeps tax_total, and a return can give back no more than
+// the line withheld. Existing lines have no withholding: 0 is their value.
+function upgrade_2026_4_4_erp_withholding_amount() {
+
+	install_add_column('erp_invoice_items', 'withholding_amount', "BIGINT NOT NULL DEFAULT 0");
+
+	install_note('Invoice lines can carry VAT withholding (tevkifat); the amount the buyer pays to the tax office is kept on the line and on the invoice.');
+
+}
+
+// The e-document provider's customer and supplier cards (2026.4.4, 4.69).
+// A provider keeps its own list of counterparties (İşbaşı: Müşteri &
+// Tedarikçi); the list is read on request and each card is kept here once,
+// by the provider's own id, beside the ERP account it stands for. The
+// provider's fields are refreshed on every read; the store's side of it -
+// which account the card belongs to (account_id), whether it was set aside,
+// whether an unlinked pair may be matched again - is never overwritten by a
+// read.
+//
+// The link lives here and not on erp_accounts: the account card carries no
+// column of any one provider, and a store that changes provider keeps both
+// histories apart. no_auto_link is set when somebody undoes a link, so the
+// next read does not quietly redo it by tax number.
+function upgrade_2026_4_4_erp_edoc_accounts() {
+
+	install_create_table('erp_edoc_accounts', "CREATE TABLE erp_edoc_accounts (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		provider            VARCHAR(20) NOT NULL DEFAULT '',
+		external_id         VARCHAR(64) NOT NULL DEFAULT '',
+		code                VARCHAR(100) NOT NULL DEFAULT '',
+		title               VARCHAR(255) NOT NULL DEFAULT '',
+		is_person           TINYINT(1) NOT NULL DEFAULT 0,
+		tax_number          VARCHAR(20) NOT NULL DEFAULT '',
+		tax_office          VARCHAR(100) NOT NULL DEFAULT '',
+		email               VARCHAR(255) NOT NULL DEFAULT '',
+		phone               VARCHAR(50) NOT NULL DEFAULT '',
+		address             VARCHAR(500) NOT NULL DEFAULT '',
+		district            VARCHAR(100) NOT NULL DEFAULT '',
+		city                VARCHAR(100) NOT NULL DEFAULT '',
+		country_code        CHAR(2) NOT NULL DEFAULT '',
+		postcode            VARCHAR(20) NOT NULL DEFAULT '',
+		kind                ENUM('customer','supplier','both') NOT NULL DEFAULT 'customer',
+		is_active           TINYINT(1) NOT NULL DEFAULT 1,
+		provider_updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		seen_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		status              ENUM('new','linked','ignored') NOT NULL DEFAULT 'new',
+		account_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		link_source         VARCHAR(10) NOT NULL DEFAULT '',
+		no_auto_link        TINYINT(1) NOT NULL DEFAULT 0,
+		synced_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		handled_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		handled_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_card (provider, external_id),
+		KEY idx_status (provider, status),
+		KEY idx_tax_number (tax_number),
+		KEY idx_account (provider, account_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('The customer and supplier cards of the e-document provider can be read and matched with the ERP accounts; differences are aligned field by field, in either direction, after confirmation.');
+
+}
+
+// Tax numbers of any country (2026.4.4, 4.70). The ERP was drawn for
+// Turkey, where a VKN has ten digits and a TCKN eleven, and every column that
+// holds a tax or identity number was cut at eleven. Elsewhere the numbers are
+// longer and carry letters: an EU VAT id runs to fourteen characters with its
+// country prefix (NL123456789B01), a US EIN is written 12-3456789. Thirty-two
+// holds every published format; the checks that apply to a Turkish number
+// stay with Turkish records (erp_tax_number_check()).
+//
+// Only widened, never narrowed: a column already at thirty-two or more is
+// left as it is. VARCHAR(11) and VARCHAR(32) both keep a one-byte length in
+// utf8mb4 (44 and 128 bytes), so the change is made in place.
+function upgrade_2026_4_4_erp_tax_number_width() {
+
+	$columns = array(
+		array('erp_accounts', 'tax_number'),
+		array('erp_invoices', 'carrier_vkn'),
+		array('erp_waybills', 'carrier_vkn'),
+		array('erp_waybills', 'driver_tckn'),
+		array('config', 'erp_seller_vkn'),
+		array('shipping_methods', 'carrier_vkn'),
+		array('erp_edoc_inbox', 'supplier_tax_number'),
+		array('erp_edoc_accounts', 'tax_number'),
+	);
+
+	foreach ($columns as $column) {
+
+		$info = install_column_info($column[0], $column[1]);
+
+		if ($info === false) {
+			install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => $column[0] . '.' . $column[1])));
+			continue;
+		}
+
+		if (preg_match('/^varchar\((\d+)\)/i', (string) $info['Type'], $match) && ((int) $match[1] >= 32)) {
+			install_skipped(lang(array('string' => '{var:1} is already wide enough', 'vars' => $column[0] . '.' . $column[1])));
+			continue;
+		}
+
+		install_modify_column($column[0], $column[1], "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	}
+
+	install_note('Tax and identity numbers of any country fit the ERP: account, seller, carrier and driver numbers hold up to 32 characters.');
+
+}
+
+// A state or province on the account (2026.4.4, 4.71). The card was drawn
+// for Turkey, where the province is the city (il) and below it the district
+// (ilçe); a US, Canadian or Australian address has a city and a state, and a
+// sales-tax zone is chosen by the state. The account gains the field, the
+// invoice's copy of the buyer gains it (a document keeps the address it was
+// issued to), and so does the delivery note's recipient. Turkish accounts
+// leave it empty. Nothing is backfilled: the ERP has not been released with
+// the old mapping.
+function upgrade_2026_4_4_erp_state() {
+
+	install_add_column('erp_accounts', 'state', "VARCHAR(100) NOT NULL DEFAULT '' AFTER city");
+	install_add_column('erp_invoices', 'account_state', "VARCHAR(100) NOT NULL DEFAULT '' AFTER account_city");
+	install_add_column('erp_waybills', 'ship_to_state', "VARCHAR(100) NOT NULL DEFAULT '' AFTER ship_to_city");
+
+	install_note('Accounts, invoices and delivery notes carry a state or province for addresses outside Turkey.');
+
+}
+
+// How document numbers are shaped and what the tax is called (2026.4.4,
+// 4.72). The numbers were always the GİB shape - series, year, nine digits -
+// and the tax was always VAT (KDV). Both stay the default; a store elsewhere
+// may number its invoices INV-2026-0001 or INV-000001 and call the tax Sales
+// tax or GST. The name is printed as typed, so it is not translated.
+function upgrade_2026_4_4_erp_document_settings() {
+
+	install_add_column('config', 'erp_number_style', "VARCHAR(12) NOT NULL DEFAULT 'gib'");
+	install_add_column('config', 'erp_tax_name', "VARCHAR(30) NOT NULL DEFAULT ''");
+
+	install_note('Document numbers can be shaped other than the GİB way, and the tax can be given its local name.');
+
+}
+
+// No Turkish defaults in the ERP tables (2026.4.4, 4.73). The module was
+// drawn for Turkey and several columns defaulted to 'TR' and 'TRY'. Every
+// write names the country and the currency (the store's when none is given),
+// so the defaults decided nothing - until a new write forgot one and a US
+// store found a Turkish lira row. The default is emptied only where it is
+// still the Turkish one; a column already without it is left alone.
+function upgrade_2026_4_4_erp_country_defaults() {
+
+	$columns = array(
+		array('erp_accounts', 'country_code', "CHAR(2) NOT NULL DEFAULT ''", 'TR'),
+		array('erp_accounts', 'currency', "CHAR(3) NOT NULL DEFAULT ''", 'TRY'),
+		array('erp_account_transactions', 'currency', "CHAR(3) NOT NULL DEFAULT ''", 'TRY'),
+		array('erp_cash_accounts', 'currency', "CHAR(3) NOT NULL DEFAULT ''", 'TRY'),
+		array('erp_cash_transactions', 'currency', "CHAR(3) NOT NULL DEFAULT ''", 'TRY'),
+		array('erp_invoices', 'currency', "CHAR(3) NOT NULL DEFAULT ''", 'TRY'),
+		array('erp_waybills', 'ship_to_country', "CHAR(2) NOT NULL DEFAULT ''", 'TR'),
+		array('erp_edoc_inbox', 'currency', "CHAR(3) NOT NULL DEFAULT ''", 'TRY'),
+	);
+
+	foreach ($columns as $column) {
+
+		$info = install_column_info($column[0], $column[1]);
+
+		if (!is_array($info)) {
+
+			install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => $column[0] . '.' . $column[1])));
+
+			continue;
+
+		}
+
+		if ((string) $info['Default'] !== $column[3]) {
+
+			install_skipped(lang(array('string' => '{var:1} has no Turkish default', 'vars' => $column[0] . '.' . $column[1])));
+
+			continue;
+
+		}
+
+		install_modify_column($column[0], $column[1], $column[2]);
+
+	}
+
+	install_note('ERP tables no longer default to Turkey and the Turkish lira.');
+
+}
+
+// How the local sale screen shows prices (2026.4.4, 4.74): 'gross', with
+// VAT included, the way shelf prices are written where VAT applies; or
+// 'net', without tax and the tax added at the total, the way a register
+// reads where sales tax is charged on top. Only the display changes: product
+// prices are kept without tax either way.
+function upgrade_2026_4_4_local_sale_prices() {
+
+	install_add_column('config', 'local_sale_prices', "VARCHAR(8) NOT NULL DEFAULT 'gross'");
+
+	install_note('The local sale screen can show prices without tax, adding it at the total.');
+
+}
+
+// A second tax on invoice lines (2026.4.4, 4.75). A Canadian sale carries GST
+// and PST, each its own rate on the line's net. The store names the second
+// tax (config.erp_tax2_name, empty for none); a line keeps its rate and
+// amount (tax2_rate, tax2_amount) and its tax_total holds both taxes, so the
+// ledger and every total read on unchanged; the document keeps the sum of the
+// second taxes (tax2_total) to print it on its own line.
+function upgrade_2026_4_4_erp_second_tax() {
+
+	install_add_column('config', 'erp_tax2_name', "VARCHAR(30) NOT NULL DEFAULT ''");
+	install_add_column('erp_invoice_items', 'tax2_rate', "DECIMAL(6,3) NOT NULL DEFAULT 0.000 AFTER tax_total");
+	install_add_column('erp_invoice_items', 'tax2_amount', "BIGINT NOT NULL DEFAULT 0 AFTER tax2_rate");
+	install_add_column('erp_invoices', 'tax2_total', "BIGINT NOT NULL DEFAULT 0 AFTER tax_total");
+
+	install_note('Invoice lines can carry a second tax beside VAT, for places that charge two.');
+
+}
+
+// How an order's shipping and surcharge are taxed on its invoice (2026.4.4,
+// 4.76): 'included' - at the rate of the goods, the tax inside the amount
+// charged; 'none' - untaxed; '' - by the store's country (untaxed in the
+// United States, included elsewhere; erp_shipping_taxed()).
+function upgrade_2026_4_4_erp_shipping_tax() {
+
+	install_add_column('config', 'erp_shipping_tax', "VARCHAR(12) NOT NULL DEFAULT ''");
+
+	install_note('An order\'s shipping and surcharge can be taxed on its invoice at the rate of the goods.');
+
+}
+
+// Stock and cost from documents (2026.4.4, 4.77; includes/erp/stock.php).
+// A purchase invoice brings goods in and a typed sales invoice takes them out;
+// returns and cancellations move them back. erp_stock_moves is the ledger of
+// those movements, one row per document line and kind (uniq_line keeps a
+// retried write from counting twice); stock_wanted says whether the move is
+// to change the product's count and stock_applied whether it has (products
+// is MyISAM, so the count changes after the document's transaction commits:
+// 0 waiting, 1 applied, 2 the product no longer tracks stock). cost_total is
+// the goods' cost in the base currency. erp_product_costs keeps each
+// product's weighted average and last purchase price. config.erp_stock_documents
+// switches the counting off; costs are kept either way.
+function upgrade_2026_4_4_erp_stock() {
+
+	install_create_table('erp_stock_moves', "CREATE TABLE erp_stock_moves (
+		id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		product_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		invoice_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		line_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		kind           ENUM('purchase','sale','purchase_return','sales_return','cancel') NOT NULL DEFAULT 'purchase',
+		direction      ENUM('in','out') NOT NULL DEFAULT 'in',
+		quantity       DECIMAL(15,4) NOT NULL DEFAULT 0.0000,
+		cost_total     BIGINT NOT NULL DEFAULT 0,
+		unit_cost      BIGINT NOT NULL DEFAULT 0,
+		stock_wanted   TINYINT(1) NOT NULL DEFAULT 0,
+		stock_applied  TINYINT(1) NOT NULL DEFAULT 0,
+		stock_after    INT NOT NULL DEFAULT 0,
+		reverses_id    BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		doc_date       DATE NOT NULL DEFAULT '0000-00-00',
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_line (kind, line_id),
+		KEY idx_product (product_id, id),
+		KEY idx_invoice (invoice_id),
+		KEY idx_pending (stock_wanted, stock_applied),
+		KEY idx_reverses (reverses_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_product_costs', "CREATE TABLE erp_product_costs (
+		product_id       INT UNSIGNED NOT NULL,
+		avg_cost         BIGINT NOT NULL DEFAULT 0,
+		costed_quantity  DECIMAL(15,4) NOT NULL DEFAULT 0.0000,
+		last_cost        BIGINT NOT NULL DEFAULT 0,
+		last_cost_date   DATE NOT NULL DEFAULT '0000-00-00',
+		last_move_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'erp_stock_documents', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	install_note('Purchase invoices add to stock and typed sales invoices take from it, with returns and cancellations moving it back; each product keeps its average and last purchase cost.');
+
+}
+
+// The accountant's pack (2026.4.4, 4.78; includes/erp/accountant.php).
+// erp_accountant_packages keeps each pack that was built: its period, the ZIP
+// under data/temp/erp_packages, what went into it (summary, JSON) and where it went.
+// A link sent to the accountant is a random token of which only the hash is
+// kept (token_hash), good until expires_at. config says where the pack goes
+// and whether the monthly job sends it by itself; user.manage_erp_readonly is
+// the accountant's right: every ERP screen to read, the packs to build and
+// download, nothing to change.
+function upgrade_2026_4_4_erp_accountant() {
+
+	install_create_table('erp_accountant_packages', "CREATE TABLE erp_accountant_packages (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		period_from      DATE NOT NULL DEFAULT '0000-00-00',
+		period_to        DATE NOT NULL DEFAULT '0000-00-00',
+		file_name        VARCHAR(255) NOT NULL DEFAULT '',
+		file_size        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		documents        INT UNSIGNED NOT NULL DEFAULT 0,
+		files_added      INT UNSIGNED NOT NULL DEFAULT 0,
+		summary          TEXT,
+		source           ENUM('manual','monthly') NOT NULL DEFAULT 'manual',
+		token_hash       CHAR(64) NOT NULL DEFAULT '',
+		expires_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_to          VARCHAR(255) NOT NULL DEFAULT '',
+		sent_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		downloads        INT UNSIGNED NOT NULL DEFAULT 0,
+		last_download_at INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_period (period_from, period_to),
+		KEY idx_token (token_hash)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// TEXT, not VARCHAR: the config row is at MySQL's row size limit, and a
+	// TEXT column counts only its pointer against it.
+	install_add_column('config', 'erp_accountant_email', "TEXT NULL");
+
+	install_add_column('config', 'erp_accountant_monthly', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'erp_accountant_pdfs', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	install_add_column('user', 'manage_erp_readonly', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('The accountant\'s pack: a month\'s invoices, returns, VAT by rate, receipts, balances and stock value in one workbook with the documents, to download or send by link; and a read-only right for the accountant.');
+
+}
+
+// The period lock (2026.4.4, 4.79). Once the accountant has filed a period,
+// nothing dated on or before config.erp_lock_date may be issued, cancelled,
+// returned or paid (includes/erp/lock.php). '0000-00-00' is no lock.
+function upgrade_2026_4_4_erp_period_lock() {
+
+	install_add_column('config', 'erp_lock_date', "DATE NOT NULL DEFAULT '0000-00-00'");
+
+	install_note('A period can be locked: documents and receipts dated on or before the lock date can no longer be issued, cancelled or changed.');
+
+}
+
+// Expenses (2026.4.4, 4.95; includes/erp/expenses.php). A receipt for rent,
+// fuel or a subscription is not a purchase invoice from an account: it has
+// no supplier card, no stock and no numbering of ours, only a date, a
+// category, what it cost and the VAT on it. Paying one is a movement out of a
+// till (erp_cash_transactions, doc_type 'expense'); cancelling a paid one
+// turns that movement round. The figures are kept in the expense's currency
+// and in the base currency (*_base), as the invoices are. The categories are
+// the store's own list, seeded on first use in the operator's language; code
+// is the accountant's account number for the category.
+function upgrade_2026_4_4_erp_expenses() {
+
+	install_create_table('erp_expense_categories', "CREATE TABLE erp_expense_categories (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name        VARCHAR(100) NOT NULL DEFAULT '',
+		code        VARCHAR(32) NOT NULL DEFAULT '',
+		sort_order  INT NOT NULL DEFAULT 0,
+		is_active   TINYINT(1) NOT NULL DEFAULT 1,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_sort (is_active, sort_order)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_expenses', "CREATE TABLE erp_expenses (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		expense_date         DATE NOT NULL DEFAULT '0000-00-00',
+		category_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		supplier             VARCHAR(255) NOT NULL DEFAULT '',
+		supplier_tax_number  VARCHAR(32) NOT NULL DEFAULT '',
+		document_no          VARCHAR(64) NOT NULL DEFAULT '',
+		description          VARCHAR(255) NOT NULL DEFAULT '',
+		currency             CHAR(3) NOT NULL DEFAULT '',
+		exchange_rate        DECIMAL(15,6) NOT NULL DEFAULT 1.000000,
+		exchange_rate_date   DATE NOT NULL DEFAULT '0000-00-00',
+		exchange_rate_source VARCHAR(32) NOT NULL DEFAULT '',
+		net_amount           BIGINT NOT NULL DEFAULT 0,
+		tax_rate             DECIMAL(6,3) NOT NULL DEFAULT 0.000,
+		tax_amount           BIGINT NOT NULL DEFAULT 0,
+		total_amount         BIGINT NOT NULL DEFAULT 0,
+		net_base             BIGINT NOT NULL DEFAULT 0,
+		tax_base             BIGINT NOT NULL DEFAULT 0,
+		total_base           BIGINT NOT NULL DEFAULT 0,
+		tax_deductible       TINYINT(1) NOT NULL DEFAULT 1,
+		status               ENUM('unpaid','paid','cancelled') NOT NULL DEFAULT 'unpaid',
+		due_date             DATE NOT NULL DEFAULT '0000-00-00',
+		cash_account_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		cash_id              BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		payment_method       VARCHAR(20) NOT NULL DEFAULT '',
+		paid_date            DATE NOT NULL DEFAULT '0000-00-00',
+		cancel_reason        VARCHAR(255) NOT NULL DEFAULT '',
+		cancelled_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		cancelled_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_date (expense_date),
+		KEY idx_category (category_id, expense_date),
+		KEY idx_status (status, due_date),
+		KEY idx_cash (cash_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Expenses: receipts for rent, fuel, subscriptions and the like, by category, with their VAT, paid from a till or bank account or left to pay later.');
+
+}
+
+// Repeating expenses (2026.4.4, 4.96; includes/erp/expense_recurring.php).
+// Rent, the internet line, a subscription: the same expense every month, or
+// every few months. erp_expense_recurrences keeps what the next one is made
+// of (taken from the expense it was started from) and when it is due
+// (next_date); the daily job, and a visit to the expenses list, write each
+// one that has come due as an expense of its own, left to pay or paid from
+// the till the recurrence names. erp_expenses.recurrence_id says which
+// recurrence an expense came from.
+function upgrade_2026_4_4_erp_expense_recurring() {
+
+	install_create_table('erp_expense_recurrences', "CREATE TABLE erp_expense_recurrences (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		source_expense_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		category_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		supplier            VARCHAR(255) NOT NULL DEFAULT '',
+		supplier_tax_number VARCHAR(32) NOT NULL DEFAULT '',
+		description         VARCHAR(255) NOT NULL DEFAULT '',
+		currency            CHAR(3) NOT NULL DEFAULT '',
+		amount              BIGINT NOT NULL DEFAULT 0,
+		includes_tax        TINYINT(1) NOT NULL DEFAULT 1,
+		tax_rate            DECIMAL(6,3) NOT NULL DEFAULT 0.000,
+		tax_deductible      TINYINT(1) NOT NULL DEFAULT 1,
+		every_months        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		day_of_month        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		due_days            SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		pay_mode            ENUM('unpaid','paid') NOT NULL DEFAULT 'unpaid',
+		cash_account_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		payment_method      VARCHAR(20) NOT NULL DEFAULT '',
+		next_date           DATE NOT NULL DEFAULT '0000-00-00',
+		end_date            DATE NOT NULL DEFAULT '0000-00-00',
+		occurrences         INT UNSIGNED NOT NULL DEFAULT 0,
+		last_expense_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_error          VARCHAR(255) NOT NULL DEFAULT '',
+		status              ENUM('active','stopped') NOT NULL DEFAULT 'active',
+		stopped_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		stopped_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (status, next_date),
+		KEY idx_source (source_expense_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('erp_expenses', 'recurrence_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_index('erp_expenses', 'idx_recurrence', "INDEX idx_recurrence (recurrence_id)");
+
+	install_note('Repeating expenses: rent, the internet line or a subscription written by itself every month, every three months or every year, left to pay or paid from a chosen till.');
+
+}
+
+
+// ERP: e-mailing an invoice to the customer (2026.4.4, 4.97).
+//
+// erp_document_mails keeps every e-mail a document went out in, sent by hand
+// or on its own: to whom, with which files, and whether it left. A row is
+// written 'queued' before the send and settled after it, so a send that never
+// finished shows as queued rather than disappearing. doc_type is 'invoice'
+// today; the table is not tied to it.
+//
+// config.erp_invoice_mail_auto e-mails each issued sales invoice to its
+// customer (once GIB has accepted it, where e-documents are in use), and
+// erp_invoice_mail_message is the store's covering text, NULL for the built-in
+// one. On the account, invoice_email is where its invoices go when that is not
+// its main address, and invoice_mail switches the automatic e-mail off for it.
+function upgrade_2026_4_4_erp_document_mail() {
+
+	install_create_table('erp_document_mails', "CREATE TABLE erp_document_mails (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		doc_type    VARCHAR(20) NOT NULL DEFAULT '',
+		doc_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		mode        ENUM('manual','auto') NOT NULL DEFAULT 'manual',
+		status      ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
+		to_address  VARCHAR(500) NOT NULL DEFAULT '',
+		subject     VARCHAR(255) NOT NULL DEFAULT '',
+		message     TEXT NULL,
+		attachments VARCHAR(500) NOT NULL DEFAULT '',
+		error       VARCHAR(255) NOT NULL DEFAULT '',
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_doc (doc_type, doc_id),
+		KEY idx_status (status, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'erp_invoice_mail_auto', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'erp_invoice_mail_message', "TEXT NULL");
+
+	install_add_column('erp_accounts', 'invoice_email', "VARCHAR(255) NOT NULL DEFAULT ''");
+
+	install_add_column('erp_accounts', 'invoice_mail', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	install_note('Invoices by e-mail: an issued invoice goes to its customer from its own screen, with its PDF (the official copy once GIB has accepted an e-document), and can be sent on its own when issued. Every e-mail is recorded with the document.');
+
+}
+
+
+// ERP: a customer's credit limit (2026.4.4, 4.98).
+//
+// erp_accounts.credit_limit is the most the customer may owe the store, in the
+// base currency and in kurus, the way erp_accounts.balance is kept; 0 is no
+// limit. config.erp_credit_limit_mode decides what a sale past it does: 'warn'
+// issues it and says so, 'block' refuses to issue it. The check is on invoices
+// typed in the ERP; an order's invoice follows a sale that has already
+// happened and is never held back.
+function upgrade_2026_4_4_erp_credit_limit() {
+
+	install_add_column('erp_accounts', 'credit_limit', "BIGINT NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'erp_credit_limit_mode', "VARCHAR(10) NOT NULL DEFAULT 'warn'");
+
+	install_note('Credit limits: an account can be given the most it may owe; an invoice that takes it past the limit is flagged, or refused if the store says so, and the account list shows who is over.');
+
+}
+
+
+// ERP: a minimum stock level per product (2026.4.4, 4.99).
+//
+// One row per product that has a minimum; a product without a row has none.
+// The ERP's own table rather than a column on products, so the catalogue's
+// screens, imports and copies are not touched by it. The count it is weighed
+// against is products.inventory_quantity, for products that track stock.
+function upgrade_2026_4_4_erp_stock_minimums() {
+
+	install_create_table('erp_stock_minimums', "CREATE TABLE erp_stock_minimums (
+		product_id   INT UNSIGNED NOT NULL,
+		min_quantity INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Minimum stock: a product can be given the lowest stock it should have; the stock screen and the ERP dashboard list the ones at or below it.');
+
+}
+
+
+// ERP: the audit trail (2026.4.4, 4.90).
+//
+// Who did what in the books, kept for as long as the books are: the site's
+// log table is emptied after six months, shorter than any period a tax audit
+// looks back over, so the ERP writes its own. A line is either an event the
+// module announced (event 'erp.invoice.created' and the like, with the
+// record's number and amount at that moment and its payload in detail) or a
+// line an ERP screen, the ERP API or an ERP job wrote to the site log (event
+// 'log', the text in description). The lines of one request share a
+// request_id. Nothing deletes from this table.
+function upgrade_2026_4_4_erp_audit() {
+
+	install_create_table('erp_audit_log', "CREATE TABLE erp_audit_log (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		request_id  CHAR(16) NOT NULL DEFAULT '',
+		source      ENUM('panel','api','job') NOT NULL DEFAULT 'panel',
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		username    VARCHAR(100) NOT NULL DEFAULT '',
+		ip          VARCHAR(45) NOT NULL DEFAULT '',
+		event       VARCHAR(64) NOT NULL DEFAULT '',
+		object_type VARCHAR(20) NOT NULL DEFAULT '',
+		object_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		label       VARCHAR(255) NOT NULL DEFAULT '',
+		amount      BIGINT NOT NULL DEFAULT 0,
+		currency    CHAR(3) NOT NULL DEFAULT '',
+		description TEXT NULL,
+		detail      TEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_created (created_at),
+		KEY idx_request (request_id),
+		KEY idx_object (object_type, object_id),
+		KEY idx_user (username, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('ERP audit trail: every document, receipt, account and expense the ERP records, and every change its screens log, is kept with who made it, when and from where, for as long as the books are kept.');
+
+}
+
+
+// ERP: notices on the panel bell and the subscribed devices (2026.4.4, 4.91).
+//
+// config.erp_notify_collections announces each collection as it is recorded,
+// from config.erp_notify_collection_min up (kurus in the base currency, 0 for
+// every one); config.erp_notify_low_stock announces the products that drop to
+// or below their minimum. erp_stock_minimums.notified_at is when a product's
+// drop was announced, 0 while it is above its minimum, so each drop is told
+// once. All off until the store switches them on.
+function upgrade_2026_4_4_erp_alerts() {
+
+	install_add_column('config', 'erp_notify_collections', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'erp_notify_collection_min', "BIGINT NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'erp_notify_low_stock', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	if (install_table_exists('erp_stock_minimums')) {
+		install_add_column('erp_stock_minimums', 'notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	}
+
+	install_note('ERP notices: collections as they are recorded and products that drop to their minimum stock can be announced on the panel bell and on subscribed devices; switched on in the ERP settings.');
+
+}
+
+
+// ERP: quotes (2026.4.4, 4.92).
+//
+// A quote is not an invoice: it moves no money, no stock and no tax, so it
+// has a table of its own rather than a doc_type on erp_invoices, where every
+// report would have to learn to leave it out. It takes a number of its own
+// series when first saved (erp_document_series, doc_kind 'proforma').
+// form_data is the form as it was read, the input erp_invoice_draft_save()
+// takes when the quote becomes an invoice; line_data are the lines as they
+// were worked out, shaped like erp_invoice_items rows, for the screen and the
+// printout.
+// valid_until is the day the offer runs to; an open quote past it is shown as
+// expired without its row changing.
+function upgrade_2026_4_4_erp_quotes() {
+
+	install_create_table('erp_quotes', "CREATE TABLE erp_quotes (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		series            VARCHAR(10) NOT NULL DEFAULT '',
+		number            INT UNSIGNED NOT NULL DEFAULT 0,
+		issue_year        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		full_number       VARCHAR(32) NOT NULL DEFAULT '',
+		account_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		issue_date        DATE NOT NULL DEFAULT '0000-00-00',
+		valid_until       DATE NOT NULL DEFAULT '0000-00-00',
+		currency          CHAR(3) NOT NULL DEFAULT 'TRY',
+		exchange_rate     DECIMAL(15,6) NOT NULL DEFAULT 1.000000,
+		subtotal          BIGINT NOT NULL DEFAULT 0,
+		discount_total    BIGINT NOT NULL DEFAULT 0,
+		tax_total         BIGINT NOT NULL DEFAULT 0,
+		tax2_total        BIGINT NOT NULL DEFAULT 0,
+		withholding_total BIGINT NOT NULL DEFAULT 0,
+		grand_total       BIGINT NOT NULL DEFAULT 0,
+		grand_total_base  BIGINT NOT NULL DEFAULT 0,
+		status            ENUM('open','accepted','rejected','invoiced','cancelled') NOT NULL DEFAULT 'open',
+		invoice_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		form_data         MEDIUMTEXT NULL,
+		line_data         MEDIUMTEXT NULL,
+		notes             TEXT NULL,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_number (series, number, issue_year),
+		KEY idx_account (account_id, issue_date),
+		KEY idx_status (status, valid_until),
+		KEY idx_invoice (invoice_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Quotes: a priced offer to a customer with its own number, printed and e-mailed like an invoice, marked accepted or rejected, and turned into an invoice draft in one step.');
+
+}
+
+
+// ERP: repeating invoices (2026.4.4, 4.93).
+//
+// Started from an issued sales invoice typed in the ERP. form_data is what
+// the next invoice is made of - account, currency, series, note and the
+// lines at their prices, in the shape erp_invoice_draft_save() takes - so a
+// later change to the source invoice's account or to a product's price does
+// not change what the contract bills. mode decides whether each one is left
+// as a draft or issued. The run claims a date by moving next_date on with a
+// conditional update, the way repeating expenses do (4.96). No column is
+// added to erp_invoices: the recurrence keeps its last invoice and a count.
+function upgrade_2026_4_4_erp_invoice_recurring() {
+
+	install_create_table('erp_invoice_recurrences', "CREATE TABLE erp_invoice_recurrences (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		source_invoice_id INT UNSIGNED NOT NULL DEFAULT 0,
+		account_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		every_months      TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		day_of_month      TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		next_date         DATE NOT NULL DEFAULT '0000-00-00',
+		end_date          DATE NOT NULL DEFAULT '0000-00-00',
+		mode              ENUM('draft','issue') NOT NULL DEFAULT 'draft',
+		form_data         MEDIUMTEXT NULL,
+		grand_total       BIGINT NOT NULL DEFAULT 0,
+		currency          CHAR(3) NOT NULL DEFAULT '',
+		occurrences       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_invoice_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		last_error        VARCHAR(255) NOT NULL DEFAULT '',
+		status            ENUM('active','stopped') NOT NULL DEFAULT 'active',
+		stopped_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		stopped_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (status, next_date),
+		KEY idx_source (source_invoice_id),
+		KEY idx_account (account_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Repeating invoices: an invoice typed in the ERP can be written again every month, every three months or every year, as a draft to check or issued straight away.');
+
+}
+
+
+// ERP: an account's own prices (2026.4.4, 4.94).
+//
+// erp_account_prices holds the terms agreed with one account for one
+// product: a price that replaces the list price (kurus, in the catalogue's
+// price basis; 0 for none) or a discount on it. erp_accounts.discount_rate is
+// the account's discount on every product without a row of its own. Sales
+// only; the line editor applies them when a product is picked.
+function upgrade_2026_4_4_erp_account_prices() {
+
+	install_create_table('erp_account_prices', "CREATE TABLE erp_account_prices (
+		account_id    INT UNSIGNED NOT NULL,
+		product_id    INT UNSIGNED NOT NULL,
+		price         BIGINT NOT NULL DEFAULT 0,
+		discount_rate DECIMAL(6,3) NOT NULL DEFAULT 0.000,
+		updated_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (account_id, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('erp_accounts', 'discount_rate', "DECIMAL(6,3) NOT NULL DEFAULT 0.000");
+
+	install_note('Account prices: an account can buy some products at a price or a discount of its own, and everything else at a discount; invoices and quotes for it are filled with them.');
+
+}
+
+
+// ERP: stock counts (2026.4.4, 4.100).
+//
+// 4.90-4.94 are taken, so the ERP carries on at 4.100: the step numbers are
+// labels and the calls run in the order they are listed above. A count is a
+// document of its own: erp_stock_counts is the count, erp_stock_count_items
+// one line per product counted. system_before is what the store had when the
+// count was applied, so the difference stays on record. erp_stock_moves is
+// not touched: a correction of the shelf is neither a purchase nor a sale
+// and has no cost.
+function upgrade_2026_4_4_erp_stock_counts() {
+
+	install_create_table('erp_stock_counts', "CREATE TABLE erp_stock_counts (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		title       VARCHAR(100) NOT NULL DEFAULT '',
+		status      ENUM('open','applied','cancelled') NOT NULL DEFAULT 'open',
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		applied_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		applied_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status (status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_stock_count_items', "CREATE TABLE erp_stock_count_items (
+		count_id      INT UNSIGNED NOT NULL,
+		product_id    INT UNSIGNED NOT NULL,
+		counted       INT UNSIGNED NOT NULL DEFAULT 0,
+		system_before INT NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (count_id, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Stock counts: the shelf is counted by scanning barcodes and the store\'s stock is set to what was counted, with the difference kept on the count.');
+
+}
+
+
+// ERP: cheques and promissory notes (2026.4.4, 4.101).
+//
+// One row per cheque or note, taken from a customer or given to a supplier.
+// The money is not here: every step is a movement through the ledger's own
+// doors (a receipt, a payment, a transfer between tills), and the row keeps
+// the first and the last of them (open_cash_id, close_cash_id), where it is
+// kept (portfolio_till_id: a till the store sets up for them), the bank it
+// went to and, when it was passed on, the account it went to. amount_base is
+// the amount in the base currency, for the totals.
+function upgrade_2026_4_4_erp_cheques() {
+
+	install_create_table('erp_cheques', "CREATE TABLE erp_cheques (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind                ENUM('cheque','note') NOT NULL DEFAULT 'cheque',
+		direction           ENUM('received','given') NOT NULL DEFAULT 'received',
+		account_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		amount              BIGINT NOT NULL DEFAULT 0,
+		currency            CHAR(3) NOT NULL DEFAULT '',
+		amount_base         BIGINT NOT NULL DEFAULT 0,
+		doc_date            DATE NOT NULL DEFAULT '0000-00-00',
+		due_date            DATE NOT NULL DEFAULT '0000-00-00',
+		serial_no           VARCHAR(40) NOT NULL DEFAULT '',
+		bank_name           VARCHAR(100) NOT NULL DEFAULT '',
+		branch              VARCHAR(100) NOT NULL DEFAULT '',
+		drawer              VARCHAR(150) NOT NULL DEFAULT '',
+		status              ENUM('portfolio','deposited','collected','endorsed','bounced','given','paid') NOT NULL DEFAULT 'portfolio',
+		portfolio_till_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		bank_till_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		endorsed_account_id INT UNSIGNED NOT NULL DEFAULT 0,
+		open_cash_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		close_cash_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_date         DATE NOT NULL DEFAULT '0000-00-00',
+		notes               VARCHAR(255) NOT NULL DEFAULT '',
+		created_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status (status, due_date),
+		KEY idx_account (account_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Cheques and notes: the ones taken from customers wait in a portfolio until they are collected, passed on or bounce; the ones given to suppliers until the bank pays them. Every step is a movement in the tills and on the accounts.');
+
+}
+
+
+// ERP: bank statements (2026.4.4, 4.102).
+//
+// erp_bank_statements is one file taken in for one bank account: raw_rows
+// holds its cells only until the columns are chosen, mapping keeps the
+// choice so the next file of that account starts from it.
+// erp_bank_statement_lines is one dated amount of the statement; cash_id is
+// the till movement it was matched to or recorded as. line_hash (bank
+// account, day, amount, words) is unique per bank account, so overlapping
+// statements add each line once.
+function upgrade_2026_4_4_erp_bank_statements() {
+
+	install_create_table('erp_bank_statements', "CREATE TABLE erp_bank_statements (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		cash_account_id INT UNSIGNED NOT NULL DEFAULT 0,
+		file_name       VARCHAR(150) NOT NULL DEFAULT '',
+		status          ENUM('mapping','open') NOT NULL DEFAULT 'mapping',
+		raw_rows        MEDIUMTEXT NULL,
+		mapping         TEXT NULL,
+		line_count      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_till (cash_account_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_bank_statement_lines', "CREATE TABLE erp_bank_statement_lines (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		statement_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		cash_account_id INT UNSIGNED NOT NULL DEFAULT 0,
+		line_no         INT UNSIGNED NOT NULL DEFAULT 0,
+		doc_date        DATE NOT NULL DEFAULT '0000-00-00',
+		description     VARCHAR(255) NOT NULL DEFAULT '',
+		amount          BIGINT NOT NULL DEFAULT 0,
+		status          ENUM('new','matched','recorded','ignored') NOT NULL DEFAULT 'new',
+		cash_id         BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		line_hash       CHAR(40) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_line (cash_account_id, line_hash),
+		KEY idx_statement (statement_id, doc_date),
+		KEY idx_cash (cash_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Bank statements: a statement downloaded from the bank is taken in, its lines matched to the books, and the rest recorded as collections, payments or expenses.');
+
+}
+
+
+// ERP: accounting rules a store settles with its accountant (2026.4.4, 4.103).
+//
+// config.erp_vat_net_withholding: 1 takes the VAT withheld on sales off the
+// calculated VAT in the VAT report and the accountant's pack, since the buyer
+// declares that part; 0 (the default) shows the calculated VAT in full and the
+// withheld part beside it.
+// config.erp_vat_exemption_code: the exemption code a zero-rated invoice line
+// carries when its product names none (products.vat_exemption_code wins). TEXT
+// because the config row is at MySQL's row size limit.
+// erp_expense_categories.tax_deductible: whether an expense of the category
+// takes its VAT back by default; the expense form starts from it and the
+// operator can still change each expense.
+function upgrade_2026_4_4_erp_accounting_rules() {
+
+	install_add_column('config', 'erp_vat_net_withholding', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'erp_vat_exemption_code', "TEXT NULL");
+
+	install_add_column('erp_expense_categories', 'tax_deductible', "TINYINT(1) NOT NULL DEFAULT 1");
+
+	install_note('Accounting rules: the VAT report can take the VAT withheld on sales off the calculated VAT, zero-rated invoice lines carry a default exemption code, and each expense category says whether its VAT is deductible.');
+
+}
+
+
+// The workspace: channels, tasks and the planning board (2026.4.4, 4.80).
+//
+// Twelve tables, all new, all prefixed ws_. The module is switched off until
+// an operator turns it on (config.workspace_enabled), so a site that runs this
+// upgrade and never looks at the feature carries empty tables and nothing
+// else.
+//
+// Days a task is planned for are DATE NULL rather than the '0000-00-00' the
+// older tables use: a task with no due date is common here, and NULL keeps
+// "no date" out of every range comparison the board makes without each query
+// having to remember the sentinel.
+//
+// A message can point at a file (file_id), and the file itself sits in the
+// file directory with no folder, named "ws-...": get_file.php serves such a
+// file only to someone who may read the channel it was posted in, which it
+// finds through the idx_file index below.
+//
+// ws_refs is the reverse index of every tag - a mention, an order, a product,
+// an invoice written into a message or attached to a task. It is what lets an
+// order screen ask "where was this talked about" with one indexed read.
+function upgrade_2026_4_4_workspace_core() {
+
+	install_create_table('ws_profiles', "CREATE TABLE ws_profiles (
+		user_id      INT UNSIGNED NOT NULL,
+		title        VARCHAR(100) NOT NULL DEFAULT '',
+		day_minutes  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		workdays     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		excluded     TINYINT(1) NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_departments', "CREATE TABLE ws_departments (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name        VARCHAR(100) NOT NULL DEFAULT '',
+		color       VARCHAR(7) NOT NULL DEFAULT '#6c757d',
+		sort        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		archived    TINYINT(1) NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_sort (archived, sort)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_department_members', "CREATE TABLE ws_department_members (
+		department_id  INT UNSIGNED NOT NULL,
+		user_id        INT UNSIGNED NOT NULL,
+		is_lead        TINYINT(1) NOT NULL DEFAULT 0,
+		is_primary     TINYINT(1) NOT NULL DEFAULT 0,
+		PRIMARY KEY (department_id, user_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_channels', "CREATE TABLE ws_channels (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name                VARCHAR(80) NOT NULL DEFAULT '',
+		kind                ENUM('public','private') NOT NULL DEFAULT 'public',
+		topic               VARCHAR(255) NOT NULL DEFAULT '',
+		owner_user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		contact_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		department_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		summary             TEXT NULL,
+		summary_updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		summary_updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		last_message_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_message_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		archived_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_kind (kind, archived_at, last_message_at),
+		KEY idx_contact (contact_id),
+		KEY idx_department (department_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_channel_members', "CREATE TABLE ws_channel_members (
+		channel_id    INT UNSIGNED NOT NULL,
+		user_id       INT UNSIGNED NOT NULL,
+		role          ENUM('owner','member') NOT NULL DEFAULT 'member',
+		last_read_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		notify        ENUM('all','mentions','none') NOT NULL DEFAULT 'all',
+		joined_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (channel_id, user_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_messages', "CREATE TABLE ws_messages (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		parent_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		sender_kind  ENUM('user','app','system') NOT NULL DEFAULT 'user',
+		sender_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind         ENUM('message','note','decision','task','system') NOT NULL DEFAULT 'message',
+		body         TEXT NOT NULL,
+		task_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		file_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		file_name    VARCHAR(255) NOT NULL DEFAULT '',
+		marked_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		marked_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		edited_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel (channel_id, id),
+		KEY idx_kind (channel_id, kind, id),
+		KEY idx_file (file_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_refs', "CREATE TABLE ws_refs (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		source_type  ENUM('message','task') NOT NULL DEFAULT 'message',
+		source_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		ref_type     VARCHAR(20) NOT NULL DEFAULT '',
+		ref_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_ref (ref_type, ref_id),
+		KEY idx_source (source_type, source_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_tasks', "CREATE TABLE ws_tasks (
+		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		title              VARCHAR(255) NOT NULL DEFAULT '',
+		description        TEXT NULL,
+		channel_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		source_message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		creator_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		department_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		status             ENUM('todo','doing','waiting','done','cancelled') NOT NULL DEFAULT 'todo',
+		priority           ENUM('low','normal','high','urgent') NOT NULL DEFAULT 'normal',
+		start_date         DATE NULL DEFAULT NULL,
+		due_date           DATE NULL DEFAULT NULL,
+		estimate_minutes   INT UNSIGNED NOT NULL DEFAULT 0,
+		completed_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		completed_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status (status, due_date),
+		KEY idx_channel (channel_id),
+		KEY idx_department (department_id, status),
+		KEY idx_updated (updated_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_task_assignees', "CREATE TABLE ws_task_assignees (
+		task_id      INT UNSIGNED NOT NULL,
+		user_id      INT UNSIGNED NOT NULL,
+		assigned_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		assigned_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (task_id, user_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_events', "CREATE TABLE ws_events (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind           ENUM('meeting','visit','leave','holiday','other') NOT NULL DEFAULT 'meeting',
+		scope          ENUM('people','department','company') NOT NULL DEFAULT 'people',
+		department_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		title          VARCHAR(255) NOT NULL DEFAULT '',
+		note           VARCHAR(500) NOT NULL DEFAULT '',
+		starts_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		ends_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		all_day        TINYINT(1) NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_time (starts_at, ends_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_event_people', "CREATE TABLE ws_event_people (
+		event_id  INT UNSIGNED NOT NULL,
+		user_id   INT UNSIGNED NOT NULL,
+		PRIMARY KEY (event_id, user_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_inbox', "CREATE TABLE ws_inbox (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        VARCHAR(20) NOT NULL DEFAULT '',
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		task_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		actor_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		read_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id, read_at, id),
+		KEY idx_channel (user_id, channel_id, read_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Off until an operator switches it on. The working day and the working
+	// week are the defaults a person's own profile falls back to; the week is
+	// a bit mask with Monday as bit 0, so 31 is Monday to Friday.
+	install_add_column('config', 'workspace_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_day_minutes', "SMALLINT UNSIGNED NOT NULL DEFAULT 480");
+	install_add_column('config', 'ws_workdays', "TINYINT UNSIGNED NOT NULL DEFAULT 31");
+	install_add_column('config', 'ws_default_task_minutes', "SMALLINT UNSIGNED NOT NULL DEFAULT 60");
+
+	install_note('Workspace: channels for the team, tasks with owners and dates, and a planning board that warns when someone is given more than their day holds. Off until switched on in Settings > Features.');
+
+}
+
+// Who may use the workspace (2026.4.4, 4.81).
+//
+// Four rights on the account, prefix-less TINYINT like the ERP's. An
+// administrator, designer or manager has all four; for a basic user
+// manage_workspace is the gate and the other three sit behind it. Kept in a
+// step of its own: the login path probes these columns and names them only
+// once they exist (pg_user_has_ws_columns()), so a site whose files are new
+// and whose schema is not yet does not lock its operator out.
+function upgrade_2026_4_4_workspace_permissions() {
+
+	install_add_column('user', 'manage_workspace', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('user', 'manage_workspace_assign', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('user', 'manage_workspace_board', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('user', 'manage_workspace_settings', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Basic users can be given the workspace, and separately the right to hand work to others, to see the whole team\'s board and to change the workspace settings.');
+
+}
+
+// A channel's files go to the file manager (2026.4.4, 4.82): each channel that
+// has had a file gets a folder of its own inside a private "Workspace" folder
+// at the top. The folders are made by the workspace when the first file
+// arrives, not here - an installation that never posts a file gets none.
+// config.ws_folder_id remembers which folder is the Workspace one, so a
+// rename in the file manager does not make a second.
+function upgrade_2026_4_4_workspace_folders() {
+
+	install_add_column('config', 'ws_folder_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_channels', 'folder_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_channels', 'idx_folder', "INDEX idx_folder (folder_id)");
+
+	install_note('Files posted into workspace channels are kept in the file manager, one private folder per channel inside a "Workspace" folder.');
+
+}
+
+// A panel notification can be addressed to one person (2026.4.4, 4.83).
+//
+// The bell was site-wide: every row was for everybody allowed to see its kind.
+// A mention in a channel or a task handed over is for one person, so a row can
+// now name them (target_user_id, 0 = everybody as before) and point at what
+// it is about in its own module (reference_id). The bell and the device
+// banners read the same rows, so both follow.
+function upgrade_2026_4_4_notification_owner() {
+
+	install_add_column('notifications', 'target_user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('notifications', 'reference_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('notifications', 'idx_target', "INDEX idx_target (target_user_id)");
+
+	install_note('Notifications can be addressed to one person; workspace mentions and tasks now appear in that person\'s bell.');
+
+}
+
+// Each person's own order of their channels, and the ones they pinned to the
+// top (2026.4.4, 4.84). Kept on the membership: the sidebar is personal, one
+// person's order is nobody else's.
+function upgrade_2026_4_4_workspace_channel_order() {
+
+	install_add_column('ws_channel_members', 'sort', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_channel_members', 'pinned', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Channels can be pinned and put in the order each person wants.');
+
+}
+
+
+// Reactions, checklists and polls in a conversation (2026.4.4, 4.85).
+//
+// A reaction is an emoji left on a message by a person or by an application
+// (an integration marks what it has seen). The emoji column is binary-collated:
+// under utf8mb4_unicode_ci most emoji compare equal to one another, which
+// would make the unique key refuse a second, different emoji.
+//
+// A checklist lives in the message text ("- [ ] item"); ws_checks holds who
+// ticked which item since, by the item's place among the message's checklist
+// lines.
+//
+// A poll is a message whose text is the question; its options and votes sit
+// in their own tables. A vote is one row per chosen option, so a
+// multiple-choice poll needs nothing else. Anonymous polls keep the voter too
+// (a person votes once) and only the screen leaves the names out.
+//
+// touched_at is when anything about a message last changed after it was
+// written - an edit, a reaction, a tick, a vote - so an open conversation can
+// fetch the messages that changed rather than only the new ones.
+function upgrade_2026_4_4_workspace_interactions() {
+
+	install_add_column('ws_messages', 'touched_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_messages', 'idx_touched', "INDEX idx_touched (channel_id, touched_at)");
+
+	install_create_table('ws_reactions', "CREATE TABLE ws_reactions (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		sender_kind  ENUM('user','app') NOT NULL DEFAULT 'user',
+		sender_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		emoji        VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_reaction (message_id, sender_kind, sender_id, emoji),
+		KEY idx_message (message_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_checks', "CREATE TABLE ws_checks (
+		message_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		item         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		checked      TINYINT(1) NOT NULL DEFAULT 0,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id, item)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_polls', "CREATE TABLE ws_polls (
+		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		multiple           TINYINT(1) NOT NULL DEFAULT 0,
+		anonymous          TINYINT(1) NOT NULL DEFAULT 0,
+		closes_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		result_message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_message (message_id),
+		KEY idx_open (channel_id, closed_at, closes_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_poll_options', "CREATE TABLE ws_poll_options (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		poll_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		sort         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		label        VARCHAR(255) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		KEY idx_poll (poll_id, sort)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_poll_votes', "CREATE TABLE ws_poll_votes (
+		poll_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		option_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (poll_id, option_id, user_id),
+		KEY idx_voter (poll_id, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Messages take emoji reactions, checklists that anyone in the channel can tick, and polls whose result is written down as a decision.');
+
+}
+
+// A task can carry a checklist two ways: lines of its own description
+// ("- [ ] item", ticks in ws_task_checks, the same shape as ws_checks), and a
+// checklist written in a channel that was turned into the task
+// (checklist_message_id: the list stays in the message and is ticked there or
+// on the task, one set of ticks for both). items_total / items_done are the two
+// counted together, kept on the row so lists and the board show the progress
+// without reading every list. Notes are dated lines people add to a task as
+// the work goes on; notes_count is kept the same way.
+function upgrade_2026_4_4_workspace_task_work() {
+
+	install_add_column('ws_tasks', 'checklist_message_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_tasks', 'items_total', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_tasks', 'items_done', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_tasks', 'notes_count', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_tasks', 'idx_checklist', "INDEX idx_checklist (checklist_message_id)");
+
+	install_create_table('ws_task_checks', "CREATE TABLE ws_task_checks (
+		task_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		item         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		checked      TINYINT(1) NOT NULL DEFAULT 0,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (task_id, item)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_task_notes', "CREATE TABLE ws_task_notes (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		task_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		sender_kind  ENUM('user','app') NOT NULL DEFAULT 'user',
+		sender_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		body         TEXT NULL,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		edited_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_task (task_id, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Tasks show how far their checklist has got, a checklist written in a channel can become a task, and tasks keep dated notes.');
+
+}
+
+// A task can repeat (2026.4.4, 4.88; includes/workspace/recurrence.php). One row per series:
+// the rule (daily / weekly / monthly / yearly, every N, the weekdays of a
+// weekly one as ISO bits 1-7 in bits 0-6), counted from anchor_date; the date
+// the next copy is due; the date the repeat stops. A copy is an ordinary task
+// with the same people, made on its date by the scheduled job; recurrence_id
+// on the task ties it to its series. A series ends when a copy is completed
+// for good, when its end date passes, or when somebody stops it; ended_reason
+// keeps which. idx_due is what the job reads.
+function upgrade_2026_4_4_workspace_recurrence() {
+
+	install_create_table('ws_task_recurrences', "CREATE TABLE ws_task_recurrences (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		first_task_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		last_task_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		frequency      ENUM('daily','weekly','monthly','yearly') NOT NULL DEFAULT 'weekly',
+		interval_count SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+		weekdays       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		lead_days      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		anchor_date    DATE NULL DEFAULT NULL,
+		next_date      DATE NULL DEFAULT NULL,
+		end_date       DATE NULL DEFAULT NULL,
+		occurrences    INT UNSIGNED NOT NULL DEFAULT 0,
+		status         ENUM('active','ended') NOT NULL DEFAULT 'active',
+		ended_reason   ENUM('','completed','end_date','stopped','failed') NOT NULL DEFAULT '',
+		ended_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (status, next_date)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_tasks', 'recurrence_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_tasks', 'idx_recurrence', "INDEX idx_recurrence (recurrence_id)");
+
+	// A copy opens on its start day: lead_days is how many days before its
+	// due date that is, taken from the newest copy of the series.
+	install_add_column('ws_task_recurrences', 'lead_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER weekdays");
+
+	db("UPDATE ws_task_recurrences r
+		JOIN ws_tasks t ON t.id = IF(r.last_task_id > 0, r.last_task_id, r.first_task_id)
+		SET r.lead_days = LEAST(3650, DATEDIFF(t.due_date, t.start_date))
+		WHERE r.lead_days = 0
+			AND t.start_date IS NOT NULL AND t.start_date <> '0000-00-00'
+			AND t.due_date IS NOT NULL AND t.due_date > t.start_date");
+
+	install_note('A task can repeat daily, weekly, monthly or yearly: each copy opens on its start day for the same people until the task is completed for good or the repeat reaches its end date.');
+
+}
+
+// The working calendar (2026.4.4, 4.89; includes/workspace/workdays.php).
+// A day off is a plan item of kind holiday for the whole company or for one
+// department; yearly brings it back on the same day every year (New Year's
+// Day). A country's public holidays can be read from an iCal address: the
+// address is a row of ws_holiday_feeds, its days are plan items carrying
+// feed_id and the calendar's own UID, so reading it again updates them in
+// place. skipped leaves one such day out (a day the country keeps that the
+// company works on): the row stays, so reading the calendar again does not
+// bring it back. recurrence_date is the day a repeating task's copy stands
+// for in its series, kept apart from its due date once the copy has been
+// moved off a weekend or a holiday.
+function upgrade_2026_4_4_workspace_calendar() {
+
+	install_add_column('ws_events', 'yearly', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('ws_events', 'feed_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_events', 'feed_uid', "VARCHAR(191) NOT NULL DEFAULT ''");
+	install_add_index('ws_events', 'idx_feed', "INDEX idx_feed (feed_id, feed_uid)");
+	install_add_index('ws_events', 'idx_yearly', "INDEX idx_yearly (yearly)");
+	install_add_column('ws_events', 'skipped', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_create_table('ws_holiday_feeds', "CREATE TABLE ws_holiday_feeds (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name           VARCHAR(120) NOT NULL DEFAULT '',
+		url            TEXT NULL,
+		department_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		public_only    TINYINT(1) NOT NULL DEFAULT 1,
+		events         INT UNSIGNED NOT NULL DEFAULT 0,
+		synced_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		sync_error     VARCHAR(500) NOT NULL DEFAULT '',
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_tasks', 'recurrence_date', "DATE NULL DEFAULT NULL");
+
+	install_note('Workspace working calendar: holidays for the company or a department, once or every year, or read from a public holiday calendar address (a day read from it can be left out); a repeating task that falls on a weekend or a holiday moves to the next working day.');
+
+}
+
+// Personal notes in the workspace (2026.4.4, 4.110; includes/workspace/notes.php).
+// Every note belongs to the person who wrote it (user_id) and is seen by
+// nobody else - administrators included - until it is shared. A note may be
+// taken from a message (their own or anybody's) as a copy that remembers
+// where it came from (source_message_id, source_channel_id and who wrote it,
+// source_user_id); updated_by is who changed it last; channel_id is the
+// channel opened from it.
+// ws_note_shares: a note shared with a person (user_id; can_edit lets them
+// change it, never delete it) or in a channel (channel_id; its members may
+// read it, through the card message_id posted there). A note's files go to
+// the file manager, in a private folder of its own made on its first file
+// (ws_notes.folder_id) inside a "Notes" folder in the Workspace folder
+// (config.ws_notes_folder_id); those who may read the note hold view access
+// to it. ws_inbox.note_id names the note a person was given;
+// ws_ai_requests.note_* carry a request to Claude written in a note and the
+// answer that goes back into it.
+// Workspace steps carry on at 4.110, the ERP having taken 4.90-4.103.
+function upgrade_2026_4_4_workspace_notes() {
+
+	install_create_table('ws_notes', "CREATE TABLE ws_notes (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		title                VARCHAR(200) NOT NULL DEFAULT '',
+		body                 MEDIUMTEXT NULL,
+		pinned               TINYINT(1) NOT NULL DEFAULT 0,
+		source_message_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		source_channel_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		source_user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		folder_id            INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id, pinned, updated_at),
+		KEY idx_source (source_message_id),
+		KEY idx_folder (folder_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'ws_notes_folder_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_create_table('ws_note_shares', "CREATE TABLE ws_note_shares (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		note_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		can_edit    TINYINT(1) NOT NULL DEFAULT 0,
+		message_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		shared_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_note (note_id),
+		KEY idx_user (user_id, note_id),
+		KEY idx_channel (channel_id, note_id),
+		KEY idx_message (message_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_inbox', 'note_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER task_id");
+
+	install_add_column('ws_ai_requests', 'note_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER message_id");
+	install_add_column('ws_ai_requests', 'note_text', "TEXT NULL AFTER note_id");
+	install_add_column('ws_ai_requests', 'note_reply', "MEDIUMTEXT NULL AFTER note_text");
+	install_add_column('ws_ai_requests', 'note_done', "TINYINT(1) NOT NULL DEFAULT 0 AFTER note_reply");
+	install_add_index('ws_ai_requests', 'idx_note', "INDEX idx_note (note_id, status)");
+
+	install_note('Workspace notes: everybody keeps their own notes, written from scratch or taken from any message, with tables and figures worked out as they are typed. A note is seen by nobody else until it is shared - with a person, who may read or also edit it, or in a channel, whose members may read it; Claude can be asked in a note and answers into it. Files attached to a note are kept in the file manager, in a private folder of the note inside the Workspace folder.');
+
+}
+
+// An edited picture or text file in a conversation (2026.4.4, 4.111;
+// includes/workspace/files.php). The person who posted it may edit it: the
+// edited file takes its place in the message, and the one it replaced stays
+// in files, listed here as the message's earlier version. Somebody else's
+// file is edited as a copy posted in a message of their own, and leaves no
+// row here.
+function upgrade_2026_4_4_workspace_file_edits() {
+
+	install_create_table('ws_file_edits', "CREATE TABLE ws_file_edits (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		original_file_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		original_file_name  VARCHAR(255) NOT NULL DEFAULT '',
+		edited_file_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		edited_by           INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_message (message_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('A picture or a text file posted in a workspace channel can be edited: the one who posted it replaces it and keeps the earlier version, anybody else sends an edited copy of their own.');
+
+}
+
+// Claude can be asked in a channel (2026.4.4, 4.87; includes/workspace/claude.php).
+// Somebody writes @Claude; the request waits in ws_ai_requests until the
+// site-wide routine on claude.ai, started through its API trigger, claims it
+// through the external API and answers it. One row per request: the message
+// that asked, who asked, where it stands (queued -> sent -> running ->
+// answered | failed | cancelled), the reply it got and the claude.ai session
+// that did the work. idx_status is what the queue and the watchdog read.
+// The tasks an answer proposes wait in ws_ai_drafts until somebody in the
+// channel opens or dismisses them; Claude never hands out work by itself.
+// The record changes an answer proposes (a product, its stock, an order, a
+// customer, an ERP account, a product group and its products, a channel's
+// summary; includes/workspace/changes.php) wait in ws_ai_changes: what is done
+// (action: update, create, delete, or add / remove for a group's products),
+// the fields as JSON, each with the value the record held when the change was
+// proposed and the one it would get, and for a deletion the whole row as it
+// was (snapshot). Only the person who asked applies it, with their own
+// rights; a record that changed meanwhile is not written over (status
+// stale). Applied, it leaves a decision in the channel
+// with ws_messages.locked = 1: nobody edits it, and the user role can neither
+// delete it nor take its mark off.
+// config holds the one site-wide connection: the application Claude reads
+// and writes through, the routine's address and its token (encrypted, in the
+// "<ciphertext>:<iv>" shape encrypt_string_with_iv() answers), and the time
+// a daily run limit was hit. ws_channels.claude_access: 0 follows the kind
+// of channel (public yes, private no), 1 allowed, 2 not allowed.
+function upgrade_2026_4_4_workspace_claude() {
+
+	install_create_table('ws_ai_requests', "CREATE TABLE ws_ai_requests (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		status           ENUM('queued','sent','running','answered','failed','cancelled') NOT NULL DEFAULT 'queued',
+		reply_message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		session_url      VARCHAR(255) NOT NULL DEFAULT '',
+		error            VARCHAR(255) NOT NULL DEFAULT '',
+		attempts         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		claimed_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		answered_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status (status, created_at),
+		KEY idx_message (message_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_ai_drafts', "CREATE TABLE ws_ai_drafts (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		request_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		title        VARCHAR(255) NOT NULL DEFAULT '',
+		description  TEXT NULL,
+		assignees    VARCHAR(255) NOT NULL DEFAULT '',
+		due_date     DATE NULL DEFAULT NULL,
+		priority     ENUM('low','normal','high','urgent') NOT NULL DEFAULT 'normal',
+		status       ENUM('pending','accepted','dismissed') NOT NULL DEFAULT 'pending',
+		task_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_message (message_id),
+		KEY idx_request (request_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_ai_changes', "CREATE TABLE ws_ai_changes (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		request_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		record_type         VARCHAR(20) NOT NULL DEFAULT '',
+		action              VARCHAR(10) NOT NULL DEFAULT 'update',
+		record_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		fields              MEDIUMTEXT NULL,
+		reason              VARCHAR(500) NOT NULL DEFAULT '',
+		snapshot            MEDIUMTEXT NULL,
+		status              ENUM('pending','applying','applied','dismissed','stale','failed') NOT NULL DEFAULT 'pending',
+		error               VARCHAR(255) NOT NULL DEFAULT '',
+		decided_by          INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		decision_message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_message (message_id),
+		KEY idx_record (record_type, record_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// A database that took this step before additions and deletions could be
+	// proposed has the table without these two.
+	install_add_column('ws_ai_changes', 'action', "VARCHAR(10) NOT NULL DEFAULT 'update' AFTER record_type");
+	install_add_column('ws_ai_changes', 'snapshot', "MEDIUMTEXT NULL AFTER reason");
+
+	install_add_column('ws_messages', 'locked', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	// The config row is at MySQL's row size limit: the texts are TEXT, which
+	// keeps only a pointer in the row, and TEXT takes no DEFAULT clause.
+	install_add_column('config', 'ws_claude_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_claude_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_claude_routine_url', "TEXT NULL");
+	install_add_column('config', 'ws_claude_token', "TEXT NULL");
+	install_add_column('config', 'ws_claude_hold_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_claude_error', "TEXT NULL");
+
+	install_add_column('ws_channels', 'claude_access', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Claude can be asked in a channel with @Claude: the site starts the routine an administrator set up on claude.ai, and the answer comes back under the request. Private channels stay closed to it unless their manager opens them. A change, an addition or a deletion (a product, its stock, an order, a customer, an ERP account, a product group and the products in it, the channel summary) is only proposed: the person who asked applies it with their own rights, and a locked decision records it in the channel.');
 
 }

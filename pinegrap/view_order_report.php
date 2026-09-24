@@ -1420,14 +1420,14 @@ if (!$_POST) {
                 '<tr style="font-weight: bold; color: #008000; cursor: default">
                     <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . h($summarize_by_1_name) . '</td>
                     ' . $output_report_detail_cells . '
-                    <td class="align-middle text-end">' . number_format($summarize_by_1_result['count']) . '</td>
-                    <td class="align-middle text-end">' . number_format($summarize_by_1_result['count'] / $grand_count * 100, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'], 0) . '</td>
+                    <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'] / $grand_count * 100, 2) . '%</td>
                     <td class="align-middle text-end">' . prepare_amount($summarize_by_1_result['subtotal'] / 100) . '</td>
-                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_1_result['discount'] / 100, 2, '.', ',') . '</td>
-                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_1_result['tax'] / 100, 2, '.', ',') . '</td>
-                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_1_result['shipping'] / 100, 2, '.', ',') . '</td>
+                    <td class="align-middle text-end">' . pg_format_money($summarize_by_1_result['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle text-end">' . pg_format_money($summarize_by_1_result['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle text-end">' . pg_format_money($summarize_by_1_result['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                     <td class="align-middle text-end">' . prepare_amount($summarize_by_1_result['total'] / 100) . '</td>
-                    <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                 </tr>';
             
             // if there is at least 2 summarize bys
@@ -1461,14 +1461,14 @@ if (!$_POST) {
                             <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                             <td class="align-middle text-nowrap" colspan="' . $colspan . '">' . h($summarize_by_2_name) . '</td>
                             ' . $output_report_detail_cells . '
-                            <td class="align-middle text-end">' . number_format($summarize_by_2_result['count']) . '</td>
-                            <td class="align-middle text-end">' . number_format($summarize_by_2_result['count'] / $summarize_by_1_result['count'] * 100, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['count'], 0) . '</td>
+                            <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['count'] / $summarize_by_1_result['count'] * 100, 2) . '%</td>
                             <td class="align-middle text-end">' . prepare_amount($summarize_by_2_result['subtotal'] / 100) . '</td>
-                            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_2_result['discount'] / 100, 2, '.', ',') . '</td>
-                            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_2_result['tax'] / 100, 2, '.', ',') . '</td>
-                            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_2_result['shipping'] / 100, 2, '.', ',') . '</td>
+                            <td class="align-middle text-end">' . pg_format_money($summarize_by_2_result['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                            <td class="align-middle text-end">' . pg_format_money($summarize_by_2_result['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                            <td class="align-middle text-end">' . pg_format_money($summarize_by_2_result['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($summarize_by_2_result['total'] / 100) . '</td>
-                            <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                         </tr>';
                     
                     // if there are 3 summarize bys
@@ -1501,14 +1501,14 @@ if (!$_POST) {
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                                     <td  class="align-middle text-nowrap">' . h($summarize_by_3_name) . '</td>
                                     ' . $output_report_detail_cells . '
-                                    <td class="align-middle text-end">' . number_format($summarize_by_3_result['count']) . '</td>
-                                    <td class="align-middle text-end">' . number_format($summarize_by_3_result['count'] / $summarize_by_2_result['count'] * 100, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['count'], 0) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['count'] / $summarize_by_2_result['count'] * 100, 2) . '%</td>
                                     <td class="align-middle text-end">' . prepare_amount($summarize_by_3_result['subtotal'] / 100) . '</td>
-                                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_3_result['discount'] / 100, 2, '.', ',') . '</td>
-                                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_3_result['tax'] / 100, 2, '.', ',') . '</td>
-                                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($summarize_by_3_result['shipping'] / 100, 2, '.', ',') . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($summarize_by_3_result['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($summarize_by_3_result['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($summarize_by_3_result['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                     <td class="align-middle text-end">' . prepare_amount($summarize_by_3_result['total'] / 100) . '</td>
-                                    <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                                 </tr>';
                             
                             if ($liveform->get_field_value('detail') == 1) {
@@ -1534,11 +1534,11 @@ if (!$_POST) {
                                             <td>&nbsp;</td>
                                             <td>&nbsp;</td>
                                             <td class="align-middle text-end">' . prepare_amount($order['subtotal'] / 100) . '</td>
-                                            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['discount'] / 100, 2, '.', ',') . '</td>
-                                            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['tax'] / 100, 2, '.', ',') . '</td>
-                                            <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['shipping'] / 100, 2, '.', ',') . '</td>
+                                            <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                            <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                            <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                             <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
-                                            <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                                            <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                                         </tr>';
                                 }
                             }
@@ -1569,11 +1569,11 @@ if (!$_POST) {
                                         <td>&nbsp;</td>
                                         <td>&nbsp;</td>
                                         <td class="align-middle text-end">' . prepare_amount($order['subtotal'] / 100) . '</td>
-                                        <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['discount'] / 100, 2, '.', ',') . '</td>
-                                        <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['tax'] / 100, 2, '.', ',') . '</td>
-                                        <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['shipping'] / 100, 2, '.', ',') . '</td>
+                                        <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                        <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                        <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                         <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
-                                        <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                                        <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                                     </tr>';
                             }
                         }
@@ -1605,11 +1605,11 @@ if (!$_POST) {
                                 <td>&nbsp;</td>
                                 <td>&nbsp;</td>
                                 <td class="align-middle text-end">' . prepare_amount($order['subtotal'] / 100) . '</td>
-                                <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['discount'] / 100, 2, '.', ',') . '</td>
-                                <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['tax'] / 100, 2, '.', ',') . '</td>
-                                <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['shipping'] / 100, 2, '.', ',') . '</td>
+                                <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                 <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
-                                <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                                <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                             </tr>';
                     }
                 }
@@ -1641,11 +1641,11 @@ if (!$_POST) {
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td class="align-middle text-end">' . prepare_amount($order['subtotal'] / 100) . '</td>
-                        <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['discount'] / 100, 2, '.', ',') . '</td>
-                        <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['tax'] / 100, 2, '.', ',') . '</td>
-                        <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($order['shipping'] / 100, 2, '.', ',') . '</td>
+                        <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                        <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                        <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                         <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
-                        <td class="align-middle text-end">' . number_format($total_percentage, 2) . '%</td>
+                        <td class="align-middle text-end">' . pg_format_number($total_percentage, 2) . '%</td>
                     </tr>';
             }
         }
@@ -1655,12 +1655,12 @@ if (!$_POST) {
                                 '<tr style="font-weight: bold; color: #c49700;  cursor: default">
                                     <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</td>
                                     ' . $output_report_detail_cells . '
-                                    <td class="align-middle text-end">' . number_format($grand_count) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
                                     <td class="align-middle text-end">100.00%</td>
                                     <td class="align-middle text-end">' . prepare_amount($grand_subtotal / 100) . '</td>
-                                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($grand_discount / 100, 2, '.', ',') . '</td>
-                                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($grand_tax / 100, 2, '.', ',') . '</td>
-                                    <td class="align-middle text-end">' . BASE_CURRENCY_SYMBOL . number_format($grand_shipping / 100, 2, '.', ',') . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($grand_discount / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($grand_tax / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($grand_shipping / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                     <td class="align-middle text-end">' . prepare_amount($grand_total / 100) . '</td>
                                     <td class="align-middle text-end">100.00%</td>
                                 </tr>

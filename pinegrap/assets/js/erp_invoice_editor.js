@@ -10,7 +10,10 @@
  * The arithmetic here mirrors the money helpers on the server (erp_kurus,
  * erp_line_total, erp_apply_rate): whole kurus in integers, rounding half away
  * from zero at the same points. The server works everything out again on
- * save; what is shown here is a preview and must agree with it.
+ * save; what is shown here is a preview and must agree with it. A line's VAT
+ * withholding is the share of its VAT its code carries (the list comes from
+ * the server in data-withholding-rates; a code it does not know keeps the
+ * share stored on the line), and comes off the total.
  *
  * Loaded by the invoice editor screens with a plain <script src>; it does not
  * depend on jQuery, but uses it for the date fields when it is present because
@@ -40,10 +43,13 @@
     var issueDateInput = document.getElementById('issue_date');
 
     var productsUrl = root.getAttribute('data-products-url');
+    var accountSelect = document.getElementById('account_id');
     var rateUrl = root.getAttribute('data-rate-url');
     var fxOn = root.getAttribute('data-fx') === '1';
     var baseCurrency = root.getAttribute('data-base-currency') || '';
     var dateFormat = root.getAttribute('data-date-format') || 'day_month';
+    // How a single comma with three digits behind it is read (erp_decimal_comma()).
+    var decimalComma = root.getAttribute('data-decimal-comma') !== '0';
     var maxLines = parseInt(root.getAttribute('data-max-lines'), 10) || 200;
     var textNoResults = root.getAttribute('data-text-no-results') || '';
     var textMaxLines = root.getAttribute('data-text-max-lines') || '';
@@ -56,9 +62,20 @@
         sku: root.getAttribute('data-text-sku') || 'SKU',
         zoneRate: root.getAttribute('data-text-zone-rate') || '',
         notFound: root.getAttribute('data-text-not-found') || '',
-        overStock: root.getAttribute('data-text-over-stock') || ''
+        overStock: root.getAttribute('data-text-over-stock') || '',
+        lastCost: root.getAttribute('data-text-last-cost') || '',
+        avgCost: root.getAttribute('data-text-avg-cost') || '',
+        accountPrice: root.getAttribute('data-text-account-price') || '',
+        accountDiscount: root.getAttribute('data-text-account-discount') || ''
     };
     var barcodeInput = root.querySelector('[data-erp-barcode]');
+    var withholdingToggle = root.querySelector('[data-erp-withholding-toggle]');
+    var withholdingRates = {};
+    try {
+        withholdingRates = JSON.parse(root.getAttribute('data-withholding-rates') || '{}') || {};
+    } catch (error) {
+        withholdingRates = {};
+    }
 
     /* ------------------------------------------------------------ parsing */
 
@@ -106,6 +123,35 @@
         if (position < 0) {
             return parseFloat(raw) || 0;
         }
+        var whole = raw.substring(0, position).replace(/[^0-9]/g, '');
+        var fraction = raw.substring(position + 1).replace(/[^0-9]/g, '');
+        return parseFloat((whole || '0') + '.' + (fraction || '0')) || 0;
+    }
+
+    // erp_quantity_in(): with both separators the last is the decimal one; a
+    // separator seen more than once groups; a single point is decimal; a
+    // single comma with three digits behind it groups where the store writes
+    // a decimal point.
+    function parseQuantity(raw) {
+        raw = String(raw || '').replace(/[^0-9.,]/g, '');
+        if (raw === '') {
+            return 0;
+        }
+        var dots = raw.split('.').length - 1;
+        var commas = raw.split(',').length - 1;
+        var decimal = '';
+        if (dots > 0 && commas > 0) {
+            decimal = raw.lastIndexOf('.') > raw.lastIndexOf(',') ? '.' : ',';
+        } else if (dots === 1) {
+            decimal = '.';
+        } else if (commas === 1) {
+            var behind = raw.length - raw.lastIndexOf(',') - 1;
+            decimal = (behind === 3 && !decimalComma) ? '' : ',';
+        }
+        if (decimal === '') {
+            return parseFloat(raw.replace(/[^0-9]/g, '')) || 0;
+        }
+        var position = raw.lastIndexOf(decimal);
         var whole = raw.substring(0, position).replace(/[^0-9]/g, '');
         var fraction = raw.substring(position + 1).replace(/[^0-9]/g, '');
         return parseFloat((whole || '0') + '.' + (fraction || '0')) || 0;
@@ -202,6 +248,7 @@
         if (!row) {
             return null;
         }
+        showWithholding(row, withholdingOn());
         tbody.appendChild(row);
         renumber();
         recalc();
@@ -219,6 +266,10 @@
             if (unit) {
                 unit.selectedIndex = 0;
             }
+            var code = field(row, 'withholding_code');
+            if (code) {
+                code.value = '';
+            }
         } else {
             row.parentNode.removeChild(row);
         }
@@ -227,11 +278,12 @@
     }
 
     function lineFigures(row) {
-        var quantity = parseDecimal(field(row, 'quantity') ? field(row, 'quantity').value : '');
+        var quantity = parseQuantity(field(row, 'quantity') ? field(row, 'quantity').value : '');
         var unitPrice = parseKurus(field(row, 'unit_price') ? field(row, 'unit_price').value : '');
         var discountRate = parseDecimal(field(row, 'discount_rate') ? field(row, 'discount_rate').value : '');
         var offerRate = parseDecimal(field(row, 'offer_discount_rate') ? field(row, 'offer_discount_rate').value : '');
         var taxRate = parseDecimal(field(row, 'tax_rate') ? field(row, 'tax_rate').value : '');
+        var tax2Rate = parseDecimal(field(row, 'tax2_rate') ? field(row, 'tax2_rate').value : '');
 
         // The campaign first, the typed discount on what it leaves; the same
         // order erp_manual_lines_build() uses.
@@ -240,20 +292,78 @@
         var typed = discountRate > 0 ? applyRate(total - offer, discountRate) : 0;
         var discount = offer + typed;
         var tax = applyRate(total - discount, taxRate);
+        // A second tax, where the store names one: its own rate on the same
+        // net; withholding stays a share of the first.
+        var tax2 = tax2Rate > 0 ? applyRate(total - discount, tax2Rate) : 0;
+        var share = withholdingShare(row);
+        var withholding = share > 0 ? applyRate(tax, share) : 0;
 
         return {
             lineTotal: total,
             discount: discount,
             tax: tax,
-            payable: total - discount + tax,
+            tax2: tax2,
+            withholding: withholding,
+            payable: total - discount + tax + tax2 - withholding,
             isEmpty: (quantity === 0 && unitPrice === 0)
         };
+    }
+
+    /* ---------------------------------------------------------- withholding */
+
+    // The share of the VAT a line withholds: the list's for a code it knows,
+    // the stored one for a code it does not, nothing without a code.
+    function withholdingShare(row) {
+        var code = field(row, 'withholding_code');
+        var value = code ? code.value : '';
+        if (value === '') {
+            return 0;
+        }
+        if (Object.prototype.hasOwnProperty.call(withholdingRates, value)) {
+            return Number(withholdingRates[value]) || 0;
+        }
+        var stored = field(row, 'withholding_rate');
+        return stored ? parseDecimal(stored.value) : 0;
+    }
+
+    function withholdingOn() {
+        return !!(withholdingToggle && withholdingToggle.checked);
+    }
+
+    function showWithholding(scope, on) {
+        Array.prototype.forEach.call(scope.querySelectorAll('[data-erp-withholding-col]'), function (cell) {
+            cell.classList.toggle('d-none', !on);
+        });
+        if (scope.matches && scope.matches('[data-erp-withholding-col]')) {
+            scope.classList.toggle('d-none', !on);
+        }
+    }
+
+    function applyWithholdingToggle() {
+        var on = withholdingOn();
+        showWithholding(root, on);
+        // Turned off means none: a hidden code would still be sent.
+        if (!on) {
+            rows().forEach(function (row) {
+                var code = field(row, 'withholding_code');
+                var stored = field(row, 'withholding_rate');
+                if (code) {
+                    code.value = '';
+                }
+                if (stored) {
+                    stored.value = '';
+                }
+            });
+        }
+        recalc();
     }
 
     function recalc() {
         var subtotal = 0;
         var discountTotal = 0;
         var taxTotal = 0;
+        var tax2Total = 0;
+        var withholdingTotal = 0;
 
         rows().forEach(function (row) {
             var figures = lineFigures(row);
@@ -264,6 +374,8 @@
             subtotal += figures.lineTotal;
             discountTotal += figures.discount;
             taxTotal += figures.tax;
+            tax2Total += figures.tax2;
+            withholdingTotal += figures.withholding;
         });
 
         if (!totalsBox) {
@@ -274,8 +386,15 @@
             subtotal: subtotal,
             discount_total: discountTotal,
             tax_total: taxTotal,
-            grand_total: subtotal - discountTotal + taxTotal
+            tax2_total: tax2Total,
+            withholding_total: withholdingTotal,
+            grand_total: subtotal - discountTotal + taxTotal + tax2Total - withholdingTotal
         };
+
+        var withholdingRow = totalsBox.querySelector('[data-erp-withholding-total]');
+        if (withholdingRow) {
+            withholdingRow.classList.toggle('d-none', !(withholdingOn() || withholdingTotal !== 0));
+        }
 
         Object.keys(totals).forEach(function (key) {
             var target = totalsBox.querySelector('[data-erp-total="' + key + '"]');
@@ -338,9 +457,12 @@
         parts.push(texts.sku + ': ' + row.dataset.erpSku);
 
         var warning = false;
-        if (row.dataset.erpStock !== undefined && row.dataset.erpStock !== '') {
+        if (row.dataset.erpStock !== undefined && row.dataset.erpStock !== '' && isPurchase()) {
+            // Goods coming in: the count is information, not a limit.
+            parts.push(fill(texts.stock, parseInt(row.dataset.erpStock, 10)));
+        } else if (row.dataset.erpStock !== undefined && row.dataset.erpStock !== '') {
             var stock = parseInt(row.dataset.erpStock, 10);
-            var quantity = parseDecimal(field(row, 'quantity') ? field(row, 'quantity').value : '');
+            var quantity = parseQuantity(field(row, 'quantity') ? field(row, 'quantity').value : '');
             if (stock <= 0) {
                 parts.push(texts.outOfStock);
                 warning = true;
@@ -359,6 +481,16 @@
         }
         if (row.dataset.erpOffer) {
             parts.push(texts.campaign + ' ' + row.dataset.erpOffer);
+        }
+        if (row.dataset.erpTerms) {
+            parts.push(row.dataset.erpTerms);
+        }
+        // What the product has cost: the last purchase on a purchase, the
+        // average on a sale (includes/erp/stock.php).
+        if (isPurchase() && row.dataset.erpLastCost && texts.lastCost) {
+            parts.push(fill(texts.lastCost, row.dataset.erpLastCost));
+        } else if (!isPurchase() && row.dataset.erpAvgCost && texts.avgCost) {
+            parts.push(fill(texts.avgCost, row.dataset.erpAvgCost));
         }
 
         // Where the VAT rate came from is said on the box, not in the line.
@@ -390,8 +522,28 @@
         if (description) {
             description.value = product.name;
         }
-        if (unitPrice) {
+        // A purchase is priced at what the product last cost, not at the
+        // shelf price; with no purchase yet the box is left to be typed. The
+        // cost is kept in the base currency, so a bill in another currency
+        // leaves the box to be typed too (the hint still shows the cost).
+        if (unitPrice && isPurchase()) {
+            unitPrice.value = (product.cost && product.cost.last > 0 && currentCurrency() === baseCurrency)
+                ? formatPrice(product.cost.last) : '';
+        } else if (unitPrice) {
             unitPrice.value = formatPrice(product.price);
+        }
+
+        // Terms agreed with the account (includes/erp/price_lists.php): its
+        // own price, or its discount in the discount box. They stand in for
+        // the store's campaign; a purchase has neither.
+        var terms = (!isPurchase() && product.account_terms) ? product.account_terms : null;
+        var termsText = '';
+        if (terms && terms.price > 0 && unitPrice) {
+            unitPrice.value = formatPrice(terms.price);
+            termsText = fill(texts.accountPrice, formatPrice(product.price));
+        } else if (terms && terms.discount_rate > 0 && field(row, 'discount_rate')) {
+            field(row, 'discount_rate').value = trimNumber(Number(terms.discount_rate).toFixed(3));
+            termsText = fill(texts.accountDiscount, trimNumber(Number(terms.discount_rate).toFixed(3)) + '%');
         }
         if (taxRate && product.tax_rate !== null && product.tax_rate !== undefined) {
             taxRate.value = trimNumber(Number(product.tax_rate).toFixed(3));
@@ -402,7 +554,7 @@
 
         // The store's campaign is a discount on a sale; a purchase bill has
         // none. The delivery note form has neither box, hence the checks.
-        var offer = (!isPurchase() && product.offer) ? product.offer : null;
+        var offer = (!isPurchase() && product.offer && !terms) ? product.offer : null;
         if (offerId) {
             offerId.value = offer ? String(offer.id) : '0';
         }
@@ -410,15 +562,45 @@
             offerRate.value = offer ? trimNumber(Number(offer.rate).toFixed(3)) : '';
         }
 
+        showThumb(row, product.image_url || '');
+
         row.dataset.erpSku = product.sku || '';
         row.dataset.erpStock = (product.stock === null || product.stock === undefined) ? '' : String(product.stock);
         row.dataset.erpDisabled = (product.enabled === false) ? '1' : '0';
         row.dataset.erpOffer = offer ? ('\u2212' + trimNumber(Number(offer.rate).toFixed(3)) + '%') : '';
+        row.dataset.erpTerms = termsText;
+        row.dataset.erpLastCost = (product.cost && product.cost.last > 0)
+            ? (product.cost.last_text + (product.cost.last_date ? ' (' + product.cost.last_date + ')' : ''))
+            : '';
+        row.dataset.erpAvgCost = (product.cost && product.cost.avg > 0) ? product.cost.avg_text : '';
         row.dataset.erpZoneRate = (product.tax_rate_source === 'zone') ? '1' : '0';
 
         updateHint(row);
         recalc();
     }
+
+    /**
+     * The picked product's picture, or nothing. Hidden rather than left
+     * showing the last product's picture: a row that has been cleared must
+     * not still look like it holds something.
+     */
+    function showThumb(row, url) {
+
+        var thumb = row.querySelector('[data-erp-product-thumb]');
+
+        if (!thumb) {
+            return;
+        }
+
+        if (url) {
+            thumb.src = url;
+            thumb.classList.remove('d-none');
+        } else {
+            thumb.removeAttribute('src');
+            thumb.classList.add('d-none');
+        }
+    }
+
 
     function badge(text, className) {
         var span = document.createElement('span');
@@ -509,7 +691,7 @@
         if (existing) {
             var quantity = field(existing, 'quantity');
             if (quantity) {
-                quantity.value = trimNumber((parseDecimal(quantity.value) + 1).toFixed(4));
+                quantity.value = trimNumber((parseQuantity(quantity.value) + 1).toFixed(4));
             }
             updateHint(existing);
             recalc();
@@ -534,7 +716,7 @@
             return;
         }
         barcodeInput.disabled = true;
-        fetch(productsUrl + '?barcode=' + encodeURIComponent(code), { credentials: 'same-origin' })
+        fetch(productsUrl + '?barcode=' + encodeURIComponent(code) + accountParam(), { credentials: 'same-origin' })
             .then(function (response) {
                 return response.ok ? response.json() : { product: null };
             })
@@ -581,7 +763,7 @@
 
         window.clearTimeout(lookupTimer);
         lookupTimer = window.setTimeout(function () {
-            fetch(productsUrl + '?q=' + encodeURIComponent(query), { credentials: 'same-origin' })
+            fetch(productsUrl + '?q=' + encodeURIComponent(query) + accountParam(), { credentials: 'same-origin' })
                 .then(function (response) {
                     return response.ok ? response.json() : { results: [] };
                 })
@@ -596,6 +778,50 @@
                     menu.classList.remove('show');
                 });
         }, 250);
+    }
+
+    /* ------------------------------------------------------ tax zone */
+
+    // The account the document is for: a product without a rate of its own is
+    // offered at the rate of that account's tax zone (erp_account_zone_rate()).
+    function accountParam() {
+        var id = accountSelect ? parseInt(accountSelect.value, 10) : 0;
+        return (id > 0) ? ('&account_id=' + id) : '';
+    }
+
+    // A new account moves the lines that took the zone's rate to the new
+    // account's zone; a rate typed by hand or the product's own stays.
+    function refreshZoneRates() {
+        if (!productsUrl) {
+            return;
+        }
+        var zoneRows = rows().filter(function (row) {
+            return row.dataset.erpZoneRate === '1' && field(row, 'tax_rate');
+        });
+        if (!zoneRows.length) {
+            return;
+        }
+        fetch(productsUrl + '?zone_rate=1' + accountParam(), { credentials: 'same-origin' })
+            .then(function (response) {
+                return response.ok ? response.json() : null;
+            })
+            .then(function (data) {
+                if (!data || data.rate === undefined || data.rate === null) {
+                    return;
+                }
+                zoneRows.forEach(function (row) {
+                    field(row, 'tax_rate').value = trimNumber(Number(data.rate).toFixed(3));
+                });
+                recalc();
+            })
+            .catch(function () {});
+    }
+
+    if (accountSelect) {
+        accountSelect.addEventListener('change', refreshZoneRates);
+        if (window.jQuery) {
+            window.jQuery(accountSelect).on('select2:select', refreshZoneRates);
+        }
     }
 
     /* ------------------------------------------------------ exchange rate */
@@ -714,6 +940,11 @@
             updateHint(row);
             return;
         }
+        // A rate typed over the zone's is the operator's: a later change of
+        // account leaves it alone (refreshZoneRates()).
+        if (target === field(row, 'tax_rate')) {
+            row.dataset.erpZoneRate = '0';
+        }
         updateHint(row);
         recalc();
     });
@@ -742,7 +973,23 @@
         }
     }());
 
-    tbody.addEventListener('change', recalc);
+    tbody.addEventListener('change', function (event) {
+        // A code picked from the list brings its share with it; the stored
+        // share of an unknown code is kept.
+        if (event.target.matches('[data-erp-withholding-code]')) {
+            var row = event.target.closest('[data-erp-line]');
+            var stored = row ? field(row, 'withholding_rate') : null;
+            if (stored) {
+                var code = event.target.value;
+                stored.value = Object.prototype.hasOwnProperty.call(withholdingRates, code) ? String(withholdingRates[code]) : (code === '' ? '' : stored.value);
+            }
+        }
+        recalc();
+    });
+
+    if (withholdingToggle) {
+        withholdingToggle.addEventListener('change', applyWithholdingToggle);
+    }
 
     tbody.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {

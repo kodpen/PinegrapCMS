@@ -66,9 +66,16 @@ if (!$_POST) {
 
         // Everything back, because that is the common case; anything less is a
         // number the user lowers rather than a set of boxes they have to tick.
+        // Sent here after a card refund chosen by line (view_order.php), the
+        // quantities are the ones refunded, so the money and the document agree.
+        $preset_qty = (isset($_GET['qty']) && is_array($_GET['qty'])) ? $_GET['qty'] : null;
+
         foreach ($lines as $line) {
+            $quantity = ($preset_qty !== null)
+                ? min((float) $line['remaining_qty'], max(0, (float) ($preset_qty[(int) $line['id']] ?? 0)))
+                : (float) $line['remaining_qty'];
             $liveform->assign_field_value('qty_' . (int) $line['id'],
-                rtrim(rtrim(number_format($line['remaining_qty'], 4, '.', ''), '0'), '.'));
+                ($quantity > 0) ? rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.') : '');
         }
     }
 
@@ -102,8 +109,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Return an Invoice'),
-        'extra_classes' => 'erp erp_invoices',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_invoices',
+        'icon' => 'erp',
         'heading' => lang('Return an Invoice'),
         'heading_description' => lang('Give back what came back. The original is left as it was issued; this is a document of its own.'),
         'cancel' => array('enable' => 'true', 'url' => 'edit_erp_invoice.php?id=' . $invoice_id),
@@ -122,6 +129,7 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_return.php" method="post">
                 ' . get_token_field() . '
+                ' . (((int) ($_GET['back_order'] ?? 0) > 0) ? '<input type="hidden" name="back_order" value="' . (int) $_GET['back_order'] . '" />' : '') . '
                 <input type="hidden" name="invoice_id" value="' . $invoice_id . '" />
 
                 <div class="card my-4">
@@ -161,7 +169,7 @@ if (!$_POST) {
                                 <tr>
                                     <th style="width:3rem">#</th>
                                     <th>' . lang('Description') . '</th>
-                                    <th class="text-end">' . lang('Sold') . '</th>
+                                    <th class="text-end">' . ((((string) $invoice['direction']) === 'purchase') ? lang('Bought') : lang('Sold')) . '</th>
                                     <th class="text-end">' . lang('Already Returned') . '</th>
                                     <th class="text-end">' . lang('Unit price') . '</th>
                                     <th class="text-end">' . lang('Returning') . '</th>
@@ -178,7 +186,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><span class="bi bi-arrow-return-left me-2"></span><span class="btn-text">' . lang(array('string' => 'Create the Return')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Creating')) . '"><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the Return')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -228,6 +236,15 @@ if (!$_POST) {
     log_activity(lang(array('string' => 'erp return ({var:1}) was created', 'vars' => $result['full_number'])), $_SESSION['sessionusername']);
 
     $liveform->remove_form();
+
+    // Asked from an order's documents card: back to the order, where the next
+    // step (the money) is waiting.
+    if ((int) ($_POST['back_order'] ?? 0) > 0) {
+        $liveform_order = new liveform('view_order');
+        $liveform_order->add_notice(lang(array('string' => 'Return {var:1} created.', 'vars' => $result['full_number'])));
+        go(PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $_POST['back_order'] . '#erp_order_documents');
+    }
+
     $liveform_document = new liveform('edit_erp_invoice');
     $liveform_document->add_notice(lang(array('string' => 'Return {var:1} created.', 'vars' => $result['full_number'])));
 

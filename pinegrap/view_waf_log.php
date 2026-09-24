@@ -397,10 +397,10 @@ $verdict = '';
 
 if ($suspect_count > 0) {
     $verdict = ($mode === 'block')
-        ? lang(array('string' => '{var:1} blocked addresses also show signed-in activity or a completed order. See Possible False Positives below.', 'vars' => number_format($suspect_count)))
-        : lang(array('string' => '{var:1} of the flagged addresses also show signed-in activity or a completed order. Review them below before switching to Block.', 'vars' => number_format($suspect_count)));
+        ? lang(array('string' => '{var:1} blocked addresses also show signed-in activity or a completed order. See Possible False Positives below.', 'vars' => pg_format_number($suspect_count, 0)))
+        : lang(array('string' => '{var:1} of the flagged addresses also show signed-in activity or a completed order. Review them below before switching to Block.', 'vars' => pg_format_number($suspect_count, 0)));
 } elseif ($flagged && $mode === 'monitor') {
-    $verdict = lang(array('string' => 'None of the {var:1} flagged addresses in this period shows signed-in activity or a completed order.', 'vars' => number_format(count($flagged))));
+    $verdict = lang(array('string' => 'None of the {var:1} flagged addresses in this period shows signed-in activity or a completed order.', 'vars' => pg_format_number(count($flagged), 0)));
 }
 
 if ($verdict !== '') {
@@ -522,31 +522,31 @@ echo '<div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">' . lang('Events') . '</div>
-            <div class="h3 mb-0">' . number_format((int) $summary['total']) . '</div>
+            <div class="h3 mb-0">' . pg_format_number((int) $summary['total'], 0) . '</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">' . lang('Blocked') . '</div>
-            <div class="h3 mb-0 text-danger">' . number_format((int) $summary['blocked']) . '</div>
+            <div class="h3 mb-0 text-danger">' . pg_format_number((int) $summary['blocked'], 0) . '</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">' . lang('Would block') . '</div>
-            <div class="h3 mb-0 text-warning">' . number_format((int) $summary['would_block']) . '</div>
+            <div class="h3 mb-0 text-warning">' . pg_format_number((int) $summary['would_block'], 0) . '</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">' . lang('Distinct Addresses') . '</div>
-            <div class="h3 mb-0">' . number_format((int) $summary['addresses']) . '</div>
+            <div class="h3 mb-0">' . pg_format_number((int) $summary['addresses'], 0) . '</div>
         </div></div>
     </div>
 </div>
 <p class="text-muted small mb-4">' . lang(array(
     'string' => 'Identical events within five minutes share one row. {var:1} requests are stored as {var:2} rows.',
-    'vars'   => array(number_format((int) $summary['total']), number_format((int) $summary['rows_stored'])),
+    'vars'   => array(pg_format_number((int) $summary['total'], 0), pg_format_number((int) $summary['rows_stored'], 0)),
 )) . '</p>';
 
 // Possible false positives.
@@ -561,7 +561,7 @@ if ($suspects) {
     echo '<div class="card mb-4 border-warning-subtle">
         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
             <span class="text-uppercase h6 text-warning-emphasis fw-bold mb-0"><i class="bi bi-person-exclamation me-1"></i>' . lang('Possible False Positives') . '</span>
-            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">' . number_format($suspect_count) . '</span>
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">' . pg_format_number($suspect_count, 0) . '</span>
         </div>
         <div class="card-body">
             <p class="text-muted small">' . lang('These addresses were flagged by the firewall in this period and also look like real people: a signed-in user, a "remember me" sign-in, a named entry in the activity log or a completed order came from the same address. Check them before switching the firewall to Block. Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.') . '</p>
@@ -584,7 +584,7 @@ if ($suspects) {
 
         echo '<tr>
             <td class="font-monospace small text-nowrap">' . h($suspect['ip_address']) . '</td>
-            <td class="small"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">&times;' . number_format((int) $suspect['hits']) . '</span></td>
+            <td class="small"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">&times;' . pg_format_number((int) $suspect['hits'], 0) . '</span></td>
             <td class="small"><code>' . h($suspect['rules']) . '</code></td>
             <td class="small">' . $badges . '</td>
             <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $suspect['last_seen'])) . '</td>
@@ -685,7 +685,7 @@ if ($csp_entries || $csp_mode !== 'off') {
                 <td class="small"><code>' . h($entry['d']) . '</code></td>
                 <td class="font-monospace small text-break" style="max-width:20rem;">' . h($entry['b']) . '</td>
                 <td class="small text-break" style="max-width:18rem;">' . h($entry['p']) . '</td>
-                <td class="small"><span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . number_format((int) $entry['n']) . '</span></td>
+                <td class="small"><span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . pg_format_number((int) $entry['n'], 0) . '</span></td>
                 <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $entry['l'])) . '</td>
             </tr>';
         }
@@ -745,7 +745,7 @@ if (!$events) {
                 . get_relative_time(array('timestamp' => (int) $event['last_seen']))
                 . '</div></td>
             <td class="small">' . ((int) $event['hit_count'] > 1
-                ? '<span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . number_format((int) $event['hit_count']) . '</span>'
+                ? '<span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . pg_format_number((int) $event['hit_count'], 0) . '</span>'
                 : '1') . '</td>
             <td><span class="badge ' . h($badge[0]) . '">' . h($badge[1]) . '</span></td>
             <td class="font-monospace small text-nowrap">' . h($event['ip_address']) . '</td>

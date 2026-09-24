@@ -149,6 +149,124 @@ if (mb_strtolower($file['name']) === 'dkim.key') {
     output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
 }
 
+// A document the ERP keeps (an issued invoice, a delivery note, an e-document,
+// a reconciliation letter) sits in the file directory with no folder, and a
+// file with no folder is otherwise public. It is personal data, so it is only
+// served to a signed-in user with the ERP right, and to anyone else it does
+// not exist. Every such file is named "erp-..." (includes/erp/archive.php), so
+// the column is only asked about for those; before 4.65 the query fails and
+// nothing is an ERP file.
+$erp_document = false;
+
+if (strncasecmp($file['name'], 'erp-', 4) === 0) {
+    $erp_result = mysqli_query(db::$con, "SELECT erp_doc_type FROM files WHERE id = '" . (int) $file['id'] . "'");
+    $erp_row = ($erp_result !== false) ? mysqli_fetch_assoc($erp_result) : null;
+
+    if (is_array($erp_row) && ((string) $erp_row['erp_doc_type'] !== '')) {
+        $erp_document = true;
+
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        $erp_user = (USER_LOGGED_IN == true) ? pg_load_user_row((int) USER_ID) : null;
+
+        if (!is_array($erp_user) || ((int) $erp_user['role'] >= 3 && empty($erp_user['manage_erp']))) {
+            output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+        }
+    }
+}
+
+// A file posted into a workspace channel. Since 4.82 it sits in the channel's
+// folder under the private "Workspace" folder, and the folder's own private
+// access decides (staff, and the channel's basic-user members, who are given
+// it); what that cannot say is that anyone in the team may open the files of
+// a public channel, so that is allowed here. The same goes for the folder of
+// a personal note (4.110) that is shared in a public channel: its channel's
+// readers may read the note, so they may open its files. An attachment from
+// before, with no folder and named "ws-<channel>-<time>-<random>", is served
+// to the channel's readers only (and staff who opened it for inspection), and
+// not at all once its message was deleted. Before 4.80 the queries fail and
+// nothing is a workspace file.
+$workspace_file = false;
+
+if ($erp_document === false) {
+    $ws_row = null;
+    $ws_legacy = false;
+
+    if ((int) $file['folder_id'] > 0) {
+        $ws_result = @mysqli_query(db::$con, "SELECT id AS channel_id, kind, 0 AS deleted_at FROM ws_channels
+            WHERE folder_id = '" . (int) $file['folder_id'] . "' AND folder_id > 0 LIMIT 1");
+        $ws_row = ($ws_result !== false) ? mysqli_fetch_assoc($ws_result) : null;
+
+        if (!is_array($ws_row)) {
+            $ws_result = @mysqli_query(db::$con, "SELECT c.id AS channel_id, c.kind, 0 AS deleted_at
+                FROM ws_notes n
+                INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.channel_id > 0
+                INNER JOIN ws_channels c ON c.id = s.channel_id AND c.kind = 'public'
+                WHERE n.folder_id = '" . (int) $file['folder_id'] . "' AND n.folder_id > 0
+                LIMIT 1");
+            $ws_row = ($ws_result !== false) ? mysqli_fetch_assoc($ws_result) : null;
+        }
+    } elseif (preg_match('/^ws-[0-9]+-[0-9]+-[0-9a-f]+\./i', $file['name'])) {
+        $ws_legacy = true;
+        $ws_result = @mysqli_query(db::$con, "SELECT m.channel_id, m.deleted_at, c.kind
+            FROM files f
+            LEFT JOIN ws_messages m ON m.file_id = f.id
+            LEFT JOIN ws_channels c ON c.id = m.channel_id
+            WHERE f.id = '" . (int) $file['id'] . "'
+            ORDER BY m.id
+            LIMIT 1");
+        $ws_row = ($ws_result !== false) ? mysqli_fetch_assoc($ws_result) : null;
+    }
+
+    if (is_array($ws_row)) {
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        $ws_user = (USER_LOGGED_IN == true) ? pg_load_user_row((int) USER_ID) : null;
+        $ws_member = false;
+        $ws_role = 3;
+
+        if (is_array($ws_user)) {
+            $ws_role = (int) $ws_user['role'];
+            $ws_profile = mysqli_query(db::$con, "SELECT excluded FROM ws_profiles WHERE user_id = '" . (int) $ws_user['id'] . "'");
+            $ws_profile_row = ($ws_profile !== false) ? mysqli_fetch_assoc($ws_profile) : null;
+            $ws_excluded = is_array($ws_profile_row) && ((int) $ws_profile_row['excluded'] === 1);
+            $ws_member = !$ws_excluded && (($ws_role < 3) || !empty($ws_user['manage_workspace']));
+        }
+
+        if (!$ws_legacy) {
+            // The folder's private access stays in charge; a public channel's
+            // file is simply open to the whole team as well.
+            if ($ws_member && ((string) $ws_row['kind'] === 'public')) {
+                $workspace_file = true;
+            }
+        } else {
+            $workspace_file = true;
+            $ws_allowed = false;
+            $ws_channel_id = (int) $ws_row['channel_id'];
+
+            if ($ws_member && ((string) $ws_row['kind'] !== '') && ((int) $ws_row['deleted_at'] === 0)) {
+                if ($ws_row['kind'] === 'public') {
+                    $ws_allowed = true;
+                } else {
+                    $ws_in = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members
+                        WHERE channel_id = '" . $ws_channel_id . "' AND user_id = '" . (int) $ws_user['id'] . "'");
+
+                    $ws_allowed = (($ws_in !== false) && (mysqli_num_rows($ws_in) > 0))
+                        || (($ws_role < 3) && !empty($_SESSION['software']['ws_audit'][$ws_channel_id]));
+                }
+            }
+
+            if (!$ws_allowed) {
+                output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+            }
+        }
+    }
+}
+
 // If a file directory path is not set, then set it to the default which is a path
 // inside the software directory. A custom file directory path is used when
 // an adminstrator wants the file directory to be located in a different area.
@@ -163,7 +281,9 @@ if (file_exists(FILE_DIRECTORY_PATH . '/' . $file['name']) == FALSE) {
     output_error(get_file_text('Sorry, a record of the file exists in the database, but the actual file does not exist on the file system.  The administrator should restore the file on the file system or delete the file in the control panel and re-upload the file.'), 404);
 }
 
-$access_control_type = get_access_control_type($file['folder_id']);
+// An ERP document or a workspace file has no folder and was checked above;
+// the folder walk would read a folder row that is not there.
+$access_control_type = ($erp_document || $workspace_file) ? 'public' : get_access_control_type($file['folder_id']);
 
 // if the access control type is not public, then do access control checks
 if (
@@ -950,7 +1070,15 @@ switch ($access_control_type) {
 // Set the cache-control header so that the file will be cached for 1 week.
 // We previously used 1 day but Google PageSpeed Insights prefers 1 week+.
 // This is the new header for caching a file.
-header('Cache-Control: ' . $cache_control_type . ', max-age=604800');
+// An ERP document is kept by nobody: not a proxy, and not the browser either,
+// so signing out is the end of it.
+// A workspace file may stay in the reader's browser, which draws it again every
+// time the channel is opened, but never in a shared proxy.
+if ($workspace_file) {
+    $cache_control_type = 'private';
+}
+
+header('Cache-Control: ' . ($erp_document ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
 
 // Set the pragma cache.  Technically, this header should not be necessary,
 // however we use it to make sure that this works in all browsers.

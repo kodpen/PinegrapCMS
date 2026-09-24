@@ -123,7 +123,7 @@ $number_of_comments = count($comments);
 // If at least one comment was published, then log activity.
 if ($number_of_comments) {
 
-    log_activity(lang(array('string' => 'general job published {var:1} scheduled comment(s)', 'vars' => array(number_format($number_of_comments)))), 'UNKNOWN');
+    log_activity(lang(array('string' => 'general job published {var:1} scheduled comment(s)', 'vars' => array(pg_format_number($number_of_comments, 0)))), 'UNKNOWN');
 
 }
 

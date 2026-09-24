@@ -1332,7 +1332,9 @@ function install_heavy_tables() {
 		// `page` and `style` carry the LONGTEXT page trees and generated HTML, so
 		// a copy-rebuild ALTER on them is slow on a big site; `notifications` is
 		// read whole by the notification_reads backfill.
-		'2026.4.4' => array('user', 'products', 'product_groups', 'orders', 'page', 'style', 'notifications'),
+		// `files` takes two columns and an index for the documents the ERP keeps
+		// (4.65); it is a MyISAM table on older installations, rebuilt whole.
+		'2026.4.4' => array('user', 'products', 'product_groups', 'orders', 'page', 'style', 'notifications', 'files'),
 	);
 
 }

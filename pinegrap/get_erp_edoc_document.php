@@ -23,9 +23,29 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
 $invoice_id = (int) ($_GET['id'] ?? 0);
 $format = ((string) ($_GET['format'] ?? 'pdf') === 'xml') ? 'xml' : 'pdf';
-$download = !empty($_GET['download']) || ($format === 'xml');
+
+// The provider's copy of an accepted document does not change any more; the
+// one kept locally is served without asking the provider again.
+if ($format === 'pdf') {
+    $kept = erp_archive_file('edoc', $invoice_id);
+
+    if ($kept !== null) {
+        erp_archive_send($kept, (string) db_value("SELECT IF(gib_number <> '', gib_number, full_number) FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1") . '.pdf', !empty($_GET['download']));
+    }
+}
 
 $result = erp_edoc_invoice_document($invoice_id, $format);
+
+if (!empty($result['success']) && ($format === 'pdf')) {
+    erp_archive_edoc($invoice_id, (string) $result['content'], (string) $result['mime']);
+}
+
+// A PDF or a page can be read in the browser; an archive or anything else
+// is saved. What came back decides, not what was asked for: İşbaşı answers
+// the PDF address with an HTML rendering and the UBL address with a zip.
+$mime = (string) ($result['mime'] ?? '');
+$download = !empty($_GET['download'])
+    || ((strpos($mime, 'application/pdf') === false) && (strpos($mime, 'text/html') === false));
 
 if (empty($result['success'])) {
     output_error(h((string) $result['error']) . ' <a href="edit_erp_invoice.php?id=' . $invoice_id . '">' . lang('Invoice') . '</a>');

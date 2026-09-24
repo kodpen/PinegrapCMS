@@ -24,6 +24,13 @@ validate_token_field();
 
 $liveform->add_fields_to_session();
 
+// A designed page (the change_password widget) names itself in return_to:
+// errors go back there, and the confirmation follows the widget's send_to.
+// pg_controls lists what the widget drew; a hint it left out is kept.
+$pg_return_to = pg_sw_return_to();
+$pg_controls  = pg_sw_posted_controls();
+$pg_error_url = ($pg_return_to !== '') ? $pg_return_to : get_page_type_url('change password');
+
 // A signed-in Google-only account (algo 3) has no current password to type:
 // this request sets the account's FIRST password. The bypass is tied strictly
 // to the session identity - in this mode the posted email cannot pick the
@@ -65,7 +72,7 @@ if ($pg_set_password_mode) {
         log_activity('access denied to change password (too many failed attempts) (email or username: ' . $pg_login_identifier . ')', 'UNKNOWN');
         $liveform->mark_error('current_password', lang('There have been several failed sign-in attempts for this account or from this address. Please sign in first, then change your password.'));
         $liveform->assign_field_value('current_password', '');
-        go(get_page_type_url('change password'));
+        go($pg_error_url);
     }
 
     // if login is not valid, check which part of login is invalid. Raw password
@@ -135,7 +142,7 @@ if (($liveform->get_field_value('password_hint') != '') && ($liveform->get_field
 
 // if an error exists, then send user back to previous screen
 if ($liveform->check_form_errors()) {
-    go(get_page_type_url('change password'));
+    go($pg_error_url);
 }
 
 // Get the actual username for the user, because the user probably entered
@@ -151,8 +158,8 @@ $query =
     "UPDATE user 
     SET 
         user_password = '" . escape(pg_password_hash($liveform->get_field_value('new_password'))) . "',
-        user_password_algo = 2,
-        user_password_hint = '" . escape($liveform->get_field_value('password_hint')) . "'
+        user_password_algo = 2
+        " . (pg_sw_posted_control($pg_controls, 'password_hint') ? ", user_password_hint = '" . escape($liveform->get_field_value('password_hint')) . "'" : '') . "
         " . pg_password_changed_sql() . "
     WHERE user_id = '" . (int) $change_user_id . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed');
@@ -191,10 +198,14 @@ if (($_SESSION['software']['logged_in_as_different_user'] ?? false) == false) {
     }
 }
 
+$liveform->remove();
+
+if ($pg_return_to !== '') {
+    go(pg_sw_account_done(lang('Your password has been changed.'), ($_POST['send_to'] ?? ''), $pg_return_to, 'change_password'));
+}
+
 $my_account = new liveform('my_account');
 
 $my_account->add_notice(lang('Your password has been changed.'));
-
-$liveform->remove();
 
 go(get_page_type_url('my account'));

@@ -159,6 +159,14 @@ $editor = array(
 
 $heading = $is_new ? lang('Create Offer') : lang('Edit Offer');
 
+// Where it was talked about in the workspace, and the tasks about it.
+$output_workspace_button = '';
+
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $output_workspace_button = ws_record_button($user, 'offer', $offer_id, (string) db_value("SELECT code FROM offers WHERE id = '" . (int) $offer_id . "'"), 'btn btn-sm btn-outline-secondary');
+}
+
 echo pg_page_shell(array(
     'title'               => $heading,
     'extra classes'       => 'products',

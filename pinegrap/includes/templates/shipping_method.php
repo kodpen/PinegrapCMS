@@ -164,7 +164,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php endif ?>
 			</td>
 			<td class="text-center">
-				<?=number_format($item['quantity'])?>
+				<?=pg_format_number($item['quantity'], 0)?>
 			</td>
 			<td class="text-right">
 				<span class="visible-xs-inline"><?=h(lang('Price'))?>:</span>

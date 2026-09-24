@@ -1916,6 +1916,11 @@ function validate_user()
     $manage_erp = $row['manage_erp'] ?? 0;
     $manage_erp_cash = $row['manage_erp_cash'] ?? 0;
     $manage_erp_settings = $row['manage_erp_settings'] ?? 0;
+    $manage_erp_readonly = $row['manage_erp_readonly'] ?? 0;
+    $manage_workspace = $row['manage_workspace'] ?? 0;
+    $manage_workspace_assign = $row['manage_workspace_assign'] ?? 0;
+    $manage_workspace_board = $row['manage_workspace_board'] ?? 0;
+    $manage_workspace_settings = $row['manage_workspace_settings'] ?? 0;
     $user_set_offline_payment = $row['user_set_offline_payment'];
     $user_create_pages = $row['user_create_pages'];
     $user_delete_pages = $row['user_delete_pages'];
@@ -1986,6 +1991,11 @@ function validate_user()
     settype($manage_erp, 'boolean');
     settype($manage_erp_cash, 'boolean');
     settype($manage_erp_settings, 'boolean');
+    settype($manage_erp_readonly, 'boolean');
+    settype($manage_workspace, 'boolean');
+    settype($manage_workspace_assign, 'boolean');
+    settype($manage_workspace_board, 'boolean');
+    settype($manage_workspace_settings, 'boolean');
     settype($user_set_offline_payment, 'boolean');
     settype($user_create_pages, 'boolean');
     settype($user_delete_pages, 'boolean');
@@ -2022,6 +2032,11 @@ function validate_user()
         "manage_erp" => $manage_erp,
         "manage_erp_cash" => $manage_erp_cash,
         "manage_erp_settings" => $manage_erp_settings,
+        "manage_erp_readonly" => $manage_erp_readonly,
+        "manage_workspace" => $manage_workspace,
+        "manage_workspace_assign" => $manage_workspace_assign,
+        "manage_workspace_board" => $manage_workspace_board,
+        "manage_workspace_settings" => $manage_workspace_settings,
         "set_offline_payment" => $user_set_offline_payment,
         "create_pages" => $user_create_pages,
         "delete_pages" => $user_delete_pages,
@@ -2198,7 +2213,10 @@ function validate_contact_group_access($user, $contact_group_id)
  * explain why a screen is missing is how a feature gets reported as broken.
  *
  * @param array  $user
- * @param string $area  '', 'cash' or 'settings'
+ * @param string $area  '', 'cash' or 'settings'; for the read-only right also
+ *                      'read' (a form that only reads), 'accountant' (the
+ *                      accountant's pack) and 'write' (a change made without
+ *                      a form)
  * @return bool
  */
 function validate_erp_access($user, $area = '')
@@ -2217,6 +2235,23 @@ function validate_erp_access($user, $area = '')
 
     if ($allowed && ($area === 'settings')) {
         $allowed = ($user['role'] < 3) || !empty($user['manage_erp_settings']);
+    }
+
+    // The accountant's right (manage_erp_readonly): the books to read and the
+    // packs to take away, nothing to change. Every ERP form reaches this gate
+    // before its screen acts on it, so a sent form is refused here; the few
+    // screens whose forms only read (an export, the accountant's pack) say so
+    // with their area. 'write' is a request that changes something without a
+    // form, such as running a job by hand.
+    if ($allowed && ((int) $user['role'] >= 3) && !empty($user['manage_erp_readonly'])) {
+        $posting = (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST');
+
+        if (in_array($area, array('settings', 'write'), true) || ($posting && !in_array($area, array('read', 'accountant'), true))) {
+            log_activity(lang('access denied to erp'), $_SESSION['sessionusername']);
+            output_error(lang('Your account can read the ERP but not change anything in it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+
+            return false;
+        }
     }
 
     if ($allowed) {
@@ -3161,7 +3196,7 @@ function validate_captcha_answer($liveform)
                         // Otherwise there was not a communication error with the blacklist service,
                         // so if the visitor is on the blacklist, then log activity and add error.
                     } else if (!empty($response['ip']['appears'])) {
-                        log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round($response['ip']['confidence']), number_format($response['ip']['frequency'])))), lang('UNKNOWN'));
+                        log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round($response['ip']['confidence']), pg_format_number($response['ip']['frequency'], 0)))), lang('UNKNOWN'));
                         $liveform->mark_error('', lang('Sorry, we were not able to accept your request.'));
                     }
                 }
@@ -3571,6 +3606,15 @@ function initialize_user()
         } else {
             define('USER_MANAGE_ERP_SETTINGS', false);
         }
+        // The accountant's right: the ERP to read, nothing in it to change
+        // (validate_erp_access() refuses the forms).
+        define('USER_ERP_READONLY', USER_MANAGE_ERP && (USER_ROLE >= 3) && !empty($user['manage_erp_readonly']));
+        // The workspace gate and the three rights behind it. A basic user holds
+        // none of the three without the gate; staff hold all four.
+        define('USER_MANAGE_WORKSPACE', ((USER_ROLE < 3) or !empty($user['manage_workspace'])));
+        define('USER_MANAGE_WORKSPACE_ASSIGN', USER_MANAGE_WORKSPACE && ((USER_ROLE < 3) or !empty($user['manage_workspace_assign'])));
+        define('USER_MANAGE_WORKSPACE_BOARD', USER_MANAGE_WORKSPACE && ((USER_ROLE < 3) or !empty($user['manage_workspace_board'])));
+        define('USER_MANAGE_WORKSPACE_SETTINGS', USER_MANAGE_WORKSPACE && ((USER_ROLE < 3) or !empty($user['manage_workspace_settings'])));
         if ((USER_ROLE < 3) || ($user['manage_forms'] == 'yes')) {
             define('USER_MANAGE_FORMS', true);
         } else {

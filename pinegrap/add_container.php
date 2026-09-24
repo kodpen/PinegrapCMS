@@ -205,7 +205,7 @@ if (!$_POST) {
     }
 
     // Convert cost to cents.
-    $cost = (int) round((float) $liveform->get_field_value('cost') * 100);
+    $cost = (int) round(pg_parse_amount($liveform->get_field_value('cost')) * 100);
 
     db(
         "INSERT INTO containers (

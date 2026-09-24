@@ -55,6 +55,74 @@ function pg_user_has_erp_columns()
     return $has;
 }
 
+/**
+ * Does the user table carry the workspace permission columns yet?
+ *
+ * The same gap pg_user_has_erp_columns() covers: new files can be served by
+ * the previous version's table until the upgrade runs, and a login query that
+ * names a missing column takes the panel down with it. The four columns arrive
+ * in one step, so the last of them answers for all four. An exact name match,
+ * not LIKE: the underscores in the name are wildcards there.
+ *
+ * @return bool
+ */
+function pg_user_has_ws_columns()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user WHERE Field = 'manage_workspace_settings'");
+        $has = ($result && (mysqli_num_rows($result) > 0));
+    }
+
+    return $has;
+}
+
+/**
+ * Does the user table carry the ERP's read-only right yet (2026.4.4, 4.78)?
+ * Asked for the same reason as pg_user_has_erp_columns(), by exact name.
+ *
+ * @return bool
+ */
+function pg_user_has_erp_readonly_column()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user WHERE Field = 'manage_erp_readonly'");
+        $has = ($result && (mysqli_num_rows($result) > 0));
+    }
+
+    return $has;
+}
+
+/**
+ * The read-only right as a piece of the user screens' SQL, or '' before the
+ * upgrade: 'columns' and 'values' for an INSERT, 'set' for an UPDATE. Each
+ * piece ends in a comma, like the lines around it.
+ *
+ * @param string $mode
+ * @return string
+ */
+function pg_user_erp_readonly_sql($mode)
+{
+    if (!pg_user_has_erp_readonly_column()) {
+        return '';
+    }
+
+    $value = (!empty($_POST['manage_erp_readonly']) ? 1 : 0);
+
+    if ($mode === 'columns') {
+        return 'manage_erp_readonly,';
+    }
+
+    if ($mode === 'values') {
+        return "'" . $value . "',";
+    }
+
+    return "manage_erp_readonly = '" . $value . "',";
+}
+
 // Verify a cookie value and return the user id, or false. An expired or
 // mismatched token is not trusted; an expired row is also deleted in passing.
 function pg_auth_token_verify($cookie_value)
@@ -160,9 +228,19 @@ function pg_load_user_row($user_id)
         ? "user.manage_erp, user.manage_erp_cash, user.manage_erp_settings,"
         : "0 AS manage_erp, 0 AS manage_erp_cash, 0 AS manage_erp_settings,";
 
+    // The ERP's read-only right (4.78), under the same rule.
+    $erp_columns .= pg_user_has_erp_readonly_column() ? " user.manage_erp_readonly," : " 0 AS manage_erp_readonly,";
+
+    // The workspace rights, under the same rule.
+    $ws_columns = pg_user_has_ws_columns()
+        ? "user.manage_workspace, user.manage_workspace_assign, user.manage_workspace_board, user.manage_workspace_settings,"
+        : "0 AS manage_workspace, 0 AS manage_workspace_assign, 0 AS manage_workspace_board, 0 AS manage_workspace_settings,";
+
     return db_item("SELECT
 
             " . $erp_columns . "
+
+            " . $ws_columns . "
 
             user.user_id AS id,
 

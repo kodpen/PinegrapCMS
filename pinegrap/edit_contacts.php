@@ -87,10 +87,10 @@ if ($_POST['contacts']) {
             
             // if more than 0 contacts were organized, then log activity
             if ($number_of_contacts > 0) {
-                log_activity( lang(array('string'=>'{var:1} contact(s) were organized','vars'=>number_format($number_of_contacts) )) , $_SESSION['sessionusername']);
+                log_activity( lang(array('string'=>'{var:1} contact(s) were organized','vars'=>pg_format_number($number_of_contacts, 0) )) , $_SESSION['sessionusername']);
             }
             $liveform_view_contacts = new liveform('view_contacts');
-            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were organized','vars'=>number_format($number_of_contacts) )) );
+            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were organized','vars'=>pg_format_number($number_of_contacts, 0) )) );
             
             break;
 
@@ -110,11 +110,11 @@ if ($_POST['contacts']) {
             
             // if at least one contact was opted-in, log activity
             if ($number_of_contacts > 0) {
-                log_activity( lang(array('string'=>'{var:1} contact(s) were opted-in','vars'=>number_format($number_of_contacts) )) , $_SESSION['sessionusername']);
+                log_activity( lang(array('string'=>'{var:1} contact(s) were opted-in','vars'=>pg_format_number($number_of_contacts, 0) )) , $_SESSION['sessionusername']);
             }
             
             $liveform_view_contacts = new liveform('view_contacts');
-            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were opted-in','vars'=>number_format($number_of_contacts) )) );
+            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were opted-in','vars'=>pg_format_number($number_of_contacts, 0) )) );
             
             break;
 
@@ -134,11 +134,11 @@ if ($_POST['contacts']) {
             
             // if more than 0 contacts were opted-out, then log activity
             if ($number_of_contacts > 0) {
-                log_activity( lang(array('string'=>'{var:1} contact(s) were opted-out','vars'=>number_format($number_of_contacts) )) , $_SESSION['sessionusername']);
+                log_activity( lang(array('string'=>'{var:1} contact(s) were opted-out','vars'=>pg_format_number($number_of_contacts, 0) )) , $_SESSION['sessionusername']);
             }
             
             $liveform_view_contacts = new liveform('view_contacts');
-            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were opted-out','vars'=>number_format($number_of_contacts) )) );
+            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were opted-out','vars'=>pg_format_number($number_of_contacts, 0) )) );
             
             break;
 
@@ -165,11 +165,11 @@ if ($_POST['contacts']) {
             
             // if more than 0 contacts were deleted, then log activity
             if ($number_of_contacts > 0) {
-                log_activity( lang(array('string'=>'{var:1} contact(s) were deleted','vars'=>number_format($number_of_contacts) )) , $_SESSION['sessionusername']);
+                log_activity( lang(array('string'=>'{var:1} contact(s) were deleted','vars'=>pg_format_number($number_of_contacts, 0) )) , $_SESSION['sessionusername']);
             }
             
             $liveform_view_contacts = new liveform('view_contacts');
-            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were deleted','vars'=>number_format($number_of_contacts) )) );
+            $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were deleted','vars'=>pg_format_number($number_of_contacts, 0) )) );
             
             break;
             
@@ -282,8 +282,8 @@ if ($_POST['contacts']) {
             
             // if contacts were merged then output a notice informing the user how many were merged
             if ($number_of_merged_contacts > 0) {
-                $notice =  lang(array('string'=>'{var:1} contact(s) have been merged successfully.','vars'=>number_format($number_of_merged_contacts) ));
-                log_activity( lang(array('string'=>'{var:1} contact(s) have been merged successfully.','vars'=>number_format($number_of_merged_contacts) )) , $_SESSION['sessionusername']);
+                $notice =  lang(array('string'=>'{var:1} contact(s) have been merged successfully.','vars'=>pg_format_number($number_of_merged_contacts, 0) ));
+                log_activity( lang(array('string'=>'{var:1} contact(s) have been merged successfully.','vars'=>pg_format_number($number_of_merged_contacts, 0) )) , $_SESSION['sessionusername']);
             
             // else output a notice informing the user that no contacts where merged.
             } else {

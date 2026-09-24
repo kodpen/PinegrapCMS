@@ -47,33 +47,58 @@
             return (vars[i] === undefined || vars[i] === null) ? '' : String(vars[i]);
         });
     }
-    // Cents to the site's money format (prepare_amount(): symbol, thousands
-    // commas, two decimals).
+    // Cents to the site's money format (prepare_amount(): symbol, the site
+    // language's separators, two decimals).
     function money(cents) {
         var n = (parseInt(cents, 10) || 0) / 100;
         var neg = n < 0; if (neg) { n = -n; }
+        var seps = C.money_separators || { decimal: '.', thousands: ',' };
         var parts = n.toFixed(2).split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return (neg ? '-' : '') + C.currency + parts.join('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, seps.thousands);
+        return (neg ? '-' : '') + C.currency + parts.join(seps.decimal);
     }
+    // An amount for an input box: the site's decimal separator, no grouping,
+    // no ".00" tail.
     function centsToInput(cents) {
         var n = (parseInt(cents, 10) || 0);
-        return n ? (n / 100).toFixed(2).replace(/\.00$/, '') : '';
+        var seps = C.money_separators || { decimal: '.', thousands: ',' };
+        return n ? (n / 100).toFixed(2).replace(/\.00$/, '').replace('.', seps.decimal) : '';
     }
-    // "100", "100.5", "100,50", "1.250,00" → cents. A comma that is followed
-    // by exactly two digits at the end is a decimal comma; every other comma
-    // is a thousands separator.
+    // "100", "100.5", "100,50", "1.250,00", "1,250.00" → cents, read the way
+    // the server reads a typed amount (pg_parse_amount()): with both
+    // separators the last one is the decimal one; a separator seen more than
+    // once groups thousands; a single one with one or two digits after it is
+    // the decimal one, and with three ("1.250") the site's separators decide.
     function inputToCents(text) {
-        var s = String(text || '').replace(/\s/g, '');
+        var s = String(text || '').replace(/[\s\u00a0]/g, '');
+        var negative = (s.charAt(0) === '-');
+        s = s.replace(/[^0-9.,]/g, '');
         if (s === '') { return 0; }
-        if (/,\d{1,2}$/.test(s) && s.indexOf('.') < 0) {
-            s = s.replace(/\./g, '').replace(',', '.');
+        var lastDot = s.lastIndexOf('.'), lastComma = s.lastIndexOf(',');
+        var decimal = '';
+        if (lastDot !== -1 && lastComma !== -1) {
+            decimal = (lastDot > lastComma) ? '.' : ',';
         } else {
-            s = s.replace(/,/g, '');
+            var sep = (lastDot !== -1) ? '.' : ((lastComma !== -1) ? ',' : '');
+            if (sep && s.split(sep).length === 2) {
+                if (s.length - s.lastIndexOf(sep) - 1 === 3) {
+                    var seps = C.money_separators || { decimal: '.', thousands: ',' };
+                    decimal = (seps.decimal === sep) ? sep : '';
+                } else {
+                    decimal = sep;
+                }
+            }
         }
-        var n = parseFloat(s);
+        var number;
+        if (decimal) {
+            var at = s.lastIndexOf(decimal);
+            number = s.substring(0, at).replace(/[.,]/g, '') + '.' + s.substring(at + 1).replace(/[.,]/g, '');
+        } else {
+            number = s.replace(/[.,]/g, '');
+        }
+        var n = parseFloat(number);
         if (isNaN(n)) { return 0; }
-        return Math.round(n * 100);
+        return Math.round((negative ? -n : n) * 100);
     }
     function pct(text) {
         var n = parseFloat(String(text || '').replace(',', '.'));

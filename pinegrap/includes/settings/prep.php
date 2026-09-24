@@ -111,6 +111,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $chat_widget_title = isset($row['chat_widget_title']) ? $row['chat_widget_title'] : '';
     $chat_allow_files = isset($row['chat_allow_files']) ? (int) $row['chat_allow_files'] : 0;
     $chat_allow_images = isset($row['chat_allow_images']) ? (int) $row['chat_allow_images'] : 0;
+    $chat_allow_audio = isset($row['chat_allow_audio']) ? (int) $row['chat_allow_audio'] : 0;
     $chat_visitor_image_limit = isset($row['chat_visitor_image_limit']) ? (int) $row['chat_visitor_image_limit'] : 5;
     $chat_upload_folder_id = isset($row['chat_upload_folder_id']) ? (int) $row['chat_upload_folder_id'] : 0;
     $product_upload_folder_id = isset($row['product_upload_folder_id']) ? (int) $row['product_upload_folder_id'] : 0;
@@ -412,15 +413,43 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
             foreach (erp_edoc_fields($erp_edoc_code) as $erp_edoc_field) {
                 $erp_edoc_name = 'edoc_' . $erp_edoc_code . '_' . $erp_edoc_field['name'];
-                $erp_edoc_has_value = (trim((string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? '')) !== '');
+                $erp_edoc_value = (string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? '');
                 $erp_edoc_secret = ($erp_edoc_field['type'] === 'password');
+
+                // A choice (test or live, say) is a select; everything else
+                // is a box, and a password box is drawn empty with a hint.
+                if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])) {
+                    $erp_edoc_control = '<select class="form-select" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '">';
+
+                    foreach ((array) $erp_edoc_field['options'] as $erp_edoc_option => $erp_edoc_option_label) {
+                        $erp_edoc_control .= '<option value="' . h((string) $erp_edoc_option) . '"' . (((string) $erp_edoc_option === $erp_edoc_value) ? ' selected="selected"' : '') . '>' . h((string) $erp_edoc_option_label) . '</option>';
+                    }
+
+                    $erp_edoc_control .= '</select>';
+                } else {
+                    // Shown, not hidden behind a placeholder: the rest of this
+                    // card prints its stored keys and passwords the same way
+                    // (ups_password, stripe_api_key, iyzipay_secret_key), and
+                    // Site Settings already asks for manager rights. A box the
+                    // operator can read is a box they can check.
+                    $erp_edoc_control = '<input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '" />';
+                }
 
                 $erp_edoc_fields .= '
                                                                 <div class="pg-f-md">
                                                                     <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . (!empty($erp_edoc_field['required']) ? ' <span class="text-danger">*</span>' : '') . '</label>
-                                                                    <input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . ($erp_edoc_secret ? '' : h((string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? ''))) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '"' . (($erp_edoc_secret && $erp_edoc_has_value) ? ' placeholder="' . h(lang('Saved')) . '"' : '') . ' />'
+                                                                    ' . $erp_edoc_control
                     . (($erp_edoc_field['help'] !== '') ? '<div class="form-text">' . h($erp_edoc_field['help']) . '</div>' : '') . '
                                                                 </div>';
+            }
+
+            // A provider set to its test environment is marked here too: the
+            // radio is what the operator looks at, and a test setup issues
+            // nothing a customer can be given.
+            $erp_edoc_environment = erp_edoc_environment($erp_edoc_code);
+
+            if (!empty($erp_edoc_environment['is_test'])) {
+                $erp_edoc_badges .= ' <span class="badge text-bg-warning">' . h((string) $erp_edoc_environment['label']) . '</span>';
             }
 
             $output_erp_edoc_options .= '
@@ -439,6 +468,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                             </div>';
         }
     }
+    // Whether the hand-over to GİB follows the creation on its own (4.63).
+    $erp_edoc_autosend_checked = ((int) ($row['erp_edoc_autosend'] ?? 1) === 1) ? ' checked="checked"' : '';
     $erp_enabled = $row['erp_enabled'] ?? 0;
     $erp_enabled_checked = ($erp_enabled == 1) ? ' checked="checked"' : '';
     $erp_default_series = $row['erp_default_series'] ?? 'PGF';
@@ -446,12 +477,57 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_seller_vkn = $row['erp_seller_vkn'] ?? '';
     $erp_seller_tax_office = $row['erp_seller_tax_office'] ?? '';
     $erp_default_due_days = (int) ($row['erp_default_due_days'] ?? 0);
+    // How document numbers are shaped and what the tax is called (4.72). The
+    // examples are built on the series, the way the numbers will read.
+    $erp_number_style = (string) ($row['erp_number_style'] ?? 'gib');
+    $erp_tax_name = (string) ($row['erp_tax_name'] ?? '');
+    // A second tax on invoice lines (4.75), named by the store; empty is none.
+    $erp_tax2_name = (string) ($row['erp_tax2_name'] ?? '');
+    $erp_series_example = (trim((string) $erp_default_series) !== '') ? trim((string) $erp_default_series) : 'PGF';
+    $erp_number_examples = array(
+        'gib' => lang(array('string' => '{var:1} - series, year and nine digits; restarts every year (the GİB shape)', 'vars' => $erp_series_example . date('Y') . '000000001')),
+        'year' => lang(array('string' => '{var:1} - series, year and number; restarts every year', 'vars' => $erp_series_example . '-' . date('Y') . '-0001')),
+        'continuous' => lang(array('string' => '{var:1} - series and number; never restarts', 'vars' => $erp_series_example . '-000001')),
+    );
+    if (!isset($erp_number_examples[$erp_number_style])) {
+        $erp_number_style = 'gib';
+    }
+    $erp_number_options = '';
+    foreach ($erp_number_examples as $erp_number_value => $erp_number_text) {
+        $erp_number_options .= '<option value="' . h($erp_number_value) . '"' . (($erp_number_value === $erp_number_style) ? ' selected' : '') . '>' . h($erp_number_text) . '</option>';
+    }
     // The account counter sales without a customer are billed to (4.59); the
     // list is read only when the module's tables are there.
     $erp_walkin_account_id = (int) ($row['erp_walkin_account_id'] ?? 0);
     $erp_walkin_accounts = waf_table_has_column('erp_accounts', 'title')
         ? (array) db_items("SELECT id, title FROM erp_accounts WHERE status = 'active' AND kind IN ('customer', 'both') ORDER BY title ASC")
         : array();
+    // What the till shows (4.74): prices with VAT, or prices without tax and
+    // the tax added at the total.
+    $local_sale_prices = ((string) ($row['local_sale_prices'] ?? 'gross') === 'net') ? 'net' : 'gross';
+    // Whether the ERP's documents change stock counts (4.77).
+    $erp_stock_documents_checked = ((int) ($row['erp_stock_documents'] ?? 1) === 1) ? ' checked' : '';
+    // Invoices by e-mail (4.97): whether each issued one goes on its own, and
+    // the store's covering text.
+    $erp_invoice_mail_ready = array_key_exists('erp_invoice_mail_auto', $row);
+    $erp_invoice_mail_auto_checked = ((int) ($row['erp_invoice_mail_auto'] ?? 0) === 1) ? ' checked' : '';
+    $erp_invoice_mail_message = (string) ($row['erp_invoice_mail_message'] ?? '');
+    // What a sale past a credit limit does (4.98).
+    $erp_credit_ready = array_key_exists('erp_credit_limit_mode', $row);
+
+    // ERP notices on the bell and the devices (4.91); the amount is kept in
+    // kurus and shown in whole units of the base currency.
+    $erp_alerts_ready = array_key_exists('erp_notify_collections', $row);
+    $erp_notify_collections_checked = ((int) ($row['erp_notify_collections'] ?? 0) === 1) ? ' checked="checked"' : '';
+    $erp_notify_collection_min = (int) floor(((int) ($row['erp_notify_collection_min'] ?? 0)) / 100);
+    $erp_notify_low_stock_checked = ((int) ($row['erp_notify_low_stock'] ?? 0) === 1) ? ' checked="checked"' : '';
+    $erp_credit_limit_mode = ((string) ($row['erp_credit_limit_mode'] ?? 'warn') === 'block') ? 'block' : 'warn';
+    // How an order's shipping and surcharge are taxed on its invoice (4.76);
+    // empty lets the store's country decide.
+    $erp_shipping_tax = (string) ($row['erp_shipping_tax'] ?? '');
+    if (!in_array($erp_shipping_tax, array('', 'included', 'none'), true)) {
+        $erp_shipping_tax = '';
+    }
     $erp_walkin_options = '<option value="0"' . (($erp_walkin_account_id === 0) ? ' selected' : '') . '>' . lang('None - walk-in sales cannot be invoiced') . '</option>';
     foreach ($erp_walkin_accounts as $erp_walkin_account) {
         $erp_walkin_options .= '<option value="' . (int) $erp_walkin_account['id'] . '"' . (((int) $erp_walkin_account['id'] === $erp_walkin_account_id) ? ' selected' : '') . '>' . h($erp_walkin_account['title']) . '</option>';
@@ -1538,6 +1614,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     } else {
         $ads_checked = '';
     }
+
+    // The workspace switch is drawn only once its column exists; before the
+    // upgrade the card shows nothing to save into a column that is not there.
+    $workspace_setting_available = array_key_exists('workspace_enabled', $row);
+    $workspace_enabled_checked = (!empty($row['workspace_enabled'])) ? ' checked="checked"' : '';
     
     if ($affiliate_program == 1) {
         $affiliate_program_checked = ' checked="checked"';
@@ -1564,6 +1645,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $chat_captcha_checked = ($chat_captcha == 1) ? ' checked="checked"' : '';
     $chat_allow_files_checked = ($chat_allow_files == 1) ? ' checked="checked"' : '';
     $chat_allow_images_checked = ($chat_allow_images == 1) ? ' checked="checked"' : '';
+    $chat_allow_audio_checked = ($chat_allow_audio == 1) ? ' checked="checked"' : '';
 
     // Operator list: only staff (role <= 2) can be selected.
     $output_chat_operator_options = '<option value="0">' . lang('Select') . '</option>';

@@ -423,7 +423,7 @@ function mailchimp_sync_products() {
         log_activity(lang(array('string'=>'Product ({var:1}) was synced with MailChimp.','vars'=>$product['name'])) );
     }
 
-    $message = lang(array('string'=>'Product Groups ({var:1}) and Products ({var:2}) were synced with MailChimp.','vars'=>array( number_format(count($product_groups)), number_format(count($products))) ));
+    $message = lang(array('string'=>'Product Groups ({var:1}) and Products ({var:2}) were synced with MailChimp.','vars'=>array( pg_format_number(count($product_groups), 0), pg_format_number(count($products), 0)) ));
 
     log_activity($message);
 
@@ -1084,7 +1084,7 @@ function mailchimp_sync_orders() {
     if ($number_of_synced_orders == 1) {
         $message = lang('1 Order was synced with MailChimp.');
     } else {
-        $message = lang(array('string'=>'{var:1} Orders were synced with MailChimp.','vars'=>number_format($number_of_synced_orders)));
+        $message = lang(array('string'=>'{var:1} Orders were synced with MailChimp.','vars'=>pg_format_number($number_of_synced_orders, 0)));
     }
 
     // We only need to log if there is more than one order because we have already logged above

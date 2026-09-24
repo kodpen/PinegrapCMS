@@ -1048,7 +1048,7 @@ function get_catalog($properties) {
                 $plural_suffix = 's';
             }
             
-            $output_search_result_message = '<div style="margin-bottom: 1em; font-weight: bold">' . lang(array('string'=>'Found {var:1} item{suffix:1} for "{var:2}".','vars'=>array( number_format(count($items)),h($search_query) ),'suffix'=>$plural_suffix)) . '</div>';
+            $output_search_result_message = '<div style="margin-bottom: 1em; font-weight: bold">' . lang(array('string'=>'Found {var:1} item{suffix:1} for "{var:2}".','vars'=>array( pg_format_number(count($items), 0),h($search_query) ),'suffix'=>$plural_suffix)) . '</div>';
         }
         
         $output_items = '';

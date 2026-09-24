@@ -1779,7 +1779,7 @@ function send_user_to_login_home()
         // or user has edit rights
         // or user has access to control panel
         // then forward user to control panel welcome screen
-    } elseif (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)) {
+    } elseif (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/welcome.php');
         exit();
         // else send user to my account page
@@ -1909,7 +1909,7 @@ function convert_bytes_to_string($bytes, $round = 0)
     $total = count($sizes);
     for ($i = 0; $bytes > 1024 && $i < $total; $i++)
         $bytes /= 1024;
-    return number_format(round($bytes, $round), $round, '.', ',') . ' ' . $sizes[$i];
+    return pg_format_number(round($bytes, $round), $round) . ' ' . $sizes[$i];
 }
 function generate_url_id()
 {
@@ -3041,7 +3041,7 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                             // Otherwise the value is not blank, so format the number,
                             // so that it has commas in the thousands place.
                         } else {
-                            $data = number_format($data);
+                            $data = pg_format_number($data, 0);
                         }
                     }
                     // if this is the newest comment field and the message is greater than 100 characters, then shorten message
@@ -3198,9 +3198,16 @@ function get_page_type_url($page_type)
         LIMIT 1");
     if ($page_name != '') {
         return PATH . encode_url_path($page_name);
-    } else {
-        return false;
     }
+    // A site built with the page designer has no page of the legacy type;
+    // a page carrying the widget that stands in for it answers instead.
+    if (function_exists('pg_sw_page_type_widget_url')) {
+        $widget_url = pg_sw_page_type_widget_url($page_type);
+        if ($widget_url !== '') {
+            return $widget_url;
+        }
+    }
+    return false;
 }
 function get_layout_type($page_id)
 {

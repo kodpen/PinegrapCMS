@@ -167,13 +167,13 @@ if (!$_POST) {
     
 
     // remove commas and spaces from price
-    $base_rate = str_replace(',', '', $_POST['base_rate']);
+    $base_rate = pg_normalize_amount($_POST['base_rate']);
     $base_rate = str_replace(' ', '',$base_rate); 
-    $primary_weight_rate = str_replace(',', '', $_POST['primary_weight_rate']);
+    $primary_weight_rate = pg_normalize_amount($_POST['primary_weight_rate']);
     $primary_weight_rate = str_replace(' ', '',$primary_weight_rate); 
-    $secondary_weight_rate = str_replace(',', '', $_POST['secondary_weight_rate']);
+    $secondary_weight_rate = pg_normalize_amount($_POST['secondary_weight_rate']);
     $secondary_weight_rate = str_replace(' ', '',$secondary_weight_rate); 
-    $item_rate = str_replace(',', '', $_POST['item_rate']);
+    $item_rate = pg_normalize_amount($_POST['item_rate']);
     $item_rate = str_replace(' ', '',$item_rate); 
 
     // convert rates from dollars to cents

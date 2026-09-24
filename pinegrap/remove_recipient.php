@@ -54,4 +54,10 @@ if (mysqli_num_rows($result) == 0) {
 $query = "DELETE FROM address_book WHERE id = '" . escape($_GET['id']) . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+// The address book widget's remove link names the page it came from.
+$pg_send_to = pg_safe_redirect_path((string) ($_GET['send_to'] ?? ''), '/__none__');
+if ($pg_send_to !== '/__none__') {
+    go($pg_send_to);
+}
+
 go(get_page_type_url('my account'));

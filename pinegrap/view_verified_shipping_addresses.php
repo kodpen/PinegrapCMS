@@ -69,7 +69,7 @@ foreach ($states as $state) {
 
     $count = (int) db_value("SELECT COUNT(*) FROM verified_shipping_addresses WHERE state_id = '" . escape($state['id']) . "'");
 
-    $output_state_options .= '<option value="' . $state['id'] . '"' . $selected . '>' . $output_state_label . ' (' . number_format($count) . ')</option>';
+    $output_state_options .= '<option value="' . $state['id'] . '"' . $selected . '>' . $output_state_label . ' (' . pg_format_number($count, 0) . ')</option>';
 }
 
 // if the sort is not set yet, then default it to empty so that the switch below falls
@@ -221,7 +221,7 @@ echo
                             <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-2 flex-wrap">
                                 <label class="fw-semibold">' . lang('State') . ':</label>
                                 <select name="state_id" class="form-select form-select-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
-                                    <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . number_format($all_verified_shipping_addresses) . ')</option>
+                                    <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
                                     ' . $output_state_options . '
                                 </select>
                             </form>

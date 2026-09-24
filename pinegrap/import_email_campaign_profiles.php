@@ -268,15 +268,15 @@ if (!$_POST) {
     $liveform_view_email_campaign_profiles = new liveform('view_email_campaign_profiles');
     
     if (($imported_count > 0) && ($updated_count > 0)) {
-        $message =  lang(array('string'=>'{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.','vars'=>array( number_format($imported_count), number_format($updated_count),lang('campaign profile(s)'))));
+        $message =  lang(array('string'=>'{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.','vars'=>array( pg_format_number($imported_count, 0), pg_format_number($updated_count, 0),lang('campaign profile(s)'))));
         log_activity($message, $_SESSION['sessionusername']);
 
     } else if ($imported_count > 0) {
-        $message = lang(array('string'=>'{var:1} {var:2} have been imported.','vars'=>array(number_format($imported_count),lang('campaign profile(s)'))));
+        $message = lang(array('string'=>'{var:1} {var:2} have been imported.','vars'=>array(pg_format_number($imported_count, 0),lang('campaign profile(s)'))));
         log_activity($message, $_SESSION['sessionusername']);
 
     } else if ($updated_count > 0) {
-        $message = lang(array('string'=>'{var:1} {var:2} have been updated.','vars'=>array(number_format($updated_count),lang('campaign profile(s)'))));
+        $message = lang(array('string'=>'{var:1} {var:2} have been updated.','vars'=>array(pg_format_number($updated_count, 0),lang('campaign profile(s)'))));
         log_activity($message, $_SESSION['sessionusername']);
 
     } else {
@@ -284,7 +284,7 @@ if (!$_POST) {
     }
 
     if ($skipped_count > 0) {
-        $skipped_message = lang(array('string'=>'{var:1} {var:2} were skipped because they belong to another user.','vars'=>array(number_format($skipped_count),lang('campaign profile(s)'))));
+        $skipped_message = lang(array('string'=>'{var:1} {var:2} were skipped because they belong to another user.','vars'=>array(pg_format_number($skipped_count, 0),lang('campaign profile(s)'))));
         log_activity($skipped_message, $_SESSION['sessionusername']);
         $message .= ' ' . $skipped_message;
     }

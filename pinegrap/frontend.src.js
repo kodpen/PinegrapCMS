@@ -17,6 +17,47 @@ function lang($string) {
 	return $string;
 }
 
+// Money written the way the server writes it (pg_format_money()): the site
+// language's separators, the symbol first. The page sets
+// software_money_format; without it the English separators stay.
+function software_number_separator(separator) {
+	var format = (typeof software_money_format !== 'undefined') ? software_money_format : null;
+	if (!format) {
+		return separator;
+	}
+	return (separator === '.') ? format.decimal : format.thousands;
+}
+
+function software_format_money(amount, symbol, suffix) {
+	amount = Number(amount) || 0;
+	var negative = (Math.round(amount * 100) < 0);
+	var text = Math.abs(amount).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
+	return (negative ? '-' : '') + (symbol || '') + text + (suffix || '');
+}
+
+// Reads an amount back from text the page shows ("₺1.234,56", "$1,234.56").
+function software_parse_money(text) {
+	var format = (typeof software_money_format !== 'undefined') ? software_money_format : null;
+	var decimal = format ? format.decimal : '.';
+	text = String(text || '');
+	if (format && format.symbol) {
+		text = text.split(format.symbol).join('');
+	}
+	var negative = /^\s*-/.test(text);
+	text = text.replace(/[^0-9.,]/g, '');
+	var last = text.lastIndexOf(decimal);
+	if (last !== -1) {
+		text = text.substring(0, last).replace(/[.,]/g, '') + '.' + text.substring(last + 1).replace(/[.,]/g, '');
+	} else {
+		text = text.replace(/[.,]/g, '');
+	}
+	var number = parseFloat(text);
+	if (isNaN(number)) {
+		return 0;
+	}
+	return negative ? -number : number;
+}
+
 var software_$ = jQuery.noConflict(true);
 
 software_$(document).ready(function() {
@@ -3952,8 +3993,8 @@ var software = {
                         // then show original price and discounted price.
                         if ((number_of_products == 1) && (discounted_products_exist == true)) {
 
-                            var original_price = (original_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
-                            var discounted_price = (smallest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
+                            var original_price = (original_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
+                            var discounted_price = (smallest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
 
                             output_price =
                                 '<span style="text-decoration: line-through; white-space: nowrap">' + visitor_currency_symbol + original_price + visitor_currency_code_for_output + '</span>\
@@ -3969,7 +4010,7 @@ var software = {
                                 output_discount_class = ' class="software_discounted_price"';
                             }
 
-                            var price = (smallest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
+                            var price = (smallest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
 
                             output_price = '<span style="white-space: nowrap"' + output_discount_class + '>' + visitor_currency_symbol + price + visitor_currency_code_for_output + '</span>';
                         }
@@ -3985,8 +4026,8 @@ var software = {
                             output_discount_container_end = '</span>';
                         }
 
-                        var output_smallest_price = (smallest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
-                        var output_largest_price = (largest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
+                        var output_smallest_price = (smallest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
+                        var output_largest_price = (largest_price / 100 * visitor_currency_exchange_rate).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
 
                         output_price =
                             output_discount_container_start +
@@ -5262,7 +5303,7 @@ software.prepare_price = function(properties) {
     }
 
     // Set price to have two decimal places and commas.
-    price = price.toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
+    price = price.toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,').replace(/[.,]/g, software_number_separator);
 
     if (code) {
         code = ' ' + code;

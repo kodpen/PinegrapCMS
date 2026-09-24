@@ -357,7 +357,7 @@ function pg_ca_bundle_update()
             'status'  => 'error',
             'message' => lang(array(
                 'string' => 'The downloaded file holds {var:1} certificate(s); a CA bundle has at least 100. Nothing was changed.',
-                'vars'   => array(number_format($incoming['count'])),
+                'vars'   => array(pg_format_number($incoming['count'], 0)),
             )),
         );
     }
@@ -413,7 +413,7 @@ function pg_ca_bundle_update()
                 'status'  => 'unchanged',
                 'message' => lang(array(
                     'string' => 'The installed bundle is already the current one: Mozilla data as of {var:1}, {var:2} root certificate(s). Nothing was changed.',
-                    'vars'   => array(pg_ca_bundle_date($current['stamp']), number_format($current['count'])),
+                    'vars'   => array(pg_ca_bundle_date($current['stamp']), pg_format_number($current['count'], 0)),
                 )),
                 'stamp'   => $current['stamp'],
                 'count'   => $current['count'],
@@ -491,9 +491,9 @@ function pg_ca_bundle_update()
             'string' => 'data/cacert.pem was updated: Mozilla data as of {var:1}, {var:2} root certificate(s) (previously {var:3}, {var:4}).',
             'vars'   => array(
                 pg_ca_bundle_date($incoming['stamp']),
-                number_format($incoming['count']),
+                pg_format_number($incoming['count'], 0),
                 ($current['stamp'] > 0) ? pg_ca_bundle_date($current['stamp']) : lang('no header'),
-                number_format($current['count']),
+                pg_format_number($current['count'], 0),
             ),
         )),
         'stamp'   => $incoming['stamp'],

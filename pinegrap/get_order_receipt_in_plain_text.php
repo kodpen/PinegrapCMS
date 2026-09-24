@@ -260,7 +260,7 @@ function get_order_receipt_in_plain_text($order_id)
 
                     // if the number of payments is not 0, then show the number of payments
                     if ($recurring_number_of_payments != 0) {
-                        $output_recurring_number_of_payments = ', Payments: ' . number_format($recurring_number_of_payments);
+                        $output_recurring_number_of_payments = ', Payments: ' . pg_format_number($recurring_number_of_payments, 0);
                     }
                     
                     // determine if start should be outputted
@@ -1086,7 +1086,7 @@ function get_order_receipt_in_plain_text($order_id)
         }
 
         $output_multicurrency_disclaimer =
-            '*This amount is based on our current currency exchange rate to ' . h($base_currency_name) . ' and may differ from the exact charges (displayed above in ' . h($base_currency_name) . ').' . "\n" .
+            lang(array('string' => '*This amount is based on our current currency exchange rate to {var:1} and may differ from the exact charges (displayed above in {var:1}).', 'vars' => $base_currency_name)) . "\n" .
             "\n";
     }
 

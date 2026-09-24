@@ -185,7 +185,7 @@ if ($email_campaigns) {
                     $plural_suffix = 's';
                 }
             
-                $output_to = lang(array('string'=>'{var:1} Contact{suffix:1}','vars'=>number_format($number_of_email_recipients),'suffix'=>$plural_suffix));
+                $output_to = lang(array('string'=>'{var:1} Contact{suffix:1}','vars'=>pg_format_number($number_of_email_recipients, 0),'suffix'=>$plural_suffix));
             
                 break;
             
@@ -202,7 +202,7 @@ if ($email_campaigns) {
         $number_of_completed_email_recipients = $row[0];
 
         if ($number_of_email_recipients > 0) {
-            $progress_percentage = number_format($number_of_completed_email_recipients / $number_of_email_recipients * 100);
+            $progress_percentage = pg_format_number($number_of_completed_email_recipients / $number_of_email_recipients * 100, 0);
         } else {
             $progress_percentage = '100';
         }
@@ -232,7 +232,7 @@ if ($email_campaigns) {
             <td class="align-middle">' . h($email_campaign['page_name']) . '</td>
             ' . $output_start_time_cell . '
             <td class="align-middle">' . get_email_campaign_status_name($email_campaign['status']) . '</td>
-            <td class="align-middle">' . $progress_percentage . '% (' . lang(array('string'=>'{var:1} of {var:2}','vars'=>array(number_format($number_of_completed_email_recipients),number_format($number_of_email_recipients)))) . ')</td>
+            <td class="align-middle">' . $progress_percentage . '% (' . lang(array('string'=>'{var:1} of {var:2}','vars'=>array(pg_format_number($number_of_completed_email_recipients, 0),pg_format_number($number_of_email_recipients, 0)))) . ')</td>
             <td class="align-middle">' . lang(h(ucwords($email_campaign['purpose']))) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign['created_timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($created_username) ) ) ) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign['last_modified_timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($last_modified_username) ) ) ) . '</td>

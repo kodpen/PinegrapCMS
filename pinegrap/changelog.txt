@@ -62,6 +62,21 @@
   DOSYA YÖNETİCİSİ
   --------------------------------------------------------
 
+  [YENİ] ERP Dosyaları. Sol panelde Yedeklemeler'in altında,
+         ERP modülünün belgeleri klasör klasör: satış, iade ve
+         alış faturaları, e-Belgeler, irsaliyeler, e-İrsaliyeler,
+         mutabakat mektupları ve taslak faturalar. Bir belgeyi
+         seçince önizleme panelinde faturaya, irsaliyeye, cari
+         hesaba ya da siparişe giden düğmeler çıkar; aynı
+         bağlantılar sağ tık menüsünde ve alttaki seçim
+         çubuğunda da var. Arama kutusu burada belge numarasına,
+         GİB numarasına, ETTN'ye, cariye, VKN / TCKN'ye ve
+         sipariş numarasına göre arar; en üstte bütün klasörlerde
+         birden. Belgeler salt okunurdur: taşınmaz, silinmez,
+         yeniden adlandırılmaz. Henüz saklı kopyası olmayan bir
+         belge, önizlemede ancak düğmeye basınca oluşturulur.
+         Bölümü yalnız ERP hakkı olan kullanıcılar görür.
+
   [YENİ] Liste görünümünde sütunlar seçilebiliyor. Başlık
          satırına sağ tıklayın ya da sağ tık > Görünüm >
          Sütunlar: kullanmadığınız sütunların işaretini kaldırın,
@@ -247,6 +262,22 @@
   GÖRSEL SAYFA EDİTÖRÜ
   --------------------------------------------------------
 
+  [YENİ] Sipariş görüntüleme ve takvim widget'larında tarih biçimi
+         için "Site varsayılanı" seçeneği; yeni widget'lar onunla
+         başlar ve tarihleri dil dosyasının biçiminde yazar.
+
+  [YENİ] Editörde bir alana bağlanan metin, örneği yoksa "Lorem
+         ipsum" yerine alanın adını gösterir (ör. ‹Billing
+         city›, form alanlarında alanın etiketi); hangi bilginin
+         geleceği tasarımda görülür. Tutar örnekleri sitenin
+         biçiminde. Sepet başlığı ve Güncelle / Ödemeye Geç
+         düğmeleri widget ayarlarında verdiğiniz etiketleri
+         editörde de gösterir.
+
+  [DÜZELTME] Üyelik, şifremi unuttum, kayıt ve hesap widget'larındaki
+         "giriş sayfası" seçimi yalnız giriş sayfalarını listeler;
+         önceden sitenin bütün sayfaları çıkıyordu.
+
   [YENİ] Görsel Tasarımcı artık birden fazla sayfayı aynı
          ekranda, sekmeler hâlinde düzenliyor. Bir tasarım
          tek bir stil dosyaları / betikler / yazı tipleri /
@@ -351,6 +382,131 @@
          tasarımcılara açık değil. İçerik düzenleme hakkı olan
          yönetici (manager) ve kullanıcılar da sayfayı açıp
          **metinleri** değiştirebiliyor.
+
+  [YENİ] Form Liste ve Form Kayıt widget'larında form
+         seçildiğinde formun alanları, formdaki sırayla,
+         veriye bağlı olarak kendiliğinden yerleşir: başlık
+         alanı başlık, açıklama paragraf, görsel resim, dosya
+         indirme bağlantısı, diğerleri "etiket: değer"
+         satırı olur. Formu değiştirdiğinizde içerik yeni
+         forma göre yeniden kurulur; bir adımda geri
+         alınabilir. Yalnız ofis alanları ve imzalar
+         eklenmez.
+
+  [YENİ] Arama Sonuçları widget'ı çalışıyor: sitenin arama
+         ayarına göre sayfalarda ve ürünlerde arar,
+         ziyaretçinin göremediği sayfaları göstermez,
+         sonuçları sayfalar. Kapsam (hepsi / sayfalar /
+         ürünler), sayfa başına sonuç, aranan ürün grubu,
+         ürün detay sayfası ve "sonuç yok" mesajı widget
+         ayarından seçilir. Ürün sonuçlarında fiyat da
+         gösterilebilir.
+
+  [YENİ] Takvim Görünümü widget'ı çalışıyor: aylık,
+         haftalık ve yaklaşan etkinlikler; takvim ve görünüm
+         seçici, önceki / bugün / sonraki gezinmesi, ay
+         ızgarası ve etkinlik listesi. Birden çok güne
+         yayılan etkinlik ızgarada her gününde görünür.
+         Saatler sitenin saat biçimine uyar.
+
+  [YENİ] Etkinlik Görünümü widget'ı: bir etkinliğin tarihi,
+         yeri, açıklaması ve rezervasyon formu. Takvim
+         Görünümü'nün etkinlik bağlantıları bu sayfaya
+         gider; rezervasyon doğrudan sepete eklenir.
+
+  [YENİ] Veri Bağlama bölümünde "Yalnızca şu durumda
+         göster": bir öğeyi widget'ın durumuna bağlayın
+         (ör. siparişte kargo takip kodu varsa, sepette
+         düzenli ödemeli ürün varsa, etkinlik yoksa).
+
+  [DÜZELTME] Sistem widget'larının hazır içeriğinde yer
+         tutucu alan kalmadı: her öğe gerçek bir veriye
+         bağlı. Etiketler tuvalde ve HTML görünümünde aynı;
+         Seçenekler paneli öğedeki renk, düğme ve bağlantı
+         stili sınıflarını doğru seçili gösteriyor, tanımadığı
+         bir etiketi kaydederken değiştirmiyor.
+
+  [DÜZELTME] Form Liste widget'ında bir alanın değeri iki
+         kez yazılıyordu ("X, X"); detay bağlantısı
+         tasarımcıda yapılmış detay sayfasını bulamıyordu.
+         Form Kayıt widget'ı tuvalde görünmüyordu. Sepetteki
+         düzenli ödeme özetinin "yalnız düzenli ürün varsa"
+         koşulu uygulanmıyordu.
+
+  [YENİ] Hesap sayfaları artık Görsel Sayfa Editörü'nde
+         kurulabiliyor. Yeni sistem widget'ları: Çıkış, Şifre
+         Değiştir, Şifre Belirle (şifre sıfırlama e-postasının
+         açtığı sayfa), Profil Bilgileri, E-posta Tercihleri ve
+         Adres Defteri. Hepsi sitenin mevcut işlemlerine bağlı;
+         hata ve bildirimler widget'ın içinde çıkar. Formdan
+         çıkardığınız bir alan kayıtlı değerini korur,
+         boşaltılmaz.
+
+  [YENİ] Klasik sayfası olmayan bir sitede şifre sıfırlama
+         e-postası, "hesabıma dön" yönlendirmeleri ve çıkış,
+         bu widget'ları taşıyan sayfalara gider. Yalnız
+         editörle kurulmuş bir sitede şifre sıfırlama e-postası
+         artık gönderilebiliyor.
+
+  [YENİ] Hesabım widget'ına diğer hesap sayfalarının
+         bağlantıları (profil, e-posta tercihleri, şifre, adres
+         defteri, çıkış) ve sipariş geçmişi eklendi. Sitede
+         karşılığı olmayan bağlantı kendiliğinden gizlenir.
+
+  [YENİ] Özel formun "sonraki sayfası" olarak Form Kayıt
+         widget'lı bir sayfa seçilirse (erişim: yalnız gönderen),
+         ziyaretçi az önce gönderdiği cevapları orada görür;
+         form bir hesap açtıysa giriş bilgileri de gösterilebilir.
+
+  [YENİ] Takvim ve Etkinlik widget'larında "Takvimime ekle"
+         (.ics) bağlantısı.
+
+  [DÜZELTME] Şifre belirleme ekranında şifre reddedildiğinde
+         sayfa "token eksik" hatası veriyordu; artık hata mesajıyla
+         forma dönüyor.
+
+  [YENİ] Görsel Sayfa Editörü'nde menü, menü sırası, reklam,
+         etiket bulutu, mobil geçiş, PDF ve klasik ortak / dinamik
+         bölgeler "Eski" olarak işaretlendi. Sitede çalışmaya
+         devam ederler; yeni tasarımlarda aynı işi paylaşılan
+         bileşen yapar (bir kez tasarlanır, bütün sayfalarda
+         birlikte güncellenir). Giriş bölgesi değişmedi.
+
+  [YENİ] Görsel Sayfa Editörü'nde menülere "Akıllı aktif durum"
+         anahtarı (Seçenekler paneli). Açıkken ziyaretçinin
+         bulunduğu sayfaya giden bağlantı kendiliğinden aktif
+         işaretlenir; açılır menüdeki bir sayfada menü başlığı da
+         işaretlenir. Kapalıyken menü tasarlandığı gibi kalır.
+         Paylaşılan bileşen menülerinde her sayfada doğru çalışır.
+
+  [DÜZELTME] Görsel Sayfa Editörü sepet widget'ında bağış ürününün
+         tutarı girilebiliyor (adet kutusu yerine tutar kutusu);
+         kampanyanın eklediği ürünün adedi değiştirilemiyor. Boş
+         sepet ilk ziyarette "Sepetiniz boş" der ve yalnız bu mesajı
+         (varsa hızlı ekle kutusuyla) gösterir; boş özet, kayıtlı
+         sepet bağlantısı ve ödeme düğmesi çıkmaz. Yeni görünürlük
+         seçeneği: "Sepette ürün var". Güncelle / Ödemeye Geç etiket
+         ayarları artık düğmelere uygulanır.
+
+  [DÜZELTME] Hızlı sipariş widget'ı hatalı gönderimde hataları ve
+         işaretli alanları gösteriyor (önceden sessizce sayfaya
+         dönüyordu). Bağış tutarı ve düzenli ödeme planı alanları
+         eklendi; düzenli bağış artık bu sayfadan sipariş edilebilir.
+         Ürün bağlantıları katalog detay sayfasına gider.
+
+  [DÜZELTME] Sipariş görüntüleme widget'ı sipariş bulunamadığında boş
+         sayfa yerine "Sipariş bulunamadı" der. Zaman çizelgesindeki
+         ileri tarihli sevk ve teslimat "tahmini" olarak yazılır;
+         ödeme yöntemi çevrilmiş adıyla görünür.
+
+  [DÜZELTME] Hesabım widget'ı oturum açmamış ziyaretçiye boş kart
+         yerine giriş bağlantılı bir uyarı gösterir.
+
+  [DÜZELTME] Katalog widget'ında detay sayfası seçilmediyse ürünler
+         Katalog Detayı widget'lı sayfaya (yoksa sitenin katalog
+         detay sayfasına) bağlanır; "Ad" sıralaması ziyaretçinin
+         gördüğü ürün adına göre yapılır. Arama sonuçları widget'ında
+         "Boş durum mesajı" ayarı görünür oldu.
 
   DÜZENLEME ÇUBUĞU
   --------------------------------------------------------
@@ -472,6 +628,10 @@
   E-TİCARET: KAMPANYALAR
   --------------------------------------------------------
 
+  [DÜZELTME] Kampanya editörü "1.250,00" gibi binlik ayraçlı
+         tutarları doğru okur (önceden 1,25 oluyordu); tutar
+         kutuları sitenin ondalık ayracıyla gösterilir.
+
   [YENİ] Teklifler tek ekranda kuruluyor. Bir kampanya
          tanımlamak için artık üç ayrı ekran (Teklifler, Teklif
          Kuralları, Teklif Hareketleri) dolaşmak gerekmiyor:
@@ -529,6 +689,13 @@
 
   E-TİCARET: ÜRÜNLER VE KATALOG
   --------------------------------------------------------
+
+  [DÜZELTME] Katalog aramasında yalnız adı aramayla eşleşen ürün
+         grupları kart olarak çıkar; eşleşen ürünler zaten
+         listelendiği için grubun kendisi tekrar gösterilmez.
+         Fiyat süzgeci ziyaretçinin seçtiği para biriminde
+         çalışır. Bulunamayan ürün ve grup için mesaj, sayfanın
+         kendi mesaj alanında görünür.
 
   [YENİ] Fiyat, stok ve kısa açıklama listede düzenleniyor.
          Katalog Yöneticisi'nin liste görünümünde bu üç değere
@@ -593,6 +760,89 @@
   E-TİCARET: SİPARİŞLER
   --------------------------------------------------------
 
+  [YENİ] Tutarlar ve sayılar her yerde aynı biçimde yazılır,
+         sembol önde: yazılımın kendi biçimi $1,234.56; dil
+         dosyası başka bir biçim veriyorsa o (Türkçe çeviride
+         ₺1.234,56). Mağaza sayfaları, sepet, ödeme, sipariş
+         e-postaları, panel ekranları, raporlar ve ERP aynı kuralı
+         kullanır. Tutar kutularına "12,50" de "12.50" de
+         yazabilirsiniz; ikisi de on iki buçuk okunur (önceden
+         panelde kargo ücreti, hediye kartı tutarı gibi kutularda
+         "12,50" 1250 oluyordu).
+
+  [DÜZELTME] Başka para birimi seçen ziyaretçi hızlı sipariş
+         sayfasında kartından hangi tutarın çekileceğini görür:
+         ödeme sağlayıcısı yalnız ana para birimini (İyzico için
+         Türk lirası) kabul ettiği için toplamın altında "Tahsil
+         edilecek tutar" ve kur notu çıkar. Taksit seçildiğinde
+         toplam ve taksit bedeli ziyaretçinin para biriminde
+         güncellenir, tahsil edilecek tutar Türk lirası kalır
+         (önceden toplam birden Türk lirasına dönüyordu). Taksit
+         seçtikten sonra kart numarasını değiştirmek taksitleri
+         taksitli tutar üzerinden yeniden sormuyor.
+
+  [DÜZELTME] Klasik ödeme sayfalarındaki (fatura, kargo, kargo
+         yöntemi, sipariş önizleme, sipariş fişi) varsayılan düğme
+         ve başlıklar (Devam Et, Miktar, Fiyat, Hemen…), kur notu
+         ve İyzico taksit tablosu Türkçe çeviride Türkçe. Sipariş
+         ekranında indirim yoksa indirim satırı görünmez.
+
+  [DÜZELTME] Başka para birimi seçen ziyaretçi, görsel editörle
+         yapılmış katalog, ürün, sepet, hızlı sipariş ve sipariş
+         sayfalarında fiyatları o para biriminde görür. Önceden
+         tutar çevrilmeden yalnız sembol değişiyordu; bağış
+         tutarı da her güncellemede küçülüyordu.
+
+  [DÜZELTME] Sepette "Ödemeye Geç" yaptığınız değişiklikleri
+         (adet, bağış tutarı, hediye kartı ve ürün formu
+         bilgileri, düzenli ödeme planı) kaydederek ilerler.
+         Önceden Güncelle'ye basmadan geçerseniz kayboluyordu.
+         Eksik ya da hatalı bir bilgi varsa sepette kalır ve
+         nedenini gösterir.
+
+  [DÜZELTME] Sepette tahmini vergi gösteriliyorsa altındaki cümle
+         artık "vergi ödeme adımında hesaplanacaktır" demiyor;
+         gösterilen verginin tahmini olduğunu ve ödeme adımında
+         kesinleşeceğini söylüyor.
+
+  [DÜZELTME] Hızlı sipariş sayfasında kargo yöntemi, tarayıcıda
+         betikler çalışmasa da seçilebilir; adres biliniyorsa
+         yöntemler sayfayla birlikte gelir. Sayfanın uyarıları
+         (zorunlu adres alanları, varış tarihi, kargo yöntemi,
+         kupon kodu, hediye kartı, düzenli ödeme) Türkçe.
+
+  [DÜZELTME] Klasik sepet ve hızlı sipariş sayfalarındaki
+         varsayılan düğme ve etiket yazıları (Sepeti Güncelle,
+         Şimdi Satın Al, Toplam…) ve kayıtlı sepet cümlesi
+         Türkçe.
+
+  [YENİ] Yerel satış ekranı baştan yazıldı. Barkod okutmak, miktarı
+         değiştirmek, müşteri seçmek ve satışı tamamlamak artık sayfayı
+         yenilemez; art arda gelen okutmalar sırayla işlenir, hiçbiri
+         kaybolmaz. Okuyucu için önce kutuya tıklamanız gerekmez. Kutuya
+         ürünün adını yazıp Enter'a basarsanız tek eşleşen ürün eklenir;
+         bulunamayan barkod kutunun altında yazar ve kısa bir uyarı sesi
+         çıkar (⋮ menüsünden kapatılır). "× adet" kutusu bir sonraki
+         ürünün adedidir.
+
+         Ekranın iki görünümü vardır. Kasa: KDV dahil fiyatlar, alınan
+         tutar ve para üstü, büyük düğmeler. Belge: KDV oranı ve tutarı
+         sütunları, KDV kırılımı, carinin bakiyesi, vadesi ve e-Belge
+         için eksik bilgisi. ERP yetkisi olmayan kullanıcı yalnız Kasa
+         görünümünü görür; seçiminiz tarayıcıda hatırlanır.
+
+         Satış bitince sayfa değişmez: sonuç kartı sipariş, fatura ve
+         tahsilat numarasını, nakitte para üstünü gösterir; buradan fişi
+         yazdırır ya da siparişi açarsınız. Sonraki ürünü okutmak yeni
+         satışı başlatır. Tamamlarken stok yeniden denetlenir (başka bir
+         kasa son adetleri satmışsa hangi satırın düşürüleceği yazar),
+         aynı satış iki kez tamamlanamaz ve yerel satış da web siparişi
+         gibi order.created olayını duyurur. Son yerel satışlar sağdan
+         açılan panelde listelenir. Kısayollar: F2 ürün, F4 müşteri, F9
+         ya da Ctrl+Enter satışı tamamlar.
+         Ekranı Siparişler listesinin ve ERP panosunun başındaki "Sipariş
+         ekle" düğmesi açar.
+
   [YENİ] [ŞEMA] Havale ile ödenen siparişler artık "ödeme bekleniyor"
          olarak görünüyor. Sipariş her zamanki gibi tamamlanmış
          sayılır; para gelene kadar listede ve sipariş ekranında
@@ -613,6 +863,20 @@
          önizleme sayfaları yöntemi çevrilmiş adıyla gönderdiği ve
          "Iyzico ile Öde" veritabanı listesinde bulunmadığı için bu
          siparişlerde ödeme yöntemi boş kalıyordu.
+
+  [DÜZELTME] Hızlı sipariş sayfasında (klasik ve görsel editör)
+         teslimat adresi, kargo yöntemi, hediye kartı alıcısı, ürün
+         formu ve düzenli ödeme hataları siparişi durdurur. Önceden
+         bu hatalar ödeme adımında siliniyordu: alıcısı boş hediye
+         kartı ya da kargo yöntemi seçilmemiş kargolu sipariş kabul
+         ediliyordu.
+
+  [DÜZELTME] Takvim kutusuyla girilen tarihler (hediye kartı teslim
+         tarihi, düzenli ödeme başlangıcı, özel teslim tarihi)
+         doğru okunuyor; teslim tarihi "geçmiş tarih" hatası
+         vermiyor, başlangıç tarihi boş kaydedilmiyor. Toplam
+         bilgisi eksik bir sipariş gönderimi artık sayfayı hata ile
+         düşürmüyor.
 
   PAZARYERLERİ
   --------------------------------------------------------
@@ -747,6 +1011,14 @@
          tanınmayan bir değer Sistem Durumu kartında bildiriliyor — eskiden
          yanlış yazılan bir değer sessizce hiçbir şey yapıyordu.
 
+  SİPARİŞLER
+  --------------------------------------------------------
+
+  [DÜZELTME] Taksitli siparişte aylık tutar doğru. Müşterinin yazdırdığı
+         faturada ve sipariş görünümünde aylık tutar, taksit farkını zaten
+         içeren toplama farkı bir kez daha ekleyerek hesaplanıyordu (6
+         taksitte ₺365,98 için ₺61,00 yerine ₺63,00 görünüyordu).
+
   ERP (ÖN MUHASEBE)
   --------------------------------------------------------
 
@@ -772,9 +1044,9 @@
          hareketlerden oluşuyor ve başka kayıtlar onlara bakıyor.
 
   [YENİ] Siparişten fatura kesme. Fatura rakamlarını siparişten alır, yeniden
-         hesaplamaz. Kargo ve ek ücret birer kalem olur; sipariş indirimi
-         indirdiği kalemlere dağıtılır ve KDV, indirimden sonra kalan matrah
-         üzerinden yazılır. Fatura toplamı siparişten tahsil edilenle
+         hesaplamaz. Kargo, ek ücret ve kartla taksitli ödemenin taksit masrafı
+         birer kalem olur; sipariş indirimi indirdiği kalemlere dağıtılır ve
+         KDV, indirimden sonra kalan matrah üzerinden yazılır. Fatura toplamı siparişten tahsil edilenle
          tutmuyorsa belge oluşturulmaz ve numara harcanmaz: seride açıklanamayan
          bir boşluk, yanlış bir faturadan daha uzun ömürlü bir sorundur.
 
@@ -1087,23 +1359,23 @@
          eksik ya da hatalıysa hata artık o kutunun altında çıkar ve
          sayfa oraya kayar; hangi satırın hangi kutusu olduğunu aramazsınız.
 
-  [YENİ] Yerel satış ekranı büyüdü. Sol paneldeki "Müşteri" kartından
-         kişiyi ya da cariyi arayıp seçersiniz; satış onun adına kapanır ve
-         cari bağlantısı faturaya taşınır. Müşteri seçmezseniz sıcak
-         satıştır: dükkana gelen, bilgisini almadığınız alıcı — satış
-         kimsenin adına yazılmaz (eskiden işlemi yapan yöneticinin adına
-         geçiyordu). Sıcak satışları faturalayabilmek için Ayarlar →
-         E-Ticaret → ERP kartında "Sıcak satış carisi" seçin (örn.
-         "Perakende Müşteri"); seçilmemişse ekran söyler.
+  [YENİ] Yerel satışta müşteri. Müşteri kutusundan kişiyi ya da cariyi
+         arayıp seçersiniz; satış onun adına kapanır ve cari bağlantısı
+         faturaya taşınır. Aradığınız kişi yoksa listenin sonundaki "Yeni
+         cari aç" ile yalnız adını yazarak cari açıp seçersiniz; telefon,
+         e-posta ve VKN/TCKN isteğe bağlıdır, geri kalanını ERP yöneticisi
+         sonra cari kartında tamamlar. Müşteri seçmezseniz sıcak satıştır:
+         dükkana gelen, bilgisini almadığınız alıcı — satış kimsenin
+         adına yazılmaz ve Ayarlar → E-Ticaret → ERP kartındaki "Sıcak
+         satış carisi"ne faturalanır. Kart boşsa ilk tezgâh satışı
+         "Perakende Müşteri" carisini açar (bu adla bir cari varsa onu
+         kullanır) ve karta yazar.
 
-         Satış artık KDV ile kapanır: her satırın vergisi ürünün oranından
-         (yoksa mağazanızın vergi bölgesinden) hesaplanır, sepetin altında
-         Ara toplam / KDV / Toplam görünür, sipariş toplamı fatura
-         toplamıyla birebir aynıdır. Arama ve sepet ürünü adıyla gösterir,
-         stok kodu altındadır; stok takipli ürünlerde stok görünür.
-         Tamamlanan satış sipariş ekranına gider; orada ve "Son Yerel
-         Satışlar" tablosunda "Faturayı Kes" düğmesi vardır, kesildikten
-         sonra faturanın numarası görünür.
+         Satış KDV ile kapanır: her satırın vergisi ürünün oranından
+         (yoksa mağazanızın vergi bölgesinden) hesaplanır, sipariş
+         toplamı fatura toplamıyla birebir aynıdır. Arama ve sepet
+         ürünü adıyla gösterir, stok kodu altındadır; stok takipli
+         ürünlerde stok görünür.
 
   [YENİ] Faturadan irsaliyeye tek adım. Kesilmiş satış faturasının ve
          siparişin araç çubuğunda "İrsaliyeyi Kes": form faturanın
@@ -1133,14 +1405,19 @@
          açıldı; irsaliye kesildi. Olay, işi hangi ekran yapmış olsa da
          (panel, tezgâh satışı, siparişten fatura, API) aynı yerden çıkar.
 
-  [YENİ] Tezgâh satışı tek adımda. Yerel satış ekranında "Siparişi
-         Tamamla" düğmesinin yanında "Faturayı kes" kutusu, ödeme yöntemi
-         (nakit, kart, havale, çek, diğer ya da "sonra tahsil et") ve kasa
-         seçimi vardır. Tamamladığınızda sipariş kapanır, fatura kesilir ve
-         para seçtiğiniz kasaya tahsilat olarak yazılıp faturayı kapatır;
-         sipariş ekranı ne yapıldığını bildirir. Son seçtiğiniz ödeme yolu ve
-         kasa bir sonraki satışta hazır gelir. Kasa yetkisi olmayan operatör
-         yalnız faturayı keser.
+  [YENİ] Tezgâh satışı tek adımda. Yerel satış ekranının ödeme kartında
+         yöntem (nakit, kart, havale, sonra tahsil; çek ve diğer menüde)
+         ve kasa seçilir. ERP açıkken her tezgâh satışının faturası
+         satışla birlikte kesilir — müşterinin eline verilmese de belge
+         oluşur; alıcının bilgisinin sonra nasıl tamamlanacağı ERP
+         yöneticisine kalır. Para seçtiğiniz kasaya tahsilat olarak
+         yazılıp faturayı kapatır; "sonra tahsil"de fatura carinin
+         vadesiyle açık kalır ve vade tarihi kartta görünür. Son
+         seçtiğiniz ödeme yolu ve kasa bir sonraki satışta hazır gelir.
+         Kasa yetkisi olmayan operatörde fatura yine kesilir, tahsilatı
+         ERP yöneticisi kaydeder. Fatura bir sebeple kesilemezse satış
+         yine tamamlanır; sonuç kartındaki "Faturayı yeniden dene" ya da
+         Son satışlar panelindeki "Faturayı Kes" onu keser.
 
   [YENİ] Belge şablonları. ERP Ayarları'nda artık üç şablon düzenlenir:
          fatura, irsaliye ve mutabakat mektubu. Her biri için kaydet,
@@ -1160,6 +1437,20 @@
          olan kişilere cari aç" düğmesi silinmiş kişileri saymaz ve
          açılamayanları (adsız kart) söyler.
 
+  [YENİ] Müşterinin e-Fatura mükellefi olup olmadığını GİB'e sorma. Cari
+         kartında "Vergi numarasını GİB'e sor" düğmesi, seçili e-belge
+         sağlayıcısı üzerinden GİB'e sorar ve yanıtı kartta tutar: yeşil
+         "e-Fatura mükellefi" ya da gri "değil" rozeti, sorulma tarihi ve
+         varsa e-Fatura adresi (takma ad). Böylece faturayı kesmeden önce
+         belgenin e-Fatura mı e-Arşiv mi gideceğini bilirsiniz. Ekranda
+         yazdığınız numara sorulur; numarayı değiştirdiyseniz sonuç
+         karta işlenmez, önce kaydetmeniz söylenir.
+
+  [YENİ] Fatura listesinde "e-Belge" sütunu. Hangi satış faturasının
+         gönderildiğini, hangisinin beklediğini ya da hata aldığını tek
+         bakışta görürsünüz; gönderilmiş belgelerde GİB numarası da
+         sütunda görünür ve sütuna göre sıralayabilirsiniz.
+
   [YENİ] [ŞEMA] Logo İşbaşı ile e-Fatura / e-Arşiv gönderimi. Sağlayıcı
          olarak Logo İşbaşı seçiliyse her satış faturasının ekranında
          "e-Belge" kartı çıkar: "Logo İşbaşı sağlayıcısına gönder" faturayı
@@ -1171,7 +1462,13 @@
          hata olduğunda İşbaşı'nın kendi mesajı okunur. Kimlik bilgileri
          şifreli saklanır, oturum bir gün tutulur — İşbaşı'nın aylık istek
          kotası boşa harcanmaz. Sağlayıcı günlüğü 30 gün sonra kendini
-         temizler. Not: İnternet satışı e-Arşiv faturasında ödeme türü kodu
+         temizler. Ayarlarda **Ortam** seçimi var: "Test ortamı" seçilirse
+         Logo'nun test sistemine bağlanılır (gerçek belge oluşmaz) ve hem
+         ayar kartında hem fatura ekranında sarı "Test ortamı" rozeti
+         görünür. Fatura gönderilmeden önce cari kartı denetlenir:
+         İşbaşı'nın zorunlu tuttuğu VKN/TCKN, adres, posta kodu, şehir ve
+         ilçe eksikse ekran bunu tek cümleyle söyler, boşuna istek
+         gönderilmez. Not: İnternet satışı e-Arşiv faturasında ödeme türü kodu
          ve iade/istisna faturaları Logo'nun kod listesi gelince açılır;
          o güne kadar ekran bunu açıkça söyler. İrsaliye İşbaşı API'sinde
          yok, PDF olarak kalır.
@@ -1182,11 +1479,612 @@
          sağlayıcıyı seçersiniz: Paraşüt ya da Logo İşbaşı (ya da kapalı:
          belgeler PDF kalır). Her sağlayıcının kimlik bilgileri şifreli
          saklanır, panonun Kaydet'iyle kaydedilir, "Bağlantıyı test et"
-         düğmesi yeni sekmede dener (hiçbir şey kaydetmez); her belge hangi
+         düğmesi denemeyi kartın içinde yapar, sonucu hemen altında
+         yazar (hiçbir şey kaydetmez); her belge hangi
          sağlayıcıdan geçtiğini hatırlar, seçim sonradan değiştirilebilir.
          ERP Ayarları'ndaki Satıcı Bilgileri kartı bu karta bağlantı verir.
          Sağlayıcı katmanı yeni sağlayıcılara açıktır; gönderimin kendisi
          sağlayıcı bağlantıları tamamlandıkça devreye girer.
+
+  [YENİ] Fatura kalemlerinde ürün görseli. Ürünü seçtiğiniz anda
+         editörde küçük görseli çıkıyor, kesilmiş faturanın kalem
+         tablosunda da duruyor — doğru ürünü seçtiğinizi adı okumadan
+         görüyorsunuz. Ayarlar › E-Ticaret'teki "Tablolarda Ürün
+         Görsellerini Göster" kapalıysa sütun hiç çizilmez.
+
+  [YENİ] Cari kartındaki "Bağlı Kişi" bölümünde kişinin fotoğrafı
+         görünüyor.
+
+  [YENİ] Fatura ekranı iki sütun: belge ve kalemler solda, fatura özeti
+         (cari, VKN, tarihler, tutarlar) sağda, siz aşağı kaydırdıkça
+         yerinde duran bir sütunda. Dar ekranda özet belgenin altına
+         iner.
+
+  [YENİ] [ŞEMA] Eksik cari bilgisi artık faturayı kesmeden önce
+         söyleniyor. Sağlayıcınız faturayı almak için cari kartında
+         aradığı alanlar (unvan, VKN/TCKN, adres, posta kodu, il, ilçe)
+         eksikse fatura kesilmiyor ve **numara harcanmıyor**; hangi
+         alanların eksik olduğu ekranda yazıyor.
+
+         Kesilmiş bir faturada eksik çıkarsa, e-Belge kartında eksik
+         alanlar kutu olarak çıkıyor: doldurup kaydettiğinizde hem cari
+         kartına hem o faturaya birden yazılıyor ve faturayı yeniden
+         kesmeniz gerekmiyor. Kutular bildiğimiz değerle dolu geliyor,
+         çoğu zaman tek tık yetiyor. Sağlayıcıya gitmiş bir belgede bu
+         kutular çıkmaz — gitmiş belge değiştirilmez.
+
+         İnternet satışı faturalarında taşıyıcının unvanı ve VKN'si de
+         aynı yerden doldurulabiliyor.
+
+  [YENİ] Cari listesinde "e-Belgeye hazır değil" düğmesi: eksik bilgisi
+         yüzünden faturası gönderilemeyecek carileri sayısıyla gösterir
+         ve listeyi onlara daraltır; her satırın yanındaki uyarı işareti
+         neyin eksik olduğunu söyler.
+
+  [DÜZELTME] Ayarlarda uzun bir listeden seçim yaparken seçtiğiniz
+         değer geri alınmıyor. Bir açılır listeyi bir saniyeden uzun
+         açık tuttuğunuzda — örneğin gecikme hatırlatmasının saat
+         listesi — panonun otomatik doldurmaya karşı koruması seçimi
+         kendiliğinden gelen bir değer sanıp eskisini geri yazıyordu.
+         Aynı şey uzun bir yapıştırmada da oluyordu. Artık içinde
+         çalıştığınız kutu ne kadar sürerse sürsün sizindir; başka bir
+         kutuya kendiliğinden yazılan değer eskisi gibi geri alınır.
+
+  [DÜZELTME] e-Belge sağlayıcısının kayıtlı anahtar ve parolası artık
+         kutuda görünüyor, diğer ayar kutuları gibi. Boş bıraktığınız
+         kutu da artık gerçekten boşaltılıyor; eskiden boş kutu
+         "kayıtlıyı koru" demek olduğu için bir anahtarı silmenin yolu
+         yoktu.
+
+  [DÜZELTME] Logo İşbaşı bağlantısı: kutuya panel (giriş) adresini
+         yapıştırdığınızda bağlantı testi başarısız oluyordu. Kutunun
+         adı artık "API adresi" ve hangi adresi yapıştırırsanız
+         yapıştırın doğru API adresi bulunuyor; adres yanlışsa mesaj da
+         bunu söylüyor.
+
+  [YENİ] [ŞEMA] Faturanız artık gerçekten GİB'e gidiyor. e-Belge
+         sağlayıcısına gönderilen fatura, sağlayıcının kendi sisteminde
+         önce taslak olarak oluşuyor; resmî belge hâline ancak GİB'e
+         iletildiğinde geliyor. Bu ikinci adım artık aynı tıkla yapılıyor.
+         İsterseniz E-Fatura kartındaki "Belgeyi aynı adımda GİB'e gönder"
+         anahtarını kapatıp taslağı önce sağlayıcının panelinde
+         gözden geçirir, sonra fatura ekranındaki "GİB'e Gönder"
+         düğmesiyle iletirsiniz.
+
+         Fatura ekranındaki durum artık "Sağlayıcıda taslak",
+         "Gönderildi, GİB bekleniyor" ve "GİB kabul etti" arasında ayrım
+         yapıyor; bir belge hiçbir koşulda iki kez oluşturulmuyor.
+         GİB'e geçen belgenin sağlayıcıdaki resmî PDF'i de artık
+         indirilebiliyor.
+
+  [YENİ] ERP'nin kendi ikonu ve rengi var. Uygulama menüsündeki
+         kutucuk artık bir kasa; tarayıcı sekmesinde ERP ekranları
+         mağaza ikonu yerine kendi ikonunu gösteriyor, açık sekmeler
+         arasında ERP ile sipariş ekranını karıştırmazsınız. Menü
+         rengi bronza döndü: eski mavi, Sayfalar ve Ziyaretçiler
+         mavilerinin arasına sıkışıyordu. ERP menüsündeki Pano, Cari
+         Hesaplar ve İrsaliyeler satırlarının ikonları da değişti —
+         bunlar Panel, Kullanıcılar ve Nakliye Yöntemleri
+         kutucuklarıyla aynı ikonu kullanıyordu.
+
+  [YENİ] ERP Panosu tamamlandı. Kasa kartının yanında artık e-Belge kartı
+         var: hatalı ya da reddedilen, sağlayıcıda taslak kalan, GİB yanıtı
+         beklenen ve hiç gönderilmemiş faturaların sayısı; her satır fatura
+         listesinde o belgeleri açıyor. Altında bugün giren ve çıkan para
+         (virmanlar sayılmaz) ve son on kasa hareketi. Kasa ve banka
+         bilgileri yalnız "Kasa ve bankayı gör" hakkı olana gösteriliyor.
+
+  [YENİ] Fatura listesinde e-Belge süzgeci ve toplu işlem. Araç
+         çubuğundaki e-Belge menüsünden hatalı, taslakta, GİB bekleyen,
+         gönderilmemiş ya da kabul edilmiş faturalar süzülüyor. Satırları
+         işaretleyip "Seçilenleri gönder", "GİB'e Gönder" ve "Durumu sor"
+         ile hepsini birden işleyebilirsiniz; işlemin uygulanmadığı belgeler
+         atlanır, bir tıklamada en çok 25 belge işlenir.
+
+  [YENİ] Listelerde yan çekmece. Cari, fatura ve irsaliye listesinde bir
+         satıra tıklayınca sağda özet açılıyor: carinin kartı, son
+         hareketleri ve faturaları; faturanın kalemleri ve e-Belge durumu;
+         irsaliyenin alıcısı, taşıyıcısı ve kalemleri. PDF ve tahsilat
+         düğmeleri çekmecede; düzenleme için "Tam sayfada aç".
+
+  [YENİ] Sipariş ekranında "Fatura ve sevk belgeleri" kartı. Bir siparişin
+         faturası, e-Fatura ya da e-Arşiv belgesi, sevk irsaliyesi ve
+         e-İrsaliyesi sırasıyla görünüyor; her birinin durumu, numarası ve
+         bağlantısı kartta. Her belge ayrı bir tıklamadır, hiçbiri kendiliğinden
+         kesilmez; sıradaki adım öne çıkan düğmedir: Faturayı Kes → e-Fatura
+         (ya da e-Arşiv) kes → e-Faturayı yazdır → İrsaliyeyi kes →
+         İrsaliyeyi yazdır → e-İrsaliyeyi kes. GİB'in yanıtı gecikirse irsaliye
+         beklemeden kesilebilir, "Durumu sor" düğmesi yerinde kalır. Bir adım
+         yapılamıyorsa nedeni ve eksik alanlar yazıyor, düzeltme ekranına
+         bağlantı veriyor; yapılamayan belgenin düğmesi soluk görünür ve
+         nedenini söyler. Tamamlanmış ve dışa aktarılmış siparişlerin ikisi de
+         faturalanabilir. Sağlayıcınız e-İrsaliye göndermiyorsa (Logo
+         İşbaşı API'si göndermiyor) kart bunu söylüyor.
+
+  [YENİ] e-Belge kuralları gönderimden önce denetleniyor: VKN ve TCKN'nin
+         kontrol haneleri, beş haneli posta kodu, kişi kartında ad ve soyad,
+         TCKN'li (şahıs) taşıyıcıda ad ve soyad. Eksik ya da hatalı olan alan
+         fatura ekranındaki düzeltme formunda gösteriliyor; sağlayıcıya
+         reddedilecek bir belge gönderilmiyor. Cari kartı kaydedilirken de
+         hatalı VKN/TCKN, posta kodu ve soyadsız kişi kartı uyarılıyor.
+
+  [YENİ] [ŞEMA] Belgeler kesildikleri hâliyle saklanıyor. Kesilen fatura ve
+         irsaliyenin PDF'i kesim anında dosya klasörüne kaydediliyor; sonradan
+         şablon, logo ya da şirket adresi değişse de açılan belge kesildiği
+         gündeki belgedir. GİB'in kabul ettiği e-Belgenin sağlayıcıdaki resmî
+         kopyası ilk açılışta saklanıyor ve bir daha sağlayıcıya sorulmadan
+         açılıyor. E-postayla gönderilen her mutabakat mektubu, gönderildiği
+         adres ve mektubun kendisiyle kayda geçiyor. Bu dosyalar Dosya
+         Yöneticisi'nin klasörlerinde görünmez ve yalnız ERP hakkı olan
+         kullanıcılara açılır. Bu özellikten önce kesilmiş belgeler ilk
+         açıldıkları anki hâlleriyle saklanır.
+
+  [YENİ] e-Belge eksik bilgi formu sadeleşti. Alıcı ve taşıyıcı bilgileri
+         ayrı başlıklarda soruluyor; taşıyıcıda unvan ve VKN/TCKN her zaman
+         birlikte gösteriliyor, daha önce kullanılan taşıyıcılar listeden tek
+         tıkla seçilebiliyor ve kargo yöntemine taşıyıcı bilgisini bir kez
+         girmek için bağlantı veriliyor. Eksik alan varken "sağlayıcıya
+         gönder" düğmesi yerine "Eksikleri tamamla" çıkıyor.
+
+  [YENİ] Siparişten kesilen fatura, siparişin tarihini değil kesildiği günün
+         tarihini taşıyor. GİB aynı türden e-Belgeleri (e-Fatura ve e-Arşiv
+         ayrı sayılır) yalnız tarih sırasıyla kabul ettiği için eski tarihli
+         bir fatura "Girilen tarihten sonra aynı tipte fatura kesilmiş"
+         hatasıyla reddediliyordu. Henüz sağlayıcıya gitmemiş ve bu yüzden
+         reddedilecek bir faturada e-Belge kartı iki tarihi yan yana
+         gösteriyor ve "Tarihi bugüne al" düğmesi sunuyor; vade tarihi de
+         aynı gün sayısı kadar kayıyor. Sağlayıcı faturayı tarihi yüzünden
+         reddettiyse kart sağlayıcının bildirdiği en son belgenin tarihini ve
+         saatini gösteriyor, gönder düğmesinin yerini "Tarihi düzelt" alıyor
+         ve "Tarihi bugüne al ve gönder" iki adımı tek tıkta yapıyor.
+
+  [YENİ] Sipariş iptali ve iadesi ERP'ye yansıtılıyor. İptal edilen ya da karta
+         iade yapılan faturalı siparişin belge kartında iki adım çıkıyor:
+         "İade veya iptal" (resmileşmemiş fatura tek tıkla iptal edilir,
+         resmi fatura için iade faturası formu kalemlerle dolu açılır) ve
+         "Paranın iadesi" (bu sipariş için gelen para hesaplanır, geri ödeme
+         formu tutar, yöntem ve açıklamayla dolu açılır). Hiçbiri kendiliğinden
+         yapılmaz. İptal edilen siparişte e-Belge ve irsaliye adımları kapanır.
+
+  [YENİ] iyzico iadesi ERP açıkken tutar yerine kalem ve adet seçilerek
+         yapılıyor; tutar iade faturasıyla aynı hesapla bulunur ve iadeden sonra
+         iade faturası aynı kalemlerle dolu açılır. Sipariş iptal penceresi,
+         siparişin faturası varsa sonraki adımları hatırlatıyor.
+
+  [YENİ] e-Belge iptali sağlayıcıya soruluyor. Sağlayıcıdaki taslak fatura
+         iptalle birlikte orada da siliniyor; e-Arşiv faturası için sağlayıcının
+         ekranına bağlantı veriliyor ve orada iptal edildiği doğrulanmadan
+         burada iptal edilmiyor; GİB'e gitmiş e-Fatura iptal edilmiyor, iade
+         faturası yolu gösteriliyor. Aynı kurallar yeni bir e-Belge sağlayıcısı
+         eklendiğinde de değişmeden geçerli.
+
+  [YENİ] Logo İşbaşı: internet satışı e-Arşiv faturasında ödeme şekli kodu
+         gönderiliyor; istisna ve tevkifatlı faturalar gönderilebiliyor.
+
+  [DÜZELTME] Cari ekranındaki "Vergi numarasını GİB'e sor" düğmesi çalışıyor;
+         düğme forma bağlı olmadığı için hiçbir şey göndermiyordu.
+
+  [YENİ] e-Belge için eksik alan formu, cari kartında adres yoksa siparişin
+         fatura adresini öneriyor.
+
+  [YENİ] Logo İşbaşı: birden fazla firması olan kullanıcılar belgelerin hangi
+         firmaya gideceğini seçebiliyor; bağlantı testi kullanılan firmayı
+         gösteriyor.
+
+  [ŞEMA] Gelen e-faturalar için yeni tablo (erp_edoc_inbox).
+
+  [YENİ] Gelen e-faturalar (ERP menüsü → Gelen e-faturalar). Tedarikçilerin
+         GİB üzerinden gönderdiği faturalar e-Belge sağlayıcısından (bugün
+         Logo İşbaşı) seçilen tarih aralığıyla okunur ve durumlarıyla
+         listelenir: alınmadı, alış taslağı, ERP'ye alındı, kenara ayrıldı.
+         Bir faturanın ekranı kalemleri, KDV'yi, tedarikçiyi ve toplamları
+         belgedeki hâliyle gösterir; yanında ERP'de oluşacak alış faturasının
+         toplamları durur ve fark varsa önceden söylenir. "Alış faturası
+         taslağını oluştur" tedarikçinin carisi yoksa belgedeki bilgilerle
+         açar ve faturayı taslak olarak yazar; numara ve cari hareketi taslak
+         kesilince oluşur. Faturanın PDF'i ve UBL'i indirilebilir. Tevkifatlı
+         faturalar tevkifatıyla alınır; KDV dışında vergi taşıyan ya da
+         belgenin tamamına indirim uygulanmış faturalar gerekçesi yazılarak
+         alınmaz. Aynı fatura iki kez alınamaz;
+         önceden elle girilmiş aynı numaralı alış faturasıyla bağlanabilir.
+         ERP panosunun e-Belge kartında alınmayı bekleyen gelen e-fatura
+         sayısı görünür.
+
+  [YENİ] Gelen e-faturadan alınan alış faturasının ekranında GİB numarası,
+         ETTN ve e-faturaya bağlantı var. Alış faturalarında satış e-Belge
+         kartı ve "Tarihi bugüne al" artık çıkmıyor; alış faturası tedarikçinin
+         verdiği tarihi taşır.
+
+  [ŞEMA] Fatura satırlarına tevkifat tutarı sütunu (erp_invoice_items.
+         withholding_amount).
+
+  [YENİ] KDV tevkifatı. Elle girilen faturada "KDV tevkifatı" anahtarı açılınca
+         her satırda GİB'in tevkifat kodu seçilir (601–627, 801–825; oran koddan
+         gelir). Tevkifat satırın KDV'sinden hesaplanır; fatura KDV'nin tamamını,
+         tevkifatı ve ödenecek tutarı ayrı gösterir, cari hesaba ödenecek tutar
+         yazılır. Taslak, kesim, iade (kısmi iadede tevkifat da orantılı döner),
+         fatura ekranı, PDF, dış API ve CSV dışa aktarım tevkifatı taşır.
+         Tevkifatlı satış faturası Logo İşbaşı'na tevkifat koduyla gider.
+
+  [ŞEMA] e-Belge sağlayıcısının müşteri/tedarikçi kartları için yeni tablo
+         (erp_edoc_accounts).
+
+  [YENİ] Cari eşitleme (ERP menüsü → Cari eşitleme; yalnız seçili e-Belge
+         sağlayıcısı kartlarını veriyorsa görünür). e-Belge sağlayıcısının
+         (bugün Logo İşbaşı) müşteri ve tedarikçi kartları okunur ve ERP
+         carileriyle yan yana gösterilir: farklı, yalnız sağlayıcıda, yalnız
+         ERP'de, aynı, kenara ayrıldı. Vergi numarası tek bir cariyle
+         eşleşen kart okuma sırasında kendiliğinden bağlanır (yalnız bağ
+         kurulur, iki kayıt da değişmez; elle çözülen bağ yeniden kurulmaz).
+         Farklı bir çiftte her alan için hangi tarafın doğru olduğu seçilir:
+         boş taraf dolu taraftan doldurulur, ikisi de doluysa ERP'deki değer
+         önerilir; onaydan sonra sağlayıcıya yazılır, kart geri okunur ve
+         kaydedilmeyen alan varsa söylenir. Kartlar yeni cari olarak ERP'ye
+         alınabilir, geçerli VKN/TCKN'si olan cariler sağlayıcıya yeni kart
+         olarak gönderilebilir (toplu da). Bakiyeler hiçbir zaman aktarılmaz;
+         sıcak satış carisi ve nihai tüketici numarası eşitlemeye girmez.
+         Cari ekranında sağlayıcıdaki kartın durumu görünür.
+
+  [YENİ] ERP menüsündeki "Gelen e-faturalar" ve "Cari eşitleme" yalnız seçili
+         e-Belge sağlayıcısı bu işleri yapıyorsa görünür; sağlayıcı seçilmemiş
+         mağazada ERP'nin geri kalanı olduğu gibi çalışır.
+
+  [ŞEMA] Vergi ve kimlik numarası kolonları 32 karaktere genişledi (cari,
+         satıcı, taşıyıcı, sürücü, gelen e-fatura tedarikçisi).
+
+  [YENİ] ERP Türkiye dışında. Cari formunda Ülke alanı var. VKN/TCKN hanesi ve
+         kontrol hanesi, beş haneli posta kodu, kişide ad + soyad kuralı ve
+         Vergi Dairesi alanı yalnız Türkiye'deki carilerde; başka ülkede vergi
+         numarası yazıldığı gibi (harf, rakam ve ayraçlarla; AB KDV numarası,
+         ABD EIN) kabul edilir ve "Vergi numarası" diye anılır. Aynı kural cari
+         formunda, tezgâhta hızlı caride, CSV içe aktarmada, dış API'de,
+         irsaliyede taşıyıcı numarasında ve ayarlardaki satıcı vergi
+         numarasında geçerli. Faturada, irsaliyede ve mutabakat mektubunda
+         alıcının numarası kendi ülkesinin adıyla basılır. Cari düzenlenince
+         ülkesi mağazanın ülkesine dönmez.
+
+  [YENİ] Logo İşbaşı: sağlayıcıdaki bir karta bağlı carinin faturası o kartın
+         koduyla gider, İşbaşı faturayı başka bir karta koymaz ya da yeni
+         kart açmaz. Henüz bağlı olmayan cari, faturasının durumu
+         sorulduğunda İşbaşı'nın faturayı koyduğu karta kendiliğinden
+         bağlanır.
+
+  [YENİ] e-Belge sağlayıcısı seçilmemiş ve hiç e-Belge gönderilmemiş
+         mağazada e-Belge izleri görünmez: fatura listesinin e-Belge sütunu ve
+         süzgeci, belge çekmecesindeki e-Belge bölümü, sipariş kartındaki
+         e-Fatura/e-İrsaliye adımları, Dosya Yöneticisi'nin boş e-Belge
+         klasörleri. KDV tevkifatı, Paraşüt dışa aktarım profilleri ve PDF'deki
+         internet satışı kutusu Türkiye dışındaki mağazada çıkmaz.
+
+  [ŞEMA] Cariye, faturadaki alıcı adresine ve irsaliyedeki teslim adresine
+         eyalet/il alanı eklendi.
+
+  [YENİ] Eyalet. Türkiye dışındaki carilerde "Eyalet / İl" alanı var (cari
+         formu, irsaliye formu, CSV içe/dışa aktarım, dış API). Sipariş ve
+         kişi kartından gelen adreste şehir ve eyalet ülkeye göre okunur
+         (Türkiye'de eskisi gibi il ve ilçe). Belgelerde adresin yer satırı
+         ülkenin kendi sırasıyla basılır ("Austin, TX 78701", "10115 Berlin",
+         "34710 Kadıköy İstanbul"); yabancı adreste ülkenin adı eklenir.
+         Mağazanın eyaleti bir vergi bölgesindeyse elle faturada ve tezgâhta
+         kendi oranı olmayan ürüne o bölgenin oranı gelir. Türkiye adresinde
+         il şehir alanıdır: dış API'den Türk carisine gönderilen eyalet boş
+         şehri doldurur, ayrıca saklanmaz.
+
+  [ŞEMA] Belge numarası biçimi ve vergi adı için iki ayar.
+
+  [YENİ] Belge numaraları ve vergi adı (Ayarlar → Ticaret → ERP). Numara
+         biçimi seçilebilir: PGF2026000000001 (GİB biçimi, varsayılan),
+         PGF-2026-0001 (her yıl baştan) ya da PGF-000001 (hiç baştan
+         başlamaz). Biçim değişince sayaç sıfırlanmaz, numara tekrarlanmaz;
+         kesilmiş belgeler numaralarını korur. Biçimler arasında istediğiniz
+         zaman geçebilirsiniz: sürekli numaralar yıllık numaralardan ayrı
+         sayılır, fatura, iade ve irsaliye kesimi aksamaz. Vergi adı boşsa
+         KDV; "Sales tax", "GST" gibi bir ad yazılırsa faturada, PDF'de,
+         listede, CSV'de ve tezgâhta o ad kullanılır.
+
+  [YENİ] Yerel biçimler. Miktarda "1,500" gibi tek virgül ve üç hane, ondalık
+         nokta yazan ülkelerde (ABD, İngiltere…) bin beş yüz, ondalık virgül
+         yazan ülkelerde (Türkiye, Almanya…) bir buçuk okunur; "1,000,000" her
+         yerde bir milyon. Yüzde panel diline göre yazılır (%20 / 20%). PDF
+         kâğıdı ABD, Kanada ve Latin Amerika'nın çoğunda Letter, başka yerde A4.
+         CSV dışa aktarımda ayırıcı ondalık noktalı ülkelerde virgül,
+         diğerlerinde noktalı virgül. Çekmecede miktar tutarlarla aynı
+         biçimde gösterilir.
+
+  [YENİ] Gönderim yöntemindeki taşıyıcı vergi numarası Türkiye dışında
+         yazıldığı gibi (harf, rakam ve ayraçlarla, 32 karaktere kadar)
+         kaydedilir; Türkiye'de eskisi gibi 10/11 hane.
+
+  [YENİ] Ayarlardaki E-Fatura kartı yalnız Türkiye mağazasında ya da bir
+         e-Belge sağlayıcısı kullanımdayken görünür.
+
+  [ŞEMA] ERP tablolarındaki ülke ve para birimi kolonları Türkiye/TL
+         varsayılanı taşımıyor.
+
+  [YENİ] ERP tutarları, miktarları, yüzdeleri ve kurları panel diliyle
+         yazılır: Türkçede 1.234,56, İngilizcede 1,234.56. ERP açıkken yerel
+         satış ekranı da (tutarlar, para üstü, hızlı tutar düğmeleri, "KDV
+         %8,25" satırı) aynı biçimi kullanır.
+
+  [YENİ] Elle girilen faturada kendi vergi oranı olmayan ürün, carinin
+         adresinin (ülke ve eyalet) vergi bölgesinin oranıyla gelir; bölgesi
+         olmayan yurt dışı alıcıya %0 önerilir. Cari değişince bu satırların
+         oranı güncellenir; elle değiştirdiğiniz oran olduğu gibi kalır.
+
+  [ŞEMA] Yerel satış ekranının fiyat gösterimi için ayar.
+
+  [YENİ] Yerel satış ekranı fiyatları vergisiz gösterip vergiyi toplamda
+         ekleyebilir (Ayarlar → Ticaret → ERP → Kasada fiyatlar); satış
+         vergisi uygulanan ülkeler için. Alınan tutar değişmez.
+
+  [ŞEMA] Fatura satırına ikinci vergi oranı ve tutarı, faturaya ikinci vergi
+         toplamı eklendi.
+
+  [YENİ] Satırda ikinci vergi (Kanada'da GST ve PST gibi). Ayarlarda ikinci
+         vergiye ad verilince elle girilen faturanın her satırında onun için
+         de bir oran çıkar; fatura, PDF, fatura ekranı, iade, dış API ve CSV
+         iki vergiyi ayrı gösterir. Satırın vergi tutarı iki vergiyi birlikte
+         taşıdığı için o sütunun başlığı "KDV + PST" olur; toplamlarda ikisi
+         ayrı satırdadır. İkinci vergili fatura e-Belge'ye gitmez.
+
+  [YENİ] Dış API'nin faturalarında GİB kodlarının yanında İngilizce
+         karşılıklar: invoice_type_code (sale, return, withholding…) ve
+         payment_method_code (card, transfer…).
+
+  [ŞEMA] Kargo ve ek ücretlerin faturadaki vergisi için ayar.
+
+  [YENİ] Siparişten kesilen faturada kargo, ek ücret ve taksit masrafı
+         malların KDV oranıyla vergilendirilir (Ayarlar → Ticaret → ERP →
+         Nakliye ve ek ücretlerin vergisi). Müşteri bu ücretleri vergi
+         eklenmeden ödediği için KDV tutarın içinden ayrılır: %20'de 50,00 TL
+         kargo 41,67 + 8,33 KDV olur, fatura toplamı değişmez. Farklı oranlı
+         mallar ücreti aralarında paylaşır ("Nakliye (%20)", "Nakliye
+         (%10)"); KDV'siz siparişte ücret de KDV'sizdir. Varsayılan mağazanın
+         ülkesine göre: ABD'de vergisiz, başka her yerde tutarın içinde;
+         ayardan "Vergisiz" seçilebilir.
+
+  [ŞEMA] Belgelerin stok hareketleri ve ürün maliyetleri için iki tablo;
+         faturaların stoğu değiştirip değiştirmeyeceği için ayar.
+
+  [YENİ] Stok ve maliyet. Alış faturası ürünlerini stoğa ekler, ERP'de elle
+         kesilen satış faturası stoktan düşer; iade ve iptal geri alır.
+         Siparişten kesilen fatura stoğa dokunmaz, çünkü sipariş malı zaten
+         stoktan düştü. Her ürünün ağırlıklı ortalama maliyeti ve son alış
+         fiyatı tutulur; ana para birimindeki alış faturasında birim fiyat
+         son alış fiyatıyla gelir, satışta ortalama maliyet ipucunda görünür.
+         Yeni ERP ekranı Stok ve maliyet ürünlerin maliyetini, eldeki stoğun
+         değerini ve belgelerin yaptığı hareketleri gösterir; fatura sayfası
+         da belgenin stoğa etkisini yazar. Yalnız stok takibi açık ürünler ve
+         tam sayı miktarlar sayılır. İlk alıştan önce stokta olan mal ilk
+         alışın maliyetiyle değerlenir. Ayarlar → Ticaret → ERP → Faturalar
+         stoğu değiştirsin kapatılırsa yalnız maliyetler tutulur.
+
+  [YENİ] ERP tablolarında sütun başlığına tıklayarak sıralama: artan,
+         azalan, sonra ilk sıra. Tarihler ve tutarlar doğru sıralanır, boş
+         hücreler sona gider, seçim tarayıcıda hatırlanır. Kasa defteri
+         gibi sırası anlam taşıyan listelerde ilk sıra her zaman geri gelir.
+
+  [ŞEMA] Muhasebeci paketleri için tablo; muhasebecinin e-posta adresi,
+         aylık gönderim ve belgelerin pakete girmesi için ayarlar; kullanıcı
+         kartında "salt okuma (muhasebeci)" yetkisi.
+
+  [YENİ] Muhasebeci paketi (ERP → Muhasebeci paketi). Bir ayın ya da iki
+         tarih arasının kayıtları tek ZIP dosyasında: satış ve alış
+         faturaları, iadeler, orana göre KDV özeti (hesaplanan, indirilecek,
+         fark), giderler, tahsilat ve ödemeler, kasa ve banka hesapları,
+         dönem sonunda cari bakiyeleri ve stok değeri bir Excel çalışma
+         kitabında; faturalar, iadeler ve gider fişleri kesildikleri
+         haliyle PDF ya da resim olarak. Paket panelden indirilir ya da
+         muhasebeciye oturum açmadan yedi gün çalışan bir bağlantıyla
+         e-postayla gönderilir; bağlantı kopyalanıp mesajla da iletilebilir.
+         Her yeni bağlantı öncekini geçersiz kılar. İstenirse her ay başında
+         geçen ayın paketi kendiliğinden hazırlanıp muhasebeciye gönderilir.
+         Paket dosyaları data/temp/erp_packages altında durur ve yeniden
+         üretilebilir: dosyası silinmiş paket ekrandan yeniden hazırlanır.
+
+  [YENİ] Muhasebeci kullanıcısı. Kullanıcı kartında ERP'nin altındaki "Salt
+         okuma (muhasebeci)" anahtarı açık olan kullanıcı bütün ERP
+         ekranlarını görür, paket hazırlayıp indirebilir, hiçbir şeyi
+         değiştiremez: belge kesemez, tahsilat giremez, ayar değiştiremez.
+
+  [ŞEMA] Dönem kilidi tarihi için ayar.
+
+  [YENİ] Dönem kilidi. Muhasebeci bir dönemi beyan ettikten sonra defterler
+         o tarihe kadar kilitlenir (ERP → Muhasebeci paketi, ERP ayar
+         yetkisiyle): kilit tarihinde ya da öncesinde tarihli fatura, iade,
+         iptal, tahsilat, ödeme ve gider artık yazılamaz ya da
+         değiştirilemez, ekran nedenini söyler. Kapalı dönemin faturası
+         sonradan iade edilirse iade bugünün tarihini taşır; ödenmemiş gider
+         kilitten sonraki bir tarihle ödenebilir.
+
+  [ŞEMA] Gider fişleri ve gider kategorileri için iki tablo.
+
+  [YENİ] Giderler (ERP → Giderler). Kira, elektrik, akaryakıt, yemek,
+         abonelik gibi alış faturası olmayan harcamalar kategoriyle, KDV
+         dahil ya da hariç tutarıyla ve fişte yazan KDV'siyle kaydedilir;
+         fişin fotoğrafı ya da PDF'i eklenebilir. Gider hemen bir kasadan ya
+         da bankadan ödenmiş, ya da vadesiyle sonra ödenecek olarak girilir;
+         ödenecekler ve vadesi geçenler listede görünür. İptal edilen ödenmiş
+         giderin parası kasaya geri döner. Vergisi indirilemeyen fiş (ör.
+         temsil yemeği) işaretlenebilir. Kategorilere muhasebecinin hesap
+         kodu yazılabilir; liste Excel'e aktarılır. Giderler muhasebeci
+         paketine ayrı sayfa olarak, KDV'leri indirilecek KDV'ye girer.
+
+  [YENİ] Kâr / zarar (ERP → Kâr / zarar). Ay, çeyrek, yıl ya da tarih
+         aralığı için net satış, satılan malın maliyeti, brüt kâr, alış
+         faturalarındaki hizmet masrafları, giderler ve net kâr; aylar yan
+         yana ve grafikle; ürüne ve cariye göre kâr ve marj. Excel'e
+         aktarılır. Maliyet stok hareketlerinden gelir; siparişten kesilen
+         faturanın malları da artık maliyetiyle kaydedilir (stok sayısı
+         yine değişmez). Bu özellikten önce kesilen faturaların maliyeti
+         ürünün bugünkü ortalama maliyetiyle tahmin edilir ve rapor bunu
+         belirtir.
+
+  [YENİ] ERP ana sayfasında bu ayın net satışı, net kârı, giderleri ve
+         ödenecek giderler.
+
+  [ŞEMA] Tekrarlayan giderler için tablo; giderin hangi tekrardan geldiğini
+         tutan alan.
+
+  [YENİ] Tekrarlayan giderler. Kira, internet, abonelik gibi giderler her ay,
+         üç ayda, altı ayda ya da yılda bir kendiliğinden yazılır: gider
+         girilirken "Bu gideri kendiliğinden yeniden yaz" seçilir ya da var
+         olan giderin sayfasından tekrar başlatılır. Sıradaki gider ödenecek
+         olarak (istenirse vadesiyle) ya da seçilen hesaptan ödenmiş olarak
+         yazılır; bitiş tarihi verilebilir, tekrar durdurulabilir. Giderler
+         sayfası sıradaki tarihleri gösterir.
+
+  [YENİ] Kâr / zarar, faturası kesilmemiş tamamlanan siparişleri de
+         sayabilir ("Faturasız siparişleri de say"): siparişler sipariş
+         tarihine göre satışa, malları ortalama maliyetle maliyete girer.
+         Kapalıyken rapor kaç siparişin dışarıda kaldığını söyler. Seçim
+         tarayıcıda hatırlanır; ERP ana sayfasının bu ay kartları da onu
+         kullanır.
+
+  [YENİ] Gider fişinin dosyası değiştirilebilir. Bulanık çekilmiş ya da
+         yanlış sayfası eklenmiş fişte, giderin sayfasındaki "Dosyayı
+         değiştir" ile yenisi yüklenir. Önceki dosya silinmez, "Önceki
+         dosyalar" altında kalır. İptal edilmiş ya da kilitli döneme ait
+         giderin dosyası değiştirilmez.
+
+  [YENİ] Dosya Yöneticisi'nde ERP Dosyaları altında "Gider fişleri". Fişi
+         saklanmış her gider tarihi ve fiş numarasıyla listelenir, resmi ya
+         da PDF'i önizlenir, tedarikçiye ve fiş numarasına göre aranabilir.
+
+  [YENİ] Giderler dış API'de. Kategoriler ve giderler listelenebilir;
+         gider kaydedilebilir (istenirse aynı çağrıda ödenmiş olarak ve
+         fişiyle), değiştirilebilir, ödenebilir ve iptal edilebilir. Fiş
+         dosyası okunabilir, eklenebilir ve değiştirilebilir. Ödeme ve
+         ödenmiş bir giderin iptali "ERP kasa" iznini ister. Üç yeni olay:
+         gider kaydedildi, ödendi, iptal edildi.
+
+  [YENİ] Panel menüsündeki ERP girişinin adı "Kaynak Planlama (ERP)", ERP
+         ana sayfasının başlığı "Kurumsal Kaynak Planlama (ERP)" oldu.
+
+  [ŞEMA] Faturanın müşteriye gönderilen e-postalarının kaydı; carinin
+         fatura e-posta adresi ve otomatik fatura e-postası anahtarı;
+         otomatik gönderim ayarı ve e-posta metni.
+
+  [YENİ] Faturayı müşteriye e-postala. Kesilmiş satış faturasının
+         sayfasından alıcı, konu ve mesajla gönderilir; e-Belgesi kabul
+         edilmişse resmî kopyası, değilse faturanın PDF'i eklenir. Carinin
+         fatura e-postası varsa o kullanılır. Her gönderim faturanın
+         altında listelenir. İstenirse (ERP ayarları) her fatura kendiliğinden
+         gider: e-Belge kullanılıyorsa GİB kabul ettiğinde, kullanılmıyorsa
+         kesildiğinde; cari kartında bu cari için kapatılabilir.
+
+  [ŞEMA] Carinin kredi limiti; limit aşımında ne yapılacağı ayarı.
+
+  [YENİ] Kredi limiti. Cariye borçlanabileceği en yüksek tutar verilebilir.
+         ERP'de elle kesilen satış faturası limiti aşacaksa uyarılır ya da
+         (ayara göre) kesilmez; siparişten kesilen fatura hiç durdurulmaz.
+         Cari listesinde limiti aşanlar rozetle görünür ve süzülür; cari
+         kartı ve ERP ana sayfası da gösterir.
+
+  [ŞEMA] Ürün başına minimum stok tablosu.
+
+  [YENİ] Minimum stok (Stok ve maliyet → Minimum stok). Her ürüne yeniden
+         alınması gereken en düşük stok yazılır; minimumda ya da altında
+         olanlar stok ekranında ve ERP ana sayfasında listelenir.
+
+  [YENİ] Tezgâhta karışık ödeme. Bir satış iki ödeme şekline bölünebilir
+         (ör. bir kısmı nakit, kalanı kart); her parça kendi kasasına ya da
+         bankasına tahsilat olarak girer. Parçalar toplamı karşılamazsa kalan
+         tutar faturada açık, cari hesabında kalır.
+
+  [ŞEMA] ERP denetim izi tablosu.
+
+  [YENİ] Denetim izi (ERP → Denetim izi). ERP'de kesilen her belge, girilen
+         her tahsilat ve ödeme, açılan cari, gider ve ERP ekranlarında
+         yapılan her değişiklik kimin yaptığı, ne zaman ve hangi IP'den
+         yapıldığıyla saklanır; altı ayda boşaltılan site günlüğünden farklı
+         olarak silinmez. Tarihe, kullanıcıya, kayıt türüne göre süzülür,
+         aranır ve CSV olarak indirilir. Faturanın sayfasından o faturanın
+         izi açılır. ERP ayar yetkilileri ve muhasebeci kullanıcısı görür.
+
+  [ŞEMA] ERP anlık bildirim ayarları; minimum stok bildiriminin zamanı.
+
+  [YENİ] ERP anlık bildirimleri (ERP ayarları → Anlık bildirimler).
+         Belirlenen tutardan itibaren her tahsilat girildiğinde ve bir ürün
+         minimum stoğuna düştüğünde panel zili ile bildirimlere abone
+         cihazlara haber gider. Kaydı giren kişiye bildirilmez. Stok saatte
+         bir kontrol edilir; ürün her düşüşünde bir kez duyurulur.
+
+  [ŞEMA] Teklifler tablosu.
+
+  [YENİ] Teklifler (ERP → Teklifler). Müşteriye fiyat teklifi, fatura
+         editörüyle yazılır ve kendi serisinden numara alır; para, stok ve
+         vergi hareketi yaratmaz. Fatura şablonuyla "TEKLİF" olarak basılır,
+         PDF'iyle e-postalanır, onaylandı / reddedildi / iptal olarak
+         işaretlenir; geçerlilik tarihi geçince "süresi doldu" görünür.
+         "Faturaya dönüştür" teklif edilen fiyatlarla, bugünün tarihiyle bir
+         fatura taslağı açar.
+
+  [ŞEMA] Tekrarlayan faturalar tablosu.
+
+  [YENİ] Tekrarlayan faturalar. ERP'de yazılmış kesilmiş bir satış faturası
+         her ay, üç ayda, altı ayda ya da yılda bir yeniden yazılabilir:
+         kontrol edilip kesilecek taslak olarak ya da hemen kesilerek.
+         Faturanın sayfasından başlatılır ve durdurulur; Faturalar →
+         "Tekrarlayan faturalar" hepsini sıradaki tarihleriyle gösterir.
+         Siparişten kesilen fatura tekrarlanmaz.
+
+  [ŞEMA] Cari fiyat listesi tablosu; carinin genel iskontosu.
+
+  [YENİ] Cari fiyatları. Cari kartından bir cariye bazı ürünler için kendi
+         fiyatı ya da iskontosu, diğer her şey için genel bir iskonto
+         verilebilir. O cari için fatura ya da teklif yazılırken ürün
+         seçilince fiyat ve iskonto kendiliğinden gelir; mağazanın kampanyası
+         üstüne eklenmez. Cari kartında "Yeni teklif" düğmesi de var.
+
+  [ŞEMA] Stok sayımı tabloları.
+
+  [YENİ] Barkodla stok sayımı (Stok ve maliyet → Stok sayımları). Raf barkod
+         okutularak sayılır (her okuma bir adet; adet yazılabilir), sayılar
+         düzeltilir, sonra uygulanır: sayımdaki ürünlerin stoğu sayılana
+         eşitlenir, önceki stok ve fark sayımda kalır. Sayılmayan ürünlere
+         dokunulmaz.
+
+  [ŞEMA] Çek ve senet tablosu.
+
+  [YENİ] Çek ve senetler (ERP → Çek ve senetler). Müşteriden alınan çek ya
+         da senet tahsilat olarak portföy kasasına girer; bankaya verilir,
+         tahsil edilir (bankaya aktarılır), tedarikçiye ciro edilir ya da
+         karşılıksız çıkar (müşteri yeniden borçlanır). Tedarikçiye verilen
+         çek/senet ödeme olarak yazılır, banka ödeyince kapanır. Portföydeki,
+         verilmiş ve vadesi bir hafta içinde gelenler özetlenir. Portföy ve
+         verilenler için Kasa ve Banka'da birer kasa açılması gerekir.
+
+  [ŞEMA] Banka ekstresi tabloları.
+
+  [YENİ] Banka ekstresi (ERP → Banka ekstreleri). İnternet bankacılığından
+         CSV olarak alınan ekstre içeri alınır; sütunlar bir kez seçilir ve
+         o banka hesabı için hatırlanır. Defterde olan hareketler kendiliğinden
+         eşleşir; kalan satırlar önerilen cariyle (satırdaki vergi numarası
+         ya da ad, veya o tutardaki tek açık fatura) ya da seçilen cariyle
+         tahsilat/ödeme, çıkışlar gider olarak kaydedilir veya kenara
+         ayrılır. Aynı satır iki kez alınmaz.
+
+  [YENİ] KDV raporu (ERP → KDV raporu). Bir ayın, çeyreğin, yılın ya da iki
+         tarih arasının hesaplanan KDV'si (satışlar eksi satış iadeleri),
+         indirilecek KDV'si (alışlar eksi tedarikçiye iadeler ve giderlerin
+         indirilebilen KDV'si) ve farkı; oranlara göre kırılım, koda göre
+         tevkifat, birden çok ayda ay ay tablo ve rakamların arkasındaki
+         belgeler. Faturası kesilmemiş siparişler uyarıyla söylenir. Excel'e
+         aktarılır; rakamlar muhasebeci paketinin KDV özetiyle aynıdır.
+
+  [ŞEMA] ERP muhasebe kuralları için iki ayar ve gider kategorisine KDV
+         indirimi.
+
+  [YENİ] Muhasebe kuralları (ERP Ayarları). Mağazanın mali müşavirle
+         belirleyeceği seçimler: satışta tevkif edilen KDV'nin KDV raporunda ve
+         muhasebeci paketinde hesaplanan KDV'den düşülüp düşülmeyeceği; %0 KDV'li
+         fatura satırlarının istisna kodu (ör. 351). Kod, ürünün kendi kodu yoksa
+         siparişten, elle ve iade faturasında her %0 satıra yazılır ve e-Belgeyle
+         gider.
+
+  [YENİ] Gider kategorisinde "Vergi indirilir" (Giderler → Kategoriler). Yeni
+         gider kategorinin değeriyle başlar, gider tek tek değiştirilebilir.
 
   E-FATURA (PARAŞÜT)
   --------------------------------------------------------
@@ -1566,6 +2464,13 @@
   FORMLAR
   --------------------------------------------------------
 
+  [DÜZELTME] Görsel editörle yapılmış form listesi ve form
+         ayrıntısı sayfalarında biçim verilmemiş tarihler dil
+         dosyasının biçiminde görünür (Türkçe çeviride "13.09.2026
+         14:10", önceden "13/9/2026 2:10 PM"). Yeni
+         oluşturulan listelerde boş bırakılmış bir alanın satırı
+         gizlenir; yalnız etiketi duran satır kalmaz.
+
   [YENİ] [ŞEMA] İmza alanı. Özel form alanlarına yeni bir tür
          eklendi: ziyaretçi fareyle ya da parmağıyla imzalar,
          imza forma kaydedilir. Teklif onayı, sözleşme, teslim
@@ -1659,6 +2564,505 @@
          imzalayan kişide e-imza sertifikası ya da mobil imza
          aboneliği gerekir.
 
+  ÇALIŞMA ALANI
+  --------------------------------------------------------
+
+  [YENİ] [ŞEMA] Çalışma Alanı: ekip için kanallar, görevler
+         ve bir plan panosu. Notlar artık bir deftere, bir
+         mesajlaşma uygulamasına ve akıllara dağılmıyor:
+         müşteriyle ya da işle ilgili konuşma, o konuşmadan
+         çıkan görevler ve kimin hangi gün ne yaptığı aynı
+         yerde. Site Ayarları > Özellikler'den açılır; kapalı
+         kaldığı sürece hiçbir ekranda görünmez. Açıkken kenar
+         çubuğunda Panel'in hemen altında durur. Ekranları sayfayı
+         kenardan kenara kaplar: kanal ekranı tek parça, öbür
+         ekranlarda araç çubuğu boydan boya uzanır, kartlar
+         kenardan biraz içeride ve birbirinden aralıklı durur.
+         Tarayıcı sekmesinde kendi simgesiyle, mor bir konuşma
+         balonuyla görünür.
+
+         Menüden Çalışma Alanı'na girince sabitlenmiş ilk kanal
+         açılır; sabitlenmiş kanal yoksa Genel Bakış: yaklaşan
+         görevleriniz, size yazılanlar (mesajlarınıza verilen
+         yanıtlar ve sizi anan mesajlar, kanal adıyla), yanda son
+         beş karar, katılabileceğiniz kanallar, alanın ne işe
+         yaradığı ve "Yeni kanal" / "Yeni özel kanal" düğmeleri.
+         Kanal ekranının sol listesi başlıklı gruplara ayrıldı:
+         üstte Genel Bakış ve Gelen kutusu, sonra kanallar, "İş
+         ve plan" (Görevlerim, Plan Panosu, İş Takvimi), "Kararlar
+         ve arşiv" (Karar Zaman Çizelgesi, arşivlenmiş kanallar,
+         özel kanallar); Çalışma Alanı Ayarları listenin altına
+         sabit. Öbür Çalışma Alanı ekranlarında solda ince bir
+         simge şeridi durur; üstteki düğme bütün listeyi
+         kanallarla birlikte açar, geri dönmek için menüye
+         gitmek gerekmez. Ekran açılırken tekrarlayan görevler ve
+         bekleyen Claude istekleri artık açılışı bekletmez, ekran
+         çizildikten sonra işlenir.
+
+  [YENİ] [ŞEMA] Notlarım: herkesin kendi not defteri. Not,
+         Çalışma Alanı'nın yazı kutusuyla belge gibi yazılır:
+         kalın, italik, kontrol listesi, tablo, hesap bloğu,
+         kod - bunlar notta olduğu gibi, değerleri hesaplanmış
+         görünür, tıklanınca düzenleme penceresi açılır; # ile
+         kişi ya da kayıt (ürün, sipariş, sayfa...) etiketlenir,
+         @Claude ile Claude'a sorulur (satır Enter ile bitince
+         gider, yanıt notta isteğin altına yazılır), dosya eklenir
+         ya da nota sürüklenip bırakılır. Herhangi
+         bir mesaj - sizin, bir çalışma arkadaşınızın ya da
+         Claude'un - menüsündeki "Notlarıma kaydet" ile nota
+         kopyalanır; not nereden geldiğini gösterir, mesaj
+         değişmez. Not siz paylaşana kadar yöneticiler dahil
+         kimseye görünmez. Bir çalışma arkadaşıyla görüntüleme
+         ya da düzenleme yetkisiyle paylaşılır: kişi notu
+         "Benimle paylaşılanlar"da bulur, gelen kutusuna bildirim
+         düşer; düzenleyebilen değiştirir ama silemez, yalnız
+         paylaşımdan çıkar. Bir kanalda paylaşılan not kanala
+         kart olarak düşer; üyeler notun güncel hâlini okur,
+         değiştiremez. Notun üstünde onu görebilenlerin
+         avatarları ve son değişikliği kimin yaptığı durur; aynı
+         anda iki kişi değiştirirse ikincisine sorulur. Listede
+         sağ tık (ya da ⋯) ile aç, sabitle, paylaş, kanal oluştur,
+         bağlantıyı kopyala, sil / paylaşımdan çık. Nottan kanal
+         açılabilir; not o kanalda paylaşılır. Nota eklenen
+         dosyalar Dosya Yöneticisi'nde, Workspace klasöründeki
+         Notlar klasörü altında notun kendi özel klasöründe
+         durur. Notu okuyabilenler - sahibi, paylaşılan kişiler
+         ve paylaşıldığı kanalın üyeleri (genel kanalda ekipteki
+         herkes) - bu klasörü görüntüleyebilir, düzenleyemez;
+         paylaşım kalkınca, kişi kanaldan çıkınca ya da not
+         silinince izin de kalkar, dosyalar klasörde kalır.
+         Dosyalar notun içinden eklenir.
+
+  [YENİ] Sohbette doğru hesap: bir mesajdaki, nottaki ya da
+         metin dosyasındaki hesaplar Çalışma Alanı'nın kendisi
+         tarafından yapılır, elle yazılan toplam yerine hep doğru
+         değer görünür. Tablo penceresi bir hesap tablosu gibi:
+         üstte formül çubuğu, sütun harfleri (A, B, C), satır
+         numaraları; = ile başlayan hücre (=B2*C2, =TOPLA(D2:D5))
+         hesaplanır, hücre düzenlenmezken sonucu gösterir.
+         Desteklenenler: + - * / ^, parantez, yüzde, TOPLA,
+         ORTALAMA, MİN, MAKS, ADET, YUVARLA, MUTLAK (İngilizce
+         adlarıyla da). "Hesap" bloğu "Ad = ifade" satırlarından
+         oluşur, sonraki satır üsttekilerin adını kullanabilir;
+         yazı kutusunun + menüsünde Tablo'nun altındaki "Hesap"
+         ile eklenir. = ile biten bir satır ("Kira 15.000 +
+         aidat 750 =") sonucunu hemen yanında gösterir. Claude da
+         toplamları kendisi hesaplamaz, formül yazar.
+
+  [YENİ] [ŞEMA] Kanaldaki dosyalar düzenlenir: Markdown, düz
+         metin, CSV gibi metin dosyaları mesajdan açılıp okunur
+         ve düzenlenir (Markdown okunduğu gibi de görünür);
+         görseller panelin görsel düzenleyicisiyle düzenlenir.
+         Dosyayı gönderen düzenlerse yeni hâli mesajda eskisinin
+         yerine geçer, mesaj "düzenlendi" olur ve eski sürüm
+         "önceki sürümler" altında kalır. Başkasının dosyası
+         düzenlenirse "Düzenle ve gönder": düzenlenmiş kopya
+         yanıt olarak kendi mesajınızla gider, asıl mesaj
+         olduğu gibi kalır.
+
+  [YENİ] Bir kanalda anılan kişi o kanalda değilse (özel
+         kanalda anma kendisine hiç ulaşmaz) mesajı yazanın
+         mesajının altında "Kanala davet et" düğmesi çıkar;
+         basılınca kişi kanala eklenir ve anma kendisine gider.
+
+  [YENİ] Kanallar ikiye ayrılır: genel kanalı ekipteki herkes
+         görür ve katılabilir, özel kanalı yalnız davet
+         edilenler görür. Özel kanalın sahibi onu sonradan
+         herkese açabilir; açılan kanal yeniden özel yapılamaz.
+         Bir kanal adres defterindeki bir müşteriye
+         bağlanabilir; o zaman müşterinin kartından da
+         açılır. Her kanalın Kararlar, Görevler, Dosyalar ve
+         Özet sekmesi var: bir mesajı "karar" ya da "not"
+         olarak işaretlemek onu Kararlar sekmesinde saklar,
+         Özet ise kanala yeni katılanın önce okuyacağı sayfadır.
+
+  [YENİ] Karar Zaman Çizelgesi: bütün kanallarda alınan
+         kararlar tek ekranda, en yenisi üstte ve güne göre
+         gruplu; yöneticiler kanalları tek tek gezmeden neyin
+         ne zaman kararlaştırıldığını görür. Ekipteki herkes
+         açabilir, yalnız okuyabildiği kanalların kararlarını
+         görür. Kanala, departmana, kişiye (yazan ya da karar
+         olarak işaretleyen), tarih aralığına ve metne göre
+         süzülür; "Notlar da" düğmesi notları ekler, süzgeçler
+         adres çubuğunda kalır. Geniş ekranda yanda kanal
+         başına karar sayısı durur. Claude'un önerisiyle
+         uygulanan değişiklikler kendi rozetiyle görünür.
+         Yönetici, üyesi olmadığı özel kanallarda kaç karar
+         olduğunu görür, ne dediklerini görmez; birini oradan
+         denetim için açabilir, bu kanala ve etkinlik
+         günlüğüne iz bırakır. Dış API'de GET
+         /workspace/decisions.
+
+  [YENİ] Mesajda @ ile kişi ya da departman anılır, # ile
+         kayıt etiketlenir: sipariş, ürün, ürün grubu, teklif,
+         kişi (adres defteri), kullanıcı (giriş hesabı), cari,
+         fatura, irsaliye, tahsilat/ödeme makbuzu, gelen
+         e-fatura, form kaydı, takvim etkinliği, dosya, sayfa,
+         görev, plan kaydı ve kanal. Kişi, kullanıcı ve cari
+         ayrı şeylerdir, her birinin etiketi ayrıdır. "#sip 1045"
+         ya da "#cari akın" yazmak o türde arar; tür yazılmazsa
+         seçici bütün türlerde arar ve her satırda türü söyler.
+         Etiket, okuyan kişi kaydı görmeye yetkiliyse adı ve
+         bağlantısıyla, değilse yalnız türüyle görünür.
+         Sipariş, kişi, ürün, ürün grubu, teklif, kullanıcı,
+         cari, fatura, irsaliye, makbuz, gelen e-fatura, form
+         kaydı ve takvim etkinliği ekranlarındaki "Çalışma
+         Alanı" düğmesi o kaydın nerede konuşulduğunu ve hangi
+         görevlerin ona bağlı olduğunu gösterir; kayıt oradan
+         bir kanalda paylaşılabilir.
+
+  [YENİ] Komutlar: /gorev Logo revizyonu @ayse cuma ~2sa !acil
+         görevi oluşturmadan önce size gösterir ve o güne
+         düşen izinleri, dolu günleri uyarır. /ata, /bitti,
+         /ertele, /karar, /not ve /plan da var; / tuşu
+         listeyi açar. Görevin birden çok sorumlusu olabilir.
+         Görevlerim ekranı size verilenleri, sizin
+         verdiklerinizi ve departmanlarınızın işlerini listeler.
+
+  [YENİ] Plan panosu: satırlarda kişiler, sütunlarda günler.
+         Görevin tahmini süresi başlangıç ile bitiş arasındaki
+         iş günlerine dağıtılır; toplantılar, müşteri
+         ziyaretleri, izinler ve tatiller aynı tabloda görünür,
+         günü aşan kişi kırmızıyla işaretlenir. Görev
+         sürüklenerek başka güne ya da başka kişiye taşınır.
+         Birinin iznine denk gelen işi yalnız departman lideri,
+         ekip panosu yetkisi olan ya da bir yönetici yine de
+         verebilir. Çakışmalar düğmesi önümüzdeki iki haftanın
+         listesini verir.
+
+  [YENİ] Departmanlar ve çalışma günleri Çalışma Alanı
+         Ayarları ekranında: bir kişi birden çok departmanda
+         olabilir, biri asıl departmanıdır; her departmanın bir
+         ya da birkaç lideri olur ve istenirse kendi kanalı
+         açılır. Kişi başına günlük saat ve çalışma günleri,
+         süre tahmini olmayan görevin kaç saat sayılacağı da
+         buradan ayarlanır.
+
+  [YENİ] [ŞEMA] Temel kullanıcıya Çalışma Alanı yetkisi. Rol
+         numarası değişmez; kullanıcı ekranında yetki açılınca
+         kullanıcı ekibe katılır. Ayrıca başkalarına iş verme,
+         tüm ekibin panosunu görme ve Çalışma Alanı ayarlarını
+         değiştirme yetkileri verilebilir. Ekip üyeleri canlı
+         sohbetten birbirlerine ve yöneticilere de yazabilir.
+
+  [YENİ] [ŞEMA] Anılmalar, size verilen görevler, bitirilen
+         görevleriniz ve kanal davetleri Çalışma Alanı'nın
+         gelen kutusunda toplanır ve üst çubuktaki bildirim
+         ziline de düşer. Zildeki bu satırları yalnız ilgili
+         kişi görür; cihaz bildirimi (PWA) de yalnız ona gider:
+         kişi o an Çalışma Alanı ekranında değilse beklemeden,
+         ekrandaysa bir dakika sonra ve yalnız bu arada
+         okumadıysa. Claude'un yanıtı, Claude'un uygulamasının
+         sahibi soran kişi olsa da ona bildirim olarak düşer.
+         Birinde okunan öbüründe de okunmuş sayılır. Bir
+         yönetici üyesi olmadığı özel bir kanalı denetim için
+         açabilir, ama sessizce değil: kanala ve kayıtlara
+         açtığı yazılır, kanala yazamaz.
+
+  [YENİ] [ŞEMA] Kanala gönderilen dosyalar Dosya
+         Yöneticisi'ne gider: Workspace klasörünün altında her
+         kanalın kendi adını taşıyan bir klasörü olur (aynı
+         adda bir klasör varsa sonuna [1] eklenir). Workspace
+         ve alt klasörleri özeldir. Temel kullanıcı kanala
+         eklendiğinde o kanalın klasörüne erişim kazanır,
+         çıkarıldığında kaybeder; genel kanalın dosyalarını
+         ekipteki herkes açabilir. Dosya Yöneticisi'nin
+         Dosyalar ve Görseller görünümleri Çalışma Alanı'ndaki
+         dosyaları (kanal ve not dosyaları) listelemez;
+         yönetici bunları Workspace klasörüne girerek görür.
+
+  [YENİ] Dosyalar sohbet alanına sürüklenip bırakılarak ya
+         da yazı kutusuna yapıştırılarak gönderilir, birden
+         çok dosya bir kerede. Dosya yöneticisinin kuralları
+         geçerlidir (PHP, .htaccess, web.config, kabuk
+         betikleri ve programlar yüklenemez); kanallarda
+         ayrıca SVG, HTML ve JavaScript dosyaları da kabul
+         edilmez. Görsel tıklanınca büyük açılır ve kanalın
+         öbür görselleri arasında gezilir; video ve PDF
+         sayfadan ayrılmadan önizlenir. Dosyalar sekmesi
+         görselleri, videoları ve belgeleri ayrı gösterir.
+
+  [YENİ] Kanala girerken kısa bir karşılama: son
+         gelişinizden beri kaç mesaj yazıldığı ve en çok kimin
+         yazdığı, sizi anan olup olmadığı, geciken ya da
+         bugün biten görevler, bu hafta yazılan kararlar,
+         kanala yeni katılan. Söylenenler her girişte o an
+         doğru olanlar arasından değişir; altında o an en işe
+         yarayacak adımın düğmesi durur (anıldığınız mesaja
+         git, geciken görevlere bak, kaldığınız yerden okuyun).
+         Kapatılan karşılama o kanalda ertesi güne kadar
+         görünmez.
+
+  [YENİ] [ŞEMA] Kanallar kenar çubuğunda sürüklenerek
+         sıralanır ve en üste sabitlenir; sıra kişiye özeldir.
+
+  [YENİ] İş Takvimi: ayın görevleri, plan kayıtları (izin,
+         toplantı, ziyaret), açılan kanallar ve her günün mesaj
+         sayısı tek bir aylık görünümde. Kişiye ya da
+         departmana göre süzülür; bir güne tıklamak o günün
+         dökümünü açar. Yanında ayın rakamları, en çok ve en
+         az iş alan kişi, kişi başına biten, açık ve geciken
+         görevler ve en hareketli kanallar durur.
+
+  [YENİ] Sağ tık menüleri: mesajlarda (yanıtla, görev yap,
+         karar olarak işaretle, kopyala), kanallarda, görev
+         kartlarında ve satırlarında, plan panosunda ve
+         takvimde. Dokunmatik ekranda basılı tutmak aynı menüyü
+         açar. Kişi menüsünden canlı sohbet üzerinden doğrudan
+         mesaj yazılır.
+
+  [YENİ] Telefonda kanal ekranı görünen alanın tamamını
+         kullanır; ekran klavyesi açıldığında başlık ve
+         sekmeler yerinde kalır, yazı alanı klavyenin hemen
+         üstünde durur. Dokunmatik ekranda Enter yeni satır
+         açar, mesaj Gönder düğmesiyle gider; kanal açılınca
+         klavye kendiliğinden açılmaz. Plan panosu telefonda
+         bugünden başlar ve birden çok gün sığar.
+
+  [YENİ] [ŞEMA] Mesajlara emoji tepkisi. Mesajın üzerine
+         gelince çıkan çubukta tek tıkla 👍 ❤️ 😂, yanında tam
+         seçici: arama kutusu (Türkçe ya da İngilizce: "kalp",
+         "teşekkür", "thumbs"), son kullanılanlar ve sekiz grup.
+         Aynı emojiye yeniden tıklamak tepkiyi geri alır;
+         üzerine gelince kimlerin bıraktığı görünür, telefonda
+         tepkiye uzun basınca (masaüstünde sağ tıkla) liste
+         açılır. Sağ tık menüsünün başında da hızlı emoji
+         satırı var. Tepkiler bildirim göndermez.
+
+  [YENİ] [ŞEMA] Mesajda tablo ve kontrol listesi, kendi
+         pencerelerinde hazırlanır. Yazı kutusundaki +
+         düğmesinden boyutu seçilen tablo bir pencerede açılır:
+         hücrelere doğrudan yazılır, Tab sonraki hücreye geçer;
+         satır ve sütun eklemek, silmek ve sütunu hizalamak
+         üstteki araçlarla ya da hücreye sağ tıklayarak
+         yapılır. Kontrol listesinde Enter yeni madde açar,
+         maddeler yukarı aşağı taşınır. Hazırlanan tablo ya da
+         liste yazı kutusunda küçük bir kart olarak durur;
+         karta tıklamak pencereyi yeniden açar. Kanala yazabilen
+         herkes maddeleri işaretler, kimin ne zaman
+         işaretlediği yanında yazar. Maddeye sağ tıklayıp onu
+         göreve çevirebilirsiniz.
+
+  [YENİ] Yazı kutusu biçimli yazar ama sohbet kutusu olarak
+         kalır: Enter gönderir, Shift+Enter yeni satır açar.
+         Birkaç kelime seçildiğinde üstünde küçük bir çubuk
+         belirir: kalın, italik, üstü çizili, kod ve bağlantı
+         (Ctrl+B, Ctrl+I ve Ctrl+K da çalışır; Ctrl+K kutuda
+         panelin arama penceresini açmaz). Seçimin ucundaki
+         boşluk biçime katılmaz. Esc önce çubuğu kapatır,
+         altındaki tablo penceresini değil. Bir bağlantıya
+         çift tıklamak adresini değiştirme, açma ve kaldırma
+         kutusunu açar. @ ile anılan kişi ve # ile etiketlenen
+         kayıt kutuda renkli bir etiket olarak görünür;
+         yapıştırılan metin biçimsiz gelir. Düzenlenen eski
+         mesajlar da aynı görünümle açılır.
+
+  [YENİ] Mesajda kod bloğu: + menüsündeki "Kod bloğu" ya da
+         satır başında ``` yazmak kod penceresini açar; dil
+         seçilebilir, Tab girinti yapar. Kod mesajda eş aralıklı
+         yazıyla kendi kutusunda görünür; uzun kod kutunun
+         içinde kayar, sohbeti uzatmaz. Köşedeki düğme kodu
+         panoya kopyalar. Kodun içindeki yıldız, alt çizgi ya
+         da "- [ ]" biçim sayılmaz.
+
+  [YENİ] [ŞEMA] Kanalda oylama: + düğmesinden ya da
+         /oylama Lansman hangi gün? | Salı | Çarşamba
+         komutuyla. 2 ile 10 arası seçenek; çoklu seçim, anonim
+         oy ve belirli bir gün ve saatte kendiliğinden kapanma
+         seçilebilir. Sayılar ve çubuklar oy verildikçe
+         güncellenir, oy geri alınabilir. Oylamayı soran,
+         açıkken "Düzenle" ile oylamanın kendi penceresinde
+         soruyu, seçenekleri, ayarları ve kapanış zamanını
+         değiştirir. Oy verildikten sonra oy almış seçenek
+         olduğu gibi kalır, çoklu seçim ve anonimlik değişmez;
+         yeni seçenek eklenebilir. Oylamayı soran ya da
+         kanalı yöneten kapatır. Açık bir kazanan varsa sonuç
+         kanala karar olarak yazılır ve Kararlar sekmesine
+         düşer; berabere biterse karar ekibe bırakılır.
+
+  [YENİ] [ŞEMA] Kontrol listesi göreve dönüşür: listenin
+         olduğu mesaja sağ tıklayıp "Listeyi göreve çevir".
+         Liste kanaldaki mesajda kalır ve hem kanalda hem
+         görevde işaretlenir; ikisi hep aynıdır. Görevin
+         kartı, Görevlerim listesi, plan panosu ve listenin
+         altındaki rozet görevin ne kadarının bittiğini
+         yüzdeyle gösterir. Tüm maddeler bitince görev kendi
+         kendine kapanmaz; kartta ve görevde "Bitti olarak
+         işaretle" önerilir. Görevin açıklamasına "- [ ]" ile
+         yazılan maddeler de görevde işaretlenir ve yüzdeye
+         katılır; görev penceresinde listenin altındaki
+         "Listeye madde ekle…" kutusu listeye doğrudan madde
+         ekler. Liste mesajı silinirse maddeler, işaretleriyle
+         birlikte görevin açıklamasına taşınır.
+
+  [YENİ] [ŞEMA] Görevlerde notlar: görev penceresinin
+         altındaki "Not ekle" ile, yazan kişi ve zamanla
+         birlikte satır satır birikir (ilerleme notu, müşteri
+         görüşmesi…). Notta @ ile kişi anılır, # ile kayıt
+         etiketlenir; anılan kişiye gelen kutusundan ve zilden
+         haber gider. Herkes kendi notunu düzenleyip silebilir;
+         not sayısı görev kartında ve listede görünür. Görevin
+         açıklaması ve notları kanaldaki gibi biçimli kutuda
+         yazılır: kalın, italik, bağlantı, kişi ve kayıt
+         etiketleri çip olarak; açıklamaya kontrol listesi
+         düğmeyle eklenir. Ctrl+Enter notu kaydeder.
+
+  [YENİ] [ŞEMA] Tekrarlayan görevler: görev penceresindeki
+         "Tarih ve tekrar" kutusunda başlangıç, bitiş ve tekrar
+         bir arada. Tekrar, görevin bitiş gününden okunur: bitiş
+         ayın 16'sıysa seçenek "Her ay, ayın 16. günü", çarşambaysa
+         "Her hafta, Çarşamba", yılda bir için "Her yıl, 16 Eylül";
+         tarih değişince seçenekler de değişir. "Hafta içi her gün"
+         ve "Özel…" (2 haftada bir, seçilen günlerde, 3 ayda bir…)
+         da var. Kutunun altında kural, her kopyanın ne kadar
+         süreceği ve sıradaki üç kopyanın tarihleri kaydetmeden
+         önce görünür.
+
+         Sırası gelen her dönemde görevin bir kopyası aynı
+         kişilere, aynı başlık, açıklama, öncelik, departman ve
+         kanalla açılır; kontrol listesi işaretsiz başlar. Kopya
+         görevin süresini korur: görev pazartesi başlayıp cuma
+         bitiyorsa her kopya da pazartesi açılır, cuma biter.
+         Kopyalar birikmez: bir kopyanın süresi içinde yenisi
+         açılmaz, görev tekrar aralığından uzun sürüyorsa
+         aradaki tarihler atlanır (kutu bunu önceden söyler).
+         Önceki kopya bitmediyse de yenisi açılmaz; açık olan
+         gecikmiş olarak kalır ve sıradaki kopya o bittikten
+         sonraki ilk tarihte gelir. Son
+         kopyanın bitiş tarihini pencereden değiştirmek sonraki
+         kopyaları da yeni güne taşır. Plan Panosu'nda son kopya
+         başka güne sürüklenince "Yalnız bu kopya" ya da "Bu ve
+         sonraki kopyalar" sorulur; önceki kopyalar yalnız
+         kendileri kayar.
+
+         Henüz açılmamış kopyalar Plan Panosu'nda ve İş
+         Takvimi'nde kesik çizgili ve döngü simgeli görünür;
+         panoda kişinin yüküne sayılır, takvimde ayın
+         rakamlarına sayılmaz. Tıklayınca tekrarlanan görev
+         açılır. Serinin son kopyası gecikmişse sıradakiler
+         soluk ve sarı çizgili görünür; ipucu ve görev penceresi,
+         gecikmiş kopya bitmeden açılmayacaklarını söyler.
+
+         Tekrar, görev "Tamamen tamamla" ile bitirildiğinde ya da
+         "Tekrarın sonu" olarak seçilen tarih geçtiğinde durur;
+         "Tekrarlanmaz" seçilerek de kapatılır. Bir kopyayı
+         olağan yoldan "Bitti" yapmak tekrarı durdurmaz. Kopyalar,
+         ekipten biri Çalışma Alanı'nı açtığında ya da Ayarlar >
+         Zamanlanmış Görevler'deki "Tekrarlayan görevler" işiyle
+         açılır; sunucu birkaç gün hiç çalışmadıysa kaçan her gün
+         için değil, yalnız en son tarih için bir kopya açılır.
+         Tekrarlayan görevlerin kartında ve listesinde döngü
+         simgesi görünür. Dış API'de
+         /workspace/tasks/{id}/recurrence (okuma, ayarlama,
+         bitirme).
+
+  [YENİ] [ŞEMA] Çalışma takvimi: Çalışma Alanı Ayarları'ndaki
+         yeni kartta şirketin ya da bir departmanın tatilleri
+         girilir; bir kez ya da "her yıl aynı gün" (1 Ocak gibi).
+         Ülkenin resmî tatilleri bir iCal adresinden de okunur
+         (Google Takvim her ülke için bir tane yayınlar; kart
+         örnek adresi gösterir): günler hemen, sonra her gün
+         yeniden alınır, anma günleri ve yarım günler (bayram
+         arifesi, öğleden sonra tatil olan gün) dışarıda kalır;
+         sıkıştırılmış gelen takvimler de (Apple) okunur. Anma
+         günlerini tatilden ayırmayan takvimlerde (Apple) ya da
+         şirkette tatil olmayan tek bir gün "Bu takvimden gelen
+         günler" listesinde "Sayma" ile dışarıda bırakılır; takvim yeniden okununca seçim
+         korunur, "Yeniden say" ile geri alınır. Mesai haftası
+         yine Varsayılanlar kartında.
+
+         Tekrarlayan görevin hafta sonuna ya da tatile denk gelen
+         kopyası sonraki mesai gününe kayar; seri kendi gününden
+         devam eder (ayın 16'sı cumartesiyse o ay pazartesi,
+         sonraki ay yine 16'sı). Bir departmana bağlı görev o
+         departmanın tatillerini de sayar. Plan Panosu ve İş
+         Takvimi sıradaki kopyaları kaymış günlerinde gösterir.
+         Görev penceresinde elle seçilen tarih mesai dışıysa
+         pencere bunu söyler ve tek tıkla sonraki mesai gününe
+         kaydırmayı önerir; kaydırılmış bir kopya asıl gününü
+         yazar.
+
+  [YENİ] Dış API'de Çalışma Alanı uçları: /workspace/channels,
+         kanal mesajlarını okuma ve yazma, /workspace/tasks
+         (listeleme, oluşturma, güncelleme, tamamlama),
+         /workspace/departments, /workspace/refs (bir kaydın
+         nerede anıldığı) ve /workspace/plan. Yeni izinler
+         workspace:read/write ve tasks:read/write; yeni olaylar
+         workspace.message.created ve workspace.poll.closed
+         (yalnız genel kanallar) ile workspace.task.* (görev
+         açıldı, atandı, durumu değişti, bitti, not eklendi;
+         özel kanalın görevinde not metni gönderilmez).
+         Uygulamanın yazdığı mesaj kanalda
+         uygulamanın adıyla, "(uygulama)" ekiyle görünür;
+         uygulama mesajlara emoji de bırakabilir (örneğin bir
+         isteği gördüğünü 👀 ile işaretlemek için), görevlerin
+         notlarını okuyup not yazabilir ve görevde kontrol
+         listesinin ilerlemesini görür.
+
+  [YENİ] [ŞEMA] Kanalda Claude: bir kanalda @Claude yazmak
+         (ya da mesaja /claude ile başlamak) isteği Claude'a
+         iletir; yanıt birkaç dakika içinde isteğin altına
+         "Claude" adıyla gelir, isteyen kişi bildirim alır.
+         Claude, yöneticinin claude.ai'da kurduğu tek bir
+         rutinle ve onun aboneliğiyle çalışır. Çalışma Alanı
+         Ayarları'ndaki "Kanallarda Claude" kartı kurulumu adım
+         adım anlatır (uygulama, rutin istemi, ortam, API
+         tetikleyicisi) ve bağlantıyı dener. İsteğin altında
+         durumu görünür (bekliyor, iletildi, çalışıyor,
+         yanıtladı, yapamadı); Claude isteği aldığında 👀,
+         yanıtladığında ✅ bırakır. Claude görev açmaz, önerir:
+         önerilen görevler yanıtın altında durur, kanaldaki
+         biri tek tıkla açar ya da bir kenara bırakır. Kayıtları
+         da Claude değiştirmez, değişikliği hazırlar: ürünün
+         alanları, stok adedi, siparişin durumu ve notu, kişi ve
+         cari kartı, ürün grubu, kanalın özeti, bir kullanıcının
+         rolü (yalnız yönetici uygular; yöneticiye ve kişinin
+         kendisine dokunulmaz), sayfanın başlığı ve arama motoru
+         bilgileri, dosyanın açıklaması, klasörü ve metin
+         dosyasının içeriği, teklifin açık/kapalı durumu,
+         açıklaması ve tarihleri, takvim etkinliği. Yeni ürün,
+         kişi, cari, ürün grubu ve takvim etkinliği açmayı;
+         ürünü, ürün grubunu, kişiyi, sayfayı, dosyayı, teklifi
+         ve takvim etkinliğini silmeyi, ürünleri bir gruba
+         koymayı ya da gruptan çıkarmayı da önerir. Yeni ürün ve
+         yeni grup, istekte açıkça istenmedikçe satışa ve yayına
+         kapalı açılır; silinen ürün, ürün grubu, sayfa ve dosya
+         Geri Dönüşüm Kutusuna gider (ana sayfa ile mağazanın ve
+         hesap alanının sayfaları silinmez), kişi, teklif ve
+         etkinlik kalıcı silinir, silmeden önce ayrıca sorulur ve
+         silinen kaydın bilgileri kararda kalır. Yanıtın altında
+         her alanın bugünkü ve yeni değeri ile Claude'un
+         gerekçesi durur (gerekçede anılan kişi ve kayıt adıyla
+         okunur); değişikliği yalnız isteyen kişi, kendi
+         yetkisiyle, tek tıkla uygular ya da bir kenara bırakır.
+         O tür kaydı değiştirme yetkisi olmayana taslak
+         hazırlanmaz; taslaktan sonra kayıt değiştiyse üzerine
+         yazılmaz, Claude'a yeniden sorulur. Siparişi iptal
+         etmeden önce iadenin deneneceği ve müşteriye e-posta
+         gideceği sorulur. Uygulanan değişiklik kanalın
+         Kararlar'ına kilitli bir karar olarak işlenir: kimse
+         düzenleyemez, Kullanıcı rolündekiler silemez ve karar
+         işaretini kaldıramaz. Claude'un yanıtına "yanıtla" ile
+         yazılan cevap da, @Claude yazılmadan, Claude'a gider ve
+         konuşma oradan sürer; yazı kutusunun üstü bunu söyler.
+         Claude mesajlarda kendi simgesiyle görünür ve Claude'a
+         açık kanalların Üyeler listesinin başında durur (profil
+         sayfası yoktur). Claude'a soran mesaj beklemeden kanalda
+         görünür; yanıt beklenirken ekran daha sık bakar. Genel
+         kanallar Claude'a açıktır; özel kanal yalnız onu
+         yöneten kanal menüsünden izin verirse. Günlük
+         çalıştırma hakkı dolunca istekler bekler; 24 saat
+         içinde iletilemeyen istek iptal edilir. Dış API'de
+         /workspace/claude/requests (yalnız Claude'un
+         uygulaması) ve /workspace/channels/{id}/context.
+
+         Claude henüz kurulmamışken @Claude yazılırsa kanala kısa
+         bir not düşer: neyin eksik olduğu ve tarayıcıda nereden
+         kurulacağı (API ayarı, uygun API uygulaması, Çalışma
+         Alanı Ayarları'ndaki kart, claude.ai'daki rutin
+         sayfası). Claude'a kapalı bir kanalda da, kanal
+         menüsünden açılabileceğini söyler.
+
   CANLI SOHBET
   --------------------------------------------------------
 
@@ -1670,6 +3074,61 @@
          konuşmalarının başlığında ziyaretçinin e-posta adresi
          de IP'nin yanında listelenir; başlığın üzerine gelince
          sohbetin başlatıldığı sayfa görünür.
+
+  [YENİ] Canlı Sohbet: üyeler için sitede panel sohbeti.
+         Sitede oturum açmış bir kullanıcı, sohbet balonunu
+         açtığında artık paneldekiyle aynı ekranı görüyor: kendi
+         konuşmalarının listesi, yazabileceği personelin listesi
+         ve her biriyle ayrı bir konuşma. Aynı havuzdur -
+         panelden başlatılan bir konuşma sitede, siteden
+         başlatılan panelde görünür, ikisinde de aynı yerden
+         devam eder. Kimin kiminle yazışabileceği değişmedi;
+         kurallar sunucuda, panelde olduğu gibi uygulanıyor.
+
+  [YENİ] Canlı Sohbet: oturum açınca eski konuşma kaybolmuyor.
+         Ziyaretçiyken başlatılan bir konuşma, kullanıcı giriş
+         yaptığı anda hesabına geçiyor: konuşma ve içindeki tüm
+         mesajlar artık o hesaba ait ve listesinde görünüyor.
+         Eskiden konuşmanın tek sahibi tarayıcı oturumuydu ve
+         giriş yapmakla geçmiş erişilemez hale geliyordu.
+
+  [YENİ] Canlı Sohbet: sesli mesaj ve ses dosyası.
+         Mesaj kutusunun altındaki mikrofon düğmesiyle sesli
+         mesaj kaydedilip gönderilebiliyor (en fazla iki
+         dakika), gelen kayıt karşı tarafta baloncuğun içinde
+         oynatıcı olarak çıkıyor. Hazır bir ses dosyası (mp3,
+         m4a, ogg, wav) eklemek de aynı yere düşüyor. Site
+         Ayarları > İletişim altında "Sesli mesaj ve ses
+         dosyalarına izin ver" anahtarıyla açılır; kapalıyken
+         mikrofon hiç çizilmez. Tarayıcı kayda izin vermiyorsa
+         ya da site HTTPS değilse düğme görünmez.
+
+  [YENİ] Canlı Sohbet: yeni mesaj kutusu.
+         Hem paneldeki hem sitedeki pencerede mesaj alanı tek
+         bir çerçeve içine alındı: üstte yazı alanı, altında
+         ataç (dosya), emoji ve mikrofon düğmeleri, sağda
+         yuvarlak gönder düğmesi. Emoji paleti sekmeli ve son
+         kullandıklarınızı hatırlıyor. Dosya ekleri artık
+         türlerine göre etiketli (PDF, ZIP, DOCX ...)
+         görünüyor.
+
+  [DÜZELTME] Canlı Sohbet: sitedeki balon temaların araya
+         girmesine kapatıldı. Bazı temaların yazı alanlarına ve
+         kaydırma çubuklarına uyguladığı biçimlendirme sohbet
+         penceresini bozuyordu; pencerenin kendi biçimlendirmesi
+         artık temanınkinden üstün. Dosya seçme kutusu da sohbet
+         penceresinin dışına alındı - temaların dosya alanlarını
+         değiştiren kodları ona artık ulaşamıyor. Pencere
+         açıkken arkadaki sayfa da yerinde duruyor.
+
+  [DÜZELTME] Canlı Sohbet: ad ve e-posta artık baştan
+         sorulmuyor ve hiçbir yerde zorunlu değil. Ziyaretçi
+         sohbeti açtığında yalnız mesaj alanını görüyor; ilk
+         mesajdan sonra konuşmanın altında tek satırlık bir
+         öneri çıkıyor, tıklayınca ad ve e-posta alanları
+         açılıyor, ikisi de girilince satır kayboluyor. Dosya
+         ya da sesli mesaj göndermek için de artık ad ve
+         e-posta istenmiyor.
 
   [YENİ] Canlı Sohbet: telefonda tam ekran. Dar ekranlarda hem
          paneldeki sohbet penceresi hem sitedeki sohbet balonu

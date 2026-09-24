@@ -278,7 +278,7 @@ function get_shopping_cart($properties) {
                 if ($upsell_offer['upsell_action_button_label']) {
                     $output_upsell_action_button_label = h($upsell_offer['upsell_action_button_label']);
                 } else {
-                    $output_upsell_action_button_label = 'More Info';
+                    $output_upsell_action_button_label = lang('More Info');
                 }
                 
                 $output_upsell_action_link = '<a href="' . OUTPUT_PATH . get_page_name($upsell_offer['upsell_action_page_id']) . '" class="software_button_small_secondary">' . $output_upsell_action_button_label . '</a>';
@@ -829,7 +829,7 @@ function get_shopping_cart($properties) {
                     
                     // if order item is a donation
                     if ($selection_type == 'donation') {
-                        $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . number_format(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE), 2, '.', ',') . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
+                        $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . pg_format_input_amount(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE)) . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
                     }
                     
                     // nofollow on a destructive action link. The CSRF token
@@ -970,7 +970,7 @@ function get_shopping_cart($properties) {
                                         AND (quantity_number = '$quantity_number')");
 
                                 // If gift card data was found in database, then prefill fields with data.
-                                if ($order_item_gift_card['id']) {
+                                if (!empty($order_item_gift_card['id'])) {
                                     $form->assign_field_value('order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_from_name', $order_item_gift_card['from_name']);
                                     $form->assign_field_value('order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', $order_item_gift_card['recipient_email_address']);
                                     $form->assign_field_value('order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_message', $order_item_gift_card['message']);
@@ -1508,7 +1508,7 @@ function get_shopping_cart($properties) {
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
                 
-                $total_label = 'Total';
+                $total_label = lang('Total');
                     
             // else there is not an order discount from an offer
             } else {
@@ -1522,7 +1522,7 @@ function get_shopping_cart($properties) {
                 $output_discount = '';
                 $output_total = '';
                 
-                $total_label = 'Subtotal';
+                $total_label = lang('Subtotal');
             }
             
             // if tax and shipping are active
@@ -1637,7 +1637,7 @@ function get_shopping_cart($properties) {
                 
                 // if the shopping cart label is blank, then set it to cart
                 if ($output_shopping_cart_label == '') {
-                    $output_shopping_cart_label = 'Cart';
+                    $output_shopping_cart_label = lang('Cart');
                 }
                 
                 // output the offline payment option
@@ -1653,11 +1653,11 @@ function get_shopping_cart($properties) {
                 
             // else if a shopping cart label is found, then use that with "Update" in front of the label
             } elseif ($shopping_cart_label) {
-                $output_update_button_label = 'Update ' . h($shopping_cart_label);
+                $output_update_button_label = lang(array('string' => 'Update {var:1}', 'vars' => h($shopping_cart_label)));
                 
             // else a update button label could not be found, so just use a default label
             } else {
-                $output_update_button_label = 'Update Cart';
+                $output_update_button_label = lang('Update Cart');
             }
             
             // if a checkout button label was entered for the page, then use that
@@ -1666,7 +1666,7 @@ function get_shopping_cart($properties) {
                 
             // else a checkout button label could not be found, so just use a default label
             } else {
-                $output_checkout_button_label = 'Checkout';
+                $output_checkout_button_label = lang('Checkout');
             }
             
             $output_shopping_cart =
@@ -1698,7 +1698,7 @@ function get_shopping_cart($properties) {
                     </table>
                 </form>
                 <div class="cart_link" style="font-size: 90%">
-                    This ' . h($shopping_cart_label) . ' has been saved.  To retrieve this ' . h($shopping_cart_label) . ' at a later time, please use this link:<br />
+                    ' . lang(array('string' => 'This {var:1} has been saved. To retrieve this {var:1} at a later time, please use this link:', 'vars' => h($shopping_cart_label))) . '<br />
                     <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . h(get_page_name($page_id)) . '?r=' . $reference_code . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . h(get_page_name($page_id)) . '?<wbr />r=' . $reference_code . '</a>
                 </div>';
 
@@ -2441,7 +2441,7 @@ function get_shopping_cart($properties) {
                                         AND (quantity_number = '$quantity_number')");
 
                                 // If gift card data was found in database, then prefill fields with data.
-                                if ($order_item_gift_card['id']) {
+                                if (!empty($order_item_gift_card['id'])) {
                                     $form->set('order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', $order_item_gift_card['recipient_email_address']);
 
                                     $form->set('order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_from_name', $order_item_gift_card['from_name']);
@@ -2988,7 +2988,7 @@ function get_shopping_cart($properties) {
             }
 
             if ($shopping_cart_label == '') {
-                $shopping_cart_label = 'Cart';
+                $shopping_cart_label = lang('Cart');
             }
 
             $order_offline_payment_allowed = $offline_payment_allowed;
@@ -3013,12 +3013,12 @@ function get_shopping_cart($properties) {
 
             // If an update button label was not entered for the page, then set default label.
             if ($update_button_label == '') {
-                $update_button_label = 'Update ' . $shopping_cart_label;
+                $update_button_label = lang(array('string' => 'Update {var:1}', 'vars' => $shopping_cart_label));
             }
 
             // If a checkout button label was not entered for the page, then set default label.
             if ($checkout_button_label == '') {
-                $checkout_button_label = 'Checkout';
+                $checkout_button_label = lang('Checkout');
             }
 
             $retrieve_order_url = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id) . '?r=' . $reference_code;

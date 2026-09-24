@@ -78,15 +78,25 @@ function erp_returnable_lines($invoice_id)
 {
     $invoice_id = (int) $invoice_id;
 
-    $lines = (array) db_items("SELECT i.*,
-            (SELECT COALESCE(SUM(r.tax_total), 0)
+    // What earlier returns already gave back of each line, matched the way
+    // the quantities are.
+    $given_back = function ($column) use ($invoice_id) {
+        return "(SELECT COALESCE(SUM(r." . $column . "), 0)
                 FROM erp_invoice_items r
                 INNER JOIN erp_invoices d ON r.invoice_id = d.id
                 WHERE d.parent_invoice_id = '" . $invoice_id . "'
                   AND d.doc_type = 'return'
                   AND d.status <> 'cancelled'
                   AND (r.parent_line_id = i.id
-                       OR (r.parent_line_id = 0 AND r.product_id = i.product_id))) AS returned_tax
+                       OR (r.parent_line_id = 0 AND r.product_id = i.product_id)))";
+    };
+
+    $lines = (array) db_items("SELECT i.*,
+            " . $given_back('tax_total') . " AS returned_tax"
+            . (erp_invoice_lines_have_withholding() ? ",
+            " . $given_back('withholding_amount') . " AS returned_withholding" : "")
+            . (erp_invoice_lines_have_tax2() ? ",
+            " . $given_back('tax2_amount') . " AS returned_tax2" : "") . "
         FROM erp_invoice_items i
         WHERE i.invoice_id = '" . $invoice_id . "' ORDER BY i.line_no ASC, i.id ASC");
 
@@ -135,7 +145,18 @@ function erp_return_build($parent_lines, $quantities)
 
         $line_total = (int) round((int) $parent['unit_price'] * $wanted);
         $discount = (int) round((int) $parent['discount_amount'] * $share);
-        $tax = erp_apply_rate($line_total - $discount, (float) $parent['tax_rate']);
+        // A second tax (tax2_amount, part of tax_total) comes back the same
+        // way as the whole: at its rate, capped by what is left of it, the
+        // last piece taking exactly the rest.
+        $tax2_rate = (float) ($parent['tax2_rate'] ?? 0);
+        $tax2 = ($tax2_rate > 0) ? erp_apply_rate($line_total - $discount, $tax2_rate) : 0;
+
+        if (($tax2_rate > 0) && isset($parent['returned_tax2'])) {
+            $tax2_left = max(0, (int) ($parent['tax2_amount'] ?? 0) - (int) $parent['returned_tax2']);
+            $tax2 = ($wanted >= ($remaining - 0.00001)) ? $tax2_left : min($tax2, $tax2_left);
+        }
+
+        $tax = erp_apply_rate($line_total - $discount, (float) $parent['tax_rate']) + $tax2;
 
         // The parent line's tax is one rounded figure, and the pieces given
         // back cannot add up to more than it: two halves of 361 kurus both
@@ -148,6 +169,17 @@ function erp_return_build($parent_lines, $quantities)
             $tax = ($wanted >= ($remaining - 0.00001)) ? $tax_left : min($tax, $tax_left);
         }
 
+        // The withholding comes back the same way: the share of the VAT
+        // given back, capped by what the line withheld, the last piece taking
+        // exactly what is left.
+        $withholding_rate = (float) ($parent['withholding_rate'] ?? 0);
+        $withholding = ($withholding_rate > 0) ? erp_apply_rate(max(0, $tax - $tax2), $withholding_rate) : 0;
+
+        if (($withholding_rate > 0) && isset($parent['returned_withholding'])) {
+            $withholding_left = max(0, (int) ($parent['withholding_amount'] ?? 0) - (int) $parent['returned_withholding']);
+            $withholding = ($wanted >= ($remaining - 0.00001)) ? $withholding_left : min($withholding, $withholding_left);
+        }
+
         $lines[] = array(
             'parent_line_id' => $line_id,
             'product_id' => (int) $parent['product_id'],
@@ -158,6 +190,12 @@ function erp_return_build($parent_lines, $quantities)
             'discount_amount' => $discount,
             'tax_rate' => (float) $parent['tax_rate'],
             'tax_total' => $tax,
+            'tax2_rate' => $tax2_rate,
+            'tax2_amount' => min($tax2, $tax),
+            'withholding_code' => (string) ($parent['withholding_code'] ?? ''),
+            'vat_exemption_code' => (string) ($parent['vat_exemption_code'] ?? ''),
+            'withholding_rate' => $withholding_rate,
+            'withholding_amount' => $withholding,
             'line_total' => $line_total,
         );
     }
@@ -170,11 +208,15 @@ function erp_return_build($parent_lines, $quantities)
     $subtotal = 0;
     $discount_total = 0;
     $tax_total = 0;
+    $tax2_total = 0;
+    $withholding_total = 0;
 
     foreach ($lines as $line) {
         $subtotal += $line['line_total'];
         $discount_total += $line['discount_amount'];
         $tax_total += $line['tax_total'];
+        $tax2_total += $line['tax2_amount'];
+        $withholding_total += $line['withholding_amount'];
     }
 
     return array(
@@ -183,7 +225,9 @@ function erp_return_build($parent_lines, $quantities)
             'subtotal' => $subtotal,
             'discount_total' => $discount_total,
             'tax_total' => $tax_total,
-            'grand_total' => $subtotal - $discount_total + $tax_total,
+            'tax2_total' => $tax2_total,
+            'withholding_total' => $withholding_total,
+            'grand_total' => $subtotal - $discount_total + $tax_total - $withholding_total,
         ),
         'is_full' => $is_full,
         'error' => '',
@@ -238,6 +282,8 @@ function erp_invoice_return($data)
             'subtotal' => (int) $parent['subtotal'],
             'discount_total' => (int) $parent['discount_total'],
             'tax_total' => (int) $parent['tax_total'],
+            'tax2_total' => (int) ($parent['tax2_total'] ?? 0),
+            'withholding_total' => (int) $parent['withholding_total'],
             'grand_total' => (int) $parent['grand_total'],
         );
     }
@@ -245,6 +291,10 @@ function erp_invoice_return($data)
     $account_id = (int) $parent['account_id'];
     $issue_date = (string) ($data['issue_date'] ?? date('Y-m-d'));
     $issue_year = (int) substr($issue_date, 0, 4);
+
+    if (($refusal = erp_lock_refusal($issue_date)) !== '') {
+        return $fail($refusal);
+    }
     $created_by = (int) ($data['created_by'] ?? 0);
 
     // A return cannot share the invoice series. The number printed on a document
@@ -284,7 +334,7 @@ function erp_invoice_return($data)
             invoice_type = 'IADE',
             series = '" . escape($series) . "',
             number = '" . (int) $numbered['number'] . "',
-            issue_year = '" . $issue_year . "',
+            issue_year = '" . (int) $numbered['year'] . "',
             full_number = '" . escape($numbered['full']) . "',
             account_id = '" . $account_id . "',
             order_id = '" . (int) $parent['order_id'] . "',
@@ -297,7 +347,8 @@ function erp_invoice_return($data)
             exchange_rate_source = '" . escape((string) ($parent['exchange_rate_source'] ?? '')) . "',
             subtotal = '" . (int) $totals['subtotal'] . "',
             discount_total = '" . (int) $totals['discount_total'] . "',
-            tax_total = '" . (int) $totals['tax_total'] . "',
+            tax_total = '" . (int) $totals['tax_total'] . "'," . erp_tax2_total_sql($totals) . "
+            withholding_total = '" . (int) $totals['withholding_total'] . "',
             grand_total = '" . (int) $totals['grand_total'] . "',
             grand_total_base = '" . $grand_total_base . "',
             status = 'issued',
@@ -338,7 +389,12 @@ function erp_invoice_return($data)
                 unit_price = '" . (int) $line['unit_price'] . "',
                 discount_amount = '" . (int) $line['discount_amount'] . "',
                 tax_rate = '" . escape((string) $line['tax_rate']) . "',
-                tax_total = '" . (int) $line['tax_total'] . "',
+                tax_total = '" . (int) $line['tax_total'] . "'," . erp_tax2_line_sql($line) . "
+                vat_exemption_code = '" . escape(erp_vat_line_exemption_code($line)) . "',
+                withholding_code = '" . escape($line['withholding_code']) . "',
+                withholding_rate = '" . escape(number_format($line['withholding_rate'], 3, '.', '')) . "',"
+                . (erp_invoice_lines_have_withholding() ? "
+                withholding_amount = '" . (int) $line['withholding_amount'] . "'," : "") . "
                 line_total = '" . (int) $line['line_total'] . "'");
 
         if ($ok === false) {
@@ -393,11 +449,20 @@ function erp_invoice_return($data)
         return $fail($error);
     }
 
+    // The goods go back the way the invoice line moved them, if it did.
+    if (!erp_stock_post_return($return_id, $created_by)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     if (!erp_tx_commit()) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);
     }
+
+    erp_stock_apply_pending();
 
     erp_event_invoice($return_id, 'erp.invoice.created');
 
@@ -434,6 +499,11 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
 
     if ((string) $invoice['status'] === 'cancelled') {
         return $fail(lang('That invoice has been cancelled.'));
+    }
+
+    // A document inside a closed period stays as it was filed.
+    if (($refusal = erp_lock_refusal((string) $invoice['issue_date'])) !== '') {
+        return $fail($refusal);
     }
 
     // The gift card allocation the invoice itself posted does not count: it
@@ -549,11 +619,20 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         }
     }
 
+    // Every stock move the document made, turned round.
+    if (!erp_stock_post_cancel($invoice_id, (int) $created_by)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
+    }
+
     if (!erp_account_refresh_balance($account_id) || !erp_tx_commit()) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);
     }
+
+    erp_stock_apply_pending();
 
     erp_event_invoice($invoice_id, 'erp.invoice.cancelled');
 

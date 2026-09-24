@@ -226,8 +226,8 @@ if ($tab === 'incoming') {
 
             $issue_date = $attr['issue_date'] ?? '';
             $due_date   = $attr['due_date']   ?? '';
-            $gross      = number_format((float)($attr['gross_total']  ?? 0), 2, ',', '.');
-            $net        = number_format((float)($attr['net_total']    ?? 0), 2, ',', '.');
+            $gross      = pg_format_number((float)($attr['gross_total'] ?? 0), 2);
+            $net        = pg_format_number((float)($attr['net_total'] ?? 0), 2);
             $item_type  = $attr['item_type']  ?? '';
             $status     = $attr['payment_status'] ?? ($attr['status'] ?? '');
             $description = h($attr['description'] ?? '');
@@ -304,8 +304,8 @@ if ($tab === 'outgoing') {
             $issue_date  = $attr['issue_date']  ?? '';
             $due_date    = $attr['due_date']    ?? '';
             $invoice_no  = ($attr['invoice_series'] ?? '') . ($attr['invoice_id'] ? '/' . $attr['invoice_id'] : '');
-            $gross       = number_format((float)($attr['gross_total']  ?? 0), 2, ',', '.');
-            $net         = number_format((float)($attr['net_total']    ?? 0), 2, ',', '.');
+            $gross       = pg_format_number((float)($attr['gross_total'] ?? 0), 2);
+            $net         = pg_format_number((float)($attr['net_total'] ?? 0), 2);
             $item_type   = $attr['item_type']   ?? '';
             $status      = $attr['payment_status'] ?? ($attr['status'] ?? '');
             $description = h($attr['description'] ?? '');

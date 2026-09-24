@@ -242,7 +242,7 @@ if ($_POST) {
 
 			$liveform->add_notice(lang(array(
 				'string' => '{var:1} categories are up to date.',
-				'vars'   => array(number_format((int)$result['data']['count']))
+				'vars'   => array(pg_format_number((int)$result['data']['count'], 0))
 			)));
 
 		} else {
@@ -980,11 +980,11 @@ if ($selected) {
 		</div>
 		<div class="card-body">
 			<div class="mp-count">
-				<div><b>' . number_format(count($maps)) . '</b><span>' . lang('matched products') . '</span></div>
-				<div><b>' . number_format($queue_counts['waiting']) . '</b><span>' . lang('waiting') . '</span></div>
-				<div><b>' . number_format($queue_counts['sent']) . '</b><span>' . lang('with the marketplace') . '</span></div>
+				<div><b>' . pg_format_number(count($maps), 0) . '</b><span>' . lang('matched products') . '</span></div>
+				<div><b>' . pg_format_number($queue_counts['waiting'], 0) . '</b><span>' . lang('waiting') . '</span></div>
+				<div><b>' . pg_format_number($queue_counts['sent'], 0) . '</b><span>' . lang('with the marketplace') . '</span></div>
 				<div><b class="' . ($queue_counts['failed'] ? 'text-danger' : '') . '">'
-					. number_format($queue_counts['failed']) . '</b><span>' . lang('failed') . '</span></div>
+					. pg_format_number($queue_counts['failed'], 0) . '</b><span>' . lang('failed') . '</span></div>
 			</div>';
 
 	if ($selected['status'] !== 'active') {
@@ -1076,7 +1076,7 @@ if ($selected) {
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
 						: '') . '</span>
 				<span>' . prepare_price_for_output((int)$map['price'], false, 0, 'html', false) . '</span>
-				<span>' . number_format($quantity)
+				<span>' . pg_format_number($quantity, 0)
 					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
 				<span class="small opacity-75">'
 					. ($map['last_pushed'] ? h(mp_settings_ago((int)$map['last_pushed'])) : '&mdash;') . '</span>
@@ -1114,7 +1114,7 @@ if ($selected) {
 			<div class="ms-auto d-flex align-items-center gap-2">
 				<span class="small opacity-75">'
 					. ($category_count
-						? h(lang(array('string' => '{var:1} categories', 'vars' => array(number_format($category_count)))))
+						? h(lang(array('string' => '{var:1} categories', 'vars' => array(pg_format_number($category_count, 0)))))
 						: lang('No categories yet')) . '</span>
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '

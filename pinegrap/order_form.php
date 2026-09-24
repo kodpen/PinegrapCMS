@@ -199,7 +199,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         
                     case 'donation':
                         // remove commas from donation amount if they exist
-                        $donation_amount = str_replace(',', '', $liveform->get_field_value('donation_' . $product['id']));
+                        $donation_amount = pg_parse_amount($liveform->get_field_value('donation_' . $product['id']));
                         // PHP 8+ error fix.
                         if($donation_amount == ''){
                             $donation_amount = 0;

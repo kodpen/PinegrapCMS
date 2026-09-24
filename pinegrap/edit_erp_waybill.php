@@ -114,17 +114,21 @@ $output_order = ((int) $waybill['order_id'] > 0)
 
 $output_lines = '';
 foreach ($lines as $line) {
-    $quantity = rtrim(rtrim(number_format((float) $line['quantity'], 4, '.', ''), '0'), '.');
+    $quantity = erp_quantity_text($line['quantity']);
     $output_lines .= '
                             <tr>
                                 <td class="text-body-secondary">' . (int) $line['line_no'] . '</td>
                                 <td>' . h($line['description']) . ((trim((string) $line['product_name']) !== '' && (string) $line['product_name'] !== (string) $line['description']) ? '<div class="text-body-secondary small">' . h($line['product_name']) . '</div>' : '') . '</td>
-                                <td class="text-end">' . h($quantity) . '</td>
+                                <td class="text-end" data-sort="' . (float) $line['quantity'] . '">' . h($quantity) . '</td>
                                 <td>' . h(erp_waybill_unit_label($line['unit_code'])) . '</td>
                             </tr>';
 }
 
-$ship_to_line = trim(implode(' ', array_filter(array((string) $waybill['ship_to_district'], (string) $waybill['ship_to_city'], (string) $waybill['ship_to_country']))));
+$ship_to_line = erp_address_locality(array(
+    'district' => (string) $waybill['ship_to_district'],
+    'city' => (string) $waybill['ship_to_city'],
+    'state' => (string) ($waybill['ship_to_state'] ?? ''),
+), (string) $waybill['ship_to_country']);
 
 // Nothing left to do once the note is cancelled or its invoice stands. A
 // note whose invoice is only drafted can still be cancelled together with
@@ -132,11 +136,19 @@ $ship_to_line = trim(implode(' ', array_filter(array((string) $waybill['ship_to_
 $can_invoice = (!$is_cancelled && ($invoice_state === 'none'));
 $can_cancel = (!$is_cancelled && ($invoice_state === 'none'));
 
+// Where it was talked about in the workspace, and the tasks about it.
+$output_workspace_button = '';
+
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $output_workspace_button = ws_record_button($user, 'waybill', (int) $waybill_id, (string) $waybill['full_number']);
+}
+
 echo
 pg_page_shell([
         'title' => lang('Delivery Note'),
-        'extra_classes' => 'erp erp_waybills',
-        'icon' => 'store',
+        'extra classes' => 'erp erp_waybills',
+        'icon' => 'erp',
         'heading' => h($waybill['full_number']),
         'heading_description' => lang('The note as it was written: what left, to whom and how.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_waybills.php'),
@@ -152,14 +164,11 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row mb-2 flex-wrap">
-                <div class="col-12 text-center text-md-start">
-                    <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-2"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '&amp;download=1"><i class="bi bi-download me-2"></i>' . lang('Download') . '</a>
+            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                        <a class="btn btn-sm btn-outline-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
+                        ' . $output_workspace_button . '
                     </nav>
-                </div>
-            </div>
 
             <div class="card my-4">
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
@@ -212,8 +221,8 @@ pg_page_shell([
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
                     ' . lang('Lines') . '
                 </div>
-                <div class="card-body p-0 position-relative">
-                    <table class="table table-hover align-middle mb-0">
+                <div class="card-body p-0 position-relative table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th style="width:3rem">#</th>
@@ -244,10 +253,10 @@ pg_page_shell([
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_invoice
-                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><span class="bi bi-receipt me-2"></span><span class="btn-text">' . lang('Invoice the Delivery Note') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Invoice the Delivery Note') . '</span></button>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><span class="bi bi-x-circle me-2"></span><span class="btn-text">' . lang('Cancel the Document') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '" data-loading-content="' . lang(array('string' => 'Please Wait')) . '"><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Cancel the Document') . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

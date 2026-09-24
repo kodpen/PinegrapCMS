@@ -301,6 +301,13 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
             }
         }
 
+        // No format written after the token: the site's reading order in a
+        // display shape ("13.09.2026 14:10"), not the classic screens' input
+        // shape ("13/9/2026 2:10 PM").
+        if ($date_format === '' && $data !== '') {
+            $date_format = pg_sw_default_date_format($type);
+        }
+
         $data = prepare_form_data_for_output($data, $type, $prepare_for_html, $date_format);
 
         if ($is_standard) {
@@ -308,7 +315,7 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
                 // A counter reads as a number, not as an empty cell.
                 case 'number_of_views':
                 case 'number_of_comments':
-                    $data = ($data === '') ? '0' : number_format((float)$data);
+                    $data = ($data === '') ? '0' : pg_format_number((float)$data, 0);
                     break;
 
                 case 'newest_comment_name':
@@ -352,6 +359,41 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
 // leaves a screen reader describing the wrong one. The renderers used to
 // disagree about which of these they rewrote — that is the bug this exists to
 // end, not the suffix itself.
+// The format a date takes when the design gives none. The software writes
+// dates as the classic screens do, in the order the site reads them
+// (DATE_FORMAT); a language file changes the shape by translating these
+// PHP date() formats (tr.json: "j/n/Y g:i A" → "d.m.Y H:i"). '' for anything
+// that is not a date.
+function pg_sw_default_date_format($type)
+{
+    $us = (defined('DATE_FORMAT') && DATE_FORMAT == 'month_day');
+    if ($type === 'date')          return $us ? lang('n/j/Y') : lang('j/n/Y');
+    if ($type === 'date and time') return $us ? lang('n/j/Y g:i A') : lang('j/n/Y g:i A');
+    return '';
+}
+
+// A "label: value" row marked pg-hide-if-empty (the form starters mark each
+// field row so) is dropped when its pg-field-value element came out empty,
+// so a record that left the field blank does not show a bare label. An image,
+// a video or a link inside the value counts as content. The designer keeps a
+// row by taking the class off.
+function pg_sw_hide_empty_fields($html)
+{
+    if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
+    return preg_replace_callback(
+        '#<(p|div|li|tr)\b([^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*)>(.*?)</\1>#s',
+        function ($m) {
+            if (!preg_match('#<(span|p|div|dd|td)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>(.*?)</\1>#s', $m[3], $v)) {
+                return $m[0];
+            }
+            $text = trim(html_entity_decode(strip_tags($v[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($text === '' && !preg_match('#<(img|video|iframe|a)\b#i', $v[2])) return '';
+            return $m[0];
+        },
+        $html
+    );
+}
+
 function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
 {
     if (!is_string($html) || $html === '') return $html;
@@ -484,8 +526,11 @@ function pg_sw_index_form_data($data_rows)
             if ($slug !== '') $keys[] = $slug;
         }
 
+        // One row answers each of its identifiers once. The field name and
+        // the data row's copy of it are usually the same word, and without
+        // this the value was appended to itself ("Başlık, Başlık").
+        $keys = array_unique(array_map(function ($k) { return mb_strtolower(trim($k), 'UTF-8'); }, $keys));
         foreach ($keys as $key) {
-            $key = mb_strtolower(trim($key), 'UTF-8');
             if ($key === '') continue;
             if (isset($index[$form_id][$key]) && $index[$form_id][$key]['data'] !== '') {
                 $index[$form_id][$key]['data'] .= ', ' . $value;
@@ -952,6 +997,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
              WHERE page.page_id = '" . (int)$detail_page_id . "'
              LIMIT 1"
         );
+        // A page built in the visual editor shows the record through a
+        // form_item_view widget; the same guard applies — it must be bound
+        // to the form this list shows.
+        if (!$detail_page_name && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
+            return (int)(isset($c['custom_form_page_id']) ? $c['custom_form_page_id'] : 0) === (int)$custom_form_page_id;
+        })) {
+            $detail_page_name = db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$detail_page_id . "' LIMIT 1");
+        }
         if ($detail_page_name) {
             $base_path = defined('PATH') ? PATH : '/';
             $detail_url_prefix = $base_path . encode_url_path($detail_page_name) . '?r=';
@@ -1049,7 +1102,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             isset($by_form[$fid]) ? $by_form[$fid] : array(),
             $extra
         );
-        $rendered = pg_sw_sweep_tokens($rendered);
+        $rendered = pg_sw_hide_empty_fields(pg_sw_sweep_tokens($rendered));
 
         // Uniquify Bootstrap component IDs per loop iteration so tabs, collapses
         // and dropdowns in different rows don't share the same id/target.
@@ -1060,52 +1113,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $loop_output .= $rendered;
     }
 
-    // 4. Build pagination HTML (Bootstrap 5 nav). Only emitted when there are
-    //    multiple pages — single-page lists stay clean. Window of ±2 around the
-    //    current page plus first/last anchors so very long lists stay compact.
-    $pagination_html = '';
-    if ($total_pages > 1) {
-        $pagination_html .= '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
-        // Prev
-        if ($current_page > 1) {
-            $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                h(_pg_sw_build_query($page_param, $current_page - 1)) .
-                '" aria-label="' . h(lang('Previous')) . '">&laquo;</a></li>';
-        } else {
-            $pagination_html .= '<li class="page-item disabled"><span class="page-link">&laquo;</span></li>';
-        }
-        // Numbered pages with windowing
-        $window = 2;
-        $from = max(1, $current_page - $window);
-        $to   = min($total_pages, $current_page + $window);
-        if ($from > 1) {
-            $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                h(_pg_sw_build_query($page_param, 1)) . '">1</a></li>';
-            if ($from > 2) $pagination_html .= '<li class="page-item disabled"><span class="page-link">…</span></li>';
-        }
-        for ($i = $from; $i <= $to; $i++) {
-            if ($i === $current_page) {
-                $pagination_html .= '<li class="page-item active"><span class="page-link">' . $i . '</span></li>';
-            } else {
-                $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                    h(_pg_sw_build_query($page_param, $i)) . '">' . $i . '</a></li>';
-            }
-        }
-        if ($to < $total_pages) {
-            if ($to < $total_pages - 1) $pagination_html .= '<li class="page-item disabled"><span class="page-link">…</span></li>';
-            $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                h(_pg_sw_build_query($page_param, $total_pages)) . '">' . $total_pages . '</a></li>';
-        }
-        // Next
-        if ($current_page < $total_pages) {
-            $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
-                h(_pg_sw_build_query($page_param, $current_page + 1)) .
-                '" aria-label="' . h(lang('Next')) . '">&raquo;</a></li>';
-        } else {
-            $pagination_html .= '<li class="page-item disabled"><span class="page-link">&raquo;</span></li>';
-        }
-        $pagination_html .= '</ul></nav>';
-    }
+    // 4. Pagination (Bootstrap 5 nav) — only when there is more than one page.
+    $pagination_html = pg_sw_pagination_html($page_param, $current_page, $total_pages);
 
     // 5. Stitch search + loop output + pagination into the static surround.
     //    The static side (header, container, etc.) was rendered once with a
@@ -1192,6 +1201,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // every pending session message is shown until per-widget liveform
     // names are wired up individually.
     _pg_inject_messages_node($tree_decoded, '');
+    // Visibility flag has_new_account, known once the record is read.
+    _pg_sw_mark_visibility($tree_decoded);
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -1289,10 +1300,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         // so the designer's not_found region renders and nothing else does.
         $form_row = array();
         $extra    = array(
-            'form_item_view'    => '#',
-            'submitted_form_id' => '',
-            'submitter_user_id' => '',
-            'not_found'         => $not_found_message,
+            'form_item_view'         => '#',
+            'submitted_form_id'      => '',
+            'submitter_user_id'      => '',
+            'not_found'              => $not_found_message,
+            '__new_account_email'    => '',
+            '__new_account_password' => '',
         );
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
@@ -1318,11 +1331,19 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $indexed = pg_sw_index_form_data($data_rows);
         $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
 
+        // An account the form's auto-registration just opened for this
+        // visitor: the confirmation page tells them how to sign in, as the
+        // legacy custom form confirmation screen did.
+        $new_account = isset($_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']])
+            ? (array)$_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']] : array();
+
         $extra = array(
-            'form_item_view'    => $self_url !== '' ? $self_url : '#',
-            'submitted_form_id' => (string)$form_row['id'],
-            'submitter_user_id' => (string)$form_row['user_id'],
-            'not_found'         => '',  // empty when found — the not_found region renders empty
+            'form_item_view'         => $self_url !== '' ? $self_url : '#',
+            'submitted_form_id'      => (string)$form_row['id'],
+            'submitter_user_id'      => (string)$form_row['user_id'],
+            'not_found'              => '',  // empty when found — the not_found region renders empty
+            '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
+            '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
         );
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
@@ -1336,14 +1357,15 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     }
 
     // ── Apply tokens to template + static_html (single render, NO loop) ──
-    $rendered = pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, $form_row, $custom, $extra));
+    $rendered = pg_sw_hide_empty_fields(pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, $form_row, $custom, $extra)));
     $static   = $static_html;
     if ($static !== '') {
-        $static = pg_sw_sweep_tokens(pg_sw_apply_tokens($static, $form_row, $custom, $extra));
+        $static = pg_sw_hide_empty_fields(pg_sw_sweep_tokens(pg_sw_apply_tokens($static, $form_row, $custom, $extra)));
     }
 
-    if ($static === '') return $rendered;
-    return str_replace('<!--pg-loop-slot-->', $rendered, $static);
+    $flags = array('has_new_account' => $found_and_allowed && $extra['__new_account_email'] !== '');
+    if ($static === '') return _pg_sw_resolve_visibility($rendered, $flags);
+    return _pg_sw_resolve_visibility(str_replace('<!--pg-loop-slot-->', $rendered, $static), $flags);
 }
 
 // Render a system widget's my_account view.  Loop-area aware:
@@ -1414,6 +1436,18 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // every pending session message is shown until per-widget liveform
     // names are wired up individually.
     _pg_inject_messages_node($tree_decoded, '');
+
+    // Links to the other account pages and the order history
+    // (widgets_account.php): a link with nowhere to go leaves with its node,
+    // the list lands in its section.
+    $logged_in = (defined('USER_LOGGED_IN') && USER_LOGGED_IN === true);
+    $extras    = _pg_my_account_extras($logged_in);
+    _pg_member_drop_empty_links($tree_decoded, $extras['links']);
+    pg_cf_apply_section_bindings($tree_decoded, $extras['sections']);
+    _eo_apply_visibility_bindings($tree_decoded, $extras['flags']);
+    $link_values = array();
+    foreach ($extras['links'] as $k => $v) $link_values[$k] = h($v);
+
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -1429,7 +1463,6 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     }
 
     // ── Auth check ────────────────────────────────────────────────────────
-    $logged_in = (defined('USER_LOGGED_IN') && USER_LOGGED_IN === true);
 
     if (!$logged_in) {
         // Redirect mode: send to login page when configured and accessible.
@@ -1442,6 +1475,17 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
                 go($login_url);
                 return '';
             }
+        }
+
+        // A tree with no place for ^^not_logged_in^^ (the starter has none)
+        // showed a signed-out visitor an empty profile card and one blank
+        // row of the submissions list: say why instead, with the way in.
+        if (strpos((string)json_encode($tree_decoded), 'not_logged_in') === false) {
+            $login_url = function_exists('_pg_acct_page_url') ? _pg_acct_page_url($login_page_id, 'login') : '';
+            return _pg_sw_render_message_only($tree_decoded, 'my_account',
+                h($not_logged_in_message)
+                . ($login_url !== '' ? ' <a href="' . h($login_url) . '" class="alert-link">' . h(lang('Log In')) . '</a>' : ''),
+                'warning');
         }
 
         // Render with "not logged in" token map; loop_area outputs nothing.
@@ -1457,8 +1501,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
             'member_id'                => '',
             'member'                   => '0',
             'not_logged_in'            => $not_logged_in_message,
-        );
-        $rendered = pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, array(), array(), $values));
+        ) + $link_values;
+        // The list rows belong to a signed-in member: none for a visitor.
+        $rendered = ($static_html !== '') ? '' : pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, array(), array(), $values));
         $static   = $static_html;
         if ($static !== '') {
             $static = pg_sw_sweep_tokens(pg_sw_apply_tokens($static, array(), array(), $values));
@@ -1525,7 +1570,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         'member_id'     => h(($user_row && !empty($user_row['member_id'])) ? (string)$user_row['member_id'] : ''),
         'member'        => (defined('USER_MEMBER') && USER_MEMBER === true) ? '1' : '0',
         'not_logged_in' => '',
-    );
+    ) + $link_values;
 
     // ── No loop_area — render entire tree once with account tokens ─────────
     if ($split['loop_children'] === null) {
@@ -2194,185 +2239,776 @@ function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = ar
     ));
 }
 
-// Render a 'search_results' system widget. Reads $_GET['q'] as the search term,
-// searches page titles/content and (when ECOMMERCE is active) product names.
-// Loop_area iterates once per result row.
-// Static tokens: ^^__search_query^^, ^^__result_count^^, ^^__empty_message^^
-// Loop tokens:   ^^__result_title^^, ^^__result_url^^, ^^__result_excerpt^^, ^^__result_type^^
+// ============================================================================
+// Pages and the widgets placed on them
+// ============================================================================
+
+// The system widgets placed on a page, in tree order: [['id' => sid,
+// 'cfg' => system_region_config]]. Read from the page's own layout tree (the
+// style's, for a page saved before the multi-page editor), so a widget that
+// sits in the design library but not on the page does not count.
+function pg_sw_page_widgets($page_id)
+{
+    static $cache = array();
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return array();
+    if (isset($cache[$page_id])) return $cache[$page_id];
+    $cache[$page_id] = array();
+
+    $tree = json_decode((string)pg_page_tree_json($page_id), true);
+    if (!is_array($tree)) return array();
+
+    $sids = array();
+    $find = function ($n) use (&$find, &$sids) {
+        if (!is_array($n)) return;
+        if (isset($n['type']) && $n['type'] === 'shared_ref') {
+            $sid = (int)(isset($n['props']['sharedId']) ? $n['props']['sharedId'] : 0);
+            if ($sid > 0 && !in_array($sid, $sids, true)) $sids[] = $sid;
+            return;
+        }
+        if (!empty($n['children']) && is_array($n['children'])) foreach ($n['children'] as $c) $find($c);
+    };
+    $find($tree);
+    if (!$sids) return array();
+
+    $rows = db_items(
+        "SELECT id, system_region_config FROM shared_components
+         WHERE id IN (" . implode(',', array_map('intval', $sids)) . ")
+           AND system_region_config IS NOT NULL AND system_region_config != ''");
+    $by_id = array();
+    foreach ((array)$rows as $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        if (is_array($cfg)) $by_id[(int)$row['id']] = $cfg;
+    }
+    $out = array();
+    foreach ($sids as $sid) {
+        if (isset($by_id[$sid])) $out[] = array('id' => $sid, 'cfg' => $by_id[$sid]);
+    }
+    return $cache[$page_id] = $out;
+}
+
+// The first widget of $type on the page — its config narrowed by $test when
+// one is given — as ['id', 'cfg'], or null.
+function pg_sw_page_widget($page_id, $type, $test = null)
+{
+    foreach (pg_sw_page_widgets($page_id) as $w) {
+        if (!isset($w['cfg']['regionType']) || $w['cfg']['regionType'] !== $type) continue;
+        if ($test !== null && !$test($w['cfg'])) continue;
+        return $w;
+    }
+    return null;
+}
+
+// Pages that carry a widget of $type ($test narrows by config):
+// [['page_id', 'page_name', 'page_title']], binned pages left out. For the
+// page pickers, and for finding a companion page (the event page of a
+// calendar, the detail page of a list) when none is configured.
+function pg_sw_widget_pages($type, $test = null)
+{
+    $rows = db_items(
+        "SELECT id, system_region_config FROM shared_components
+         WHERE system_region_config LIKE '%\"regionType\":\"" . e($type) . "\"%'");
+    $likes = array();
+    foreach ((array)$rows as $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== $type) continue;
+        if ($test !== null && !$test($cfg)) continue;
+        $sid = (int)$row['id'];
+        if ($sid <= 0) continue;
+        $likes[] = pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . ",%'"
+                 . " OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'";
+    }
+    if (!$likes) return array();
+    $pages = db_items(
+        "SELECT page.page_id, page.page_name, page.page_title
+         FROM page
+         INNER JOIN style ON page.page_style = style.style_id
+         WHERE (" . implode(' OR ', $likes) . ")" . pg_designer_not_binned_sql('page.page_folder') . "
+         ORDER BY page.page_title ASC, page.page_name ASC");
+    return is_array($pages) ? $pages : array();
+}
+
+// Name of the page product links open: the configured page, else the first
+// designed page carrying a Catalog Detail widget, else the site's legacy
+// catalog detail page. '' when the site has none. A bare /<product-slug>
+// does not resolve, so the lists, the cart and the checkout all ask here
+// instead of falling back to it.
+function pg_sw_catalog_detail_page_name($page_id = 0)
+{
+    static $auto = null;
+    $page_id = (int)$page_id;
+    if ($page_id > 0) {
+        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
+        if ($name !== '') return $name;
+    }
+    if ($auto === null) {
+        $auto  = '';
+        $pages = pg_sw_widget_pages('catalog_item_view');
+        if ($pages) $auto = (string)$pages[0]['page_name'];
+        if ($auto === '') {
+            $auto = (string)db_value("SELECT page_name FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC LIMIT 1");
+        }
+    }
+    return $auto;
+}
+
+// Bootstrap pagination for a widget list: previous / next, a window of two
+// pages around the current one, the first and the last. '' for a single page.
+// Links keep every other query parameter (search text, filters).
+function pg_sw_pagination_html($page_param, $current_page, $total_pages)
+{
+    $current_page = (int)$current_page;
+    $total_pages  = (int)$total_pages;
+    if ($total_pages <= 1) return '';
+
+    $link = function ($n, $label, $aria = '') use ($page_param) {
+        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . '"'
+             . ($aria !== '' ? ' aria-label="' . h($aria) . '"' : '') . '>' . $label . '</a></li>';
+    };
+    $html = '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
+    $html .= ($current_page > 1)
+        ? $link($current_page - 1, '&laquo;', lang('Previous'))
+        : '<li class="page-item disabled"><span class="page-link">&laquo;</span></li>';
+    $window = 2;
+    $from = max(1, $current_page - $window);
+    $to   = min($total_pages, $current_page + $window);
+    if ($from > 1) {
+        $html .= $link(1, '1');
+        if ($from > 2) $html .= '<li class="page-item disabled"><span class="page-link">…</span></li>';
+    }
+    for ($i = $from; $i <= $to; $i++) {
+        $html .= ($i === $current_page)
+            ? '<li class="page-item active" aria-current="page"><span class="page-link">' . $i . '</span></li>'
+            : $link($i, (string)$i);
+    }
+    if ($to < $total_pages) {
+        if ($to < $total_pages - 1) $html .= '<li class="page-item disabled"><span class="page-link">…</span></li>';
+        $html .= $link($total_pages, (string)$total_pages);
+    }
+    $html .= ($current_page < $total_pages)
+        ? $link($current_page + 1, '&raquo;', lang('Next'))
+        : '<li class="page-item disabled"><span class="page-link">&raquo;</span></li>';
+    return $html . '</ul></nav>';
+}
+
+// Visibility bindings for a renderer that learns its flags only after it has
+// drawn the tree. Every node carrying _bindings.eo_visible_if is wrapped
+// between two numbered comments; _pg_sw_resolve_visibility() then keeps or
+// cuts each span. (_eo_apply_visibility_bindings() drops the node from the
+// tree instead, which needs the flags before the render.)
+function _pg_sw_mark_visibility(&$tree)
+{
+    static $seq = 0;
+    if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return;
+    $out = array();
+    foreach ($tree['children'] as $child) {
+        if (!is_array($child)) { $out[] = $child; continue; }
+        _pg_sw_mark_visibility($child);
+        $flag = isset($child['props']['_bindings']['eo_visible_if'])
+            ? preg_replace('/[^a-z0-9_]/', '', (string)$child['props']['_bindings']['eo_visible_if']) : '';
+        if ($flag === '') { $out[] = $child; continue; }
+        $n = ++$seq;
+        $out[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--pg-vis:' . $flag . ':' . $n . '-->'), 'children' => array());
+        $out[] = $child;
+        $out[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--/pg-vis:' . $n . '-->'), 'children' => array());
+    }
+    $tree['children'] = $out;
+}
+
+// Keep only the branches of $node that lead to a messages content node.
+// Returns whether $node is or holds one.
+function _pg_sw_prune_to_messages(&$node)
+{
+    if (!is_array($node)) return false;
+    if (isset($node['type'], $node['props']['contentType'])
+        && $node['type'] === 'content' && $node['props']['contentType'] === 'messages') {
+        return true;
+    }
+    if (empty($node['children']) || !is_array($node['children'])) return false;
+    $keep = array();
+    foreach ($node['children'] as $child) {
+        if (_pg_sw_prune_to_messages($child)) $keep[] = $child;
+    }
+    $node['children'] = $keep;
+    return (bool)$keep;
+}
+
+// The widget drawn as its message area alone, carrying $message_html (already
+// escaped; it may hold a link). For the states where the rest of the design
+// has nothing to show - a signed-out account page, an order that cannot be
+// shown, an empty cart: the designer's container and message block stay, the
+// alert comes through them, and no empty labels or dead buttons are left.
+// $extra_html (already safe) follows the message area - the empty cart's
+// quick add box.
+function _pg_sw_render_message_only($tree, $form_name, $message_html, $kind = 'notice', $extra_html = '')
+{
+    if (!is_array($tree)) return '';
+    _pg_inject_messages_node($tree, $form_name);
+    _pg_sw_prune_to_messages($tree);
+    if ($extra_html !== '' && function_exists('_pg_inject_html_after_messages')) {
+        _pg_inject_html_after_messages($tree, $extra_html);
+    }
+    if ($message_html !== '' && class_exists('liveform')) {
+        $lf = new liveform($form_name);
+        if ($kind === 'warning') $lf->add_warning($message_html);
+        else $lf->add_notice($message_html);
+    }
+    return trim(_render_tree_node($tree, 0, 0));
+}
+
+function _pg_sw_resolve_visibility($html, $flags)
+{
+    if (!is_string($html) || strpos($html, '<!--pg-vis:') === false) return $html;
+    return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
+        return !empty($flags[$m[1]]) ? $m[3] : '';
+    }, $html);
+}
+
+// Fill ^^token^^ slots from an already-escaped map in one pass. strtr() never
+// rescans what it wrote, so a value that itself reads "^^x^^" stays literal.
+function _pg_sw_fill_tokens($html, $values)
+{
+    if (!is_string($html) || $html === '' || !$values) return $html;
+    $map = array();
+    foreach ($values as $k => $v) $map['^^' . $k . '^^'] = (string)$v;
+    return strtr($html, $map);
+}
+
+// The address the visitor is on, without its query string — the target of
+// the widget's own GET forms and navigation links.
+function _pg_sw_current_path()
+{
+    return (string)strtok((string)get_request_uri(), '?');
+}
+
+// The visitor's query parameters. On a pretty address (/widget-takvim) the
+// router puts the page's name into $_GET['page'] itself; carrying it into our
+// own links and forms would only repeat the path. On /index.php?page=… it is
+// the address and stays.
+function _pg_sw_query_params()
+{
+    $params = is_array($_GET) ? $_GET : array();
+    if (isset($params['page']) && !preg_match('/\.php$/i', _pg_sw_current_path())) unset($params['page']);
+    return $params;
+}
+
+// Hidden inputs that carry the current query string through a GET form,
+// except the keys the form sets itself. Without them a search submitted from
+// a page reached as /page?lang=en would drop lang.
+function _pg_sw_hidden_query_inputs($skip)
+{
+    $html = '';
+    foreach (_pg_sw_query_params() as $name => $value) {
+        if (in_array((string)$name, $skip, true) || !is_scalar($value)) continue;
+        $html .= '<input type="hidden" name="' . h($name) . '" value="' . h((string)$value) . '">';
+    }
+    return $html;
+}
+
+// The designer's search form, bound rather than hand-wired:
+//   form   _bindings.action = 'search_form'   → GET to this page (+ carried params)
+//   input  _bindings.value  = 'search_query'  → name=<param>, the current text
+//   button _bindings.action = 'submit_search' → a submit button
+// $ctx: action_url, hidden_html, param, query.
+function _pg_sw_apply_search_form_bindings(&$node, $ctx)
+{
+    if (!is_array($node)) return;
+    $b    = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    $type = isset($node['type']) ? $node['type'] : '';
+    $tag  = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+
+    $set_attrs = function (&$n, $managed, $add) {
+        $kept = array();
+        foreach ((isset($n['props']['_attrs']) && is_array($n['props']['_attrs'])) ? $n['props']['_attrs'] : array() as $a) {
+            if (is_array($a) && isset($a['name']) && !isset($managed[$a['name']])) $kept[] = $a;
+        }
+        foreach ($add as $name => $value) $kept[] = array('name' => $name, 'value' => $value);
+        $n['props']['_attrs'] = $kept;
+    };
+
+    if ($type === 'semantic' && $tag === 'form' && isset($b['action']) && $b['action'] === 'search_form') {
+        $set_attrs($node, array('action' => 1, 'method' => 1, 'role' => 1),
+            array('action' => $ctx['action_url'], 'method' => 'get', 'role' => 'search'));
+        if ($ctx['hidden_html'] !== '') {
+            if (!isset($node['children']) || !is_array($node['children'])) $node['children'] = array();
+            array_unshift($node['children'], array('type' => 'content',
+                'props' => array('contentType' => 'custom_html', 'html' => $ctx['hidden_html']), 'children' => array()));
+        }
+    }
+    if ($type === 'semantic' && $tag === 'input' && isset($b['value']) && $b['value'] === 'search_query') {
+        $set_attrs($node, array('type' => 1, 'name' => 1, 'value' => 1, 'maxlength' => 1),
+            array('type' => 'search', 'name' => $ctx['param'], 'value' => $ctx['query'], 'maxlength' => '100'));
+    }
+    if (isset($b['action']) && $b['action'] === 'submit_search') {
+        if ($type === 'component') {
+            $node['props']['btnElement'] = 'button';
+            $node['props']['btnType']    = 'submit';
+        } elseif ($type === 'semantic' && $tag === 'button') {
+            $set_attrs($node, array('type' => 1), array('type' => 'submit'));
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) _pg_sw_apply_search_form_bindings($child, $ctx);
+        unset($child);
+    }
+}
+
+// The readable text of a layout tree: what a visitor sees on a page built in
+// the visual editor, for the site search. Class names, bindings and other
+// props are not text and are left out.
+function _pg_sw_tree_text($node)
+{
+    if (!is_array($node)) return '';
+    $type = isset($node['type']) ? $node['type'] : '';
+    if ($type === 'region' || $type === 'shared_ref') return '';
+    $p   = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    $out = '';
+    foreach (array('text', 'html', 'alt') as $k) {
+        if (isset($p[$k]) && is_string($p[$k]) && $p[$k] !== '') {
+            $out .= ' ' . html_entity_decode(strip_tags($p[$k]), ENT_QUOTES, 'UTF-8');
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $c) $out .= _pg_sw_tree_text($c);
+    }
+    return $out;
+}
+
+// About $length characters of $text around the first match of $query, with
+// an ellipsis where it was cut — the excerpt of a page that has no meta
+// description.
+function _pg_sw_snippet($text, $query, $length = 180)
+{
+    $text = trim(preg_replace('/\s+/u', ' ', (string)$text));
+    if ($text === '') return '';
+    $pos = mb_stripos($text, (string)$query);
+    if ($pos === false) $pos = 0;
+    $start = max(0, $pos - (int)($length / 3));
+    // Start on a word, not in the middle of one.
+    if ($start > 0) {
+        $space = mb_strpos($text, ' ', $start);
+        if ($space !== false && $space < $pos) $start = $space + 1;
+    }
+    $snip  = mb_substr($text, $start, $length);
+    return ($start > 0 ? '… ' : '') . trim($snip) . (($start + $length) < mb_strlen($text) ? ' …' : '');
+}
+
+// ============================================================================
+// search_results
+// ============================================================================
+
+// The site search of the legacy Search Results page (get_search_results.php),
+// gathered as rows instead of markup: featured pages (promoted on the query as
+// a keyword), catalog items, then the other matching pages — ranked by how
+// often the query appears in them (simple search) or by the fulltext score
+// over search_items (advanced search, Site Settings → Search).
+//
+// Same fences as the legacy page: only pages that opted into site search, none
+// in an archived folder or the Recycle Bin, none the visitor may not view.
+// A page built in the visual editor keeps its text in its layout tree, not in
+// page regions, so the simple search reads the tree as well — and the title
+// and meta description, which a visitor expects a search to find.
+//
+// cfg: search_scope ('all' | 'pages' | 'products'), product_group_id (the
+// catalog branch searched; 0 = the top-level group), catalog_detail_page_id.
+// The advanced search covers the whole site, within what the visitor may view.
+// Returns ['featured' => rows, 'catalog' => rows, 'pages' => rows,
+// 'limited' => bool]; every row is ['title', 'url', 'full_url', 'excerpt',
+// 'type', 'image', 'price'] with raw (unescaped) values, 'price' being HTML.
+// $advanced: null follows the site setting; true / false picks the search.
+function _pg_sw_search_collect($query, $cfg, $advanced = null)
+{
+    $out = array('featured' => array(), 'catalog' => array(), 'pages' => array(), 'limited' => false);
+    $query = trim((string)$query);
+    if ($query === '') return $out;
+    if (!is_array($cfg)) $cfg = array();
+
+    $scope = (isset($cfg['search_scope']) && in_array($cfg['search_scope'], array('all', 'pages', 'products'), true))
+        ? $cfg['search_scope'] : 'all';
+    $want_pages   = ($scope !== 'products');
+    $want_catalog = ($scope !== 'pages') && defined('ECOMMERCE') && ECOMMERCE;
+    if ($advanced === null) $advanced = defined('SEARCH_TYPE') && SEARCH_TYPE === 'advanced';
+    $path         = defined('PATH') ? PATH : '/';
+    $host         = (defined('URL_SCHEME') ? URL_SCHEME : '') . (defined('HOSTNAME') ? HOSTNAME : '');
+    $page_row     = function ($title, $name_or_url, $excerpt, $is_url = false) use ($path, $host) {
+        $url = $is_url ? $path . $name_or_url : $path . encode_url_path((string)$name_or_url);
+        return array(
+            'title'    => ((string)$title !== '') ? (string)$title : $host . $url,
+            'url'      => $url,
+            'full_url' => $host . $url,
+            'excerpt'  => (string)$excerpt,
+            'type'     => 'page',
+            'image'    => '',
+            'price'    => '',
+        );
+    };
+
+    // ── Catalog ──────────────────────────────────────────────────────────
+    if ($want_catalog) {
+        $group_id = isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0;
+        if ($group_id <= 0) $group_id = (int)db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
+        // Boolean operators belong to the fulltext page search only.
+        $catalog_query = $advanced ? str_replace(array('"', '+'), '', $query) : $query;
+
+        $detail_page_id = isset($cfg['catalog_detail_page_id']) ? (int)$cfg['catalog_detail_page_id'] : 0;
+        if ($detail_page_id <= 0) {
+            $pages = pg_sw_widget_pages('catalog_item_view');
+            if ($pages) $detail_page_id = (int)$pages[0]['page_id'];
+        }
+        if ($detail_page_id <= 0) {
+            $detail_page_id = (int)db_value("SELECT page_id FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC LIMIT 1");
+        }
+        $detail_name = ($detail_page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1") : '';
+        $back_query  = ($detail_name !== '') ? '?previous_url_id=' . urlencode(generate_url_id()) : '';
+        $discounted  = get_discounted_product_prices();
+
+        foreach ((array)get_catalog_search_results($catalog_query, $group_id) as $item) {
+            $price = '';
+            if ($item['type'] === 'product group') {
+                $range = get_price_range($item['id'], $discounted);
+                if (!empty($range['non_donation_products_exist'])) {
+                    if ($range['smallest_price'] == $range['largest_price']) {
+                        if (($range['number_of_products'] == 1) && !empty($range['discounted_products_exist'])) {
+                            $price = prepare_price_for_output($range['original_price'], true, $range['smallest_price'], 'html');
+                        } elseif (!empty($range['discounted_products_exist'])) {
+                            $price = '<span class="software_discounted_price">' . prepare_price_for_output($range['smallest_price'], false, '', 'html') . '</span>';
+                        } else {
+                            $price = prepare_price_for_output($range['smallest_price'], false, '', 'html');
+                        }
+                    } else {
+                        $price = prepare_price_for_output($range['smallest_price'], false, '', 'html', false) . ' - '
+                               . prepare_price_for_output($range['largest_price'], false, '', 'html');
+                        if (!empty($range['discounted_products_exist'])) $price = '<span class="software_discounted_price">' . $price . '</span>';
+                    }
+                }
+            } elseif (!isset($item['selection_type']) || $item['selection_type'] !== 'donation') {
+                $is_discounted = isset($discounted[$item['id']]);
+                $price = prepare_price_for_output($item['price'], $is_discounted, $is_discounted ? $discounted[$item['id']] : '', 'html');
+            }
+            $url = '';
+            if ($detail_name !== '') {
+                $url = $path . encode_url_path($detail_name) . '/'
+                     . encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type'])) . $back_query;
+            }
+            $title = ((string)$item['short_description'] !== '') ? (string)$item['short_description'] : (string)$item['name'];
+            $out['catalog'][] = array(
+                'title'    => $title,
+                'url'      => $url,
+                // Shown under the title, so without the back-link query.
+                'full_url' => ($url !== '') ? $host . strtok($url, '?') : '',
+                'excerpt'  => '',
+                'type'     => ($item['type'] === 'product group') ? 'product group' : 'product',
+                'image'    => ((string)$item['image_name'] !== '') ? $path . encode_url_path($item['image_name']) : '',
+                'price'    => $price,
+            );
+        }
+    }
+
+    if (!$want_pages) return $out;
+
+    $binned = pg_designer_not_binned_sql('page.page_folder');
+
+    // ── Advanced: fulltext over search_items ─────────────────────────────
+    if ($advanced) {
+        // A visitor (not a manager or above) searches only the folders they
+        // may view — the same narrowing the legacy page applies.
+        $sql_folders = '';
+        if (!USER_LOGGED_IN || USER_ROLE == 3) {
+            $root    = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' LIMIT 1");
+            $folders = array_merge(array($root), get_child_folders($root, db_items("SELECT folder_id AS id, folder_parent AS parent_folder_id FROM folder")));
+            $folders = array_values(array_filter($folders, function ($f) { return check_view_access($f, true); }));
+            if (!$folders) return $out;
+            $sql_folders = "(search_items.folder_id IN (" . implode(',', array_map('intval', $folders)) . ")) AND ";
+        }
+        // A single word without quotes is searched as an exact phrase, so
+        // "multi-recipient" does not match "multi" and "recipient" apart.
+        $filter = $query;
+        if (mb_strpos($filter, ' ') === false && mb_strpos($filter, '"') === false) $filter = '"' . $filter . '"';
+        $score   = $filter;
+        $boolean = '';
+        if (mb_strpos($filter, '"') !== false || mb_strpos($filter, '+') !== false) {
+            $boolean = ' IN BOOLEAN MODE';
+            $score   = str_replace(array('"', '+'), '', $score);
+        }
+        $featured = db_items(
+            "SELECT id, url, title, description,
+                    MATCH(keywords) AGAINST ('" . e($score) . "') AS score
+             FROM search_items
+             WHERE $sql_folders (MATCH(keywords) AGAINST('" . e($filter) . "'$boolean))
+             ORDER BY score DESC LIMIT 100");
+        $not_featured = '';
+        foreach ((array)$featured as $item) {
+            $out['featured'][] = $page_row($item['title'], $item['url'], $item['description'], true);
+            $not_featured .= "(id != '" . (int)$item['id'] . "') AND ";
+        }
+        $results = db_items(
+            "SELECT url, title, description,
+                    ((3 * (MATCH(title) AGAINST ('" . e($score) . "')))
+                   + (2 * (MATCH(description) AGAINST ('" . e($score) . "')))
+                   + (1 * (MATCH(content) AGAINST ('" . e($score) . "')))) AS score
+             FROM search_items
+             WHERE $sql_folders $not_featured (MATCH(content) AGAINST('" . e($filter) . "'$boolean))
+             ORDER BY score DESC LIMIT 100");
+        foreach ((array)$results as $item) {
+            $out['pages'][] = $page_row($item['title'], $item['url'], $item['description'], true);
+        }
+        $out['limited'] = (is_array($results) && count($results) === 100);
+        return $out;
+    }
+
+    // ── Simple: featured, then pages ranked by matches ───────────────────
+    $needle   = mb_strtolower($query);
+    $like     = "'%" . e(escape_like($query)) . "%'";
+    $promoted = get_page_id_list_for_sql(get_page_ids_promoted_on_keyword($query));
+    $featured = db_items(
+        "SELECT page.page_id AS id, page.page_name AS name, page.page_folder AS folder_id,
+                page.page_title AS title, page.page_meta_description AS description
+         FROM page
+         LEFT JOIN folder ON page.page_folder = folder.folder_id
+         WHERE page.page_search = '1' AND folder.folder_archived = '0'
+           AND page.page_id IN ($promoted)$binned
+         ORDER BY page.page_name ASC", 'id');
+    $featured_ids = array();
+    foreach ((array)$featured as $id => $item) {
+        if (!check_view_access($item['folder_id'], true)) continue;
+        $featured_ids[] = (int)$id;
+        $out['featured'][] = $page_row($item['title'], $item['name'], $item['description']);
+    }
+    $not_featured = get_page_id_list_for_sql($featured_ids);
+
+    $scores  = array();   // page_id => number of matches
+    $texts   = array();   // page_id => searchable text, for the excerpt
+    $info    = array();   // page_id => page row
+    $allowed = function ($folder_id) {
+        static $seen = array();
+        if (!isset($seen[$folder_id])) $seen[$folder_id] = check_view_access($folder_id, true);
+        return $seen[$folder_id];
+    };
+    $base_sql = "FROM page LEFT JOIN folder ON page.page_folder = folder.folder_id
+                 WHERE page.page_search = '1' AND folder.folder_archived = '0'
+                   AND page.page_id NOT IN ($not_featured)$binned";
+
+    // Classic pages: occurrences in the regions of the page's own collection.
+    $region_rows = db_items(
+        "SELECT page.page_id, page.page_style, page.page_folder, pregion.collection, pregion.pregion_content
+         FROM pregion INNER JOIN page ON page.page_id = pregion.pregion_page
+         LEFT JOIN folder ON page.page_folder = folder.folder_id
+         WHERE page.page_search = '1' AND folder.folder_archived = '0'
+           AND page.page_id NOT IN ($not_featured)$binned
+           AND pregion.pregion_content LIKE $like");
+    $collections = array();
+    foreach ((array)$region_rows as $r) {
+        $pid = (int)$r['page_id'];
+        if (!$allowed($r['page_folder'])) continue;
+        if (!isset($collections[$pid])) {
+            $style_id = (int)$r['page_style'] ?: (int)get_style($r['page_folder']);
+            $c = (string)db_value("SELECT collection FROM style WHERE style_id = '" . $style_id . "'");
+            $collections[$pid] = ($c !== '') ? $c : 'a';
+        }
+        if ((string)$r['collection'] !== $collections[$pid]) continue;
+        $plain = html_entity_decode(strip_tags((string)$r['pregion_content']), ENT_QUOTES, 'UTF-8');
+        $hits  = mb_substr_count(mb_strtolower($plain), $needle);
+        if ($hits > 0) {
+            $scores[$pid] = (isset($scores[$pid]) ? $scores[$pid] : 0) + $hits;
+            $texts[$pid]  = (isset($texts[$pid]) ? $texts[$pid] . ' ' : '') . $plain;
+        }
+    }
+
+    // Title, meta description, keywords and — for a page built in the visual
+    // editor — the text of its layout tree.
+    $tree_ready = function_exists('pg_multi_page_design_ready') && pg_multi_page_design_ready();
+    $candidates = db_items(
+        "SELECT page.page_id, page.page_name, page.page_folder, page.page_title,
+                page.page_meta_description, page.page_search_keywords"
+             . ($tree_ready ? ", page.page_tree_json" : "") . "
+         $base_sql
+           AND (page.page_title LIKE $like OR page.page_meta_description LIKE $like
+                OR page.page_search_keywords LIKE $like"
+             . ($tree_ready ? " OR page.page_tree_json LIKE $like" : "") . ")");
+    foreach ((array)$candidates as $r) {
+        $pid = (int)$r['page_id'];
+        if (!$allowed($r['page_folder'])) continue;
+        $info[$pid] = $r;
+        $hits = 0;
+        if ($tree_ready && (string)$r['page_tree_json'] !== '') {
+            $tree_text = _pg_sw_tree_text(json_decode((string)$r['page_tree_json'], true));
+            $hits += mb_substr_count(mb_strtolower($tree_text), $needle);
+            if ($tree_text !== '') $texts[$pid] = (isset($texts[$pid]) ? $texts[$pid] . ' ' : '') . $tree_text;
+        }
+        $hits += 3 * mb_substr_count(mb_strtolower((string)$r['page_title']), $needle);
+        $hits += 2 * mb_substr_count(mb_strtolower((string)$r['page_meta_description']), $needle);
+        // A keyword match alone still lists the page, as the legacy search
+        // does: searching "tasarim" reaches a page tagged "web tasarim".
+        if ($hits === 0 && mb_stripos((string)$r['page_search_keywords'], $query) !== false) $hits = 1;
+        if ($hits > 0) $scores[$pid] = (isset($scores[$pid]) ? $scores[$pid] : 0) + $hits;
+    }
+    arsort($scores);
+
+    // Comments on pages not matched yet, ranked after them.
+    $comment_rows = db_items(
+        "SELECT comments.page_id, comments.name, comments.message, page.page_folder
+         FROM comments LEFT JOIN page ON page.page_id = comments.page_id
+         LEFT JOIN folder ON page.page_folder = folder.folder_id
+         WHERE comments.item_id = '0' AND comments.published = '1'
+           AND page.page_search = '1' AND folder.folder_archived = '0'
+           AND page.page_id NOT IN ($not_featured)$binned
+           AND LOWER(CONCAT_WS(',', comments.name, comments.message)) LIKE $like");
+    $comment_scores = array();
+    foreach ((array)$comment_rows as $r) {
+        $pid = (int)$r['page_id'];
+        if (isset($scores[$pid]) || !$allowed($r['page_folder'])) continue;
+        $comment_scores[$pid] = (isset($comment_scores[$pid]) ? $comment_scores[$pid] : 0)
+            + mb_substr_count(mb_strtolower((string)$r['name']), $needle)
+            + mb_substr_count(mb_strtolower((string)$r['message']), $needle);
+    }
+    arsort($comment_scores);
+    foreach ($comment_scores as $pid => $n) $scores[$pid] = $n;
+
+    // Page rows for the ids that came from regions or comments only.
+    $missing = array_diff(array_keys($scores), array_keys($info));
+    if ($missing) {
+        foreach ((array)db_items(
+            "SELECT page_id, page_name, page_folder, page_title, page_meta_description
+             FROM page WHERE page_id IN (" . implode(',', array_map('intval', $missing)) . ")") as $r) {
+            $info[(int)$r['page_id']] = $r;
+        }
+    }
+    foreach ($scores as $pid => $n) {
+        if (!isset($info[$pid])) continue;
+        $r = $info[$pid];
+        $excerpt = trim((string)$r['page_meta_description']);
+        if ($excerpt === '' && isset($texts[$pid])) $excerpt = _pg_sw_snippet($texts[$pid], $query);
+        $out['pages'][] = $page_row($r['page_title'], $r['page_name'], $excerpt);
+    }
+    return $out;
+}
+
+// Render a 'search_results' system widget: the site search for ?query=,
+// one loop row per result, paginated.
+//
+// Static tokens: ^^__search_query^^, ^^__result_count^^, ^^__results_heading^^
+//   (the sentence the legacy page prints: found N / none found / enter a
+//   search), ^^__empty_message^^ (when a search found nothing), ^^__page_count^^.
+// Row tokens: ^^__result_title^^, ^^__result_url^^, ^^__result_full_url^^,
+//   ^^__result_excerpt^^, ^^__result_type^^ (page | product | product group),
+//   ^^__result_type_label^^, ^^__result_image^^, ^^__result_price^^ (HTML),
+//   ^^__result_is_featured^^ ('1' or ''), ^^__result_number^^.
+// Bindings: form action search_form, input value search_query, button action
+//   submit_search, section pagination; visibility (eo_visible_if) has_query,
+//   has_results, no_results.
+// URL: query (the search text, as the legacy search box sends it),
+//   page_number (as the catalog and form lists page).
 function _render_system_widget_search_results($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
     if ($tree_json === '' || $tree_json === null) return '';
     if (!is_array($cfg)) $cfg = array();
 
-    $tree_decoded = json_decode($tree_json, true);
-    if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content node
-    // when the designer has not placed one. Empty formName, like the other
-    // read-only widgets: this widget posts no form of its own, so it shows
-    // whatever the session is carrying. Without this the widget was simply
-    // silent — an error had nowhere to print.
-    _pg_inject_messages_node($tree_decoded, '');
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+    // Read-only widget: no form of its own posts, so the Messages node shows
+    // whatever the session carries.
+    _pg_inject_messages_node($tree, '');
 
-    $split = _split_widget_tree($tree_decoded);
+    $param      = 'query';
+    $page_param = 'page_number';
+    $query = (isset($_GET[$param]) && is_scalar($_GET[$param])) ? trim(strip_tags((string)$_GET[$param])) : '';
+    if (mb_strlen($query) > 100) $query = mb_substr($query, 0, 100);
 
+    $found = _pg_sw_search_collect($query, $cfg);
+    $rows  = array();
+    foreach ($found['featured'] as $r) { $r['featured'] = '1'; $rows[] = $r; }
+    foreach ($found['catalog']  as $r) { $r['featured'] = '';  $rows[] = $r; }
+    foreach ($found['pages']    as $r) { $r['featured'] = '';  $rows[] = $r; }
+    $total = count($rows);
+
+    $per_page = (isset($cfg['results_per_page']) && (int)$cfg['results_per_page'] > 0)
+        ? min(200, (int)$cfg['results_per_page']) : 20;
+    $total_pages  = max(1, (int)ceil($total / $per_page));
+    $current_page = isset($_GET[$page_param]) ? max(1, min($total_pages, (int)$_GET[$page_param])) : 1;
+    $offset       = ($current_page - 1) * $per_page;
+
+    _pg_sw_apply_search_form_bindings($tree, array(
+        'action_url'  => _pg_sw_current_path(),
+        'hidden_html' => _pg_sw_hidden_query_inputs(array($param, $page_param)),
+        'param'       => $param,
+        'query'       => $query,
+    ));
+    pg_cf_apply_section_bindings($tree, array(
+        'pagination' => pg_sw_pagination_html($page_param, $current_page, $total_pages),
+    ));
+    // Visibility bindings (eo_visible_if) — e.g. a heading shown only once
+    // something was searched.
+    _eo_apply_visibility_bindings($tree, array(
+        'has_query'   => $query !== '',
+        'has_results' => $total > 0,
+        'no_results'  => $query !== '' && $total === 0,
+    ));
+
+    $split = _split_widget_tree($tree);
     if ($split['loop_children'] === null) {
-        $loop_template = trim(_render_tree_node($tree_decoded, 0, 0));
+        $loop_template = trim(_render_tree_node($tree, 0, 0));
         $static_html   = '';
     } else {
         $loop_template = '';
-        foreach ($split['loop_children'] as $child) {
-            $loop_template .= _render_tree_node($child, 0, 0);
-        }
+        foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
 
-    $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-
-    // Raw search query — strip tags, trim whitespace
-    $raw_q      = isset($_GET['q']) ? trim(strip_tags((string)$_GET['q'])) : '';
-    $results    = array();
-    $no_results = (!empty($cfg['empty_message']) && is_string($cfg['empty_message'])) ? (string)$cfg['empty_message'] : lang('No results found.');
-
-    // Search scope from cfg: 'all' | 'pages' | 'products'
-    $search_scope = (isset($cfg['search_scope']) && in_array($cfg['search_scope'], array('all', 'pages', 'products')))
-        ? $cfg['search_scope'] : 'all';
-    // Per-page limit from cfg (defaults to 50)
-    $results_per_page = (!empty($cfg['results_per_page']) && (int)$cfg['results_per_page'] > 0)
-        ? (int)$cfg['results_per_page'] : 50;
-    $sql_limit = e($results_per_page);
-
-    if ($raw_q !== '') {
-        $q_esc = e($raw_q);
-        $like  = "%" . escape_like($raw_q) . "%";
-        $q_like = e($like);
-
-        // Search pages (title + name) — exclude hidden/system page types.
-        // The same fences as the legacy search (get_search_results.php): only
-        // pages that opted into site search, none from an archived folder or
-        // the Recycle Bin, and none in a folder the visitor may not view --
-        // the title of a page in a private or membership folder is otherwise
-        // published to anyone who guesses a word of it.
-        if ($search_scope === 'all' || $search_scope === 'pages') {
-            $sql_recycle_bin = '';
-            $recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
-            if (is_array($recycle_bin_folder_ids) && count($recycle_bin_folder_ids) > 0) {
-                $sql_recycle_bin = " AND page.page_folder NOT IN (" . implode(',', array_map('intval', $recycle_bin_folder_ids)) . ")";
-            }
-
-            $page_rows = db_items(
-                "SELECT page.page_id, page.page_title, page.page_name, page.page_type, page.page_folder
-                 FROM page
-                 LEFT JOIN folder ON page.page_folder = folder.folder_id
-                 WHERE (page.page_title LIKE '$q_like' OR page.page_name LIKE '$q_like')
-                   AND page.page_type NOT IN ('login','logout','error','folder view')
-                   AND page.page_search = '1'
-                   AND folder.folder_archived = '0'" . $sql_recycle_bin . "
-                 ORDER BY page.page_title ASC
-                 LIMIT $sql_limit"
-            );
-            if (is_array($page_rows)) {
-                foreach ($page_rows as $pr) {
-                    // Visitor-side view check: public folders pass, private and
-                    // membership folders only for a visitor who satisfies them.
-                    if (!check_view_access($pr['page_folder'], true)) {
-                        continue;
-                    }
-
-                    // get_page_type_name() returns null for a type it does not know.
-                    $type_name = $pr['page_type'] !== '' ? get_page_type_name((string)$pr['page_type']) : null;
-                    $excerpt = (is_string($type_name) && $type_name !== '') ? $type_name : lang('Page');
-                    $results[] = array(
-                        'title'   => (string)$pr['page_title'],
-                        'url'     => $output_base . encode_url_path((string)$pr['page_name']),
-                        'excerpt' => $excerpt,
-                        'type'    => 'page',
-                    );
-                }
-            }
-        }
-
-        // Search products when ECOMMERCE is active
-        if (($search_scope === 'all' || $search_scope === 'products') && defined('ECOMMERCE') && ECOMMERCE === true) {
-            $product_rows = db_items(
-                "SELECT id, name, short_description, address_name
-                 FROM products
-                 WHERE (name LIKE '$q_like' OR short_description LIKE '$q_like')
-                   AND enabled = 1
-                 ORDER BY name ASC
-                 LIMIT $sql_limit"
-            );
-            if (is_array($product_rows)) {
-                foreach ($product_rows as $pr) {
-                    $results[] = array(
-                        'title'   => (string)$pr['name'],
-                        'url'     => $output_base . encode_url_path((string)$pr['address_name']),
-                        'excerpt' => (string)$pr['short_description'],
-                        'type'    => 'product',
-                    );
-                }
-            }
-        }
-    }
-
-    $result_count = count($results);
-
-    // Build loop output
-    // A tree with no loop_area has nowhere to put rows: the whole tree is the
-    // surround and it renders once. Building the rows anyway meant laying out
-    // the entire template per record and then discarding it — every starter
-    // tree carries a loop_area, so this only ever happened to a tree from
-    // before loop_area existed.
+    $type_labels = array('page' => lang('Page'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
     $loop_rendered = '';
-    if ($loop_template !== '' && $static_html !== '' && $result_count > 0) {
-        foreach ($results as $idx => $res) {
-            $row_values = array(
-                '__result_title'   => h((string)$res['title']),
-                '__result_url'     => h((string)$res['url']),
-                '__result_excerpt' => h((string)$res['excerpt']),
-                '__result_type'    => h((string)$res['type']),
-            );
-            $row_html = $loop_template;
-            $rkeys = array_keys($row_values);
-            usort($rkeys, function ($a, $b) { return strlen($b) - strlen($a); });
-            foreach ($rkeys as $k) {
-                $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
-            }
-            $row_html = pg_sw_sweep_tokens($row_html);
-
-            // Uniquify Bootstrap component IDs per result row
-            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
-
-            $loop_rendered .= $row_html;
+    // A tree without a loop_area has nowhere to put rows: it renders once.
+    if ($loop_template !== '' && $static_html !== '') {
+        foreach (array_slice($rows, $offset, $per_page) as $i => $r) {
+            $values = pg_sw_escape_token_values(array(
+                '__result_title'        => $r['title'],
+                '__result_url'          => ($r['url'] !== '') ? $r['url'] : '#',
+                '__result_full_url'     => $r['full_url'],
+                '__result_excerpt'      => $r['excerpt'],
+                '__result_type'         => $r['type'],
+                '__result_type_label'   => isset($type_labels[$r['type']]) ? $type_labels[$r['type']] : '',
+                '__result_image'        => $r['image'],
+                '__result_price'        => $r['price'],
+                '__result_is_featured'  => $r['featured'],
+                '__result_number'       => (string)($offset + $i + 1),
+            ), array('__result_price'));
+            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $values));
+            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $offset + $i);
         }
     }
 
-    // Apply static tokens
-    $static_values = array(
-        '__search_query' => h($raw_q),
-        '__result_count' => (string)$result_count,
-        '__empty_message'   => ($result_count === 0 && $raw_q !== '') ? h($no_results) : '',
-    );
+    $empty_message = (!empty($cfg['empty_message']) && is_string($cfg['empty_message'])) ? $cfg['empty_message'] : lang('No results found.');
+    // The starter tree has no element for ^^__empty_message^^, so a message
+    // typed into the settings never showed. Without such an element the
+    // heading carries it - unless it is still the default, where the
+    // heading's own wording (which repeats the query) says more.
+    $empty_has_slot = (strpos($static_html . $loop_template, '^^__empty_message^^') !== false);
+
+    if ($query === '') {
+        $heading = lang('Please enter keyword(s) or phrase to search.');
+    } elseif ($total === 0) {
+        $heading = (!$empty_has_slot && $empty_message !== lang('No results found.'))
+            ? $empty_message
+            : lang(array('string' => 'No results were found for: {var:1}', 'vars' => $query));
+    } elseif (!empty($found['limited'])) {
+        $heading = lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(pg_format_number($total, 0), $query)));
+    } else {
+        $heading = lang(array('string' => 'Found {var:1} result(s) for: {var:2}', 'vars' => array(pg_format_number($total, 0), $query)));
+    }
+
+    $static_values = pg_sw_escape_token_values(array(
+        '__search_query'    => $query,
+        '__result_count'    => (string)$total,
+        '__results_heading' => $heading,
+        '__page_count'      => (string)$total_pages,
+        '__empty_message'   => ($query !== '' && $total === 0) ? $empty_message : '',
+    ));
 
     if ($static_html === '') {
-        // No loop_area — replace tokens in the single rendered template
-        $rendered = $loop_template;
-        $skeys = array_keys($static_values);
-        usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($skeys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
-        }
-        return pg_sw_sweep_tokens($rendered);
+        return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));
     }
-
-    $skeys = array_keys($static_values);
-    usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($skeys as $k) {
-        $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
-    }
-    $static_html = pg_sw_sweep_tokens($static_html);
-
+    $static_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values));
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }
 
@@ -2612,14 +3248,18 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
 
     // Currency symbol: cfg overrides site constant
-    $currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '₺';
+    $currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$';
     if (!empty($cfg['currency_symbol']) && is_string($cfg['currency_symbol'])) {
         $currency_symbol = $cfg['currency_symbol'];
     }
 
     // Date format from cfg (validates against safe whitelist)
-    $date_format     = (isset($cfg['date_format']) && in_array($cfg['date_format'], array('d.m.Y', 'Y-m-d', 'd M Y')))
-                           ? $cfg['date_format'] : 'd.m.Y';
+    // One of the widget's formats, or empty for the site's own
+    // (pg_sw_default_date_format()).
+    $date_format_choice = (isset($cfg['date_format']) && in_array($cfg['date_format'], array('d.m.Y', 'Y-m-d', 'd M Y')))
+                           ? $cfg['date_format'] : '';
+    $date_format     = ($date_format_choice !== '') ? $date_format_choice : pg_sw_default_date_format('date');
+    $datetime_format = ($date_format_choice !== '') ? $date_format_choice . ' H:i' : pg_sw_default_date_format('date and time');
     // 'd M Y' spells the month out; the name itself comes from lang() so it
     // follows the site language, not date()'s always-English output.
     $use_long_month  = ($date_format === 'd M Y');
@@ -2634,12 +3274,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         $order_id = (int)$_GET['order_id'];
     } elseif (!empty($_GET['oid']) && is_numeric($_GET['oid'])) {
         $order_id = (int)$_GET['oid'];
+    } elseif (!empty($_GET['id']) && is_numeric($_GET['id'])) {
+        // The legacy my account screen and the my account widget's order
+        // history link with ?id=, the legacy view order page's parameter.
+        $order_id = (int)$_GET['id'];
     }
 
-    if ($order_id <= 0) {
-        // No order ID in URL — render static portion only (works as an empty state).
-        // We just emit `__not_found` and rely on the leftover-token preg_replace
-        // below to strip everything else cleanly. No need to list every token.
+    // No order to show (no id, no such order, or not this visitor's). A tree
+    // that places ^^__not_found_message^^ draws its own empty state; any
+    // other tree came out as a page of headings with nothing under them, or
+    // as nothing at all, so it shows the message through its message area.
+    $render_not_found = function () use ($tree_decoded, $not_found_message) {
+        if (strpos((string)json_encode($tree_decoded), '__not_found_message') === false) {
+            return _pg_sw_render_message_only($tree_decoded, 'order_view', h($not_found_message), 'warning');
+        }
         $split_empty = _split_widget_tree($tree_decoded);
         if ($split_empty['loop_children'] === null) {
             $rendered = trim(_render_tree_node($tree_decoded, 0, 0));
@@ -2648,6 +3296,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         }
         $rendered = str_replace('^^__not_found_message^^', h($not_found_message), $rendered);
         return pg_sw_sweep_tokens($rendered);
+    };
+
+    if ($order_id <= 0) {
+        return $render_not_found();
     }
 
     $oid_esc = e($order_id);
@@ -2682,8 +3334,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     );
 
     if (!$order) {
-        // Order not found — return empty
-        return '';
+        return $render_not_found();
     }
 
     // Order ids are sequential, so an arbitrary visitor must never see an order.
@@ -2693,8 +3344,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $is_owner = ($current_user_id > 0 && (int)$order['user_id'] === $current_user_id);
     $just_completed = ((int)($_SESSION['ecommerce']['completed_order_id'] ?? 0) === (int)$order['id']);
     if (!$is_owner && !$just_completed) {
-        // No logged-in owner and not the order this session just placed — return empty
-        return '';
+        // No logged-in owner and not the order this session just placed:
+        // the same answer as a missing order, so ids cannot be probed.
+        return $render_not_found();
     }
 
     // Resolve member_id via contacts table (orders.contact_id → contacts.id).
@@ -2729,7 +3381,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // numeric (&#8378;), hex (&#x20BA;), and named (&#nbsp;) entities.
     $currency_symbol = html_entity_decode((string)$currency_symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $fmt_money = function ($cents) use ($currency_symbol) {
-        return $currency_symbol . number_format((int)$cents / 100, 2, '.', ',');
+        // Shown in the visitor's currency like the legacy order screens.
+        return pg_visitor_money((int)$cents / 100, $currency_symbol);
     };
 
     // 'YYYY-MM-DD' → display string, honouring cfg.date_format (including the
@@ -2751,10 +3404,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         trim((string)$order['billing_last_name']),
     ));
     $billing_name = implode(' ', $billing_name_parts);
+    // A province named like its city (Izmir / Izmir) is written once, as
+    // the address book widget does.
     $billing_city_line_parts = array_filter(array(
         trim((string)$order['billing_zip_code']),
         trim((string)$order['billing_city']),
-        trim((string)$order['billing_state']),
+        (mb_strtolower(trim((string)$order['billing_state'])) === mb_strtolower(trim((string)$order['billing_city'])))
+            ? '' : trim((string)$order['billing_state']),
     ));
     $billing_city_line = implode(' ', $billing_city_line_parts);
     $billing_full_parts = array_filter(array(
@@ -2797,7 +3453,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $shipping_city_line_parts = array_filter(array(
         trim((string)($ship_to['zip_code'] ?? '')),
         trim((string)($ship_to['city']     ?? '')),
-        trim((string)($ship_to['state']    ?? '')),
+        (mb_strtolower(trim((string)($ship_to['state'] ?? ''))) === mb_strtolower(trim((string)($ship_to['city'] ?? ''))))
+            ? '' : trim((string)($ship_to['state'] ?? '')),
     ));
     $shipping_city_line = implode(' ', $shipping_city_line_parts);
     $shipping_full_parts = array_filter(array(
@@ -2982,6 +3639,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'Credit/Debit Card' => lang('Credit/Debit Card'),
         'PayPal Express'    => 'PayPal',
         'Offline'           => lang('Bank Transfer / Wire'),
+        // The value checkout stores; shown with the label the checkout
+        // offered it under (lang() of the method name).
+        'Offline Payment'   => lang('Offline Payment'),
     );
     if (isset($pm_pretty_map[$payment_method_raw])) {
         $payment_method_pretty = $pm_pretty_map[$payment_method_raw];
@@ -3115,14 +3775,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // for events that have a real time component (cancellation, order
     // creation). Pure-date columns (ship_date, delivery_date) skip the
     // time suffix since the DB only stores YYYY-MM-DD.
-    $_fmt_ts = function ($ts, $with_time) use ($use_long_month, $date_format) {
+    $_fmt_ts = function ($ts, $with_time) use ($use_long_month, $date_format, $datetime_format) {
         $ts = (int)$ts;
         if ($ts <= 0) return '';
-        if ($use_long_month) {
-            $s = date('d', $ts) . ' ' . pg_widget_month_name(date('n', $ts)) . ' ' . date('Y', $ts);
-        } else {
-            $s = date($date_format, $ts);
+        if (!$use_long_month) {
+            return date($with_time ? $datetime_format : $date_format, $ts);
         }
+        $s = date('d', $ts) . ' ' . pg_widget_month_name(date('n', $ts)) . ' ' . date('Y', $ts);
         if ($with_time) $s .= ' ' . date('H:i', $ts);
         return $s;
     };
@@ -3158,19 +3817,23 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'ts'    => $_fmt_ts($order_date_ts, true),
         );
     }
+    // ship_date / delivery_date are worked out at checkout from the
+    // shipping method: until the day comes they are a forecast, and a
+    // just-placed order listed itself as shipped and delivered.
+    $_today_ts = strtotime(date('Y-m-d'));
     if ($shipping_ts > 0) {
         $timeline_events[] = array(
             'icon'  => 'bi-truck',
-            'color' => 'info',
-            'label' => lang('Shipped'),
+            'color' => ($shipping_ts > $_today_ts) ? 'secondary' : 'info',
+            'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
             'ts'    => $_fmt_ts($shipping_ts, false),
         );
     }
     if ($delivery_ts > 0) {
         $timeline_events[] = array(
             'icon'  => 'bi-box-seam',
-            'color' => 'success',
-            'label' => lang('Delivered'),
+            'color' => ($delivery_ts > $_today_ts) ? 'secondary' : 'success',
+            'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
             'ts'    => $_fmt_ts($delivery_ts, false),
         );
     }
@@ -3426,10 +4089,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // Installment info (Iyzipay 3DS only; PayPal/Offline always = 1).
         '__installment_count'     => (string)(int)$order['payment_installment'],
         '__installment_charges'   => $fmt_money((int)$order['installment_charges']),
-        // Per-month amount when paying in installments: (total + charges) ÷ count.
+        // Per-month amount when paying in installments: total ÷ count (the
+        // order total already carries the installment charge).
         // Renders empty for single-payment orders (avoids dividing by 1 noise).
         '__installment_per_month' => ((int)$order['payment_installment'] > 1
-            ? $fmt_money((int)round(((int)$order['total'] + (int)$order['installment_charges']) / (int)$order['payment_installment']))
+            ? $fmt_money((int)round((int)$order['total'] / (int)$order['payment_installment']))
             : ''),
         // Notes/member_id resolved separately (legacy schema may lack them).
         '__order_notes'           => nl2br(h($order_notes)),
@@ -3836,230 +4500,535 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     return pg_sw_sweep_tokens($rendered);
 }
 
-// Render a 'calendar_view' system widget. Renders a month-based event list with
-// loop_area per event. Events are read from the Pinegrap calendar system
-// (users_calendars_xref / calendar tables). If those tables do not exist or have
-// no data the widget gracefully renders an empty list.
+// ============================================================================
+// calendar_view / calendar_event_view
+// ============================================================================
+
+// The calendars a calendar widget shows, [['id', 'name']]: the ones its
+// config names, or every calendar when it names none.
+function _pg_sw_calendars($cfg)
+{
+    $ids = array();
+    if (!empty($cfg['calendar_ids']) && is_array($cfg['calendar_ids'])) {
+        foreach ($cfg['calendar_ids'] as $id) if ((int)$id > 0) $ids[] = (int)$id;
+    }
+    $rows = db_items(
+        "SELECT id, name FROM calendars"
+        . ($ids ? " WHERE id IN (" . implode(',', array_unique($ids)) . ")" : "")
+        . " ORDER BY name ASC");
+    return is_array($rows) ? $rows : array();
+}
+
+// "Çarşamba, 23 Eylül 2026" — a date the way the site's language writes it.
+// date() alone prints English day and month names whatever the site speaks.
+function _pg_sw_long_date($timestamp)
+{
+    $day_month = (defined('DATE_FORMAT') && DATE_FORMAT === 'month_day')
+        ? pg_widget_month_name((int)date('n', $timestamp)) . ' ' . date('j', $timestamp)
+        : date('j', $timestamp) . ' ' . pg_widget_month_name((int)date('n', $timestamp));
+    return lang(date('l', $timestamp)) . ', ' . $day_month . ' ' . date('Y', $timestamp);
+}
+
+// A time in the site's clock (Site Settings: 12 or 24 hours), as the legacy
+// calendar prints it.
+function _pg_sw_time($timestamp)
+{
+    return date((defined('TIME_FORMAT') && TIME_FORMAT === 'twelve_hours') ? 'g:i A' : 'H:i', $timestamp);
+}
+
+// "10:00 – 12:00", or "All day". The legacy time_range always prints a
+// 12-hour clock; this one follows the site's setting like the rest.
+function _pg_sw_time_range($all_day, $start_ts, $end_ts)
+{
+    if ($all_day) return lang('All day');
+    $range = _pg_sw_time($start_ts);
+    if ($end_ts && date('Y-m-d', $end_ts) === date('Y-m-d', $start_ts) && $end_ts > $start_ts) {
+        $range .= ' – ' . _pg_sw_time($end_ts);
+    }
+    return $range;
+}
+
+// The whole span of an occurrence in words: "Salı, 8 Eylül 2026, 10:00 – 12:00",
+// or two dates for one that runs over several days. Read from the start and
+// end timestamps: get_calendar_event() moves those to the requested
+// recurrence, but its start_date / end_date stay the first occurrence's.
+function _pg_sw_date_range($all_day, $start_ts, $end_ts)
+{
+    $range = _pg_sw_long_date($start_ts);
+    if ($end_ts && date('Y-m-d', $end_ts) !== date('Y-m-d', $start_ts)) {
+        $range .= ' – ' . _pg_sw_long_date($end_ts);
+        if (!$all_day) $range .= ', ' . _pg_sw_time($start_ts) . ' – ' . _pg_sw_time($end_ts);
+    } elseif (!$all_day) {
+        $range .= ', ' . _pg_sw_time_range(false, $start_ts, $end_ts);
+    }
+    return $range;
+}
+
+// A date in the widget's format; 'd M Y' spells the month out through lang().
+function _pg_sw_short_date($timestamp, $format)
+{
+    if ($format === 'd M Y') {
+        return date('d', $timestamp) . ' ' . pg_widget_month_name((int)date('n', $timestamp)) . ' ' . date('Y', $timestamp);
+    }
+    return date($format, $timestamp);
+}
+
+// The page a calendar widget's events link to: the configured one, else a
+// page carrying a calendar event widget, else the legacy calendar event view
+// page. '' when there is none — the rows then print without a link.
+function _pg_sw_calendar_event_page_url($cfg)
+{
+    $page_id = isset($cfg['event_page_id']) ? (int)$cfg['event_page_id'] : 0;
+    if ($page_id <= 0) {
+        $pages = pg_sw_widget_pages('calendar_event_view');
+        if ($pages) $page_id = (int)$pages[0]['page_id'];
+    }
+    if ($page_id <= 0) {
+        $page_id = (int)db_value(
+            "SELECT page.page_id FROM page
+             WHERE page.page_type = 'calendar event view'
+             ORDER BY page.page_id ASC LIMIT 1");
+    }
+    return ($page_id > 0) ? _pg_member_page_url($page_id) : '';
+}
+
+// Is the event one the calendar event widget on this page may show — does it
+// belong to one of the widget's calendars (to any calendar, when the widget
+// names none)? The widget's answer to calendar_event_views_calendars_xref,
+// which only the legacy page type has.
+function pg_sw_calendar_event_page_allows($page_id, $event_id)
+{
+    $widget = pg_sw_page_widget($page_id, 'calendar_event_view');
+    if (!$widget) return false;
+    return _pg_sw_calendar_event_allowed($widget['cfg'], $event_id);
+}
+
+function _pg_sw_calendar_event_allowed($cfg, $event_id)
+{
+    $event_calendars = array();
+    foreach ((array)db_items("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int)$event_id . "'") as $r) {
+        $event_calendars[] = (int)$r['calendar_id'];
+    }
+    if (!$event_calendars) return false;
+    $allowed = array();
+    foreach (_pg_sw_calendars($cfg) as $c) $allowed[] = (int)$c['id'];
+    return count(array_intersect($event_calendars, $allowed)) > 0;
+}
+
+// One event occurrence as row values (raw). $event is a get_calendar() row;
+// $detail, when given, is get_calendar_event() for it.
+function _pg_sw_calendar_event_values($event, $detail, $link_base, $date_format, $calendar_names)
+{
+    $start_ts = strtotime($event['event_start_date'] . ' ' . $event['event_start_time']);
+    $all_day  = ((int)$event['all_day'] === 1);
+    $url = '';
+    if ($link_base !== '') {
+        $url = $link_base . '?id=' . (int)$event['id']
+             . (!empty($event['recurrence_number']) ? '&recurrence_number=' . (int)$event['recurrence_number'] : '');
+    }
+    $names = array();
+    foreach ((isset($event['calendars']) ? (array)$event['calendars'] : array()) as $cid) {
+        if (isset($calendar_names[(int)$cid])) $names[] = $calendar_names[(int)$cid];
+    }
+    $end_time = ''; $range = ''; $location = ''; $time_range = $all_day ? lang('All day') : _pg_sw_time($start_ts);
+    if (is_array($detail)) {
+        $end_ts   = strtotime($detail['end_date_and_time']);
+        $location = (string)$detail['location'];
+        if (!$all_day && $end_ts) $end_time = _pg_sw_time($end_ts);
+        $time_range = _pg_sw_time_range($all_day, $start_ts, $end_ts);
+        $range = _pg_sw_date_range($all_day, $start_ts, $end_ts);
+    }
+    return array(
+        '__event_title'          => (string)$event['name'],
+        '__event_url'            => $url,
+        '__event_excerpt'        => (string)$event['short_description'],
+        '__event_date'           => _pg_sw_short_date($start_ts, $date_format),
+        '__event_day'            => date('j', $start_ts),
+        '__event_month'          => pg_widget_month_name((int)date('n', $start_ts)),
+        '__event_weekday'        => lang(date('l', $start_ts)),
+        '__event_time'           => $all_day ? '' : _pg_sw_time($start_ts),
+        '__event_end_time'       => $end_time,
+        '__event_time_range'     => $time_range,
+        '__event_date_range'     => $range,
+        '__event_location'       => $location,
+        '__event_calendar_names' => implode(', ', $names),
+        '__event_is_all_day'     => $all_day ? '1' : '',
+        // The event's series as an .ics file, from the event page.
+        '__event_ical_url'       => ($link_base !== '') ? $link_base . '?id=' . (int)$event['id'] . '&icalendar=true' : '',
+    );
+}
+
+// The month (or week) grid for section=month_grid: a Bootstrap table, one
+// cell per day, the day's events listed in it. Days of the neighbouring
+// months pad the first and last week, dimmed and without events.
+function _pg_sw_calendar_grid_html($range_start, $range_end, $focus_month, $events_by_day, $week_start, $link_base)
+{
+    $days = ($week_start === 'sunday')
+        ? array('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
+        : array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+    // Fixed layout: seven equal columns whatever a day holds; a long title
+    // is cut (text-truncate) instead of widening its column.
+    $html = '<div class="table-responsive"><table class="table table-bordered table-sm mb-0 pg-sw-calendar-grid" style="table-layout:fixed;min-width:42rem"><thead><tr>';
+    foreach ($days as $d) {
+        // The dictionary's own short names (Pzt, Cmt …): cutting the long
+        // name to three letters makes Pazartesi and Pazar, Cuma and
+        // Cumartesi the same.
+        $html .= '<th scope="col" class="text-center small fw-semibold"><abbr title="' . h(lang($d)) . '" class="text-decoration-none">' . h(lang(substr($d, 0, 3))) . '</abbr></th>';
+    }
+    $html .= '</tr></thead><tbody>';
+    $today = date('Y-m-d');
+    for ($ts = $range_start, $i = 0; $ts <= $range_end; $ts = strtotime('+1 day', $ts), $i++) {
+        if ($i % 7 === 0) $html .= '<tr>';
+        $key     = date('Y-m-d', $ts);
+        $outside = ($focus_month !== null && (int)date('n', $ts) !== $focus_month);
+        $classes = 'align-top p-1' . ($outside ? ' bg-body-tertiary text-body-tertiary' : '') . ($key === $today ? ' table-active' : '');
+        $html .= '<td class="' . $classes . '" style="width:14.28%;height:6rem">'
+               . '<div class="small fw-semibold mb-1">' . date('j', $ts) . '</div>';
+        if (!$outside && !empty($events_by_day[$key])) {
+            $html .= '<ul class="list-unstyled small mb-0">';
+            foreach ($events_by_day[$key] as $ev) {
+                $label = h(($ev['__event_time'] !== '' ? $ev['__event_time'] . ' ' : '') . $ev['__event_title']);
+                $html .= '<li class="text-truncate">' . ($ev['__event_url'] !== ''
+                    ? '<a href="' . h($ev['__event_url']) . '" class="link-underline link-underline-opacity-0" title="' . h($ev['__event_title']) . '">' . $label . '</a>'
+                    : $label) . '</li>';
+            }
+            $html .= '</ul>';
+        }
+        $html .= '</td>';
+        if ($i % 7 === 6) $html .= '</tr>';
+    }
+    return $html . '</tbody></table></div>';
+}
+
+// Render a 'calendar_view' system widget: the events of the widget's
+// calendars, monthly, weekly or upcoming, one loop row per occurrence —
+// recurring events and their exceptions expanded exactly as the legacy
+// calendar view does (get_calendar()).
 //
-// Static tokens: ^^__month_name^^     — localised month name (e.g. "Nisan")
-//                ^^__year^^           — four-digit year (e.g. "2026")
-//                ^^__prev_month_url^^ — URL to the previous month (?cal_month=…&cal_year=…)
-//                ^^__next_month_url^^ — URL to the next month
-//
-// Loop tokens (per event):
-//   ^^__event_title^^   — event name / subject
-//   ^^__event_date^^    — formatted event date (dd.mm.yyyy)
-//   ^^__event_time^^    — formatted start time (HH:MM), empty if all-day
-//   ^^__event_url^^     — link to event detail page (empty if none)
-//   ^^__event_excerpt^^ — short description / notes
-//
-// URL parameters:
-//   cal_month  — 1-12 (defaults to current month)
-//   cal_year   — four-digit year (defaults to current year)
-//
-// NOTE: If the calendar_events table is not present in this installation the
-// function returns a placeholder comment rather than a fatal error.
+// cfg: calendar_ids (empty = every calendar), default_view ('monthly' |
+//   'weekly' | 'upcoming'; upcoming is fixed, the other two can be switched),
+//   number_of_upcoming_events, week_start ('monday' | 'sunday'),
+//   event_page_id, date_format, empty_message.
+// URL (the legacy calendar's own): date (MM-DD-YYYY), view, calendar_id.
+// Static tokens: ^^__period_label^^, ^^__month_name^^, ^^__year^^,
+//   ^^__prev_url^^, ^^__next_url^^, ^^__today_url^^, ^^__event_count^^,
+//   ^^__view^^, ^^__empty_message^^.
+// Row tokens: see _pg_sw_calendar_event_values().
+// Sections: calendar_picker (calendar + view select), month_grid.
+// Visibility (eo_visible_if): has_navigation, has_events, no_events.
 function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
     if ($tree_json === '' || $tree_json === null) return '';
     if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+    _pg_inject_messages_node($tree, '');
 
-    $tree_decoded = json_decode($tree_json, true);
-    if (!is_array($tree_decoded)) return '';
-    // Per-widget messages safety net — auto-prepends a Messages content node
-    // when the designer has not placed one. Empty formName, like the other
-    // read-only widgets: this widget posts no form of its own, so it shows
-    // whatever the session is carrying. Without this the widget was simply
-    // silent — an error had nowhere to print.
-    _pg_inject_messages_node($tree_decoded, '');
+    // The event page's "back" link returns here.
+    $_SESSION['software']['last_calendar_view_url'] = get_request_uri();
 
-    $split = _split_widget_tree($tree_decoded);
+    $calendars = _pg_sw_calendars($cfg);
+    $calendar_names = array();
+    foreach ($calendars as $c) $calendar_names[(int)$c['id']] = (string)$c['name'];
 
+    $default_view = (isset($cfg['default_view']) && in_array($cfg['default_view'], array('monthly', 'weekly', 'upcoming'), true))
+        ? $cfg['default_view'] : 'monthly';
+    $view = $default_view;
+    if ($default_view !== 'upcoming' && isset($_GET['view']) && in_array($_GET['view'], array('monthly', 'weekly'), true)) {
+        $view = $_GET['view'];
+    }
+    $calendar_id = (isset($_GET['calendar_id']) && isset($calendar_names[(int)$_GET['calendar_id']])) ? (int)$_GET['calendar_id'] : 0;
+    $week_start  = (isset($cfg['week_start']) && $cfg['week_start'] === 'sunday') ? 'sunday' : 'monday';
+    // One of the widget's formats, or the site's own when none is chosen.
+    $date_format = (isset($cfg['date_format']) && in_array($cfg['date_format'], array('d.m.Y', 'Y-m-d', 'd M Y'), true)) ? $cfg['date_format'] : pg_sw_default_date_format('date');
+    $limit       = (isset($cfg['number_of_upcoming_events']) && (int)$cfg['number_of_upcoming_events'] > 0) ? min(500, (int)$cfg['number_of_upcoming_events']) : 10;
+
+    // The focus date: ?date=MM-DD-YYYY as the legacy links write it.
+    $focus = strtotime(date('Y-m-d'));
+    if (isset($_GET['date']) && is_scalar($_GET['date'])
+        && preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', (string)$_GET['date'], $m)
+        && checkdate((int)$m[1], (int)$m[2], (int)$m[3])) {
+        $focus = mktime(0, 0, 0, (int)$m[1], (int)$m[2], (int)$m[3]);
+    }
+
+    // The range the view covers.
+    if ($view === 'weekly') {
+        $offset      = ($week_start === 'sunday') ? (int)date('w', $focus) : ((int)date('N', $focus) - 1);
+        $range_start = strtotime('-' . $offset . ' days', $focus);
+        $range_end   = strtotime('+6 days', $range_start);
+    } else {
+        $range_start = mktime(0, 0, 0, (int)date('n', $focus), 1, (int)date('Y', $focus));
+        $range_end   = mktime(0, 0, 0, (int)date('n', $focus), (int)date('t', $focus), (int)date('Y', $focus));
+    }
+
+    // Occurrences. get_calendar() expands recurrences month by month; a week
+    // that straddles two months asks for both.
+    $events = array();
+    if ($calendars) {
+        if ($view === 'upcoming') {
+            $events = (array)get_calendar($calendar_id ?: '', $calendars, 'upcoming', 'published', '', '', '', $limit, 'array');
+        } else {
+            $seen_months = array();
+            for ($ts = $range_start; $ts <= $range_end; $ts = strtotime('+1 day', $ts)) {
+                $mk = date('m-01-Y', $ts);
+                if (isset($seen_months[$mk])) continue;
+                $seen_months[$mk] = true;
+                foreach ((array)get_calendar($calendar_id ?: '', $calendars, 'monthly', 'published', '', $mk, '', '', 'array') as $ev) {
+                    $d = strtotime($ev['event_start_date']);
+                    if ($d >= $range_start && $d <= $range_end) $events[] = $ev;
+                }
+            }
+        }
+    }
+    $events = array_slice($events, 0, 500);
+
+    // Navigation.
+    $path  = _pg_sw_current_path();
+    $nav   = function ($ts) use ($path) {
+        $params = _pg_sw_query_params();
+        if ($ts === null) unset($params['date']); else $params['date'] = date('m-d-Y', $ts);
+        $qs = http_build_query($params);
+        return $path . ($qs !== '' ? '?' . $qs : '');
+    };
+    $prev_url = $next_url = $today_url = '';
+    if ($view === 'monthly') {
+        $prev_url  = $nav(mktime(0, 0, 0, (int)date('n', $range_start) - 1, 1, (int)date('Y', $range_start)));
+        $next_url  = $nav(mktime(0, 0, 0, (int)date('n', $range_start) + 1, 1, (int)date('Y', $range_start)));
+        $today_url = $nav(null);
+        $period    = pg_widget_month_name((int)date('n', $range_start)) . ' ' . date('Y', $range_start);
+    } elseif ($view === 'weekly') {
+        $prev_url  = $nav(strtotime('-7 days', $range_start));
+        $next_url  = $nav(strtotime('+7 days', $range_start));
+        $today_url = $nav(null);
+        $period    = _pg_sw_short_date($range_start, $date_format) . ' – ' . _pg_sw_short_date($range_end, $date_format);
+    } else {
+        $period = lang('Upcoming Events');
+    }
+
+    // Split before the sections go in, so the section markup never lands in
+    // the per-event template.
+    $link_base = _pg_sw_calendar_event_page_url($cfg);
+
+    // Row values; the details (end time, location, the full range) cost a
+    // query per event, so they are read only when the layout asks for them —
+    // or when the month grid needs an event's end to show it on every day
+    // it spans.
+    $probe = json_encode($tree);
+    $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
+    $needs_detail = $has_grid || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
+    $rows = array();
+    $by_day = array();
+    foreach ($events as $ev) {
+        $detail = $needs_detail ? get_calendar_event($ev['id'], $ev['recurrence_number']) : null;
+        $vals = _pg_sw_calendar_event_values($ev, $detail, $link_base, $date_format, $calendar_names);
+        $rows[] = $vals;
+        $first  = strtotime($ev['event_start_date']);
+        $last   = $first;
+        $end_ts = is_array($detail) ? strtotime($detail['end_date_and_time']) : false;
+        if ($end_ts) {
+            // An end at midnight closes the previous day.
+            if (date('H:i:s', $end_ts) === '00:00:00') $end_ts--;
+            $last = max($first, strtotime(date('Y-m-d', $end_ts)));
+        }
+        for ($d = $first, $n = 0; $d <= $last && $n < 62; $d = strtotime('+1 day', $d), $n++) {
+            $by_day[date('Y-m-d', $d)][] = $vals;
+        }
+    }
+
+    // Sections.
+    $picker = '';
+    if ($default_view !== 'upcoming') {
+        $opts = '';
+        if (count($calendars) > 1) {
+            $opts .= '<select name="calendar_id" class="form-select form-select-sm w-auto" aria-label="' . h(lang('Calendar')) . '">'
+                   . '<option value="">' . h(lang('All Calendars')) . '</option>';
+            foreach ($calendars as $c) {
+                $opts .= '<option value="' . (int)$c['id'] . '"' . ((int)$c['id'] === $calendar_id ? ' selected' : '') . '>' . h($c['name']) . '</option>';
+            }
+            $opts .= '</select>';
+        }
+        $opts .= '<select name="view" class="form-select form-select-sm w-auto" aria-label="' . h(lang('View')) . '">'
+               . '<option value="monthly"' . ($view === 'monthly' ? ' selected' : '') . '>' . h(lang('Monthly')) . '</option>'
+               . '<option value="weekly"' . ($view === 'weekly' ? ' selected' : '') . '>' . h(lang('Weekly')) . '</option>'
+               . '</select>';
+        $picker = '<form method="get" action="' . h($path) . '" class="d-flex flex-wrap align-items-center gap-2">'
+                . _pg_sw_hidden_query_inputs(array('calendar_id', 'view'))
+                . $opts
+                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Update')) . '</button>'
+                . '</form>';
+    }
+    $grid = '';
+    if ($view !== 'upcoming') {
+        $grid_start = $range_start;
+        $grid_end   = $range_end;
+        $focus_month = null;
+        if ($view === 'monthly') {
+            $focus_month = (int)date('n', $range_start);
+            $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
+            $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
+            $grid_start = strtotime('-' . $lead . ' days', $range_start);
+            $grid_end   = strtotime('+' . $trail . ' days', $range_end);
+        }
+        $grid = _pg_sw_calendar_grid_html($grid_start, $grid_end, $focus_month, $by_day, $week_start, $link_base);
+    }
+    pg_cf_apply_section_bindings($tree, array('calendar_picker' => $picker, 'month_grid' => $grid));
+    // Visibility bindings (eo_visible_if): the upcoming view has no period
+    // to step through, so its navigation goes.
+    _eo_apply_visibility_bindings($tree, array(
+        'has_navigation' => $view !== 'upcoming',
+        'has_events'     => count($rows) > 0,
+        'no_events'      => count($rows) === 0,
+    ));
+
+    $split = _split_widget_tree($tree);
     if ($split['loop_children'] === null) {
-        $loop_template = trim(_render_tree_node($tree_decoded, 0, 0));
+        $loop_template = trim(_render_tree_node($tree, 0, 0));
         $static_html   = '';
     } else {
         $loop_template = '';
-        foreach ($split['loop_children'] as $child) {
-            $loop_template .= _render_tree_node($child, 0, 0);
-        }
+        foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
 
-        // events_limit from cfg (max events to fetch; default 100)
-    $cal_events_limit = (isset($cfg['events_limit']) && (int)$cfg['events_limit'] > 0)
-        ? (int)$cfg['events_limit']
-        : 100;
-
-    // date_format from cfg (whitelist)
-    $valid_date_formats_cal = array('d.m.Y', 'Y-m-d', 'd M Y');
-    $cal_date_format = (isset($cfg['date_format']) && in_array($cfg['date_format'], $valid_date_formats_cal))
-        ? $cfg['date_format']
-        : 'd.m.Y';
-
-    // empty_message from cfg
-    $empty_message = (!empty($cfg['empty_message']) && is_string($cfg['empty_message']))
-        ? $cfg['empty_message']
-        : '';
-
-    // Determine which month/year to display
-    $now_month = (int)date('n');
-    $now_year  = (int)date('Y');
-
-    $cal_month = (isset($_GET['cal_month']) && is_numeric($_GET['cal_month']))
-        ? max(1, min(12, (int)$_GET['cal_month']))
-        : $now_month;
-    $cal_year = (isset($_GET['cal_year']) && is_numeric($_GET['cal_year']))
-        ? max(2000, min(2100, (int)$_GET['cal_year']))
-        : $now_year;
-
-    $month_name = pg_widget_month_name($cal_month);
-    if ($month_name === '') $month_name = (string)$cal_month;
-
-    // Build prev / next month URLs
-    $prev_month = $cal_month - 1;
-    $prev_year  = $cal_year;
-    if ($prev_month < 1) { $prev_month = 12; $prev_year--; }
-
-    $next_month = $cal_month + 1;
-    $next_year  = $cal_year;
-    if ($next_month > 12) { $next_month = 1; $next_year++; }
-
-    $base_params = (is_array($_GET)) ? $_GET : array();
-    unset($base_params['cal_month'], $base_params['cal_year']);
-
-    $prev_params = array_merge($base_params, array('cal_month' => $prev_month, 'cal_year' => $prev_year));
-    $next_params = array_merge($base_params, array('cal_month' => $next_month, 'cal_year' => $next_year));
-
-    // REQUEST_URI carries the current query string; $base_params already
-    // holds those values, so only the path is kept before appending.
-    $current_url = (string)strtok((string)get_request_uri(), '?');
-    $prev_url = $current_url . '?' . http_build_query($prev_params);
-    $next_url = $current_url . '?' . http_build_query($next_params);
-
-    // Fetch events for the selected month from the native calendar_events table.
-    // db_items()/db_value() exit on a failed query, so the table is probed with
-    // SHOW TABLES (which never fails) before its columns are read.
-    $events = array();
-    $table_error = false;
-
-    $month_start = sprintf('%04d-%02d-01', $cal_year, $cal_month);
-    $month_end   = date('Y-m-t', mktime(0, 0, 0, $cal_month, 1, $cal_year));
-
-    if (db_value("SHOW TABLES LIKE 'calendar_events'") !== null) {
-        // Event detail links point to the calendar event view page that a calendar
-        // view page is tied to. The widget has no page context, so the first
-        // configured one is used; links are omitted when none is configured.
-        $event_page_name = (string)db_value(
-            "SELECT p.page_name
-             FROM calendar_view_pages cvp
-             INNER JOIN page p ON p.page_id = cvp.calendar_event_view_page_id
-             WHERE cvp.calendar_event_view_page_id > 0
-             ORDER BY cvp.id ASC
-             LIMIT 1"
-        );
-
-        $event_rows = db_items(
-            "SELECT ce.id, ce.name, ce.start_time, ce.all_day, ce.short_description
-             FROM calendar_events ce
-             WHERE ce.published = 1
-               AND ce.start_time >= '" . e($month_start) . " 00:00:00'
-               AND ce.start_time <= '" . e($month_end) . " 23:59:59'
-             ORDER BY ce.start_time ASC
-             LIMIT " . $cal_events_limit
-        );
-        $output_base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-        foreach ($event_rows as $r) {
-            $event_start_ts = strtotime((string)$r['start_time']);
-            if ($event_start_ts && $event_start_ts > 0) {
-                if ($cal_date_format === 'd M Y') {
-                    $event_date = date('d', $event_start_ts) . ' ' . pg_widget_month_name((int)date('n', $event_start_ts)) . ' ' . date('Y', $event_start_ts);
-                } else {
-                    $event_date = date($cal_date_format, $event_start_ts);
-                }
-                $event_time = ((int)$r['all_day'] === 0) ? date('H:i', $event_start_ts) : '';
-            } else {
-                $event_date = substr((string)$r['start_time'], 0, 10);
-                $event_time = '';
-            }
-            $event_url = ($event_page_name !== '')
-                ? $output_base . encode_url_path($event_page_name) . '?id=' . (int)$r['id']
-                : '';
-            $events[] = array(
-                'title'   => (string)$r['name'],
-                'date'    => $event_date,
-                'time'    => $event_time,
-                'url'     => $event_url,
-                'excerpt' => (string)$r['short_description'],
-            );
-        }
-    } else {
-        $table_error = true;
-    }
-
-    // Build loop output
-    // A tree with no loop_area has nowhere to put rows: the whole tree is the
-    // surround and it renders once. Building the rows anyway meant laying out
-    // the entire template per record and then discarding it — every starter
-    // tree carries a loop_area, so this only ever happened to a tree from
-    // before loop_area existed.
     $loop_rendered = '';
-    if ($loop_template !== '' && $static_html !== '' && count($events) > 0) {
-        foreach ($events as $idx => $evt) {
-            $row_values = array(
-                '__event_title'   => h($evt['title']),
-                '__event_date'    => h($evt['date']),
-                '__event_time'    => h($evt['time']),
-                '__event_url'     => h($evt['url']),
-                '__event_excerpt' => h($evt['excerpt']),
-            );
-            $row_html = $loop_template;
-            $rkeys = array_keys($row_values);
-            usort($rkeys, function ($a, $b) { return strlen($b) - strlen($a); });
-            foreach ($rkeys as $k) {
-                $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
-            }
-            $row_html = pg_sw_sweep_tokens($row_html);
-
-            // Uniquify Bootstrap component IDs per event row
-            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
-
-            $loop_rendered .= $row_html;
+    if ($loop_template !== '' && $static_html !== '') {
+        foreach ($rows as $i => $vals) {
+            if ($vals['__event_url'] === '') $vals['__event_url'] = '#';
+            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($vals)));
+            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
         }
     }
 
-    if ($table_error) {
-        $loop_rendered = '<!-- pg-calendar-view: calendar_events table not found. Create the table or use a form-based approach. -->';
-    }
-
-    // Apply static tokens
-    $static_values = array(
-        '__month_name'      => h($month_name),
-        '__year'            => h((string)$cal_year),
-        '__prev_month_url'  => h($prev_url),
-        '__next_month_url'  => h($next_url),
-        '__empty_message'   => (count($events) === 0 && !$table_error) ? h($empty_message) : '',
-    );
-
+    $empty_message = (!empty($cfg['empty_message']) && is_string($cfg['empty_message']))
+        ? $cfg['empty_message'] : lang('There are no events this month.');
+    $static_values = pg_sw_escape_token_values(array(
+        '__period_label'  => $period,
+        '__month_name'    => pg_widget_month_name((int)date('n', $range_start)),
+        '__year'          => date('Y', $range_start),
+        '__prev_url'      => $prev_url,
+        '__next_url'      => $next_url,
+        '__today_url'     => $today_url,
+        '__event_count'   => (string)count($rows),
+        '__view'          => $view,
+        '__empty_message' => $rows ? '' : $empty_message,
+    ));
     if ($static_html === '') {
-        // No loop_area split — replace tokens in the single rendered template
-        $rendered = $loop_template;
-        $skeys = array_keys($static_values);
-        usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($skeys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
-        }
-        return pg_sw_sweep_tokens($rendered);
+        return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));
     }
-
-    $skeys = array_keys($static_values);
-    usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($skeys as $k) {
-        $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
-    }
-    $static_html = pg_sw_sweep_tokens($static_html);
-
+    $static_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values));
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
+}
+
+// Render a 'calendar_event_view' system widget: one event occurrence, read
+// from ?id= and ?recurrence_number= as the calendar's links write them — the
+// designer's layout filled once, the widget's answer to the legacy
+// Calendar Event View page.
+//
+// An event outside the widget's calendars, unpublished or missing shows the
+// not-found message instead of its fields. Reservations post to the legacy
+// reserve_calendar_event.php, which accepts a page carrying this widget.
+//
+// cfg: calendar_ids (empty = every calendar), not_found_message.
+// Tokens: ^^__event_title^^, ^^__event_date_range^^, ^^__event_start_date^^,
+//   ^^__event_start_time^^, ^^__event_end_date^^, ^^__event_end_time^^,
+//   ^^__event_time_range^^, ^^__event_location^^, ^^__event_excerpt^^,
+//   ^^__event_description^^ (HTML), ^^__event_notes^^ (HTML),
+//   ^^__back_url^^ (the calendar the visitor came from),
+//   ^^__reservation_message^^, ^^__not_found_message^^.
+// Section: reserve_form. Visibility (eo_visible_if): event_found,
+//   event_not_found, has_location, has_description, has_notes, can_reserve,
+//   has_reservation_message, has_back_url.
+function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg = array())
+{
+    $widget_id = (int)$widget_id;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+    _pg_inject_messages_node($tree, 'reserve_calendar_event');
+
+    $event_id   = (isset($_GET['id']) && is_scalar($_GET['id'])) ? (int)$_GET['id'] : 0;
+    $recurrence = (isset($_GET['recurrence_number']) && is_scalar($_GET['recurrence_number'])) ? max(0, (int)$_GET['recurrence_number']) : 0;
+    $event = ($event_id > 0) ? get_calendar_event($event_id, $recurrence) : false;
+    $shown = is_array($event) && (int)$event['published'] === 1 && _pg_sw_calendar_event_allowed($cfg, $event_id);
+
+    $values = array(
+        '__event_title' => '', '__event_date_range' => '', '__event_start_date' => '', '__event_start_time' => '',
+        '__event_end_date' => '', '__event_end_time' => '', '__event_time_range' => '', '__event_location' => '',
+        '__event_excerpt' => '', '__event_description' => '', '__event_notes' => '', '__reservation_message' => '',
+        '__back_url' => isset($_SESSION['software']['last_calendar_view_url']) ? (string)$_SESSION['software']['last_calendar_view_url'] : '',
+        '__not_found_message' => '',
+        '__event_ical_url' => '',
+    );
+    $reserve_form = '';
+    if (!$shown) {
+        $values['__not_found_message'] = (!empty($cfg['not_found_message']) && is_string($cfg['not_found_message']))
+            ? $cfg['not_found_message'] : lang('The requested calendar event could not be found.');
+    } else {
+        $start_ts = strtotime($event['start_date_and_time']);
+        $end_ts   = strtotime($event['end_date_and_time']);
+        $all_day  = ((int)$event['all_day'] === 1);
+
+        $values = array_merge($values, array(
+            '__event_title'       => (string)$event['name'],
+            '__event_date_range'  => _pg_sw_date_range($all_day, $start_ts, $end_ts),
+            '__event_start_date'  => _pg_sw_long_date($start_ts),
+            '__event_start_time'  => $all_day ? '' : _pg_sw_time($start_ts),
+            '__event_end_date'    => _pg_sw_long_date($end_ts),
+            '__event_end_time'    => $all_day ? '' : _pg_sw_time($end_ts),
+            '__event_time_range'  => _pg_sw_time_range($all_day, $start_ts, $end_ts),
+            '__event_location'    => (string)$event['location'],
+            '__event_excerpt'     => (string)$event['short_description'],
+            '__event_description' => (string)$event['full_description'],
+            '__event_notes'       => (string)$event['notes_content'],
+            // The whole series as an .ics file, served by get_page.php for
+            // this page (?icalendar=true), as the legacy event page offers it.
+            '__event_ical_url'    => _pg_sw_current_path() . '?id=' . $event_id . '&icalendar=true',
+        ));
+
+        // Reservation — the same gates the legacy page applies.
+        if ((int)$event['reservations'] === 1 && (string)$event['product_id'] !== ''
+            && (int)$event['product_enabled'] === 1 && $end_ts >= time()) {
+            $has_spots = ((int)$event['limit_reservations'] === 0 || (int)$event['number_of_remaining_spots'] > 0);
+            $in_stock  = ((int)$event['inventory'] === 0 || (int)$event['inventory_quantity'] > 0 || (int)$event['backorder'] === 1);
+            if ($has_spots && $in_stock) {
+                $label = ((string)$event['reserve_button_label'] !== '') ? (string)$event['reserve_button_label'] : lang('Reserve');
+                $reserve_form = '<form action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php') . '" method="post" class="d-inline">'
+                    . get_token_field()
+                    . '<input type="hidden" name="send_to" value="' . h(get_request_uri()) . '">'
+                    . '<input type="hidden" name="page_id" value="' . (int)_pg_sw_current_page_id() . '">'
+                    . '<input type="hidden" name="calendar_event_id" value="' . (int)$event_id . '">'
+                    . '<input type="hidden" name="recurrence_number" value="' . (int)$recurrence . '">'
+                    . '<input type="hidden" name="require_cookies" value="true">'
+                    . '<button type="submit" class="btn btn-primary">' . h($label) . '</button>'
+                    . '</form>';
+            } else {
+                $msg = array();
+                if ((int)$event['limit_reservations'] === 1 && (int)$event['number_of_remaining_spots'] === 0) $msg[] = (string)$event['no_remaining_spots_message'];
+                if ((int)$event['inventory'] === 1 && (int)$event['inventory_quantity'] === 0 && (int)$event['backorder'] === 0) $msg[] = (string)$event['out_of_stock_message'];
+                $values['__reservation_message'] = trim(implode(' ', array_filter($msg)));
+            }
+        }
+    }
+
+    pg_cf_apply_section_bindings($tree, array('reserve_form' => $reserve_form));
+    // Visibility bindings (eo_visible_if): the event's own blocks give way to
+    // the not-found notice, and a block whose value is empty goes with it
+    // instead of leaving a heading over nothing.
+    _eo_apply_visibility_bindings($tree, array(
+        'event_found'             => $shown,
+        'event_not_found'         => !$shown,
+        'has_location'            => $values['__event_location'] !== '',
+        'has_description'         => trim(strip_tags($values['__event_description'])) !== '',
+        'has_notes'               => trim(strip_tags($values['__event_notes'])) !== '',
+        'can_reserve'             => $reserve_form !== '',
+        'has_reservation_message' => $values['__reservation_message'] !== '',
+        'has_back_url'            => $values['__back_url'] !== '',
+    ));
+
+    $html = trim(_render_tree_node($tree, 0, 0));
+    $values = pg_sw_escape_token_values($values, array('__event_description', '__event_notes'));
+    return str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
 }

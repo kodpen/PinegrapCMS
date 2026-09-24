@@ -967,7 +967,7 @@ function pg_server_config_repair($fix_path = true)
     $out['status'] = 'success';
     $out['message'] = lang(array(
         'string' => '{var:1} rule(s) were added to {var:2}.',
-        'vars'   => array(number_format(count($out['applied'])), $target['name']),
+        'vars'   => array(pg_format_number(count($out['applied']), 0), $target['name']),
         'suffix' => (count($out['applied']) == 1) ? '' : 's',
     ));
 
@@ -977,7 +977,7 @@ function pg_server_config_repair($fix_path = true)
     if ($skipped) {
         $out['message'] .= ' ' . lang(array(
             'string' => '{var:1} rule(s) had no place in the file and were left out.',
-            'vars'   => number_format(count($skipped)),
+            'vars'   => pg_format_number(count($skipped), 0),
         ));
     }
 

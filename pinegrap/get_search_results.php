@@ -728,7 +728,7 @@ function get_search_results($properties) {
                 // If the number of results from the fulltext/boolean search is 100,
                 // then that means the 100 result limit was enforced, so output message to express that.
                 if (count($results) == 100) {
-                    $output_heading = '<div class="search_results_heading" style="font-weight: bold; margin-bottom: 1.5em">' . lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(number_format($number_of_results), h($query)))) . '</div>';
+                    $output_heading = '<div class="search_results_heading" style="font-weight: bold; margin-bottom: 1.5em">' . lang(array('string' => 'Showing {var:1} of the most relevant results for: {var:2}', 'vars' => array(pg_format_number($number_of_results, 0), h($query)))) . '</div>';
 
                 // Otherwise the number of results from the fulltext/boolean search is less than 100,
                 // so the results were not limited, so output message to express that.
@@ -739,7 +739,7 @@ function get_search_results($properties) {
                         $plural_suffix = 's';
                     }
 
-                    $output_heading = '<div class="search_results_heading" style="font-weight: bold; margin-bottom: 1.5em">' . lang(array('string' => 'Found {var:1} result{suffix:1} for: {var:2}', 'vars' => array(number_format($number_of_results), h($query)), 'suffix' => array($plural_suffix))) . '</div>';
+                    $output_heading = '<div class="search_results_heading" style="font-weight: bold; margin-bottom: 1.5em">' . lang(array('string' => 'Found {var:1} result{suffix:1} for: {var:2}', 'vars' => array(pg_format_number($number_of_results, 0), h($query)), 'suffix' => array($plural_suffix))) . '</div>';
                 }
 
             // Otherwise there are no results, so if there is a search query,
@@ -797,7 +797,7 @@ function get_search_results($properties) {
             
             // if there are more than 0 results
             if ((count($pages) > 0) || (count($featured_items) > 0) || (count($catalog_items) > 0)) {
-                $search_content .= '<span class="search_results_heading" style="font-weight:bold; margin-bottom:1em">' . lang(array('string' => 'Found {var:1} result(s) for &quot;{var:2}&quot;.', 'vars' => array(number_format(count($pages) + count($featured_items) + count($catalog_items)), h($query)))) . '</span><br /><br />';
+                $search_content .= '<span class="search_results_heading" style="font-weight:bold; margin-bottom:1em">' . lang(array('string' => 'Found {var:1} result(s) for &quot;{var:2}&quot;.', 'vars' => array(pg_format_number(count($pages) + count($featured_items) + count($catalog_items), 0), h($query)))) . '</span><br /><br />';
                 // If the keyword matching returned results, display them in separately.
                 if (count($featured_items) > 0) {
                     $search_content .=

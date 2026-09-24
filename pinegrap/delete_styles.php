@@ -74,7 +74,7 @@ if ($number_of_deleted_styles > 0) {
     if ($number_of_deleted_styles == 1) {
         $message = lang('1 page style was deleted');
     } else {
-        $message = lang(array('string'=>'{var:1} page styles were deleted','vars'=>number_format($number_of_deleted_styles) ));
+        $message = lang(array('string'=>'{var:1} page styles were deleted','vars'=>pg_format_number($number_of_deleted_styles, 0) ));
     }
 
     log_activity($message, $_SESSION['sessionusername']);
@@ -90,7 +90,7 @@ if ($number_of_preserved_styles > 0) {
         $message = lang('1 page style was not deleted because it is being used by a folder or page.');
 
     } else {
-        $message = lang(array('string'=>'{var:1} page styles were not deleted because they are being used by a folder or page.','vars'=>number_format($number_of_preserved_styles) ));
+        $message = lang(array('string'=>'{var:1} page styles were not deleted because they are being used by a folder or page.','vars'=>pg_format_number($number_of_preserved_styles, 0) ));
     }
 
     $liveform->mark_error('', $message);

@@ -413,7 +413,15 @@ function submit_order($type) {
         // visitor sees the SAME old "Ödeme başlatılamadı" banner forever and
         // assumes the system is still broken. The validators below re-add any
         // errors that are *still* applicable to the current POST.
-        if (method_exists($liveform, 'unmark_errors')) {
+        //
+        // Not for an express order: express_order.php has already validated
+        // THIS post before calling here (shipping address and method, gift
+        // card recipients, product forms, recurring schedules) and none of
+        // those checks run again below. Clearing here threw their errors
+        // away, and the order went through without them - a gift card with
+        // no recipient, a parcel with no shipping method. express_order.php
+        // clears the previous submit's errors itself, before its checks.
+        if (($type != 'express order') && method_exists($liveform, 'unmark_errors')) {
             $liveform->unmark_errors();
         }
 
@@ -2700,7 +2708,7 @@ function submit_order($type) {
                         } catch (Exception $e) {
                             $payment_gateway_error_message = lang('Error message from payment gateway: ') . $e->getMessage();
 
-                            log_activity($payment_gateway_error_message, $_SESSION['sessionusername']);
+                            log_activity($payment_gateway_error_message, $_SESSION['sessionusername'] ?? '');
 
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
@@ -3982,7 +3990,7 @@ function submit_order($type) {
 
                 log_activity(
                     'user was auto-logged in by order auto-registration',
-                    $_SESSION['sessionusername']);
+                    $_SESSION['sessionusername'] ?? '');
             }
 
             // Remember that a new user was created, so later we can create address book items for
@@ -4324,7 +4332,7 @@ function submit_order($type) {
                 $protected_gift_card_code = protect_givex_gift_card_code($gift_card_error['gift_card_code']);
             }
 
-            $error_message_detail .= ' Gift card: ' . $protected_gift_card_code . '. Attempted redemption amount: ' . BASE_CURRENCY_SYMBOL . number_format($gift_card_error['amount'] / 100, 2, '.', ',') . '.';
+            $error_message_detail .= ' Gift card: ' . $protected_gift_card_code . '. Attempted redemption amount: ' . pg_money_text($gift_card_error['amount'] / 100, BASE_CURRENCY_SYMBOL) . '.';
             
             // if there is a cURL error, then add error info to error message detail
             if (isset($gift_card_error['curl_errno']) == TRUE) {
@@ -4340,9 +4348,9 @@ function submit_order($type) {
             }
         }
         
-        $error_message = 'Order (' . $order_number . ') was accepted however one or more gift cards could not be redeemed properly because there was an error with at least one gift card. The order should probably not be fulfilled until the payment issue is resolved. Total attempted redemption amount: ' . BASE_CURRENCY_SYMBOL . number_format($required_redemption_amount / 100, 2, '.', ',') . '. Total successfull redemption amount: ' . BASE_CURRENCY_SYMBOL . number_format($current_redemption_amount / 100, 2, '.', ',') . '.' . $error_message_detail;
+        $error_message = 'Order (' . $order_number . ') was accepted however one or more gift cards could not be redeemed properly because there was an error with at least one gift card. The order should probably not be fulfilled until the payment issue is resolved. Total attempted redemption amount: ' . pg_money_text($required_redemption_amount / 100, BASE_CURRENCY_SYMBOL) . '. Total successfull redemption amount: ' . pg_money_text($current_redemption_amount / 100, BASE_CURRENCY_SYMBOL) . '.' . $error_message_detail;
         
-        log_activity($error_message, $_SESSION['sessionusername']);
+        log_activity($error_message, $_SESSION['sessionusername'] ?? '');
 
         email(array(
             'to' => ECOMMERCE_EMAIL_ADDRESS,
@@ -5615,7 +5623,7 @@ function submit_order($type) {
                     // if there was an error creating recurring profile with Sage, then log activity and e-mail administrator
                     if ($payment_gateway_error_message != '') {
 
-                        log_activity($payment_gateway_error_message, $_SESSION['sessionusername']);
+                        log_activity($payment_gateway_error_message, $_SESSION['sessionusername'] ?? '');
 
                         email(array(
                             'to' => ECOMMERCE_EMAIL_ADDRESS,
@@ -6054,7 +6062,7 @@ function submit_order($type) {
                             WHERE id = '" . $product_id . "'";
                             
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername']));
+                create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 
             // Sold here, so the marketplace has to be told. Queued, not sent:
@@ -6333,7 +6341,7 @@ function submit_order($type) {
                         '" . USER_ID . "',
                         UNIX_TIMESTAMP())");
 
-                log_activity('gift card (' . output_gift_card_code($code) . ') was created because gift card product was ordered', $_SESSION['sessionusername']);
+                log_activity('gift card (' . output_gift_card_code($code) . ') was created because gift card product was ordered', $_SESSION['sessionusername'] ?? '');
 
                 // Create an array that will store the fields for variables that need to be replaced.
                 $fields = array();
@@ -6343,11 +6351,12 @@ function submit_order($type) {
                     'data' => output_gift_card_code($code),
                     'type' => '');
 
-                // We remove ".00" from the end of the value if it exists.
-                
+                // We remove ".00" (",00") from the end of the value if it exists.
+                $gift_card_separators = pg_number_separators();
+
                 $fields[] = array(
                     'name' => 'amount',
-                    'data' => preg_replace('~\.0+$~', '', number_format($product['price'] / 100, 2)),
+                    'data' => preg_replace('~' . preg_quote($gift_card_separators['decimal'], '~') . '0+$~', '', pg_format_number($product['price'] / 100, 2)),
                     'type' => '');
 
                 $fields[] = array(
@@ -6492,7 +6501,7 @@ function submit_order($type) {
                         'automatic',
                         '" . escape($order_item_gift_card['recipient_email_address']) . "')");
                 
-                log_activity('auto campaign was created because gift card was ordered (' . output_gift_card_code($code) . ')', $_SESSION['sessionusername']);
+                log_activity('auto campaign was created because gift card was ordered (' . output_gift_card_code($code) . ')', $_SESSION['sessionusername'] ?? '');
             }
         }
 

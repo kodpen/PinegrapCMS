@@ -1687,19 +1687,19 @@
        PHP's defaults, so a dot for the decimal and a comma for thousands, and
        the currency symbol in front.
 
-       Not toLocaleString with the panel language. The panel is Turkish and
-       would have produced 1.223,00 while the catalog, the cart and the receipt
-       all say 1,223.00 — a preview that formats numbers its own way is telling
-       the operator something untrue about their own shop. The input mask on the
-       price field follows the same convention, which is why a price typed
-       Turkish-style is rewritten as it is entered. */
+       Not toLocaleString with the browser's language: with the separators
+       the server hands over (pg_number_separators()), the same ones the
+       catalog, the cart and the receipt write with — a preview that formats
+       numbers its own way is telling the operator something untrue about
+       their own shop. */
     function previewMoney(value) {
 
+        var seps  = cfg.moneySeparators || { decimal: '.', thousands: ',' };
         var parts = Math.abs(value || 0).toFixed(2).split('.');
-        var whole = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        var whole = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, seps.thousands);
         var sign  = (value < 0) ? '-' : '';
 
-        return sign + $('<div>').html(symbol).text() + whole + '.' + parts[1];
+        return sign + $('<div>').html(symbol).text() + whole + seps.decimal + parts[1];
     }
 
     /* What a visitor is shown. One price with one product; with a matrix, the
